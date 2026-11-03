@@ -1049,3 +1049,61 @@ test("og.ui.speedometer tach: shift lights fill to the shift point and all light
   expect(overlaps(big.frame).join("; ")).toBe("");
   expect(speed(desk.els).text).toBe("187");
 });
+
+test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a checkpoint's split that leaves after 1.5 s, the finish, and wrong way over every other moment", () => {
+  // Wrong: a numeral that does not step down each second from `at`, lights lit by the wrong count, GO never green, a
+  // split that stays, a minus that is a hyphen, or a moment drawn over a wrong way.
+  let desc: Record<string, unknown> = {};
+  let start = -1;
+  const sys = defineSystem("HudBanner", {}, () => {
+    const t = (uiKit as unknown as { tick(): number }).tick();
+    if (start < 0) start = t;
+    og.ui.raceBanner("Banner", { ...desc, at: start } as never);
+  });
+  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
+  if (!r.ok) throw new Error(r.reason);
+  const e = r.value;
+  og.ui.previewViewport(e.world, DESKTOP_SAFE as never);
+  const font = og.load.font(e.world, "fonts/NotoSansSC-Regular-subset.ttf");
+  if (!font.ok) throw new Error(font.reason);
+  og.ui.configure(e.world, { font: font.value });
+  const textOf = (suffix: string) => dump(e).find((x) => x.path.endsWith(suffix))?.text;
+  const litLights = (): [number, number] => {
+    const d = drawsDuring(() => e.advance(1));
+    const lights = [...d].filter(([p]) => /\/Lights\/Light#\d+$/.test(p));
+    return [lights.length, lights.filter(([, x]) => (x.at(-1)?.effects?.length ?? 0) > 0).length];
+  };
+  // A countdown from 3, at 60 ticks a second: 3 with one light, 2 with two, 1 with three, then GO with all, then nothing.
+  desc = { event: "countdown", count: 3 };
+  e.advance(30);
+  expect([textOf("/Count"), litLights()]).toEqual(["3", [3, 1]]);
+  e.advance(59);
+  expect([textOf("/Count"), litLights()]).toEqual(["2", [3, 2]]);
+  e.advance(59);
+  expect([textOf("/Count"), litLights()]).toEqual(["1", [3, 3]]);
+  e.advance(59);
+  expect([textOf("/Count"), litLights()]).toEqual(["GO!", [3, 3]]);
+  e.advance(60);
+  expect(textOf("/Count")).toBe(undefined);
+  // A checkpoint: its split with a true minus, gone after 1.5 s; wrong way wins while it holds.
+  start = -1;
+  desc = { event: "checkpoint", index: 2, deltaMs: -680 };
+  e.advance(30);
+  expect([textOf("/Split/Label"), textOf("/Split/Delta")]).toEqual(["Checkpoint 2", "\u22120.68"]);
+  desc = { event: "checkpoint", index: 2, deltaMs: -680, wrongWay: true };
+  e.advance(2);
+  expect([textOf("/Split/Delta"), textOf("/WrongWay/Label")]).toEqual([undefined, "WRONG WAY"]);
+  desc = { event: "checkpoint", index: 2, deltaMs: -680 };
+  e.advance(70);
+  expect(textOf("/Split/Delta")).toBe(undefined);
+  // The finish: the place as the game writes it, the time under it.
+  start = -1;
+  desc = { event: "finish", placeText: "1st", timeMs: 83456 };
+  e.advance(40);
+  expect([textOf("/Place"), textOf("/Time")]).toEqual(["1st", "1:23.456"]);
+  const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
+  const overlaps = checkFrame(f, { screen: "hud", breakpoint: "desktop", locale: "", style: "", scale: 100, highContrast: false })
+    .filter((x) => x.rule === "overlap" && x.paths.some((p) => p.startsWith("Banner/")))
+    .map((x) => x.paths.join(" × "));
+  expect(overlaps.join("; ")).toBe("");
+});

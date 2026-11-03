@@ -10008,6 +10008,64 @@ module ui {
     returns Void
   }
 
+  enum RaceEvent {
+    doc "A race's moment the race banner shows."
+    variant none "Nothing (a wrong way still shows)."
+    variant countdown "The start: count numerals one a second from `at`, a start light filling danger with each, then GO with every light green."
+    variant go "GO alone, every light green, for a second."
+    variant checkpoint "A checkpoint's split (deltaMs) centre-top under the lap time, held 1.5 s."
+    variant finalLap "A thin gold band with the final lap's label sweeping across the top third, 2 s."
+    variant finish "A checker wipe, then the place huge with the time under it, 2.5 s."
+  }
+
+  struct RaceBannerDesc {
+    doc "The race banner's moment."
+    desc true
+    field event RaceEvent "Which moment."
+    field at u32 "og.ui.tick() when it started: a moment plays from then (a later tick plays it again), so a still at a tick is always the same."
+    field count u32 "countdown: the numeral it starts at, and the start lights' count." {
+      default 3
+      min 1
+      max 9
+    }
+    field deltaMs f32 "checkpoint: the split against the best, signed (negative: ahead, in success; positive: behind, in danger)." {
+      unit ms
+    }
+    field best bool "checkpoint: a new best split, in purple."
+    field index u32 "checkpoint: its number, from 1, for the label's {n}."
+    field place u32 "finish: the player's place, from 1."
+    field placeText String "finish: the place as the game writes it in its language (1st, 1er, 1位); empty is the number."
+    field timeMs f32 "finish: the race time, written m:ss.mmm under the place." {
+      min 0
+      unit ms
+    }
+    field wrongWay bool "The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds."
+    field goLabel String "The start's last word." {
+      default "GO!"
+    }
+    field checkpointLabel String "The checkpoint's caption; {n} is its index." {
+      default "Checkpoint {n}"
+    }
+    field wrongWayLabel String "The wrong way's words." {
+      default "Wrong way"
+    }
+    field finalLapLabel String "The final lap's words." {
+      default "Final lap"
+    }
+    field finishLabel String "The finish's caption over the place." {
+      default "Finish"
+    }
+  }
+
+  fn raceBanner {
+    doc "The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time, signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a thin gold band sweeping the top third), the finish (a checker wipe, the place huge with the time under it) and wrong way (danger, a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised)."
+    doc "Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label."
+    host false
+    param id String "Its id."
+    param desc RaceBannerDesc "The moment and its words."
+    returns Void
+  }
+
   struct RearViewDesc {
     doc "A rear-view mirror."
     desc true

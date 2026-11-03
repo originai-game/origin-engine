@@ -11784,6 +11784,8 @@
         "StandingsEntry",
         "StandingsTowerDesc",
         "LapTimerDesc",
+        "RaceEvent",
+        "RaceBannerDesc",
         "RearViewDesc",
         "SelectedUnit",
         "UnitStat",
@@ -17265,6 +17267,27 @@
               "type": "LapTimerDesc",
               "optional": true,
               "doc": "The race state."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "raceBanner",
+          "doc": "The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time, signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a thin gold band sweeping the top third), the finish (a checker wipe, the place huge with the time under it) and wrong way (danger, a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).\nParts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RaceBannerDesc",
+              "optional": true,
+              "doc": "The moment and its words."
             }
           ],
           "returns": "Void",
@@ -73704,6 +73727,125 @@
           ],
           "description": "Opens its own anchored group there; null builds it in place.",
           "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RaceEvent": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A race's moment the race banner shows.",
+      "type": "string",
+      "enum": [
+        "none",
+        "countdown",
+        "go",
+        "checkpoint",
+        "finalLap",
+        "finish"
+      ],
+      "x-og-variants": {
+        "none": "Nothing (a wrong way still shows).",
+        "countdown": "The start: count numerals one a second from `at`, a start light filling danger with each, then GO with every light green.",
+        "go": "GO alone, every light green, for a second.",
+        "checkpoint": "A checkpoint's split (deltaMs) centre-top under the lap time, held 1.5 s.",
+        "finalLap": "A thin gold band with the final lap's label sweeping across the top third, 2 s.",
+        "finish": "A checker wipe, then the place huge with the time under it, 2.5 s."
+      }
+    },
+    "RaceBannerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The race banner's moment.",
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/RaceEvent",
+          "description": "Which moment.",
+          "default": "none"
+        },
+        "at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when it started: a moment plays from then (a later tick plays it again), so a still at a tick is always the same.",
+          "default": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "countdown: the numeral it starts at, and the start lights' count.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 9
+        },
+        "deltaMs": {
+          "type": "number",
+          "description": "checkpoint: the split against the best, signed (negative: ahead, in success; positive: behind, in danger).",
+          "default": 0,
+          "x-og-unit": "ms"
+        },
+        "best": {
+          "type": "boolean",
+          "description": "checkpoint: a new best split, in purple.",
+          "default": false
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "checkpoint: its number, from 1, for the label's {n}.",
+          "default": 0
+        },
+        "place": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "finish: the player's place, from 1.",
+          "default": 0
+        },
+        "placeText": {
+          "type": "string",
+          "description": "finish: the place as the game writes it in its language (1st, 1er, 1位); empty is the number.",
+          "default": ""
+        },
+        "timeMs": {
+          "type": "number",
+          "description": "finish: the race time, written m:ss.mmm under the place.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "wrongWay": {
+          "type": "boolean",
+          "description": "The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds.",
+          "default": false
+        },
+        "goLabel": {
+          "type": "string",
+          "description": "The start's last word.",
+          "default": "GO!"
+        },
+        "checkpointLabel": {
+          "type": "string",
+          "description": "The checkpoint's caption; {n} is its index.",
+          "default": "Checkpoint {n}"
+        },
+        "wrongWayLabel": {
+          "type": "string",
+          "description": "The wrong way's words.",
+          "default": "Wrong way"
+        },
+        "finalLapLabel": {
+          "type": "string",
+          "description": "The final lap's words.",
+          "default": "Final lap"
+        },
+        "finishLabel": {
+          "type": "string",
+          "description": "The finish's caption over the place.",
+          "default": "Finish"
         }
       },
       "additionalProperties": false

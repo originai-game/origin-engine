@@ -43953,6 +43953,120 @@ export interface LapTimerDesc {
 
 
 /**
+ * A race's moment the race banner shows.
+ * - `"none"`: Nothing (a wrong way still shows).
+ * - `"countdown"`: The start: count numerals one a second from `at`, a start light filling danger with each, then GO with every light green.
+ * - `"go"`: GO alone, every light green, for a second.
+ * - `"checkpoint"`: A checkpoint's split (deltaMs) centre-top under the lap time, held 1.5 s.
+ * - `"finalLap"`: A thin gold band with the final lap's label sweeping across the top third, 2 s.
+ * - `"finish"`: A checker wipe, then the place huge with the time under it, 2.5 s.
+ */
+export type RaceEvent = "none" | "countdown" | "go" | "checkpoint" | "finalLap" | "finish";
+
+/**
+ * The race banner's moment.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaceBannerDesc {
+  /**
+   * Which moment.
+   *
+   * @default "none"
+   */
+  readonly event?: RaceEvent;
+  /**
+   * og.ui.tick() when it started: a moment plays from then (a later tick plays it again), so a still at a tick is always the same.
+   *
+   * @default 0
+   */
+  readonly at?: number;
+  /**
+   * countdown: the numeral it starts at, and the start lights' count.
+   *
+   * @default 3
+   * @range 1..9
+   */
+  readonly count?: number;
+  /**
+   * checkpoint: the split against the best, signed (negative: ahead, in success; positive: behind, in danger).
+   *
+   * @default 0
+   * @unit ms (milliseconds)
+   */
+  readonly deltaMs?: number;
+  /**
+   * checkpoint: a new best split, in purple.
+   *
+   * @default false
+   */
+  readonly best?: boolean;
+  /**
+   * checkpoint: its number, from 1, for the label's {n}.
+   *
+   * @default 0
+   */
+  readonly index?: number;
+  /**
+   * finish: the player's place, from 1.
+   *
+   * @default 0
+   */
+  readonly place?: number;
+  /**
+   * finish: the place as the game writes it in its language (1st, 1er, 1位); empty is the number.
+   *
+   * @default ""
+   */
+  readonly placeText?: string;
+  /**
+   * finish: the race time, written m:ss.mmm under the place.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly timeMs?: number;
+  /**
+   * The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds.
+   *
+   * @default false
+   */
+  readonly wrongWay?: boolean;
+  /**
+   * The start's last word.
+   *
+   * @default "GO!"
+   */
+  readonly goLabel?: string;
+  /**
+   * The checkpoint's caption; {n} is its index.
+   *
+   * @default "Checkpoint {n}"
+   */
+  readonly checkpointLabel?: string;
+  /**
+   * The wrong way's words.
+   *
+   * @default "Wrong way"
+   */
+  readonly wrongWayLabel?: string;
+  /**
+   * The final lap's words.
+   *
+   * @default "Final lap"
+   */
+  readonly finalLapLabel?: string;
+  /**
+   * The finish's caption over the place.
+   *
+   * @default "Finish"
+   */
+  readonly finishLabel?: string;
+}
+
+
+/**
  * A rear-view mirror.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -56247,6 +56361,14 @@ export declare namespace og {
      * @param desc The race state.
      */
     function lapTimer(id: string, desc?: LapTimerDesc): void;
+    /**
+     * The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time, signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a thin gold band sweeping the top third), the finish (a checker wipe, the place huge with the time under it) and wrong way (danger, a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).
+     * Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label.
+     *
+     * @param id Its id.
+     * @param desc The moment and its words.
+     */
+    function raceBanner(id: string, desc?: RaceBannerDesc): void;
     /**
      * A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road.
      * Parts: RearView.frame (the bezel), RearView.glass, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/Glass/View.

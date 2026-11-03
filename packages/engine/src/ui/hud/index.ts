@@ -9,7 +9,7 @@ import { orbMeter, radialMeter, statBar } from "./meters.ts";
 import { compass, minimapView, objectiveTracker } from "./nav.ts";
 import { comboCounter, hudTimer, judgement, resourceBar, scoreboard, scorebug, turnOrder } from "./scores.ts";
 import { flightHud, speedometer } from "./vehicles.ts";
-import { lapTimer, rearView, standingsTower } from "./racing.ts";
+import { lapTimer, raceBanner, rearView, standingsTower } from "./racing.ts";
 import { commandCard, dragSelect, productionQueue, rtsConsole, selectionPanel } from "./rts.ts";
 import { goalTimeline, matchStats, playerPlate, substitution } from "./sports.ts";
 import { laneKeys, wavePreview } from "./genres.ts";
@@ -53,6 +53,7 @@ export const hud = Object.freeze({
   wavePreview,
   laneKeys,
   lapTimer,
+  raceBanner,
   rearView,
   damageDirection,
   lowHealthVignette,

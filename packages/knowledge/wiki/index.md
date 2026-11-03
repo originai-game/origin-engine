@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2362 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2365 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1617,6 +1617,7 @@ Field units the docs and Tune use.
 | [`og.ui.pushMass`](ui.md#fn-pushMass) | function | ui | `og_ui_push_mass` |
 | [`og.ui.questLog`](ui.md#fn-questLog) | function | ui | — |
 | [`og.ui.questTracker`](ui.md#fn-questTracker) | function | ui | — |
+| [`og.ui.raceBanner`](ui.md#fn-raceBanner) | function | ui | — |
 | [`og.ui.radialMenu`](ui.md#fn-radialMenu) | function | ui | — |
 | [`og.ui.radialMeter`](ui.md#fn-radialMeter) | function | ui | — |
 | [`og.ui.radio`](ui.md#fn-radio) | function | ui | `og_ui_radio` |
@@ -1921,6 +1922,8 @@ Field units the docs and Tune use.
 | [`QuestView`](story.md#type-QuestView) | struct | story | — |
 | [`QueueItem`](ui.md#type-QueueItem) | desc struct | ui | — |
 | [`QuickPlayDesc`](platform.md#type-QuickPlayDesc) | desc struct | platform | — |
+| [`RaceBannerDesc`](ui.md#type-RaceBannerDesc) | desc struct | ui | — |
+| [`RaceEvent`](ui.md#type-RaceEvent) | enum | ui | — |
 | [`RadialDesc`](ui.md#type-RadialDesc) | desc struct | ui | — |
 | [`RadialItem`](ui.md#type-RadialItem) | desc struct | ui | — |
 | [`RadialMeterDesc`](ui.md#type-RadialMeterDesc) | desc struct | ui | — |

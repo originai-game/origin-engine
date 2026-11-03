@@ -10,7 +10,7 @@
 // lap block share one width (raceWidth) so they stack as one column.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba } from "./core.ts";
+import { BLACK, WHITE, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
 
 /** The fastest lap's and a new best's purple, as F1 timing marks them. */
 const PURPLE: Rgba = { r: 0.68, g: 0.42, b: 1, a: 1 };
@@ -264,4 +264,158 @@ export function rearView(id: string, desc: Api.RearViewDesc = {}): void {
       });
     }, { a11y: a11y("image", desc.label ?? "Rear view") });
   });
+}
+
+const BANNER_MS: Record<Exclude<Api.RaceEvent, "none" | "countdown">, number> = { go: 1000, checkpoint: 1500, finalLap: 2000, finish: 2500 };
+/** A countdown numeral's scale-in and every banner's fade, ms. */
+const IN_MS = 280;
+const FADE_MS = 200;
+
+/**
+ * og.ui.raceBanner: the racing HUD's centre-third moments, one at a time,
+ * by the tick from `at` (a still at a tick is always the same). Wrong way
+ * wins over the others while it holds.
+ */
+export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
+  const f = frame();
+  const vp = f.viewport;
+  const t = now();
+  const at = desc.at ?? 0;
+  const age = t - at;
+  const still = reduced();
+  const count = Math.max(1, Math.min(9, desc.count || 3));
+  const sec = msToTicks(1000);
+  // What shows this tick.
+  let event: Api.RaceEvent | "wrongWay" = desc.event ?? "none";
+  if (desc.wrongWay) event = "wrongWay";
+  else if (age < 0) event = "none";
+  else if (event === "countdown" && age >= count * sec + sec) event = "none";
+  else if (event !== "none" && event !== "countdown" && age >= msToTicks(BANNER_MS[event])) event = "none";
+  const g = groups({ event }, { event: ["none", "countdown", "go", "checkpoint", "finalLap", "finish", "wrongWay"] });
+  // Fades in and out over its life (none under reduced motion).
+  const life = (ms: number): number => (still ? 1 : Math.min(clamp01(ticksToMs(age) / FADE_MS), clamp01((ms - ticksToMs(age)) / FADE_MS)));
+  const short = Math.min(vp.width, vp.height);
+  if (event === "none") return;
+  claimAnnouncement();
+
+  if (event === "countdown" || event === "go") {
+    // The start: the numeral of this second over the lights, then GO.
+    const n = event === "go" ? 0 : count - Math.floor(age / sec);
+    const go = n <= 0;
+    const inSec = event === "go" ? age : age % sec;
+    const k = still ? 1 : 1 + 0.4 * (1 - easeOut(ticksToMs(inSec) / IN_MS));
+    const fade = still ? 1 : Math.min(clamp01(ticksToMs(inSec) / 80), go ? clamp01((1000 - ticksToMs(inSec)) / FADE_MS) : 1);
+    const lightsOn = go ? count : count - n + 1;
+    const d = Math.max(u(18), Math.round(short * 0.045));
+    const step = tsFit(120, short * 0.3, true);
+    const label = go ? (desc.goLabel ?? "GO!") : String(n);
+    kit.anchor(id, { anchor: "center", offsetY: -Math.round(vp.height * 0.12), direction: "column", cross: "center", gap: u(10), over: true }, () => {
+      box("Lights", { direction: "row", gap: Math.round(d * 0.6), padding: { left: u(8), right: u(8), top: u(6), bottom: u(6) }, part: sel("RaceBanner", "lights") }, chip(d), () => {
+        for (let i = 0; i < count; i++) {
+          const on = i < lightsOn;
+          const hue = go ? role("success") : role("danger");
+          leaf(kit.idi("Light", i), { width: px(d), height: px(d), part: sel("RaceBanner", "light", on ? (go ? "go" : "on") : null) }, {
+            shape: { kind: "ellipse" },
+            fills: [solid(on ? lit(hue) : token("shadow", 0.7))],
+            strokes: [stroke(1, token("lineStrong", 0.6))],
+            effects: on ? [glow(d * 0.6, lit(hue, 0.6))] : [],
+          });
+        }
+      });
+      text("Count", label, { step, font: "display", color: go ? lit(role("success")) : token("ink"), nowrap: true, outline: 2.4 },
+        { transform: { scaleX: k, scaleY: k }, opacity: fade });
+    });
+    apply({ ...g, a11y: a11y("status", label), inert: true });
+    return;
+  }
+
+  if (event === "checkpoint") {
+    const delta = desc.deltaMs ?? 0;
+    const ahead = delta < 0;
+    const ink = desc.best ? PURPLE : ahead ? role("success") : role("danger");
+    const label = (desc.checkpointLabel ?? "Checkpoint {n}").replaceAll("{n}", String(desc.index || 1));
+    const value = signedSeconds(delta / 1000);
+    // Centre-top, under the lap time (the top band's first row).
+    kit.anchor(id, { anchor: "top", offsetY: Math.round(vp.height * 0.11), over: true }, () => {
+      box("Split", { direction: "column", cross: "center", gap: 0, padding: { left: u(14), right: u(14), top: u(4), bottom: u(6) }, part: sel("RaceBanner", "checkpoint", desc.best ? "best" : ahead ? "ahead" : "behind") }, chip(), () => {
+        text("Label", label, { step: ts(12), color: token("inkMuted"), nowrap: true });
+        text("Delta", value, { step: ts(30, true), font: "mono", color: lit(ink), nowrap: true, outline: 1.2 });
+      }, { opacity: life(BANNER_MS.checkpoint), transform: { scaleX: pop(age, 0.12), scaleY: pop(age, 0.12) } });
+    });
+    apply({ ...g, a11y: a11y("status", `${label} ${value}`), inert: true });
+    return;
+  }
+
+  if (event === "finalLap") {
+    // A thin gold band sweeping in across the top third, its words on it.
+    const W = vp.width;
+    const x = still ? 0 : -W * (1 - easeOut(ticksToMs(age) / 450));
+    const label = desc.finalLapLabel ?? "Final lap";
+    kit.anchor(id, { anchor: "top", width: pct(1), margin: 0, offsetY: Math.round(vp.height * 0.22), over: true }, () => {
+      box("Band", { width: pct(1), height: px(Math.max(u(34), stepSize(ts(20, true)).line + u(8))), align: "center", cross: "center", part: sel("RaceBanner", "band", "final") }, {
+        fills: [vgrad([[0, token("gold", 0)], [0.2, token("gold", 0.85)], [0.8, token("gold", 0.85)], [1, token("gold", 0)]], 90)],
+      }, () => {
+        text("Label", label.toUpperCase(), { step: ts(20, true), font: "display", color: lit(BLACK), nowrap: true });
+      }, { opacity: life(BANNER_MS.finalLap), transform: { x } });
+    });
+    apply({ ...g, a11y: a11y("status", label), inert: true });
+    return;
+  }
+
+  if (event === "finish") {
+    // A checker wipe across the middle, then the place huge with the time under it.
+    const W = vp.width;
+    const h = Math.max(u(40), Math.round(vp.height * 0.07));
+    const cell = Math.round(h / 2);
+    const wipe = still ? 1 : easeOut(ticksToMs(age) / 600);
+    const placeText = desc.placeText || String(desc.place || 1);
+    const label = desc.finishLabel ?? "Finish";
+    const time = lapText(desc.timeMs ?? 0);
+    const reveal = still ? 1 : clamp01((ticksToMs(age) - 350) / 200);
+    const k = pop(age - msToTicks(350), 0.2);
+    kit.anchor(id, { anchor: "center", width: pct(1), margin: 0, direction: "column", cross: "center", gap: u(8), over: true }, () => {
+      box("Checker", { direction: "row", width: pct(1), height: px(h), part: sel("RaceBanner", "checker") }, undefined, () => {
+        const cols = Math.ceil(W / cell);
+        for (let i = 0; i < cols; i++) {
+          const a = i % 2 === 0;
+          const [top, bottom] = a ? [WHITE, BLACK] : [BLACK, WHITE];
+          leaf(kit.idi("Col", i), { width: px(cell), height: px(h) }, {
+            fills: [vgrad([[0, lit(top, 0.9)], [0.5, lit(top, 0.9)], [0.5, lit(bottom, 0.9)], [1, lit(bottom, 0.9)]])],
+          });
+        }
+      }, { transform: { x: -W * (1 - wipe) } });
+      box("Result", { direction: "column", cross: "center", gap: 0 }, undefined, () => {
+        text("Label", label, { step: ts(16), color: token("inkMuted"), nowrap: true, outline: 1 });
+        text("Place", placeText, { step: tsFit(120, short * 0.26, true), font: "display", color: token("ink"), nowrap: true, outline: 2.4 });
+        text("Time", time, { step: ts(22), font: "mono", color: token("ink"), nowrap: true, outline: 1.2 });
+      }, { opacity: reveal * life(BANNER_MS.finish), transform: { scaleX: k, scaleY: k } });
+    });
+    apply({ ...g, a11y: a11y("status", `${label} ${placeText} ${time}`), inert: true });
+    return;
+  }
+
+  // Wrong way: danger, a U-turn arrow, pulsing once a second.
+  const label = desc.wrongWayLabel ?? "Wrong way";
+  const s = Math.max(u(28), Math.round(short * 0.06), Math.round(stepSize(ts(26, true)).line * 0.75));
+  const beat = still ? 1 : 0.55 + 0.45 * pulse(1);
+  kit.anchor(id, { anchor: "center", offsetY: -Math.round(vp.height * 0.12), over: true }, () => {
+    box("WrongWay", { direction: "row", gap: u(10), cross: "center", padding: { left: u(16), right: u(18), top: u(8), bottom: u(8) }, part: sel("RaceBanner", "wrongWay") }, {
+      ...chip(),
+      fills: [solid(lit(role("danger"), 0.88))],
+      effects: [glow(16, lit(role("danger"), 0.5))],
+    }, () => {
+      box("Arrow", { width: px(s), height: px(s) }, undefined, () => {
+        leaf("Turn", { width: px(s), height: px(s) }, {
+          shape: { kind: "path", points: [{ x: 0.72 * s, y: 0.92 * s }, { x: 0.72 * s, y: 0.4 * s }, { x: 0.64 * s, y: 0.2 * s }, { x: 0.5 * s, y: 0.13 * s }, { x: 0.36 * s, y: 0.2 * s }, { x: 0.28 * s, y: 0.4 * s }, { x: 0.28 * s, y: 0.62 * s }], width: Math.max(3, s * 0.12), cap: "round", join: "round" },
+          fills: [solid(lit(WHITE))],
+        }, absolute({ start: 0, top: 0 }));
+        leaf("Head", { width: px(s), height: px(s) }, {
+          shape: { kind: "path", points: [{ x: 0.1 * s, y: 0.6 * s }, { x: 0.46 * s, y: 0.6 * s }, { x: 0.28 * s, y: 0.92 * s }], closed: true, filled: true, join: "round" },
+          fills: [solid(lit(WHITE))],
+        }, absolute({ start: 0, top: 0 }));
+      });
+      text("Label", label.toUpperCase(), { step: ts(26, true), font: "display", color: lit(WHITE), nowrap: true });
+    }, { opacity: beat });
+  });
+  apply({ ...g, a11y: a11y("status", label), inert: true });
 }
