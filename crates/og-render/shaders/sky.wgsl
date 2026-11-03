@@ -185,7 +185,10 @@ fn cloud_hg(cos_t: f32, g: f32) -> f32 {
 // The clouds over `background` along unit `d` (before the fog). Under an overcast, a ray under the lowest elevation
 // whose march reaches the deck within the march's reach (the base some 24 km off) shows the deck as it is marched
 // there, not an estimate of it: the strip from there down past the horizon to the sea's or the land's far edge had
-// drawn a flat grey twice the deck's (cloud_deck alone, too bright).
+// drawn a flat grey twice the deck's (cloud_deck alone, too bright). Each row of the strip would repeat that one
+// elevation (the deck's features drawn out into columns), so the strip fades from its own column's march there,
+// undithered, into one grey every pixel shares: the deck's mean there along four fixed azimuths about the view. The
+// far base fades into it towards the horizon and below it, with no copy of a feature to fan or streak.
 fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return background; }
@@ -193,13 +196,27 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let cover = cloud_deck(d).a;
   let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
   if (cover > 0.0 && viewer <= c[0].z && d.y < lowest) {
-    let flat_d = normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(1e-6, 0.0, 0.0));
-    let up = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
-    let deck = clouds_march(background, up, pixel);
+    let own = deck_along(background, d, lowest);
+    let ahead = frame.view_forward.xyz;
+    var grey = vec3<f32>(0.0);
+    for (var i = 0; i < 4; i++) {
+      let a = (f32(i) - 1.5) * 0.3;
+      let f = normalize(vec3<f32>(ahead.x, 0.0, ahead.z) + vec3<f32>(1e-6, 0.0, 0.0));
+      let turned = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
+      grey += deck_along(background, turned, lowest) * 0.25;
+    }
+    let deck = mix(own, grey, smoothstep(0.0, 0.5, (lowest - d.y) / lowest));
     if (cover >= 0.999) { return deck; }
     return mix(clouds_march(background, d, pixel), deck, cover);
   }
   return clouds_march(background, d, pixel);
+}
+
+// The deck marched along `d`'s azimuth at elevation `e` (its sine), undithered.
+fn deck_along(background: vec3<f32>, d: vec3<f32>, e: f32) -> vec3<f32> {
+  let flat_d = normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(1e-6, 0.0, 0.0));
+  let up = flat_d * sqrt(1.0 - e * e) + vec3<f32>(0.0, e, 0.0);
+  return clouds_march(background, up, vec2<f32>(-1.0));
 }
 
 // The high layer, then the volumetric layer, faded into the sky with distance.
@@ -286,7 +303,9 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
   // single frame shows an even fine grain rather than speckle (TAA
   // smooths it), offset each frame.
-  let ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  var ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  // (A pixel of -1: undithered, the march's middle.)
+  if (pixel.x < 0.0) { ign = 0.5; }
   var t = start + dt * ign;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
