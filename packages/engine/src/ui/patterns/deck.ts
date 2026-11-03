@@ -7,6 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, pointer, px, rarityColor, rememberRoom,
   role, safeWidth, shadow, st, still, stIn, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
@@ -39,7 +40,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
   const { viewport: vp, t, phone, touch } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
-  const W = kit.memory(`~db.w.${id}`, 0) || safeWidth();
+  const W = kit.memory(`~db.w.${id}`, 0) || firstRoom().w;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   // Read and written outside the pattern's element (a memory key is the open element's): the last refusal, the room's place.
   const rt = kit.memory(`~db.rt.${id}`, -1);
@@ -157,10 +158,12 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         kinds();
         kit.close();
         kit.close();
-        kit.row("Find", { width: grow(), gap: u(8), cross: "center" }, () => {
-          search(grow());
-          sort(px(Math.round(u(150) * Math.min(1.3, ts))));
-        });
+        // Large text stacks the search over the sort: side by side they no longer fit a phone's width.
+        const stack = ts > 1.25;
+        kit.open("Find", { direction: stack ? "column" : "row", width: grow(), gap: u(8), cross: stack ? "stretch" : "center" });
+        search(grow());
+        sort(stack ? grow() : px(Math.round(u(150) * Math.min(1.3, ts))));
+        kit.close();
       });
     } else {
       kit.row("Filters", { width: grow(), gap: u(14), cross: "center", wrap: true } as never, () => {

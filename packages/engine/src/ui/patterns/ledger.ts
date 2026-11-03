@@ -10,11 +10,13 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, clamp, eyebrow, flags, frame, glow, grouped, grow, hex, kit, line, mix, paint, px, rememberRoom, role, rtl, safeHeight,
+  firstRoom,
+  artSlot, clamp, eyebrow, flags, frame, glow, grouped, grow, hex, kit, line, mix, paint, parentOf, px, rememberRoom, role, rtl, safeHeight,
   safeWidth, shadow, st, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
 import { chevron } from "../containers/base.ts";
 import { chart } from "../data/charts.ts";
+import { stepSize } from "../feedback/core.ts";
 import { formatNumber } from "../data/format.ts";
 import { valueSlider } from "../controls/ranges.ts";
 
@@ -41,12 +43,15 @@ function delta(id: string, value: string, up: boolean, good: boolean, size: numb
   });
 }
 
+/** The ledger rows' heights, by the ledger's id and the row's key, from a tick each was seen whole. */
+const rowHeights = new Map<string, number>();
+
 export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   const out: Mut<Api.LedgerResult> = { tab: null, sort: null, descending: false, funding: null, selected: null };
   const { t, phone } = frame();
   const portrait = frame().viewport.breakpoint === "phonePortrait";
-  const W = kit.memory(`~le.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~le.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~le.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~le.h.${id}`, 0) || firstRoom().h;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   const cur = desc.currency ?? "";
   const money = (v: number): string => `${v < 0 ? "\u2212" : ""}${cur}${grouped(Math.abs(v))}`;
@@ -271,18 +276,46 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   };
 
   const ledgerList = (scroll: boolean): void => {
-    if (scroll) kit.openScroll("List", { width: grow(), height: grow(), gap: u(2), padding: xy(0, 0), fade: 28, fadeInto: "shadow" } as never);
-    else kit.open("List", { direction: "column", width: grow(), gap: u(2) });
+    if (scroll) {
+      // Whole rows only: the list is cut at the last row that fits the room above Net (from last tick's layout), so no
+      // row stands half under it; the rest scroll.
+      // Rows is the table's next child after its header (built just before, so lastPath names it).
+      const rowsPath = `${parentOf(kit.lastPath())}/Rows`;
+      kit.open("Rows", { direction: "column", width: grow(), height: grow() });
+      const room = kit.bounds(rowsPath);
+      const prev = kit.memory(`~le.rows.${id}`, 0);
+      // og.ui.bounds gives the part in view, so each row's height is kept from a tick it was seen whole (ending clear of
+      // the room's edge); the list then holds the rows from the top whose heights add up within the room.
+      if (room && room.height > 0) {
+        const keys = sections.flatMap((x) => [x.key ?? "", ...sorted(x).map((l) => l.key ?? "")]);
+        for (const k of keys) {
+          const b = kit.bounds(`${rowsPath}/List/${k}`);
+          if (b && b.y >= room.y - 0.5 && b.y + b.height < room.y + room.height - 0.5) rowHeights.set(`${id}/${k}`, b.height);
+        }
+        let fit = 0;
+        for (const k of keys) {
+          const h = rowHeights.get(`${id}/${k}`);
+          const end = fit + (fit > 0 ? u(2) : 0) + (h ?? Infinity);
+          if (end > room.height + 0.5) break;
+          fit = end;
+        }
+        kit.remember(`~le.rows.${id}`, fit > 0 ? Math.ceil(fit) : prev);
+      } else kit.remember(`~le.rows.${id}`, prev);
+      kit.openScroll("List", { width: grow(), height: prev > 0 && room && room.height > 0 ? px(Math.min(prev, room.height)) : grow(), gap: u(2), padding: xy(0, 0), fade: 28, fadeInto: "shadow" } as never);
+    } else kit.open("List", { direction: "column", width: grow(), gap: u(2) });
     for (const s of sections) {
       sectionHead(s);
       for (const l of sorted(s)) lineRow(l, s);
     }
     kit.close();
     kit.semantics({ role: "table", name: desc.title || "Ledger" });
+    if (scroll) kit.close();
   };
 
   // The graphs: the history over the periods, and a section's lines as a donut.
-  const graphs = (w: Api.Size, chartH: number): void => {
+  // `room`, the scrolling column the graphs stand in (by path): the donut's legend keeps the lines that fit under the
+  // history in it, the largest first, and folds the rest into one Other line, so its card ends inside the column.
+  const graphs = (w: Api.Size, chartH: number, room = ""): void => {
     const hist = desc.history ?? [];
     const bd = sections.find((s) => s.key === desc.breakdown) ?? null;
     if (hist.length === 0 && !bd) return;
@@ -300,9 +333,25 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
         });
       }
       if (bd) {
-        const ls = lines.filter((l) => l.section === bd.key);
+        let ls = lines.filter((l) => l.section === bd.key).map((l) => ({ name: l.name ?? l.key ?? "", amount: l.amount ?? 0 }));
+        const col = room ? kit.bounds(room) : null;
+        const hist0 = room ? kit.bounds(`${room}/Graphs/History`) : null;
+        const row0 = room ? kit.bounds(`${room}/Graphs/Breakdown/Chart/Body/Legend/Row#0`) : null;
+        // The card's own room: the column less the history's card and the gap, less the title and padding.
+        let donutH = Math.round(chartH * 0.9);
+        if (col && col.height > 0) {
+          const head = u(12) * 2 + u(8) + stepSize("caption").line;
+          const left = col.height - (hist0 ? hist0.height + u(12) : 0) - head - 1;
+          donutH = Math.max(u(96), Math.min(donutH, Math.floor(left)));
+          const rowH = row0 && row0.height > 0 ? Math.max(row0.height, u(36)) : u(36);
+          const fit = Math.max(3, Math.floor(left / rowH));
+          if (ls.length > fit) {
+            const by = [...ls].sort((a, b) => b.amount - a.amount);
+            ls = [...by.slice(0, fit - 1), { name: desc.otherLabel ?? "Other", amount: by.slice(fit - 1).reduce((n, l) => n + l.amount, 0) }];
+          }
+        }
         card("Breakdown", `${desc.breakdownLabel ?? "Breakdown"} · ${bd.name ?? ""}`, () => {
-          chart("Chart", { kind: "donut", series: [{ label: bd.name ?? "", values: ls.map((l) => l.amount ?? 0) }], categories: ls.map((l) => l.name ?? l.key ?? ""), height: Math.round(chartH * 0.9), totalLabel: desc.totalLabel ?? "Total", format: "compact", label: `${desc.breakdownLabel ?? "Breakdown"} ${bd.name ?? ""}` });
+          chart("Chart", { kind: "donut", series: [{ label: bd.name ?? "", values: ls.map((l) => l.amount) }], categories: ls.map((l) => l.name), height: donutH, totalLabel: desc.totalLabel ?? "Total", format: "compact", label: `${desc.breakdownLabel ?? "Breakdown"} ${bd.name ?? ""}` });
         });
       }
     });
@@ -329,7 +378,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
       });
       const gw = Math.round(Math.min(u(480), W * 0.32) * Math.min(1.15, ts));
       kit.openScroll("Side", { width: px(gw), height: grow(), gap: 0, padding: xy(0, 0), fade: 28, fadeInto: "shadow" } as never);
-      graphs(grow(), Math.round(clamp(H * 0.3, 150, u(260))));
+      graphs(grow(), Math.round(clamp(H * 0.22, 130, u(200))), `${parentOf(kit.lastPath())}/Side`);
       kit.close();
     });
   }

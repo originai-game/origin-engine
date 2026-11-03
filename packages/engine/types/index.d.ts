@@ -35408,6 +35408,12 @@ export interface LedgerDesc {
    */
   readonly breakdownLabel?: string;
   /**
+   * The donut's line for the smaller lines it folds together when the legend would not fit its card.
+   *
+   * @default "Other"
+   */
+  readonly otherLabel?: string;
+  /**
    * A locked slider, to a screen reader.
    *
    * @default "Locked"
@@ -37356,6 +37362,12 @@ export interface SettingEntry {
    * @default false
    */
   readonly disabled?: boolean;
+  /**
+   * A picture of its effect (art kind banner, 16:9) under its description in the detail panel; none draws no picture.
+   *
+   * @default null
+   */
+  readonly preview?: Texture | null;
 }
 
 /**

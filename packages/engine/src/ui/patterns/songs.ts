@@ -8,6 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grouped, grow, keyHash, kit, lastInteraction, line, mix, over, paint, px, recallPath, rememberPath, role,
   rememberRoom, safeHeight, safeWidth,
   shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
@@ -49,8 +50,8 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   const song = songs[si] ?? null;
   const charts = song?.difficulties ?? [];
   const chart = charts.find((c) => c.key === desc.difficulty) ?? charts[0] ?? null;
-  const W = kit.memory(`~g.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~g.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~g.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~g.h.${id}`, 0) || firstRoom().h;
   const rt = kit.memory("~g.rt", 0);
   const rk = kit.memory("~g.rk", 0);
   const songHash = keyHash(song?.key ?? "");
@@ -84,11 +85,12 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
       }
       // The waveform: a bar per peak, lit up to where the preview is.
       const peaks = prev.peaks ?? [];
-      // The time beside it is set in the mono face: its width grows with the player's text size.
-      const waveW = bw - u(44) - u(14) * 2 - u(24) - Math.ceil(u(70) * Math.max(1, frame().theme.textScale ?? 1));
+      // The waveform takes the bar's width; the time sits under it, so nothing beside the bar can run into it.
+      const waveW = bw - u(44) - u(14) - u(24);
       const n = Math.max(1, peaks.length);
       const bwid = Math.max(1, Math.floor(waveW / n) - 1);
-      const wh = u(40);
+      const wh = u(30);
+      kit.open("Track", { direction: "column", width: px(waveW), gap: u(4), cross: "end" });
       kit.row("Wave", { width: px(waveW), height: px(wh), gap: Math.max(1, Math.floor(waveW / n) - bwid), cross: "center", part: "Songs.wave", partClass: "badge" }, () => {
         if (peaks.length === 0) {
           kit.open("Flat", { width: grow(), height: px(2), background: token("ink", 0.25) });
@@ -100,7 +102,8 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
           kit.close();
         });
       });
-      text("Time", `${mmss(prev.position ?? 0)} / ${mmss(seconds)}`, { step: st(13), font: "mono", color: "inkMuted", nowrap: true });
+      text("Time", `${mmss(prev.position ?? 0)} / ${mmss(seconds)}`, { step: st(12), font: "mono", color: "inkMuted", nowrap: true });
+      kit.close();
     });
   };
 
@@ -240,7 +243,10 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   // The wheel: the rows around the selected one, leaning away and fading as they go; gliding as the selection moves.
   const ww = portrait ? W : Math.round(W * 0.32);
   // The wheel grows into the room the column leaves it; its rows are placed by the height it had last tick.
-  const wh = kit.bounds(recallPath(`${id}~wheel`))?.height || (portrait ? Math.max(u(200), H - jacket - u(260)) : H);
+  // Before it has a height, a guess short of the room (a row built past the edge would stand off the screen for a tick).
+  const room = portrait ? Math.max(u(200), H - jacket - u(260)) : H;
+  const laidWheel = kit.bounds(recallPath(`${id}~wheel`))?.height ?? 0;
+  const wh = laidWheel > 0 ? Math.min(laidWheel, room) : Math.round(room * 0.8);
   const rowH = u(phone ? 64 : 84);
   const big = Math.round(rowH * (portrait ? 1 : 1.22));
   const gap = u(phone ? 6 : 10);

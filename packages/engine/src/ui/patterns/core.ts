@@ -642,6 +642,17 @@ export function rememberRoom(tag: string, id: string): void {
   kit.remember(`~${tag}.h.${id}`, Math.max(1, Math.round(h)));
 }
 
+/**
+ * A pattern's room on its first tick, before it has a box of its own to
+ * remember: short of the safe area, since a screen's margins and header take
+ * some (more at a large text size). The whole safe area laid a pattern's foot
+ * and its last rows past the screen until the next tick.
+ */
+export function firstRoom(): { w: number; h: number } {
+  const ts = Math.max(1, frame().theme.textScale ?? 1);
+  return { w: Math.floor(safeWidth() * 0.9), h: Math.floor(safeHeight() * (0.85 - 0.15 * (Math.min(2, ts) - 1))) };
+}
+
 /** The surface's width less its safe area. */
 export function safeWidth(): number {
   const v = frame().viewport;

@@ -8,6 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, clamp, eyebrow, flags, frame, glow, grow, hex, kit, lastInteraction, line, over, paint, pointer, px, rememberRoom, role, safeHeight, safeWidth,
   shadow, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut, type SymbolKind,
 } from "./core.ts";
@@ -25,8 +26,8 @@ export function photoMode(id: string, desc: Api.PhotoModeDesc = {}): Api.PhotoMo
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
-  const W = kit.memory(`~ph.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~ph.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~ph.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~ph.h.${id}`, 0) || firstRoom().h;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   const tabs = desc.tabs ?? [];
   const tab = tabs.find((x) => x.key === desc.tab) ?? tabs[0] ?? null;

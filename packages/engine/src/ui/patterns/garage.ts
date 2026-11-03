@@ -9,6 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grouped, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
   rememberRoom, role, safeHeight, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
@@ -73,8 +74,8 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
-  const W = kit.memory(`~ga.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~ga.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~ga.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~ga.h.${id}`, 0) || firstRoom().h;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   const rt = kit.memory("~ga.rt", 0);
   const rk = kit.memory("~ga.rk", 0);
@@ -280,14 +281,32 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
     });
   };
 
-  // The stage: the car on its turntable, a ring of light under it.
+  // The stage: the car on its turntable, lit from above.
   const stage = (w: Api.Size, h: Api.Size): void => {
     kit.column("Stage", { width: w, height: h, align: "end", cross: "center", part: "Garage.stage", partClass: "badge" }, () => {
-      // The ring under the car's wheels, laid over the stage's foot.
-      kit.open("Ring", { width: grow(), height: px(u(phone ? 40 : 84)) });
-      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 1 }, stops: [{ offset: 0, color: token("primary", 0.16) }, { offset: 1, color: token("primary", 0) }] }], strokes: [line(u(2), token("primary", 0.55))], effects: [glow(u(12), token("primary", 0.4), 0)] } as Api.DrawDesc);
+      // The turntable: a dark floor fading out at its rim, a soft key light pooled under the car, and (after the car) its
+      // contact shadow and a faint reflection. No hard-edged disc.
+      // The stage clips: the reflection ends at its foot and never reaches the list under it.
+      kit.setDraw({ shape: { kind: "rect" }, clip: "shape" } as Api.DrawDesc);
+      const fh = u(phone ? 56 : 120);
+      const inset = u(phone ? 4 : 8);
+      kit.open("Floor", { width: grow(), height: px(fh) });
+      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: token("shadow", 0.75) }, { offset: 0.7, color: token("shadow", 0.5) }, { offset: 1, color: token("shadow", 0) }] }] } as Api.DrawDesc);
       kit.close();
-      over({ insets: { start: u(phone ? 8 : 24), end: u(phone ? 8 : 24), bottom: u(phone ? 4 : 12) }, inert: true });
+      over({ insets: { start: 0, end: 0, bottom: inset }, inert: true });
+      kit.open("Light", { width: pct(0.7), height: px(Math.round(fh * 0.7)) });
+      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: token("ink", 0.22) }, { offset: 0.5, color: token("primary", 0.08) }, { offset: 1, color: token("primary", 0) }] }] } as Api.DrawDesc);
+      kit.close();
+      over({ insets: { centerX: true, bottom: inset + Math.round(fh * 0.15) }, inert: true });
+      if (desc.vehicle) {
+        // The reflection: the car mirrored under the floor line, faint, fading into the floor.
+        artSlot("Reflection", "Garage.reflection", { texture: desc.vehicle, kind: "vehicle", fit: "contain", width: grow(), height: pct(0.82), label: "" });
+        kit.props({ position: "absolute", insets: { start: 0, end: 0, bottom: inset + Math.round(fh * 0.5) - 1 }, inert: true, opacity: 0.12, transform: { scaleY: -1, pivotY: 1 } } as never);
+        kit.open("Contact", { width: pct(0.62), height: px(Math.max(6, Math.round(fh * 0.16))) });
+        kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: token("shadow", 0.85) }, { offset: 1, color: token("shadow", 0) }] }] } as Api.DrawDesc);
+        kit.close();
+        over({ insets: { centerX: true, bottom: inset + Math.round(fh * 0.42) }, inert: true });
+      }
       if (desc.vehicle) {
         artSlot("Car", "Garage.car", { texture: desc.vehicle, kind: "vehicle", fit: "contain", width: grow(), height: pct(0.82), label: "" });
         if (carChanged && !still()) kit.props({ enter: { values: [{ prop: "opacity", value: 0.4 }, { prop: "scale", value: 0.97 }], transition: spring("panel") } });

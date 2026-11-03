@@ -6,6 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
   rememberRoom, role, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
@@ -52,7 +53,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
-  const W = kit.memory(`~lo.w.${id}`, 0) || safeWidth();
+  const W = kit.memory(`~lo.w.${id}`, 0) || firstRoom().w;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   const rt = kit.memory("~lo.rt", 0);
   const rk = kit.memory("~lo.rk", 0);

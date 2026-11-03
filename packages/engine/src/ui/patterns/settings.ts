@@ -7,7 +7,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  btn, eyebrow, flags, frame, glow, grow, kit, lastInteraction, line, pointer, px, rememberRoom, role, safeWidth, shadow, st, surface, symbol,
+  firstRoom,
+  artSlot, btn, eyebrow, flags, frame, glow, grow, kit, lastInteraction, line, pct, pointer, px, rememberRoom, role, safeWidth, shadow, st, surface, symbol,
   text, timerRing, token, u, xy, type Mut,
 } from "./core.ts";
 import { valueSlider } from "../controls/ranges.ts";
@@ -22,7 +23,7 @@ export function settingsTree(world: Api.World, id: string, desc: Api.SettingsTre
   const out: Mut<Api.SettingsTreeResult> = { page: null, change: null, action: null, bindingChanged: false, apply: false, revert: false, defaults: false, keep: false, confirmRevert: false, hudDone: false };
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
-  const W = kit.memory(`~st.w.${id}`, 0) || safeWidth();
+  const W = kit.memory(`~st.w.${id}`, 0) || firstRoom().w;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   const pages = desc.pages ?? [];
   const page = pages.find((p) => p.key === desc.page) ?? pages[0] ?? null;
@@ -125,7 +126,7 @@ export function settingsTree(world: Api.World, id: string, desc: Api.SettingsTre
         const opts = e.options ?? [];
         const r = opts.length <= 3 && !portrait
           ? segmented("Choice", { items: opts.map((label) => ({ label })), selected: e.index ?? 0, width: grow(), label: e.label ?? k, disabled: !!e.disabled })
-          : dropdown("Choice", { options: opts.map((label) => ({ label })), selected: e.index ?? 0, width: grow(), label: "", disabled: !!e.disabled, searchable: false });
+          : dropdown(`Choice-${k}`, { options: opts.map((label) => ({ label })), selected: e.index ?? 0, width: grow(), label: "", disabled: !!e.disabled, searchable: false });
         if (r.changed && r.selected >= 0) ch({ index: r.selected });
       } else if (e.kind === "binding") {
         const r = keyBindingRow(world, "Binding", { action: e.action ?? "", label: e.label ?? "", slots: phone ? 1 : 2 });
@@ -176,26 +177,33 @@ export function settingsTree(world: Api.World, id: string, desc: Api.SettingsTre
     });
     // The detail: the hovered or focused entry's name and description (a phone shows it under the name).
     if (!portrait) {
-      const e = entries[lastFocus] ?? null;
-      kit.column("Detail", { width: px(Math.round(Math.min(u(360), W * 0.26) * Math.min(1.25, ts))), height: grow(), gap: u(12), padding: xy(u(20), u(20)), part: "Settings.detail", partClass: "panel" }, () => {
+      // Before anything is hovered or focused, the page's first entry: the panel always says what a row does.
+      const e = entries[lastFocus] ?? entries[0] ?? null;
+      // It scrolls: a long description and a preview at large text may be taller than the room beside the rows.
+      kit.openScroll("Detail", { width: px(Math.round(Math.min(u(360), W * 0.26) * Math.min(1.25, ts))), height: grow(), gap: u(12), padding: xy(u(20), u(20)), part: "Settings.detail", partClass: "panel" } as never);
+      {
         kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.82) }], strokes: [line(1, token("ink", 0.12))], effects: [shadow(u(6), u(22), 0.45)] });
         if (e) {
           eyebrow("Title", e.label ?? "");
           if (e.description) text("Description", e.description, { step: st(16), color: "inkMuted", width: grow() });
+          if (e.preview) artSlot("Preview", "Settings.preview", { texture: e.preview, kind: "banner", width: grow(), aspect: 16 / 9 });
           if (e.display) kit.row("Display", { gap: u(8), cross: "center" }, () => {
             symbol("Mark", "eye", u(14), role("highlight"));
             text("Text", desc.confirmTitle ?? "Keep these display settings?", { step: st(13), color: "highlight", width: grow() });
           });
         } else eyebrow("Title", page?.label ?? "");
-      });
+      }
+      kit.close();
       kit.semantics({ role: "region", name: e?.label ?? page?.label ?? "" });
     }
   });
 
   // The foot: Defaults, Revert and Apply.
-  if (!editing) kit.row("Foot", { width: grow(), gap: u(10), cross: "center", align: "end", part: "Settings.foot", partClass: "panel" }, () => {
+  // On a phone with large text the three no longer fit one row: Defaults takes a row of its own above Revert and Apply.
+  const footStack = portrait && ts > 1.25;
+  if (!editing) kit.row("Foot", { width: grow(), gap: u(10), cross: "center", align: "end", wrap: footStack, part: "Settings.foot", partClass: "panel" }, () => {
     const w = portrait ? grow() : null;
-    if (btn("Defaults", desc.defaultsLabel ?? "Defaults", { variant: "quiet", width: w, sym: "rotate" }).clicked) out.defaults = true;
+    if (btn("Defaults", desc.defaultsLabel ?? "Defaults", { variant: "quiet", width: footStack ? pct(1) : w, sym: "rotate" }).clicked) out.defaults = true;
     if (btn("Revert", desc.revertLabel ?? "Revert", { variant: "secondary", width: w, disabled: !pending }).clicked) {
       out.revert = true;
       kit.feedback("back", -1);

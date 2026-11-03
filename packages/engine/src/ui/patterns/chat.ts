@@ -10,6 +10,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, flags, frame, grow, kit, keyHash, line, mix, over, paint, px, rarityColor, rememberRoom, role, safeWidth, st, surface, symbol, text,
   token, u, vgrad, xy, type Mut, type Rgba,
 } from "./core.ts";
@@ -43,7 +44,7 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
   const sendable = channels.filter((c) => !c.readOnly && !c.all);
   const target = byKey.get(desc.sendTo ?? "") ?? (shown && !shown.readOnly && !shown.all ? shown : sendable[0]) ?? null;
   const draft = desc.draft ?? "";
-  const W = kit.memory(`~ch.w.${id}`, 0) || safeWidth();
+  const W = kit.memory(`~ch.w.${id}`, 0) || firstRoom().w;
   const narrow = W < u(560) * Math.min(1.5, Math.max(1, frame().theme.textScale ?? 1));
 
   kit.open(id, { direction: "column", width: grow(), height: grow(), gap: u(hud ? 6 : 10), padding: hud ? xy(0, 0) : xy(u(phone ? 10 : 14), u(phone ? 10 : 12)), part: `Chat.frame${flags(hud && "hud")}`, partClass: "panel" });

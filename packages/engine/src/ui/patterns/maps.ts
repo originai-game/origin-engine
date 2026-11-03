@@ -9,9 +9,11 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, over, paint, px, rememberRoom, role, safeHeight, safeWidth, shadow, spring,
   st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba, type SymbolKind,
 } from "./core.ts";
+import { nameText } from "../feedback/core.ts";
 
 /** A kind's mark and ink: the main quest's crown in gold, a fast-travel point's bolt, a shop's coin, a boss's sword in danger. */
 function kindMark(kind: string): { sym: SymbolKind; ink: Rgba } {
@@ -47,8 +49,8 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
   const out: Mut<Api.WorldMapResult> = { selected: null, travel: null, track: null, toggled: null, zoom: 1, centerX: 0.5, centerY: 0.5 };
   const { t, phone } = frame();
   const tick = kit.tick();
-  const W = kit.memory(`~w.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~w.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~w.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~w.h.${id}`, 0) || firstRoom().h;
   const aspect = (desc.aspect ?? 0) > 0 ? desc.aspect! : 16 / 9;
   const hidden = new Set(desc.hidden ?? []);
   const markers = desc.markers ?? [];
@@ -97,7 +99,8 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
   // kept from when it was last set, so a name held back stays held back rather than flickering.
   if (regionA > 0.02) {
     const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
-    for (const r of [...regions.filter((g) => g.discovered), ...regions.filter((g) => !g.discovered)]) {
+    // An undiscovered region is its fog alone: no name floats over it.
+    for (const r of regions.filter((g) => g.discovered)) {
       const c = at(r.x ?? 0.5, r.y ?? 0.5);
       if (!onScreen(c, u(200))) continue;
       const nw = kit.memory(`~w.rw.${r.key}`, 0);
@@ -105,9 +108,10 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       const box = { x0: c.x - nw / 2 - u(6), y0: c.y - u(14), x1: c.x + nw / 2 + u(6), y1: c.y - u(14) + nh };
       if (nw > 0 && placed.some((b) => box.x0 < b.x1 && b.x0 < box.x1 && box.y0 < b.y1 && b.y0 < box.y1)) continue;
       placed.push(box);
-      const name = r.discovered ? r.name ?? "" : desc.undiscoveredLabel ?? "???";
-      kit.open(`Region${r.key}`, { direction: "column", cross: "center", width: px(u(320)), part: `WorldMap.region${flags(r.discovered && "discovered")}`, partClass: "badge" });
-      text("Name", name.toLocaleUpperCase(), { step: st(phone ? 15 : 22), font: "display", nowrap: true, color: r.discovered ? "ink" : "inkMuted" });
+      kit.open(`Region${r.key}`, { direction: "column", cross: "center", width: px(u(320)), part: "WorldMap.region[discovered]", partClass: "badge" });
+      // Names on the painting take the HUD's name treatment (an outline and a soft drop), so they read on any ground.
+      text("Name", (r.name ?? "").toLocaleUpperCase(), { step: st(phone ? 15 : 22), font: "display", nowrap: true, color: "ink" });
+      kit.setDraw({ text: nameText(u(phone ? 15 : 22)) });
       const nb = kit.bounds(kit.lastPath());
       kit.close();
       if (nb && nb.width > 0) {

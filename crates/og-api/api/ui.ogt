@@ -6264,6 +6264,9 @@ module ui {
     field breakdownLabel String "The donut's heading." {
       default "Breakdown"
     }
+    field otherLabel String "The donut's line for the smaller lines it folds together when the legend would not fit its card." {
+      default "Other"
+    }
     field lockedLabel String "A locked slider, to a screen reader." {
       default "Locked"
     }
@@ -6936,6 +6939,7 @@ module ui {
     field display bool "A display change (fullscreen, render scale, frame cap): applying it starts the confirm-or-revert countdown."
     field dirty bool "Changed and not yet applied: a mark beside its name."
     field disabled bool "Shown but not to be changed (the backend cannot), with its description saying why."
+    field preview Option.Texture "A picture of its effect (art kind banner, 16:9) under its description in the detail panel; none draws no picture."
   }
   struct SettingsPage {
     doc "One page of the settings tree: a tab, and its entries in order."

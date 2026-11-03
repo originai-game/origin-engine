@@ -62923,6 +62923,11 @@
           "description": "The donut's heading.",
           "default": "Breakdown"
         },
+        "otherLabel": {
+          "type": "string",
+          "description": "The donut's line for the smaller lines it folds together when the legend would not fit its card.",
+          "default": "Other"
+        },
         "lockedLabel": {
           "type": "string",
           "description": "A locked slider, to a screen reader.",
@@ -65500,6 +65505,18 @@
           "type": "boolean",
           "description": "Shown but not to be changed (the backend cannot), with its description saying why.",
           "default": false
+        },
+        "preview": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A picture of its effect (art kind banner, 16:9) under its description in the detail panel; none draws no picture.",
+          "default": null
         }
       },
       "additionalProperties": false

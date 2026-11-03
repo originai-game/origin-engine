@@ -88,13 +88,18 @@ function emWidth(s: string): number {
  * pips, and the rules as rich text. Sizes follow the card's width.
  */
 export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
-  const tier = rarityColor(c.rarity);
-  const edge = tier ?? role("lineStrong");
+  // The tier is a glow rising from the card's foot (none for common); the frame keeps one neutral stroke, so a tier
+  // never reads as a selection.
+  const tier = c.rarity === "common" ? null : rarityColor(c.rarity);
+  const edge = role("lineStrong");
   const r = Math.max(6, Math.round(cw * 0.07));
   const glowing = o.ready ? role("success") : c.glow && o.playable ? role("primary") : null;
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] },
-    fills: [vgrad([[0, paint(mix(role("panelRaised"), edge, 0.14))], [1, paint(mix(role("panel"), edge, 0.06))]])],
+    fills: [
+      vgrad([[0, paint(mix(role("panelRaised"), edge, 0.14))], [1, paint(mix(role("panel"), edge, 0.06))]]),
+      ...(tier ? [vgrad([[0.5, paint(tier, 0)], [1, paint(tier, 0.42)]])] : []),
+    ],
     strokes: [
       line(Math.max(2, Math.round(cw / 75)), paint(mix(edge, role("ink"), 0.12))),
       // Focused by keys or a pad: a ring in the focus ink just outside the card.

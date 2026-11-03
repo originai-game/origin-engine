@@ -7,6 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, over, px, rememberRoom, role, safeWidth, shadow,
   st, still, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
@@ -58,7 +59,7 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
-  const W = kit.memory(`~cg.w.${id}`, 0) || safeWidth();
+  const W = kit.memory(`~cg.w.${id}`, 0) || firstRoom().w;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   // Read and written outside the pattern's element: a memory key is the open element's.
   const rt = kit.memory(`~cg.rt.${id}`, -1);

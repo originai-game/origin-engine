@@ -572,7 +572,8 @@ function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.Ab
 }
 
 function cellSize(desc: Api.CommandCardDesc): number {
-  return u(desc.size || (bp().phone ? 40 : 50));
+  // A phone's slots are whole touch targets (44 px) whatever size the game asks for.
+  return Math.max(bp().phone ? 44 : 0, u(desc.size || (bp().phone ? 44 : 50)));
 }
 
 export function commandCard(id: string, desc: Api.CommandCardDesc = {}): Api.AbilityBarResult {

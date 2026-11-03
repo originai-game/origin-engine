@@ -9,6 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
+  firstRoom,
   artSlot, btn, clamp, eyebrow, fill, flags, frame, glow, grow, inkOn, keyHash, kit, lastInteraction, line, mix, over, paint, pointer, px, recallPath, rememberPath,
   rememberRoom, role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, teamColor, text, timerRing, token, u, vgrad, vstate, xy, safeHeight, safeWidth, type Mut, type Rgba,
 } from "./core.ts";
@@ -108,9 +109,10 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   const me = members.find((m) => m.you) ?? null;
   const seats = Math.max(members.length, desc.slots ?? 0);
   const check = desc.readyCheck ?? null;
-  // Its own box as it was last tick (the game gives it less than the safe area: a padding, a bar), else the safe area.
-  const W = kit.memory(`~l.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~l.h.${id}`, 0) || safeHeight();
+  // Its own box as it was last tick (the game gives it less than the safe area: a padding, a bar), else a first guess:
+  // the whole safe area wrapped a phone's two cards one a row, past the screen.
+  const W = kit.memory(`~l.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~l.h.${id}`, 0) || firstRoom().h;
   const shown = kit.memory("~l.t0", -1);
   if (shown < 0) kit.remember("~l.t0", tick);
   const since = tick - (shown < 0 ? tick : shown);
@@ -140,8 +142,11 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   const cols = portrait ? 2 : Math.max(1, seats);
   const rows = Math.ceil(seats / cols);
   // The room the lineup was given last tick (it grows between the head and the foot, which grow with the text), else an estimate.
+  // Never more than the room left under the head and over the foot: cards taller than the lineup inflate its laid
+  // height, and taking that back fed the overflow forward a few px a tick (the phone lobby ran 181 px off the screen).
   const laidH = kit.bounds(recallPath(`${id}~lineup`))?.height ?? 0;
-  const lineH = laidH > 0 ? laidH : H - footH - u(phone ? 60 : 96);
+  const roomLeft = H - footH - u(phone ? 60 : 96);
+  const lineH = laidH > 0 ? Math.min(laidH, roomLeft) : roomLeft;
   const roomH = Math.max(u(120), (lineH - u(8) - (rows - 1) * gap) / rows / (me && !portrait ? 1.12 : 1));
   const maxW = portrait ? (W - gap) / 2 : Math.min(u(250), (W - gap * (cols - 1)) / (cols + (me ? 0.12 : 0)));
   // On a phone in portrait the cards take the column's width and stand as tall as the rows allow (a squarer card, its
@@ -377,7 +382,7 @@ interface TileState {
  * A roster tile: the portrait filling it, the name on a scrim at its foot,
  * a cursor's rim and glow in its player's team colour with the player's tag
  * at the top end, a confirmed pick's tick at the top start; locked, the art
- * dark behind a lock; taken, dimmed; banned, dark under a slash in danger.
+ * dark behind a lock; taken, dimmed; banned, dimmed under a no-entry mark in its corner.
  */
 function rosterTile(k: string, e: Api.RosterEntry, d: TileState): Api.Response {
   const { t } = frame();
@@ -411,7 +416,9 @@ function rosterTile(k: string, e: Api.RosterEntry, d: TileState): Api.Response {
     artSlot("Art", `${d.part}.art`, { texture: e.portrait ?? null, kind: "portrait", width: px(d.width), height: px(d.height), radius: radii, focal: { x: 0.5, y: 0.3 } }, () => {
       if (d.blocked) {
         kit.open("Dim", { width: grow(), height: grow() });
-        kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.2), 0.6) }, { kind: "solid", color: token("shadow", e.locked || d.banned ? 0.45 : 0.3) }] });
+        // Banned or taken: the portrait still reads at about 35 % under the shade. Locked: a grey well, darker.
+        const gone = !e.locked && (d.banned || d.state === "taken");
+        kit.setDraw({ shape: { kind: "rect", radii }, fills: gone ? [{ kind: "solid", color: token("shadow", 0.65) }] : [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.2), 0.6) }, { kind: "solid", color: token("shadow", e.locked ? 0.45 : 0.3) }] });
         kit.close();
       }
     });
@@ -426,7 +433,8 @@ function rosterTile(k: string, e: Api.RosterEntry, d: TileState): Api.Response {
       symbol("Lock", "lock", u(22), role("ink"), { icon: "lock" });
       over({ insets: { centerX: true, centerY: true }, inert: true, z: 2 });
     }
-    if (d.banned) slash("Ban", d.width, d.height);
+    // A ban is a small mark in the corner over the dimmed portrait; the red slash is the ban row's own.
+    if (d.banned) banMark("Ban", Math.round(Math.max(u(22), Math.min(d.width, d.height) * 0.22)));
     if (d.tags.length > 0) {
       // The cursors' tags at the top end; a confirmed pick's tick at the top start.
       kit.row("Tags", { gap: u(2) }, () => d.tags.forEach((c, i) => playerTag(kit.idi("Tag", i), c.name, teamColor(c.team))));
@@ -440,6 +448,25 @@ function rosterTile(k: string, e: Api.RosterEntry, d: TileState): Api.Response {
       }
     }
   });
+}
+
+/** A banned tile's mark at its top start: the no-entry sign (a ring and its bar) in danger on a dark disc. */
+function banMark(id: string, size: number): void {
+  const c = size / 2;
+  const r = size * 0.3;
+  const k = r * Math.SQRT1_2;
+  kit.open(id, { width: px(size), height: px(size) });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("shadow", 0.75) }] });
+  kit.open("Ring", { width: px(size), height: px(size) });
+  kit.setDraw({ shape: { kind: "path", points: Array.from({ length: 25 }, (_, i) => ({ x: c + r * Math.cos((i / 24) * Math.PI * 2), y: c + r * Math.sin((i / 24) * Math.PI * 2) })), width: Math.max(1.5, size * 0.1), cap: "round" }, fills: [{ kind: "solid", color: token("danger") }] } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true });
+  kit.open("Bar", { width: px(size), height: px(size) });
+  kit.setDraw({ shape: { kind: "path", points: [{ x: c - k, y: c - k }, { x: c + k, y: c + k }], width: Math.max(1.5, size * 0.1), cap: "round" }, fills: [{ kind: "solid", color: token("danger") }] } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true });
+  kit.close();
+  over({ insets: { start: u(4), top: u(4) }, inert: true, z: 3 });
 }
 
 /** A ban's slash across a tile, corner to corner, in danger with a dark edge. */
@@ -508,11 +535,11 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
   const me = cursors.find((c) => c.you) ?? cursors[0] ?? null;
   const rival = cursors.find((c) => c !== me) ?? null;
   const byKey = new Map(roster.map((e) => [e.key ?? "", e]));
-  const W = kit.memory(`~s.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~s.h.${id}`, 0) || safeHeight();
+  const ts = Math.max(1, frame().theme.textScale ?? 1);
+  const W = kit.memory(`~s.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~s.h.${id}`, 0) || firstRoom().h;
   const rt = kit.memory("~s.rt", 0);
   const rk = kit.memory("~s.rk", 0);
-  const ts = Math.max(1, frame().theme.textScale ?? 1);
 
   kit.open(id, { direction: "column", width: grow(), height: grow(), gap: u(phone ? 12 : 20), part: "Select.frame", partClass: "panel" });
   kit.row("Head", { width: grow(), gap: u(16), cross: "center" }, () => {
@@ -751,8 +778,8 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
   teams.forEach((tm, i) => (tm.picks ?? []).forEach((p) => p.locked && p.entry && picked.set(p.entry, tm.team ?? i)));
   const mine = teams[0];
   const myTeam = mine?.team ?? 0;
-  const W = kit.memory(`~d.w.${id}`, 0) || safeWidth();
-  const H = kit.memory(`~d.h.${id}`, 0) || safeHeight();
+  const W = kit.memory(`~d.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~d.h.${id}`, 0) || firstRoom().h;
   const rt = kit.memory("~d.rt", 0);
   const rk = kit.memory("~d.rk", 0);
   const ban = desc.phase === "ban";
