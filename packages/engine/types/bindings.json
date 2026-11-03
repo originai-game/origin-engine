@@ -25218,6 +25218,18 @@
       "returns": "Void"
     },
     {
+      "name": "SettingsCustomBuild",
+      "module": "ui",
+      "params": [
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Void"
+    },
+    {
       "name": "UiAction",
       "module": "ui",
       "params": [

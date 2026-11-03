@@ -26,6 +26,7 @@ import { photoMode } from "./photo.ts";
 import { loadout } from "./loadout.ts";
 import { deckBuilder } from "./deck.ts";
 import { cgGallery, routeChart } from "./gallery.ts";
+import { settingsTree } from "./settings.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -63,4 +64,5 @@ export const patterns = Object.freeze({
   deckBuilder,
   cgGallery,
   routeChart,
+  settingsTree,
 });

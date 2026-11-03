@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2417 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2425 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1706,6 +1706,7 @@ Field units the docs and Tune use.
 | [`og.ui.setPlayers`](ui.md#fn-setPlayers) | function | ui | `og_ui_set_players` |
 | [`og.ui.setProp`](ui.md#fn-setProp) | function | ui | `og_ui_set_prop` |
 | [`og.ui.settingsScreen`](ui.md#fn-settingsScreen) | function | ui | — |
+| [`og.ui.settingsTree`](ui.md#fn-settingsTree) | function | ui | — |
 | [`og.ui.setVirtualCursor`](ui.md#fn-setVirtualCursor) | function | ui | `og_ui_set_virtual_cursor` |
 | [`og.ui.shake`](ui.md#fn-shake) | function | ui | `og_ui_shake` |
 | [`og.ui.shapeBox`](ui.md#fn-shapeBox) | function | ui | — |
@@ -2160,9 +2161,16 @@ Field units the docs and Tune use.
 | [`SeparatorDesc`](ui.md#type-SeparatorDesc) | desc struct | ui | — |
 | [`SetRecordsDesc`](world.md#type-SetRecordsDesc) | desc struct | world | — |
 | [`SetTileDesc`](tilemap.md#type-SetTileDesc) | desc struct | tilemap | — |
+| [`SettingChange`](ui.md#type-SettingChange) | struct | ui | — |
+| [`SettingEntry`](ui.md#type-SettingEntry) | desc struct | ui | — |
+| [`SettingKind`](ui.md#type-SettingKind) | enum | ui | — |
 | [`SettingsChanged`](ui.md#type-SettingsChanged) | callback | ui | — |
+| [`SettingsCustomBuild`](ui.md#type-SettingsCustomBuild) | callback | ui | — |
 | [`SettingsDesc`](ui.md#type-SettingsDesc) | desc struct | ui | — |
+| [`SettingsPage`](ui.md#type-SettingsPage) | desc struct | ui | — |
 | [`SettingsResult`](ui.md#type-SettingsResult) | struct | ui | — |
+| [`SettingsTreeDesc`](ui.md#type-SettingsTreeDesc) | desc struct | ui | — |
+| [`SettingsTreeResult`](ui.md#type-SettingsTreeResult) | struct | ui | — |
 | [`Shader`](render.md#type-Shader) | handle | render | — |
 | [`Shader()`](render.md#column-Shader) | column kind | render | — |
 | [`ShadowEffect`](ui.md#type-ShadowEffect) | desc struct | ui | — |

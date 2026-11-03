@@ -11604,6 +11604,12 @@
         "RouteLink",
         "RouteChartDesc",
         "RouteChartResult",
+        "SettingKind",
+        "SettingEntry",
+        "SettingsPage",
+        "SettingChange",
+        "SettingsTreeDesc",
+        "SettingsTreeResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -16013,6 +16019,39 @@
           "host": false
         },
         {
+          "name": "settingsTree",
+          "doc": "A game's settings as data (docs/ui.md Appendix B row 2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width.\nParts: Settings.tab[selected], Settings.section, Settings.row[changed][disabled], Settings.detail, Settings.foot, Settings.confirm, Settings.ring. Sounds: tab on a tab, toggle on a switch, confirm on Apply and Keep, back on Revert. Accessibility: the tabs a tablist, each row a group named by its entry (and changed), the confirm an alertdialog whose countdown is a timer. Probe ids: <id>/Tabs/Row/<page>, <id>/Body/Page/Rows/<entry> (its control <entry>/Control), <id>/Foot/Apply, <id>/Foot/Revert, <id>/Foot/Defaults, <id>/Scrim/Confirm/Buttons/Keep, <id>/Scrim/Confirm/Buttons/Revert, <id>/Body/Page/Hud/Edit, <id>/Body/Page/Hud/Editor.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world (the bindings' action map and capture are world state)."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SettingsTreeDesc",
+              "optional": false,
+              "doc": "The pages and entries, the pending state, the countdown."
+            },
+            {
+              "name": "custom",
+              "type": "SettingsCustomBuild",
+              "optional": false,
+              "doc": "Builds a custom entry's control by its key, inside its row; the game's own widgets, their results its own (a game with no custom entry passes a function that does nothing)."
+            }
+          ],
+          "returns": "SettingsTreeResult",
+          "publish": true,
+          "host": false
+        },
+        {
           "name": "mainMenu",
           "doc": "The title screen template. Returns the item chosen this tick.",
           "params": [
@@ -18720,6 +18759,19 @@
               "type": "u32",
               "optional": false,
               "doc": "Its index."
+            }
+          ],
+          "returns": "Void"
+        },
+        {
+          "name": "SettingsCustomBuild",
+          "doc": "Builds a custom settings entry's control inside its row: ui calls made inside nest under it.",
+          "params": [
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The entry's key."
             }
           ],
           "returns": "Void"
@@ -65288,6 +65340,361 @@
         "selected",
         "jump",
         "refused"
+      ],
+      "additionalProperties": false
+    },
+    "SettingKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a settings entry is: the control its row draws.",
+      "type": "string",
+      "enum": [
+        "toggle",
+        "slider",
+        "choice",
+        "binding",
+        "action",
+        "custom"
+      ],
+      "x-og-variants": {
+        "toggle": "On or off: a switch (`on`).",
+        "slider": "A number in a range: a slider (`value`, min, max, step, unit).",
+        "choice": "One of a few words: a segmented control up to four, else a dropdown (`index` of options).",
+        "binding": "An input action's keys and buttons: og.ui.keyBindingRow, bound by physical key code and shown by the layout's label (the pattern's world).",
+        "action": "A button that does something now (Reset tutorials, Calibrate).",
+        "custom": "A row whose control the game builds: the custom callback, called with the entry's key inside the row."
+      }
+    },
+    "SettingEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One entry of a settings page, as data: a game adds, drops or reorders entries without touching the pattern.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its row's element id (<id>/Page/Rows/<key>) and the key of its change.",
+          "default": ""
+        },
+        "kind": {
+          "$ref": "#/$defs/SettingKind",
+          "description": "Its control.",
+          "default": "toggle"
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "What it does: shown in the detail panel while its row is hovered or focused.",
+          "default": ""
+        },
+        "section": {
+          "type": "string",
+          "description": "A heading drawn above it where it differs from the entry before; empty is none.",
+          "default": ""
+        },
+        "on": {
+          "type": "boolean",
+          "description": "A toggle's state.",
+          "default": false
+        },
+        "value": {
+          "type": "number",
+          "description": "A slider's value.",
+          "default": 0
+        },
+        "min": {
+          "type": "number",
+          "description": "A slider's low end.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "A slider's high end.",
+          "default": 1
+        },
+        "step": {
+          "type": "number",
+          "description": "A slider's step; 0 is continuous.",
+          "default": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "A slider's unit after its value; `%` writes a 0-to-1 value as a percent.",
+          "default": ""
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A choice's words.",
+          "default": []
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A choice's word chosen.",
+          "default": 0
+        },
+        "action": {
+          "type": "string",
+          "description": "A binding's input action (its name in the action map).",
+          "default": ""
+        },
+        "display": {
+          "type": "boolean",
+          "description": "A display change (fullscreen, render scale, frame cap): applying it starts the confirm-or-revert countdown.",
+          "default": false
+        },
+        "dirty": {
+          "type": "boolean",
+          "description": "Changed and not yet applied: a mark beside its name.",
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Shown but not to be changed (the backend cannot), with its description saying why.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsPage": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One page of the settings tree: a tab, and its entries in order.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tab's element id (<id>/Tabs/Row/<key>).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word.",
+          "default": ""
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SettingEntry"
+          },
+          "description": "Its entries; empty with hud draws the HUD layout page.",
+          "default": []
+        },
+        "hud": {
+          "type": "boolean",
+          "description": "The HUD layout page: a note, Edit HUD (which turns og.ui.setHudEdit on) and, while editing, og.ui.hudLayoutEditor itself.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingChange": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "One entry changed by the player this tick.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The entry."
+        },
+        "on": {
+          "type": "boolean",
+          "description": "A toggle's new state."
+        },
+        "value": {
+          "type": "number",
+          "description": "A slider's new value."
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A choice's new word."
+        }
+      },
+      "required": [
+        "key",
+        "on",
+        "value",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "SettingsTreeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The settings as a tree of pages and typed entries, the pending state, and the confirm countdown.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title.",
+          "default": "Settings"
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SettingsPage"
+          },
+          "description": "The pages, in tab order.",
+          "default": []
+        },
+        "page": {
+          "type": "string",
+          "description": "The page shown.",
+          "default": ""
+        },
+        "pending": {
+          "type": "boolean",
+          "description": "Some entry is changed and not applied: Apply and Revert are live.",
+          "default": false
+        },
+        "confirmSeconds": {
+          "type": "number",
+          "description": "A display change was applied: the countdown's seconds left (0 none). At 0 after counting the result says revert.",
+          "default": 0
+        },
+        "confirmTotal": {
+          "type": "number",
+          "description": "The countdown's whole, for its ring.",
+          "default": 15
+        },
+        "applyLabel": {
+          "type": "string",
+          "description": "Apply.",
+          "default": "Apply"
+        },
+        "revertLabel": {
+          "type": "string",
+          "description": "Revert the pending changes.",
+          "default": "Revert"
+        },
+        "defaultsLabel": {
+          "type": "string",
+          "description": "The page back to its defaults.",
+          "default": "Defaults"
+        },
+        "confirmTitle": {
+          "type": "string",
+          "description": "The countdown's question.",
+          "default": "Keep these display settings?"
+        },
+        "keepLabel": {
+          "type": "string",
+          "description": "Keep the display change.",
+          "default": "Keep"
+        },
+        "revertingLabel": {
+          "type": "string",
+          "description": "The countdown's line, {n} its seconds.",
+          "default": "Reverting in {n} s"
+        },
+        "hudNote": {
+          "type": "string",
+          "description": "The HUD page's line.",
+          "default": "Move, resize and fade the HUD's elements over the game."
+        },
+        "editHudLabel": {
+          "type": "string",
+          "description": "The HUD page's button.",
+          "default": "Edit HUD"
+        },
+        "changedLabel": {
+          "type": "string",
+          "description": "Said of a changed entry to a screen reader.",
+          "default": "changed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsTreeResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply to its settings.",
+      "type": "object",
+      "properties": {
+        "page": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another page's tab was pressed (or the tab actions stepped)."
+        },
+        "change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SettingChange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An entry's control changed: the game holds it as pending (or applies it at once)."
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An action entry was pressed."
+        },
+        "bindingChanged": {
+          "type": "boolean",
+          "description": "A binding row rebound an action (the action map is already changed)."
+        },
+        "apply": {
+          "type": "boolean",
+          "description": "Apply was pressed: the game applies the pending entries, and starts the countdown if any is a display change."
+        },
+        "revert": {
+          "type": "boolean",
+          "description": "Revert was pressed: the game drops the pending entries."
+        },
+        "defaults": {
+          "type": "boolean",
+          "description": "Defaults was pressed: the game sets the page's entries to their defaults, pending."
+        },
+        "keep": {
+          "type": "boolean",
+          "description": "Keep was pressed during the countdown: the display change stays."
+        },
+        "confirmRevert": {
+          "type": "boolean",
+          "description": "The countdown's Revert was pressed, Back during it, or it reached 0: the game puts the display settings back."
+        },
+        "hudDone": {
+          "type": "boolean",
+          "description": "The HUD editor's Done was pressed."
+        }
+      },
+      "required": [
+        "page",
+        "change",
+        "action",
+        "bindingChanged",
+        "apply",
+        "revert",
+        "defaults",
+        "keep",
+        "confirmRevert",
+        "hudDone"
       ],
       "additionalProperties": false
     },

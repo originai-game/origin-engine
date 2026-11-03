@@ -37197,6 +37197,305 @@ export interface RouteChartResult {
 
 
 /**
+ * Builds a custom settings entry's control inside its row: ui calls made inside nest under it.
+ *
+ * @param key The entry's key.
+ */
+export type SettingsCustomBuild = (key: string) => void;
+
+/**
+ * What a settings entry is: the control its row draws.
+ * - `"toggle"`: On or off: a switch (`on`).
+ * - `"slider"`: A number in a range: a slider (`value`, min, max, step, unit).
+ * - `"choice"`: One of a few words: a segmented control up to four, else a dropdown (`index` of options).
+ * - `"binding"`: An input action's keys and buttons: og.ui.keyBindingRow, bound by physical key code and shown by the layout's label (the pattern's world).
+ * - `"action"`: A button that does something now (Reset tutorials, Calibrate).
+ * - `"custom"`: A row whose control the game builds: the custom callback, called with the entry's key inside the row.
+ */
+export type SettingKind = "toggle" | "slider" | "choice" | "binding" | "action" | "custom";
+
+/**
+ * One entry of a settings page, as data: a game adds, drops or reorders entries without touching the pattern.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SettingEntry {
+  /**
+   * Its key: its row's element id (<id>/Page/Rows/<key>) and the key of its change.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its control.
+   *
+   * @default "toggle"
+   */
+  readonly kind?: SettingKind;
+  /**
+   * Its name.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What it does: shown in the detail panel while its row is hovered or focused.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * A heading drawn above it where it differs from the entry before; empty is none.
+   *
+   * @default ""
+   */
+  readonly section?: string;
+  /**
+   * A toggle's state.
+   *
+   * @default false
+   */
+  readonly on?: boolean;
+  /**
+   * A slider's value.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * A slider's low end.
+   *
+   * @default 0
+   */
+  readonly min?: number;
+  /**
+   * A slider's high end.
+   *
+   * @default 1
+   */
+  readonly max?: number;
+  /**
+   * A slider's step; 0 is continuous.
+   *
+   * @default 0
+   */
+  readonly step?: number;
+  /**
+   * A slider's unit after its value; `%` writes a 0-to-1 value as a percent.
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * A choice's words.
+   *
+   * @default []
+   */
+  readonly options?: readonly string[];
+  /**
+   * A choice's word chosen.
+   *
+   * @default 0
+   */
+  readonly index?: number;
+  /**
+   * A binding's input action (its name in the action map).
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * A display change (fullscreen, render scale, frame cap): applying it starts the confirm-or-revert countdown.
+   *
+   * @default false
+   */
+  readonly display?: boolean;
+  /**
+   * Changed and not yet applied: a mark beside its name.
+   *
+   * @default false
+   */
+  readonly dirty?: boolean;
+  /**
+   * Shown but not to be changed (the backend cannot), with its description saying why.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+}
+
+/**
+ * One page of the settings tree: a tab, and its entries in order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SettingsPage {
+  /**
+   * Its key: its tab's element id (<id>/Tabs/Row/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its entries; empty with hud draws the HUD layout page.
+   *
+   * @default []
+   */
+  readonly entries?: readonly SettingEntry[];
+  /**
+   * The HUD layout page: a note, Edit HUD (which turns og.ui.setHudEdit on) and, while editing, og.ui.hudLayoutEditor itself.
+   *
+   * @default false
+   */
+  readonly hud?: boolean;
+}
+
+/** One entry changed by the player this tick. */
+export interface SettingChange {
+  /** The entry. */
+  readonly key: string;
+  /** A toggle's new state. */
+  readonly on: boolean;
+  /** A slider's new value. */
+  readonly value: number;
+  /** A choice's new word. */
+  readonly index: number;
+}
+
+/**
+ * The settings as a tree of pages and typed entries, the pending state, and the confirm countdown.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SettingsTreeDesc {
+  /**
+   * The screen's title.
+   *
+   * @default "Settings"
+   */
+  readonly title?: string;
+  /**
+   * The pages, in tab order.
+   *
+   * @default []
+   */
+  readonly pages?: readonly SettingsPage[];
+  /**
+   * The page shown.
+   *
+   * @default ""
+   */
+  readonly page?: string;
+  /**
+   * Some entry is changed and not applied: Apply and Revert are live.
+   *
+   * @default false
+   */
+  readonly pending?: boolean;
+  /**
+   * A display change was applied: the countdown's seconds left (0 none). At 0 after counting the result says revert.
+   *
+   * @default 0
+   */
+  readonly confirmSeconds?: number;
+  /**
+   * The countdown's whole, for its ring.
+   *
+   * @default 15
+   */
+  readonly confirmTotal?: number;
+  /**
+   * Apply.
+   *
+   * @default "Apply"
+   */
+  readonly applyLabel?: string;
+  /**
+   * Revert the pending changes.
+   *
+   * @default "Revert"
+   */
+  readonly revertLabel?: string;
+  /**
+   * The page back to its defaults.
+   *
+   * @default "Defaults"
+   */
+  readonly defaultsLabel?: string;
+  /**
+   * The countdown's question.
+   *
+   * @default "Keep these display settings?"
+   */
+  readonly confirmTitle?: string;
+  /**
+   * Keep the display change.
+   *
+   * @default "Keep"
+   */
+  readonly keepLabel?: string;
+  /**
+   * The countdown's line, {n} its seconds.
+   *
+   * @default "Reverting in {n} s"
+   */
+  readonly revertingLabel?: string;
+  /**
+   * The HUD page's line.
+   *
+   * @default "Move, resize and fade the HUD's elements over the game."
+   */
+  readonly hudNote?: string;
+  /**
+   * The HUD page's button.
+   *
+   * @default "Edit HUD"
+   */
+  readonly editHudLabel?: string;
+  /**
+   * Said of a changed entry to a screen reader.
+   *
+   * @default "changed"
+   */
+  readonly changedLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply to its settings. */
+export interface SettingsTreeResult {
+  /** Another page's tab was pressed (or the tab actions stepped). */
+  readonly page: string | null;
+  /** An entry's control changed: the game holds it as pending (or applies it at once). */
+  readonly change: SettingChange | null;
+  /** An action entry was pressed. */
+  readonly action: string | null;
+  /** A binding row rebound an action (the action map is already changed). */
+  readonly bindingChanged: boolean;
+  /**
+   * Apply was pressed: the game applies the pending entries, and starts the countdown if any is a display change.
+   */
+  readonly apply: boolean;
+  /** Revert was pressed: the game drops the pending entries. */
+  readonly revert: boolean;
+  /** Defaults was pressed: the game sets the page's entries to their defaults, pending. */
+  readonly defaults: boolean;
+  /** Keep was pressed during the countdown: the display change stays. */
+  readonly keep: boolean;
+  /**
+   * The countdown's Revert was pressed, Back during it, or it reached 0: the game puts the display settings back.
+   */
+  readonly confirmRevert: boolean;
+  /** The HUD editor's Done was pressed. */
+  readonly hudDone: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -57480,6 +57779,16 @@ export declare namespace og {
      * @param desc The scenes, the branches and the selection.
      */
     function routeChart(id: string, desc?: RouteChartDesc): RouteChartResult;
+    /**
+     * A game's settings as data (docs/ui.md Appendix B row 2, roadmap G1-7): the title, the pages as tabs (the tab actions step them), the shown page's entries as rows, each its name (a changed one marked) and its control at the end (a switch, a slider with its reading, a segmented control or a dropdown, og.ui.keyBindingRow for a binding by physical key code shown by the layout's label, a button, or the game's own control in a custom row), a heading where its section changes; whole rows scroll. At the end a detail panel with the hovered or focused entry's name and description. At the foot Defaults, Revert and Apply (Apply the primary, both quiet with nothing pending). After applying a display change the confirm dialog asks to keep it, its seconds counting down on a ring, Keep and Revert; at 0 it reverts. The HUD page mounts og.ui.hudLayoutEditor (the component, not a copy) while og.ui.hudEdit() is on, and Edit HUD to turn it on. On a phone in portrait the tabs are chips that scroll, the detail is the row's description under its name, and the foot's buttons span the width.
+     * Parts: Settings.tab[selected], Settings.section, Settings.row[changed][disabled], Settings.detail, Settings.foot, Settings.confirm, Settings.ring. Sounds: tab on a tab, toggle on a switch, confirm on Apply and Keep, back on Revert. Accessibility: the tabs a tablist, each row a group named by its entry (and changed), the confirm an alertdialog whose countdown is a timer. Probe ids: <id>/Tabs/Row/<page>, <id>/Body/Page/Rows/<entry> (its control <entry>/Control), <id>/Foot/Apply, <id>/Foot/Revert, <id>/Foot/Defaults, <id>/Scrim/Confirm/Buttons/Keep, <id>/Scrim/Confirm/Buttons/Revert, <id>/Body/Page/Hud/Edit, <id>/Body/Page/Hud/Editor.
+     *
+     * @param world The world (the bindings' action map and capture are world state).
+     * @param id Its id.
+     * @param desc The pages and entries, the pending state, the countdown.
+     * @param custom Builds a custom entry's control by its key, inside its row; the game's own widgets, their results its own (a game with no custom entry passes a function that does nothing).
+     */
+    function settingsTree(world: World, id: string, desc: SettingsTreeDesc, custom: SettingsCustomBuild): SettingsTreeResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
