@@ -136,13 +136,14 @@ After R, as the plan's final stage:
 | [T-01a19d41-2bc3](https://ampcode.com/threads/T-01a19d41-2bc3-71a3-9025-50ed798cfe89) | og-ui: ui-gaps B2–B7, then the selection grammar, slider track, art notes and the unpainted style packs |
 | [T-01a19d41-3600](https://ampcode.com/threads/T-01a19d41-3600-743b-bb6c-5361bfee4fb2) | tools: G3-7 batches 1–3, R10 batch 3 (shots), G3-1 batch 5: all three done 2026-11-02, with macrunner |
 | [T-01a19d41-442d](https://ampcode.com/threads/T-01a19d41-442d-7563-bb21-0b7907d172d2) | G2-7 batch 6, R11 batches 2–4: G2-7 done on main; R11 done 2026-11-02, with macrunner (r11-2d-lighting-4) |
-| [T-01a19d41-4c76](https://ampcode.com/threads/T-01a19d41-4c76-71d9-a16b-ef8bb985a436) | UI content: RTS and sports HUD, the holo kit screens, U6d's remaining patterns, screen documents, `og ui eject`, the settings tree; then U8 starts in a fresh thread in this slot (the owner, 2026-11-02) |
+| [T-01a19d41-4c76](https://ampcode.com/threads/T-01a19d41-4c76-71d9-a16b-ef8bb985a436) | UI content: RTS and sports HUD, the holo kit screens, U6d's remaining patterns, screen documents, `og ui eject`, the settings tree: done 2026-11-02, last head u6d-r42 with macrunner |
 | [T-a558a897](https://ampcode.com/threads/T-a558a897-87a0-4c1d-82c8-f218e5e0e18b) | render: R1 meshlets, culling, the visibility buffer |
 | [T-01a19d59-9055](https://ampcode.com/threads/T-01a19d59-9055-707b-8b4e-f2a9a91c4030) | render: R2 TAAU, R8 shadows and post; environment maps: background blurriness, a ground-projected skybox, blending two maps, runtime HDR loading (the owner, 2026-11-02) |
 | [T-01a19d59-9d85](https://ampcode.com/threads/T-01a19d59-9d85-7604-ba45-b447cc453814) | render: R4 sky and weather, R5 water |
 | [T-c113ecea](https://ampcode.com/threads/T-c113ecea-ad88-4d45-83d2-97ed7f2b6561) | render: R7 decals and particles, R9 characters (blendshapes, cloth, VAT crowds): all landed 2026-11-02 (VAT crowds last, main 6c90534f0); crowds are CPU-culled, not yet GPU-culled or on the meshlet path |
 | [T-e522b299](https://ampcode.com/threads/T-e522b299-b8c9-44cb-8bf4-ff01169395c1) | render: R6 terrain holes, layers, impostors, wind: all landed 2026-11-02 (main 09c1b035c); limits: impostors take no shadow of their own, a view from below draws the horizon frame, cards don't sway |
 | [T-aa5a5083](https://ampcode.com/threads/T-aa5a5083-c49e-4586-9621-ca6f7e8dec57) | render: R3 dynamic GI (screen-space GI, run-time probes) |
+| [T-d800cb02](https://ampcode.com/threads/T-d800cb02-5ecd-48bb-ba24-b72b7f152853) | UI: U8, the kit's genre showcases, every seed style on them, examples migrated, fixed templates removed (the owner, 2026-11-02) |
 
 Deferred: the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
 The rows below are the previous threads, kept for their history.
