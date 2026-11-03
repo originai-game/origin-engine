@@ -183,12 +183,19 @@ impl Ocean {
     /// The surface's displacement (x, height, z) at rest point `p`, relative
     /// to the point `phases` were taken at ([`Ocean::phases`]).
     pub fn displacement(&self, p: Vec2, phases: &[f32; OCEAN_WAVES]) -> Vec3 {
+        self.displacement_on_grid(p, phases, 0.0)
+    }
+
+    /// [`Ocean::displacement`] as a grid of `cell`-metre cells draws it:
+    /// each wave times [`grid_keep`] (0: every wave whole).
+    pub fn displacement_on_grid(&self, p: Vec2, phases: &[f32; OCEAN_WAVES], cell: f32) -> Vec3 {
         let mut d = Vec3::ZERO;
         for (w, &phase) in self.waves.iter().zip(phases) {
             let (s, c) = math::sin_cos(w.k * w.direction.dot(p) + phase);
-            d.x += w.direction.x * w.lean * c;
-            d.y += w.amplitude * s;
-            d.z += w.direction.y * w.lean * c;
+            let keep = grid_keep(w.k, cell);
+            d.x += w.direction.x * w.lean * c * keep;
+            d.y += w.amplitude * s * keep;
+            d.z += w.direction.y * w.lean * c * keep;
         }
         d
     }
@@ -198,13 +205,20 @@ impl Ocean {
     /// lies over `at`, found by fixed-point steps (the crests lean, so the
     /// point over `at` came from elsewhere), then its height.
     pub fn height(&self, at: DVec2, seconds: f64) -> f32 {
+        self.height_on_grid(at, seconds, 0.0)
+    }
+
+    /// [`Ocean::height`] of the surface a grid of `cell`-metre cells draws
+    /// ([`Ocean::displacement_on_grid`]): what a body floating on the drawn
+    /// sea rides on, its waves too short for the grid left to the normals.
+    pub fn height_on_grid(&self, at: DVec2, seconds: f64, cell: f32) -> f32 {
         let phases = self.phases(seconds, at);
         let mut rest = Vec2::ZERO;
         for _ in 0..8 {
-            let d = self.displacement(rest, &phases);
+            let d = self.displacement_on_grid(rest, &phases, cell);
             rest = -Vec2::new(d.x, d.z);
         }
-        self.displacement(rest, &phases).y
+        self.displacement_on_grid(rest, &phases, cell).y
     }
 
     /// The significant wave height the sea was made for (m).
@@ -216,6 +230,61 @@ impl Ocean {
             .sum::<f32>())
         .sqrt()
     }
+}
+
+/// How much of a wave of wavenumber `k` a grid of `cell`-metre cells
+/// displaces: all of one at least eight cells long, none of one under
+/// four (the renderer's water.wgsl draws the same fade).
+pub fn grid_keep(k: f32, cell: f32) -> f32 {
+    let x = ((k * cell - 0.785) / 0.786).clamp(0.0, 1.0);
+    1.0 - x * x * (3.0 - 2.0 * x)
+}
+
+/// The most cells a water grid has per side (256² cells, 131,072
+/// triangles per surface). It caps [`GRID_MAX_CELL`]'s split: a surface
+/// longer than 65.5 km gets cells longer than 256 m again.
+pub const GRID_MAX_SEGMENTS: u32 = 256;
+/// The longest a water grid's cell may be, in world metres, at its even
+/// spacing. A rasterizer interpolates a triangle's attributes and depth
+/// from its corners in f32, so on a kilometres-long triangle that the near
+/// plane clips both land metres off at the far side (og-tests'
+/// `terrain-far` lost its shore foam); cells of at most 256 m draw the
+/// same thin band everywhere. Shared with the tick so a floating body
+/// rides the grid the renderer draws.
+pub const GRID_MAX_CELL: f32 = 256.0;
+
+/// Cells per side of a surface `extent` metres across asked for
+/// `segments`: more where a cell would pass [`GRID_MAX_CELL`], at most
+/// [`GRID_MAX_SEGMENTS`].
+pub fn grid_segments(segments: u32, extent: f32) -> u32 {
+    let wanted = if extent.is_finite() {
+        (extent / GRID_MAX_CELL).ceil() as u32
+    } else {
+        1
+    };
+    segments.max(wanted).clamp(1, GRID_MAX_SEGMENTS)
+}
+
+/// A sea's grid warp: g in [-1, 1] across the grid to [-1, 1] across the
+/// surface, `g (0.15 + 0.85 g²)`, finest at the centre; and its slope,
+/// the cell's size over the even grid's.
+pub fn grid_warp(g: f32) -> (f32, f32) {
+    (g * (0.15 + 0.85 * g * g), 0.15 + 2.55 * g * g)
+}
+
+/// The grid cell (m) at `local` (xz from the surface's centre) of a sea
+/// `half` across each way, its even cell `even` (extent over segments).
+pub fn grid_cell(local: Vec2, half: Vec2, even: f32) -> f32 {
+    let slope = |u: f32| {
+        let u = u.clamp(-1.0, 1.0);
+        let mut g = u;
+        for _ in 0..8 {
+            let (w, dw) = grid_warp(g);
+            g -= (w - u) / dw;
+        }
+        grid_warp(g).1
+    };
+    even * slope(local.x / half.x.max(1e-3)).max(slope(local.y / half.y.max(1e-3)))
 }
 
 #[cfg(test)]
@@ -284,6 +353,28 @@ mod tests {
             assert!((d.y - h).abs() < 2e-3, "{} vs {h}", d.y);
             assert!(h.abs() < 3.0 * sea.significant_height());
         }
+    }
+
+    #[test]
+    fn the_grid_drops_only_its_too_short_waves() {
+        let sea = Ocean::new(Vec2::new(-3.0, -8.5), 1.0, 0.6).expect("a sea");
+        let at = DVec2::new(12.0, -40.0);
+        assert_eq!(sea.height_on_grid(at, 3.0, 0.0), sea.height(at, 3.0));
+        // A 3.5 m cell keeps the swell, drops the ripples: close to the
+        // whole sea, but not it; a 1 km cell keeps nothing.
+        let fine = sea.height_on_grid(at, 3.0, 3.5);
+        assert!(fine != sea.height(at, 3.0) && (fine - sea.height(at, 3.0)).abs() < 0.6);
+        assert_eq!(sea.height_on_grid(at, 3.0, 1000.0), 0.0);
+        // The warp: 0.15 of the even cell at the centre, 2.7 at the edge.
+        assert!((grid_cell(Vec2::ZERO, Vec2::splat(3000.0), 10.0) - 1.5).abs() < 1e-4);
+        assert!(
+            (grid_cell(Vec2::new(0.0, -3000.0), Vec2::splat(3000.0), 10.0) - 27.0).abs() < 1e-3
+        );
+        let (w, _) = grid_warp(0.4);
+        let c = grid_cell(Vec2::new(w * 3000.0, 0.0), Vec2::splat(3000.0), 10.0);
+        assert!((c - grid_warp(0.4).1 * 10.0).abs() < 1e-3);
+        assert_eq!(grid_segments(256, 6000.0), 256);
+        assert_eq!(grid_segments(16, 24000.0), 94);
     }
 
     #[test]

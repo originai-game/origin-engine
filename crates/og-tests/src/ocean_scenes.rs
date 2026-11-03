@@ -48,10 +48,10 @@ fn sea(wind: Vec2, choppiness: f32) -> Water {
 const SEA: f32 = 6000.0;
 
 /// Haze that thickens to the horizon colour by the sea's edge, so its rim
-/// does not show against the sky.
+/// does not show against the sky: gradually, half of it by 1.2 km.
 fn sea_haze(scene: &mut RenderScene) {
     if let Some(f) = scene.fog.as_mut() {
-        f.density = 6.0 / SEA;
+        f.density = 3.5 / SEA;
         f.start = 20.0;
         f.max_opacity = 1.0;
     }
@@ -79,16 +79,17 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 ..Default::default()
             };
         }
-        // A gale (17 m/s, waves some 230 m long and 6 m high, crests at
-        // full choppiness) under an overcast, whitecaps on the crests,
-        // seen from a deck 6 m up.
+        // A strong gale (20 m/s, waves some 330 m long, a significant
+        // height near 10 m, crests at full choppiness) under a dark
+        // overcast, whitecaps on the crests and old foam streaked along the
+        // wind, seen from a deck 10 m up (above every crest).
         "water-ocean-storm" => {
             physical_light(&mut scene, 13.0, earth);
             let clouds = Clouds {
-                coverage: 0.9,
-                density: 0.05,
-                color: Vec3::splat(0.75),
-                base: 900.0,
+                coverage: 0.97,
+                density: 0.09,
+                color: Vec3::splat(0.5),
+                base: 700.0,
                 layer: 0.0,
                 ..Clouds::default()
             };
@@ -96,13 +97,13 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             scene.light.intensity *= sun;
             scene.environment.intensity *= sky;
             scene.clouds = Some(clouds);
-            let mut gale = sea(Vec2::new(6.0, -16.0), 1.0);
+            let mut gale = sea(Vec2::new(7.0, -18.7), 1.0);
             // Grey-green deep water under the overcast.
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             scene.water.push(gale);
             sea_haze(&mut scene);
             scene.camera = Camera {
-                position: Vec3::new(0.0, 6.0, 0.0),
+                position: Vec3::new(0.0, 10.0, 0.0),
                 target: Vec3::new(-10.0, 1.0, -80.0),
                 far: 5000.0,
                 exposure: Exposure::linear(1.0),

@@ -333,9 +333,19 @@ fn sea_height(eng: &Engine, e: Entity, at: Vec3, x: f64, z: f64) -> Result<Optio
     let time = w.time();
     let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     let seconds = time.tick as f64 / f64::from(rate);
-    Ok(Some(
-        sea.height(glam::DVec2::new(x + zero.x, z + zero.z), seconds),
-    ))
+    // The sea as its grid draws it (og-render water.rs, the same cells): a
+    // body rides the waves the player sees, not the ripples only the
+    // normals carry.
+    let size = pair("size", 16.0);
+    let segments =
+        og_core::ocean::grid_segments(f(&v, "segments", 1.0).max(1.0) as u32, size.max_element());
+    let local = glam::Vec2::new((x - f64::from(at.x)) as f32, (z - f64::from(at.z)) as f32);
+    let cell = og_core::ocean::grid_cell(local, half, size.max_element() / segments as f32);
+    Ok(Some(sea.height_on_grid(
+        glam::DVec2::new(x + zero.x, z + zero.z),
+        seconds,
+        cell,
+    )))
 }
 
 pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {

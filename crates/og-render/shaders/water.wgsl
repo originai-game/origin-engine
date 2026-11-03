@@ -32,6 +32,7 @@ struct WaterUniform {
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
   ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's centre cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
+  sea_wind: vec4<f32>,    // xy: the wind's direction in the frame's xz, z: its speed (m/s; 0 without a sea)
   // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 1 when its crests
   // whiten) (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
@@ -86,7 +87,7 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
 // water.ocean.z), each wave faded where it is shorter than four of the
 // pixel's `footprint` (m), and the mean square slope the pixel holds
 // unresolved: the faded waves' (their (k a)² / 2), and the short waves'
-// that the facets carry (see SHORT_SLOPE). A pixel of sea is a rough
+// that the facets carry (see short_slope). A pixel of sea is a rough
 // mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
 struct SeaNormal {
   n: vec3<f32>,
@@ -98,18 +99,23 @@ struct SeaNormal {
 // draws; the rest of its slope variance, 1 - SHORT_SLOPE², is the facets'
 // roughness. The waves carry the whole of Cox and Munk's mean square slope,
 // but in waves no shorter than a metre or three: drawn whole, every near
-// slope was a smooth mirror of the sky.
-const SHORT_SLOPE: f32 = 0.7;
+// slope was a smooth mirror of the sky. A gale's short sea is choppier
+// than its waves can draw: from 10 m/s the share falls to 0.45 at 20, and
+// its surface reads rough, not glossy.
+fn short_slope() -> f32 {
+  return mix(0.7, 0.45, smoothstep(10.0, 20.0, water.sea_wind.z));
+}
 
 fn ocean_normal(p: vec2<f32>, footprint: f32) -> SeaNormal {
   var n = vec3<f32>(0.0, 1.0, 0.0);
   var bunch = 0.0;
   var mss = 0.0;
+  let short = short_slope();
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let fade = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
-    let keep = fade * mix(SHORT_SLOPE, 1.0, b.w);
+    let keep = fade * mix(short, 1.0, b.w);
     let th = dot(a.xy, p) + a.w;
     let c = cos(th) * a.z * keep;
     let s = b.z * sin(th) * keep;
@@ -301,8 +307,11 @@ fn flow_at(uv: vec2<f32>) -> vec2<f32> {
 
 // A stream's ripples: wave fronts across the flow's direction `d` (unit), within half a radian of it, at the detail
 // waves' scale and strength.
-fn stream_slope(p: vec2<f32>, d: vec2<f32>, t: f32) -> vec2<f32> {
-  let k = water.waves.x * 6.2831853;
+fn stream_slope(p: vec2<f32>, d: vec2<f32>, t: f32, fast: f32) -> vec2<f32> {
+  // Where the flow is slower than the surface's flow (a flow map's still water, `fast` under 1), its ripples are
+  // longer and lower; at the flow's own speed they are as before.
+  let pace = mix(0.7, 1.0, smoothstep(0.3, 1.0, fast));
+  let k = water.waves.x * 6.2831853 * pace;
   let side = vec2<f32>(-d.y, d.x);
   var turns = array<f32, 4>(0.0, 0.45, -0.3, 0.15);
   var scales = array<f32, 4>(1.0, 1.37, 1.9, 2.71);
@@ -310,10 +319,15 @@ fn stream_slope(p: vec2<f32>, d: vec2<f32>, t: f32) -> vec2<f32> {
   for (var i = 0; i < 4; i++) {
     let dir = d * cos(turns[i]) + side * sin(turns[i]);
     let kk = k * scales[i];
-    let phase = dot(dir, p) * kk + t * water.waves.y * sqrt(kk) * 1.6;
-    slope += dir * cos(phase) * (1.0 / scales[i]);
+    // Each train's fronts warped and its height varied by a slow noise of its own, so the trains do not lock into a
+    // regular grid of dimples.
+    let fi = f32(i);
+    let warp = foam_noise(p * 0.21 + vec2<f32>(fi * 3.7, fi * 1.3)) * 5.0;
+    let gain = 0.45 + foam_noise(p * 0.33 + vec2<f32>(fi * 2.1, fi * 5.9)) * 1.1;
+    let phase = dot(dir, p) * kk + warp + t * water.waves.y * sqrt(kk) * 1.6;
+    slope += dir * cos(phase) * (gain / scales[i]);
   }
-  return slope * water.waves.z * 0.25;
+  return slope * water.waves.z * 0.25 * mix(0.55, 1.0, pace * pace);
 }
 
 // The travelling waves carried by the flow (Water::flow, metres a second; per point with a flow map), as Water2
@@ -327,8 +341,9 @@ fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
   let period = 3.0;
   let ph0 = fract(t / period);
   let ph1 = fract(t / period + 0.5);
-  let s0 = stream_slope(p - f * ph0 * period, d, t);
-  let s1 = stream_slope(p - f * ph1 * period, d, t);
+  let fast = length(f) / max(length(water.normals.yz), 1e-6);
+  let s0 = stream_slope(p - f * ph0 * period, d, t, fast);
+  let s1 = stream_slope(p - f * ph1 * period, d, t, fast);
   return mix(s0, s1, abs(ph0 - 0.5) * 2.0);
 }
 
@@ -424,14 +439,25 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     sea_mss = sea.mss;
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
     if (water.ocean.w > 0.0) {
-      let streaks = foam_noise(in.rest * 0.35) * 0.6 + foam_noise(in.rest * 1.7) * 0.4;
+      // Coordinates along the wind (x) and across it (y): foam is drawn out downwind.
+      let wd = water.sea_wind.xy;
+      let q = vec2<f32>(dot(in.rest, wd), dot(in.rest, vec2<f32>(-wd.y, wd.x)));
+      let streaks = foam_noise(q * vec2<f32>(0.12, 0.45)) * 0.6 + foam_noise(q * vec2<f32>(0.6, 2.1)) * 0.4;
       let core = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
       // White water is lace, never a sheet: fine noise (its octaves faded to their mean where a pixel spans them)
-      // cut at a level the crest's core lowers, so even the core of a whitecap is broken foam with gaps through it.
-      let fine = mix(foam_noise(in.rest * 9.0), 0.5, smoothstep(0.05, 0.12, footprint));
-      let mid = mix(foam_noise(in.rest * 3.1), 0.5, smoothstep(0.15, 0.35, footprint));
-      let lace = foam_noise(in.rest * 1.1) * 0.45 + mid * 0.33 + fine * 0.22;
-      whitecap = 0.85 * smoothstep(0.0, 0.06, lace - (1.0 - 0.55 * core)) * step(1e-3, core);
+      // cut at a level the crest's core lowers, its edge soft, so a whitecap fades out by its coverage. Only the
+      // breaking crest itself (the core near 1) is opaque white.
+      let fine = mix(foam_noise(q * vec2<f32>(4.5, 11.0)), 0.5, smoothstep(0.05, 0.12, footprint));
+      let mid = mix(foam_noise(q * vec2<f32>(1.6, 3.8)), 0.5, smoothstep(0.15, 0.35, footprint));
+      let lace = foam_noise(q * vec2<f32>(0.6, 1.4)) * 0.45 + mid * 0.33 + fine * 0.22;
+      let cut = 1.0 - 0.6 * core;
+      let cover = smoothstep(cut - 0.12, cut + 0.1, lace);
+      whitecap = cover * mix(0.45, 0.92, core * core) * smoothstep(0.0, 0.2, core);
+      // A gale's old foam: thin streaks drawn out along the wind across the whole sea (from 12 m/s), the wash the
+      // broken crests leave behind them.
+      let trail = foam_noise(q * vec2<f32>(0.04, 0.9)) * 0.65 + mid * 0.2 + fine * 0.15;
+      let old = smoothstep(0.6, 0.78, trail) * 0.35 * smoothstep(12.0, 20.0, water.sea_wind.z);
+      whitecap = max(whitecap, old);
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
@@ -584,7 +610,19 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
   let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
-  let foam = clamp(edge * edge * (0.55 + 0.6 * noise) + crest * noise, 0.0, 1.0);
+  var band = edge * edge * (0.55 + 0.6 * noise);
+  let flowing = dot(water.normals.yz, water.normals.yz) >= 1e-12 && water.normals.w < 0.5 && water.ocean.x < 0.5;
+  if (flowing) {
+    // A stream's foam comes and goes along its banks: patches carried down by the flow, more of it where the water
+    // runs fast and shallow, none where it is still (a uniform band read as a seam).
+    var f = water.normals.yz;
+    if (water.ao.y > 0.5) { f = flow_at(in.uv) * length(water.normals.yz); }
+    let speed = length(f);
+    let drift = f * t;
+    let patches = smoothstep(0.35, 0.75, foam_noise((in.local - drift) * 0.9) * 0.7 + foam_noise((in.local - drift) * 3.3) * 0.3);
+    band = edge * (0.4 + 0.6 * edge) * (0.35 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
+  }
+  let foam = clamp(band + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   // A sea's whitecaps, whatever the shore foam's width: white water lit by the sun and the whole sky above it.

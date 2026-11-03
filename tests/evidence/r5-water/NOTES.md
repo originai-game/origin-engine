@@ -10,9 +10,11 @@ physical sky (og.PhysicalSky) at 15 h with a light haze, seen from 4 m
 up. Five red buoys stand across the view 15 to 55 m out; the `float`
 command sets each one's y to `og.physics.waterHeight` at its point, the
 sea the tick computes with og_core::ocean (the same waves the renderer
-draws, never read from the GPU).
+draws, each faded where the grid's cell under the buoy is too coarse for
+it, as the renderer's vertices fade it: a buoy rides the drawn surface,
+never read from the GPU).
 
-Without a renderer it runs to `tick 66 hash abeb65f401871bdc entities 6`
+Without a renderer it runs to `tick 66 hash 3edbbae47cf441f0 entities 6`
 with `--commands "0.5:float;1.0:float;1.1:quit"` (OG_RENDERER=none on the
 orb).
 

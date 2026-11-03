@@ -249,6 +249,9 @@ struct WaterGpu {
     /// wave (k d.x, k d.z, amplitude, phase at the origin) and (lean d.x,
     /// lean d.z, k lean, unused) ([`ocean_gpu`]).
     ocean: [f32; 4],
+    /// The sea's wind: xy its direction in the frame's xz, z its speed
+    /// (m/s), w unused. Its foam streaks lie along it.
+    sea_wind: [f32; 4],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
@@ -332,34 +335,17 @@ fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
     (z * sigma, 0.4 * sigma)
 }
 
-/// The most grid cells per side (256² cells, 131,072 triangles per
-/// surface). It caps [`MAX_CELL`]'s split: a surface longer than 65.5 km
-/// (256 × 256 m) gets cells longer than 256 m again.
-const MAX_SEGMENTS: u32 = 256;
 /// The largest height field accepted.
 const MAX_RESOLUTION: u32 = 512;
 
-/// The longest a grid cell may be, in world metres. A rasterizer
-/// interpolates a triangle's attributes and depth from its corners in f32,
-/// so on a kilometres-long triangle that the near plane clips both land
-/// metres off at the far side: the 24 km sea of og-tests' `terrain-far`
-/// lost its shore foam and the lake on llvmpipe and drew a foam band some
-/// pixels too wide on Metal. Cells of at most 256 m draw the same thin band
-/// everywhere.
-const MAX_CELL: f32 = 256.0;
-
 /// Grid cells per side: the surface's own `segments`, or more where a cell
-/// would be longer than [`MAX_CELL`] (at most [`MAX_SEGMENTS`]).
+/// would be longer than [`og_core::ocean::GRID_MAX_CELL`] (at most
+/// [`og_core::ocean::GRID_MAX_SEGMENTS`]).
 fn grid_segments(water: &Water) -> u32 {
     let scale = |axis: Vec4| axis.truncate().length();
     let extent = (water.size.x * scale(water.transform.x_axis))
         .max(water.size.y * scale(water.transform.z_axis));
-    let wanted = if extent.is_finite() {
-        (extent / MAX_CELL).ceil() as u32
-    } else {
-        1
-    };
-    water.segments.max(wanted).clamp(1, MAX_SEGMENTS)
+    og_core::ocean::grid_segments(water.segments, extent)
 }
 
 struct Slot {
@@ -705,6 +691,10 @@ impl WaterRenderer {
                 ],
                 layers: lake_layers(origin, water.normal_scale.max(0.0)),
                 ocean,
+                sea_wind: {
+                    let d = water.wind.normalize_or_zero();
+                    [d.x, d.y, water.wind.length() * ocean[0], 0.0]
+                },
                 swell,
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
