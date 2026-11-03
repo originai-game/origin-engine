@@ -8,9 +8,10 @@
 // grab costs a heart. Three hearts gone, or night, ends the run; every
 // beacon lit wins it. Then the summary, and again.
 //
-// `start` loads the strings, the style and the sounds, builds the vale
-// (src/world.ts) and spawns the hero (src/hero.ts), the sentinels
-// (src/sentinels.ts) and the voices (src/sound.ts). The beacons are in
+// `start` loads the strings, the style, the sounds and the screen
+// documents (assets/ui/), builds the vale (src/world.ts) and spawns the
+// hero (src/hero.ts), the sentinels (src/sentinels.ts) and the voices
+// (src/sound.ts). The beacons are in
 // src/beacons.ts, the screens and the run's clock in src/ui.ts and the
 // state in src/components.ts.
 
@@ -29,6 +30,7 @@ function start(world: World): void {
   const style = must(og.load.style(world, "styles/ember/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, { style, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  for (const doc of ["ui/main-menu.ogt", "ui/pause.ogt"]) must(og.load.document(world, doc));
   buildVale(world);
   spawnHero(world);
   spawnSentinels(world);

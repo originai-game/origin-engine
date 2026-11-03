@@ -16,7 +16,7 @@ export default playtest({
   name: "Play, the count-in, perfect hits, a late Great, an early Good, misses and an empty press",
   commands: sorted([
     "0.3:get:Game:title.json",
-    tap("play", 1.0),
+    tap("Play", 1.0),
     `${(t0 - 1.0).toFixed(3)}:get:Game:count.json`,
     ...play(notes, t0, 0, 8),
     `${(t0 + 7.8 * BEAT).toFixed(3)}:get:Game:perfect.json`,

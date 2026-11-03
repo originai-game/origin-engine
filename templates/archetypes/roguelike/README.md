@@ -64,10 +64,12 @@ og build . --publish         # dist/: the play page as it ships
 - **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's pixel pack recoloured as `assets/styles/lampdive` (the tomb's
   violet panels, the lamp's amber as the one accent); the title over the
-  lamp-lit first room, the HUD as capsules in the corners (health meter,
+  lamp-lit first room and the pause as the game's own screen documents
+  (`assets/ui/main-menu.ogt` and `pause.ogt`, ejected with `og ui eject`
+  and edited), the HUD as capsules in the corners (health meter,
   strike, armour, gold, the floor, Pause), the draught button (it shakes
   with the error sound when refused), Wait and an `og.ui.dpad` on a touch
-  screen, `og.ui.pauseMenu`, a settings dialog and the summary built from
+  screen, a settings dialog and the summary built from
   widgets, a dissolve between screens (a fade with reduced motion).
 - **Sound** (og-audio §1–§5): a voice per event (pitch-varied steps, hits,
   pickups), the UI's sounds from `og sfx` presets, a 66 BPM tomb loop on
@@ -191,7 +193,11 @@ next tick).
    case.
 4. **The look**: `assets/styles/lampdive/style.ogt`'s palette and the art in
    `tools/make-assets.py`, then `python3 tools/make-assets.py && og cook .`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+5. **The title and the pause**: `assets/ui/main-menu.ogt` and
+   `pause.ogt` are the game's screen documents: a button is an element
+   with `on click emit <event>`, which `src/ui.ts` answers; its words are
+   string keys.
+6. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
    more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)

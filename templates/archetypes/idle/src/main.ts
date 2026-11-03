@@ -10,7 +10,7 @@
 //
 // The look (GameDesc.look, a file under assets/looks/) sets the frame's
 // treatment and the UI style before start runs. `start` loads the strings,
-// the sounds and the orb's art and spawns the rows: the orb and its glow,
+// the sounds, the screen documents (assets/ui/) and the orb's art and spawns the rows: the orb and its glow,
 // 48 motes (12 per generator), the burst pools, a voice per sound and the
 // music. The systems are in
 // src/systems.ts, the formulas and big numbers in src/numbers.ts, the
@@ -40,6 +40,7 @@ function start(world: World): void {
   const style = og.render.look(world)?.style ?? null;
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, { style, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  for (const doc of ["ui/main-menu.ogt", "ui/pause.ogt"]) must(og.load.document(world, doc));
 
   const camera = must(world.resource(og.Camera));
   camera.orthographic = true;

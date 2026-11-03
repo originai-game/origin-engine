@@ -17,7 +17,7 @@ const expected = offsets.map((ms) => (Math.abs(ms) <= 45 ? 0 : 1));
 export default playtest({
   name: "a press is judged at the millisecond it happened within its tick",
   commands: sorted([
-    tap("play", 1.0),
+    tap("Play", 1.0),
     ...notes.flatMap((n, i) => {
       const at = t0 + n.beat * BEAT;
       return [press(KEYS[n.lane]!, at + offsets[i]! / 1000), `${(at + 0.2).toFixed(4)}:get:Game:note-${i}.json`];

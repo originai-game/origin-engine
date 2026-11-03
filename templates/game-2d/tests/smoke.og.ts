@@ -49,7 +49,7 @@ export default playtest({
     t.ok(hero.components["og.PlatformerController"]!["grounded"] === true, "the controller is grounded on the ledge");
     const ui = run.json<UiDump>("ui.json");
     const count = ui.elements.find((e) => e.id === "Count");
-    t.ok(count !== undefined && count.text === "2", `the platformer HUD counts the coins ("${count?.text}")`);
+    t.ok(count !== undefined && count.text === "2", `the HUD counts the coins ("${count?.text}")`);
     const paused = run.json<Got<Game>>("paused.json").value;
     t.ok(paused.paused, "Escape opened the pause menu");
     t.ok(!run.json<Got<Game>>("resumed.json").value.paused, "Escape again resumed");

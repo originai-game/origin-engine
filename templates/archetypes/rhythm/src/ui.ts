@@ -1,7 +1,8 @@
 // Three-Lane Beat's screens on og.ui and the style in assets/styles/lanebeat
-// (the engine's sci-fi pack): the title, the HUD (the score and the groove
-// top left, Pause top right, the combo and its multiplier beside the
-// highway), the pause menu, the settings with the offset, the calibration
+// (the engine's sci-fi pack): the title and the pause menu (the game's
+// screen documents, assets/ui/main-menu.ogt and pause.ogt), the HUD (the
+// score and the groove top left, Pause top right, the combo and its
+// multiplier beside the highway), the settings with the offset, the calibration
 // and the results. Screens change through a wipe (a fade with reduced
 // motion). Every string is a key of assets/strings/*.ogt.
 //
@@ -333,6 +334,20 @@ function results(world: World, g: GameV): "again" | "title" | null {
   return chose;
 }
 
+/**
+ * A screen document up while `shown`: og.ui.screen pushes it the first tick
+ * and builds it with its viewmodel each tick; the tick it is not shown it is
+ * popped (the top layer: the title and the pause never stack). Answers the
+ * events it emitted (its buttons' `emit`, Back's).
+ */
+function layer(world: World, name: string, shown: boolean, vm: object = {}): string[] {
+  if (!shown) {
+    if (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
 /** The screens, the layout for the surface, the buses, the platform's answers, the play's start, pause and end. */
 export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], writes: [Game, Prefs, og.Camera, og.Audio] }, (_q, time, world) => {
   const game = world.resource(Game);
@@ -367,46 +382,27 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], wr
 
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : g.phase === Phase.Results ? "results" : "calibrate";
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 500 }).shown;
-  if (shown !== "title") g.leftTitle = true;
-  if (shown === "title") {
-    og.ui.setNavigation(true);
-    const r = og.ui.mainMenu("Title", {
-      title: say(world, "title.name"),
-      subtitle: say(world, "title.tagline"),
-      items: [
-        { id: "play", label: say(world, "title.play"), primary: true },
-        { id: "calibrate", label: say(world, "title.calibrate") },
-        { id: "settings", label: say(world, "title.settings") },
-      ],
-      footer: say(world, "title.footer"),
-      // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-      instant: !g.leftTitle,
-    });
-    if (!g.settingsOpen && r.selected === "play") begin(world, g);
-    if (!g.settingsOpen && r.selected === "calibrate") calibrate(world, g);
-    if (r.selected === "settings") g.settingsOpen = true;
-  } else if (shown === "play") {
-    hud(world, g);
-    const m = og.ui.pauseMenu("Pause", {
-      open: g.paused && !g.settingsOpen,
-      title: say(world, "pause.title"),
-      items: [
-        { id: "resume", label: say(world, "pause.resume"), primary: true },
-        { id: "restart", label: say(world, "pause.restart") },
-        { id: "settings", label: say(world, "pause.settings") },
-        { id: "quit", label: say(world, "pause.quit") },
-      ],
-    });
-    if (m.selected === "resume") resume(world, g);
-    if (m.selected === "restart") begin(world, g);
-    if (m.selected === "settings") g.settingsOpen = true;
-    if (m.selected === "quit") {
+  // The title and the pause are the game's screen documents (assets/ui/main-menu.ogt, pause.ogt).
+  for (const e of layer(world, "main-menu", shown === "title")) {
+    if (!g.settingsOpen && e === "play") begin(world, g);
+    if (!g.settingsOpen && e === "calibrate") calibrate(world, g);
+    if (e === "settings") g.settingsOpen = true;
+  }
+  for (const e of layer(world, "pause", shown === "play" && g.paused && !g.settingsOpen)) {
+    if (e === "resume") resume(world, g);
+    if (e === "restart") begin(world, g);
+    if (e === "settings") g.settingsOpen = true;
+    if (e === "quit") {
       g.paused = false;
       g.pausedAt = -1;
       g.phase = Phase.Title;
       g.stopBand = true;
     }
+  }
+  if (shown === "title") {
+    og.ui.setNavigation(true);
+  } else if (shown === "play") {
+    hud(world, g);
   } else if (shown === "results") {
     og.ui.setNavigation(true);
     const c = results(world, g);

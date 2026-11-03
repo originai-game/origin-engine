@@ -14,7 +14,7 @@ export default playtest({
   commands: [
     "0.1:viewport:phone",
     "0.9:dump_ui:title.json",
-    tap("play", 1.0),
+    tap("Play", 1.0),
     "1.1:touch_move:10,400",
     "1.7:get:Game:started.json",
     tapAt(ORB.x, ORB.y, 1.8),
@@ -30,8 +30,8 @@ export default playtest({
   ].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    const title = ui(run, "title.json").elements;
-    t.ok(title.some((e) => e.id === "play") && title.every((e) => e.y >= 47 && e.y + e.height <= 844 - 34), "the title's menu sits inside the safe area");
+    const title = ui(run, "title.json").elements.filter((e) => e.path.startsWith("main-menu/"));
+    t.ok(title.some((e) => e.id === "Play") && title.every((e) => e.y >= 47 && e.y + e.height <= 844 - 34), "the title's menu sits inside the safe area");
     t.equal(game(run, "started.json").phase, PLAY, "a tap on Play showed the orb");
     t.equal(game(run, "tapped.json").taps, 2, "two taps on the orb");
     t.equal(game(run, "bought.json").owned0, 1, "the Ember card's button bought one");

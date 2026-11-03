@@ -8,6 +8,7 @@
 | `assets/ai/*.ogt` | CC0 1.0 | self-made: the foes' and the guardian's behaviours |
 | `assets/audio/*.wav` | CC0 1.0 | self-made: synthesised tones and noise and the tomb's music loop, same script |
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets (click, select, back, error, levelup, and a footstep) that `og cook` synthesises, written by the same script |
+| `assets/ui/*.ogt` | MIT | the engine's screen documents `main-menu` and `pause` (`og ui eject`), edited for this game |
 | `assets/strings/*.ogt` | CC0 1.0 | self-made: the English and Chinese string tables |
 | `assets/styles/lampdive/*` | CC0 1.0 art, SIL OFL 1.1 fonts | the engine's pixel style pack (`templates/styles/pixel`, `assets/styles/lampdive/LICENSES.md`) with this game's palette |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

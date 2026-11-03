@@ -1,0 +1,121 @@
+type screen
+version 1
+---
+# Ember Vale's title (ejected from the library's main-menu, docs/ui.md
+# §11.1): the game's name and tagline on a card over the orbiting vale,
+# Set out and Settings, and the controls in the corner: the keys', or on a
+# touch screen the touch controls' (under the card on a phone).
+# Its words are the game's string keys (assets/strings/*.ogt).
+#
+# Viewmodel: touch. Events to code (src/ui.ts): play, settings.
+name "main-menu"
+layer menu
+under none
+back none
+props {
+  touch bool "A touch screen: the footer names the touch controls."
+}
+actions {
+  confirm "Select"
+}
+fixture default "{\"touch\": false}"
+stack Title {
+  width grow
+  height grow
+  column Screen {
+    width grow
+    height grow
+    padding 32
+    align center
+    cross center
+    at phone {
+      padding 16 16 16 64
+      align end
+    }
+    column Card {
+      width 380
+      padding 24
+      gap 24
+      cross center
+      frame hud
+      at phone {
+        width grow
+        padding 16
+      }
+      column Heading {
+        width grow
+        gap 4
+        cross center
+        label Name {
+          key "title.name"
+          text "Ember Vale"
+          step displayLg
+          font display
+          textAlign center
+          heading true
+          width grow
+          at phone {
+            step displayMd
+          }
+        }
+        label Tagline {
+          key "title.tagline"
+          text "Light the four beacons before night falls"
+          color token inkMuted
+          textAlign center
+          width grow
+        }
+      }
+      column Menu {
+        width grow
+        gap 8
+        focusGroup wrap
+        button Play {
+          key "title.play"
+          text "Set out"
+          variant primary
+          size large
+          width grow
+          on click emit play
+        }
+        button Settings {
+          key "title.settings"
+          text "Settings"
+          size large
+          width grow
+          on click emit settings
+        }
+      }
+    }
+  }
+  label Footer {
+    key "title.footer"
+    text "WASD to move · Shift runs · Space jumps · hold F to kindle · Q and E turn the view"
+    step meta
+    color token inkFaint
+    nowrap true
+    position absolute
+    end 16
+    bottom 16
+    visible bind "!touch"
+    at phone {
+      visible false
+    }
+  }
+  label TouchFooter {
+    key "title.footer.touch"
+    text "The stick moves · Jump jumps · hold Kindle by a beacon · the view swings behind you"
+    step meta
+    color token inkFaint
+    nowrap true
+    position absolute
+    end 16
+    bottom 16
+    visible bind touch
+    at phone {
+      nowrap false
+      start 16
+      textAlign center
+    }
+  }
+}

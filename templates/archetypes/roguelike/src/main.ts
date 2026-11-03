@@ -9,10 +9,11 @@
 // (no second chances): the summary, then a new dive.
 //
 // `start` loads the floor (assets/maps/dive.ogt, carved at run time), the
-// sheet, the minds and the sounds, and spawns the pools: the lamp-bearer,
-// ten foes, twelve finds and a voice per sound. The systems are in
-// src/systems.ts, the foes' commands in src/foes.ts, the floor's plan in
-// src/dive.ts, the screens in src/ui.ts and the state in src/components.ts.
+// sheet, the minds, the sounds and the screen documents (assets/ui/), and
+// spawns the pools: the lamp-bearer, ten foes, twelve finds and a voice
+// per sound. The systems are in src/systems.ts, the foes' commands in
+// src/foes.ts, the floor's plan in src/dive.ts, the screens in src/ui.ts
+// and the state in src/components.ts.
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -40,6 +41,7 @@ function start(world: World): void {
   const style = must(og.load.style(world, "styles/lampdive/style.ogt"));
   const sound = (path: string) => must(og.load.sound(world, path));
   must(og.ui.configure(world, { style, sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") } }));
+  for (const doc of ["ui/main-menu.ogt", "ui/pause.ogt"]) must(og.load.document(world, doc));
 
   const settings = must(world.resource(og.RenderSettings));
   settings.environmentIntensity = 0;

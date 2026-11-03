@@ -12,7 +12,7 @@ export default playtest({
   commands: [
     "0.3:get:Game:title.json",
     "0.9:screenshot:title.png",
-    tap("play", 1.0),
+    tap("Play", 1.0),
     "1.4:get:Game:started.json",
     "1.45:dive:7",
     "1.5:get:Game:start7.json",

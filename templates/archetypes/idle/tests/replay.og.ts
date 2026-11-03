@@ -7,7 +7,7 @@ export default playtest({
   name: "a run with taps, purchases and a milestone replays to the same hash",
   runs: 2,
   commands: [
-    tap("play", 0.3),
+    tap("Play", 0.3),
     ...Array.from({ length: 8 }, (_, i) => tapAt(ORB.x, ORB.y, +(0.9 + i * 0.1).toFixed(2))),
     "1.8:sparks:400",
     press("Digit1", 1.9),

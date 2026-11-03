@@ -1,0 +1,48 @@
+type screen
+version 1
+---
+# The starter's pause (ejected from the library's pause with `og ui eject
+# pause`, docs/ui.md §11.1, and cut to what this game has): over the
+# dimmed rooftops, the title and Resume. Its words are the game's string
+# keys (assets/strings/en.ogt). `pause true`: the engine holds time while
+# it is up and gives it back when it pops.
+#
+# Viewmodel: none. Events to code (src/main.ts's Hud): resume (also Back).
+name "pause"
+layer menu
+pause true
+under dim
+back emit resume
+focus "Panel/Resume"
+actions {
+  confirm "Select"
+  back "Resume"
+}
+column Pause {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 340
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    label Title {
+      key "pause.title"
+      text "Paused"
+      step xl2
+      heading true
+    }
+    button Resume {
+      key "pause.resume"
+      text "Resume"
+      variant primary
+      size large
+      width grow
+      on click emit resume
+    }
+  }
+}

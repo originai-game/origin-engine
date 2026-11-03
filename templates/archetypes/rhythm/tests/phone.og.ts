@@ -27,8 +27,8 @@ export default playtest({
   ]),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    const title = ui(run, "title.json").elements;
-    t.ok(title.some((e) => e.id === "play") && title.every((e) => e.y >= 47 && e.y + e.height <= 844 - 34), "the title's menu sits inside the safe area");
+    const title = ui(run, "title.json").elements.filter((e) => e.path.startsWith("main-menu/"));
+    t.ok(title.some((e) => e.id === "Play") && title.every((e) => e.y >= 47 && e.y + e.height <= 844 - 34), "the title's menu sits inside the safe area");
     const h = game(run, "hit.json");
     t.equal(h.hits, 8, "eight notes hit by fingers on their lanes");
     t.equal(h.perfect, 8, "all on time");

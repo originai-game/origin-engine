@@ -27,7 +27,7 @@ og build .   # the play page
 | og.PlatformerController: run, jump (held for the full height), coyote time, the jump buffer, one-way ledges, Down to drop | `Control`, the hero in `start` | og-game §13; og-feel §12 |
 | The map's objects: the spawn, the coins, the goal | `start`, `Pickups` | og-game §8 |
 | Input on the press's tick: keys, a pad, the HUD's touch controls on a phone | `Control`, `Hud` | og-feel §1; og-ui §5 |
-| The UI kit's platformer HUD and pause menu, every word from the string table | `Hud`, `assets/strings/en.ogt` | og-ui §1, §6; og-i18n §1 |
+| og.ui's HUD components (the lives as `og.ui.statBar` pips, coins and score as `og.ui.counter`, Pause, a d-pad and Jump on a phone) and the game's own pause screen, ejected with `og ui eject pause` and edited, every word from the string table | `Hud`, `assets/ui/pause.ogt`, `assets/strings/en.ogt` | docs/ui.md §8, §11; og-i18n §1 |
 | A camera that follows with a dead zone and look-ahead | og.Follow2D on the hero | og-feel §8 |
 | The frame's art direction as data: a look extending the 16bit-pixel preset | `assets/looks/origin-game-2d.ogt` (a created game's is `<id>.ogt`) | og-taste §1, §12 |
 | A playtest that asserts on dumps, never on the code | `tests/smoke.og.ts` | og-build §3, §4 |

@@ -62,11 +62,13 @@ og build . --publish         # dist/: the play page as it ships (behind "tap to 
 - **Screens on og.ui with tokens and MSDF text** (og-ui §2–§6, og-taste):
   the engine's fantasy pack as `assets/styles/ember` (Cinzel and Newsreader,
   Noto Serif SC as the Chinese companion, every font MSDF text); the
-  title over an orbit of the vale, the HUD (hearts and beacons top-left,
-  the dusk clock and Pause top-right, the kindling prompt and its progress
-  at the bottom; on a touch screen a joystick, Jump and Kindle), toasts,
-  `og.ui.pauseMenu`, a settings dialog and the summary built from widgets,
-  a dissolve between screens (a fade with reduced motion). Spacing comes
+  title over an orbit of the vale and the pause as the game's own screen
+  documents (`assets/ui/main-menu.ogt` and `pause.ogt`, ejected with
+  `og ui eject` and edited), the HUD (hearts and beacons top-left, the
+  dusk clock and Pause top-right, the kindling prompt and its progress at
+  the bottom; on a touch screen a joystick, Jump and Kindle), toasts, a
+  settings dialog and the summary built from widgets, a dissolve between
+  screens (a fade with reduced motion). Spacing comes
   from the tokens' scale; colours are token references.
 - **Feel** (og-feel): a camera punch when a beacon catches; a grab is a hit
   stop, a red flash, a shake and a knock-back; a sentinel's eye burns red
@@ -183,7 +185,11 @@ stages.
    colours, the style's palette in `assets/styles/ember/style.ogt`.
 4. **The characters**: another CC0 humanoid in `assets/models/` with the
    clip library retargeted onto it (`src/anim.ts`), the graphs' thresholds.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+5. **The title and the pause**: `assets/ui/main-menu.ogt` and
+   `pause.ogt` are the game's screen documents: a button is an element
+   with `on click emit <event>`, which `src/ui.ts` answers; its words are
+   string keys.
+6. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
    more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)

@@ -7,6 +7,7 @@
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets (click, select, back, error, levelup) that `og cook` synthesises, written by the same script |
 | `assets/sprites/*.png`, `assets/sprites/*.ogt` | CC0 1.0 | self-made: the note, the receptor's ring, the lane's glow and the spark, same script |
 | `assets/fx/*.ogt` | CC0 1.0 | self-made: the hit's burst, same script |
+| `assets/ui/*.ogt` | MIT | the engine's screen documents `main-menu` and `pause` (`og ui eject`), edited for this game |
 | `assets/strings/*.ogt` | CC0 1.0 | self-made: the English and Chinese string tables |
 | `assets/styles/lanebeat/*` | CC0 1.0 art, SIL OFL 1.1 fonts | the engine's sci-fi style pack (`templates/styles/scifi`, `assets/styles/lanebeat/LICENSES.md`) with this game's palette |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

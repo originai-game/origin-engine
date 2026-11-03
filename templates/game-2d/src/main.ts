@@ -7,7 +7,8 @@
 // one-way on their own collider layer, an og.PlatformerController moved by
 // the arrows, WASD, Space or a pad, the courier's flipbook clips chosen by
 // what the controller did, coins to take, a pit that costs a life, a goal
-// at the far end, a camera that follows, and the UI kit's platformer HUD.
+// at the far end, a camera that follows, og.ui's HUD components and the
+// game's pause screen (assets/ui/pause.ogt).
 // Everything the starter shows is in og-game §8 (sprites, flipbooks,
 // tilemaps), §13 (the controller) and og-feel §12 (its tunables).
 //
@@ -385,34 +386,63 @@ export const Voices = defineSystem("Voices", { reads: [Voice], writes: [Game, og
   g.sfx = left;
 });
 
+/** A group of the HUD on the style's HUD chip (the city behind can be any colour). */
+function chip(id: string, build: () => void): void {
+  og.ui.row(id, { gap: 6, cross: "center", padding: { left: 12, top: 4, right: 12, bottom: 4 }, frame: "hud", background: { token: "hud" } }, build);
+}
+
 /**
- * The UI kit's platformer HUD (og-ui §6): lives, coins, the level's name,
- * the pause button and, on a phone, the touch controls (taken by Control
- * this tick: Hud runs first). Pause (the button, Escape or the pad's Start)
- * opens the kit's pause menu and holds time until Resume.
+ * The HUD (og.ui's HUD components, docs/ui.md §11): the lives as pips and
+ * the level's name top left, the coins, the score and Pause top right and,
+ * on a phone, a d-pad and Jump (taken by Control this tick: Hud runs
+ * first). Pause (the button, Escape or the pad's Start) pushes the game's
+ * pause screen (assets/ui/pause.ogt), which holds time until Resume or
+ * Back pops it.
  */
 export const Hud = defineSystem("Hud", { writes: [Game] }, (_q, _time, world) => {
   const g = must(world.resource(Game));
-  const hud = og.ui.platformerHud("Hud", {
-    lives: g.lives,
-    maxLives: LIVES,
-    coins: g.coins,
-    score: g.coins * 100,
-    level: og.i18n.t(world, g.won ? "hud.clear" : "hud.level"),
-    timeLeft: null,
-    // A d-pad and Jump where the pointer is a finger (og-ui §5).
-    touch: og.ui.frameViewport().coarsePointer,
+  const t = (key: string) => og.i18n.t(world, key);
+  // The keys move the courier, not the focus.
+  og.ui.setNavigation(false);
+  og.ui.anchor("Status", { anchor: "topLeft", direction: "column", gap: 8 }, () => {
+    og.ui.statBar("Lives", { value: g.lives, max: LIVES, kind: "health", style: "pips", width: { kind: "fixed", px: 96 }, name: t("hud.lives") });
+    chip("LevelBox", () => og.ui.label("Level", t(g.won ? "hud.clear" : "hud.level"), { step: "meta", color: { token: "inkMuted" }, nowrap: true }));
   });
-  g.touchX = g.paused ? 0 : hud.moveX;
-  g.touchJump = !g.paused && hud.held.includes("jump");
-  const menu = og.ui.pauseMenu("Pause", { open: g.paused, items: [{ id: "resume", label: og.i18n.t(world, "pause.resume") }] });
-  if (g.paused && menu.selected === "resume") {
-    g.paused = false;
-    must(og.time.setScale(world, 1));
-  } else if (!g.paused && hud.paused) {
-    g.paused = true;
-    must(og.time.setScale(world, 0));
+  let pause = false;
+  og.ui.anchor("Purse", { anchor: "topRight", gap: 8, cross: "center" }, () => {
+    chip("Coins", () => {
+      if (og.ui.hasIcon("coin")) og.ui.icon("Coin", "coin", { size: 20, tint: { token: "gold" } });
+      og.ui.counter("Count", g.coins, { font: "mono" });
+    });
+    chip("Score", () => og.ui.counter("Points", g.coins * 100, { font: "mono" }));
+    if (og.ui.actionButton("Pause", t("hud.pause"), { icon: "pause", size: 44 }).clicked) pause = true;
+  });
+  // A d-pad and Jump where the pointer is a finger (og-ui §5).
+  let moveX = 0;
+  let jump = false;
+  if (og.ui.frameViewport().coarsePointer) {
+    og.ui.anchor("TouchMove", { anchor: "bottomLeft" }, () => {
+      const d = og.ui.dpad("Dpad", {});
+      moveX = (d.right ? 1 : 0) - (d.left ? 1 : 0);
+    });
+    og.ui.anchor("TouchActions", { anchor: "bottomRight" }, () => {
+      jump = og.ui.actionButton("Jump", t("hud.jump"), { primary: true, size: 76 }).pressed;
+    });
   }
+  if (g.paused) {
+    // The pause screen is built here so its events come back this tick.
+    for (const e of og.ui.screen("pause").events) {
+      if ((e.kind === "emit" || e.kind === "back") && e.name === "resume") {
+        og.ui.pop(world);
+        g.paused = false;
+      }
+    }
+  } else if (pause || og.ui.back()) {
+    must(og.ui.push(world, "pause"));
+    g.paused = true;
+  }
+  g.touchX = g.paused ? 0 : moveX;
+  g.touchJump = !g.paused && jump;
 });
 
 /**
@@ -522,8 +552,9 @@ export default og.game({
       must(world.insert(v, og.AudioSource, { sound: sound.value, playing: false, volume: 0.5 }));
     }
 
-    // Every string the HUD shows (og-i18n §1), and its font.
+    // Every string the HUD and the pause show (og-i18n §1), its font and the pause screen.
     must(og.i18n.load(world, "strings/en.ogt"));
+    must(og.load.document(world, "ui/pause.ogt"));
     const font = og.load.font(world, "fonts/ui.ttf");
     if (font.ok) og.ui.configure(world, { font: font.value });
   },

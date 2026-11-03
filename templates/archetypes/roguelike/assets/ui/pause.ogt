@@ -1,0 +1,66 @@
+type screen
+version 1
+---
+# Lamp Dive's pause (ejected from the library's pause, docs/ui.md §11.1):
+# over the dimmed tomb, Resume, Settings and Abandon the dive. Its words
+# are the game's string keys (assets/strings/*.ogt).
+#
+# Events to code (src/ui.ts): resume (also Back), settings, quit. The
+# game holds its own time while it is up (src/ui.ts), so the layer does
+# not pause it.
+name "pause"
+layer menu
+under dim
+back emit resume
+focus "Panel/Menu/Resume"
+actions {
+  confirm "Select"
+  back "Resume"
+}
+column Pause {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 340
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    label Title {
+      key "pause.title"
+      text "Paused"
+      step xl2
+      heading true
+    }
+    column Menu {
+      width grow
+      gap 8
+      focusGroup wrap
+      button Resume {
+        key "pause.resume"
+        text "Resume"
+        variant primary
+        size large
+        width grow
+        on click emit resume
+      }
+      button Settings {
+        key "pause.settings"
+        text "Settings"
+        size large
+        width grow
+        on click emit settings
+      }
+      button Quit {
+        key "pause.quit"
+        text "Abandon the dive"
+        size large
+        width grow
+        on click emit quit
+      }
+    }
+  }
+}

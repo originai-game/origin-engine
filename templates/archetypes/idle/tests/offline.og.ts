@@ -20,7 +20,7 @@ export default playtest({
     "1.6:relaunch:7200",
     "1.8:get:Game:closed.json",
     "2.2:dump_ui:title.json",
-    tap("play", 2.3),
+    tap("Continue", 2.3),
     "3.2:get:Game:welcome.json",
     "3.2:dump_ui:welcome-ui.json",
     "3.25:screenshot:welcome.png",
@@ -39,7 +39,7 @@ export default playtest({
     t.equal(saved.rate, 10 * 0.5 * 2 + 2 * 4, "ten embers (doubled) and two storms: 18 a second");
     const closed = game(run, "closed.json");
     t.equal(closed.phase, TITLE, "the relaunch opens on the title");
-    t.ok(text(run, "title.json", "play")?.startsWith("Continue") ?? false, "which offers Continue");
+    t.ok(text(run, "title.json", "Continue")?.startsWith("Continue") ?? false, "which offers Continue");
     const w = game(run, "welcome.json");
     t.equal(w.owned0, 10, "the save came back");
     t.ok(Math.abs(w.offline - 18 * 0.5 * 7200) < 1e-6, `two hours away at half of 18 a second: 64,800 (${w.offline})`);

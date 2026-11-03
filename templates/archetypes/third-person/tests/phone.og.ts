@@ -12,7 +12,7 @@ export default playtest({
   commands: [
     "0.1:viewport:phone",
     "0.9:dump_ui:title.json",
-    tap("play", 1.0),
+    tap("Play", 1.0),
     "1.1:touch_move:200,400",
     "1.7:get:Game:started.json",
     "1.7:get:hero.og.Transform:from.json",
@@ -35,8 +35,8 @@ export default playtest({
   ].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    const title = elements(run, "title.json");
-    t.ok(title.some((e) => e.id === "play") && title.every((e) => e.y + e.height <= 844 - 34 && e.y >= 47), "the title's menu sits inside the safe area");
+    const title = elements(run, "title.json").filter((e) => e.path.startsWith("main-menu/"));
+    t.ok(title.some((e) => e.id === "Play") && title.every((e) => e.y + e.height <= 844 - 34 && e.y >= 47), "the title's menu sits inside the safe area");
     t.ok(texts(run, "title.json").includes("The stick moves · Jump jumps · hold Kindle by a beacon · the view swings behind you"), "with the touch controls in its footer");
     t.equal(game(run, "started.json").phase, PLAY, "a tap on Set out started a run");
     const ui = run.json<{ surface: { width: number } }>("hud.json");

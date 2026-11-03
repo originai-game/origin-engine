@@ -11,7 +11,7 @@ export default playtest({
   name: "taps make sparks, sparks buy embers, embers make sparks, a purchase too dear is refused",
   commands: [
     "0.3:get:Game:title.json",
-    tap("play", 0.9),
+    tap("Play", 0.9),
     "1.6:get:Game:start.json",
     ...Array.from({ length: 10 }, (_, i) => tapAt(ORB.x + (i % 3) * 20 - 20, ORB.y + 10, +(1.7 + i * 0.12).toFixed(2))),
     tapAt(ORB.x + 300, ORB.y, 3.0),

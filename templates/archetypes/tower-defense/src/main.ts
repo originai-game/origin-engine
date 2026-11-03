@@ -10,8 +10,9 @@
 // and stones block), makes the walking grid and the flow field from it,
 // and spawns the pools: one Bed row per lawn cell (off until a plant is
 // set), the visitors, the shots, the cursor, the lantern and one voice per
-// sound. The systems are in src/systems.ts, the screens in src/ui.ts, the
-// state in src/components.ts.
+// sound; it loads the screen documents (assets/ui/) too. The systems are
+// in src/systems.ts, the screens in src/ui.ts, the state in
+// src/components.ts.
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -40,6 +41,7 @@ function start(world: World): void {
       sounds: { press: sound("audio/ui-press.ogt"), open: sound("audio/ui-open.ogt"), close: sound("audio/ui-close.ogt"), error: sound("audio/ui-error.ogt"), success: sound("audio/ui-success.ogt") },
     }),
   );
+  for (const doc of ["ui/main-menu.ogt", "ui/pause.ogt"]) must(og.load.document(world, doc));
 
   const settings = must(world.resource(og.RenderSettings));
   settings.environmentIntensity = 0;

@@ -8,4 +8,8 @@ locale "en"
 base true
 string "hud.level" "The Rooftops"
 string "hud.clear" "Rooftops clear!"
+string "hud.lives" "Lives"
+string "hud.pause" "Pause"
+string "hud.jump" "Jump"
+string "pause.title" "Paused"
 string "pause.resume" "Resume"

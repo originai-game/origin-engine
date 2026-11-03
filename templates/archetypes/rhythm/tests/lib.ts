@@ -50,7 +50,7 @@ export function game(run: PlaytestRun, file: string): Game {
   return run.json<{ value: Game }>(file).value;
 }
 
-export interface UiElement { id: string; parent: string; kind: string; text: string; x: number; y: number; width: number; height: number }
+export interface UiElement { id: string; parent: string; path: string; kind: string; text: string; x: number; y: number; width: number; height: number }
 
 export function ui(run: PlaytestRun, file: string): { surface: { width: number; height: number }; elements: UiElement[] } {
   return run.json(file);

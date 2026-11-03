@@ -9,7 +9,7 @@ export default playtest({
   name: "a run with movement, a jump, kindling and a sentinel's grab replays to the same hash",
   runs: 2,
   commands: [
-    tap("play", 0.7),
+    tap("Play", 0.7),
     "1.0:key_down:KeyW",
     "1.2:key_down:ShiftLeft",
     press("Space", 1.6),

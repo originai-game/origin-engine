@@ -17,6 +17,7 @@ Origin Engine authors or one of the engine's CC0 assets.
 | `assets/nav/vale.ogt` | CC0 1.0 | self-made: the navmesh's bake settings, written by hand |
 | `assets/audio/*.wav` | CC0 1.0 | self-made: synthesised tones and noise (the ignition, alarm, grab, splash, jump, dawn and night) and the vale's music loop, `tools/make-assets.py` |
 | `assets/audio/*.ogt` | CC0 1.0 | `og sfx` presets (click, select, back, error, levelup and a footstep) that `og cook` synthesises, written by the same script |
+| `assets/ui/*.ogt` | MIT | the engine's screen documents `main-menu` and `pause` (`og ui eject`), edited for this game |
 | `assets/strings/*.ogt` | CC0 1.0 | self-made: the English and Chinese string tables |
 | `assets/styles/ember/*` | CC0 1.0 art, SIL OFL 1.1 fonts | the engine's fantasy style pack (`templates/ui-kit`), `assets/styles/ember/LICENSES.md` |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` |

@@ -71,7 +71,9 @@ og build . --publish         # dist/: the play page as it ships
   `og.ui.counter`, the price in gold when it can be paid), the supernova's
   progress (`og.ui.meter`) then its button, a card that shakes with the
   error sound when its purchase is refused and bursts at a milestone,
-  `og.ui.pauseMenu`, a settings dialog, the supernova's question, its card
+  the title and the pause as the game's own screen documents
+  (`assets/ui/main-menu.ogt` and `pause.ogt`, ejected with `og ui eject`
+  and edited), a settings dialog, the supernova's question, its card
   and the welcome back built from widgets, an iris between screens (a fade
   with reduced motion).
 - **Sound** (og-audio §1–§5): the tap's chime on the ui bus (the orb is
@@ -174,7 +176,11 @@ pure functions, the stars come from an og.Rng stream forked by name, and
    frames are then recorded again (`OG_FX_CAPTURE=1 og test .`). The
    style's palette is `assets/styles/sparkorb/style.ogt`, the art
    `tools/make-assets.py`: `python3 tools/make-assets.py && og cook .`.
-5. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
+5. **The title and the pause**: `assets/ui/main-menu.ogt` and
+   `pause.ogt` are the game's screen documents: a button is an element
+   with `on click emit <event>`, which `src/ui.ts` answers; its words are
+   string keys.
+6. **Words and numbers**: `assets/strings/*.ogt` (a locale's `num.step`
    and units make its big numbers); a new Chinese string needs nothing
    more: the style's Chinese companions draw every GB2312 character.
 

@@ -65,7 +65,7 @@ export interface PlatformDump {
   calls: Array<{ method: string; args: Record<string, unknown>; tick: number; state: string; result?: { ok: boolean; data?: Record<string, unknown>; error?: { code: string } } }>;
 }
 
-export interface Element { id: string; parent: string; kind: string; text: string; x: number; y: number; width: number; height: number }
+export interface Element { id: string; parent: string; path: string; kind: string; text: string; x: number; y: number; width: number; height: number }
 
 /** The laid-out elements from a `dump_ui:<file>` step. */
 export function elements(run: PlaytestRun, file: string): Element[] {

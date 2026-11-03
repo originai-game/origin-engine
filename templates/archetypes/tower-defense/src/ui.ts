@@ -1,8 +1,9 @@
 // Path Guard's screens on og.ui and the style in assets/styles/pathguard:
-// the title, the HUD (the light and the coins in the top-left corner, the
-// wave and pause in the top-right, the plant tray on the right on a wide
-// screen and along the bottom on a phone), the pause menu, the settings
-// dialog and the end card. Screens change through an iris (a fade with
+// the title and the pause menu (the game's screen documents,
+// assets/ui/main-menu.ogt and pause.ogt), the HUD (the light and the coins
+// in the top-left corner, the wave and pause in the top-right, the plant
+// tray on the right on a wide screen and along the bottom on a phone), the
+// settings dialog and the end card. Screens change through an iris (a fade with
 // reduced motion). Every string is a key of assets/strings/*.ogt.
 //
 // The Ui system also frames the camera on the field for the surface (the
@@ -318,6 +319,20 @@ function endCard(world: World, theme: Theme, g: GameV, t: TuneV): "retry" | "men
   return chose;
 }
 
+/**
+ * A screen document up while `shown`: og.ui.screen pushes it the first tick
+ * and builds it with its viewmodel each tick; the tick it is not shown it is
+ * popped (the top layer: the title and the pause never stack). Answers the
+ * events it emitted (its buttons' `emit`, Back's).
+ */
+function layer(world: World, name: string, shown: boolean, vm: object = {}): string[] {
+  if (!shown) {
+    if (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
 /** The screens, the camera's framing, the buses, the platform's answers. */
 export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og.Camera, og.Audio], after: ["Visitors"] }, (_q, time, world) => {
   const game = world.resource(Game);
@@ -339,40 +354,23 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
   const theme = THEME;
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;
-  if (shown !== "title") g.leftTitle = true;
-  if (shown === "title") {
-    og.ui.setNavigation(true);
-    const r = og.ui.mainMenu("Title", {
-      title: say(world, "title.name"),
-      subtitle: say(world, "title.tagline"),
-      items: [
-        { id: "play", label: say(world, "title.play"), primary: true },
-        { id: "settings", label: say(world, "title.settings") },
-      ],
-      footer: say(world, "title.footer"),
-      // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-      instant: !g.leftTitle,
-    });
-    if (!g.settingsOpen && r.selected === "play") startRound(world, g, t);
-    if (r.selected === "settings") g.settingsOpen = true;
-  } else if (shown === "play") {
-    hud(world, theme, g, t);
-    const m = og.ui.pauseMenu("Pause", {
-      open: g.paused && !g.settingsOpen,
-      title: say(world, "pause.title"),
-      items: [
-        { id: "resume", label: say(world, "pause.resume"), primary: true },
-        { id: "settings", label: say(world, "pause.settings") },
-        { id: "quit", label: say(world, "pause.quit") },
-      ],
-    });
-    if (m.selected === "resume") g.paused = false;
-    if (m.selected === "settings") g.settingsOpen = true;
-    if (m.selected === "quit") {
+  // The title and the pause are the game's screen documents (assets/ui/main-menu.ogt, pause.ogt).
+  for (const e of layer(world, "main-menu", shown === "title")) {
+    if (!g.settingsOpen && e === "play") startRound(world, g, t);
+    if (e === "settings") g.settingsOpen = true;
+  }
+  for (const e of layer(world, "pause", shown === "play" && g.paused && !g.settingsOpen)) {
+    if (e === "resume") g.paused = false;
+    if (e === "settings") g.settingsOpen = true;
+    if (e === "quit") {
       g.paused = false;
       g.phase = Phase.Title;
     }
+  }
+  if (shown === "title") {
+    og.ui.setNavigation(true);
+  } else if (shown === "play") {
+    hud(world, theme, g, t);
   } else {
     og.ui.setNavigation(true);
     const c = endCard(world, theme, g, t);

@@ -12,7 +12,7 @@ export default playtest({
   name: "Set out, walk, run and wade on the terrain, kindle a beacon with the hand in the bowl",
   commands: [
     "0.3:get:Game:title.json",
-    tap("play", 0.5),
+    tap("Play", 0.5),
     "0.7:get:Game:started.json",
     "0.7:get:hero.og.Transform:start.json",
     "0.8:key_down:KeyW",

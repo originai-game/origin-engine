@@ -28,7 +28,7 @@ export default playtest({
     `${(pauseAt + 0.3).toFixed(3)}:get:og.TimeScale.scale:scale.json`,
     `${(pauseAt + 0.3).toFixed(3)}:dump_entity:stem-drums:drums.json`,
     `${(pauseAt + 0.4).toFixed(3)}:screenshot:pause.png`,
-    tap("settings", 6.6),
+    tap("Settings", 6.6),
     "7.2:move_to_text:简体中文",
     "7.22:touch_start",
     "7.25:touch_end",

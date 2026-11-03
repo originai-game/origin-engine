@@ -18,7 +18,7 @@ export default playtest({
   then: [
     {
       clock: T + TWO_HOURS,
-      commands: ["0.5:get:Game:launched.json", "0.5:dump_ui:title.json", tap("play", 0.6), "1.5:get:Game:welcome.json", "1.5:dump_ui:welcome-ui.json", "1.6:quit"].join(";"),
+      commands: ["0.5:get:Game:launched.json", "0.5:dump_ui:title.json", tap("Continue", 0.6), "1.5:get:Game:welcome.json", "1.5:dump_ui:welcome-ui.json", "1.6:quit"].join(";"),
     },
   ],
   check(run, t) {
@@ -30,7 +30,7 @@ export default playtest({
     t.equal(later.warnings.join("; "), "", "the second run ran without warnings");
     const launched = game(later, "launched.json");
     t.equal(launched.phase, TITLE, "the second process opens on the title");
-    t.ok(text(later, "title.json", "play")?.startsWith("Continue") ?? false, "which offers Continue: the save was kept");
+    t.ok(text(later, "title.json", "Continue")?.startsWith("Continue") ?? false, "which offers Continue: the save was kept");
     const w = game(later, "welcome.json");
     t.equal(w.owned0, 10, "the save came back");
     // Saved about 1.2 s into the first run, read on the second's first ticks: two hours less about a second.

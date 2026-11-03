@@ -72,9 +72,11 @@ og build . --publish         # dist/: the play page as it ships
   while the music runs on.
 - **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's sci-fi pack recoloured as `assets/styles/lanebeat`; the title
-  (Play, Calibrate, Settings), the HUD (the score as an `og.ui.counter`
-  and the groove top left, Pause top right, the combo beside the
-  highway), `og.ui.pauseMenu` (Resume, Restart, Settings, Title), the
+  (Play, Calibrate, Settings) and the pause (Resume, Restart, Settings,
+  Title) as the game's own screen documents (`assets/ui/main-menu.ogt`
+  and `pause.ogt`, ejected with `og ui eject` and edited), the HUD (the
+  score as an `og.ui.counter` and the groove top left, Pause top right,
+  the combo beside the highway), the
   settings with the offset, the calibration and the results built from
   widgets (the grade popping in, a new best), a wipe between screens (a
   fade with reduced motion).
@@ -171,7 +173,11 @@ og.music (before og.audio) writes the clock and sends og.MusicBeat.
 3. **The difficulty**: the windows, the scroll and the groove in `Tuning`.
 4. **The look**: `assets/styles/lanebeat/style.ogt`'s palette, the lanes'
    colours (`LANE_COLOURS`) and the art in `tools/make-assets.py`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+5. **The title and the pause**: `assets/ui/main-menu.ogt` and
+   `pause.ogt` are the game's screen documents: a button is an element
+   with `on click emit <event>`, which `src/ui.ts` answers; its words are
+   string keys.
+6. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
    more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)

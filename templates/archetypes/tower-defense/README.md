@@ -58,10 +58,11 @@ og build . --publish         # dist/: the play page as it ships
 - **Screens on og.ui with a style** (og-ui §2–§6, og-taste §1–§7): the
   engine's cartoon pack recoloured as `assets/styles/pathguard` (cream
   panels on the night lawn, the lantern's orange as the one accent); the
-  title (`og.ui.mainMenu`), the HUD as boxes in the corners with
-  counting numbers (`og.ui.counter`), the plant tray (right on a wide
-  screen, along the bottom on a phone), `og.ui.pauseMenu`, a settings
-  dialog and the end card built from widgets (stars landing with
+  title and the pause as the game's own screen documents
+  (`assets/ui/main-menu.ogt` and `pause.ogt`, ejected with `og ui eject`
+  and edited), the HUD as boxes in the corners with counting numbers
+  (`og.ui.counter`), the plant tray (right on a wide screen, along the
+  bottom on a phone), a settings dialog and the end card built from widgets (stars landing with
   `og.ui.burst`, the score counting up), an iris between screens (a fade
   with reduced motion), a refused plant shaking the purse with the error
   sound (`og.ui.shake`).
@@ -178,7 +179,11 @@ The visitors' numbers are `KINDS` and the waves `WAVES` in `src/systems.ts`.
    gate, D the doorstep), then `python3 tools/make-assets.py && og cook .`.
 4. **The look**: `assets/styles/pathguard/style.ogt`'s palette and the art
    in `tools/make-assets.py`.
-5. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
+5. **The title and the pause**: `assets/ui/main-menu.ogt` and
+   `pause.ogt` are the game's screen documents: a button is an element
+   with `on click emit <event>`, which `src/ui.ts` answers; its words are
+   string keys.
+6. **Words**: `assets/strings/*.ogt`; a new Chinese string needs nothing
    more: the style's Chinese companions draw every GB2312 character.
 
 ## Commands (for scripts and agents)

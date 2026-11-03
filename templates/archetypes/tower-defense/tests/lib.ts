@@ -62,7 +62,7 @@ export const press = (key: string, t: number) => `${t}:key_down:${key};${(t + 0.
 export const tap = (id: string, t: number) => `${t}:touch_move_to:${id};${(t + 0.017).toFixed(3)}:touch_start;${(t + 0.05).toFixed(3)}:touch_end`;
 
 /** Play on the title: the round starts on the release. */
-export const play = (t: number) => tap("play", t);
+export const play = (t: number) => tap("Play", t);
 
 /**
  * A cell's centre in CSS pixels on the 1280×720 desktop surface: src/ui.ts

@@ -1,8 +1,9 @@
 // Spark Orb's screens on og.ui and the style in assets/styles/sparkorb (the
-// engine's neon pack in the orb's gold on night violet): the title, the
-// HUD (the sparks and their rate top left, stardust and pause top right,
-// the four generators along the bottom, the supernova's progress), the
-// pause menu, the settings dialog, the supernova's dialog and its run
+// engine's neon pack in the orb's gold on night violet): the title and the
+// pause menu (the game's screen documents, assets/ui/main-menu.ogt and
+// pause.ogt), the HUD (the sparks and their rate top left, stardust and
+// pause top right, the four generators along the bottom, the supernova's
+// progress), the settings dialog, the supernova's dialog and its run
 // card, and the welcome back. Screens change through an iris (a fade with
 // reduced motion). Every string is a key of assets/strings/*.ogt and
 // every number goes through src/numbers.ts's `big`.
@@ -321,6 +322,20 @@ function novaCard(world: World, g: GameV): boolean {
   return again;
 }
 
+/**
+ * A screen document up while `shown`: og.ui.screen pushes it the first tick
+ * and builds it with its viewmodel each tick; the tick it is not shown it is
+ * popped (the top layer: the title and the pause never stack). Answers the
+ * events it emitted (its buttons' `emit`, Back's).
+ */
+function layer(world: World, name: string, shown: boolean, vm: object = {}): string[] {
+  if (!shown) {
+    if (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
 /** The screens, the camera, the buses, the platform's answers and the save. */
 export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], writes: [Game, Prefs, og.Camera, og.Audio] }, (_q, time, world) => {
   const game = world.resource(Game);
@@ -360,46 +375,28 @@ export const Ui = defineSystem("Ui", { reads: [Tuning, og.Input, og.Gamepad], wr
   }
   const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "nova";
   const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;
-  if (shown !== "title") g.leftTitle = true;
-  if (shown === "title") {
-    og.ui.setNavigation(true);
-    const progress = g.lifetime > 0 || g.dust > 0;
-    const r = og.ui.mainMenu("Title", {
-      title: say(world, "title.name"),
-      subtitle: say(world, "title.tagline"),
-      items: [
-        { id: "play", label: say(world, progress ? "title.continue" : "title.play"), primary: true },
-        { id: "settings", label: say(world, "title.settings") },
-      ],
-      footer: say(world, "title.footer"),
-      // The title the game opens on is built settled: the web draws it behind the play gate, where
-      // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-      instant: !g.leftTitle,
-    });
-    if (!g.settingsOpen && r.selected === "play") {
+  // The title and the pause are the game's screen documents (assets/ui/main-menu.ogt, pause.ogt).
+  for (const e of layer(world, "main-menu", shown === "title", { canContinue: g.lifetime > 0 || g.dust > 0 })) {
+    if (e === "play" && !g.settingsOpen) {
       g.phase = Phase.Play;
       g.playTick = world.tick;
     }
-    if (r.selected === "settings") g.settingsOpen = true;
-  } else if (shown === "play") {
-    hud(world, g);
-    dialogs(world, g);
-    const m = og.ui.pauseMenu("Pause", {
-      open: g.paused && !g.settingsOpen,
-      title: say(world, "pause.title"),
-      items: [
-        { id: "resume", label: say(world, "pause.resume"), primary: true },
-        { id: "settings", label: say(world, "pause.settings") },
-        { id: "quit", label: say(world, "pause.quit") },
-      ],
-    });
-    if (m.selected === "resume") g.paused = false;
-    if (m.selected === "settings") g.settingsOpen = true;
-    if (m.selected === "quit") {
+    if (e === "settings") g.settingsOpen = true;
+  }
+  for (const e of layer(world, "pause", shown === "play" && g.paused && !g.settingsOpen)) {
+    if (e === "resume") g.paused = false;
+    if (e === "settings") g.settingsOpen = true;
+    if (e === "quit") {
       g.paused = false;
       g.phase = Phase.Title;
       g.saveNow = true;
     }
+  }
+  if (shown === "title") {
+    og.ui.setNavigation(true);
+  } else if (shown === "play") {
+    hud(world, g);
+    dialogs(world, g);
   } else {
     og.ui.setNavigation(true);
     if (novaCard(world, g)) {

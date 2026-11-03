@@ -5,7 +5,7 @@
 import { playtest } from "@origingame/engine/playtest";
 import { game, PLAY, tap } from "./lib.ts";
 
-interface Element { id: string; parent: string; kind: string; x: number; y: number; width: number; height: number }
+interface Element { id: string; parent: string; path: string; kind: string; x: number; y: number; width: number; height: number }
 
 export default playtest({
   name: "the phone layout: a HUD inside the safe area and a d-pad that steps",
@@ -13,7 +13,7 @@ export default playtest({
   commands: [
     "0.1:viewport:phone",
     "0.9:dump_ui:title.json",
-    tap("play", 1.0),
+    tap("Play", 1.0),
     "1.1:touch_move:10,400",
     "1.7:get:Game:started.json",
     "1.8:dump_ui:hud.json",
@@ -47,8 +47,8 @@ export default playtest({
     t.equal(up.turns, started.turns + 1, "the d-pad's Up took a turn");
     t.equal(up.heroY, started.heroY - 1, "a step up");
     t.equal(game(run, "waited.json").turns, up.turns + 1, "Wait waited a turn");
-    const title = run.json<{ elements: Element[] }>("title.json").elements;
-    t.ok(title.some((e) => e.id === "play") && title.every((e) => e.y + e.height <= 844 - 34 && e.y >= 47), "the title's menu sits inside the safe area");
+    const title = run.json<{ elements: Element[] }>("title.json").elements.filter((e) => e.path.startsWith("main-menu/"));
+    t.ok(title.some((e) => e.id === "Play") && title.every((e) => e.y + e.height <= 844 - 34 && e.y >= 47), "the title's menu sits inside the safe area");
     t.frame("play.png", () => t.equal(run.png("play.png").width, 1170, "play.png captured at the phone's device pixels"));
   },
 });

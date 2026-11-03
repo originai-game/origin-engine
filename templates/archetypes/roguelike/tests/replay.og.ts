@@ -8,7 +8,7 @@ export default playtest({
   name: "a dive with steps, strikes and the foes' turns replays to the same hash",
   runs: 2,
   commands: [
-    tap("play", 0.3),
+    tap("Play", 0.3),
     presses(["ArrowUp", "ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "ArrowUp", "Space", "ArrowRight", "ArrowRight"], 0.9),
     press("KeyQ", 3.5),
     "4.0:get:Game:end.json",
