@@ -357,6 +357,12 @@ test("og.nav: paths and agents cross off-mesh links, a shut link is not planned,
 
   const eng = start(og.game({ resources: [Swamp], start: linkYard(false) }));
   const w = eng.world;
+  // Before any crossing emits an event, the saved declaration must still
+  // activate the producer in a world that has never registered it.
+  const cold = start(og.game({ resources: [Swamp], start: swampYard(false) }));
+  expect(cold.world.restore(must(w.snapshot())).ok).toBeTrue();
+  expect(cold.hash()).toBe(eng.hash());
+  expect(types(cold.world)).toContain("og.NavLinkReached");
   expect(types(w)).toContain("og.NavLinkReached");
   const mesh = must(w.resource(Swamp)).mesh as never;
   const ends = { nav: mesh, from: { x: 2, y: 0, z: 4 }, to: { x: 18, y: 0, z: 4 } };
@@ -478,6 +484,11 @@ test("og.ai: a game action runs until og.ai.finish, its events carry the name an
     world.insert(e, og.AiAgent, { behaviour: b.behaviour });
   } }));
   const w = eng.world;
+  // Parsing enables both producers before either queue holds an event.
+  // Opening and restoring this save must preserve that activation.
+  const initial = eng.hash();
+  expect(w.restore(must(w.snapshot())).ok).toBeTrue();
+  expect(eng.hash()).toBe(initial);
   expect(types(w)).toContain("og.AiActionStarted");
   expect(types(w)).toContain("og.AiActionStopped");
   const gunner = w.find("gunner")! as Entity;

@@ -326,11 +326,18 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
     // schema must not opt the restored world into those modules again.
     // An empty archetype still uses its schemas: a later spawn reuses its
     // position in storage order (for example when a persisted cell reloads).
+    // Event declarations activate their producers before the first emit
+    // (nav links, AI actions); an empty queue does not make them unused.
+    // Saves hold no separate emit-grant marker, so even an old eager event
+    // declaration must survive: it is indistinguishable from activation.
     let unused: Vec<String> = edit
         .schemas()
         .iter()
         .filter(|s| {
             crate::lazy::is_lazy(&s.name)
+                && !og_api::host::RECORDS
+                    .iter()
+                    .any(|r| r.schema == s.name && r.kind == "event")
                 && !edit.has_archetype(&s.name)
                 && edit.resource(&s.name).is_none()
                 && !edit.has_events(&s.name)
@@ -411,7 +418,7 @@ mod tests {
                     }
                     let saved = world.snapshot();
                     let upgraded = upgrade(&saved).unwrap();
-                    if !used {
+                    if !used && layout.kind != crate::codec::RecordKind::Event {
                         let (bytes, _) = upgraded.expect("the unused eager type is removed");
                         let edit = SnapshotEdit::from_bytes(&bytes).unwrap();
                         assert!(edit.schema(name).is_none());
