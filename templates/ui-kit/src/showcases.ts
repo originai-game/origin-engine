@@ -353,14 +353,15 @@ const HUDS2 = { mobaHud, rpgHud, mmoHud, rogueHud, tdHud, rhythmHud, fightHud, s
  * Where a HUD page leaves the kit's chrome, desktop then phone (and a phone
  * in landscape, when it differs): a spot its HUD keeps free (the middle of
  * the start edge on most; the racing HUD's place and standings take that, so
- * its chrome sits bottom start, or in the top safe area on a phone, off the road).
+ * its chrome sits bottom start, or in the top safe area on a phone, off the road; a phone on its side, whose start
+ * edge is a HUD's column, names the spot its own layout leaves free).
  * Document pages take it in their Kit slot.
  */
 const CHROME: Record<string, [desktop: Anchor, phone: Anchor, phoneLandscape?: Anchor]> = {
-  actionHud: ["left", "left"], shooterHud: ["left", "left"], shooterScore: ["left", "left"], manageHud: ["left", "left"],
+  actionHud: ["left", "left", "top"], shooterHud: ["left", "left", "bottomLeft"], shooterScore: ["left", "left"], manageHud: ["left", "left"],
   raceHud: ["bottomLeft", "top", "top"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
-  mobaHud: ["left", "left"], rpgHud: ["left", "left"], mmoHud: ["bottomLeft", "left"], rogueHud: ["left", "left"], tdHud: ["left", "left"],
-  rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left"], horrorHud: ["left", "left"], openHud: ["left", "left"],
+  mobaHud: ["left", "left", "bottom"], rpgHud: ["left", "left"], mmoHud: ["bottomLeft", "left"], rogueHud: ["left", "left"], tdHud: ["left", "left"],
+  rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left", "bottom"], horrorHud: ["left", "left", "bottom"], openHud: ["left", "left", "bottom"],
 };
 
 /** Where a showcase HUD page wants the kit's chrome, or null for the kit's own rule. */
@@ -381,6 +382,17 @@ export function showcaseNext(go: (screen: string) => void, screen: string): void
   if (!at) return;
   const pages = at.showcase.pages;
   const next = pages[(at.index + 1) % pages.length]!;
+  // On a HUD page the chrome keeps a small footprint (the HUD is the frame): under a finger the next page is a square
+  // button that names it, and at large text it steps aside (the Gallery still leads to every page; og-ui's square
+  // button doubles past the Gallery's height there).
+  const vp = og.ui.frameViewport();
+  if (CHROME[screen]) {
+    if ((og.ui.frameTheme().textScale ?? 1) >= 1.5) return;
+    if (vp.breakpoint !== "desktop") {
+      if (og.ui.iconButton("Next", "play", { variant: "secondary", label: L(next.name) }).clicked) go(next.screen);
+      return;
+    }
+  }
   if (og.ui.pushButton("Next", L(next.name), { variant: "secondary", iconEnd: "play", width: { kind: "fit" } }).clicked) go(next.screen);
 }
 

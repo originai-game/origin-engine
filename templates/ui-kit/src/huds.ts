@@ -181,12 +181,19 @@ export function actionHud(world: World, under = false): boolean {
     og.ui.hudTimer("Timer", { seconds: Math.max(0, 300 - tick / 60), total: 300, mode: "countdown", label: L("sc.time"), warnAt: 30, anchor: null });
   });
   const combo = { count: st.combo + Math.floor(tick / 120), multiplier: 2, decay: 1 - ((tick % 120) / 120), label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [25, 50, 100] };
-  if (portrait) {
-    // In portrait the end edge's middle is where the scene's floating coin lands (its cover crop): the combo stands under it,
-    // on the cliff's shadow, clear of the timer above at any text size.
-    og.ui.anchor("ComboHud", { anchor: "right", margin: m, offsetY: Math.round(120 * k) }, () => og.ui.comboCounter("Combo", { ...combo, anchor: null }));
-  } else {
-    og.ui.comboCounter("Combo", { ...combo, anchor: "right" });
+  {
+    // The combo stands on the end edge's middle, and never higher than a gap under the coins and the timer (as laid last
+    // tick: at large text, or on a phone in landscape, they reach past the middle). In portrait the middle is where the
+    // scene's floating coin lands (its cover crop): the combo stands under it, on the cliff's shadow.
+    const vp = og.ui.frameViewport();
+    const run = og.ui.bounds("Run");
+    const h = og.ui.bounds("ComboHud")?.height ?? 0;
+    const mid = vp.safeArea.top + (vp.height - vp.safeArea.top - vp.safeArea.bottom) / 2 + (portrait ? Math.round(120 * k) : 0) - h / 2;
+    const top = Math.max(mid, run ? run.y + run.height + t.space.sm : 0);
+    // Where under them it would reach the thumbs' buttons (a phone on its side at large text), it stands beside them instead.
+    const buttons = og.ui.bounds("Buttons");
+    const beside = run !== null && buttons !== null && top + h + t.space.sm > buttons.y;
+    og.ui.anchor("ComboHud", { anchor: "topRight", margin: m, offsetX: beside ? -Math.round(run.width + t.space.md) : 0, offsetY: beside ? 0 : Math.round(top - vp.safeArea.top - m) }, () => og.ui.comboCounter("Combo", { ...combo, anchor: null }));
   }
 
   if (touch) {
@@ -230,7 +237,13 @@ export function shooterHud(world: World): void {
   og.ui.waypoint("Ping", { target: { point: at(0.64, 0.42) }, kind: "ping", label: L("sc.shooter.enemy"), by: "Vex", at: tick - (tick % 300), durationMs: 4000, units: "m" });
   og.ui.waypoint("Objective", { target: { point: at(0.38, 0.47) }, kind: "objective", label: L("sc.shooter.supply") });
   og.ui.crosshair("Crosshair", { style: "cross", spread: 0.2 + 0.15 * Math.abs(Math.sin(tick / 20)), dot: true, hitAt: tick - (tick % 90) + 10, hit: (tick / 90) % 4 === 3 ? "headshot" : "hit", onTarget: (tick % 90) < 30 });
-  if (!portrait) og.ui.compass("Compass", { heading: 214 + 10 * Math.sin(tick / 90), width: Math.round(small ? 300 : 520 * k), pois: [{ key: "ping", bearing: 236, distance: 84, kind: "ping" }, { key: "drop", bearing: 190, distance: 312, kind: "objective", label: L("sc.shooter.supply") }, { key: "squad", bearing: 260, distance: 22, kind: "ally" }], units: "m", anchor: "top" });
+  // The compass spans the top between the minimap and the killfeed (as laid last tick), centred, so on a tablet it meets neither.
+  const vp = og.ui.frameViewport();
+  const mapB = og.ui.bounds("MapHud");
+  const feedB = og.ui.bounds("FeedHud");
+  const side = Math.max(mapB ? mapB.x + mapB.width : 0, feedB ? vp.width - feedB.x : 0);
+  const room = side > 0 ? vp.width - 2 * (side + t.space.md) : Infinity;
+  if (!portrait) og.ui.compass("Compass", { heading: 214 + 10 * Math.sin(tick / 90), width: Math.round(Math.max(160, Math.min(small ? 300 : 520 * k, room))), pois: [{ key: "ping", bearing: 236, distance: 84, kind: "ping" }, { key: "drop", bearing: 190, distance: 312, kind: "objective", label: L("sc.shooter.supply") }, { key: "squad", bearing: 260, distance: 22, kind: "ally" }], units: "m", anchor: "top" });
 
   const markers: MapMarkerItem[] = [
     { key: "me", kind: "player", x: 0.5, y: 0.5, heading: 214 },
@@ -243,7 +256,10 @@ export function shooterHud(world: World): void {
   og.ui.minimapView("Map", { texture: hudArt("maps/world"), zoom: 0.45, size: Math.round((small ? 116 : 168) * k), shape: "circle", markers, zone: L("sc.shooter.zone"), north: "", anchor: "topLeft" });
   og.ui.hudTimer("Zone", { seconds: Math.max(0, st.zone - tick / 60), total: 120, mode: "countdown", label: L("sc.shooter.ring"), warnAt: 20, anchor: "topLeft" });
   if (!portrait) og.ui.killfeed("Feed", { entries: FEED.map((e, i) => ({ ...e, killer: e.local ? L("sc.you") : e.killer ?? "", at: tick - 60 * (i + 1) })), max: 4, durationMs: 60_000, anchor: "topRight" });
-  og.ui.anchor("Squad", { anchor: "bottomLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
+  // On a phone in landscape the kit's chrome takes the bottom start corner (showcases.ts' CHROME): the health stands over it.
+  const chrome = small && !portrait ? og.ui.bounds("Back") : null;
+  const lift = chrome && chrome.y > vp.height / 2 ? -Math.round(chrome.height + t.space.sm) : 0;
+  og.ui.anchor("Squad", { anchor: "bottomLeft", margin: m, offsetY: lift, direction: "column", gap: t.space.xs }, () => {
     og.ui.statBar("Health", { value: st.hp, max: 100, kind: "health", shield: 75, shieldMax: 100, shieldCell: 25, shieldTier: "epic", ghost: true, width: px((small ? 170 : 280) * k), thickness: Math.round(14 * k), name: L("sc.health"), label: L("sc.you"), anchor: null });
     if (!small) {
       for (const [name, hp] of [["Vex", 88], ["Juno", 31]] as const) og.ui.statBar(name, { value: hp, max: 100, kind: "health", ghost: true, width: px(180 * k), thickness: 6, label: name, name, anchor: null });
@@ -258,7 +274,6 @@ export function shooterHud(world: World): void {
   if (portrait) {
     // A phone's foot is the ammunition's and the health's: the abilities stand over the health, at the start thumb, clear of
     // both (their foot a gap above the ammunition's top as it was laid last tick, at any text size).
-    const vp = og.ui.frameViewport();
     const ammo = og.ui.bounds("AmmoHud");
     const lift = ammo ? Math.round(ammo.y - t.space.sm - (vp.height - vp.safeArea.bottom - m)) : -Math.round(118 * k);
     og.ui.anchor("AbilitiesHud", { anchor: "bottomLeft", margin: m, offsetY: Math.min(0, lift) }, () => {
@@ -302,7 +317,14 @@ export function manageHud(world: World): void {
     rates: true,
     anchor: "topLeft",
   });
-  og.ui.anchor("Clock", { anchor: portrait ? "topLeft" : "topRight", margin: m, offsetY: portrait ? Math.round(60 * k) : 0, direction: "row", gap: t.space.sm, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.xs, bottom: t.space.xs }, background: { token: "hud" }, radius: 999, frame: "hud" }, () => {
+  // The date and speed stand top end, or under the resources where the two would meet (a phone in portrait, a phone in
+  // landscape or a tablet, and any width at large text): from both as laid last tick.
+  const sa0 = og.ui.frameViewport().safeArea;
+  const res = og.ui.bounds("ResourcesHud");
+  const clk = og.ui.bounds("Clock");
+  const under = portrait || (res !== null && clk !== null && res.x + res.width + t.space.sm > og.ui.frameViewport().width - sa0.right - m - clk.width);
+  const drop = !under ? 0 : res ? Math.round(res.y + res.height + t.space.sm - (sa0.top + m)) : Math.round(60 * k);
+  og.ui.anchor("Clock", { anchor: portrait ? "topLeft" : "topRight", margin: m, offsetY: drop, direction: "row", gap: t.space.sm, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.xs, bottom: t.space.xs }, background: { token: "hud" }, radius: 999, frame: "hud" }, () => {
     og.ui.label("Date", L("sc.manage.date"), { step: "base", nowrap: true });
     const speed = og.ui.segmented("Speed", { items: [{ icon: "pause", label: L("sc.pause") }, { icon: "play", label: L("sc.manage.play") }, { icon: "bolt", label: L("sc.manage.fast") }], selected: st.speed, size: "small" });
     if (speed.selected !== st.speed) st.speed = speed.selected;
@@ -324,12 +346,14 @@ export function manageHud(world: World): void {
     const sa = vp.safeArea;
     const fw = Math.round((small ? 84 : 112) * k);
     const fh = Math.round(fw * 0.62);
-    const cx = Math.round(vp.width * (portrait ? 0.5 : small ? 0.62 : 0.66));
     const cardW = Math.round(220 * k);
+    // The card keeps clear of the goals on the end edge (as laid last tick): a tablet's goals reach in past the middle.
+    const goals = og.ui.bounds("GoalsHud");
+    const cx = Math.round(Math.min(vp.width * (portrait ? 0.5 : small ? 0.62 : 0.66), goals ? goals.x - t.space.md - cardW / 2 : Infinity));
     const cardH = og.ui.bounds("Plot")?.height ?? Math.round(64 * k);
     const stem = Math.round(18 * k);
-    // On a phone the card stays under the clock (as laid last tick, at any text size), the plot under the card.
-    const clock = small ? og.ui.bounds("Clock") : null;
+    // The card stays under the clock (as laid last tick, at any text size), the plot under the card.
+    const clock = og.ui.bounds("Clock");
     const below = clock ? clock.y + clock.height + t.space.sm + cardH + stem + fh / 2 : 0;
     const cy = Math.round(Math.max(vp.height * (portrait ? 0.4 : 0.56), below));
     og.ui.anchor("PlotMark", { anchor: "topLeft", margin: 0, offsetX: cx - fw / 2 - sa.left, offsetY: cy - fh / 2 - sa.top, width: px(fw), height: px(fh) }, () => {
@@ -363,7 +387,7 @@ const AWAY = { abbr: "HLD", name: "Highland", score: 1, color: { color: { r: 0.8
  * substitution's lower third.
  */
 export function sportsHud(world: World): void {
-  const { small, portrait, k } = frame();
+  const { t, small, portrait, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
   gameScene("scenes/genre-sports", { x: 0.5, y: 0.5 });
@@ -380,7 +404,18 @@ export function sportsHud(world: World): void {
     ],
     anchor: "bottomRight",
   });
-  if (!portrait) og.ui.substitution("Sub", { caption: L("sc.sports.sub"), off: { number: "7", name: "K. Moreau" }, on: { number: "19", name: "T. Ilves" }, offLabel: L("sc.sports.off"), onLabel: L("sc.sports.on"), anchor: "bottomLeft" });
+  // A desktop's foot has room for the lower third beside the player's plate; a phone's or a tablet's does not, so it shows
+  // top end, under the scorebug where the two would meet (large text): from both as laid last tick.
+  if (!portrait) {
+    const sub = { caption: L("sc.sports.sub"), off: { number: "7", name: "K. Moreau" }, on: { number: "19", name: "T. Ilves" }, offLabel: L("sc.sports.off"), onLabel: L("sc.sports.on") };
+    const vp = og.ui.frameViewport();
+    const bug = og.ui.bounds("BugHud");
+    const was = og.ui.bounds("SubHud");
+    if (vp.breakpoint === "desktop") og.ui.substitution("Sub", { ...sub, anchor: "bottomLeft" });
+    else if (bug && was && bug.x + bug.width + t.space.sm > was.x) {
+      og.ui.anchor("SubHud", { anchor: "topRight", margin: m, offsetY: Math.round(bug.y + bug.height + t.space.sm - (vp.safeArea.top + m)) }, () => og.ui.substitution("Sub", { ...sub, anchor: null }));
+    } else og.ui.substitution("Sub", { ...sub, anchor: "topRight" });
+  }
 }
 
 /**

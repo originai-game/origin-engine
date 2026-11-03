@@ -76,7 +76,11 @@ export function mobaHud(world: World): void {
       { key: "r", image: hudArt("boons/flame-blade"), name: L("sc.moba.ult"), hotkey: "R", ultimate: Math.min(1, 0.7 + (tick % 600) / 2000), level: 2, maxLevel: 3 },
     ];
     og.ui.abilityBar("Abilities", { slots, size: Math.round(60 * k), gap: t.space.sm, anchor: "bottom" });
-    og.ui.anchor("Gold", { anchor: "bottom", margin: m, offsetX: Math.round(220 * k), direction: "row", gap: t.space.xs, cross: "center" }, () => {
+    // The gold stands beside the abilities' end (both as laid last tick, so at large text it moves out with them).
+    const bar = og.ui.bounds("AbilitiesHud");
+    const gold = og.ui.bounds("Gold");
+    const goldX = bar && gold ? Math.round(bar.width / 2 + t.space.md + gold.width / 2) : Math.round(220 * k);
+    og.ui.anchor("Gold", { anchor: "bottom", margin: m, offsetX: goldX, direction: "row", gap: t.space.xs, cross: "center" }, () => {
       og.ui.icon("Coin", "coin", { size: Math.round(20 * k), tint: { token: "gold" } } as never);
       og.ui.counter("Amount", 2_340 + Math.floor(tick / 30) * 2, { step: "lg", font: "rounded" });
     });
@@ -216,11 +220,19 @@ export function rogueHud(world: World): void {
       columns: 5, size: Math.round((small ? 30 : 36) * k), timers: false, anchor: null,
     });
   });
+  // Under a finger the chamber stands top end, or under the player's column where the two would meet (large text): from
+  // both as laid last tick.
+  const playerB = touch ? og.ui.bounds("Player") : null;
+  const chamberB = touch ? og.ui.bounds("Chamber") : null;
+  const chamberY = playerB && chamberB && playerB.x + playerB.width + t.space.sm > chamberB.x ? Math.round(playerB.y + playerB.height + t.space.sm - (og.ui.frameViewport().safeArea.top + m)) : 0;
   chip("Chamber", () => {
     og.ui.label("Room", L("sc.rogue.room", { n: 14 }), { step: "base", font: "display", nowrap: true });
     og.ui.icon("Reward", "gem", { size: Math.round(18 * k), tint: { token: "info" } } as never);
-  }, { anchor: touch ? "topRight" : "top" });
-  og.ui.anchor("Purse", { anchor: touch ? "topRight" : "bottomLeft", margin: m, offsetY: touch ? Math.round(48 * k) : 0, direction: "row", gap: t.space.md, cross: "center" }, () => {
+  }, { anchor: touch ? "topRight" : "top", offsetY: chamberY });
+  // Under a finger the purse stands under the chamber's chip (as laid last tick, at any text size).
+  const chamber = touch ? og.ui.bounds("Chamber") : null;
+  const purseY = !touch ? 0 : chamber ? Math.round(chamber.y + chamber.height + t.space.sm - (og.ui.frameViewport().safeArea.top + m)) : Math.round(48 * k);
+  og.ui.anchor("Purse", { anchor: touch ? "topRight" : "bottomLeft", margin: m, offsetY: purseY, direction: "row", gap: t.space.md, cross: "center" }, () => {
     og.ui.row("Gold", { gap: t.space.xs, cross: "center" }, () => {
       og.ui.icon("Coin", "coin", { size: Math.round(20 * k), tint: { token: "gold" } } as never);
       og.ui.counter("Amount", 312 + Math.floor(tick / 120) * 5, { step: "lg", font: "rounded" });
@@ -266,7 +278,7 @@ export function tdHud(world: World): void {
     ],
     rates: false, anchor: "topLeft",
   });
-  og.ui.wavePreview("Waves", {
+  const wavesDesc: Parameters<typeof og.ui.wavePreview>[1] = {
     title: L("sc.td.waves"), current: 7, max: small ? 3 : 5,
     waves: [
       { key: "7", number: 7, name: "Wolfkin", image: hudArt("portraits/red-louse"), count: 18 },
@@ -277,8 +289,22 @@ export function tdHud(world: World): void {
       { key: "12", number: 12, name: "Shieldbearers", image: hudArt("portraits/brann"), count: 20 },
     ],
     anchor: portrait ? "topRight" : "right",
-  });
-  og.ui.anchor("Call", { anchor: small ? "bottomRight" : "topRight", margin: m, offsetY: portrait ? -Math.round(96 * k) : 0, direction: "row", gap: t.space.sm, cross: "center" }, () => {
+  };
+  // In portrait the waves stand top end, or under the purse where the two would meet (large text): from both as laid last tick.
+  const vp = og.ui.frameViewport();
+  const purse = og.ui.bounds("PurseHud");
+  const waves = og.ui.bounds("WavesHud");
+  if (portrait && purse && waves && purse.x + purse.width + t.space.sm > waves.x) {
+    og.ui.anchor("WavesHud", { anchor: "topRight", margin: m, offsetY: Math.round(purse.y + purse.height + t.space.sm - (vp.safeArea.top + m)) }, () => og.ui.wavePreview("Waves", { ...wavesDesc, anchor: null }));
+  } else {
+    og.ui.wavePreview("Waves", wavesDesc);
+  }
+  // On a phone the call stands bottom end over the towers' bar (a gap above its top as laid last tick, at any text size).
+  const build = small ? og.ui.bounds("BuildHud") : null;
+  const call = og.ui.bounds("Call");
+  const meets = portrait || (build !== null && call !== null && build.x + build.width + t.space.sm > call.x);
+  const callY = !small || !meets ? 0 : build ? Math.min(0, Math.round(build.y - t.space.sm - (vp.height - vp.safeArea.bottom - m))) : -Math.round(96 * k);
+  og.ui.anchor("Call", { anchor: small ? "bottomRight" : "topRight", margin: m, offsetY: callY, direction: "row", gap: t.space.sm, cross: "center" }, () => {
     og.ui.hudTimer("Next", { seconds: Math.max(0, 18 - (tick % 1080) / 60), total: 18, mode: "countdown", label: L("sc.td.next"), warnAt: 5, anchor: null });
     og.ui.pushButton("Send", L("sc.td.send"), { variant: "primary", icon: "flag", width: { kind: "fit" } });
     if (!small) pauseButton();
@@ -313,7 +339,14 @@ export function rhythmHud(world: World): void {
   const lane = Math.round((portrait ? 76 : small ? 56 : 84) * k);
   const width = lane * 4;
   const left = Math.round((vp.width - width) / 2);
-  const hitY = Math.round(vp.height - (portrait ? 200 : small ? 90 : 140) * k);
+  // The keys under the hit line keep a gap over the kit's chrome in the bottom start corner on a phone (both as laid last
+  // tick: at large text the keys and the chrome grow into each other).
+  const chrome = small ? og.ui.bounds("Back") : null;
+  const keys = og.ui.bounds("KeysHud");
+  const lastHit = og.ui.memory("rhythm~hitY", 0);
+  const clear = chrome && keys && lastHit > 0 && chrome.y > vp.height / 2 && chrome.x + chrome.width > keys.x ? chrome.y - t.space.sm - (keys.y + keys.height - lastHit) : Infinity;
+  const hitY = Math.round(Math.min(vp.height - (portrait ? 200 : small ? 90 : 140) * k, clear));
+  og.ui.remember("rhythm~hitY", hitY);
   // The highway: four lanes on a dark well, the notes falling at 0.6 of the height a second. The well is the game's
   // own night-blue in every pack (a light pack's backdrop would lay a pale slab down the lane), its rules a faint light.
   og.ui.anchor("Highway", { anchor: "topLeft", margin: 0, offsetX: left - vp.safeArea.left, offsetY: -vp.safeArea.top, width: px(width), height: px(hitY + 8) }, () => {

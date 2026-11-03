@@ -653,7 +653,10 @@ function galleryButton(world: World, d: DemoState): void {
   // A showcase's document page takes the chrome in its Kit slot (showcases.ts); a HUD page names its free spot.
   if (chromeInDocument(SCREENS[d.screen]!)) return;
   const own = chromeAnchor(SCREENS[d.screen]!);
-  og.ui.anchor("Back", own ? { anchor: own, gap: 8, cross: "center" } : {
+  // On an edge's middle the chrome stands as a column, so it reaches no further into the HUD than its widest button (a
+  // row on a phone on its side, whose height is the scarce one).
+  const column = (own === "left" || own === "right") && bp !== "phoneLandscape";
+  og.ui.anchor("Back", own ? { anchor: own, gap: 8, cross: "center", ...(column ? { direction: "column" as const } : {}) } : {
     anchor: versus || (rts && phone) ? (phone ? "left" : "top") : corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
     offsetY: versus ? 0 : rts && phone ? -Math.round(vp.height * 0.12) : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
     gap: 8,
