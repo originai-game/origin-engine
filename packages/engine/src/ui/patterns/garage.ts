@@ -127,6 +127,8 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
         gap: u(portrait ? 8 : 12),
         cross: "center",
         width: portrait ? null : grow(),
+        // A chip is a whole touch target, 44 tall at least.
+        ...(portrait ? { height: { kind: "fit", min: 44 } as Api.Size } : {}),
         padding: xy(u(portrait ? 10 : 12), u(portrait ? 6 : 10)),
         radius: portrait ? 999 : Math.max(4, t.small),
         semantics: { role: "tab", name: [c.name ?? k, c.count ?? ""].filter(Boolean).join(", "), selected: on },
