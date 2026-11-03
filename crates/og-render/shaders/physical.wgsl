@@ -470,7 +470,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let r = reflect(-v, bent);
   let prefiltered = reflected_light(r, in.world_pos, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let env_brdf = f_ibl * lut.x + lut.y;
+  let env_brdf = f0_ibl * lut.x + lut.y;  // Karis split sum (pbr_fs.wgsl)
   let ao_sample = maps.b;
   var ibl_scale = material.flags.z * keep;
   if (material.flags.y >= 0.0) {

@@ -271,7 +271,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let mip = s.roughness * frame.params.y;
   let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
+  // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term already holds the Fresnel rise at grazing
+  // angles; f_ibl * lut.x counted it twice (rough leaves seen edge-on reflected 3-4x the sky).
+  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * frame.params.x;
   let ao_sample = material_sample(ao_tex, UV_AO, uv).r;
   // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
   // diffuse_ibl and specular_ibl already).
