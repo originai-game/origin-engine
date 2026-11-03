@@ -182,6 +182,7 @@ impl Renderer {
             self.taa_history = None;
             self.gi_history = None;
             self.previous_time = None;
+            self.previous_wind = None;
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
             let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());

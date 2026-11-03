@@ -3921,6 +3921,11 @@ impl Renderer {
         self.gi_history = gi_copy.then_some(self.frame_index);
         self.prev_view_proj = Some(cam.view_proj);
         self.previous_time = Some(t[0]);
+        let wind = scene.wind.unwrap_or(Wind {
+            strength: 0.0,
+            ..Wind::default()
+        });
+        self.previous_wind = Some((wind, wind_phases(&wind, scene.tick, scene.tick_rate)));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not
         // only when the renderer is dropped (a killed process never is).

@@ -82,7 +82,26 @@ fn failures(s: &og_render::ShaderSource) -> Vec<String> {
 
 #[test]
 fn every_module_validates_and_translates_to_msl_spirv_and_hlsl() {
-    let sources = og_render::shader_sources();
+    let mut sources = og_render::shader_sources();
+    // The binding-free foliage contract before the meshlet caller lands:
+    // make its deformation reachable with runtime (not folded) inputs.
+    sources.push(og_render::ShaderSource {
+        label: "foliage deformation".into(),
+        wgsl: format!(
+            "{}\n{}",
+            og_render::foliage::WGSL,
+            r#"
+@vertex fn foliage_test(@location(0) p: vec3f, @location(1) f0: vec4f,
+                       @location(2) f1: vec4f) -> @builtin(position) vec4f {
+  let model = mat4x4f(vec4f(1, 0, 0, 0), vec4f(0, 1, 0, 0),
+                     vec4f(0, 0, 1, 0), vec4f(0, 0, 0, 1));
+  let wind = FoliageWind(vec4f(1, 0, 0, 0.3), vec4f(0.6, 10, 1, 2), vec4f(0, 0, 0, 0.628));
+  return vec4f(p + foliage_offset(p, f0, f1, model, wind), 1);
+}
+"#
+        ),
+        constants: Vec::new(),
+    });
     assert!(sources.len() >= 30, "{} modules", sources.len());
     let failures: Vec<String> = sources.iter().flat_map(failures).collect();
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
