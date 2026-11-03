@@ -39,7 +39,8 @@ test("a scaffolded game cooks, passes its playtest and leaves the frame and dump
   expect(tested.out).toMatch(/PASS smoke \(9 checks/);
   expect(tested.out).toMatch(/PASS guard \(16 checks/);
   expect(tested.out).toMatch(/PASS intro \(17 checks/);
-  expect(tested.out).toContain("3 suite(s) passed");
+  // smoke, guard and intro, and the inspector's two suites (G3-7).
+  expect(tested.out).toContain("5 suite(s) passed");
 
   const out = join(game, "og-out", "test", "smoke");
   const png = readFileSync(join(out, "smoke.png"));

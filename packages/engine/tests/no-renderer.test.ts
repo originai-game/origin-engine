@@ -120,16 +120,17 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   expect(text.stdout).toContain("  ~ og run: expect:region:560,16,64,24:color:#9da5b1:24: no renderer, frame unchecked\n");
   expect(text.stdout).toContain("  ~ smoke.png: no renderer, frame unchecked\n");
   expect(text.stdout).toContain("  ~ surface.png: no renderer, frame unchecked\n");
-  // smoke (the region expectation and its screenshot), guard, intro (two frames) and the surface suite written above.
+  // smoke (the region expectation and its screenshot), guard, intro (two frames), the inspector's
+  // two suites (three frames each, G3-7) and the surface suite written above.
   expect(text.stdout).toMatch(/PASS intro \(\d+ checks, 2 frames unchecked/);
-  expect(text.stdout).toContain("og test: 4 suite(s) passed; 5 frame(s) unchecked: no renderer here");
+  expect(text.stdout).toContain("og test: 6 suite(s) passed; 11 frame(s) unchecked: no renderer here");
   expect(existsSync(join(game, "og-out", "test", "smoke", "smoke.png"))).toBeFalse();
 
   // And as JSON, with the dumps kept for the comparison below.
   const none = run([ogBin(), "test", game, "--json"], false);
   if (none.code !== 0) throw new Error(none.out);
   const blind = results(none.stdout);
-  expect([...blind.keys()].sort()).toEqual(["guard", "intro", "smoke", "surface"]);
+  expect([...blind.keys()].sort()).toEqual(["guard", "inspector", "inspector-gizmo", "intro", "smoke", "surface"]);
   for (const r of blind.values()) {
     expect(r.tier).toBe("none");
     expect(r.failures).toEqual([]);
@@ -153,7 +154,7 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   // §2.6), so a machine whose adapter request fails fails here, never
   // passing as tier none.
   const lit = results(run([ogBin(), "test", game, "--json"], true).stdout);
-  expect([...lit.keys()].sort()).toEqual(["guard", "intro", "smoke", "surface"]);
+  expect([...lit.keys()].sort()).toEqual(["guard", "inspector", "inspector-gizmo", "intro", "smoke", "surface"]);
   for (const [name, r] of lit) {
     const b = blind.get(name)!;
     expect(r.failures).toEqual([]);
