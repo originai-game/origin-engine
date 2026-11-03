@@ -370,6 +370,10 @@ impl Renderer {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            // Anisotropic where the device filters so (three.js parity: ANISO = max supported; the sprites' rule, so a
+            // software rasterizer stays at 1): grazing-angle ground, roofs and bark otherwise blur to the mip a
+            // trilinear filter picks for the steepest axis.
+            anisotropy_clamp: info.sprite_anisotropy,
             ..Default::default()
         });
         // Sprites and the UI's images filter anisotropically where the
