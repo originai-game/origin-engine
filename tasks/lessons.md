@@ -30,3 +30,14 @@ Before calling an unknown-option exit a defect, inspect the public parser and
 the internal caller. `og run --device` invokes device.ts's internal preflight
 before building; users do not pass `--preflight` to og run. Preserve observed
 exit codes while distinguishing invalid invocations from product failures.
+
+## 2026-11-03 — A serial rerun does not fix gate contention
+
+When a timeout disappears outside the normal lane, inspect shared fixtures
+and concurrency across steps before changing its timeout. Per-process GPU
+limits add together across test runners. Declare the shared adapter in the
+gate scheduler, bound worker counts, and verify through the normal lane.
+
+Do not edit a shell script while it is running. Bash can resume reading at
+an old byte offset after a long loop, so an otherwise valid edit can break
+the active invocation. Wait for the gate to exit before editing its script.

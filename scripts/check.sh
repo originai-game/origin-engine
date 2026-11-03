@@ -939,9 +939,8 @@ step_web_reference() {
 # step_needs STEP: the steps whose outputs STEP reads. A selected STEP starts
 # after those of them that are selected; --only STEP adds them.
 # test needs wasm-build for og-tests::wasm's proof (its og-render artifact).
-# bun-test does not wait for test: build.sh builds the dev addon and og
-# itself (cargo's lock on target/debug serialises it with the test build),
-# and beside test it measured stable (tests/evidence/gate-speed/).
+# GPU users share an adapter budget below, independently of input dependencies.
+# build.sh builds the dev addon and og itself when needed.
 step_needs() {
   case "$1" in
     test) [ "$FUNCTIONAL" = 1 ] || echo wasm-build ;;
@@ -1024,12 +1023,26 @@ gate_finish() {
   og_say "$line"
 }
 
-# gate_ready STEP: every step STEP waits for that is selected has passed or been skipped.
+# Each GPU step already runs several renderers (nextest's gpu group, Bun
+# workers or og test --jobs). Those limits must not add up across steps.
+step_uses_gpu() {
+  case "$1" in
+    test|test-quick|test-windows|bun-test|bun-functional|ui-styles|ui-kit|web-reference) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Dependencies must have passed; another GPU step must have released the adapter.
 gate_ready() {
   local d
   for d in $(step_needs "$1"); do
     case " $selected " in *" $d "*) [ "$(gate_get state "$d")" = ok ] || return 1 ;; esac
   done
+  if step_uses_gpu "$1"; then
+    for d in $selected; do
+      if [ "$(gate_get state "$d")" = running ] && step_uses_gpu "$d"; then return 1; fi
+    done
+  fi
   return 0
 }
 

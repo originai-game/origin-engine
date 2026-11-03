@@ -198,6 +198,13 @@ locally), and `packages/engine`'s bun test files run in parallel workers
 7.5 s, is the longest file). One at a time (`OG_GATE_JOBS=1`) the same
 gate takes 129 s.
 
+The gate now admits one GPU test step at a time, while independent CPU
+steps can run beside it. Each GPU step retains its internal concurrency:
+nextest's four-slot `gpu` group, four Bun workers, or `og test --jobs`.
+The engine package uses `bun test --parallel=4` rather than a worker per
+CPU. Separate step limits otherwise add together on the same adapter.
+This resource exclusion does not add input dependencies to `--only`.
+
 `og-tests::wasm` (og-render must compile for wasm32) takes the full lane's
 `wasm-build` og-render artifact when it is newer than og-render's sources,
 so it needs no second wasm32 target directory.

@@ -69,7 +69,7 @@
   "scripts": {
     "build": "sh scripts/build.sh",
     "typecheck": "bun scripts/typecheck.ts",
-    "test": "sh scripts/build.sh && bun run typecheck && bun test --parallel ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
+    "test": "sh scripts/build.sh && bun run typecheck && bun test --parallel=4 ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/",
     "pack": "sh scripts/pack.sh",
     "test:browser": "bun tests/web/wire.ts && bun tests/web/player.ts && bun tests/web/export.ts && bun tests/web/device.ts",
     "test:reference": "bun tests/web/reference.ts"
