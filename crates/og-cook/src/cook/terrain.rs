@@ -241,6 +241,27 @@ pub(super) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
         .collect()
 }
 
+/// The layer textures a terrain names (`layers`, `layerNormals`, each
+/// `layer`'s `albedo` and `normal`), as the asset ids it loads them by.
+pub(super) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+    let Ok(doc) = Document::parse(text) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = ["layers", "layerNormals"]
+        .iter()
+        .filter_map(|k| string_of(&doc.body, k))
+        .map(|t| resolve(rel, root, &t))
+        .collect();
+    for l in doc.body.get_all("layer") {
+        if let Some(b) = &l.block {
+            out.extend(["albedo", "normal"].iter().filter_map(|k| string_of(b, k)));
+        }
+    }
+    out.into_iter()
+        .map(|t| crate::runtime::asset_id(&t).to_string())
+        .collect()
+}
+
 /// The stamp's dependencies: each file the terrain reads, with its hash,
 /// and whether each layer texture is an asset.
 pub(super) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> String {

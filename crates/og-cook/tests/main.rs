@@ -10,6 +10,7 @@ mod behaviour;
 mod compressed;
 mod conform_2d;
 mod conform_mesh;
+mod consumed_paths;
 mod cook_report;
 mod documents;
 mod environment;
