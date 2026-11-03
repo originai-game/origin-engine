@@ -9,7 +9,7 @@ knowledge package got wrong or left out, and what the engine did not do,
 is `FINDINGS.md`.
 
 ```sh
-bun tools/make-assets.ts   # every asset (the music, a splash and the copied style's art are not committed)
+bun tools/make-assets.ts   # every asset (the music and a splash are not committed)
 og cook .
 og run .                   # headless with the probe; og dev . reloads on save
 og test .                  # nine playtests, the frames against references/<tier>
@@ -72,8 +72,8 @@ third. New players can sit down between rounds and join from the next.
 `assets/looks/rumpus-isle.ogt` extends the catalogue's `miniature-diorama`
 (og-taste §12: a tabletop model, tilt-shift focus, a soft sun, a high
 camera), with the depth of field focused on the island from the camera's
-19 m, and the cartoon style recoloured sea and coral (`styles/rumpus`, copied
-by the generator). `create --premise` matched `rubber-hose-animation`, a 2D
+19 m, and the cartoon style recoloured sea and coral (`styles/rumpus`, kept
+in the game, not copied by the generator). `create --premise` matched `rubber-hose-animation`, a 2D
 flipbook style, for the premise (`FINDINGS.md` #1).
 
 ## Playtests

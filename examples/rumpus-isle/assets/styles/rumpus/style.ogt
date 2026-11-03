@@ -6,6 +6,7 @@ version 2
 # the CJK fallback line dropped, the game shows Latin-1 only.
 name "rumpus"
 scheme light
+screens 1
 atlas "atlas.png" 384 256
 scale 1
 palette {

@@ -17,17 +17,17 @@
 //   so it is not committed (.gitignore).
 // - fx/*.ogt: the emitters (a splash, dash dust, a berry's sparkle, a tile's
 //   crumbs, the podium's confetti).
-// - styles/rumpus/: the engine's cartoon style pack copied from
-//   templates/ui-kit (its atlas, icons and fonts are not committed:
-//   .gitignore), recoloured sea and coral, its CJK fallback line dropped.
+// styles/rumpus/ is not made here: the game's style (the engine's cartoon
+// pack of November 2026 recoloured sea and coral, its atlas, icons and
+// fonts) is committed, so the engine's pack moving on never changes how
+// Rumpus Isle looks.
 
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { band, bevelBox, Builder, disc, glb, ring, type Mat, type Part, type V3 } from "./glb.ts";
 
 const ROOT = resolve(import.meta.dir ?? ".", "..");
 const ASSETS = join(ROOT, "assets");
-const ENGINE = resolve(ROOT, "..", "..");
 
 function write(rel: string, data: Uint8Array | string): void {
   const p = join(ASSETS, rel);
@@ -465,38 +465,6 @@ blend alpha
 `);
 }
 
-// ------------------------------------------------------------------- style
-
-/**
- * The cartoon style pack (the catalogue's style for miniature-diorama), copied
- * from the engine's templates/ui-kit as og-taste §1 says: its ground a deep
- * sea blue, its accent a coral. Its CJK `fallback` line is dropped (English
- * and French only, Latin-1).
- */
-function style(): void {
-  const from = join(ENGINE, "templates", "styles", "cartoon");
-  const to = join(ASSETS, "styles", "rumpus");
-  mkdirSync(to, { recursive: true });
-  for (const f of ["atlas.png", "atlas.png.ogt", "icons.png", "icons.png.ogt", "Fredoka-SemiBold.ttf", "Fredoka-SemiBold.ttf.ogt", "LilitaOne-Regular.ttf", "LilitaOne-Regular.ttf.ogt", "OFL.txt", "LICENSES.md"]) copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "style.ogt"), "utf8");
-  const colours: Record<string, string> = {
-    backdrop: "#123a5c",
-    well: "#174870",
-    primary: "#b23a1e",
-    primaryHover: "#b9401f",
-    primaryActive: "#962f17",
-    highlight: "#a3341a",
-    primarySoft: "#b23a1e40",
-    scrim: "#0b2238cc",
-    gold: "#b23a1e",
-  };
-  for (const [k, v] of Object.entries(colours)) text = text.replace(new RegExp(`^(  ${k}) "#[0-9a-fA-F]+"`, "m"), `$1 "${v}"`);
-  text = text.replace(/^name "cartoon"$/m, 'name "rumpus"');
-  text = text.replace(/^# The cartoon style pack.*$/m, "# Rumpus Isle's style: the engine's cartoon style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground a deep sea blue and its accent coral;\n# the CJK fallback line dropped, the game shows Latin-1 only.");
-  text = text.replace(/^  fallback .*\n/m, "");
-  writeFileSync(join(to, "style.ogt"), text);
-}
-
 // -------------------------------------------------------------------- main
 
 island();
@@ -507,7 +475,6 @@ podium();
 berry();
 sfx();
 fx();
-style();
 write("audio/splash.wav", splash());
 write("music/romp.wav.ogt", "type import\nversion 1\n---\n# The music (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n");
 if (!process.argv.includes("--no-music")) write("music/romp.wav", music());
