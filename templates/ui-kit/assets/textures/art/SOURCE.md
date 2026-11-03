@@ -86,7 +86,7 @@ ui-art/11d3db9b1c45) were layout references only.
 
 ## The last genre previews (2026-11-02, the U6d stream, r41)
 
-Art for the garage, ledger, loadout and VN gallery previews, in the same direction as the set above:
+Art for the garage, ledger, RTS commands, loadout and VN gallery previews, in the same direction as the set above:
 
 | File | Kind | Origin |
 |---|---|---|
@@ -98,3 +98,5 @@ Art for the garage, ledger, loadout and VN gallery previews, in the same directi
 | `cg/riverboat.jpg`, `storm-ferry.jpg`, `dawn-gate.jpg` | cg (the VN gallery's event pictures) | the same API, one prompt each, cut to 1280×720 |
 | `city/residential.jpg`, `commercial.jpg`, `industrial.jpg`, `tourism.jpg`, `police.jpg`, `fire.jpg`, `health.jpg`, `education.jpg`, `transit.jpg`, `parks.jpg`, `power.jpg`, `water.jpg` | itemIcon (the ledger's taxes and services, the overlay bar's lenses) | the same API, two 3×2 sheets cut into cells, 256 px |
 | `scenes/city.jpg` | menuBackground (the ledger's city at dusk) | the same API, cut to 1280×720 |
+| `rts/stop.jpg`, `patrol.jpg`, `build.jpg`, `rally.jpg`, `gather.jpg`, `repair.jpg`, `barracks.jpg`, `tower.jpg`, `farm.jpg`, `wall.jpg`, `forge.jpg`, `keep.jpg` | ability (the RTS command card's orders and buildings) | the same API, two 3×2 sheets cut into cells, 256 px |
+| `scenes/battlefield.jpg` | menuBackground (the RTS preview's field under the console) | the same API, cut to 1280×720 |
