@@ -202,12 +202,13 @@ fn a_light_in_a_non_casting_fixture_lights_its_room_on_both_point_shadow_storage
 }
 
 /// Eight shadowed lights (38 passes: six points with cube faces, two
-/// spots); the two far, dim ones are left out.
+/// spots), the default quality's budget; the two far, dim ones are left
+/// out, though the renderer allows sixteen.
 #[test]
 fn shadows_local_8_matches_its_reference() {
     let report = check("shadows-local-8");
     let s = report.stats;
-    assert_eq!(report.info.shadowed_lights, 8);
+    assert_eq!(report.info.shadowed_lights, 16);
     assert_eq!((s.shadowed_lights, s.shadowed_lights_dropped), (8, 2));
     assert_eq!(s.shadow_passes, 6 * 6 + 2);
 }
@@ -218,11 +219,14 @@ fn shadows_local_8_matches_its_reference() {
 #[test]
 fn the_shadowed_lights_kept_are_the_brightest_at_the_camera() {
     let desc = scenes::base_desc();
-    let max = Renderer::new_blocking(&desc)
+    let mut scene = shadow_scenes::many_shadowed_lights(true);
+    // The frame's budget: the renderer's cap (16) and the quality's (8 by
+    // default), so the scene's ten shadowed lights lose two.
+    let max = (Renderer::new_blocking(&desc)
         .expect("renderer")
         .info()
-        .shadowed_lights as usize;
-    let mut scene = shadow_scenes::many_shadowed_lights(true);
+        .shadowed_lights
+        .min(scene.quality.shadowed_lights)) as usize;
     // The far pair first in the scene: order does not pick them.
     scene.lights.rotate_right(2);
     let (kept, stats) = frame(&desc, &scene, 1);
