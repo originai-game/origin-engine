@@ -1430,8 +1430,9 @@ pub fn cook_project_with_texture_cache(
             Kind::Font => match font_settings(s, &options.font) {
                 Ok(f) => {
                     // "font 2": the Unicode spaces a font lacks are cooked as empty
-                    // glyphs, so a font cooked before re-cooks.
-                    let st = stamp(&[b"font 2", f.describe().as_bytes(), &hash]);
+                    // glyphs; "font 3": the field is of each glyph's outline
+                    // union (cook::font's overlap). A font cooked before re-cooks.
+                    let st = stamp(&[b"font 3", f.describe().as_bytes(), &hash]);
                     outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),

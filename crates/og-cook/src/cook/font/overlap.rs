@@ -247,7 +247,6 @@ fn resolve(shape: &Shape<Contour>) -> Option<Shape<Contour>> {
                 &mut budget,
                 &mut found,
             ) {
-                eprintln!("DBGO budget");
                 return None;
             }
             for &(t, u, p) in &found {
@@ -326,7 +325,6 @@ fn resolve(shape: &Shape<Contour>) -> Option<Shape<Contour>> {
             kept.push(b);
         }
     }
-    eprintln!("DBGO split {split} dropped {dropped} kept {}", kept.len());
     if !split && !dropped {
         return None;
     }
@@ -360,10 +358,7 @@ fn resolve(shape: &Shape<Contour>) -> Option<Shape<Contour>> {
                     last.p[last.n - 1] = start;
                     break;
                 }
-                _ => {
-                    eprintln!("DBGO chain fail at {end:?} home {home} next {next:?}");
-                    return None;
-                }
+                _ => return None,
             }
         }
         contours.push(Contour {
