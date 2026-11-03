@@ -1790,8 +1790,8 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
-                foliage_wind: uniform.foliage_wind,
-                pad: [0.0; 44],
+                foliage_wind: uniform.foliage_wind[0],
+                pad: [0.0; 8],
             };
         }
         for ls in &local_shadows {
@@ -1813,8 +1813,8 @@ impl Renderer {
                     } else {
                         [0.0; 4]
                     },
-                    foliage_wind: uniform.foliage_wind,
-                    pad: [0.0; 44],
+                    foliage_wind: uniform.foliage_wind[0],
+                    pad: [0.0; 8],
                 };
             }
         }
@@ -1842,8 +1842,8 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
-                foliage_wind: uniform.foliage_wind,
-                pad: [0.0; 44],
+                foliage_wind: uniform.foliage_wind[0],
+                pad: [0.0; 8],
             };
         }
         self.queue

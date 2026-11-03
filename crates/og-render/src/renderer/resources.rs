@@ -13,8 +13,9 @@ pub(crate) struct ShadowPassUniform {
     /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
     /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).
     pub(crate) paraboloid: [f32; 4],
-    pub(crate) foliage_wind: [crate::foliage::FoliageWind; 2],
-    pub(crate) pad: [f32; 44],
+    /// Shadows draw only the current deformation; motion history lives in Frame.
+    pub(crate) foliage_wind: crate::foliage::FoliageWind,
+    pub(crate) pad: [f32; 8],
 }
 
 #[cfg(test)]
