@@ -149,7 +149,12 @@ impl Clouds {
                 (1.1 * k).min(1.0),
             )
         };
-        (grey(color) * sky, grey(sun_color) * sky * sun)
+        // The air is lit by the deck's base, a third of the clear sky's
+        // light at full cover (as the sky draws it, sky.wgsl `cloud_deck`);
+        // a broken sky's air is the clear sky's.
+        let t = ((k - 0.3) / 0.6).clamp(0.0, 1.0);
+        let deck = 1.0 - 0.65 * t * t * (3.0 - 2.0 * t);
+        (grey(color) * sky * deck, grey(sun_color) * sky * sun * deck)
     }
 }
 

@@ -136,7 +136,7 @@ struct SeaChop {
   mss: f32,
 };
 
-// The wind's chop: the short gravity and capillary waves (wavelengths 0.2 to 2.4 m) the swell's 32 waves stop short
+// The wind's chop: the short gravity and capillary waves (wavelengths 0.17 to 6 m) the swell's 32 waves stop short
 // of, eight trains within 50 degrees of the wind, their mean square slope rising with it (0.003 a metre per second
 // over 4 m/s, Cox and Munk's slick-free share left to the short sea) and patchy (cat's paws, a few tens of metres
 // across). Each fades where a pixel spans it, its slope going to the facets' roughness instead (else it aliases).
@@ -154,7 +154,7 @@ fn sea_chop(p: vec2<f32>, footprint: f32, t: f32) -> SeaChop {
   let amp = sqrt(total / 4.0) * paws;
   for (var i = 0u; i < 8u; i++) {
     let fi = f32(i);
-    let lambda = 2.4 * pow(0.7, fi);
+    let lambda = 6.0 * pow(0.6, fi);
     let k = 6.2831853 / lambda;
     // Directions spread about the wind, irregularly (no two trains line up into a lattice).
     let ang = (fract(fi * 0.618034 + 0.31) - 0.5) * 1.75;
@@ -460,10 +460,14 @@ fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }
 
-// The sky's light greyed by the frame's cloud cover, as the clouds' own ambient is (sky.wgsl clouds_over).
-fn overcast(c: vec3<f32>) -> vec3<f32> {
+// The sky mirrored along `r` (`c`, from the reflection maps, which hold no clouds) under the frame's cloud cover:
+// greyed as the clouds' own ambient is (sky.wgsl clouds_over), and under an overcast the deck itself, brighter
+// overhead than at the horizon (a clear horizon mirrored at the sea's grazing rim drew a white line under a storm).
+fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
   if (frame.clouds[3].w < 0.5) { return c; }
-  return mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+  let grey = mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+  let dk = cloud_deck(r);
+  return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
 }
 
 @fragment
@@ -510,10 +514,15 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
       let froth = foam_noise(qw * vec2<f32>(0.6, 1.2)) * 0.5 + mid * 0.3 + fine * 0.2;
       let leading = mix(0.55, 1.0, smoothstep(-0.05, 0.12, dot(sea.n.xz, wd)));
       let dense = core * leading;
-      let cut = 0.8 - 0.42 * dense;
-      whitecap = smoothstep(cut - 0.08, cut + 0.08, froth) * smoothstep(0.0, 0.3, core);
-      // Where the foam is thick (the crest's spill), its full off-white; thin foam is blue-grey.
-      crest_line = smoothstep(0.5, 0.9, dense) * smoothstep(cut, cut + 0.15, froth);
+      let cut = 0.78 - 0.4 * dense;
+      // A soft body (its edge 0.25 wide), eroded by finer froth and bubbles into lace except at its dense heart: a
+      // patch is translucent blue-grey foam with holes, opaque off-white only where the crest spills.
+      let body = smoothstep(cut - 0.15, cut + 0.1, froth);
+      let lace2 = mix(foam_noise(qw * vec2<f32>(3.3, 6.1) + vec2<f32>(5.3, 2.9)), 0.5, smoothstep(0.08, 0.2, footprint));
+      let bubbles = mix(foam_noise(qw * vec2<f32>(9.0, 15.0) + vec2<f32>(1.7, 8.3)), 0.5, smoothstep(0.03, 0.07, footprint));
+      let erode = smoothstep(0.3, 0.7, lace2 * 0.6 + bubbles * 0.4 + 0.3 * dense);
+      crest_line = smoothstep(0.75, 1.0, dense) * smoothstep(cut + 0.05, cut + 0.25, froth);
+      whitecap = body * erode * mix(0.5, 1.0, crest_line) * smoothstep(0.0, 0.3, core);
       // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
       // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
       // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
@@ -616,7 +625,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
   // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
   let sky_mirror = frame.params.x * water.ao.w * 1.8;
-  var reflected = overcast(reflected_light(r, in.world, mip)) * sky_mirror;
+  var reflected = overcast(reflected_light(r, in.world, mip) * sky_mirror, r);
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -636,7 +645,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   if (sea) {
     // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn. The facets
     // spread the reflection over about two of their slopes' deviations, so it turns down gradually.
-    let up = overcast(reflected_light(vec3<f32>(r.x, abs(r.y), r.z), in.world, mip)) * sky_mirror;
+    let up_r = vec3<f32>(r.x, abs(r.y), r.z);
+    let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
     let w = 2.0 * sigma + 0.05;
     reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }

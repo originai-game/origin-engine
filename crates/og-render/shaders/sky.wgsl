@@ -191,7 +191,11 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
   let ground = cloud_sphere(o, d, radius);
-  if (ground.x > 0.0) { return background; }
+  if (ground.x > 0.0) {
+    // Under the horizon (past the sea's or the land's edge) an overcast's dim, flat light, not a clear day's ground.
+    let dk = cloud_deck(d);
+    return mix(background, dk.rgb * 0.8, dk.a);
+  }
   // Under the physical sky the clouds are lit by the sun at their own
   // height: the sun above the air (3 times the look's sunlight colour,
   // the day-night noon) through the sky's own transmittance down to the
@@ -218,9 +222,9 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
   // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
   // and a little of the sun through it.
-  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
-  let deck_cover = smoothstep(0.6, 0.95, c[0].x) * step(1e-6, c[0].w) * step(1e-6, c[0].y);
-  let deck = vec3<f32>(dot(sky_side, luma) * 0.6 * 0.35 + dot(light, luma) * 0.02) * c[2].rgb * 2.0;
+  let dk = cloud_deck(d);
+  let deck_cover = dk.a;
+  let deck = dk.rgb;
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
