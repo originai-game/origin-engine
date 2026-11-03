@@ -37602,11 +37602,17 @@ export interface MainMenuDesc {
    */
   readonly items?: readonly MenuItem[];
   /**
-   * A line at the bottom (a version, credits); empty is none.
+   * A line at the card's foot, under the items, in faint ink: a game's key hints (Arrows run · Space jump), credits; empty is none.
    *
    * @default ""
    */
   readonly footer?: string;
+  /**
+   * The build's version line (v0.1.0), in faint ink in the screen's bottom end corner, out of the card; empty is none.
+   *
+   * @default ""
+   */
+  readonly version?: string;
   /**
    * Called with the chosen item's id.
    *

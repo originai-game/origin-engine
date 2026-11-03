@@ -998,7 +998,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
           { id: "settings", label: tr(world, "menu.settings") },
           { id: "quit", label: tr(world, "menu.quit") },
         ],
-        footer: tr(world, "menu.footer", { version: "0.1.0" }),
+        version: tr(world, "menu.footer", { version: "0.1.0" }),
         // At the start edge: the key art behind keeps the rest of the screen.
         align: "start",
       });

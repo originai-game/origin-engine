@@ -65809,7 +65809,12 @@
         },
         "footer": {
           "type": "string",
-          "description": "A line at the bottom (a version, credits); empty is none.",
+          "description": "A line at the card's foot, under the items, in faint ink: a game's key hints (Arrows run · Space jump), credits; empty is none.",
+          "default": ""
+        },
+        "version": {
+          "type": "string",
+          "description": "The build's version line (v0.1.0), in faint ink in the screen's bottom end corner, out of the card; empty is none.",
           "default": ""
         },
         "onSelect": {

@@ -1172,3 +1172,30 @@ test("formats: round axis steps, true minus signs, signed deltas", () => {
   expect(formatDelta(-3, "grouped")).toBe("−3");
   expect(formatDelta(0, "grouped")).toBe("±0");
 });
+
+// ── title menu ──────────────────────────────────────────────────────────
+
+test("mainMenu: a game's footer (its key hints) stays in the card under the items; the version line takes the corner", () => {
+  // Wrong: the footer pulled out of the card into the screen's corner (as
+  // 1801aa0d7 did, which put every game's key hints at the bottom right).
+  const sys = defineSystem(`UcTitle${systems++}`, {}, () => {
+    og.ui.mainMenu("Title", { title: "Hollowbell", items: [{ id: "new", label: "New game" }], footer: "Arrows run · Space jump", version: "v1.2.0" });
+  });
+  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  r.value.advance(30);
+  const card = byPath(r.value, "Title")!;
+  const hints = find(r.value, (e) => e.text === "Arrows run · Space jump")!;
+  const version = find(r.value, (e) => e.text === "v1.2.0")!;
+  const vp = og.ui.frameViewport();
+  expect(hints.path).toBe("Title/Footer");
+  expect(hints.x).toBeGreaterThanOrEqual(card.x);
+  expect(hints.x + hints.width).toBeLessThanOrEqual(card.x + card.width);
+  expect(hints.y + hints.height).toBeLessThanOrEqual(card.y + card.height);
+  const items = byPath(r.value, "Title/Items")!;
+  expect(hints.y).toBeGreaterThanOrEqual(items.y + items.height);
+  // The version line in the bottom end corner, outside the card.
+  expect(version.path).toBe("Title.footer/Footer");
+  expect(version.x + version.width).toBeGreaterThan(vp.width - 80);
+  expect(version.y + version.height).toBeGreaterThan(vp.height - 80);
+});

@@ -51,11 +51,13 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
     });
     // A title menu is not a dialog, so it takes the focus itself: Enter and the pad's A answer at once.
     chosen = menuColumn("Items", items, grow(), true);
+    // A game's key hints (or credits) belong to the card, under its items.
+    if (desc.footer) kit.label("Footer", desc.footer, { step: "meta", color: token("inkFaint"), align: "center", width: grow() });
   });
   // The version line stands in a screen corner, out of the card, which ends at its last item.
-  if (desc.footer) {
+  if (desc.version) {
     kit.anchor(`${id}.footer`, { anchor: "bottomRight", padding: all(t.lg) }, () => {
-      kit.label("Footer", desc.footer!, { step: "meta", color: token("inkFaint"), nowrap: true });
+      kit.label("Footer", desc.version!, { step: "meta", color: token("inkFaint"), nowrap: true });
     });
   }
   if (chosen !== null) desc.onSelect?.(chosen);

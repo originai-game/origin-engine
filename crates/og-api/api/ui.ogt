@@ -7049,7 +7049,8 @@ module ui {
     field title String "The game's title, in display type."
     field subtitle String "A line under it; empty is none."
     field items List.MenuItem "The items, such as Play, Continue, Settings, Quit."
-    field footer String "A line at the bottom (a version, credits); empty is none."
+    field footer String "A line at the card's foot, under the items, in faint ink: a game's key hints (Arrows run · Space jump), credits; empty is none."
+    field version String "The build's version line (v0.1.0), in faint ink in the screen's bottom end corner, out of the card; empty is none."
     field onSelect Option.UiAction "Called with the chosen item's id."
     field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style."
     field align Align "Where the card stands on desktop and tablet: center (the default) or start, at the start edge so the key art behind it keeps the rest of the screen (end mirrors it). A phone keeps it at the bottom." {
