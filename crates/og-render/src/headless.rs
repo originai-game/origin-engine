@@ -36,6 +36,45 @@ impl Renderer {
         pollster::block_on(self.capture())
     }
 
+    /// The height of the sea the last frame drew (its first og.Water with a
+    /// wind) at each world point's xz, read back from the GPU (blocking;
+    /// native only): per point the height the clipmap's vertices draw there
+    /// (`probe_sea` in water.wgsl), the share of it the tick's waves draw
+    /// (og_core::ocean, what og.physics.waterHeight floats bodies on) and
+    /// the share the FFT cascades draw (render only). Empty without a sea.
+    /// A diagnostic of the drawn waterline (tests/evidence/r5-water).
+    pub fn sea_heights(&self, points: &[glam::Vec2]) -> Result<Vec<[f32; 3]>, RenderError> {
+        let origin = self.drawn_origin;
+        let frame: Vec<glam::Vec2> = points
+            .iter()
+            .map(|p| *p - glam::Vec2::new(origin.x, origin.z))
+            .collect();
+        let Some(buffer) = self.water.probe_sea(&self.device, &self.queue, &frame) else {
+            return Ok(Vec::new());
+        };
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        self.wait_idle()?;
+        rx.recv()
+            .map_err(|e| RenderError::Readback(e.to_string()))?
+            .map_err(|e| RenderError::Readback(format!("{e:?}")))?;
+        let out = {
+            let data = buffer
+                .slice(..)
+                .get_mapped_range()
+                .map_err(|e| RenderError::Readback(format!("{e:?}")))?;
+            bytemuck::cast_slice::<u8, [f32; 4]>(&data)
+                .iter()
+                .take(points.len())
+                .map(|v| [v[0] + origin.y, v[1], v[2]])
+                .collect()
+        };
+        buffer.unmap();
+        Ok(out)
+    }
+
     /// What the renderer uploaded for a texture array (`None` until a
     /// frame has synced it, once a frame has freed it after
     /// `RenderScene::remove_texture_array`, or for a foreign handle).

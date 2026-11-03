@@ -14,11 +14,15 @@
 //
 // R5: a sea (Water::wind) is a clipmap about the camera (water.rs
 // `clipmap`), out to a horizon ring, displaced over the absolute world's xz
-// by the tick's long waves (og_core::ocean's longest, as Gerstner waves)
-// and the FFT's cascades (ocean_fft), every one faded where the cells or
-// the pixel cannot hold it; its normal and its facets' roughness from the
-// cascades' slopes and their moments (LEAN), whitecaps where the surface's
-// Jacobian falls. A flow map (Water::flow_map) turns the flow per point.
+// by every wave the tick floats bodies on (og_core::ocean, as Gerstner
+// waves) and the FFT's cascades where the tick leaves their band out
+// (ocean_fft), every one faded where the cells or the pixel cannot hold it;
+// its normal and its facets' slope covariance from the cascades' slopes and
+// their moments (LEAN). Shaded and foamed as web-ocean's sea (MIT,
+// third_party/ocean/): anisotropic glitter, the grazing tilt of the visible
+// facets, backlit crests' subsurface light, and foam that persists on the
+// tick's time (ocean_fft/foam.rs). A flow map (Water::flow_map) turns the
+// flow per point.
 
 struct WaterUniform {
   model: mat4x4<f32>,
@@ -34,7 +38,7 @@ struct WaterUniform {
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
-  ocean: vec4<f32>,       // x: 1 with a sea, y: the tick's grid's even cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
+  ocean: vec4<f32>,       // x: 1 with a sea, y: the tick's grid's even cell (m), z: the Jacobian under which a crest foams as it folds, w: how fast it grows
   sea_wind: vec4<f32>,    // xy: the wind's direction in the frame's xz, z: its speed (m/s; 0 without a sea)
   clip: vec4<f32>,        // the sea's clipmap: x levels, y cells along a level's edge, z the horizon ring's radius, w 1 endless
   levels: array<vec4<f32>, 10>,  // per level: its centre (frame xz), its cell (m)
@@ -42,15 +46,28 @@ struct WaterUniform {
   fft: vec4<f32>,         // x cascades, z the slope variance under the finest cascade
   cascades: array<vec4<f32>, 3>,  // per cascade: 1 / tile (1/m), its uv at the frame's origin, the tile (m)
   bands: vec4<f32>,       // each cascade's band's middle wavenumber (xyz; cascade_weight)
+  // The persistent foam's two levels (ocean_fft/foam.rs), in the fields' layers after the cascades: per level 1 / its
+  // edge (1/m), its uv at the frame's origin, its edge (m).
+  foam_levels: array<vec4<f32>, 2>,
+  // The foam micro-structure's uv at the frame's origin (whole repeats dropped): its lace (xy), finer lace (zw); its
+  // bubbles (xy), its streaks along and across the wind (zw).
+  foam_uv: array<vec4<f32>, 2>,
   // Per wave of og_core::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
   // (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
+
+// The light a sea's crests carry through them (rgb) and its strength (w): web-ocean's `sssCol`.
+const SEA_SSS: vec4<f32> = vec4<f32>(0.035, 0.12, 0.085, 2.6);
+// The sun's disc as a variance of slopes (its 0.27° radius, halved at reflection, squared): the glitter's least
+// spread, so a calm sea mirrors a disc, not a point.
+const SUN_DISC: f32 = 5.5e-6;
 // A height field (layer 0, the height in r), or a sea's FFT fields: per cascade c, layer 3c (x displacement,
 // height, z displacement, d Dx/dz), 3c + 1 (the height's slopes along x and z, d Dx/dx, d Dz/dz), 3c + 2 (the slopes'
-// squares and product), mipped.
+// squares and product), mipped; after the cascades the persistent foam's two levels (r its cover, g how fresh it is)
+// and its micro-structure (r lace, g finer lace, b soft density, a streaks).
 @group(1) @binding(1) var heights: texture_2d_array<f32>;
 @group(1) @binding(2) var scene_color: texture_2d<f32>;
 @group(1) @binding(3) var scene_depth: texture_2d<f32>;
@@ -116,9 +133,13 @@ fn cascade_weight(c: u32, tc: f32) -> f32 {
 // coarser), then each cascade where the tick leaves its band out, read at the mip whose texels are the cells and faded
 // once its longest waves are under four cells.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
+  return ocean_swell(p, cell) + ocean_cascades(p, cell);
+}
+
+// ocean_displace's waves of og_core::ocean (the tick's).
+fn ocean_swell(p: vec2<f32>, cell: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  let tc = tick_cell(p);
-  let spacing = max(cell, tc);
+  let spacing = max(cell, tick_cell(p));
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
@@ -126,6 +147,13 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
     let th = dot(a.xy, p) + a.w;
     d += vec3<f32>(b.x * cos(th), a.z * sin(th), b.y * cos(th)) * keep;
   }
+  return d;
+}
+
+// ocean_displace's FFT cascades (render only).
+fn ocean_cascades(p: vec2<f32>, cell: f32) -> vec3<f32> {
+  var d = vec3<f32>(0.0);
+  let tc = tick_cell(p);
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
     let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * cascade_weight(c, tc);
@@ -136,57 +164,114 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
 }
 
 // The sea's normal at rest point p (frame xz), each long wave faded where it is shorter than four of the pixel's
-// `footprint` (m) and the cascades filtered over the pixel; as `bunch`, how far the surface's area is squeezed (1 less
-// the Jacobian of the horizontal displacement: whitecaps past water.ocean.z); and as `mss`, the mean square slope the
-// pixel holds unresolved: the faded long waves' ((k a)² / 2), the cascades' within the pixel (their slopes' second
-// moments less the squared mean: LEAN mapping, Olano and Baker 2010) and the spectrum's tail finer than the finest
-// cascade. A pixel of sea is a rough mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
+// `footprint` (m) and the cascades filtered over the pixel; the Jacobian of its horizontal displacement (`jac`: under 1
+// where the crests bunch, under 0 where they fold); and as `cov`, the covariance of the slopes the pixel holds
+// unresolved (xx, zz, xz): the faded long waves' ((k a)² / 2 along each one's direction), the cascades' within the pixel
+// (their slopes' second moments less the squared mean: LEAN mapping, Olano and Baker 2010) and the spectrum's tail finer
+// than the finest cascade. A pixel of sea is a rough mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
+// The slopes are the displaced surface's (each divided by the stretch of its axis), as web-ocean's (`ocean.js` fs).
 struct SeaNormal {
   n: vec3<f32>,
-  bunch: f32,
-  mss: f32,
+  slope: vec2<f32>,
+  jac: f32,
+  cov: vec3<f32>,
 };
 
 // (gx, gy: how far p moves a pixel across and down the screen, metres, for the cascades' filtering.)
 fn ocean_normal(p: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> SeaNormal {
-  var slope = vec2<f32>(0.0);
-  var mss = water.fft.z;
+  var s = vec2<f32>(0.0);
+  var cov = vec3<f32>(water.fft.z * 0.5, water.fft.z * 0.5, 0.0);
+  var j = vec3<f32>(0.0);
   // og_core's waves as the surface carries them (faded at the tick's cell), those the pixel cannot hold left to the
   // facets' roughness.
   let tc = tick_cell(p);
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
+    let b = water.swell[2u * i + 1u];
     let k = length(a.xy);
     let carried = sea_keep(k, tc);
     let keep = sea_keep(k, max(footprint, tc));
     let th = dot(a.xy, p) + a.w;
-    slope += a.xy * (a.z * cos(th) * keep);
+    s += a.xy * (a.z * cos(th) * keep);
+    let sn = sin(th) * keep;
+    j -= vec3<f32>(b.x * a.x, b.y * a.y, b.x * a.y) * sn;
     let ka = k * a.z;
-    mss += ka * ka * 0.5 * max(carried * carried - keep * keep, 0.0);
+    let d = a.xy / max(k, 1e-6);
+    cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(carried * carried - keep * keep, 0.0));
   }
-  var j = vec3<f32>(0.0);
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let uv = cascade_uv(c, p);
     let k = water.cascades[c].x;
     let w = cascade_weight(c, tc);
     let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
     let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
-    slope += first.xy * w;
-    mss += (max(second.x - first.x * first.x, 0.0) + max(second.y - first.y * first.y, 0.0)) * w * w;
+    s += first.xy * w;
+    cov += vec3<f32>(max(second.x - first.x * first.x, 0.0), max(second.y - first.y * first.y, 0.0),
+      second.z - first.x * first.y) * w * w;
     j += vec3<f32>(first.zw, textureSampleGrad(heights, ripple_sampler, uv, 3u * c, gx * k, gy * k).w) * w;
   }
   var o: SeaNormal;
-  o.n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
-  o.bunch = 1.0 - ((1.0 + j.x) * (1.0 + j.y) - j.z * j.z);
-  o.mss = mss;
+  o.slope = s / vec2<f32>(max(1.0 + j.x, 0.15), max(1.0 + j.y, 0.15));
+  o.n = normalize(vec3<f32>(-o.slope.x, 1.0, -o.slope.y));
+  o.jac = (1.0 + j.x) * (1.0 + j.y) - j.z * j.z;
+  o.cov = cov;
   return o;
 }
 
-// Bruneton et al. 2010's mean Fresnel over a rough sea's facets: the
-// grazing mirror dims as the slopes it averages spread (sigma: their
-// deviation along the view).
-fn sea_fresnel(cos_v: f32, sigma: f32) -> f32 {
-  return pow(1.0 - cos_v, 5.0 * exp(-2.69 * sigma)) / (1.0 + 22.7 * pow(sigma, 1.5));
+// web-ocean's Smith masking for an anisotropic Gaussian of slopes (`lambdaSmith`).
+fn smith_lambda(w: vec3<f32>, cov: vec3<f32>) -> f32 {
+  let xz2 = max(dot(w.xz, w.xz), 1e-8);
+  let il = inverseSqrt(xz2);
+  let az = w.xz * il;
+  let sig2 = az.x * az.x * cov.x + az.y * az.y * cov.y + 2.0 * az.x * az.y * cov.z;
+  let a = max(w.y * il, 1e-3) / sqrt(2.0 * max(sig2, 1e-7));
+  if (a >= 1.6) { return 0.0; }
+  return (1.0 - 1.259 * a + 0.396 * a * a) / (3.535 * a + 2.181 * a * a);
+}
+
+// The sea's foam at rest point p (frame xz) where the surface's Jacobian is `jac`, ported from web-ocean's `ocean.js` fs
+// (MIT, third_party/ocean/): the persistent foam of the world levels about the camera (fine near, coarse far), the
+// foam of a crest folding now beyond them, aged foam broken into streaks along the wind, all cut by the foam's
+// micro-structure into a mask with crisp edges where dense and a soft, translucent margin where thin.
+struct SeaFoam {
+  cover: f32,
+  mask: f32,
+  // How fresh the foam is (the levels' g): the bubbles of a crest just broken.
+  young: f32,
+  // The bubbles' brightness inside it.
+  bubbles: f32,
+};
+
+fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
+  let first = 3u * u32(water.fft.x);
+  let l0 = water.foam_levels[0];
+  let l1 = water.foam_levels[1];
+  let dc = abs(p - frame.view_pos.xz);
+  let cheb = max(dc.x, dc.y);
+  let w0 = 1.0 - smoothstep(0.30 * l0.w, 0.45 * l0.w, cheb);
+  let w1 = 1.0 - smoothstep(0.30 * l1.w, 0.45 * l1.w, cheb);
+  let fw0 = textureSample(heights, ripple_sampler, p * l0.x + l0.yz, first);
+  let fw1 = textureSample(heights, ripple_sampler, p * l1.x + l1.yz, first + 1u);
+  let fwl = mix(fw1, fw0, w0) * w1;
+  let fresh = clamp((water.ocean.z - jac) * water.ocean.w, 0.0, 1.0);
+  var cover = clamp(max(fwl.r, fresh * (1.0 - w1 * 0.7)) + fwl.g * 0.6, 0.0, 1.5);
+  let wd = water.sea_wind.xy;
+  let ws = vec2<f32>(dot(p, wd), dot(p, vec2<f32>(-wd.y, wd.x))) * vec2<f32>(0.035, 0.11) + water.foam_uv[1].zw;
+  let streak = textureSample(heights, ripple_sampler, ws, first + 2u).a;
+  let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
+  cover *= mix(smoothstep(0.25, 0.75, streak) * 1.5, 1.0, fresh_k);
+  let pat = textureSample(heights, ripple_sampler, p * 0.23 + water.foam_uv[0].xy, first + 2u).r * 0.78
+    + textureSample(heights, ripple_sampler, p * 0.71 + water.foam_uv[0].zw, first + 2u).g * 0.22;
+  let fw = fwidth(pat) + 0.03;
+  let soft = 0.04 + 0.14 * (1.0 - clamp(cover, 0.0, 1.0));
+  let fm = smoothstep(1.0 - cover - fw - soft, 1.0 - cover + fw + soft, pat);
+  var o: SeaFoam;
+  o.cover = cover;
+  o.mask = clamp(fm * smoothstep(0.0, 0.5, cover), 0.0, 1.0) * (0.68 + 0.32 * smoothstep(0.3, 0.9, cover));
+  o.mask = max(o.mask, smoothstep(0.35, 0.9, fwl.g) * smoothstep(0.25, 0.6, pat + 0.25) * 0.95);
+  o.young = fwl.g;
+  o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
+  return o;
 }
 
 // How many metres of the surface a pixel spans at `world` along the view's slant: the distance over the projection's
@@ -287,6 +372,38 @@ fn sea_vertex(vi: u32) -> SeaVertex {
   }
   o.d = d;
   return o;
+}
+
+// The drawn sea's height probe (water.rs `WaterRenderer::probe_sea`, Renderer::sea_heights): per point (frame xz),
+// the height the clipmap's vertices draw there, the rest point found by undoing the crests' lean as the tick does, at
+// the spacing sea_vertex reads its level's vertices at (its cell, growing to twice at its edge): (the height, the tick's
+// waves' share, the cascades' share).
+@group(2) @binding(0) var<storage, read> probe_in: array<vec2<f32>>;
+@group(2) @binding(1) var<storage, read_write> probe_out: array<vec4<f32>>;
+
+fn probe_spacing(p: vec2<f32>) -> f32 {
+  let half = water.clip.y * 0.5;
+  let levels = u32(water.clip.x);
+  for (var l = 0u; l < levels; l++) {
+    let lv = water.levels[l];
+    let d = max(abs(p.x - lv.x), abs(p.y - lv.y)) / (half * lv.z);
+    if (d <= 1.0) { return lv.z * (1.0 + smoothstep(0.7, 0.95, d)); }
+  }
+  return 2.0 * water.levels[levels - 1u].z;
+}
+
+@compute @workgroup_size(64)
+fn probe_sea(@builtin(global_invocation_id) id: vec3<u32>) {
+  if (id.x >= arrayLength(&probe_in)) { return; }
+  let goal = probe_in[id.x];
+  var rest = goal;
+  for (var i = 0; i < 8; i++) {
+    rest = goal - ocean_displace(rest, probe_spacing(rest)).xz;
+  }
+  let cell = probe_spacing(rest);
+  let swell = ocean_swell(rest, cell).y;
+  let cascades = ocean_cascades(rest, cell).y;
+  probe_out[id.x] = vec4<f32>(water.model[3].y + swell + cascades, swell, cascades, 0.0);
 }
 
 // The height field at local point (x, z) of the surface, bilinear.
@@ -591,12 +708,10 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   }
   let tangent_x = normalize((water.model * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz);
   let tangent_z = normalize((water.model * vec4<f32>(0.0, 0.0, 1.0, 0.0)).xyz);
-  // The sea's own normal under the detail (a level surface: its waves are the world's), and its whitecaps.
+  // The sea's own normal under the detail (a level surface: its waves are the world's), and its foam.
   var base = in.normal;
-  var whitecap = 0.0;
-  var crest_line = 0.0;
-  var old = 0.0;
-  var sea_mss = 0.0;
+  var sea_cov = vec3<f32>(0.0);
+  var sea_f = SeaFoam(0.0, 0.0, 0.0, 0.0);
   if (water.ocean.x > 0.5) {
     var footprint = sea_footprint(in.world);
     // The pixel's footprint on the level surface, from where its view ray meets the level: smooth across the screen,
@@ -614,47 +729,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     }
     let sea = ocean_normal(in.rest, footprint, gx, gy);
     base = sea.n;
-    sea_mss = sea.mss;
-    // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
-    if (water.ocean.w > 0.0) {
-      // Coordinates along the wind (x) and across it (y): foam is drawn out downwind.
-      let wd = water.sea_wind.xy;
-      let q = vec2<f32>(dot(in.rest, wd), dot(in.rest, vec2<f32>(-wd.y, wd.x)));
-      let streaks = foam_noise(q * vec2<f32>(0.12, 0.45)) * 0.6 + foam_noise(q * vec2<f32>(0.6, 2.1)) * 0.4;
-      let core = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
-      // White water is lace, never a sheet or a cut-out: ridged noise (threads where the noise crosses its middle)
-      // of warped coordinates, so its cells are a network of uneven threads, not the round islands and round holes
-      // of value noise cut at a level. Its finer octaves erode the edges and fade to their mean where a pixel spans
-      // them. Coverage is a soft threshold the crest's core lowers; only the breaking crest line (the core near 1)
-      // is opaque white, the older foam down its back thinner (see foam_tint below).
-      let warp = vec2<f32>(foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(3.1, 7.7)),
-        foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(11.3, 1.9))) - vec2<f32>(0.5);
-      let qw = q + warp * 3.5;
-      let coarse = 1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(0.7, 1.6)) - 1.0);
-      // (Ridged value noise sits near 0.68, its spread about 0.13: the octaves a pixel spans fade to that mean.)
-      let mid = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(2.1, 4.6)) - 1.0), 0.68, smoothstep(0.15, 0.35, footprint));
-      let fine = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(5.5, 12.0)) - 1.0), 0.68, smoothstep(0.05, 0.12, footprint));
-      let lace = coarse * 0.5 + mid * 0.3 + fine * 0.2;
-      // The cut stays above the lace's mean even on a breaking crest (some 40 % of it white there, 5 % at the patch's
-      // fringe), so a whitecap is threads with the sea between them, never a filled sheet (a cut under the mean
-      // covered nearly all of the crest). The threshold is soft, 0.15 wide.
-      let cut = 0.97 - 0.25 * core;
-      let cover = smoothstep(cut - 0.075, cut + 0.075, lace);
-      // Opaque white only at the threads' hearts on the breaking crest itself.
-      crest_line = smoothstep(0.85, 1.0, core) * smoothstep(cut + 0.05, cut + 0.18, lace);
-      whitecap = cover * mix(0.45, 1.0, crest_line) * smoothstep(0.0, 0.3, core);
-      // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
-      // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
-      // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
-      // Threads some 0.4 m across, broken along their length, in patches tens of metres long.
-      // Downwind they run nearly along the view, so long unbroken ones read as rays into the water: they are dashes
-      // a few metres long whose lanes bend, lying on the surface between the crests.
-      let lane = q + vec2<f32>(0.0, (foam_noise(q * vec2<f32>(0.013, 0.06)) - 0.5) * 12.0 + (warp.x * 2.0));
-      let thread = foam_noise(lane * vec2<f32>(0.3, 2.2)) * 0.7 + foam_noise(lane * vec2<f32>(0.9, 6.0)) * 0.3;
-      let spread = smoothstep(0.45, 0.75, foam_noise(q * vec2<f32>(0.025, 0.07)));
-      old = smoothstep(0.7, 0.86, thread) * spread * 0.12 * smoothstep(12.0, 20.0, water.sea_wind.z)
-        * (1.0 - smoothstep(0.12, 0.35, footprint));
-    }
+    // web-ocean: the slopes' change across the pixel widens the lobe (specular anti-aliasing).
+    let dsx = dpdx(sea.slope);
+    let dsy = dpdy(sea.slope);
+    let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
+    sea_cov = sea.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8));
+    sea_f = sea_foam(in.rest, sea.jac);
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
     slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
@@ -730,6 +810,25 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let daylight_k = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)) / 1.5, 1.0);
   let daylight = daylight_k * daylight_k;
   var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
+  let sea = water.ocean.x > 0.5;
+  // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
+  let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
+  let amb_n = ambient_light_level(n, in.world) * frame.params.x;
+  let sun_e = frame.light_color.rgb * sun;
+  if (sea) {
+    // web-ocean's body (`ocean.js` fs; the Sea of Thieves talk's subsurface term): light carried through the thin
+    // upper part of a backlit crest, strongest looking towards the sun; and under foam the bubbles brighten and tint
+    // the water beneath it.
+    let crest = clamp((in.world.y - water.model[3].y - 0.05) / 0.9, 0.0, 1.0);
+    let to_sun = max(dot(l, -v), 0.0);
+    let thin = pow(clamp(0.5 - 0.5 * dot(l, n), 0.0, 1.0), 3.0);
+    let dist = length(frame.view_pos.xyz - in.world);
+    let k1 = SEA_SSS.w * crest * crest * pow(to_sun, 4.0) * thin * exp(-dist / 600.0);
+    deep += SEA_SSS.rgb * sun_e * k1;
+    let ambient = amb_up * 1.3 + amb_n * 0.5;
+    deep += SEA_SSS.rgb * (sun_e * 0.05 + ambient * 0.35) * clamp(sea_f.cover, 0.0, 1.0);
+    deep += vec3<f32>(0.10, 0.32, 0.30) * amb_up * sea_f.young * 0.35;
+  }
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
     // scatter = max(N·V, 0) · waterColor (the deep colour), sunColor = the light × glint / 2 (glint = spec 2 × sunColor
@@ -740,16 +839,27 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   var color = mix(below * water.shallow.rgb, deep, clamp(absorb * water.deep.w, 0.0, 1.0));
 
   // Reflection with Schlick's Fresnel.
-  let r = reflect(-v, n);
+  var r = reflect(-v, n);
   let f0 = water.extra.z;
   var fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
-  // A sea's facets: their slopes' deviation per axis, its Beckmann roughness and the mip it blurs the sky by.
-  let sea = water.ocean.x > 0.5;
-  let sigma = sqrt(max(sea_mss, 1e-6) * 0.5);
   var mip = 0.5;
   if (sea) {
-    fresnel = (f0 + (1.0 - f0) * sea_fresnel(max(dot(n, v), 0.0), sigma)) * water.look.x;
-    mip = max(sqrt(sqrt(sea_mss)) * frame.params.y, 0.5);
+    // web-ocean's sky reflection (`ocean.js` fs): at a grazing view the facets the eye sees lean towards it
+    // (projected area and masking), so the reflector tilts up and mirrors higher, greyer sky; a ray still reflected
+    // downwards is folded up (it meets the next wave, which mirrors the sky in turn). The Fresnel is a partly smoothed
+    // normal's: the long waves' facet with the grazing statistics of everything finer. The sky is blurred by the
+    // slopes' spread.
+    let vh = normalize(vec3<f32>(v.x, 0.0, v.z) + vec3<f32>(1e-5, 0.0, 0.0));
+    let sig_v = sqrt(max(vh.x * vh.x * sea_cov.x + vh.z * vh.z * sea_cov.y + 2.0 * vh.x * vh.z * sea_cov.z, 1e-6));
+    let a_v = max(v.y, 1e-3) / max(sqrt(1.0 - v.y * v.y), 1e-3) / (1.4142 * sig_v);
+    let tilt = 0.32 * sig_v * (1.0 - smoothstep(0.0, 2.5, a_v));
+    let nv = normalize(n + vh * tilt);
+    r = reflect(-v, nv);
+    r.y = abs(r.y) * 0.4 + max(r.y, 0.0) * 0.6;
+    r = normalize(r);
+    let nf = normalize(mix(n, in.normal, 0.45));
+    fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(nf, v), 0.0), 5.0)) * water.look.x;
+    mip = max(sqrt(sqrt(sea_cov.x + sea_cov.y)) * frame.params.y, 0.5);
   }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
@@ -771,14 +881,6 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   } else if (water.look.y > 0.5) {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
-  }
-  if (sea) {
-    // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn. The facets
-    // spread the reflection over about two of their slopes' deviations, so it turns down gradually.
-    let up_r = vec3<f32>(r.x, abs(r.y), r.z);
-    let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
-    let w = 2.0 * sigma + 0.05;
-    reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
   let mirrored = reflected;
   reflected = water.extra.w + (1.0 - water.extra.w) * reflected;
@@ -805,16 +907,22 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let g = pow(max(dot(v, reflect(-l, n)), 0.0), 100.0) * water.under.w;
     color += mirrored * frame.light_color.rgb * g * clamp(fresnel, 0.0, 1.0);
   } else if (sea) {
-    // The sun on the facets: Beckmann's distribution of their slopes (Cox and Munk's glitter), Schlick's Fresnel at the
-    // half vector (none in shadow).
+    // The sun's glitter, web-ocean's (`ocean.js` fs): the facets' slopes an anisotropic Gaussian about the pixel's
+    // mean slope with the unresolved covariance (and the sun's disc), Smith's masking of the view and the light,
+    // Schlick's Fresnel at the half vector (none in shadow).
     let h = normalize(l + v);
-    let nh = max(dot(n, h), 1e-3);
-    let m2 = max(sea_mss, 2e-3);
-    let t2 = (1.0 - nh * nh) / (nh * nh);
-    let d = exp(-t2 / m2) / (3.14159265 * m2 * nh * nh * nh * nh);
-    let fh = f0 + (1.0 - f0) * pow(1.0 - max(dot(h, v), 0.0), 5.0);
-    let spec = d * fh / (4.0 * max(dot(n, v), 0.1)) * step(0.0, dot(n, l));
-    color += frame.light_color.rgb * spec * water.look.x * sun;
+    let hs = -h.xz / max(h.y, 1e-3);
+    let dsl = hs + n.xz / max(n.y, 1e-3);
+    let cov = sea_cov + vec3<f32>(SUN_DISC, SUN_DISC, 0.0);
+    let det = max(cov.x * cov.y - cov.z * cov.z, 1e-10);
+    let e = (dsl.x * dsl.x * cov.y + dsl.y * dsl.y * cov.x - 2.0 * dsl.x * dsl.y * cov.z) / det;
+    let pdf = exp(-0.5 * e) / (6.2831853 * sqrt(det));
+    let hy2 = h.y * h.y;
+    let dm = pdf / max(hy2 * hy2, 1e-6);
+    let g = 1.0 / (1.0 + smith_lambda(v, cov) + smith_lambda(l, cov));
+    let fh = f0 + (1.0 - f0) * pow(1.0 - clamp(dot(v, h), 0.0, 1.0), 5.0);
+    let spec = fh * dm * g / (4.0 * max(v.y, 0.02)) * step(0.0, l.y);
+    color += sun_e * spec * water.look.x;
   } else if (!water2) {
     // (Water2 has no highlight of its own: the sun shows only in what it reflects.)
     // The sun's highlight (none in shadow).
@@ -846,14 +954,16 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let foam = clamp(band + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
-  // A sea's whitecaps, whatever the shore foam's width: white water lit by the sun and the whole sky above it.
-  let sky_lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + ambient_light_level(in.normal, in.world) * frame.params.x;
-  // Foam off the crest line is a thin film that takes the water's tint; the breaking crest is white.
-  let white = water.foam.rgb * sky_lit;
-  let foam_tint = mix(mix(color, white, 0.7), white, crest_line);
-  color = mix(color, foam_tint, whitecap);
-  // The old foam is thinner still: greyer than a whitecap, the water showing through it.
-  color = mix(color, mix(color, white * 0.6, 0.7), old);
+  if (sea) {
+    // A sea's foam, whatever the shore foam's width, web-ocean's (`ocean.js` fs): a matte, diffuse layer over the
+    // water, its albedo the foam colour varied by the bubbles inside it, lit by the sun (half of it: the lumpy foam
+    // shadows itself at a grazing sun) and by the whole sky above, nearly grey (foam scatters every part of it).
+    let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles);
+    let amb = amb_up + amb_n * 0.3;
+    let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
+    let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 + amb_grey * 1.55);
+    color = mix(color, foam_lit, sea_f.mask * 0.95);
+  }
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 

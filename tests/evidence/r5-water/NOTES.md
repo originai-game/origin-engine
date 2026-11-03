@@ -97,3 +97,51 @@ to 33b74a49443d3643. Nothing the tick computes moved: `dump_world` of the
 boats at 3.0 s and 6.5 s, with the addon before and after the field, differ
 in the systems' timings and the hash alone (every entity's components,
 og.Buoyancy's submerged share included, are the same).
+
+## Waterline: the floaters against the drawn sea
+
+`boats/waterline.txt` holds the floaters' poses at 5.0 s and 6.5 s (ticks
+300 and 390), from the run's `dump_entity`:
+
+```sh
+og run tests/evidence/r5-water/boats --headless --out /tmp/wl --commands \
+  "5.0:dump_entity:boat-1:boat-1-5.0.json;...;6.5:dump_entity:buoy-3:buoy-3-6.5.json;6.6:quit"
+```
+
+og-tests' `the_floaters_sit_in_the_drawn_sea` (ocean.rs, a GPU test) draws
+the boats' sea at those ticks and reads the drawn surface's height back
+from the GPU under each buoy's centre and each hull's four keel corners
+(`Renderer::sea_heights`: the clipmap's vertices' displacement, the rest
+point found by undoing the crests' lean). It asserts that the tick's waves
+are drawn as og.physics.waterHeight floats the bodies on (to 2 cm) and that
+every buoy crosses the drawn surface, and prints every clearance:
+
+```sh
+cargo test -p og-tests --test tests the_floaters_sit -- --nocapture
+```
+
+Before the foam batch the FFT's middle cascade began at 0.21 rad/m, inside
+the band the tick floats bodies on (to 0.39 rad/m at its 4 m cell there),
+so the sea's 16 to 29 m waves were drawn twice: on the CPU's estimate a
+keel corner stood 10 cm over the drawn trough. The cascades are now parted
+where the tick's waves end at its finest cell (π/2 over the cell). Against
+the tick's surface every keel corner is 9 to 44 cm under and every buoy's
+centre 8 cm over; the cascades' 3 to 14 m chop (render only) still moves
+the drawn surface ±0.3 m under them, which bares one corner (boat-0 at
+6.5 s) by about 6 cm on the CPU's estimate.
+
+## Foam (the FFT sea's batches 3 and 4)
+
+Ported from web-ocean (third_party/ocean/): two world foam levels about the
+camera (64 m and 512 m, 256 texels) in the fields array's layers after the
+cascades, stepped every 1/30 s of the tick's time. Each step injects foam
+where the drawn surface folds, decays it (τ 4.5 s) and drifts it downwind.
+A crest is white where its Jacobian falls under the level that a share of
+the surface falls under: Monahan's whitecap coverage at the wind
+(`foam_thresholds`; 0.7 % at the breeze, 10 % at the gale).
+
+Frames never depend on the wall clock. On a fresh renderer, a new sea, a
+jump back in time (a restore) or a jump forward of more than 2 s, the foam
+starts empty and is warmed up over 5τ (22.7 s) of tick time before the
+frame: every 8th step, then every step of the last 2 s, about 140 steps,
+each an FFT at its own time plus the foam update.

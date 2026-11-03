@@ -105,6 +105,13 @@ pub struct SeaParameters {
     pub long_variance: f64,
     /// Slope variance they carry.
     pub long_slope_variance: f64,
+    /// Wavenumber from which the tick floats bodies on none of its waves
+    /// where its grid is finest (og_core::ocean::grid_keep is zero past
+    /// k · cell = π / 2): no cascade but the coarsest holds waves under it,
+    /// so where floaters ride (the grid's fine middle, where the coarsest
+    /// cascade is not drawn) the drawn sea is the tick's, wave for wave
+    /// ([`SeaParameters::with_tick_cell`]; 0: none).
+    pub tick_cut: f64,
 }
 
 impl SeaParameters {
@@ -140,6 +147,7 @@ impl SeaParameters {
             long_cut: 0.0,
             long_variance: 0.0,
             long_slope_variance: 0.0,
+            tick_cut: 0.0,
         };
         p.long_cut = 2.0 * PI / (0.5 * p.peak_wavelength());
         if let Some(o) = ocean {
@@ -150,6 +158,16 @@ impl SeaParameters {
             }
         }
         p
+    }
+
+    /// These parameters for a tick whose grid's finest cell is `cell` (m).
+    pub fn with_tick_cell(mut self, cell: f32) -> SeaParameters {
+        self.tick_cut = if cell > 0.0 {
+            0.5 * PI / f64::from(cell)
+        } else {
+            0.0
+        };
+        self
     }
 
     /// The horizontal displacement's scale: og.Water.choppiness 1 is the
@@ -185,8 +203,10 @@ pub fn frequency_multiple(k: f64) -> f64 {
 }
 
 /// Where each cascade's band starts and ends; disjoint, so no wavevector is
-/// drawn twice. The first starts at `long_cut`.
-pub fn cascade_bands(cascades: &[Cascade], long_cut: f64) -> Vec<WaveBand> {
+/// drawn twice. The first starts at `long_cut`; no finer one starts under
+/// `tick_cut` ([`SeaParameters::tick_cut`]) while the coarser below it can
+/// hold that band (to 3/4 of its Nyquist).
+pub fn cascade_bands(cascades: &[Cascade], long_cut: f64, tick_cut: f64) -> Vec<WaveBand> {
     let nyquist = |c: &Cascade| PI * f64::from(c.resolution) / c.size;
     let cuts: Vec<f64> = cascades
         .iter()
@@ -195,6 +215,7 @@ pub fn cascade_bands(cascades: &[Cascade], long_cut: f64) -> Vec<WaveBand> {
         .map(|(i, fine)| {
             (FINE_MODES_AT_CUT * 2.0 * PI / fine.size)
                 .min(nyquist(&cascades[i]) / 2.0)
+                .max(tick_cut.min(0.75 * nyquist(&cascades[i])))
                 .max(long_cut)
         })
         .collect();
@@ -328,7 +349,7 @@ pub fn signed(i: usize, n: usize) -> i32 {
 
 /// Every cascade's amplitudes for `params`. Waves travel towards the wind.
 pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
-    let bands = cascade_bands(cascades, params.long_cut);
+    let bands = cascade_bands(cascades, params.long_cut, params.tick_cut);
     let height = params.significant_height();
     let calm = !(height.is_finite() && height > 0.0 && params.wind_speed > 0.1);
     let peak = params.peak();

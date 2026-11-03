@@ -6,7 +6,7 @@
 //! lays a glitter path on the sea under it; a flow map that holds one
 //! direction everywhere draws the stream that flow draws without one.
 
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage, TextureData};
 use og_tests::gfx;
 use og_tests::ocean_scenes::{OCEAN_SCENES, flow_map_scene, ocean_scene};
@@ -170,6 +170,111 @@ fn the_sea_darkens_with_the_sky() {
         let sea = mean(&lumas(&img, 0, 440, 1280, 720));
         assert!(sea < sky, "{name}: the sea ({sea}) under its sky ({sky})");
     }
+}
+
+/// The boats sample's floaters (tests/evidence/r5-water/boats) sit in the
+/// sea the GPU draws: at their poses at 5 s and 6.5 s
+/// (`boats/waterline.txt`, the run's dump), the drawn surface's height
+/// under each, read back from the GPU (`Renderer::sea_heights`), has the
+/// tick's waves drawn as og.physics.waterHeight floats them on (to 2 cm:
+/// og_core::ocean at the tick's grid cell) and every buoy crosses the drawn
+/// surface. Prints each floater's clearance against the drawn sea and the
+/// tick's, and the highest keel corner: the cascades' chop (3 to 14 m
+/// waves the tick does not float hulls on) can still bare a corner by a few
+/// centimetres, which hull wave suppression is to close.
+#[test]
+fn the_floaters_sit_in_the_drawn_sea() {
+    let text = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/evidence/r5-water/boats/waterline.txt"
+    ))
+    .expect("the floaters' poses");
+    let water = og_render::Water {
+        size: Vec2::splat(6000.0),
+        segments: 256,
+        wind: Vec2::new(7.0, -18.7),
+        choppiness: 1.0,
+        foam_width: 0.0,
+        depth_fade: 30.0,
+        wave_strength: 0.0,
+        ..Default::default()
+    };
+    let sea = og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+    // og-physics' WaterBody::surface: the grid the tick floats bodies on.
+    let extent = water.size.max_element();
+    let even = extent / og_core::ocean::grid_segments(water.segments, extent) as f32;
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut worst_keel = f32::MIN;
+    for tick in [300u64, 390] {
+        let mut scene = RenderScene::new();
+        scene.tick = tick;
+        scene.tick_rate = 60.0;
+        scene.water.push(water.clone());
+        scene.camera = og_render::Camera {
+            position: Vec3::new(0.0, 10.0, 0.0),
+            target: Vec3::new(-4.0, 0.0, -60.0),
+            far: 3000.0,
+            ..Default::default()
+        };
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let seconds = tick as f64 / 60.0;
+        // (name, point, kind): a buoy's centre, or a hull's keel corner.
+        let mut points: Vec<(String, Vec3, bool)> = Vec::new();
+        for line in text.lines().filter(|l| !l.starts_with('#')) {
+            let f: Vec<&str> = line.split_whitespace().collect();
+            if f[0].parse::<u64>() != Ok(tick) {
+                continue;
+            }
+            let v: Vec<f32> = f[2..]
+                .iter()
+                .map(|x| x.parse().expect("a number"))
+                .collect();
+            let at = Vec3::new(v[0], v[1], v[2]);
+            let q = glam::Quat::from_xyzw(v[3], v[4], v[5], v[6]);
+            if f[1].starts_with("boat") {
+                for (x, z) in [(-1.2, -3.0), (1.2, -3.0), (-1.2, 3.0), (1.2, 3.0)] {
+                    points.push((f[1].to_string(), at + q * Vec3::new(x, -0.5, z), true));
+                }
+            } else {
+                points.push((f[1].to_string(), at, false));
+            }
+        }
+        let xz: Vec<Vec2> = points.iter().map(|(_, p, _)| Vec2::new(p.x, p.z)).collect();
+        let drawn = renderer.sea_heights(&xz).expect("the sea's heights");
+        assert_eq!(drawn.len(), points.len(), "a sea was drawn");
+        for ((name, p, keel), [height, swell, cascades]) in points.iter().zip(&drawn) {
+            let cell = og_core::ocean::grid_cell(Vec2::new(p.x, p.z), water.size * 0.5, even);
+            let tick_height = sea.height_on_grid(
+                glam::DVec2::new(f64::from(p.x), f64::from(p.z)),
+                seconds,
+                cell,
+            );
+            let what = if *keel { "keel corner" } else { "centre" };
+            println!(
+                "{seconds} s {name} {what}: {:+.3} m over the drawn sea ({:+.3} the tick's waves, {:+.3} the cascades), {:+.3} m over the tick's",
+                p.y - height,
+                swell,
+                cascades,
+                p.y - tick_height
+            );
+            assert!(
+                (swell - tick_height).abs() < 0.02,
+                "{seconds} s {name}: the tick's waves drawn at {swell} m, og.physics.waterHeight {tick_height} m"
+            );
+            if *keel {
+                worst_keel = worst_keel.max(p.y - height);
+            } else {
+                assert!(
+                    (p.y - height).abs() < 0.6,
+                    "{seconds} s {name}: its centre {} m off the drawn sea (radius 0.6)",
+                    p.y - height
+                );
+            }
+        }
+    }
+    println!("highest keel corner over the drawn sea: {worst_keel:+.3} m");
 }
 
 /// A one-pixel flow map pointing all one way (rg `* 2 - 1`).

@@ -317,6 +317,10 @@ struct WaterGpu {
     cascades: [[f32; 4]; 3],
     /// Each cascade's band's middle wavenumber (xyz; [`cascade_weight`]).
     bands: [f32; 4],
+    /// The persistent foam's levels ([`crate::ocean_fft::foam::levels`]).
+    foam_levels: [[f32; 4]; 2],
+    /// The foam micro-structure's uv at the frame's origin ([`foam_uv`]).
+    foam_uv: [[f32; 4]; 2],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
@@ -366,11 +370,9 @@ fn ocean_gpu(
         swell[2 * i] = [k.x, k.y, w.amplitude, phase];
         swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
     }
-    // Whitecaps where the surface's Jacobian falls under WHITECAP_J.
-    (
-        [1.0, tick_even_cell(water), 1.0 - WHITECAP_J, WHITECAP_J],
-        swell,
-    )
+    // z and w: the foam's threshold and gain, [`foam_thresholds`]'s (set
+    // with the FFT sea's).
+    ([1.0, tick_even_cell(water), 0.0, FRESH_GAIN], swell)
 }
 
 /// The even cell (m) of the grid the tick floats bodies on for `water`
@@ -383,7 +385,6 @@ fn tick_even_cell(water: &Water) -> f32 {
 
 /// The tick's grid cell (m) at world point `at` (xz) of `water`: what
 /// water.wgsl `tick_cell` computes.
-#[cfg(test)]
 fn tick_cell(water: &Water, at: Vec2) -> f32 {
     let centre = water.transform.w_axis;
     og_core::ocean::grid_cell(
@@ -402,10 +403,115 @@ fn cascade_weight(k_mid: f32, tick_cell: f32) -> f32 {
     1.0 - og_core::ocean::grid_keep(k_mid, tick_cell)
 }
 
-/// The Jacobian of the sea's horizontal displacement under which its
-/// crests whiten (growing to full white where it reaches zero, a fold).
-/// Batch 2's placeholder for the foam that persists (the FFT's batch 3).
-const WHITECAP_J: f32 = 0.45;
+/// How fast foam grows to full as the Jacobian falls under its threshold
+/// ([`foam_thresholds`]): in the frame (web-ocean's `foamP`) and into the
+/// foam that persists ([`crate::ocean_fft::foam`]; its `FOAM_UPDATE`'s).
+const FRESH_GAIN: f32 = 2.5;
+const FOAM_GAIN: f32 = 2.0;
+
+/// The Jacobians under which the drawn sea of `water` lays down foam that
+/// persists, and under which a crest is white as it folds: the levels a
+/// share of the surface falls under, that share whitecap coverage as
+/// Monahan and O'Muircheartaigh (1980) measured it at the wind's speed U
+/// (W = 3.84·10⁻⁶ U^3.41: 0.7 % at 9 m/s, 10 % at 20 m/s), half of it for
+/// the foam laid down and a quarter for the crests breaking now (the
+/// persistent foam trails behind them). At a breeze these are web-ocean's
+/// own (0.68 and 0.48 at its foam setting 1 against 0.52 and 0.48 here);
+/// a gale's steeper sea reaches them over much of its surface, where
+/// web-ocean's fixed levels whitened a third of it.
+///
+/// The Jacobian's distribution is sampled where the tick's grid is finest
+/// (the surface's centre): og_core's waves as drawn there, plus the
+/// cascades' displacement derivatives, a Gaussian of the covariance their
+/// spectrum gives. Seeded, so the same sea always has the same levels.
+/// A sea that never bunches enough (a round swell: no horizontal
+/// displacement) never foams.
+fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) -> (f32, f32) {
+    let centre = water.transform.w_axis;
+    let tc = tick_cell(water, Vec2::new(centre.x, centre.z));
+    let lam = built.choppiness;
+    // The covariance of the cascades' (∂Dx/∂x, ∂Dz/∂z, ∂Dx/∂z), each
+    // weighted as drawn there (cascade_weight), and its Cholesky factor.
+    let mut c = [[0f64; 3]; 3];
+    for cs in &built.cascades {
+        let k_mid = (cs.band.lo.max(1e-6) * cs.band.hi).sqrt() as f32;
+        let w2 = f64::from(1.0 - og_core::ocean::grid_keep(k_mid, tc)).powi(2);
+        let n = cs.resolution as i64;
+        let dk = std::f64::consts::TAU / cs.size;
+        let signed = |i: i64| if i >= n / 2 { i - n } else { i } as f64 * dk;
+        for (t, a) in cs.amplitudes.chunks(4).enumerate() {
+            let a2 = f64::from(a[0]).powi(2) + f64::from(a[1]).powi(2);
+            let (kx, kz) = (signed(t as i64 % n), signed(t as i64 / n));
+            let k = kx.hypot(kz);
+            if a2 == 0.0 || k < 1e-9 {
+                continue;
+            }
+            let v = [lam * kx * kx / k, lam * kz * kz / k, lam * kx * kz / k];
+            for r in 0..3 {
+                for q in 0..3 {
+                    c[r][q] += a2 * v[r] * v[q] * w2;
+                }
+            }
+        }
+    }
+    let mut l = [[0f64; 3]; 3];
+    for i in 0..3 {
+        for j in 0..=i {
+            let s = c[i][j] - (0..j).map(|k| l[i][k] * l[j][k]).sum::<f64>();
+            l[i][j] = if i == j {
+                s.max(0.0).sqrt()
+            } else if l[j][j] > 0.0 {
+                s / l[j][j]
+            } else {
+                0.0
+            };
+        }
+    }
+    let (_, swell) = ocean_gpu(water, 0.0, Vec3::ZERO);
+    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let mut uniform = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        ((state >> 11) as f64 + 0.5) / (1u64 << 53) as f64
+    };
+    const SAMPLES: usize = 32_768;
+    let mut jac: Vec<f64> = (0..SAMPLES)
+        .map(|_| {
+            let p = Vec2::new(
+                (uniform() * 512.0 - 256.0) as f32,
+                (uniform() * 512.0 - 256.0) as f32,
+            );
+            let mut j = [0f64; 3];
+            for w in swell.chunks(2) {
+                let (a, b) = (w[0], w[1]);
+                let k = Vec2::new(a[0], a[1]);
+                let s =
+                    f64::from((k.dot(p) + a[3]).sin() * og_core::ocean::grid_keep(k.length(), tc));
+                j[0] -= f64::from(b[0] * a[0]) * s;
+                j[1] -= f64::from(b[1] * a[1]) * s;
+                j[2] -= f64::from(b[0] * a[1]) * s;
+            }
+            let mut g = [0f64; 3];
+            for v in &mut g {
+                let (u1, u2) = (uniform(), uniform());
+                *v = (-2.0 * u1.ln()).sqrt() * (std::f64::consts::TAU * u2).cos();
+            }
+            for (i, row) in l.iter().enumerate() {
+                j[i] += (0..=i).map(|k| row[k] * g[k]).sum::<f64>();
+            }
+            (1.0 + j[0]) * (1.0 + j[1]) - j[2] * j[2]
+        })
+        .collect();
+    jac.sort_by(f64::total_cmp);
+    let coverage = 3.84e-6 * f64::from(water.wind.length()).powf(3.41);
+    let level = |share: f64| {
+        let i = ((share.min(1.0) * SAMPLES as f64) as usize).min(SAMPLES - 1);
+        // Never above 0.9: a sea whose surface hardly bunches lays none.
+        jac[i].min(0.9) as f32
+    };
+    (level(coverage * 0.5), level(coverage * 0.25))
+}
 
 /// Levels of a sea's clipmap ([`clipmap`]).
 const CLIP_LEVELS: usize = 10;
@@ -475,6 +581,49 @@ fn cascade_uv(sea: Option<FftSea>, origin: Vec3) -> [[f32; 4]; 3] {
         }
     }
     out
+}
+
+/// The FFT spectrum of `water`'s sea `sea` in `cascades` cascades: without
+/// the tick's long band, and its cascades parted where the tick's waves end
+/// at its finest cell (the surface's centre).
+fn sea_spectrum(
+    water: &Water,
+    sea: &og_core::ocean::Ocean,
+    cascades: u32,
+) -> crate::ocean_fft::spectrum::Spectrum {
+    use crate::ocean_fft::spectrum;
+    let centre = water.transform.w_axis;
+    let params =
+        spectrum::SeaParameters::from_ocean(water.wind, water.swell, water.choppiness, Some(sea))
+            .with_tick_cell(tick_cell(water, Vec2::new(centre.x, centre.z)));
+    spectrum::build(&spectrum::cascades(cascades as usize, &params), &params)
+}
+
+/// The foam micro-structure's uv at the scene's `origin` (water.wgsl
+/// `sea_foam`, after web-ocean's `foamPattern`): per read, the origin's
+/// world xz times its scale, whole repeats dropped (f64), plus web-ocean's
+/// offsets and its lace's slow drift with the tick's `seconds`: the lace
+/// (0.23 a metre), the finer lace (0.71), the bubbles (1.9), and the streaks
+/// along and across the `wind` (0.035, 0.11).
+fn foam_uv(origin: Vec3, wind: Vec2, seconds: f64) -> [[f32; 4]; 2] {
+    let (x, z) = (f64::from(origin.x), f64::from(origin.z));
+    let d = wind.normalize_or_zero();
+    let (dx, dz) = (f64::from(d.x), f64::from(d.y));
+    let f = |v: f64| v.rem_euclid(1.0) as f32;
+    [
+        [
+            f(x * 0.23 + 0.013 * seconds),
+            f(z * 0.23),
+            f(x * 0.71 + 0.37),
+            f(z * 0.71 + 0.71),
+        ],
+        [
+            f(x * 1.9 + 0.21),
+            f(z * 1.9 + 0.53),
+            f((x * dx + z * dz) * 0.035),
+            f((-x * dz + z * dx) * 0.11),
+        ],
+    ]
 }
 
 /// The IEEE half nearest `v` (rounding half up), for the height fields'
@@ -547,18 +696,27 @@ pub(crate) struct WaterRenderer {
     /// The FFT sea ([`crate::ocean_fft`]) of the frame's first surface with
     /// a wind. Every sea of the frame is drawn from it (one wind a scene).
     fft: Option<(crate::ocean_fft::FftOcean, FftSea)>,
+    /// The shader, for the height probe ([`WaterRenderer::probe_sea`]), and
+    /// the last frame's first sea's bind group it reads (native only).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    module: crate::deferred::Module,
+    last_sea: Option<wgpu::BindGroup>,
 }
 
 /// What the FFT sea's spectrum was built for and what the water's uniforms
 /// read of it.
 #[derive(Clone, Copy)]
 struct FftSea {
-    /// That sea's wind, swell and choppiness, and the cascades.
-    key: (Vec2, f32, f32, u32),
+    /// That sea's wind, swell and choppiness, the cascades, and the tick's
+    /// finest grid cell.
+    key: (Vec2, f32, f32, u32, f32),
     /// Per cascade its tile (m); 0 past the last.
     tiles: [f64; 3],
     /// The slope variance finer than the finest cascade.
     tail: f32,
+    /// The Jacobians under which foam is laid down and a crest is white
+    /// ([`foam_thresholds`]).
+    foam: (f32, f32),
     /// Each cascade's band's middle wavenumber (rad/m).
     bands: [f32; 4],
 }
@@ -600,9 +758,11 @@ impl WaterRenderer {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("water"),
             entries: &[
+                // (0, 1 and 7 are read by the height probe's compute too: `probe_sea`.)
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
+                        .union(wgpu::ShaderStages::COMPUTE),
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -614,7 +774,8 @@ impl WaterRenderer {
                 // three layers per cascade, mipped), sampled filtered.
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
+                        .union(wgpu::ShaderStages::COMPUTE),
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2Array,
@@ -634,7 +795,8 @@ impl WaterRenderer {
                 tex(6, true),
                 wgpu::BindGroupLayoutEntry {
                     binding: 7,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
+                        .union(wgpu::ShaderStages::COMPUTE),
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
@@ -647,6 +809,7 @@ impl WaterRenderer {
         });
         let module =
             crate::deferred::module(device, "water", water_source(frame_wgsl, lighting_wgsl));
+        let probe_module = module.clone();
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water"),
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
@@ -767,6 +930,8 @@ impl WaterRenderer {
             ripple_pipelines: None,
             compute: compute && crate::WORLD_3D,
             fft: None,
+            module: probe_module,
+            last_sea: None,
         }
     }
 
@@ -812,9 +977,10 @@ impl WaterRenderer {
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
         let (sea_segments, sea_cascades) = sea_tier(quality);
-        let sea = self.fft_sea(device, queue, waters, sea_cascades, seconds);
+        let sea = self.fft_sea(device, queue, waters, sea_cascades, seconds, camera, origin);
         let levels = clipmap(camera.position, origin, sea_segments);
         let mut draws = Vec::with_capacity(waters.len());
+        self.last_sea = None;
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.iter().find(|(i, _)| *i == index).map(|(_, v)| *v);
             let segments = grid_segments(water);
@@ -875,8 +1041,11 @@ impl WaterRenderer {
             } else {
                 water.flow
             };
-            let (ocean, swell) = ocean_gpu(water, seconds, origin);
+            let (mut ocean, swell) = ocean_gpu(water, seconds, origin);
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
+            if let Some(f) = drawn_sea {
+                ocean[2] = f.foam.1;
+            }
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
                 size: [
@@ -957,6 +1126,14 @@ impl WaterRenderer {
                 },
                 bands: drawn_sea.map_or([0.0; 4], |f| f.bands),
                 cascades: cascade_uv(drawn_sea, origin),
+                foam_levels: match drawn_sea {
+                    Some(_) => crate::ocean_fft::foam::levels(glam::DVec2::new(
+                        f64::from(origin.x),
+                        f64::from(origin.z),
+                    )),
+                    None => [[0.0; 4]; 2],
+                },
+                foam_uv: foam_uv(origin, water.wind, seconds),
                 swell,
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
@@ -1022,6 +1199,9 @@ impl WaterRenderer {
                     },
                 ],
             });
+            if drawn_sea.is_some() && self.last_sea.is_none() {
+                self.last_sea = Some(group.clone());
+            }
             let half = Vec3::new(water.size.x, 0.0, water.size.y) * 0.5;
             let radius = water.transform.transform_vector3(half).length();
             draws.push(WaterDraw {
@@ -1129,6 +1309,7 @@ impl WaterRenderer {
     /// tick's whatever the wall clock) and submitted ahead of the frame:
     /// its spectrum rebuilt when that sea's wind, swell or choppiness or the
     /// cascades change. None without a sea.
+    #[allow(clippy::too_many_arguments)]
     fn fft_sea(
         &mut self,
         device: &wgpu::Device,
@@ -1136,22 +1317,20 @@ impl WaterRenderer {
         waters: &[Water],
         cascades: u32,
         seconds: f64,
+        camera: &crate::Camera,
+        origin: Vec3,
     ) -> Option<FftSea> {
-        use crate::ocean_fft::{FftOcean, spectrum};
+        use crate::ocean_fft::FftOcean;
         let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
-        let key = (water.wind, water.swell, water.choppiness, cascades);
+        let centre = water.transform.w_axis;
+        let finest = tick_cell(water, Vec2::new(centre.x, centre.z));
+        let key = (water.wind, water.swell, water.choppiness, cascades, finest);
         if self.fft.as_ref().is_none_or(|(_, f)| f.key != key) {
             let mut fft = match self.fft.take() {
                 Some((f, ..)) if f.cascades() == cascades => f,
                 _ => FftOcean::new(device, cascades),
             };
-            let params = spectrum::SeaParameters::from_ocean(
-                water.wind,
-                water.swell,
-                water.choppiness,
-                Some(&sea),
-            );
-            let built = spectrum::build(&spectrum::cascades(cascades as usize, &params), &params);
+            let built = sea_spectrum(water, &sea, cascades);
             fft.set_spectrum(queue, &built);
             let mut tiles = [0.0; 3];
             for (t, c) in tiles.iter_mut().zip(&built.cascades) {
@@ -1166,16 +1345,136 @@ impl WaterRenderer {
                 bands,
                 tiles,
                 tail: built.tail_slope_variance as f32,
+                foam: foam_thresholds(water, &built),
             };
             self.fft = Some((fft, info));
         }
-        let (fft, info) = self.fft.as_ref().expect("made above");
+        let (fft, info) = self.fft.as_mut().expect("made above");
+        let info = *info;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("ocean fft"),
         });
-        fft.encode(queue, &mut encoder, seconds);
+        let foam_sea = crate::ocean_fft::foam::FoamSea {
+            tick: [centre.x, centre.z, tick_even_cell(water), 0.0],
+            half: [water.size.x * 0.5, water.size.y * 0.5, 0.0, 0.0],
+            cascades: cascade_uv(Some(info), origin),
+            bands: info.bands,
+            wind: water.wind,
+            threshold: info.foam.0,
+            gain: FOAM_GAIN,
+        };
+        let world = |v: Vec3| glam::DVec2::new(f64::from(v.x), f64::from(v.z));
+        fft.advance(
+            device,
+            queue,
+            &mut encoder,
+            seconds,
+            world(camera.position) + world(origin),
+            world(origin),
+            &foam_sea,
+            &|at| ocean_gpu(water, at, origin).1,
+        );
         queue.submit([encoder.finish()]);
-        Some(*info)
+        Some(info)
+    }
+
+    /// The drawn sea's height at `points` (frame xz) as the last frame drew
+    /// its first sea (`probe_sea` in water.wgsl): submitted, into a buffer to
+    /// map, per point (the height, the tick's waves' share, the cascades'
+    /// share, 0). None without a sea that frame.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    pub(crate) fn probe_sea(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        points: &[Vec2],
+    ) -> Option<wgpu::Buffer> {
+        use crate::deferred::AsModule;
+        use wgpu::util::DeviceExt;
+        let group = self.last_sea.as_ref()?;
+        let storage = |binding, read_only| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let io_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("water probe"),
+            entries: &[storage(0, true), storage(1, false)],
+        });
+        let empty = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("water probe"),
+            entries: &[],
+        });
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("water probe"),
+            bind_group_layouts: &[Some(&empty), Some(&self.layout), Some(&io_layout)],
+            immediate_size: 0,
+        });
+        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("water probe"),
+            layout: Some(&pl),
+            module: self.module.module(),
+            entry_point: Some("probe_sea"),
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let input: Vec<[f32; 2]> = points.iter().map(|p| p.to_array()).collect();
+        let input = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("water probe in"),
+            contents: bytemuck::cast_slice(&input),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let size = (points.len().max(1) * 16) as u64;
+        let output = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("water probe out"),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let read = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("water probe read"),
+            size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let io = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("water probe"),
+            layout: &io_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: input.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: output.as_entire_binding(),
+                },
+            ],
+        });
+        let none = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("water probe"),
+            layout: &empty,
+            entries: &[],
+        });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("water probe"),
+        });
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &none, &[]);
+            pass.set_bind_group(1, group, &[]);
+            pass.set_bind_group(2, &io, &[]);
+            pass.dispatch_workgroups((points.len() as u32).div_ceil(64), 1, 1);
+        }
+        encoder.copy_buffer_to_buffer(&output, 0, &read, 0, size);
+        queue.submit([encoder.finish()]);
+        Some(read)
     }
 
     /// Draws the surfaces' view depth for the screen AO (`fs_ao_depth`; group 0: the frame). Returns the draw calls.
@@ -1536,9 +1835,9 @@ mod tests {
     /// of the clipmap's vertex spacing there and the tick's cell, the rest
     /// point found as the tick finds it) is the height og.Buoyancy floats it
     /// on (og-physics' `WaterBody::surface`: `height_on_grid` at the tick's
-    /// cell) to 2 cm, and the FFT cascades' height drawn on top there (each
-    /// weighted by `cascade_weight`) has an RMS under 0.3 m of the gale's
-    /// 9.7 m sea. Drawing only the tick's longest waves under the cascades
+    /// cell) to 2 cm; the FFT cascades drawn on top there (each weighted by
+    /// `cascade_weight`) hold none of the waves the tick floats them on, and
+    /// their height has an RMS under 0.3 m of the gale's 9.7 m sea. Drawing only the tick's longest waves under the cascades
     /// (r5-fft ea2b5ca42) left the floaters metres off the drawn crests.
     #[test]
     fn the_boats_float_on_the_drawn_sea() {
@@ -1564,16 +1863,7 @@ mod tests {
             let m = ((d / half - 0.7) / 0.25).clamp(0.0, 1.0);
             cell * (1.0 + m * m * (3.0 - 2.0 * m))
         };
-        let params = crate::ocean_fft::spectrum::SeaParameters::from_ocean(
-            water.wind,
-            water.swell,
-            water.choppiness,
-            Some(&sea),
-        );
-        let built = crate::ocean_fft::spectrum::build(
-            &crate::ocean_fft::spectrum::cascades(cascades as usize, &params),
-            &params,
-        );
+        let built = sea_spectrum(&water, &sea, cascades);
         let floaters = [
             (-12.0, -30.0),
             (6.0, -45.0),
@@ -1612,6 +1902,21 @@ mod tests {
                     (got - tick).abs() < 0.02,
                     "{seconds} s at ({x}, {z}): drawn {got} m, the tick's {tick} m"
                 );
+                // No cascade drawn there holds a wave the tick floats bodies
+                // on (r5-fft b64c8a204's cascade 1 began at 0.21 rad/m, inside
+                // the tick's band to 0.39, and drew its 16 to 29 m waves twice:
+                // a keel corner 10 cm over the drawn trough).
+                for c in &built.cascades {
+                    let k = (c.band.lo.max(1e-6) * c.band.hi).sqrt() as f32;
+                    if cascade_weight(k, tc) > 0.0 {
+                        assert_eq!(
+                            og_core::ocean::grid_keep(c.band.lo as f32, tc),
+                            0.0,
+                            "({x}, {z}): a cascade from {} rad/m over the tick's waves",
+                            c.band.lo
+                        );
+                    }
+                }
                 let fft: f64 = built
                     .cascades
                     .iter()
@@ -1627,6 +1932,36 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The foam's levels follow the wind's whitecap coverage: at the
+    /// breeze of the water-ocean scene a crest whitens where web-ocean's
+    /// does (its 0.48 at its foam setting 1), the gale's steeper sea foams
+    /// only where it bunches much further, and a round swell of the same
+    /// gale (no horizontal displacement, a Jacobian of 1 everywhere) never.
+    #[test]
+    fn foam_follows_the_winds_whitecap_coverage() {
+        let thresholds = |wind: Vec2, choppiness: f32| {
+            let water = Water {
+                size: Vec2::splat(6000.0),
+                segments: 256,
+                wind,
+                choppiness,
+                ..Default::default()
+            };
+            let sea = ocean(&water).expect("a sea");
+            foam_thresholds(&water, &sea_spectrum(&water, &sea, 3))
+        };
+        let breeze = thresholds(Vec2::new(-3.0, -8.5), 0.6);
+        assert!((breeze.1 - 0.48).abs() < 0.05, "{breeze:?}");
+        assert!(breeze.1 < breeze.0);
+        let gale = thresholds(Vec2::new(7.0, -18.7), 1.0);
+        assert!(
+            gale.0 < breeze.0 - 0.15 && gale.1 < breeze.1 - 0.15,
+            "{gale:?}"
+        );
+        assert!(gale.1 > 0.0, "{gale:?}");
+        assert_eq!(thresholds(Vec2::new(7.0, -18.7), 0.0), (0.9, 0.9));
     }
 
     /// The sea the shader draws at a frame point is og_core's at the same
