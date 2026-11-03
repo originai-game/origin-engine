@@ -157,6 +157,21 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
     );
 }
 
+/// The sea under a dim sky is no brighter than that sky: its body is lit by
+/// the light that reaches it and its reflection mirrors the sky as drawn
+/// (not lifted by the twilight's adaptation, which only the surfaces take).
+/// Before, the sea glowed a daylight teal under a dusk storm and the night.
+#[test]
+fn the_sea_darkens_with_the_sky() {
+    for name in ["water-ocean-dusk-storm", "water-ocean-night"] {
+        check(name);
+        let img = frame(&ocean_scene(name));
+        let sky = mean(&lumas(&img, 0, 60, 1280, 260));
+        let sea = mean(&lumas(&img, 0, 440, 1280, 720));
+        assert!(sea < sky, "{name}: the sea ({sea}) under its sky ({sky})");
+    }
+}
+
 /// A one-pixel flow map pointing all one way (rg `* 2 - 1`).
 fn uniform_map(scene: &mut RenderScene, rg: [u8; 2]) -> og_render::TextureHandle {
     scene.add_texture(TextureData {

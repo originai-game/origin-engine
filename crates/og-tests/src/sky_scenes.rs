@@ -76,6 +76,7 @@ pub fn physical_light(
             sun_color: look.sun_color,
         },
     };
+    scene.adaptation = look.adaptation;
     scene.fog = Some(Fog {
         color: look.fog_color,
         sun_color: look.fog_sun.unwrap_or(Fog::default().sun_color),

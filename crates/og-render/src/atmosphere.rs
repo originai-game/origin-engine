@@ -270,6 +270,9 @@ pub struct DayNightLook {
     pub sun_color: Vec3,
     /// The image-based light's intensity.
     pub ambient: f32,
+    /// The part of `ambient` that is the eye's adaptation to the twilight's
+    /// shade, not the sky's light (`RenderScene::adaptation`): 1 by day.
+    pub adaptation: f32,
     /// A fog colour that matches the horizon.
     pub fog_color: Vec3,
     /// The fog's colour looking into the sun (`Fog::sun_color`), when the
@@ -312,7 +315,8 @@ impl DayNightLook {
         // twilight sky keeps a deep blue-grey instead of falling into the
         // tone curve's toe (its scene light is already a few percent of
         // noon's; the curve maps that to black).
-        self.ambient = 1.0 + 3.0 * (1.0 - ramp(-0.1, 0.15, self.sun_direction.y));
+        self.adaptation = 1.0 + 3.0 * (1.0 - ramp(-0.1, 0.15, self.sun_direction.y));
+        self.ambient = self.adaptation;
         // The fog's colour: the light the air scatters towards a point, the
         // sky's mean over the upper hemisphere (cosine-weighted, three
         // bearings at three heights), not its bright horizon.
@@ -424,6 +428,7 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         sky,
         sun_color,
         ambient: 0.12 + 0.88 * (0.25 * golden + 0.75 * day),
+        adaptation: 1.0,
         fog_color: horizon * (0.8 + 0.2 * day),
         fog_sun: None,
     }

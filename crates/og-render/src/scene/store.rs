@@ -106,6 +106,7 @@ impl RenderScene {
             overlay: None,
             fog: None,
             clouds: None,
+            adaptation: 1.0,
             surface_weather: None,
             volumetric_fog: None,
             quality: crate::RenderQuality::default(),

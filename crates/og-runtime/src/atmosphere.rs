@@ -248,6 +248,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let layouts = &draw.atmo;
     scene.fog = None;
     scene.volumetric_fog = None;
+    // No twilight adaptation unless the day-night cycle sets one below.
+    scene.adaptation = 1.0;
     scene.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
         let strength = f(&w, "strength", 0.0);
         (strength > 0.0).then(|| og_render::Wind {
@@ -346,6 +348,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         scene.light.color = look.light_color;
         scene.light.intensity = intensity;
         scene.environment.intensity = look.ambient;
+        scene.adaptation = look.adaptation;
         scene.environment.sky = ProceduralSky {
             sun_direction: stepped.sun_direction,
             sun_color: stepped.sun_color,

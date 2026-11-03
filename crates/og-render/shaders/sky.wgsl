@@ -103,7 +103,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
     let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);
-    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a);
+    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
   }
   return color + moon.rgb;
 }

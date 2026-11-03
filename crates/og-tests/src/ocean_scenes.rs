@@ -17,6 +17,8 @@ pub const OCEAN_SCENES: &[&str] = &[
     "water-ocean-storm",
     "water-ocean-sunset",
     "water-flow-map",
+    "water-ocean-dusk-storm",
+    "water-ocean-night",
 ];
 
 /// The sea's tick (a minute and a half in, at 60 a second).
@@ -54,6 +56,25 @@ fn sea_haze(scene: &mut RenderScene) {
         f.density = 3.5 / SEA;
         f.start = 20.0;
         f.max_opacity = 1.0;
+    }
+}
+
+/// A camera at `eye` looking out over the sea as the breeze's frame does,
+/// metered from the frame (an exposure for the view) less `compensation` EV,
+/// as a game's camera at dusk or night is.
+fn metered(eye: Vec3, compensation: f32) -> Camera {
+    Camera {
+        position: eye,
+        target: Vec3::new(0.0, eye.y - 2.5, -60.0),
+        far: 5000.0,
+        exposure: Exposure::Auto {
+            compensation,
+            min_ev: -10.0,
+            max_ev: 10.0,
+            adapt_speed_up: 0.0,
+            adapt_speed_down: 0.0,
+        },
+        ..Default::default()
     }
 }
 
@@ -130,6 +151,37 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             };
         }
         "water-flow-map" => flow_map_scene(&mut scene, true),
+        // A gale building at dusk (the sun some 5° under the horizon) under a
+        // closing deck, seen as the breeze's frame is, metered: the sea as
+        // dark as the dim sky it mirrors, its body lit only by the dusk.
+        "water-ocean-dusk-storm" => {
+            physical_light(&mut scene, 18.4, earth);
+            let clouds = Clouds {
+                coverage: 0.9,
+                density: 0.09,
+                color: Vec3::splat(0.5),
+                base: 700.0,
+                layer: 0.0,
+                ..Clouds::default()
+            };
+            let (sun, sky) = clouds.light();
+            scene.light.intensity *= sun;
+            scene.environment.intensity *= sky;
+            scene.clouds = Some(clouds);
+            let mut gale = sea(Vec2::new(5.0, -14.0), 0.85);
+            gale.deep = Vec3::new(0.012, 0.035, 0.035);
+            scene.water.push(gale);
+            sea_haze(&mut scene);
+            scene.camera = metered(Vec3::new(0.0, 6.0, 0.0), -1.0);
+        }
+        // The breeze's sea at night under a clear, starry sky and a moon
+        // behind the camera: dark water, the moonlight on it faint.
+        "water-ocean-night" => {
+            physical_light(&mut scene, 22.3, earth);
+            scene.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
+            sea_haze(&mut scene);
+            scene.camera = metered(Vec3::new(0.0, 4.0, 0.0), -2.5);
+        }
         other => panic!("no ocean scene {other}"),
     }
     scene

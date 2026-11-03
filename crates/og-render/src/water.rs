@@ -237,7 +237,8 @@ struct WaterGpu {
     /// x: PostEffects.aoDirect, how much the frame's screen AO darkens the
     /// reflection and the body (0: not at all, as the opaque surfaces'
     /// direct light); y: 1 with a flow map; z: 1 drawn over a mesh; w:
-    /// unused.
+    /// one over [`crate::RenderScene::adaptation`], which the reflection of
+    /// the sky divides out (it mirrors the sky as drawn).
     ao: [f32; 4],
     /// The lake's four normal-map layers' uv at the scene's origin, whole
     /// repeats dropped (`origin.rs`): their pattern stays put when it moves.
@@ -582,6 +583,7 @@ impl WaterRenderer {
         planar: &[(usize, &wgpu::TextureView)],
         ao: &wgpu::TextureView,
         ao_direct: f32,
+        adaptation: f32,
         origin: Vec3,
         seconds: f64,
         fallback: &wgpu::TextureView,
@@ -689,7 +691,7 @@ impl WaterRenderer {
                     ao_direct.clamp(0.0, 1.0),
                     f32::from(flow_view.is_some()),
                     f32::from(mesh.is_some()),
-                    0.0,
+                    1.0 / adaptation.max(1e-3),
                 ],
                 layers: lake_layers(origin, water.normal_scale.max(0.0)),
                 ocean,

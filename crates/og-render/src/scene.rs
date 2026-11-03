@@ -195,6 +195,13 @@ pub struct RenderScene {
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
     /// only with [`crate::Background::Procedural`].
     pub clouds: Option<crate::Clouds>,
+    /// How much of the image-based light's strength
+    /// ([`crate::Environment::intensity`]) is the eye's adaptation to shade
+    /// rather than the sky's own light: the day-night cycle's twilight lift
+    /// ([`crate::DayNightLook::adaptation`]). It lights surfaces, but a
+    /// mirror of the sky (the sea's reflection) divides it out, so it shows
+    /// the sky as bright as the sky is drawn. 1: none.
+    pub adaptation: f32,
     /// Rain, puddles and snow on the lit surfaces (`None`: dry).
     pub surface_weather: Option<crate::SurfaceWeather>,
     /// Fog lit as a participating medium (`volumetric.rs`; `None`: none).

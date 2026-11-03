@@ -2632,6 +2632,7 @@ impl Renderer {
                     &self.post.white
                 },
                 ao.map_or(0.0, |a| a.direct),
+                scene.adaptation,
                 scene.origin,
                 water::seconds(scene),
                 &self.post.white,

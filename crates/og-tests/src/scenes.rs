@@ -191,6 +191,8 @@ pub const SCENES: &[&str] = &[
     "water-ocean-storm",
     "water-ocean-sunset",
     "water-flow-map",
+    "water-ocean-dusk-storm",
+    "water-ocean-night",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -1017,12 +1019,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // R5: the sea under the physical sky, and a stream's flow map.
-        "water-ocean" | "water-ocean-storm" | "water-ocean-sunset" | "water-flow-map" => {
-            |g, name| {
-                g.scene = crate::ocean_scenes::ocean_scene(name);
-                Ok(())
-            }
-        }
+        "water-ocean"
+        | "water-ocean-storm"
+        | "water-ocean-sunset"
+        | "water-flow-map"
+        | "water-ocean-dusk-storm"
+        | "water-ocean-night" => |g, name| {
+            g.scene = crate::ocean_scenes::ocean_scene(name);
+            Ok(())
+        },
         "weather-rain" | "weather-snow" => |g, name| {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {
                 og_render::WEATHER_RAIN

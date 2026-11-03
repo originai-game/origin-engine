@@ -395,6 +395,14 @@ fn ssr(origin: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
         if (view_depth(q) > sd) { hi = mid; } else { lo = mid; }
       }
       let hit = screen_uv(origin + r * hi);
+      // On a sea, a hit is where the refined ray meets what the screen holds: a ray that only passed behind a
+      // floater's silhouette (the march's thickness is generous) mirrored its dark side into the near water.
+      let held = textureLoad(scene_depth, vec2<i32>(hit.xy * water.screen.xy), 0).r;
+      if (water.ocean.x > 0.5 && view_depth(origin + r * hi) - held > 0.25 + 0.02 * hi) {
+        last = t;
+        t = t * 1.25 + 0.15;
+        continue;
+      }
       let edge = min(min(hit.x, 1.0 - hit.x), min(hit.y, 1.0 - hit.y));
       let fade = clamp(edge * 8.0, 0.0, 1.0) * (1.0 - f32(i) / f32(steps));
       // The scene colour there was already darkened by its own screen AO (the whole colour × mix(0.35, 1, ao) by
@@ -415,6 +423,12 @@ fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }
 
+// The sky's light greyed by the frame's cloud cover, as the clouds' own ambient is (sky.wgsl clouds_over).
+fn overcast(c: vec3<f32>) -> vec3<f32> {
+  if (frame.clouds[3].w < 0.5) { return c; }
+  return mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+}
+
 @fragment
 fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let t = frame.time.x;
@@ -430,6 +444,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sea's own normal under the detail (a level surface: its waves are the world's), and its whitecaps.
   var base = in.normal;
   var whitecap = 0.0;
+  var crest_line = 0.0;
   var old = 0.0;
   var sea_mss = 0.0;
   if (water.ocean.x > 0.5) {
@@ -445,23 +460,32 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
       let q = vec2<f32>(dot(in.rest, wd), dot(in.rest, vec2<f32>(-wd.y, wd.x)));
       let streaks = foam_noise(q * vec2<f32>(0.12, 0.45)) * 0.6 + foam_noise(q * vec2<f32>(0.6, 2.1)) * 0.4;
       let core = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
-      // White water is lace, never a sheet: fine noise (its octaves faded to their mean where a pixel spans them)
-      // cut at a level the crest's core lowers, its edge soft, so a whitecap fades out by its coverage. Only the
-      // breaking crest itself (the core near 1) is opaque white.
-      let fine = mix(foam_noise(q * vec2<f32>(4.5, 11.0)), 0.5, smoothstep(0.05, 0.12, footprint));
-      let mid = mix(foam_noise(q * vec2<f32>(1.6, 3.8)), 0.5, smoothstep(0.15, 0.35, footprint));
-      let lace = foam_noise(q * vec2<f32>(0.6, 1.4)) * 0.45 + mid * 0.33 + fine * 0.22;
-      let cut = 1.0 - 0.6 * core;
-      let cover = smoothstep(cut - 0.12, cut + 0.1, lace);
-      whitecap = cover * mix(0.45, 0.92, core * core) * smoothstep(0.0, 0.2, core);
+      // White water is lace, never a sheet or a cut-out: ridged noise (threads where the noise crosses its middle)
+      // of warped coordinates, so its cells are a network of uneven threads, not the round islands and round holes
+      // of value noise cut at a level. Its finer octaves erode the edges and fade to their mean where a pixel spans
+      // them. Coverage is a soft threshold the crest's core lowers; only the breaking crest line (the core near 1)
+      // is opaque white, the older foam down its back thinner (see foam_tint below).
+      let warp = vec2<f32>(foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(3.1, 7.7)),
+        foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(11.3, 1.9))) - vec2<f32>(0.5);
+      let qw = q + warp * 3.5;
+      let coarse = 1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(0.7, 1.6)) - 1.0);
+      let mid = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(2.1, 4.6)) - 1.0), 0.5, smoothstep(0.15, 0.35, footprint));
+      let fine = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(5.5, 12.0)) - 1.0), 0.5, smoothstep(0.05, 0.12, footprint));
+      let lace = coarse * 0.5 + mid * 0.3 + fine * 0.2;
+      let cut = 1.05 - 0.7 * core;
+      let cover = smoothstep(cut - 0.15, cut + 0.15, lace);
+      crest_line = smoothstep(0.7, 0.95, core);
+      whitecap = cover * mix(0.5, 1.0, crest_line) * smoothstep(0.0, 0.25, core);
       // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
       // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
       // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
       // Threads some 0.4 m across, broken along their length, in patches tens of metres long.
-      let lane = q + vec2<f32>(0.0, (foam_noise(q * vec2<f32>(0.013, 0.06)) - 0.5) * 12.0);
-      let thread = foam_noise(lane * vec2<f32>(0.09, 2.2)) * 0.75 + foam_noise(lane * vec2<f32>(0.35, 6.0)) * 0.25;
+      // Downwind they run nearly along the view, so long unbroken ones read as rays into the water: they are dashes
+      // a few metres long whose lanes bend, lying on the surface between the crests.
+      let lane = q + vec2<f32>(0.0, (foam_noise(q * vec2<f32>(0.013, 0.06)) - 0.5) * 12.0 + (warp.x * 2.0));
+      let thread = foam_noise(lane * vec2<f32>(0.3, 2.2)) * 0.7 + foam_noise(lane * vec2<f32>(0.9, 6.0)) * 0.3;
       let spread = smoothstep(0.45, 0.75, foam_noise(q * vec2<f32>(0.025, 0.07)));
-      old = smoothstep(0.68, 0.86, thread) * spread * 0.18 * smoothstep(12.0, 20.0, water.sea_wind.z)
+      old = smoothstep(0.7, 0.86, thread) * spread * 0.12 * smoothstep(12.0, 20.0, water.sea_wind.z)
         * (1.0 - smoothstep(0.12, 0.35, footprint));
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
@@ -520,8 +544,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   }
   let thickness = max(scene_at - here, 0.0);
   let absorb = 1.0 - exp(-thickness / max(water.shallow.w, 1e-3));
-  // Shadowed water scatters less light: its deep colour darkens.
-  var deep = water.deep.rgb * mix(0.4, 1.0, sun);
+  // The body scatters the light that reaches it: its deep colour is authored for daylight (the sun and sky on level
+  // water at least 1 in luminance) and darkens in proportion under less, at dusk, at night or under a storm's deck
+  // (else the sea glowed a daylight teal under a dark sky). Shadowed water scatters less light still.
+  let light_in = frame.light_color.rgb * max(l.y, 0.0) + ambient_light_level(vec3<f32>(0.0, 1.0, 0.0), in.world) * frame.params.x;
+  let daylight = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)), 1.0);
+  var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
     // scatter = max(N·V, 0) · waterColor (the deep colour), sunColor = the light × glint / 2 (glint = spec 2 × sunColor
@@ -543,8 +571,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     fresnel = (f0 + (1.0 - f0) * sea_fresnel(max(dot(n, v), 0.0), sigma)) * water.look.x;
     mip = max(sqrt(sqrt(sea_mss)) * frame.params.y, 0.5);
   }
-  // The environment, or the reflection probe holding the surface (probes.rs).
-  var reflected = reflected_light(r, in.world, mip) * frame.params.x * 1.8;
+  // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
+  // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
+  // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
+  let sky_mirror = frame.params.x * water.ao.w * 1.8;
+  var reflected = overcast(reflected_light(r, in.world, mip)) * sky_mirror;
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -564,7 +595,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   if (sea) {
     // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn. The facets
     // spread the reflection over about two of their slopes' deviations, so it turns down gradually.
-    let up = reflected_light(vec3<f32>(r.x, abs(r.y), r.z), in.world, mip) * frame.params.x * 1.8;
+    let up = overcast(reflected_light(vec3<f32>(r.x, abs(r.y), r.z), in.world, mip)) * sky_mirror;
     let w = 2.0 * sigma + 0.05;
     reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
@@ -624,17 +655,21 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     if (water.ao.y > 0.5) { f = flow_at(in.uv) * length(water.normals.yz); }
     let speed = length(f);
     let drift = f * t;
-    let patches = smoothstep(0.35, 0.75, foam_noise((in.local - drift) * 0.9) * 0.7 + foam_noise((in.local - drift) * 3.3) * 0.3);
-    band = edge * (0.4 + 0.6 * edge) * (0.35 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
+    // Cut at its middle, so half of a bank has none (a lower cut left a faint foam all along it: a bright line).
+    let patches = smoothstep(0.5, 0.8, foam_noise((in.local - drift) * 0.9) * 0.7 + foam_noise((in.local - drift) * 3.3) * 0.3);
+    band = edge * (0.4 + 0.6 * edge) * (0.25 + 0.7 * noise) * patches * smoothstep(0.05, 0.6, speed);
   }
   let foam = clamp(band + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   // A sea's whitecaps, whatever the shore foam's width: white water lit by the sun and the whole sky above it.
   let sky_lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + ambient_light_level(in.normal, in.world) * frame.params.x;
-  color = mix(color, water.foam.rgb * sky_lit, whitecap);
-  // The old foam is a thin film: greyer than a whitecap, the water showing through it.
-  color = mix(color, water.foam.rgb * sky_lit * 0.6, old);
+  // Foam off the crest line is a thin film that takes the water's tint; the breaking crest is white.
+  let white = water.foam.rgb * sky_lit;
+  let foam_tint = mix(mix(color, white, 0.6), white, crest_line);
+  color = mix(color, foam_tint, whitecap);
+  // The old foam is thinner still: greyer than a whitecap, the water showing through it.
+  color = mix(color, mix(color, white * 0.6, 0.7), old);
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 

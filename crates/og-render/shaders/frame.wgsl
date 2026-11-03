@@ -242,6 +242,14 @@ fn lattice_hash(c: vec3<i32>) -> f32 {
   return f32(h >> 8u) / 16777216.0;
 }
 
+// How much of the stars a cloud deck leaves (clouds.rs): none through an overcast, all of them under a broken sky,
+// whose gaps the clouds' own march shows them through.
+fn star_veil() -> f32 {
+  let c = frame.clouds;
+  if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return 1.0; }
+  return 1.0 - smoothstep(0.5, 0.9, c[0].x);
+}
+
 // The procedural sky of a chosen look in direction `d` (sky_* fields): a
 // zenith to horizon gradient, dark ground, the sun disc with its glow,
 // stars where the sky is dark, and the moon over them.
@@ -263,7 +271,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
     let f = fract(g) - 0.5;
     let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
     let dark = 1.0 - clamp(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722)) * 4.0, 0.0, 1.0);
-    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a);
+    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
   }
   return color + moon.rgb;
 }
