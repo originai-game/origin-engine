@@ -116,9 +116,16 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
     assert!(moved > 1.0, "the sea moves with the tick: {moved}");
 
     // The gale's crests foam white; the same waves as a round swell
-    // (choppiness 0) do not.
-    let gale = frame(&ocean_scene("water-ocean-storm"));
-    let round = frame(&with_sea("water-ocean-storm", None, Some(0.0)));
+    // (choppiness 0) do not. Both without their reflection, so no mirror
+    // of the bright overcast counts as foam.
+    let matte = |mut s: RenderScene| {
+        for w in &mut s.water {
+            w.reflectivity = 0.0;
+        }
+        frame(&s)
+    };
+    let gale = matte(ocean_scene("water-ocean-storm"));
+    let round = matte(with_sea("water-ocean-storm", None, Some(0.0)));
     let foam = |img: &RgbaImage| {
         let band = lumas(img, 0, 380, 1280, 720);
         let m = mean(&band);

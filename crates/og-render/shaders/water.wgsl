@@ -392,7 +392,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
     if (water.ocean.w > 0.0) {
       let streaks = foam_noise(in.rest * 0.35) * 0.6 + foam_noise(in.rest * 1.7) * 0.4;
-      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.w) * smoothstep(0.25, 0.65, streaks);
+      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.w) * smoothstep(0.2, 0.5, streaks);
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
@@ -405,7 +405,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // three.js Water / Water2 (below) never turn a ripple's normal to the eye: a wavelet facing away at a grazing view
   // reflects fully (theta = max(dot(V, N), 0), Fresnel 1), its body scatters nothing, the mirror bends by its own N.xz.
   let three_water = water.under.w > 0.0 || (water.normals.w > 0.5 && dot(water.normals.yz, water.normals.yz) >= 1e-12);
-  if (dot(n, v) < 0.0 && !three_water) { n = -n; }
+  if (water.ocean.x > 0.5) {
+    // A sea's swell turns its back slopes from the eye past a crest: a flipped normal mirrored the bright sky there
+    // at Fresnel 1, a bright line along every crest's silhouette. Bend it to just face the eye instead (its
+    // reflection then points down, into the sea: see below).
+    n = normalize(n + v * max(0.05 - dot(n, v), 0.0));
+  } else if (dot(n, v) < 0.0 && !three_water) { n = -n; }
   let l = normalize(frame.light_dir.xyz);
   var sun = 1.0;
   if (water.extra.x > 0.0 && frame.light_dir.w > 0.5) {
@@ -477,6 +482,10 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   } else if (water.look.y > 0.5) {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
+  }
+  if (water.ocean.x > 0.5) {
+    // A ray reflected downwards meets the next wave, not the sky: the sea's own dark body.
+    reflected = mix(deep, reflected, smoothstep(-0.05, 0.0, r.y));
   }
   let mirrored = reflected;
   reflected = water.extra.w + (1.0 - water.extra.w) * reflected;

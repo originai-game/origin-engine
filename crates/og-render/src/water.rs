@@ -309,7 +309,8 @@ const WHITECAP_K: f32 = 12.8;
 /// crests' bunching of the waves that whiten (`Σ k lean sin`, water.wgsl
 /// `ocean_normal`): its standard deviation σ times the normal deviate whose tail is the whitecap
 /// cover Monahan and O'Muircheartaigh measured for the wind (`3.84e-6
-/// U^3.41`: 0.7 % at 9 m/s, 6 % at 17), doubled to read at a distance.
+/// U^3.41`: 0.7 % at 9 m/s, 6 % at 17), doubled to read at a distance,
+/// growing to full white over 0.4 σ.
 /// (0, 0) when the crests do not lean (no whitecaps). Rendering only.
 fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
     let sigma = (sea
@@ -328,7 +329,7 @@ fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
     let z = t
         - (2.515517 + 0.802853 * t + 0.010328 * t * t)
             / (1.0 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t);
-    (z * sigma, 0.7 * sigma)
+    (z * sigma, 0.4 * sigma)
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
