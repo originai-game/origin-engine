@@ -217,6 +217,7 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
         });
       });
     });
+    if (on) selPath = kit.lastPath();
     if (r.clicked) {
       if (!on) {
         out.selected = k;
@@ -225,6 +226,9 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
     } else if (ix.focused && !on && kit.memory(`~ga.f.${id}`, 0) !== keyHash(k)) out.selected = k;
     if (ix.focused) kit.remember(`~ga.f.${id}`, keyHash(k));
   };
+
+  // The selected part's row (this tick's path), which a phone's scrolling list keeps in its view.
+  let selPath = "";
 
   // A livery layer's row: its swatch, name and kind, its eye, and up and down.
   const layerRow = (l: Api.LiveryLayer, i: number, rowW: Api.Size): void => {
@@ -421,6 +425,18 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
       detail(true);
     }
     kit.close();
+    // The chosen part in view, centred, clear of the list's fade: a row low in the list (a larger text size, a smaller
+    // phone) otherwise sat under the foot with no selection showing. og-ui scrolls by where the row was laid out last
+    // tick (in view or not), so it is asked for a few ticks after the part, the text size or the surface changes, then
+    // left to the player's scrolling.
+    if (!livery && selPath) {
+      const want = keyHash(`${desc.selected ?? ""}|${ts}|${vp.width}x${vp.height}`);
+      if (kit.memory(`~ga.shown.${id}`, 0) !== want) {
+        kit.remember(`~ga.shown.${id}`, want);
+        kit.remember(`~ga.since.${id}`, tick);
+      }
+      if (tick - kit.memory(`~ga.since.${id}`, 0) < 4) kit.scrollIntoView(selPath, true);
+    }
     if (!livery) action(grow());
   } else {
     kit.row("Body", { width: grow(), height: grow(), gap: u(16) }, () => {
