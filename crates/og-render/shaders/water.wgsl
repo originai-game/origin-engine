@@ -140,10 +140,18 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   return swell + ocean_cascades(p, cell, p + swell.xz);
 }
 
-// ocean_displace's waves of og_core::ocean (the tick's).
+// ocean_displace's waves of og_core::ocean (the tick's) at rest point p, faded at the tick's cell where they carry p
+// to: og-physics reads that cell at the floater's own point (WaterBody::surface), and in a gale the crests lean the
+// rest point 2 to 3 m from it, where the tick's grid is some 3 % coarser or finer and the half-faded waves drew the
+// surface up to 4.6 cm off og.physics.waterHeight. The cell at p places the point to within a few centimetres, where
+// the cell is the same to a thousandth.
 fn ocean_swell(p: vec2<f32>, cell: f32) -> vec3<f32> {
+  let first = ocean_swell_at(p, max(cell, tick_cell(p)));
+  return ocean_swell_at(p, max(cell, tick_cell(p + first.xz)));
+}
+
+fn ocean_swell_at(p: vec2<f32>, spacing: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  let spacing = max(cell, tick_cell(p));
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
@@ -178,7 +186,7 @@ fn hull_calm(p: vec2<f32>) -> f32 {
 // carry p (its displaced point, frame xz).
 fn ocean_cascades(p: vec2<f32>, cell: f32, at: vec2<f32>) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  let tc = tick_cell(p);
+  let tc = tick_cell(at);
   let calm = hull_calm(at);
   if (calm <= 0.0) { return d; }
   for (var c = 0u; c < u32(water.fft.x); c++) {
@@ -211,9 +219,9 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: 
   var cov = vec3<f32>(water.fft.z * 0.5, water.fft.z * 0.5, 0.0);
   var j = vec3<f32>(0.0);
   let calm = hull_calm(at);
-  // og_core's waves as the surface carries them (faded at the tick's cell), those the pixel cannot hold left to the
-  // facets' roughness.
-  let tc = tick_cell(p);
+  // og_core's waves as the surface carries them (faded at the tick's cell where they are drawn: ocean_swell), those the
+  // pixel cannot hold left to the facets' roughness.
+  let tc = tick_cell(at);
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];

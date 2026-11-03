@@ -1879,15 +1879,20 @@ mod tests {
     }
 
     /// The boats sample's floaters (tests/evidence/r5-water/boats) ride the
-    /// drawn sea: at each, at several times, the height water.wgsl's
-    /// vertices draw (`ocean_displace`: og_core's waves faded at the larger
-    /// of the clipmap's vertex spacing there and the tick's cell, the rest
-    /// point found as the tick finds it) is the height og.Buoyancy floats it
+    /// drawn sea: at each, at several times, and at the hulls' keel corners
+    /// and the buoys' centres as the run's dump has them
+    /// (`boats/waterline.txt`), the height water.wgsl's vertices draw
+    /// (`ocean_displace`: og_core's waves faded at the larger of the
+    /// clipmap's vertex spacing at the rest point and the tick's cell where
+    /// the waves carry it, the rest point found as the tick finds it) is the
+    /// height og.Buoyancy floats it
     /// on (og-physics' `WaterBody::surface`: `height_on_grid` at the tick's
     /// cell) to 2 cm; the FFT cascades drawn on top there (each weighted by
     /// `cascade_weight`) hold none of the waves the tick floats them on, and
     /// their height has an RMS under 0.3 m of the gale's 9.7 m sea. Drawing only the tick's longest waves under the cascades
-    /// (r5-fft ea2b5ca42) left the floaters metres off the drawn crests.
+    /// (r5-fft ea2b5ca42) left the floaters metres off the drawn crests;
+    /// fading them at the tick's cell at the rest point (r5-fft a117aae4d),
+    /// which the gale's crests lean 2 to 3 m off, left boat-2's keel 4.6 cm.
     #[test]
     fn the_boats_float_on_the_drawn_sea() {
         let water = Water {
@@ -1922,13 +1927,44 @@ mod tests {
             (18.0, -55.0),
             (-20.0, -52.0),
         ];
+        // The dumped poses' keel corners and buoy centres (5 s and 6.5 s).
+        let poses = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/evidence/r5-water/boats/waterline.txt"
+        ))
+        .expect("the floaters' poses");
+        let mut points: Vec<(f64, f32, f32)> = Vec::new();
         for seconds in [3.0, 4.5, 5.0, 6.0, 6.5] {
+            points.extend(floaters.iter().map(|&(x, z)| (seconds, x, z)));
+        }
+        for line in poses.lines().filter(|l| !l.starts_with('#')) {
+            let f: Vec<&str> = line.split_whitespace().collect();
+            let v: Vec<f32> = f[2..]
+                .iter()
+                .map(|x| x.parse().expect("a number"))
+                .collect();
+            let seconds = f[0].parse::<f64>().expect("a tick") / 60.0;
+            let (c, q) = (
+                Vec3::new(v[0], v[1], v[2]),
+                glam::Quat::from_xyzw(v[3], v[4], v[5], v[6]),
+            );
+            if f[1].starts_with("boat") {
+                for (x, z) in [(-1.2, -3.0), (1.2, -3.0), (-1.2, 3.0), (1.2, 3.0)] {
+                    let p = c + q * Vec3::new(x, -0.5, z);
+                    points.push((seconds, p.x, p.z));
+                }
+            } else {
+                points.push((seconds, c.x, c.z));
+            }
+        }
+        for (seconds, x, z) in points {
             let (_, swell) = ocean_gpu(&water, seconds, Vec3::ZERO);
-            for (x, z) in floaters {
+            {
                 let at = Vec2::new(x, z);
                 let tc = tick_cell(&water, at);
-                let keep = tc.max(spacing(at.distance(Vec2::new(eye.x, eye.z))));
-                let drawn = |p: Vec2| {
+                // water.wgsl ocean_swell at rest point p: faded at the larger of the vertices' spacing there and the
+                // tick's cell where a first pass carries p.
+                let pass = |p: Vec2, keep: f32| {
                     let mut d = Vec3::ZERO;
                     for w in swell.chunks(2) {
                         let (a, b) = (w[0], w[1]);
@@ -1938,6 +1974,14 @@ mod tests {
                         d += Vec3::new(b[0] * th.cos(), a[2] * th.sin(), b[1] * th.cos()) * f;
                     }
                     d
+                };
+                let drawn = |p: Vec2| {
+                    let cell = spacing(p.distance(Vec2::new(eye.x, eye.z)));
+                    let first = pass(p, cell.max(tick_cell(&water, p)));
+                    pass(
+                        p,
+                        cell.max(tick_cell(&water, p + Vec2::new(first.x, first.z))),
+                    )
                 };
                 let mut rest = at;
                 for _ in 0..8 {
