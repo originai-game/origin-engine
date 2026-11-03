@@ -15,6 +15,7 @@
 import { og } from "@origingame/engine";
 import type { Anchor, Size, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
+import { fightHud, horrorHud, mmoHud, mobaHud, openHud, rhythmHud, rogueHud, rpgHud, survivalHud, tdHud } from "./huds2.ts";
 import { actionHud, hudArt, loadHudArt, manageHud, raceHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
 
 const grow: Size = { kind: "grow" };
@@ -25,30 +26,48 @@ export interface ShowcasePage {
   readonly name: string;
 }
 
-/** A genre family's showcase. */
+/** A genre family's showcase: its primary seed style (the coverage matrix, tests/evidence/ui-art/concepts/README.md) and its pages. */
 export interface Showcase {
   readonly key: string;
+  readonly pack: string;
   readonly pages: readonly ShowcasePage[];
 }
 
 const page = (screen: string, name: string): ShowcasePage => ({ screen, name: `sc.page.${name}` });
 
 /**
- * The families of docs/ui.md §17, in its order. Each family's name and line
- * are `sc.<key>` and `sc.<key>.blurb`.
+ * The families of docs/ui.md §17 (the first five, then the rest in §17's
+ * order). Each family's name and line are `sc.<key>` and `sc.<key>.blurb`;
+ * its pack is the seed style it is shown in first. The matrix has no row for
+ * MOBA, fighting or open world: MOBA takes fantasy (its heroes' look), fighting
+ * the party games' cartoon, open world storybook's painted land; survival
+ * takes craft, wasteland's secondary, as the kit carries no wasteland pack.
  */
 export const SHOWCASES: readonly Showcase[] = [
-  { key: "action", pages: [page("actionTitle", "title"), page("actionHud", "hud"), page("actionPause", "pause"), page("actionTutorial", "tutorial"), page("actionLoading", "loading"), page("actionResults", "results")] },
-  { key: "shooter", pages: [page("shooterHud", "hud"), page("shooterScore", "scoreboard"), page("loadout", "loadout"), page("lobby", "lobby")] },
-  { key: "puzzle", pages: [page("board", "board"), page("saga", "saga"), page("store", "store")] },
-  { key: "management", pages: [page("manageHud", "hud"), page("generators", "generators"), page("ledger", "ledger"), page("cityMap", "cityMap")] },
-  { key: "racing", pages: [page("raceHud", "hud"), page("garage", "garage"), page("raceBoard", "leaderboard"), page("sportsHud", "sportsHud"), page("matchFacts", "matchFacts")] },
+  { key: "action", pack: "pixel", pages: [page("actionTitle", "title"), page("actionHud", "hud"), page("actionPause", "pause"), page("actionTutorial", "tutorial"), page("actionLoading", "loading"), page("actionResults", "results")] },
+  { key: "shooter", pack: "tactical", pages: [page("shooterHud", "hud"), page("shooterScore", "scoreboard"), page("loadout", "loadout"), page("lobby", "lobby")] },
+  { key: "puzzle", pack: "cartoon", pages: [page("board", "board"), page("saga", "saga"), page("store", "store")] },
+  { key: "management", pack: "craft", pages: [page("manageHud", "hud"), page("generators", "generators"), page("ledger", "ledger"), page("cityMap", "cityMap")] },
+  { key: "racing", pack: "cyber", pages: [page("raceHud", "hud"), page("garage", "garage"), page("raceBoard", "leaderboard"), page("sportsHud", "sportsHud"), page("matchFacts", "matchFacts")] },
+  { key: "moba", pack: "fantasy", pages: [page("mobaHud", "hud"), page("draft", "draft")] },
+  { key: "rpg", pack: "fantasy", pages: [page("rpgHud", "hud"), page("gear", "gear"), page("quests", "quests"), page("dialogue", "dialogue")] },
+  { key: "mmo", pack: "fantasy", pages: [page("mmoHud", "hud"), page("chat", "chat")] },
+  { key: "roguelike", pack: "pixel", pages: [page("rogueHud", "hud"), page("cards", "cards"), page("rewards", "rewards"), page("deck", "deck")] },
+  { key: "strategy", pack: "scifi", pages: [page("rts", "rts"), page("tdHud", "td"), page("shipStatus", "shipStatus"), page("turnOrder", "turnOrder"), page("abilityCards", "abilityCards"), page("sectorMap", "sectorMap"), page("hangar", "hangar")] },
+  { key: "gacha", pack: "kawaii", pages: [page("gacha", "gacha"), page("pass", "pass")] },
+  { key: "rhythm", pack: "cyber", pages: [page("rhythmHud", "hud"), page("songs", "songs")] },
+  { key: "fighting", pack: "cartoon", pages: [page("fightHud", "hud"), page("select", "select"), page("versus", "versus")] },
+  { key: "narrative", pack: "kawaii", pages: [page("vn", "vn"), page("routes", "routes"), page("cgGallery", "cgGallery")] },
+  { key: "survival", pack: "craft", pages: [page("survivalHud", "hud")] },
+  { key: "horror", pack: "dread", pages: [page("horrorHud", "hud")] },
+  { key: "openworld", pack: "storybook", pages: [page("openHud", "hud"), page("worldMap", "worldMap"), page("photo", "photo")] },
 ];
 
 /** The screens this file builds (HUDs and mounted documents), in the order SCREENS lists them. */
 export const SHOWCASE_SCREENS = [
   "actionTitle", "actionHud", "actionPause", "actionTutorial", "actionLoading", "actionResults",
   "shooterHud", "shooterScore", "manageHud", "raceHud", "raceBoard", "sportsHud", "matchFacts",
+  "mobaHud", "rpgHud", "mmoHud", "rogueHud", "tdHud", "rhythmHud", "fightHud", "survivalHud", "horrorHud", "openHud",
 ] as const;
 
 /** The showcase a screen is a page of, and its index there (the first showcase that lists it). */
@@ -260,10 +279,17 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       matchFacts(world);
       if (og.ui.back()) go("gallery");
       return true;
+    case "mobaHud": case "rpgHud": case "mmoHud": case "rogueHud": case "tdHud": case "rhythmHud": case "fightHud": case "survivalHud": case "horrorHud": case "openHud":
+      HUDS2[screen](world);
+      if (og.ui.back()) go("gallery");
+      return true;
     default:
       return false;
   }
 }
+
+/** The other families' play screens (huds2.ts). */
+const HUDS2 = { mobaHud, rpgHud, mmoHud, rogueHud, tdHud, rhythmHud, fightHud, survivalHud, horrorHud, openHud } as const;
 
 /**
  * Where a HUD page leaves the kit's chrome, desktop then phone: a spot its
@@ -273,6 +299,8 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
 const CHROME: Record<string, [Anchor, Anchor]> = {
   actionHud: ["left", "left"], shooterHud: ["left", "left"], shooterScore: ["left", "left"], manageHud: ["left", "left"],
   raceHud: ["bottom", "left"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
+  mobaHud: ["left", "left"], rpgHud: ["left", "left"], mmoHud: ["bottomLeft", "left"], rogueHud: ["left", "left"], tdHud: ["left", "left"],
+  rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left"], horrorHud: ["left", "left"], openHud: ["left", "left"],
 };
 
 /** Where a showcase HUD page wants the kit's chrome, or null for the kit's own rule. */

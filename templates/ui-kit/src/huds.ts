@@ -17,12 +17,18 @@ const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n))
 
 const ART_FILES = [
   "scenes/genre-action", "scenes/genre-shooter", "scenes/genre-management", "scenes/genre-racing", "scenes/genre-sports", "scenes/title",
+  "scenes/genre-moba", "scenes/genre-rpg", "scenes/genre-mmo", "scenes/genre-roguelike", "scenes/genre-strategy", "scenes/genre-rhythm",
+  "scenes/genre-fighting", "scenes/genre-survival", "scenes/genre-horror", "scenes/genre-openworld",
   "boons/gold", "boons/crystal", "boons/thunder-strike", "boons/flame-blade", "boons/frost", "boons/rune-shield", "boons/titan-heart",
   "loadout/raven", "loadout/sidearm", "loadout/frag", "loadout/stim", "loadout/drone", "loadout/shield",
   "city/residential", "city/commercial", "city/industrial", "city/parks", "city/power", "city/water", "city/transit", "city/police",
   "portraits/aria", "portraits/kael", "portraits/mira", "maps/world",
+  "portraits/maren", "portraits/cultist", "portraits/brann", "portraits/wren", "portraits/torvin", "portraits/vesper", "portraits/red-louse",
+  "items/healing-draught", "items/mana-vial", "items/iron-sword", "items/iron-key", "items/hunters-bow", "items/oak-shield",
+  "boons/curse", "boons/star", "boons/apple", "boons/bomb", "boons/poison", "boons/broken-chain",
+  "rts/tower", "rts/wall", "rts/barracks", "rts/forge",
 ] as const;
-type HudArt = (typeof ART_FILES)[number];
+export type HudArt = (typeof ART_FILES)[number];
 const CUT_OUTS: ReadonlySet<string> = new Set(["loadout/raven"]);
 const ART: Partial<Record<HudArt, number>> = {};
 
@@ -60,7 +66,7 @@ export function defineHudActions(world: World): void {
 
 // ── the frame ───────────────────────────────────────────────────────────
 
-function frame() {
+export function frame() {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const small = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
@@ -76,7 +82,7 @@ function frame() {
  * the notch too), sharp: it is the game, not a menu's backdrop. Without
  * the art, the style's backdrop.
  */
-function gameScene(name: HudArt, focal = { x: 0.5, y: 0.5 }): void {
+export function gameScene(name: HudArt, focal = { x: 0.5, y: 0.5 }): void {
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const tex = hudArt(name);
@@ -92,14 +98,14 @@ function gameScene(name: HudArt, focal = { x: 0.5, y: 0.5 }): void {
  * orthographic, 360 units tall, at the origin): x and y as fractions of the
  * surface, from its top left.
  */
-function at(fx: number, fy: number): Vector3 {
+export function at(fx: number, fy: number): Vector3 {
   const vp = og.ui.frameViewport();
   const unit = 360 / vp.height;
   return { x: (fx - 0.5) * vp.width * unit, y: (0.5 - fy) * 360, z: 0 };
 }
 
 /** The pause button every play screen has in its top end corner: true when pressed (or Escape, the pad's Start). */
-function pauseButton(id = "Pause"): boolean {
+export function pauseButton(id = "Pause"): boolean {
   return og.ui.iconButton(id, "pause", { label: L("sc.pause"), variant: "secondary", round: true }).clicked || og.ui.action("pause");
 }
 

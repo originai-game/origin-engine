@@ -1,9 +1,11 @@
 type screen
 version 1
 ---
-# Loading with tips, lore and progress (docs/ui.md Appendix B). The
-# destination's art, its name, a tip or a line of lore that changes on a
-# press, and the progress along the foot; "Press to continue" once loaded
+# Loading with tips, lore and progress (docs/ui.md Appendix B, §15.5). The
+# destination's key art under a half scrim, never a flat field; one
+# dominant element, the progress bar in the pack's track and fill with the
+# place's name as its line, along the foot; a tip or a line of lore that
+# changes on a press as the secondary card over it; "Continue" once loaded
 # when the game waits for the player.
 #
 # Viewmodel: place, tip, progress, ready, waits. Events to code: nextTip
@@ -15,6 +17,7 @@ under hide
 back none
 capture true
 props {
+  keyArt number "The key art's texture (og.load.texture; 0: the style's placeholder)."
   place string "Where the player is going."
   tip string "A tip or a line of lore."
   progress number "0 to 1."
@@ -32,6 +35,8 @@ stack Loading {
   on click emit "nextTip"
   art Art {
     kind tutorial
+    texture bind keyArt
+    fit cover
     width grow
     height grow
     position absolute
@@ -39,6 +44,17 @@ stack Loading {
     top 0
     end 0
     bottom 0
+  }
+  column Scrim {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background "#000000"
+    opacity 0.5
   }
   column Foot {
     width grow
@@ -49,14 +65,6 @@ stack Loading {
       padding 24
     }
     spacer
-    label Place {
-      text bind place
-      step xl3
-      heading true
-      at phone {
-        step xl
-      }
-    }
     column Tip {
       width grow 0 720
       padding 16
@@ -77,12 +85,21 @@ stack Loading {
         width grow
       }
     }
+    label Place {
+      text bind place
+      step xl2
+      heading true
+      at phone {
+        step lg
+      }
+    }
     row Progress {
       width grow
       gap 12
       cross center
       progress Bar {
         width grow
+        height 12
         value bind progress
       }
       label Percent {

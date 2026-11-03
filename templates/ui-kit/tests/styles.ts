@@ -1,8 +1,8 @@
 // The style-pack gallery: every screen of the kit in one style, composed into
 // one reference sheet per style and surface, in FRAME_SCREENS order without
 // the gallery: on a desktop crates/og-ui/references/<tier>/kit-style-<name>.png
-// (7 × 3 cells, each the 1280×720 frame box-filtered to 640×360), on a phone
-// in portrait kit-style-<name>-phone.png (10 × 2 cells, each the 390×844@3
+// (7 cells a row, each the 1280×720 frame box-filtered to 640×360), on a phone
+// in portrait kit-style-<name>-phone.png (10 cells a row, each the 390×844@3
 // frame box-filtered to its 390×844 CSS pixels). Each screen is compared with
 // its cell of the sheet under og-tests' rule (frames.ts).
 // `OG_UI_CAPTURE=1 og test .` records the sheets instead.
@@ -10,12 +10,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
-import { playtest, type PlaytestDesc } from "@origingame/engine/playtest";
+import { playtest, type PlaytestChecks, type PlaytestDesc, type PlaytestRun } from "@origingame/engine/playtest";
 import { decodePng, difference, outDir, referencesDir, type Image } from "./frames.ts";
 import { framesScript, STYLE_SETTLE } from "./script.ts";
 
 /** How a surface's frames become a sheet: the frame size, the box filter, the columns. */
-interface Surface {
+export interface Surface {
   readonly size: string;
   readonly viewport: string;
   readonly factor: number;
@@ -23,7 +23,7 @@ interface Surface {
   readonly suffix: string;
 }
 
-const SURFACES: Record<"desktop" | "phone", Surface> = {
+export const SURFACES: Record<"desktop" | "phone", Surface> = {
   desktop: { size: "1280x720", viewport: "", factor: 2, cols: 7, suffix: "" },
   phone: { size: "1170x2532", viewport: "0.0:viewport:phone;", factor: 3, cols: 10, suffix: "-phone" },
 };
@@ -100,9 +100,63 @@ export function encodePng(img: Image): Uint8Array {
   return png;
 }
 
+/**
+ * Compose `files` (frames in the run's output) into the sheet `name`, each
+ * box-filtered by the surface's factor, `surface.cols` a row, and compare each
+ * cell with the reference sheet's under og-tests' rule (`label` names them in
+ * the asserts). `OG_UI_CAPTURE=1` records the sheet instead.
+ */
+export function sheetCheck(run: PlaytestRun, t: PlaytestChecks, files: readonly string[], name: string, surface: Surface, label: string): void {
+  // The sheet is built from frames: without a renderer each is reported unchecked.
+  t.frame(files, () => {
+    const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
+    const cw = cells[0]!.width;
+    const ch = cells[0]!.height;
+    const cols = surface.cols;
+    const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
+    sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
+    cells.forEach((c, i) => {
+      const x0 = (i % cols) * cw;
+      const y0 = Math.floor(i / cols) * ch;
+      for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
+    });
+    writeFileSync(join(outDir(), name), encodePng(sheet));
+    const refs = referencesDir();
+    const own = join(refs, run.tier);
+    if (process.env.OG_UI_CAPTURE !== undefined) {
+      mkdirSync(own, { recursive: true });
+      writeFileSync(join(own, name), encodePng(sheet));
+      t.ok(true, `recorded ${join(own, name)}`);
+      return;
+    }
+    const dir = existsSync(join(own, name)) ? own : join(refs, "metal");
+    if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${label}; comparing with metal\n`);
+    const refPath = join(dir, name);
+    if (!existsSync(refPath)) {
+      t.ok(false, `${refPath} is missing: record it with OG_UI_CAPTURE=1 og test templates/ui-kit`);
+      return;
+    }
+    const ref = decodePng(readFileSync(refPath));
+    t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
+    files.forEach((f, i) => {
+      const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
+      t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${label} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
+    });
+  });
+}
+
 /** A capture's UI dump (`<screen>.settle.json`): what is still moving. */
 interface Settle {
   motion: { path: string; moving: string[]; leaving: boolean }[];
+}
+
+/** What was still entering or leaving when `screen`'s frame was taken (withSettleDumps), joined; "" when settled. */
+export function unsettled(run: PlaytestRun, screen: string): string {
+  return run
+    .json<Settle>(`${screen}.settle.json`)
+    .motion.filter((m) => m.leaving || m.moving.includes("presence"))
+    .map((m) => `${m.path} (${m.leaving ? "leaving" : m.moving.join(", ")})`)
+    .join("; ");
 }
 
 /**
@@ -136,48 +190,9 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
       t.ok(run.quit, "the script reached quit");
       for (const f of files) {
         const screen = f.replace(/\.png$/, "");
-        const busy = run
-          .json<Settle>(`${screen}.settle.json`)
-          .motion.filter((m) => m.leaving || m.moving.includes("presence"))
-          .map((m) => `${m.path} (${m.leaving ? "leaving" : m.moving.join(", ")})`);
-        t.equal(busy.join("; "), "", `${style} ${screen} is captured with every entrance and exit settled`);
+        t.equal(unsettled(run, screen), "", `${style} ${screen} is captured with every entrance and exit settled`);
       }
-      // The sheet is built from frames: without a renderer each is reported unchecked.
-      t.frame(files, () => {
-        const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
-        const cw = cells[0]!.width;
-        const ch = cells[0]!.height;
-        const cols = surface.cols;
-        const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
-        sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
-        cells.forEach((c, i) => {
-          const x0 = (i % cols) * cw;
-          const y0 = Math.floor(i / cols) * ch;
-          for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
-        });
-        writeFileSync(join(outDir(), name), encodePng(sheet));
-        const refs = referencesDir();
-        const own = join(refs, run.tier);
-        if (process.env.OG_UI_CAPTURE !== undefined) {
-          mkdirSync(own, { recursive: true });
-          writeFileSync(join(own, name), encodePng(sheet));
-          t.ok(true, `recorded ${join(own, name)}`);
-          return;
-        }
-        const dir = existsSync(join(own, name)) ? own : join(refs, "metal");
-        if (dir !== own) process.stdout.write(`  note: no ${run.tier} reference for ${style}; comparing with metal\n`);
-        const refPath = join(dir, name);
-        if (!existsSync(refPath)) {
-          t.ok(false, `${refPath} is missing: record it with OG_UI_CAPTURE=1 og test templates/ui-kit`);
-          return;
-        }
-        const ref = decodePng(readFileSync(refPath));
-        t.equal(`${ref.width}x${ref.height}`, `${sheet.width}x${sheet.height}`, "the sheet has every screen");
-        files.forEach((f, i) => {
-          const d = difference(cells[i]!, cell(ref, i, cols, cw, ch));
-          t.ok(d.outliers <= 0.005 && d.rmse <= 0.01, `${style} ${f} matches its cell: ${(d.outliers * 100).toFixed(3)} % outliers (≤ 0.5 %), RMSE ${d.rmse.toFixed(5)} (≤ 0.01)`);
-        });
-      });
+      sheetCheck(run, t, files, name, surface, style);
     },
   });
 }

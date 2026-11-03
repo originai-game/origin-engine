@@ -122,6 +122,16 @@ const BLURBS: Record<Screen, string> = {
   raceBoard: "Time-trial leaderboards: global and friends, a league (the leaderboard document)",
   sportsHud: "A football broadcast HUD: the scorebug, the player's plate, the radar, a substitution",
   matchFacts: "Full time: the scorers by side and the match stats face to face",
+  mobaHud: "A MOBA's HUD: the kills and the clock, the hero's frame, four abilities with the ultimate, the lane map, heroes' plates",
+  rpgHud: "An action RPG's HUD: health and mana orbs, skills and potions, XP, the quest tracker, an elite's plate and hits",
+  mmoHud: "An MMO raid HUD: player and target frames, the boss's cast, the party, two action bars, buffs, the encounter",
+  rogueHud: "A roguelike's run HUD: health and the boons taken, the chamber, gold and keys, the four moves",
+  tdHud: "A tower defence HUD: gold and lives, the waves to come, the next wave's call, the towers with their costs",
+  rhythmHud: "A rhythm game's play screen: four lanes and their notes, the lane keys, the judgement, combo, score and life",
+  fightHud: "A fighting game's HUD: health from the centre out, the round clock and rounds won, super gauges, the combo",
+  survivalHud: "A survival HUD: health, food and water, statuses, stamina, the compass, the day, the hotbar, a gather prompt",
+  horrorHud: "A horror HUD: almost nothing; the light's battery, a hide prompt, the objective, stamina only when spent",
+  openHud: "An open world's HUD: the compass with the quest's marker, the tracked quest, the minimap, the time, a waypoint, a talk prompt",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
