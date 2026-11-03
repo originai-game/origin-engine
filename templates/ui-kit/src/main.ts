@@ -512,9 +512,12 @@ function gallery(d: DemoState): void {
     const g = og.ui.bounds("Gallery");
     const list = og.ui.bounds("Gallery/Screens");
     const above = g && list ? list.y - g.y : 200 * ts;
-    const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - above;
+    // The panel keeps its inset from the screen's edges (the safe area's on a phone, the panel padding's on a
+    // desktop): the list takes what the title and subtitle leave inside it, two rows where they fit, and scrolls.
+    const inset = phone ? t.space.md : t.space.xl;
+    const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - 2 * inset - above - t.space.lg;
     if (g && list && room < rowHeight) rowNeed.tight = true;
-    const height = Math.max(Math.min(rowHeight * 2, room), Math.min(phone ? Infinity : 460 * ts, vp.height - vp.safeArea.top - vp.safeArea.bottom - above - t.space.lg - 2 * t.space.md));
+    const height = Math.max(0, Math.min(room, Math.max(rowHeight * 2, phone ? room : 460 * ts)));
     // The genre showcases first (each opens on its first page), then every screen of the kit.
     const n = SHOWCASES.length;
     const r = og.ui.list("Screens", { count: n + SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
