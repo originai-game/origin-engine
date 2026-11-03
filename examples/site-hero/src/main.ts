@@ -73,6 +73,16 @@ function start(world: World): void {
   const top = must(world.spawn({ name: "meadow", position: { x: 30, y: EYE_Y - 2 + 0.1, z: -20 } }));
   must(world.insert(top, og.Mesh, { geometry: must(og.render.boxGeometry(world, { width: 50, height: 0.2, depth: 70 })), material: grass, receiveShadow: true }));
 
+  // The traveller at the cliff's edge (og.motion drives the Meshy rig through rigs/meshy.ogt).
+  const model = "models/traveller.glb";
+  const anim = must(og.load.animation(world, model));
+  const rig = must(og.load.rig(world, "rigs/meshy.ogt"));
+  const body = must(world.instantiate(must(og.load.gltf(world, model)), { name: "traveller", position: { x: 9, y: EYE_Y - 1.9, z: -16 } }));
+  must(world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" }));
+  must(world.insert(body, og.MotionAgent, { rig, drive: true }));
+  must(og.motion.face(world, body, { heading: Math.PI }));
+  must(og.motion.pose(world, body, { pose: "idle", duration: 4 }));
+
   const cam = must(world.resource(og.Camera));
   cam.near = 0.3;
   cam.far = 60000;

@@ -1,0 +1,11 @@
+type rig
+version 1
+---
+# Meshy's auto-rig (24 joints): Mixamo-style names, but its spine runs the
+# other way (Hips > Spine02 > Spine01 > Spine > neck), so the spine is named
+# outright; the rest the scheme finds.
+scheme mixamo
+spine "Spine02"
+chest "Spine01"
+upperChest "Spine"
+neck "neck"
