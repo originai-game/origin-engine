@@ -87,7 +87,7 @@ const ART_FILES = [
   "city/transit", "city/parks", "city/power", "city/water", "scenes/city",
   "rts/stop", "rts/patrol", "rts/build", "rts/rally", "rts/gather", "rts/repair", "rts/barracks", "rts/tower", "rts/farm", "rts/wall",
   "rts/forge", "rts/keep", "scenes/battlefield",
-  "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
+  "scenes/tactical", "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
   "photo/thumb-cinema", "photo/thumb-polaroid", "photo/thumb-film",
 ] as const;
 /** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
@@ -147,6 +147,7 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   garage: ["scenes/garage", { x: 0.5, y: 0.55 }],
   ledger: ["scenes/city", { x: 0.5, y: 0.6 }],
   chat: ["scenes/gothic-halls", { x: 0.45, y: 0.5 }],
+  loadout: ["scenes/tactical", { x: 0.5, y: 0.5 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */

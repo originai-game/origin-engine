@@ -858,9 +858,38 @@ function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
   b.seq((at) => tap(at, "Photo/Mode/Hint"), 0.5);
   b.dump("photo-shown");
   b.cmd("pat:photo:reset");
+  // The loadout: the rifle with its attachments called out (on a phone their rows), the optic picked, the muzzle
+  // removed, the second loadout's tab, the secondary slot, and the locked field upgrade refused (on a phone, the slots'
+  // row scrolled to it first).
+  b.cmd("show:loadout");
+  b.cmd("pat:reset");
+  b.shot("loadout-idle", 1.0);
+  b.dump("loadout");
+  const slotsAt = phone ? "Slots/Row" : "Slots";
+  if (phone) {
+    // The attachments stand under the rifle and its figures: the body scrolled to them.
+    b.cmd("touch_move_to:Loadout/Body/Loadout/Body/Stage", 0.05);
+    b.cmd("scroll:0,900", 0.4);
+  }
+  b.seq((at) => tap(at, phone ? "Attachments/List/optic" : "Callouts/optic"), 0.4);
+  b.shot("loadout-optic", 0.4);
+  b.seq((at) => tap(at, "Attachments/List/stock/Remove"), 0.4);
+  b.shot("loadout-removed", 0.5);
+  b.dump("loadout-removed");
+  b.seq((at) => tap(at, "Tabs/Row/1"), 0.3);
+  b.seq((at) => tap(at, `${slotsAt}/secondary`), 0.4);
+  b.shot("loadout-secondary", 0.6);
+  if (phone) {
+    b.cmd("touch_move_to:Slots/Row/secondary", 0.05);
+    b.cmd("scroll:900,0", 0.4);
+  }
+  b.seq((at) => tap(at, `${slotsAt}/field`), 0.15);
+  b.shot("loadout-refused", 0.2);
+  b.dump("loadout-refused");
+  b.cmd("pat:loadout:reset");
 }
 
-const GENRE3_SCREENS = ["photo"] as const;
+const GENRE3_SCREENS = ["photo", "loadout"] as const;
 
 /** The last previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
 export function genres3Script(phone: boolean): Script {

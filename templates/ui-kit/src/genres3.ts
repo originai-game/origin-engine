@@ -1,4 +1,4 @@
-// The genre patterns' preview screens of the last U6d round (docs/ui.md §11, U6d r42): photo mode, each built from its
+// The genre patterns' preview screens of the last U6d round (docs/ui.md §11, U6d r42): photo mode and a loadout, each built from its
 // pattern over the kit's fixtures with the game's side done as a game would (the camera moved, a filter drawn, the shot
 // taken). `pat:<area>:<key>:<value>` sets a preview's state so the playtests (tests/patterns.ts, genres3Script) can
 // draw each one.
@@ -8,7 +8,8 @@
 
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
-import type { PhotoControl, PhotoLook, Size } from "@origingame/engine";
+import { frame } from "./genres.ts";
+import type { LoadoutAttachment, LoadoutSlot, LoadoutStat, PhotoControl, PhotoLook, Rarity, Size } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -122,7 +123,95 @@ export function photoScreen(): boolean {
   return exit;
 }
 
-/** The previews' commands: `pat:<photo>:<key>:<value>`; false when the area is not one of these. */
+// ── loadout: the slots, the weapon and its attachments ─────────────────
+
+/** The slots: key, art, level (0 none), locked. */
+const SLOTS: Array<[string, ArtName, number, boolean]> = [
+  ["primary", "loadout/raven", 12, false], ["secondary", "loadout/sidearm", 6, false], ["melee", "loadout/knife", 3, false],
+  ["lethal", "loadout/frag", 0, false], ["tactical", "loadout/stim", 0, false], ["field", "loadout/drone", 0, true],
+];
+/** The rifle's attachment points: key, art, where on the art (x, y), its tier, and what it changes. */
+const POINTS: Array<[string, ArtName, number, number, Rarity, Record<string, number>]> = [
+  ["stock", "loadout/stock", 0.1, 0.4, "uncommon", { control: 4, mobility: -2 }],
+  ["optic", "loadout/optic", 0.44, 0.22, "rare", { range: 4 }],
+  ["laser", "loadout/laser", 0.74, 0.3, "epic", { mobility: 4 }],
+  ["magazine", "loadout/magazine", 0.52, 0.68, "rare", { fireRate: -3, damage: 2 }],
+  ["underbarrel", "loadout/grip", 0.67, 0.51, "uncommon", { control: 3 }],
+  ["muzzle", "loadout/suppressor", 0.94, 0.37, "rare", { damage: 2, range: 2 }],
+];
+/** Each slot's figures before its attachments. */
+const FIGURES: Record<string, Record<string, number>> = {
+  primary: { damage: 28, range: 62, fireRate: 78, mobility: 60, control: 51 },
+  secondary: { damage: 22, range: 30, fireRate: 64, mobility: 88, control: 70 },
+  melee: { damage: 90, range: 4, fireRate: 40, mobility: 96, control: 80 },
+  lethal: { damage: 95, range: 35, fireRate: 10, mobility: 70, control: 40 },
+  tactical: { damage: 0, range: 0, fireRate: 20, mobility: 75, control: 60 },
+  field: { damage: 0, range: 80, fireRate: 0, mobility: 50, control: 50 },
+};
+const SUBTITLE: Record<string, string> = { primary: "assault", secondary: "pistol", melee: "blade", lethal: "grenade", tactical: "grenade", field: "drone" };
+
+const lo0 = () => ({ loadout: 0, slot: "primary", attachment: "", fitted: new Set<string>(POINTS.map(([k]) => k)) });
+let lo = lo0();
+
+/** A loadout (Call of Duty, Apex Legends): the slots, the selected item large with its attachments called out, its figures. */
+export function loadoutScreen(): void {
+  frame("Loadout", L("loadout.title"), () => {
+    const slots: LoadoutSlot[] = SLOTS.map(([key, a, lvl, locked]) => ({
+      key,
+      label: L(`loadout.slot.${key}`),
+      name: L(`loadout.item.${key}`),
+      detail: locked ? L("loadout.unlocks", { n: 20 }) : lvl > 0 ? L("loadout.level", { n: lvl }) : "",
+      image: art(a),
+      rarity: key === "primary" ? "rare" : "common",
+      locked,
+    }));
+    const primary = lo.slot === "primary";
+    const attachments: LoadoutAttachment[] = primary ? POINTS.map(([key, a, x, y, rarity]) => {
+      const on = lo.fitted.has(key);
+      return { key, label: L(`loadout.point.${key}`), name: on ? L(`loadout.att.${key}`) : "", image: on ? art(a) : null, rarity: on ? rarity : "none", rarityLabel: on ? L(`loadout.rarity.${rarity}`) : "", x, y };
+    }) : [];
+    // The game's sums: the slot's figures and what each fitted attachment changes.
+    const base = FIGURES[lo.slot] ?? {};
+    const stats: LoadoutStat[] = Object.keys(base).map((f) => {
+      const delta = primary ? POINTS.filter(([k]) => lo.fitted.has(k)).reduce((n, p) => n + (p[5][f] ?? 0), 0) : 0;
+      return { key: f, label: L(`loadout.stat.${f}`), value: (base[f] ?? 0) + delta, delta, max: 100 };
+    });
+    const sel = SLOTS.find(([k]) => k === lo.slot) ?? SLOTS[0]!;
+    const r = og.ui.loadout("Loadout", {
+      loadouts: [1, 2, 3, 4, 5].map((n) => L("loadout.tab", { n })),
+      loadout: lo.loadout,
+      balance: 1250,
+      slots,
+      slot: lo.slot,
+      image: art(sel[1]),
+      aspect: primary ? 1024 / 651 : 0,
+      name: L(`loadout.item.${lo.slot}`),
+      subtitle: [L(`loadout.class.${SUBTITLE[lo.slot] ?? "assault"}`), ...(primary ? [L("loadout.rarity.rare")] : []), ...(sel[2] > 0 ? [L("loadout.level", { n: sel[2] })] : [])],
+      rarity: primary ? "rare" : "common",
+      rarityWord: primary ? 1 : -1,
+      description: L(`loadout.desc.${lo.slot}`),
+      attachments,
+      attachment: lo.attachment,
+      capacity: primary ? POINTS.length : 0,
+      stats,
+      statsLabel: L("loadout.stats"),
+      attachmentsLabel: L("loadout.attachments"),
+      emptyLabel: L("loadout.empty"),
+      removeLabel: L("loadout.remove"),
+      lockedLabel: L("loadout.locked"),
+    });
+    // The game's side: a tab switches loadouts, a slot shows its item; Remove takes the attachment off (its point empty).
+    if (r.loadout !== null) lo.loadout = r.loadout;
+    if (r.slot !== null) {
+      lo.slot = r.slot;
+      lo.attachment = "";
+    }
+    if (r.attachment !== null) lo.attachment = r.attachment;
+    if (r.remove !== null) lo.fitted.delete(r.remove);
+  }, [{ action: "tabNext", hint: L("loadout.next") }, { action: "back", hint: L("hint.back") }]);
+}
+
+/** The previews' commands: `pat:<photo|loadout>:<key>:<value>`; false when the area is not one of these. */
 export function genres3Command(area: string, key: string, value: string): boolean {
   if (area === "photo") {
     if (key === "tab") ph.tab = value;
@@ -135,6 +224,13 @@ export function genres3Command(area: string, key: string, value: string): boolea
     else if (key === "hidden") ph.hidden = value !== "off";
     else if (key === "reset") ph = ph0();
     else return false;
+  } else if (area === "loadout") {
+    if (key === "slot") lo.slot = value;
+    else if (key === "tab") lo.loadout = Number(value) || 0;
+    else if (key === "attachment") lo.attachment = value;
+    else if (key === "remove") lo.fitted.delete(value);
+    else if (key === "reset") lo = lo0();
+    else return false;
   } else return false;
   return true;
 }
@@ -142,4 +238,5 @@ export function genres3Command(area: string, key: string, value: string): boolea
 /** Every preview of this file back to its start (pat:reset). */
 export function resetGenres3(): void {
   ph = ph0();
+  lo = lo0();
 }

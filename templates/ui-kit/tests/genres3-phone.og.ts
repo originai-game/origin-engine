@@ -1,7 +1,8 @@
 // The last previews on a phone in portrait (390×844 CSS px at 3×, a 47 px
 // notch and a 34 px home indicator), driven by touch only: photo mode (the
 // camera's sliders, a filter, a frame with the grid, the shutter's flash, the
-// controls hidden and brought back); then each right to left, in Japanese and
+// controls hidden and brought back) and the loadout (an attachment picked,
+// one removed, another loadout and slot, a locked slot refused); then each right to left, in Japanese and
 // at 200 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres3-phone-<file>.
 import { playtest } from "@origingame/engine/playtest";
@@ -18,7 +19,7 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of ["photo.json", "photo-filter.json", "photo-frame.json"]) {
+    for (const f of ["photo.json", "photo-filter.json", "photo-frame.json", "loadout.json", "loadout-removed.json"]) {
       for (const e of ui(run, f).filter((x) => (x.role === "button" || x.role === "switch" || x.role === "radio" || x.role === "tab") && !x.states.includes("disabled"))) {
         t.ok(e.width >= 43.5 && e.height >= 43.5, `${f}: ${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
       }
@@ -28,6 +29,9 @@ export default playtest({
     t.ok(ui(run, "photo-frame.json").some((e) => e.role === "switch" && e.name === "Grid" && e.states.includes("checked")), "Grid is on");
     t.ok(ui(run, "photo-hidden.json").every((e) => e.role !== "slider" && e.name !== "Gallery"), "hidden, no control stands over the shot, the kit's Gallery button neither");
     t.ok(ui(run, "photo-shown.json").some((e) => e.role === "tab" && e.name === "Frames"), "a press while hidden brought the controls back on their tab");
+    t.ok(ui(run, "loadout-removed.json").some((e) => e.id === "Count" && e.text === "5/6"), "Remove took the stock off: five of six points fitted");
+    t.ok(ui(run, "loadout-refused.json").some((e) => e.role === "tab" && e.name.startsWith("Field upgrade") && !e.states.includes("selected")), "the locked field upgrade was refused: pressed, it is not selected");
+    t.ok(ui(run, "loadout-refused.json").some((e) => e.role === "tab" && e.name === "Loadout 2" && e.states.includes("selected")), "the second loadout's tab is shown");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
     });
