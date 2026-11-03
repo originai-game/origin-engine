@@ -2042,3 +2042,76 @@ test("deckBuilder: a card at its copies' limit, one not owned, and any card into
   engine.advance(4);
   expect(elements(engine).filter((e) => /Grid\/Line#\d+\/[a-z]+$/.test(e.path)).map((e) => e.id)).toEqual(["wall"]);
 });
+
+// ── VN gallery and route chart ──────────────────────────────────────────
+
+test("cgGallery: a locked picture is refused, an open one opens; the viewer's next skips the locked and wraps; Back closes the viewer", () => {
+  // Wrong: a locked picture opened (a spoiler), next stopping on a locked one, or Back leaving the gallery instead of the viewer.
+  const results: Api.CgGalleryResult[] = [];
+  const st = { viewing: "" };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.cgGallery("Gallery", {
+        entries: [
+          { key: "a", title: "Riverboat" },
+          { key: "b", title: "Storm", locked: true, hint: "Clear Mira's route" },
+          { key: "c", title: "Dawn gate" },
+        ],
+        viewing: st.viewing,
+      });
+      results.push(r);
+      if (r.open) st.viewing = r.open;
+      if (r.step) st.viewing = r.step;
+      if (r.close) st.viewing = "";
+    });
+  });
+  engine.advance(10);
+  tapOn(engine, byPath(engine, "Grid/Line#0/b")!);
+  expect(st.viewing).toBe("");
+  expect(results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["b"]);
+  tapOn(engine, byPath(engine, "Grid/Line#0/c")!);
+  expect(st.viewing).toBe("c");
+  tapOn(engine, byPath(engine, "Viewer/Bar/Next")!);
+  expect(st.viewing).toBe("a");
+  tapOn(engine, byPath(engine, "Viewer/Bar/Next")!);
+  expect(st.viewing).toBe("c");
+  key(engine, "Escape");
+  expect(st.viewing).toBe("");
+  expect(byPath(engine, "Gallery/Viewer") ?? null).toBeNull();
+});
+
+test("routeChart: a locked scene is refused; Jump stands only on a seen scene; a branch runs from one card's end edge to the next card's start edge", () => {
+  // Wrong: a locked scene selected, Jump offered on a scene never played, or a branch drawn through the cards.
+  const results: Api.RouteChartResult[] = [];
+  const st = { selected: "s1" };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.routeChart("Routes", {
+        scenes: [
+          { key: "s1", title: "Arrival", column: 0, lane: 0, seen: true },
+          { key: "s2", title: "The ferry", column: 1, lane: 0, seen: true, current: true },
+          { key: "s3", title: "The storm", column: 1, lane: 1 },
+          { key: "s4", title: "Dawn", column: 2, lane: 0, locked: true, ending: "Good end", good: true },
+        ],
+        links: [{ from: "s1", to: "s2", label: "Board", taken: true }, { from: "s1", to: "s3", label: "Stay" }, { from: "s2", to: "s4" }],
+        selected: st.selected,
+      });
+      results.push(r);
+      if (r.selected) st.selected = r.selected;
+    });
+  });
+  engine.advance(10);
+  tapOn(engine, byPath(engine, "Map/s4")!);
+  expect(st.selected).toBe("s1");
+  expect(results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["s4"]);
+  tapOn(engine, byPath(engine, "Detail/Jump")!);
+  expect(results.filter((r) => r.jump).map((r) => r.jump)).toEqual(["s1"]);
+  tapOn(engine, byPath(engine, "Map/s3")!);
+  expect(st.selected).toBe("s3");
+  expect(byPath(engine, "Detail/Jump") ?? null).toBeNull();
+  const a = byPath(engine, "Map/s1")!;
+  const b = byPath(engine, "Map/s2")!;
+  const link = byPath(engine, "Map/Link#0")!;
+  expect(Math.abs(link.x - (a.x + a.width))).toBeLessThan(2);
+  expect(Math.abs(link.x + link.width - b.x)).toBeLessThan(2);
+});

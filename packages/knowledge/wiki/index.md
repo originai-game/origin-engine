@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2407 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2417 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -333,6 +333,9 @@ Field units the docs and Tune use.
 | [`CelebrationDesc`](ui.md#type-CelebrationDesc) | desc struct | ui | — |
 | [`CelebrationKind`](ui.md#type-CelebrationKind) | enum | ui | — |
 | [`CellRect`](procgen.md#type-CellRect) | struct | procgen | — |
+| [`CgEntry`](ui.md#type-CgEntry) | desc struct | ui | — |
+| [`CgGalleryDesc`](ui.md#type-CgGalleryDesc) | desc struct | ui | — |
+| [`CgGalleryResult`](ui.md#type-CgGalleryResult) | struct | ui | — |
 | [`CHARACTER_AIR_JUMPED`](physics.md#const-CHARACTER_AIR_JUMPED) | constant | physics | — |
 | [`CHARACTER_BUMPED`](physics.md#const-CHARACTER_BUMPED) | constant | physics | — |
 | [`CHARACTER_JUMPED`](physics.md#const-CHARACTER_JUMPED) | constant | physics | — |
@@ -575,6 +578,7 @@ Field units the docs and Tune use.
 | [`GachaBannerResult`](ui.md#type-GachaBannerResult) | struct | ui | — |
 | [`GachaBannerTab`](ui.md#type-GachaBannerTab) | desc struct | ui | — |
 | [`GachaFeatured`](ui.md#type-GachaFeatured) | desc struct | ui | — |
+| [`GalleryChapter`](ui.md#type-GalleryChapter) | desc struct | ui | — |
 | [`Game`](game.md#type-Game) | interface | game | — |
 | [`Game.systems`](game.md#member-Game-systems) | property | game | `og_game_get_systems` |
 | [`Game.tick`](game.md#member-Game-tick) | property | game | `og_game_get_tick` |
@@ -1466,6 +1470,7 @@ Field units the docs and Tune use.
 | [`og.ui.carousel`](ui.md#fn-carousel) | function | ui | — |
 | [`og.ui.castBar`](ui.md#fn-castBar) | function | ui | — |
 | [`og.ui.celebration`](ui.md#fn-celebration) | function | ui | — |
+| [`og.ui.cgGallery`](ui.md#fn-cgGallery) | function | ui | — |
 | [`og.ui.characterSelect`](ui.md#fn-characterSelect) | function | ui | — |
 | [`og.ui.chart`](ui.md#fn-chart) | function | ui | — |
 | [`og.ui.chat`](ui.md#fn-chat) | function | ui | — |
@@ -1666,6 +1671,7 @@ Field units the docs and Tune use.
 | [`og.ui.rewardChoice`](ui.md#fn-rewardChoice) | function | ui | — |
 | [`og.ui.ribbon`](ui.md#fn-ribbon) | function | ui | — |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
+| [`og.ui.routeChart`](ui.md#fn-routeChart) | function | ui | — |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
 | [`og.ui.rtsCommands`](ui.md#fn-rtsCommands) | function | ui | — |
 | [`og.ui.rtsConsole`](ui.md#fn-rtsConsole) | function | ui | — |
@@ -2060,6 +2066,10 @@ Field units the docs and Tune use.
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
 | [`RosterEntry`](ui.md#type-RosterEntry) | desc struct | ui | — |
+| [`RouteChartDesc`](ui.md#type-RouteChartDesc) | desc struct | ui | — |
+| [`RouteChartResult`](ui.md#type-RouteChartResult) | struct | ui | — |
+| [`RouteLink`](ui.md#type-RouteLink) | desc struct | ui | — |
+| [`RouteScene`](ui.md#type-RouteScene) | desc struct | ui | — |
 | [`RtsCommandsDesc`](ui.md#type-RtsCommandsDesc) | desc struct | ui | — |
 | [`RtsCommandsResult`](ui.md#type-RtsCommandsResult) | struct | ui | — |
 | [`RtsConsoleDesc`](ui.md#type-RtsConsoleDesc) | desc struct | ui | — |

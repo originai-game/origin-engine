@@ -11596,6 +11596,14 @@
         "DeckSort",
         "DeckBuilderDesc",
         "DeckBuilderResult",
+        "GalleryChapter",
+        "CgEntry",
+        "CgGalleryDesc",
+        "CgGalleryResult",
+        "RouteScene",
+        "RouteLink",
+        "RouteChartDesc",
+        "RouteChartResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15943,7 +15951,7 @@
         },
         {
           "name": "deckBuilder",
-          "doc": "A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.\nParts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Filters/Costs/<n> (all is -1), <id>/Filters/Rarities/<rarity>, <id>/Filters/Kinds/<kind>, <id>/Filters/Search, <id>/Collection/Grid/Line#<n>/<key>, <id>/Deck/List/<key>, <id>/Deck/Done.",
+          "doc": "A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end, the whole height beside the filters and the grid, the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.\nParts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Body/Cards/Filters/Costs/<n> (all is -1; on a phone <id>/Filters/Chips/Row/Costs/<n>), …/Filters/Rarities/<rarity>, …/Filters/Kinds/<kind>, …/Filters/Search, …/Collection/Grid/Line#<n>/<key>, <id>/Body/Deck/List/<key>, <id>/Body/Deck/Done; on a phone <id>/Views/cards and <id>/Views/deck.",
           "params": [
             {
               "name": "id",
@@ -15959,6 +15967,48 @@
             }
           ],
           "returns": "DeckBuilderResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "cgGallery",
+          "doc": "A visual novel's CG gallery (Steins;Gate, Clannad, Doki Doki Literature Club): a head with the title, the count of pictures seen ({n} / {total}) and the chapters as tabs (the tab actions step them); a grid of tiles at 16:9 in whole rows that scroll, each its picture with its title in its own row under it, a fresh one with a New mark, a locked one veiled dark with a lock and its hint in place of the picture and lockedLabel for its title, refused with a shake when pressed. The viewer is the picture over the whole surface (contain, on black), a bar at the foot fading in with its title, the version's pips (its variants), previous and next round buttons and Close; Left and Right step the pictures skipping the locked, Up and Down the versions, Back closes. On a phone in portrait the grid has two columns and the tabs are chips; the viewer keeps the picture at its width, its bar under it.\nParts: CgGallery.tab[selected], CgGallery.tile[locked][fresh], CgGallery.veil, CgGallery.viewer, CgGallery.bar, CgGallery.pip[selected]. Slots: each tile's picture (cg), the viewer's (cg). Sounds: tab on a tab, select on a tile, error on a refusal, back on close. Accessibility: the tabs a tablist, the grid a grid of buttons named by the title (or the locked word and the hint), the viewer a dialog named by the title, the pips a radio group. Probe ids: <id>/Head/Tabs/Row/<chapter>, <id>/Grid/Line#<n>/<key>, <id>/Viewer, <id>/Viewer/Bar/Prev, <id>/Viewer/Bar/Next, <id>/Viewer/Bar/Close, <id>/Viewer/Bar/Pips/<n>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CgGalleryDesc",
+              "optional": true,
+              "doc": "The chapters, the pictures and the viewer's state."
+            }
+          ],
+          "returns": "CgGalleryResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "routeChart",
+          "doc": "A visual novel's route flowchart (Zero Escape, 428: Shibuya Scramble, Detroit: Become Human): the chapters' headings over their columns, each scene a card on its column and lane (its thumbnail, its title in its own row under it), seen cards lit, unseen ones quiet, locked ones veiled with a lock and lockedLabel, the current one ringed in the focus colour with its mark, an ending with its band; the branches as elbow lines between the cards, taken ones lit and the rest thin and dim, a choice's words on its line at the fork. The chart scrolls both ways, opening on the current scene. At the end the selected scene's detail: its thumbnail large, its title, its ending, and Jump here for a seen scene. A press on a locked card is refused with a shake. On a phone in portrait the detail stands under the chart.\nParts: RouteChart.heading, RouteChart.scene[seen][locked][current][ending], RouteChart.link[taken], RouteChart.choice, RouteChart.detail. Slots: each scene's thumbnail (cg), the detail's (cg). Sounds: select on a scene, error on a refusal, confirm on the jump. Accessibility: the chart a group of buttons named by the title (or the locked word), seen, current and the ending; the detail a region. Probe ids: <id>/Chart/Map/<scene>, <id>/Detail/Jump.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RouteChartDesc",
+              "optional": true,
+              "doc": "The scenes, the branches and the selection."
+            }
+          ],
+          "returns": "RouteChartResult",
           "publish": true,
           "host": false
         },
@@ -64796,6 +64846,448 @@
         "sort",
         "view",
         "done"
+      ],
+      "additionalProperties": false
+    },
+    "GalleryChapter": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One chapter of a CG gallery or a route chart: its tab, or its column's heading.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tab's element id (<id>/Tabs/Row/<key>).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word (Chapter 1, Common route).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "CgEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One event picture (CG) of the gallery, as the save holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tile's element id (<id>/Grid/Line#<n>/<key>).",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title under the tile and in the viewer; a locked one shows lockedLabel instead.",
+          "default": ""
+        },
+        "chapter": {
+          "type": "string",
+          "description": "The chapter it belongs to: the tabs filter by it; empty shows it under every tab.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its picture (art kind cg); null draws the style's placeholder.",
+          "default": null
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Texture"
+          },
+          "description": "Its other versions (an expression, the night), the viewer's pips stepping through them after image.",
+          "default": []
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not seen yet: the tile is veiled with a lock and its hint, and the viewer will not open it.",
+          "default": false
+        },
+        "hint": {
+          "type": "string",
+          "description": "How to unlock it, under a locked tile (Clear Mira's route); empty shows the lock alone.",
+          "default": ""
+        },
+        "fresh": {
+          "type": "boolean",
+          "description": "Unlocked since the gallery was last opened: a New mark on the tile.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CgGalleryDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A visual novel's CG gallery: the chapters as tabs, the pictures as tiles with the locked ones veiled, and the viewer.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The gallery's title.",
+          "default": ""
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GalleryChapter"
+          },
+          "description": "The chapters; fewer than two shows no tabs.",
+          "default": []
+        },
+        "chapter": {
+          "type": "string",
+          "description": "The chapter shown; empty all.",
+          "default": ""
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CgEntry"
+          },
+          "description": "Every picture, in the game's order.",
+          "default": []
+        },
+        "viewing": {
+          "type": "string",
+          "description": "The picture open in the viewer; empty shows the grid.",
+          "default": ""
+        },
+        "variant": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The version open in the viewer: 0 the image, then each of variants.",
+          "default": 0
+        },
+        "countLabel": {
+          "type": "string",
+          "description": "The count's words, {n} seen of {total}.",
+          "default": "{n} / {total}"
+        },
+        "lockedLabel": {
+          "type": "string",
+          "description": "A locked picture's title.",
+          "default": "???"
+        },
+        "newLabel": {
+          "type": "string",
+          "description": "The New mark.",
+          "default": "New"
+        },
+        "closeLabel": {
+          "type": "string",
+          "description": "The viewer's close.",
+          "default": "Close"
+        },
+        "prevLabel": {
+          "type": "string",
+          "description": "The viewer's previous picture.",
+          "default": "Previous"
+        },
+        "nextLabel": {
+          "type": "string",
+          "description": "The viewer's next picture.",
+          "default": "Next"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CgGalleryResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "chapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another chapter's tab was pressed (or the tab actions stepped)."
+        },
+        "open": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An unlocked tile was pressed: open it in the viewer (at variant 0)."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked tile was pressed: it shakes."
+        },
+        "close": {
+          "type": "boolean",
+          "description": "The viewer's close, Back, or a press on the picture while its chrome is hidden."
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The viewer's previous or next (or Left and Right): the unlocked picture to open, wrapping, skipping the locked."
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A variant's pip was pressed (or Up and Down stepped)."
+        }
+      },
+      "required": [
+        "chapter",
+        "open",
+        "refused",
+        "close",
+        "step",
+        "variant"
+      ],
+      "additionalProperties": false
+    },
+    "RouteScene": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One scene of a route chart, placed by the game on the chart's grid.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its card's element id (<id>/Chart/Map/<key>).",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title on its card; a locked one shows lockedLabel instead.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its thumbnail (art kind cg); null draws the style's placeholder.",
+          "default": null
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its column, left to right in story order (mirrored right to left).",
+          "default": 0
+        },
+        "lane": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Its lane, top to bottom: a branch takes another lane.",
+          "default": 0
+        },
+        "seen": {
+          "type": "boolean",
+          "description": "Played: its card is lit and it can be jumped to.",
+          "default": false
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not reached: a veiled card with a lock; pressing it is refused.",
+          "default": false
+        },
+        "current": {
+          "type": "boolean",
+          "description": "Where the story stands now: a ring in the focus colour and a mark.",
+          "default": false
+        },
+        "ending": {
+          "type": "string",
+          "description": "An ending's word (Good end, Bad end); empty is no ending. Its card carries a band in the ending's colour.",
+          "default": ""
+        },
+        "good": {
+          "type": "boolean",
+          "description": "With ending: a good ending's colour (success), else danger.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteLink": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One branch between two scenes.",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The scene it leaves.",
+          "default": ""
+        },
+        "to": {
+          "type": "string",
+          "description": "The scene it reaches.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "The choice that takes it, on the line at the fork; empty shows none.",
+          "default": ""
+        },
+        "taken": {
+          "type": "boolean",
+          "description": "Taken in a play: drawn lit and thicker; else thin and dim.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteChartDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A visual novel's route flowchart: the scenes on their grid, the branches between them, the detail of the selected scene.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The chart's title.",
+          "default": ""
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GalleryChapter"
+          },
+          "description": "A heading over each column, in order; empty shows none.",
+          "default": []
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteScene"
+          },
+          "description": "The scenes.",
+          "default": []
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteLink"
+          },
+          "description": "The branches.",
+          "default": []
+        },
+        "selected": {
+          "type": "string",
+          "description": "The scene selected: its detail at the side (under the chart on a phone).",
+          "default": ""
+        },
+        "lockedLabel": {
+          "type": "string",
+          "description": "A locked scene's title.",
+          "default": "???"
+        },
+        "jumpLabel": {
+          "type": "string",
+          "description": "The detail's jump to the scene.",
+          "default": "Jump here"
+        },
+        "currentLabel": {
+          "type": "string",
+          "description": "The current scene's mark.",
+          "default": "Now"
+        },
+        "seenLabel": {
+          "type": "string",
+          "description": "The count's words, {n} seen of {total}.",
+          "default": "{n} / {total} scenes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteChartResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another scene's card was pressed: select it."
+        },
+        "jump": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The detail's jump was pressed on a seen scene: the game loads it."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked scene was pressed: it shakes."
+        }
+      },
+      "required": [
+        "selected",
+        "jump",
+        "refused"
       ],
       "additionalProperties": false
     },

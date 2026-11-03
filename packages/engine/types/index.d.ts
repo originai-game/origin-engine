@@ -36849,6 +36849,354 @@ export interface DeckBuilderResult {
 
 
 /**
+ * One chapter of a CG gallery or a route chart: its tab, or its column's heading.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GalleryChapter {
+  /**
+   * Its key: its tab's element id (<id>/Tabs/Row/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word (Chapter 1, Common route).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * One event picture (CG) of the gallery, as the save holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CgEntry {
+  /**
+   * Its key: its tile's element id (<id>/Grid/Line#<n>/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its title under the tile and in the viewer; a locked one shows lockedLabel instead.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The chapter it belongs to: the tabs filter by it; empty shows it under every tab.
+   *
+   * @default ""
+   */
+  readonly chapter?: string;
+  /**
+   * Its picture (art kind cg); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its other versions (an expression, the night), the viewer's pips stepping through them after image.
+   *
+   * @default []
+   */
+  readonly variants?: readonly Texture[];
+  /**
+   * Not seen yet: the tile is veiled with a lock and its hint, and the viewer will not open it.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * How to unlock it, under a locked tile (Clear Mira's route); empty shows the lock alone.
+   *
+   * @default ""
+   */
+  readonly hint?: string;
+  /**
+   * Unlocked since the gallery was last opened: a New mark on the tile.
+   *
+   * @default false
+   */
+  readonly fresh?: boolean;
+}
+
+/**
+ * A visual novel's CG gallery: the chapters as tabs, the pictures as tiles with the locked ones veiled, and the viewer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CgGalleryDesc {
+  /**
+   * The gallery's title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The chapters; fewer than two shows no tabs.
+   *
+   * @default []
+   */
+  readonly chapters?: readonly GalleryChapter[];
+  /**
+   * The chapter shown; empty all.
+   *
+   * @default ""
+   */
+  readonly chapter?: string;
+  /**
+   * Every picture, in the game's order.
+   *
+   * @default []
+   */
+  readonly entries?: readonly CgEntry[];
+  /**
+   * The picture open in the viewer; empty shows the grid.
+   *
+   * @default ""
+   */
+  readonly viewing?: string;
+  /**
+   * The version open in the viewer: 0 the image, then each of variants.
+   *
+   * @default 0
+   */
+  readonly variant?: number;
+  /**
+   * The count's words, {n} seen of {total}.
+   *
+   * @default "{n} / {total}"
+   */
+  readonly countLabel?: string;
+  /**
+   * A locked picture's title.
+   *
+   * @default "???"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * The New mark.
+   *
+   * @default "New"
+   */
+  readonly newLabel?: string;
+  /**
+   * The viewer's close.
+   *
+   * @default "Close"
+   */
+  readonly closeLabel?: string;
+  /**
+   * The viewer's previous picture.
+   *
+   * @default "Previous"
+   */
+  readonly prevLabel?: string;
+  /**
+   * The viewer's next picture.
+   *
+   * @default "Next"
+   */
+  readonly nextLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface CgGalleryResult {
+  /** Another chapter's tab was pressed (or the tab actions stepped). */
+  readonly chapter: string | null;
+  /** An unlocked tile was pressed: open it in the viewer (at variant 0). */
+  readonly open: string | null;
+  /** A locked tile was pressed: it shakes. */
+  readonly refused: string | null;
+  /** The viewer's close, Back, or a press on the picture while its chrome is hidden. */
+  readonly close: boolean;
+  /**
+   * The viewer's previous or next (or Left and Right): the unlocked picture to open, wrapping, skipping the locked.
+   */
+  readonly step: string | null;
+  /** A variant's pip was pressed (or Up and Down stepped). */
+  readonly variant: number | null;
+}
+
+
+/**
+ * One scene of a route chart, placed by the game on the chart's grid.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RouteScene {
+  /**
+   * Its key: its card's element id (<id>/Chart/Map/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its title on its card; a locked one shows lockedLabel instead.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its thumbnail (art kind cg); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its column, left to right in story order (mirrored right to left).
+   *
+   * @default 0
+   */
+  readonly column?: number;
+  /**
+   * Its lane, top to bottom: a branch takes another lane.
+   *
+   * @default 0
+   */
+  readonly lane?: number;
+  /**
+   * Played: its card is lit and it can be jumped to.
+   *
+   * @default false
+   */
+  readonly seen?: boolean;
+  /**
+   * Not reached: a veiled card with a lock; pressing it is refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Where the story stands now: a ring in the focus colour and a mark.
+   *
+   * @default false
+   */
+  readonly current?: boolean;
+  /**
+   * An ending's word (Good end, Bad end); empty is no ending. Its card carries a band in the ending's colour.
+   *
+   * @default ""
+   */
+  readonly ending?: string;
+  /**
+   * With ending: a good ending's colour (success), else danger.
+   *
+   * @default false
+   */
+  readonly good?: boolean;
+}
+
+/**
+ * One branch between two scenes.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RouteLink {
+  /**
+   * The scene it leaves.
+   *
+   * @default ""
+   */
+  readonly from?: string;
+  /**
+   * The scene it reaches.
+   *
+   * @default ""
+   */
+  readonly to?: string;
+  /**
+   * The choice that takes it, on the line at the fork; empty shows none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Taken in a play: drawn lit and thicker; else thin and dim.
+   *
+   * @default false
+   */
+  readonly taken?: boolean;
+}
+
+/**
+ * A visual novel's route flowchart: the scenes on their grid, the branches between them, the detail of the selected scene.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RouteChartDesc {
+  /**
+   * The chart's title.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A heading over each column, in order; empty shows none.
+   *
+   * @default []
+   */
+  readonly chapters?: readonly GalleryChapter[];
+  /**
+   * The scenes.
+   *
+   * @default []
+   */
+  readonly scenes?: readonly RouteScene[];
+  /**
+   * The branches.
+   *
+   * @default []
+   */
+  readonly links?: readonly RouteLink[];
+  /**
+   * The scene selected: its detail at the side (under the chart on a phone).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * A locked scene's title.
+   *
+   * @default "???"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * The detail's jump to the scene.
+   *
+   * @default "Jump here"
+   */
+  readonly jumpLabel?: string;
+  /**
+   * The current scene's mark.
+   *
+   * @default "Now"
+   */
+  readonly currentLabel?: string;
+  /**
+   * The count's words, {n} seen of {total}.
+   *
+   * @default "{n} / {total} scenes"
+   */
+  readonly seenLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface RouteChartResult {
+  /** Another scene's card was pressed: select it. */
+  readonly selected: string | null;
+  /** The detail's jump was pressed on a seen scene: the game loads it. */
+  readonly jump: string | null;
+  /** A locked scene was pressed: it shakes. */
+  readonly refused: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -57109,13 +57457,29 @@ export declare namespace og {
      */
     function loadout(id: string, desc?: LoadoutDesc): LoadoutResult;
     /**
-     * A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.
-     * Parts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Filters/Costs/<n> (all is -1), <id>/Filters/Rarities/<rarity>, <id>/Filters/Kinds/<kind>, <id>/Filters/Search, <id>/Collection/Grid/Line#<n>/<key>, <id>/Deck/List/<key>, <id>/Deck/Done.
+     * A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end, the whole height beside the filters and the grid, the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.
+     * Parts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Body/Cards/Filters/Costs/<n> (all is -1; on a phone <id>/Filters/Chips/Row/Costs/<n>), …/Filters/Rarities/<rarity>, …/Filters/Kinds/<kind>, …/Filters/Search, …/Collection/Grid/Line#<n>/<key>, <id>/Body/Deck/List/<key>, <id>/Body/Deck/Done; on a phone <id>/Views/cards and <id>/Views/deck.
      *
      * @param id Its id.
      * @param desc The collection, the deck's counts and the filters' state.
      */
     function deckBuilder(id: string, desc?: DeckBuilderDesc): DeckBuilderResult;
+    /**
+     * A visual novel's CG gallery (Steins;Gate, Clannad, Doki Doki Literature Club): a head with the title, the count of pictures seen ({n} / {total}) and the chapters as tabs (the tab actions step them); a grid of tiles at 16:9 in whole rows that scroll, each its picture with its title in its own row under it, a fresh one with a New mark, a locked one veiled dark with a lock and its hint in place of the picture and lockedLabel for its title, refused with a shake when pressed. The viewer is the picture over the whole surface (contain, on black), a bar at the foot fading in with its title, the version's pips (its variants), previous and next round buttons and Close; Left and Right step the pictures skipping the locked, Up and Down the versions, Back closes. On a phone in portrait the grid has two columns and the tabs are chips; the viewer keeps the picture at its width, its bar under it.
+     * Parts: CgGallery.tab[selected], CgGallery.tile[locked][fresh], CgGallery.veil, CgGallery.viewer, CgGallery.bar, CgGallery.pip[selected]. Slots: each tile's picture (cg), the viewer's (cg). Sounds: tab on a tab, select on a tile, error on a refusal, back on close. Accessibility: the tabs a tablist, the grid a grid of buttons named by the title (or the locked word and the hint), the viewer a dialog named by the title, the pips a radio group. Probe ids: <id>/Head/Tabs/Row/<chapter>, <id>/Grid/Line#<n>/<key>, <id>/Viewer, <id>/Viewer/Bar/Prev, <id>/Viewer/Bar/Next, <id>/Viewer/Bar/Close, <id>/Viewer/Bar/Pips/<n>.
+     *
+     * @param id Its id.
+     * @param desc The chapters, the pictures and the viewer's state.
+     */
+    function cgGallery(id: string, desc?: CgGalleryDesc): CgGalleryResult;
+    /**
+     * A visual novel's route flowchart (Zero Escape, 428: Shibuya Scramble, Detroit: Become Human): the chapters' headings over their columns, each scene a card on its column and lane (its thumbnail, its title in its own row under it), seen cards lit, unseen ones quiet, locked ones veiled with a lock and lockedLabel, the current one ringed in the focus colour with its mark, an ending with its band; the branches as elbow lines between the cards, taken ones lit and the rest thin and dim, a choice's words on its line at the fork. The chart scrolls both ways, opening on the current scene. At the end the selected scene's detail: its thumbnail large, its title, its ending, and Jump here for a seen scene. A press on a locked card is refused with a shake. On a phone in portrait the detail stands under the chart.
+     * Parts: RouteChart.heading, RouteChart.scene[seen][locked][current][ending], RouteChart.link[taken], RouteChart.choice, RouteChart.detail. Slots: each scene's thumbnail (cg), the detail's (cg). Sounds: select on a scene, error on a refusal, confirm on the jump. Accessibility: the chart a group of buttons named by the title (or the locked word), seen, current and the ending; the detail a region. Probe ids: <id>/Chart/Map/<scene>, <id>/Detail/Jump.
+     *
+     * @param id Its id.
+     * @param desc The scenes, the branches and the selection.
+     */
+    function routeChart(id: string, desc?: RouteChartDesc): RouteChartResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
