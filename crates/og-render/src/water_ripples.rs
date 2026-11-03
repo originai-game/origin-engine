@@ -195,7 +195,12 @@ impl Ripples {
             texture("water ripples state", STATE_FORMAT),
         ];
         let heights = texture("water ripples heights", crate::water::HEIGHT_FORMAT);
-        let view = heights.create_view(&Default::default());
+        // Written as a 2D storage texture, read by the water pass as a 1-layer array (water binding 1).
+        let storage_view = heights.create_view(&Default::default());
+        let view = heights.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        });
         let views = state.each_ref().map(|t| t.create_view(&Default::default()));
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("water ripples"),
@@ -240,7 +245,7 @@ impl Ripples {
                     },
                     wgpu::BindGroupEntry {
                         binding: 5,
-                        resource: wgpu::BindingResource::TextureView(&view),
+                        resource: wgpu::BindingResource::TextureView(&storage_view),
                     },
                 ],
             })

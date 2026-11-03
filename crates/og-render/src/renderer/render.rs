@@ -2661,6 +2661,8 @@ impl Renderer {
                 scene.adaptation,
                 scene.origin,
                 water::seconds(scene),
+                &scene.camera,
+                &scene.quality,
                 &self.post.white,
                 &|h| {
                     self.cache

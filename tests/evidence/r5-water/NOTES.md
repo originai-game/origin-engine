@@ -14,7 +14,7 @@ draws, each faded where the grid's cell under the buoy is too coarse for
 it, as the renderer's vertices fade it: a buoy rides the drawn surface,
 never read from the GPU).
 
-Without a renderer it runs to `tick 66 hash 3edbbae47cf441f0 entities 6`
+Without a renderer it runs to `tick 66 hash 50a99c57712590c6 entities 6`
 with `--commands "0.5:float;1.0:float;1.1:quit"` (OG_RENDERER=none on the
 orb).
 
@@ -63,7 +63,7 @@ Dumped every 0.5 s to 6.5 s (`og.Buoyancy.submerged`): the boats keep
 0.11 to 0.24 at least, mean 0.30 (their rest value); the buoys 0.25 to
 0.39 at least, mean 0.40.
 
-Without a renderer it runs to `tick 396 hash 703f695dab0d1ae5 entities
+Without a renderer it runs to `tick 396 hash 33b74a49443d3643 entities
 11` with the commands below (OG_RENDERER=none on the orb, a fresh
 og-host-node in OG_NATIVE_ADDON).
 
@@ -87,3 +87,13 @@ og run tests/evidence/r5-water/boats --headless --size 1280x720 --out /tmp/r5 \
 `boats-later` (1.5 s on): every boat and buoy at a new height and tilt,
 still in the water (none lifted clear on a crest); the boats have barely
 drifted sideways.
+
+## The FFT sea: re-pinned hashes
+
+og.Water.endless (the FFT sea's batch 1 and 2) changed og.Water's layout,
+which the world hash covers, so both samples' final hashes moved: the sea
+from 3edbbae47cf441f0 to 50a99c57712590c6, the boats from 703f695dab0d1ae5
+to 33b74a49443d3643. Nothing the tick computes moved: `dump_world` of the
+boats at 3.0 s and 6.5 s, with the addon before and after the field, differ
+in the systems' timings and the hash alone (every entity's components,
+og.Buoyancy's submerged share included, are the same).

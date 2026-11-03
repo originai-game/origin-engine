@@ -128,6 +128,9 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         "water",
         crate::water::water_source(crate::FRAME_WGSL, crate::LIGHTING_WGSL),
     );
+    for (label, wgsl) in crate::ocean_fft::sources() {
+        add(label, wgsl.to_string());
+    }
     add(
         "metaballs",
         crate::metaballs::metaballs_source(crate::FRAME_WGSL),

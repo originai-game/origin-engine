@@ -24,17 +24,17 @@ pub const OCEAN_SCENES: &[&str] = &[
 /// The sea's tick (a minute and a half in, at 60 a second).
 const TICK: u64 = 5400;
 
-/// A sea 6 km across (its grid finest under the camera, at its centre),
-/// 256 cells, under `wind`, around the world's zero (its waves are the
-/// world's: the camera at x = z = 0 sees the same ones wherever the origin
-/// is). The sea's own waves reach down to under a metre, so the detail
-/// ripples are off.
+/// An endless sea (its clipmap about the camera, out to the horizon)
+/// under `wind`, at the world's zero (its waves are the world's: the camera
+/// at x = z = 0 sees the same ones wherever the origin is). The sea's own
+/// waves reach down to centimetres, so the detail ripples are off.
 fn sea(wind: Vec2, choppiness: f32) -> Water {
     Water {
         size: Vec2::splat(SEA),
         segments: 256,
         wind,
         choppiness,
+        endless: true,
         // Open water: no shore to foam at, nothing below to colour by.
         foam_width: 0.0,
         deep: Vec3::new(0.01, 0.06, 0.09),

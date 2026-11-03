@@ -4675,6 +4675,11 @@
           "column": "f32",
           "default": 0.6,
           "tunable": true
+        },
+        {
+          "name": "endless",
+          "column": "bool",
+          "default": false
         }
       ]
     },

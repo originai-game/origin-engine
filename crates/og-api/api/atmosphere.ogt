@@ -625,7 +625,7 @@ module atmosphere {
       tunable true
     }
     field flowMap Texture "three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone."
-    field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. A sea's grid is finest at its centre and coarsens outward (a 6 km sea of 256 segments: 3.5 m cells in the middle, 63 m at the edge, its rim under the horizon from a few metres up), so keep the entity under the camera (move it with the camera: the waves stay where they are); a wave under four cells is left to the shading, and the detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps cover as much of the sea as the wind's speed whitens a real one. 0 0: no sea." {
+    field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a level surface), with og.physics.waterHeight reading the tick's waves in the tick. A mesh surface has none. The sea is drawn as a clipmap about the camera, finest under it, from a seeded JONSWAP spectrum transformed on the GPU each frame at the tick's time (up to three tiles of 256² by the graphics quality) over the tick's longest waves, which it draws as they are: the waves a floating body rides are the ones drawn, the shorter ones the GPU's alone (rendering only; never read back). Within size (centred on the entity) unless endless. The detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps foam where the crests fold. 0 0: no sea." {
       default 0 0
       unit mps
       tunable true
@@ -644,6 +644,7 @@ module atmosphere {
       unit ratio
       tunable true
     }
+    field endless bool "A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale)."
   }
 
   component Water2D {

@@ -28,7 +28,7 @@ struct Cut {
 @group(0) @binding(2) var state_out: texture_storage_2d<rg32float, write>;
 @group(0) @binding(3) var<storage, read> cuts: array<Cut>;
 @group(0) @binding(4) var coarse: texture_2d<f32>;
-@group(0) @binding(5) var heights_out: texture_storage_2d<r32float, write>;
+@group(0) @binding(5) var heights_out: texture_storage_2d<rgba16float, write>;
 
 // How much of the cell at `p` (m, the surface's frame) a footprint covers: the ellipse inside its box, its edge
 // softened over two cells. An empty box (max < min) covers nothing.

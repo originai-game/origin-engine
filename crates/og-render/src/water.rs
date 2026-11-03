@@ -74,7 +74,11 @@ pub struct WaterCut {
 pub const WAKE_TICKS: usize = 8;
 
 /// The height textures' format (the CPU's heights and the ripples' output).
-pub(crate) const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+///
+/// rgba16float, the height in r: filterable (water binding 1 is a filterable
+/// texture_2d_array, shared with the FFT sea's fields) and a storage format
+/// the ripples' compute writes; each is viewed as a 1-layer array there.
+pub(crate) const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// A planar 3D water surface. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]
@@ -163,16 +167,19 @@ pub struct Water {
     /// a normal map, the travelling waves (in metres a second).
     pub flow_map: Option<crate::TextureHandle>,
     /// R5: the wind over an open sea, its direction in the world's xz and
-    /// its speed (m/s) as its length: the grid is displaced by
-    /// `og_core::ocean`'s Gerstner waves of a Pierson–Moskowitz sea for it,
-    /// over the absolute world's xz (a level surface; a mesh surface has
-    /// none). Zero: no sea.
+    /// its speed (m/s) as its length: a clipmap about the camera displaced
+    /// by `og_core::ocean`'s longest Gerstner waves (the tick's) and the FFT
+    /// sea's cascades ([`crate::ocean_fft`]) over the absolute world's xz
+    /// (a level surface; a mesh surface has none). Zero: no sea.
     pub wind: Vec2,
     /// The sea's height, times a fully developed sea's for the wind (1).
     pub swell: f32,
     /// How far its crests lean and sharpen, 0 (round swell) to 1 (the most
     /// that never folds), whitecaps foaming where they bunch.
     pub choppiness: f32,
+    /// R5: the sea reaches the horizon all round the camera (its waves stay
+    /// where they are in the world), not only its `size` rectangle.
+    pub endless: bool,
 }
 
 impl Default for Water {
@@ -210,6 +217,7 @@ impl Default for Water {
             wind: Vec2::ZERO,
             swell: 1.0,
             choppiness: 0.6,
+            endless: false,
         }
     }
 }
@@ -293,6 +301,22 @@ struct WaterGpu {
     /// The sea's wind: xy its direction in the frame's xz, z its speed
     /// (m/s), w unused. Its foam streaks lie along it.
     sea_wind: [f32; 4],
+    /// The sea's clipmap ([`clipmap`]): x its levels, y cells along a
+    /// level's edge, z the horizon ring's radius (m), w 1 when endless.
+    clip: [f32; 4],
+    /// Per level: its snapped centre (frame xz) and its cell (m).
+    levels: [[f32; 4]; CLIP_LEVELS],
+    /// The surface's frame from the world: a bounded sea is clamped to its
+    /// rectangle in it.
+    inverse: [[f32; 4]; 4],
+    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y how many of
+    /// the swell's waves (the first, longest) the vertices draw as
+    /// Gerstner waves (the tick's long band), z the slope variance finer
+    /// than the finest cascade, w unused.
+    fft: [f32; 4],
+    /// Per cascade: one over its tile (1/m), its uv at the frame's origin
+    /// (whole tiles dropped), its tile (m).
+    cascades: [[f32; 4]; 3],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
@@ -317,65 +341,139 @@ pub(crate) fn ocean(water: &Water) -> Option<og_core::ocean::Ocean> {
 
 /// The sea's block of [`WaterGpu`] at `seconds` and the scene's `origin`:
 /// the header and the waves, their phases at the origin in f64 so the
-/// pattern stays put in the world as the origin moves.
+/// pattern stays put in the world as the origin moves; and how many of
+/// them (the longest) are the tick's long band, which the vertices draw as
+/// Gerstner waves under the FFT's cascades (the rest of og_core's waves
+/// float things in the tick but are not drawn: the cascades draw that band).
 fn ocean_gpu(
     water: &Water,
-    segments: u32,
     seconds: f64,
     origin: Vec3,
-) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES]) {
+) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES], u32) {
     let mut swell = [[0.0; 4]; 2 * og_core::ocean::OCEAN_WAVES];
     let Some(sea) = ocean(water) else {
-        return ([0.0; 4], swell);
+        return ([0.0; 4], swell, 0);
     };
     let phases = sea.phases(
         seconds,
         glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)),
     );
-    let whitens = |w: &og_core::ocean::OceanWave| w.k <= WHITECAP_K * sea.waves[0].k;
     for (i, (w, phase)) in sea.waves.iter().zip(phases).enumerate() {
         let k = w.direction * w.k;
         let lean = w.direction * w.lean;
         swell[2 * i] = [k.x, k.y, w.amplitude, phase];
-        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, f32::from(whitens(w))];
+        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
     }
-    let cell = water.size.max_element().max(0.0) / segments.max(1) as f32;
-    let (start, width) = whitecaps(&sea, water.wind.length());
-    ([1.0, cell, start, width], swell)
-}
-
-/// The waves whose crests whiten: no shorter than the longest over this
-/// (a 25th of the peak's length, some 13 m in a 20 m/s gale), so whitecaps
-/// are patches metres across, not specks the size of the ripples. (At an
-/// eighth, only the swells' own crests whitened, and a view 50 m deep lay
-/// on one trough or one crest: whitecaps everywhere or nowhere.)
-const WHITECAP_K: f32 = 40.0;
-
-/// Where the sea's whitecaps start and over how much they grow, in the
-/// crests' bunching of the waves that whiten (`Σ k lean sin`, water.wgsl
-/// `ocean_normal`): its standard deviation σ times the normal deviate whose tail is the whitecap
-/// cover Monahan and O'Muircheartaigh measured for the wind (`3.84e-6
-/// U^3.41`: 0.7 % at 9 m/s, 6 % at 17), doubled to read at a distance,
-/// growing to full white over 0.4 σ.
-/// (0, 0) when the crests do not lean (no whitecaps). Rendering only.
-fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
-    let sigma = (sea
+    let params = crate::ocean_fft::spectrum::SeaParameters::from_ocean(
+        water.wind,
+        water.swell,
+        water.choppiness,
+        Some(&sea),
+    );
+    let long = sea
         .waves
         .iter()
-        .filter(|w| w.k <= WHITECAP_K * sea.waves[0].k)
-        .map(|w| (w.k * w.lean).powi(2) * 0.5)
-        .sum::<f32>())
-    .sqrt();
-    if sigma < 1e-4 {
-        return (0.0, 0.0);
+        .take_while(|w| f64::from(w.k) < params.long_cut)
+        .count() as u32;
+    // Whitecaps where the surface's Jacobian falls under WHITECAP_J.
+    ([1.0, 0.0, 1.0 - WHITECAP_J, WHITECAP_J], swell, long)
+}
+
+/// The Jacobian of the sea's horizontal displacement under which its
+/// crests whiten (growing to full white where it reaches zero, a fold).
+/// Batch 2's placeholder for the foam that persists (the FFT's batch 3).
+const WHITECAP_J: f32 = 0.45;
+
+/// Levels of a sea's clipmap ([`clipmap`]).
+const CLIP_LEVELS: usize = 10;
+/// Half the edge of the outermost level (m), where the horizon ring takes
+/// over.
+const CLIP_REACH: f64 = 4096.0;
+
+/// A sea's clipmap about the eye at `eye` (frame coordinates) of `segments`
+/// cells along each level's edge, after blue-water's (`geometry.rs`): each
+/// level twice the cell and extent of the one inside it, the outermost
+/// reaching [`CLIP_REACH`]; each centred on the eye snapped to twice its own
+/// cell in the absolute world (the frame plus `origin`, in f64), so its
+/// vertices sit on fixed world points as the eye and the origin move, and
+/// the level inside it lies on its lattice. Per level: its centre (frame
+/// xz) and its cell (m).
+fn clipmap(eye: Vec3, origin: Vec3, segments: u32) -> [[f32; 4]; CLIP_LEVELS] {
+    let first = 2.0 * CLIP_REACH / f64::from(segments) / f64::from(1u32 << (CLIP_LEVELS - 1));
+    let (ox, oz) = (f64::from(origin.x), f64::from(origin.z));
+    let (x, z) = (f64::from(eye.x) + ox, f64::from(eye.z) + oz);
+    std::array::from_fn(|level| {
+        let cell = first * f64::from(1u32 << level);
+        let step = 2.0 * cell;
+        let snap = |v: f64| (v / step).round() * step;
+        [
+            (snap(x) - ox) as f32,
+            (snap(z) - oz) as f32,
+            cell as f32,
+            0.0,
+        ]
+    })
+}
+
+/// A sea's clipmap cells along a level's edge and its FFT cascades, by the
+/// frame's quality: desktop presets 64 and three, the low preset (phones)
+/// 32 and two.
+fn sea_tier(quality: &crate::RenderQuality) -> (u32, u32) {
+    if quality.volumetric_step_scale < 1.0 {
+        (32, 2)
+    } else {
+        (64, 3)
     }
-    let cover = (2.0 * 3.84e-6 * wind.powf(3.41)).clamp(1e-4, 0.3);
-    // Abramowitz and Stegun 26.2.23: the deviate with tail `cover`.
-    let t = (-2.0 * cover.ln()).sqrt();
-    let z = t
-        - (2.515517 + 0.802853 * t + 0.010328 * t * t)
-            / (1.0 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t);
-    (z * sigma, 0.4 * sigma)
+}
+
+/// The vertices of a sea's draw of `segments` cells per level edge: every
+/// level's square of cells (the hole each holds for the level inside it
+/// collapses), then the horizon ring's quads round the outermost.
+fn sea_vertices(segments: u32) -> u32 {
+    CLIP_LEVELS as u32 * segments * segments * 6 + 2 * segments * 6
+}
+
+/// Each cascade's [`WaterGpu::cascades`] row at the scene's `origin`: one
+/// over its tile, the uv of the frame's origin in it (f64, whole tiles
+/// dropped: the pattern stays put in the world as the origin moves) and the
+/// tile. Zero past the sea's cascades or without one.
+fn cascade_uv(sea: Option<FftSea>, origin: Vec3) -> [[f32; 4]; 3] {
+    let mut out = [[0.0; 4]; 3];
+    let Some(sea) = sea else {
+        return out;
+    };
+    for (row, &tile) in out.iter_mut().zip(&sea.tiles) {
+        if tile > 0.0 {
+            let at = |o: f32| (f64::from(o) / tile).rem_euclid(1.0) as f32;
+            *row = [(1.0 / tile) as f32, at(origin.x), at(origin.z), tile as f32];
+        }
+    }
+    out
+}
+
+/// The IEEE half nearest `v` (rounding half up), for the height fields'
+/// rgba16float.
+fn f16_bits(v: f32) -> u16 {
+    let b = v.to_bits();
+    let sign = ((b >> 16) & 0x8000) as u16;
+    let exp = ((b >> 23) & 0xff) as i32 - 127 + 15;
+    let man = b & 0x7f_ffff;
+    if v.is_nan() {
+        0x7e00
+    } else if exp >= 31 {
+        sign | 0x7c00
+    } else if exp <= 0 {
+        if exp < -10 {
+            return sign;
+        }
+        let m = man | 0x80_0000;
+        let shift = (14 - exp) as u32;
+        let h = (m >> shift) + ((m >> (shift - 1)) & 1);
+        sign | h as u16
+    } else {
+        let h = ((exp as u32) << 10 | (man >> 13)) + ((man >> 12) & 1);
+        sign | h as u16
+    }
 }
 
 /// The largest height field accepted.
@@ -420,6 +518,21 @@ pub(crate) struct WaterRenderer {
     /// CPU's heights alone.
     ripple_pipelines: Option<crate::water_ripples::RipplePipelines>,
     compute: bool,
+    /// The FFT sea ([`crate::ocean_fft`]) of the frame's first surface with
+    /// a wind. Every sea of the frame is drawn from it (one wind a scene).
+    fft: Option<(crate::ocean_fft::FftOcean, FftSea)>,
+}
+
+/// What the FFT sea's spectrum was built for and what the water's uniforms
+/// read of it.
+#[derive(Clone, Copy)]
+struct FftSea {
+    /// That sea's wind, swell and choppiness, and the cascades.
+    key: (Vec2, f32, f32, u32),
+    /// Per cascade its tile (m); 0 past the last.
+    tiles: [f64; 3],
+    /// The slope variance finer than the finest cascade.
+    tail: f32,
 }
 
 /// One surface ready to draw.
@@ -469,7 +582,18 @@ impl WaterRenderer {
                     },
                     count: None,
                 },
-                tex(1, false),
+                // A height field's (a 1-layer rgba16float array, height in r) or the FFT sea's fields (ocean_fft:
+                // three layers per cascade, mipped), sampled filtered.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
                 tex(2, true),
                 tex(3, false),
                 wgpu::BindGroupLayoutEntry {
@@ -614,6 +738,7 @@ impl WaterRenderer {
             slots: Vec::new(),
             ripple_pipelines: None,
             compute: compute && crate::WORLD_3D,
+            fft: None,
         }
     }
 
@@ -636,6 +761,8 @@ impl WaterRenderer {
         adaptation: f32,
         origin: Vec3,
         seconds: f64,
+        camera: &crate::Camera,
+        quality: &crate::RenderQuality,
         fallback: &wgpu::TextureView,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
@@ -656,6 +783,9 @@ impl WaterRenderer {
             });
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
+        let (sea_segments, sea_cascades) = sea_tier(quality);
+        let sea = self.fft_sea(device, queue, waters, sea_cascades, seconds);
+        let levels = clipmap(camera.position, origin, sea_segments);
         let mut draws = Vec::with_capacity(waters.len());
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.iter().find(|(i, _)| *i == index).map(|(_, v)| *v);
@@ -672,12 +802,14 @@ impl WaterRenderer {
                     slot.heights = Some((f.resolution, t, v));
                 }
                 let (_, texture, _) = slot.heights.as_ref().expect("made above");
+                let texels: Vec<[u16; 4]> =
+                    f.heights.iter().map(|&h| [f16_bits(h), 0, 0, 0]).collect();
                 queue.write_texture(
                     texture.as_image_copy(),
-                    bytemuck::cast_slice(&f.heights),
+                    bytemuck::cast_slice(&texels),
                     wgpu::TexelCopyBufferLayout {
                         offset: 0,
-                        bytes_per_row: Some(f.resolution * 4),
+                        bytes_per_row: Some(f.resolution * 8),
                         rows_per_image: None,
                     },
                     wgpu::Extent3d {
@@ -694,9 +826,12 @@ impl WaterRenderer {
                         .ripple_pipelines
                         .get_or_insert_with(|| crate::water_ripples::RipplePipelines::new(device));
                     if slot.ripples.as_ref().is_none_or(|r| !r.fits(f)) {
-                        let (_, _, coarse) = slot.heights.as_ref().expect("made above");
-                        slot.ripples =
-                            Some(crate::water_ripples::Ripples::new(device, pipes, f, coarse));
+                        // The compute reads the heights' one layer as a plain 2D texture.
+                        let (_, texture, _) = slot.heights.as_ref().expect("made above");
+                        let coarse = texture.create_view(&Default::default());
+                        slot.ripples = Some(crate::water_ripples::Ripples::new(
+                            device, pipes, f, &coarse,
+                        ));
                     }
                     let ripples = slot.ripples.as_mut().expect("made above");
                     ripples.update(device, queue, pipes, wakes);
@@ -712,7 +847,8 @@ impl WaterRenderer {
             } else {
                 water.flow
             };
-            let (ocean, swell) = ocean_gpu(water, segments, seconds, origin);
+            let (ocean, swell, long) = ocean_gpu(water, seconds, origin);
+            let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
                 size: [
@@ -774,6 +910,24 @@ impl WaterRenderer {
                     let d = water.wind.normalize_or_zero();
                     [d.x, d.y, water.wind.length() * ocean[0], 0.0]
                 },
+                clip: [
+                    CLIP_LEVELS as f32,
+                    sea_segments as f32,
+                    camera.far * 0.95,
+                    f32::from(water.endless),
+                ],
+                levels,
+                inverse: water.transform.inverse().to_cols_array_2d(),
+                fft: match drawn_sea {
+                    Some(f) => [
+                        f.tiles.iter().filter(|t| **t > 0.0).count() as f32,
+                        long as f32,
+                        f.tail,
+                        0.0,
+                    ],
+                    None => [0.0; 4],
+                },
+                cascades: cascade_uv(drawn_sea, origin),
                 swell,
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
@@ -783,9 +937,10 @@ impl WaterRenderer {
             // mirroring what the probe sees from its point.
             slot.face = gpu;
             slot.face.extra[1] = 0.0;
-            let heights = match (&slot.ripples, &slot.heights, field) {
-                (Some(r), _, Some(_)) => &r.view,
-                (None, Some((_, _, v)), Some(_)) => v,
+            let heights = match (&slot.ripples, &slot.heights, field, &self.fft) {
+                (_, _, _, Some((fft, _))) if drawn_sea.is_some() => &fft.view,
+                (Some(r), _, Some(_), _) => &r.view,
+                (None, Some((_, _, v)), Some(_), _) => v,
                 _ => &self.flat,
             };
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -842,7 +997,11 @@ impl WaterRenderer {
             let radius = water.transform.transform_vector3(half).length();
             draws.push(WaterDraw {
                 group,
-                vertices: segments * segments * 6,
+                vertices: if drawn_sea.is_some() {
+                    sea_vertices(sea_segments)
+                } else {
+                    segments * segments * 6
+                },
                 bounds: (water.transform.transform_point3(Vec3::ZERO), radius),
                 mesh,
             });
@@ -873,9 +1032,11 @@ impl WaterRenderer {
             .iter()
             .zip(&self.slots)
             .map(|(water, slot)| {
-                let heights = match (&slot.ripples, &slot.heights, height_field(water)) {
-                    (Some(r), _, Some(_)) => &r.view,
-                    (None, Some((_, _, v)), Some(_)) => v,
+                let sea = slot.face.fft[0] > 0.0;
+                let heights = match (&slot.ripples, &slot.heights, height_field(water), &self.fft) {
+                    (_, _, _, Some((fft, _))) if sea => &fft.view,
+                    (Some(r), _, Some(_), _) => &r.view,
+                    (None, Some((_, _, v)), Some(_), _) => v,
                     _ => &self.flat,
                 };
                 let mut face = slot.face;
@@ -919,6 +1080,8 @@ impl WaterRenderer {
                     // faces' draws carry no mesh buffers).
                     vertices: if water.mesh.is_some() {
                         0
+                    } else if sea {
+                        sea_vertices(slot.face.clip[1] as u32)
                     } else {
                         grid_segments(water) * grid_segments(water) * 6
                     },
@@ -930,6 +1093,55 @@ impl WaterRenderer {
                 }
             })
             .collect()
+    }
+
+    /// The FFT sea of the frame's first surface with a wind, its fields
+    /// computed at `seconds` (the scene's tick time, so a frame is the
+    /// tick's whatever the wall clock) and submitted ahead of the frame:
+    /// its spectrum rebuilt when that sea's wind, swell or choppiness or the
+    /// cascades change. None without a sea.
+    fn fft_sea(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        waters: &[Water],
+        cascades: u32,
+        seconds: f64,
+    ) -> Option<FftSea> {
+        use crate::ocean_fft::{FftOcean, spectrum};
+        let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
+        let key = (water.wind, water.swell, water.choppiness, cascades);
+        if self.fft.as_ref().is_none_or(|(_, f)| f.key != key) {
+            let mut fft = match self.fft.take() {
+                Some((f, ..)) if f.cascades() == cascades => f,
+                _ => FftOcean::new(device, cascades),
+            };
+            let params = spectrum::SeaParameters::from_ocean(
+                water.wind,
+                water.swell,
+                water.choppiness,
+                Some(&sea),
+            );
+            let built = spectrum::build(&spectrum::cascades(cascades as usize, &params), &params);
+            fft.set_spectrum(queue, &built);
+            let mut tiles = [0.0; 3];
+            for (t, c) in tiles.iter_mut().zip(&built.cascades) {
+                *t = c.size;
+            }
+            let info = FftSea {
+                key,
+                tiles,
+                tail: built.tail_slope_variance as f32,
+            };
+            self.fft = Some((fft, info));
+        }
+        let (fft, info) = self.fft.as_ref().expect("made above");
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ocean fft"),
+        });
+        fft.encode(queue, &mut encoder, seconds);
+        queue.submit([encoder.finish()]);
+        Some(*info)
     }
 
     /// Draws the surfaces' view depth for the screen AO (`fs_ao_depth`; group 0: the frame). Returns the draw calls.
@@ -1166,6 +1378,10 @@ pub(crate) fn oblique(proj: Mat4, view: Mat4, n: Vec3, at: Vec3, lift: f32) -> M
     Mat4::from_cols(rows[0], rows[1], rows[2], rows[3]).transpose()
 }
 
+/// A height field's texture: `n` × `n` rgba16float, the height in r,
+/// viewed as a 1-layer array (water.wgsl `heights`; rgba16float is
+/// filterable, as the FFT sea's fields bound there are sampled, and a
+/// storage format for a compute pass writing it).
 fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, wgpu::TextureView) {
     let t = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("water heights"),
@@ -1181,7 +1397,10 @@ fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, wgpu::Textur
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
-    let v = t.create_view(&Default::default());
+    let v = t.create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(wgpu::TextureViewDimension::D2Array),
+        ..Default::default()
+    });
     (t, v)
 }
 
@@ -1292,10 +1511,9 @@ mod tests {
         let sea = ocean(&water).expect("a sea");
         let seconds = 4321.25;
         for origin in [Vec3::ZERO, Vec3::new(51_200.0, 0.0, -25_600.0)] {
-            let (head, swell) = ocean_gpu(&water, 256, seconds, origin);
+            let (head, swell, long) = ocean_gpu(&water, seconds, origin);
             assert_eq!(head[0], 1.0);
-            assert!(head[2] > 0.0 && head[3] > 0.0);
-            assert!((head[1] - 800.0 / 256.0).abs() < 1e-6);
+            assert!(long > 0 && (long as usize) < og_core::ocean::OCEAN_WAVES);
             for p in [
                 Vec2::new(0.0, 0.0),
                 Vec2::new(37.5, -120.0),
@@ -1317,6 +1535,6 @@ mod tests {
         // A surface over a mesh, or without a wind, has no sea.
         let mut calm = water.clone();
         calm.wind = Vec2::ZERO;
-        assert_eq!(ocean_gpu(&calm, 256, seconds, Vec3::ZERO).0, [0.0; 4]);
+        assert_eq!(ocean_gpu(&calm, seconds, Vec3::ZERO).0, [0.0; 4]);
     }
 }

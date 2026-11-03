@@ -12,10 +12,13 @@
 // transparent meshes, writing depth. Prepended by frame.wgsl and
 // lighting.wgsl.
 //
-// R5: a sea (Water::wind) displaces the grid by og_core::ocean's Gerstner
-// waves over the absolute world's xz, the vertices taking the waves the
-// grid can hold and the fragments every wave's normal, whitecaps where the
-// crests bunch; a flow map (Water::flow_map) turns the flow per point.
+// R5: a sea (Water::wind) is a clipmap about the camera (water.rs
+// `clipmap`), out to a horizon ring, displaced over the absolute world's xz
+// by the tick's long waves (og_core::ocean's longest, as Gerstner waves)
+// and the FFT's cascades (ocean_fft), every one faded where the cells or
+// the pixel cannot hold it; its normal and its facets' roughness from the
+// cascades' slopes and their moments (LEAN), whitecaps where the surface's
+// Jacobian falls. A flow map (Water::flow_map) turns the flow per point.
 
 struct WaterUniform {
   model: mat4x4<f32>,
@@ -33,13 +36,21 @@ struct WaterUniform {
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
   ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's centre cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
   sea_wind: vec4<f32>,    // xy: the wind's direction in the frame's xz, z: its speed (m/s; 0 without a sea)
-  // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 1 when its crests
-  // whiten) (water.rs ocean_gpu).
+  clip: vec4<f32>,        // the sea's clipmap: x levels, y cells along a level's edge, z the horizon ring's radius, w 1 endless
+  levels: array<vec4<f32>, 10>,  // per level: its centre (frame xz), its cell (m)
+  inverse: mat4x4<f32>,   // the surface's frame from the world
+  fft: vec4<f32>,         // x cascades, y the swell's waves drawn (the longest), z the slope variance under the finest cascade
+  cascades: array<vec4<f32>, 3>,  // per cascade: 1 / tile (1/m), its uv at the frame's origin, the tile (m)
+  // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
+  // (water.rs ocean_gpu); the first fft.y of them drawn.
   swell: array<vec4<f32>, 64>,
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
-@group(1) @binding(1) var heights: texture_2d<f32>;
+// A height field (layer 0, the height in r), or a sea's FFT fields: per cascade c, layer 3c (x displacement,
+// height, z displacement, d Dx/dz), 3c + 1 (the height's slopes along x and z, d Dx/dx, d Dz/dz), 3c + 2 (the slopes'
+// squares and product), mipped.
+@group(1) @binding(1) var heights: texture_2d_array<f32>;
 @group(1) @binding(2) var scene_color: texture_2d<f32>;
 @group(1) @binding(3) var scene_depth: texture_2d<f32>;
 @group(1) @binding(4) var water_sampler: sampler;
@@ -66,67 +77,76 @@ struct WaterOut {
   @location(5) rest: vec2<f32>,
 };
 
-// The sea's displacement (x, height, z) at rest point p (frame xz): the
-// waves at least four cells long (`cell`; 0: every wave), the shorter
-// left to the fragments' normals.
+// How much of a wave of wavenumber k a spacing of `cell` metres holds: all of one eight cells long, none under four
+// (og_core::ocean::grid_keep).
+fn sea_keep(k: f32, cell: f32) -> f32 {
+  return 1.0 - smoothstep(0.785, 1.571, k * cell);
+}
+
+// The FFT cascade c's uv at rest point p (frame xz).
+fn cascade_uv(c: u32, p: vec2<f32>) -> vec2<f32> {
+  let t = water.cascades[c];
+  return p * t.x + t.yz;
+}
+
+// The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: the tick's
+// long waves, then each cascade read at the mip whose texels are the cells, faded once its longest waves are under
+// four cells.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  for (var i = 0u; i < 32u; i++) {
+  for (var i = 0u; i < u32(water.fft.y); i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
-    let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * cell);
+    let keep = sea_keep(length(a.xy), cell);
     let th = dot(a.xy, p) + a.w;
     d += vec3<f32>(b.x * cos(th), a.z * sin(th), b.y * cos(th)) * keep;
+  }
+  for (var c = 0u; c < u32(water.fft.x); c++) {
+    let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
+    let fade = 1.0 - smoothstep(4.0, 6.0, lod);
+    if (fade <= 0.0) { continue; }
+    d += textureSampleLevel(heights, ripple_sampler, cascade_uv(c, p), 3u * c, min(lod, 4.0)).xyz * fade;
   }
   return d;
 }
 
-// The sea's normal at rest point p (frame xz; Gerstner's, GPU Gems 1 §1)
-// and, as w, how far the crests of the waves that whiten bunch there
-// (Σ k lean sin over them: the surface's area lost, whitecaps past
-// water.ocean.z), each wave faded where it is shorter than four of the
-// pixel's `footprint` (m), and the mean square slope the pixel holds
-// unresolved: the faded waves' (their (k a)² / 2), and the short waves'
-// that the facets carry (see short_slope). A pixel of sea is a rough
-// mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
+// The sea's normal at rest point p (frame xz), each long wave faded where it is shorter than four of the pixel's
+// `footprint` (m) and the cascades filtered over the pixel; as `bunch`, how far the surface's area is squeezed (1 less
+// the Jacobian of the horizontal displacement: whitecaps past water.ocean.z); and as `mss`, the mean square slope the
+// pixel holds unresolved: the faded long waves' ((k a)² / 2), the cascades' within the pixel (their slopes' second
+// moments less the squared mean: LEAN mapping, Olano and Baker 2010) and the spectrum's tail finer than the finest
+// cascade. A pixel of sea is a rough mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
 struct SeaNormal {
   n: vec3<f32>,
   bunch: f32,
   mss: f32,
 };
 
-// How much of a short wave's slope (one that never whitens) the normal
-// draws; the rest of its slope variance, 1 - SHORT_SLOPE², is the facets'
-// roughness. The waves carry the whole of Cox and Munk's mean square slope,
-// but in waves no shorter than a metre or three: drawn whole, every near
-// slope was a smooth mirror of the sky. A gale's short sea is choppier
-// than its waves can draw: from 10 m/s the share falls to 0.45 at 20, and
-// its surface reads rough, not glossy.
-fn short_slope() -> f32 {
-  return mix(0.7, 0.45, smoothstep(10.0, 20.0, water.sea_wind.z));
-}
-
-fn ocean_normal(p: vec2<f32>, footprint: f32) -> SeaNormal {
-  var n = vec3<f32>(0.0, 1.0, 0.0);
-  var bunch = 0.0;
-  var mss = 0.0;
-  let short = short_slope();
-  for (var i = 0u; i < 32u; i++) {
+// (gx, gy: how far p moves a pixel across and down the screen, metres, for the cascades' filtering.)
+fn ocean_normal(p: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> SeaNormal {
+  var slope = vec2<f32>(0.0);
+  var mss = water.fft.z;
+  for (var i = 0u; i < u32(water.fft.y); i++) {
     let a = water.swell[2u * i];
-    let b = water.swell[2u * i + 1u];
-    let fade = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
-    let keep = fade * mix(short, 1.0, b.w);
+    let keep = sea_keep(length(a.xy), footprint);
     let th = dot(a.xy, p) + a.w;
-    let c = cos(th) * a.z * keep;
-    let s = b.z * sin(th) * keep;
-    n -= vec3<f32>(a.x * c, s, a.y * c);
-    bunch += s * b.w;
+    slope += a.xy * (a.z * cos(th) * keep);
     let ka = length(a.xy) * a.z;
     mss += ka * ka * 0.5 * (1.0 - keep * keep);
   }
+  var j = vec3<f32>(0.0);
+  for (var c = 0u; c < u32(water.fft.x); c++) {
+    let uv = cascade_uv(c, p);
+    let k = water.cascades[c].x;
+    let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
+    let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
+    slope += first.xy;
+    mss += max(second.x - first.x * first.x, 0.0) + max(second.y - first.y * first.y, 0.0);
+    j += vec3<f32>(first.zw, textureSampleGrad(heights, ripple_sampler, uv, 3u * c, gx * k, gy * k).w);
+  }
   var o: SeaNormal;
-  o.n = normalize(n);
-  o.bunch = bunch;
+  o.n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
+  o.bunch = 1.0 - ((1.0 + j.x) * (1.0 + j.y) - j.z * j.z);
   o.mss = mss;
   return o;
 }
@@ -149,13 +169,93 @@ fn sea_footprint(world: vec3<f32>) -> f32 {
   return dist * pixel / max(abs(to_eye.y) / max(dist, 1e-6), 0.02);
 }
 
-// A sea's grid: finest at its centre (where the camera is meant to be),
-// its cells growing outward so it reaches far towards the horizon. g in
-// [-1, 1] across the grid to [-1, 1] across the surface, w(g) = g (0.15 +
-// 0.85 g²); its slope w' = 0.15 + 2.55 g² is the cell's size over the
-// even grid's.
-fn sea_warp(g: f32) -> vec2<f32> {
-  return vec2<f32>(g * (0.15 + 0.85 * g * g), 0.15 + 2.55 * g * g);
+// A vertex of the sea's clipmap: its rest point (frame xz) and the spacing its waves are read at, or w < 0 for a
+// vertex of a cell left out (the hole a level leaves for the one inside it).
+//
+// Every level is `s` × `s` cells about its centre; each level past the first leaves out the cells under the level
+// inside it, whose square lies on its lattice (water.rs `clipmap`). Towards its outer edge a level morphs onto the
+// next one's lattice: its odd vertices take the mean of their even neighbours' displacement (along the edge, or the
+// cells' diagonal for a vertex odd both ways), and every vertex reads the waves at a spacing growing from its own
+// cell to the next level's, so the edge it shares with the next level's hole is that level's, vertex for vertex.
+// Past the outermost level a ring of quads reaches the horizon (clip.z), flat at its far edge.
+// A bounded sea's rest point (not endless): clamped to its rectangle in the surface's frame, so the clipmap's cells
+// past it fold onto its edge.
+fn sea_clamp(p: vec2<f32>) -> vec2<f32> {
+  if (water.clip.w > 0.5) { return p; }
+  let local = (water.inverse * vec4<f32>(p.x, water.model[3].y, p.y, 1.0)).xz;
+  let h = water.size.xy * 0.5;
+  return (water.model * vec4<f32>(clamp(local, -h, h).x, 0.0, clamp(local, -h, h).y, 1.0)).xz;
+}
+
+struct SeaVertex {
+  rest: vec2<f32>,
+  d: vec3<f32>,
+  skip: bool,
+};
+
+fn sea_vertex(vi: u32) -> SeaVertex {
+  var corners = array<vec2<f32>, 6>(
+    vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
+  let s = u32(water.clip.y);
+  let per_level = s * s * 6u;
+  let levels = u32(water.clip.x);
+  let level = vi / per_level;
+  var o: SeaVertex;
+  o.skip = false;
+  if (level >= levels) {
+    // The horizon ring: the outermost level's edge (its even vertices) to the ring's radius.
+    let k = vi - levels * per_level;
+    let corner = corners[k % 6u];
+    let half = s / 2u;
+    let t = (k / 6u + u32(corner.x)) % (4u * half);
+    let last = water.levels[levels - 1u];
+    let h = f32(half) * last.z;
+    let along = f32(t % half) * 2.0 * last.z;
+    var q: vec2<f32>;
+    switch (t / half) {
+      case 0u: { q = vec2<f32>(-h + along, -h); }
+      case 1u: { q = vec2<f32>(h, -h + along); }
+      case 2u: { q = vec2<f32>(h - along, h); }
+      default: { q = vec2<f32>(-h, h - along); }
+    }
+    if (corner.y > 0.5) {
+      o.rest = sea_clamp(last.xy + q * max(water.clip.z / h, 1.0));
+      o.d = vec3<f32>(0.0);
+    } else {
+      o.rest = sea_clamp(last.xy + q);
+      o.d = ocean_displace(o.rest, 2.0 * last.z);
+    }
+    return o;
+  }
+  let k = vi % per_level;
+  let quad = k / 6u;
+  let cell_ij = vec2<f32>(f32(quad % s), f32(quad / s));
+  let lv = water.levels[level];
+  let c = lv.z;
+  let half = f32(s) * 0.5;
+  if (level > 0u) {
+    let inner = water.levels[level - 1u];
+    let middle = lv.xy + (cell_ij + 0.5 - half) * c;
+    if (all(abs(middle - inner.xy) < vec2<f32>(half * 0.5 * c))) {
+      o.skip = true;
+      return o;
+    }
+  }
+  let g = cell_ij + corners[k % 6u] - half;
+  let p = lv.xy + g * c;
+  o.rest = sea_clamp(p);
+  let m = smoothstep(0.7, 0.95, max(abs(g.x), abs(g.y)) / half);
+  let spacing = c * (1.0 + m);
+  let odd = vec2<bool>(abs(g.x) % 2.0 > 0.5, abs(g.y) % 2.0 > 0.5);
+  var d = ocean_displace(o.rest, spacing);
+  if (m > 0.0 && (odd.x || odd.y)) {
+    let e = vec2<f32>(select(0.0, c, odd.x), select(0.0, c, odd.y));
+    let mean = 0.5 * (ocean_displace(sea_clamp(p - e), spacing) + ocean_displace(sea_clamp(p + e), spacing));
+    d = mix(d, mean, m);
+  }
+  o.d = d;
+  return o;
 }
 
 // The height field at local point (x, z) of the surface, bilinear.
@@ -166,10 +266,10 @@ fn height_at(local: vec2<f32>) -> f32 {
   let g = (local + vec2<f32>(water.look.z * 0.5)) / cell;
   let i = clamp(vec2<i32>(floor(g)), vec2<i32>(0), vec2<i32>(n - 2));
   let f = clamp(g - vec2<f32>(i), vec2<f32>(0.0), vec2<f32>(1.0));
-  let a = textureLoad(heights, i, 0).r;
-  let b = textureLoad(heights, i + vec2<i32>(1, 0), 0).r;
-  let c = textureLoad(heights, i + vec2<i32>(0, 1), 0).r;
-  let d = textureLoad(heights, i + vec2<i32>(1, 1), 0).r;
+  let a = textureLoad(heights, i, 0, 0).r;
+  let b = textureLoad(heights, i + vec2<i32>(1, 0), 0, 0).r;
+  let c = textureLoad(heights, i + vec2<i32>(0, 1), 0, 0).r;
+  let d = textureLoad(heights, i + vec2<i32>(1, 1), 0, 0).r;
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
@@ -180,28 +280,18 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
+  if (water.fft.x > 0.5) { return vs_sea(vi); }
   let c = corners[vi % 6u];
   let cell = vec2<f32>(f32(quad % segs), f32(quad / segs)) + c;
-  var local = (cell / f32(segs) - 0.5) * water.size.xy;
-  // The sea's cell here, in metres (its waves shorter than four of it are left to the fragments).
-  var sea_cell = 0.0;
-  if (water.ocean.x > 0.5) {
-    let wx = sea_warp(cell.x / f32(segs) * 2.0 - 1.0);
-    let wz = sea_warp(cell.y / f32(segs) * 2.0 - 1.0);
-    local = vec2<f32>(wx.x, wz.x) * water.size.xy * 0.5;
-    sea_cell = water.ocean.y * max(wx.y, wz.y);
-  }
+  let local = (cell / f32(segs) - 0.5) * water.size.xy;
   let h = height_at(local);
   // The height field's slope gives the geometric normal.
   let e = water.look.z / max(water.look.w - 1.0, 1.0);
   let hx = height_at(local + vec2<f32>(e, 0.0)) - height_at(local - vec2<f32>(e, 0.0));
   let hz = height_at(local + vec2<f32>(0.0, e)) - height_at(local - vec2<f32>(0.0, e));
   let n_local = normalize(vec3<f32>(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)));
-  var world = water.model * vec4<f32>(local.x, h, local.y, 1.0);
+  let world = water.model * vec4<f32>(local.x, h, local.y, 1.0);
   let rest = world.xz;
-  if (water.ocean.x > 0.5) {
-    world = vec4<f32>(world.xyz + ocean_displace(rest, sea_cell), 1.0);
-  }
   var o: WaterOut;
   o.clip = frame.view_proj * world;
   o.world = world.xyz;
@@ -210,6 +300,31 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   o.local = local;
   o.slope = length(vec2<f32>(hx, hz)) / (2.0 * e);
   o.uv = local;
+  return o;
+}
+
+// A sea's vertex (sea_vertex): its rest point on the surface's level, displaced; the geometric normal is the level's.
+fn vs_sea(vi: u32) -> WaterOut {
+  let v = sea_vertex(vi);
+  var o: WaterOut;
+  o.normal = normalize((water.model * vec4<f32>(0.0, 1.0, 0.0, 0.0)).xyz);
+  o.slope = 0.0;
+  if (v.skip) {
+    // A cell under the level inside: all six corners at one point outside the view, drawing nothing.
+    o.clip = vec4<f32>(2.0, 2.0, 2.0, 1.0);
+    o.world = vec3<f32>(0.0);
+    o.rest = vec2<f32>(0.0);
+    o.local = vec2<f32>(0.0);
+    o.uv = vec2<f32>(0.0);
+    return o;
+  }
+  let level = water.model[3].y;
+  let world = vec3<f32>(v.rest.x, level, v.rest.y) + v.d;
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.world = world;
+  o.rest = v.rest;
+  o.local = (water.inverse * vec4<f32>(v.rest.x, level, v.rest.y, 1.0)).xz;
+  o.uv = o.local;
   return o;
 }
 
@@ -453,8 +568,20 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   var sea_mss = 0.0;
   if (water.ocean.x > 0.5) {
     var footprint = sea_footprint(in.world);
-    if (frame.view_pos.w > 0.5) { footprint = max(length(dpdx(in.rest)), length(dpdy(in.rest))); }
-    let sea = ocean_normal(in.rest, footprint);
+    // The pixel's footprint on the level surface, from where its view ray meets the level: smooth across the screen,
+    // where the rest point's derivatives jump at every edge of the displaced triangles (and their mips drew the grid).
+    // (A ray that never meets the level, a crest above the eye, takes the point itself.)
+    let to = in.world - frame.view_pos.xyz;
+    let along = (water.model[3].y - frame.view_pos.y) / min(to.y, -1e-6);
+    let flat_hit = frame.view_pos.xz + to.xz * select(1.0, along, to.y < -0.01 * length(to) && along > 0.0);
+    var gx = dpdx(flat_hit);
+    var gy = dpdy(flat_hit);
+    if (frame.view_pos.w > 0.5) {
+      gx = dpdx(in.rest);
+      gy = dpdy(in.rest);
+      footprint = max(length(gx), length(gy));
+    }
+    let sea = ocean_normal(in.rest, footprint, gx, gy);
     base = sea.n;
     sea_mss = sea.mss;
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.

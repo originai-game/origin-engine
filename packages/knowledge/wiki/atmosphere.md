@@ -68,7 +68,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10822</sub>
+<sub>`api.ogt` line 10823</sub>
 
 ## Components, resources and events
 
@@ -826,9 +826,10 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | `glint` | `number` | `0` | ≥ 0 | — | tunable | three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour. |
 | `flow` | `Vector2` | `{ x: 0, y: 0 }` | — | — | tunable | Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river. |
 | `flowMap` | `Texture` | `0` | — | — | — | three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone. |
-| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. A sea's grid is finest at its centre and coarsens outward (a 6 km sea of 256 segments: 3.5 m cells in the middle, 63 m at the edge, its rim under the horizon from a few metres up), so keep the entity under the camera (move it with the camera: the waves stay where they are); a wave under four cells is left to the shading, and the detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps cover as much of the sea as the wind's speed whitens a real one. 0 0: no sea. |
+| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a level surface), with og.physics.waterHeight reading the tick's waves in the tick. A mesh surface has none. The sea is drawn as a clipmap about the camera, finest under it, from a seeded JONSWAP spectrum transformed on the GPU each frame at the tick's time (up to three tiles of 256² by the graphics quality) over the tick's longest waves, which it draws as they are: the waves a floating body rides are the ones drawn, the shorter ones the GPU's alone (rendering only; never read back). Within size (centred on the entity) unless endless. The detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps foam where the crests fold. 0 0: no sea. |
 | `swell` | `number` | `1` | 0 … 4 | `ratio` | tunable | The sea's height, as a fraction of a fully developed sea's for the wind. |
 | `choppiness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much. |
+| `endless` | `boolean` | `false` | — | — | — | A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale). |
 
 ```ogt
 component Water {
@@ -958,7 +959,7 @@ component Water {
     tunable true
   }
   field flowMap Texture "three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone."
-  field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. A sea's grid is finest at its centre and coarsens outward (a 6 km sea of 256 segments: 3.5 m cells in the middle, 63 m at the edge, its rim under the horizon from a few metres up), so keep the entity under the camera (move it with the camera: the waves stay where they are); a wave under four cells is left to the shading, and the detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps cover as much of the sea as the wind's speed whitens a real one. 0 0: no sea." {
+  field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a level surface), with og.physics.waterHeight reading the tick's waves in the tick. A mesh surface has none. The sea is drawn as a clipmap about the camera, finest under it, from a seeded JONSWAP spectrum transformed on the GPU each frame at the tick's time (up to three tiles of 256² by the graphics quality) over the tick's longest waves, which it draws as they are: the waves a floating body rides are the ones drawn, the shorter ones the GPU's alone (rendering only; never read back). Within size (centred on the entity) unless endless. The detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps foam where the crests fold. 0 0: no sea." {
     default 0 0
     unit mps
     tunable true
@@ -977,6 +978,7 @@ component Water {
     unit ratio
     tunable true
   }
+  field endless bool "A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale)."
 }
 ```
 
@@ -1034,7 +1036,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10790</sub>
+<sub>`api.ogt` line 10791</sub>
 
 ## Constants
 

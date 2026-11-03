@@ -611,6 +611,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             wind: vec2(&v["wind"], Vec2::ZERO),
             swell: f(&v, "swell", 1.0),
             choppiness: f(&v, "choppiness", 0.6),
+            endless: v["endless"].as_bool().unwrap_or(false),
         });
     }
     // 2D water over its spring line.

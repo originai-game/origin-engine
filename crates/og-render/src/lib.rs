@@ -138,6 +138,7 @@ mod scatter;
 mod scene;
 mod shaders;
 pub use shaders::{ShaderSource, shader_sources};
+pub mod ocean_fft;
 mod shadows;
 pub mod shapes;
 mod skin;
