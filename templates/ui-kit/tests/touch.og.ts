@@ -13,9 +13,9 @@ const LINE = "Novel/Talk/Caption/Words/Line";
 export default playtest({
   name: "touch_move_to and move_to_text drive the gallery, the store, results, generators and the visual novel",
   commands: [
-    // The store is the thirtieth row (88 px rows that hold a two-line blurb): 2,300 px brings it whole into the list's view.
+    // The store is the forty-second row (88 px rows that hold a two-line blurb; seventeen showcases lead): 3,356 px brings it whole into the list's view.
     "0.3:touch_move_to:Screens",
-    "0.35:scroll:0,2300",
+    "0.35:scroll:0,3356",
     tapText(0.5, "=store"),
     "1.2:dump_entity:demo:store-open.json",
     tap(1.3, "Offers/ashbringer"),

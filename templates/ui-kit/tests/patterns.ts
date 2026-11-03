@@ -920,7 +920,7 @@ function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
   b.cmd("pat:reset");
   b.shot("cg-idle", 1.0);
   b.dump("cg");
-  b.seq((at) => tap(at, phone ? "Line#1/storm" : "Line#0/storm"), 0.2);
+  b.seq((at) => tap(at, "Line#1/storm"), 0.2);
   b.shot("cg-refused", 0.2);
   b.seq((at) => tap(at, "Line#0/riverboat"), 0.5);
   b.shot("cg-viewer", 0.5);
