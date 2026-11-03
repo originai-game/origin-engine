@@ -1,5 +1,5 @@
 // The win and the second look: the fourth lantern lit wins the run; after a
-// beat the results open on og.ui.resultsScreen (the score counting up, the
+// beat the results open on the game's results document (the score counting up, the
 // stars, the lamplighter's name, a new best) while og.render.applyLook
 // swaps the dusk look for the dawn one (looks/dawn.ogt, its depth bands)
 // and the clock turns to the next dawn. Again starts a run from nothing

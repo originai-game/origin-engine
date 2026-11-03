@@ -20,8 +20,8 @@ export default playtest({
   store: "keep",
   commands: script(
     tap("settings", 0.6),
-    tap("Tab#3", 1.2),
-    tap("Option#1", 1.6),
+    tap("Row/language", 1.2),
+    tap("Choice/Strip/Track/Item#1", 1.6),
     tap("Done", 2.0),
     "2.4:get:Prefs:prefs.json",
     "2.5:play:2",
@@ -78,8 +78,8 @@ export default playtest({
     t.equal(value<{ language: number }>(next, "prefs-back.json").language, 1, "and the settings: Spanish again");
     const cont = elements(next, "title.json").find((e) => e.id === "continue");
     t.ok(cont !== undefined && !cont.states.includes("disabled") && cont.text === "Continuar · nivel 2", `Continue is offered for the second level, in Spanish ("${cont?.text}")`);
-    const cards = elements(next, "levels.json").filter((e) => e.kind === "cell");
-    t.ok(cards.length === 3 && cards.every((c) => c.name !== "lock"), "all three levels are open in the level select");
+    const shown = elements(next, "levels.json");
+    t.ok(shown.filter((e) => e.id.startsWith("Card#")).length === 3 && !shown.some((e) => e.id === "Lock"), "all three levels are open in the level select");
     const c = game(next, "continued.json");
     t.ok(c.phase === PLAY && c.level === 1 && c.checkpoint === 0 && c.loads === 1, `Continue restored the second level at its lamp (phase ${c.phase}, level ${c.level}, loads ${c.loads})`);
     t.ok(Math.abs(c.heroX - 128.5) < 1 && c.gears === 1, `Wick stands by the lamp with the gear he had (${c.heroX.toFixed(2)}, ${c.gears} gear)`);

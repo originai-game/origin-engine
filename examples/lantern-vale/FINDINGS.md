@@ -82,7 +82,7 @@ Each finding's state on main at 767ecf84 (the streams' sections in `docs/phase-1
 21. Fixed: ui-text, 8a288955 (`type:` keeps its text to the `;`; bare keys typing only until the first `og.TextInput` is documented). The settings playtest still types `Mei` and commits `小灯` through an input method.
 22. Fixed: ui-text, 8a288955 (og-ui §7 holds the one mixed-script rule, §3 points to it). No workaround here.
 23. Fixed: ui-text, dbcdf1ad (a field is named by its label, described by its placeholder). No workaround here.
-24. Fixed: ui-text, 7d982be7 (`ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`). The game passes `results.best` and `results.newBest` from both tables; the locales playtest checks them.
+24. Fixed: ui-text, 7d982be7 (`ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`). Closed for good by U8 (2026-11-03): `og.ui.resultsScreen` is removed and the results are the game's own document (`assets/ui/results.ogt`, ejected with `og ui eject results`), whose best line (`results.best`) and badge (`results.newBest`) are the tables' keys; the locales playtest checks them in both languages.
 25. Fixed: ui-text, 213ed08f (og polish leaves out text mid-transition; og-build §5 says why thin CJK strokes measure lower).
 26. No defect (6c804499 corrected it to a nit): the dev profile optimises the heavy crates per package and the gate measures on it by rule; no row.
 27. Fixed: cook-vox, 42e622cb (a graph-less `.vox` is centred like a graph's). The scene graph is removed from `voxBytes` and the files regenerated (c962b1e6, byte-identical blobs).
@@ -91,3 +91,20 @@ Each finding's state on main at 767ecf84 (the streams' sections in `docs/phase-1
 30. Fixed: api-runtime, 38472c71 (`get` answers the light og.DayNight drives as it is drawn).
 31. Fixed: api-runtime, 38472c71 (og-feel reads values with `get:`).
 32. Fixed: ui-text, 8b87652b (it was the screenshot's PNG deflate in the dev profile, counted as step time: the capture is left out of the step and miniz_oxide is optimised in dev; frame max 948.7 to 20.0 ms in the locales playtest).
+
+## U8: off the fixed templates (2026-11-03)
+
+The fixed templates the game used (`og.ui.mainMenu`, `og.ui.pauseMenu`,
+`og.ui.resultsScreen`) are removed from the engine (docs/ui.md §11). The
+title, pause and the results are the game's own screen documents, ejected
+with `og ui eject` and edited: `assets/ui/main-menu.ogt` (the name, its
+line, Set out and Settings, the keys in the corner; no entrance, so the
+title the game opens on is built settled, which `mainMenu`'s `instant` did),
+`assets/ui/pause.ogt` (Resume and Back, Settings, Quit to title) and
+`assets/ui/results.ogt` (the ending, `og.ui.starRating` in its Stars slot,
+the score counting up, the best and its badge, the run's rows, Again and
+Title). The stars' accessible name is a new key, `results.stars`, in both
+tables; the Noto Sans SC subset was rebuilt by `tools/subset-font.py` for
+its three new characters, with the marks − × · … ← → (which the tool does
+not add) copied back from the previous subset. The settings dialog was
+already the game's own widgets and is unchanged.

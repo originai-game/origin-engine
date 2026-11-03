@@ -25,11 +25,12 @@ import { applyPrefs, LANGUAGES, setLanguage } from "./prefs.ts";
 import { Crates, Doors, Gates, Lifts, Plates } from "./puzzle.ts";
 import { Answers, askContinue, Saves } from "./save.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { finishLevel, startLevel, toTitle, Ui } from "./ui.ts";
+import { finishLevel, SCREENS, startLevel, toTitle, Ui } from "./ui.ts";
 
 function start(world: World): void {
   const g = must(world.resource(Game));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   const art = loadArt(world);
   // Control picks Wick's clips by index: check the sheet's order matches (the flipbook grammar and its clip order are
   // not in the knowledge package: FINDINGS.md #2).

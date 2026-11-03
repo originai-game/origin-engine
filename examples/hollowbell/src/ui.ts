@@ -4,9 +4,12 @@
 // name dialog of a new game (a text field kept in Prefs.name, a str field),
 // the HUD (hearts and glimmers top-left; the three chimes, drawn as screen
 // sprites from the items' texture array, and Pause top-right; a prompt by
-// the mole or the bell), the mole's talk (og.ui.cutscene) and his wares
-// (og.ui.shopScreen), the pause menu, the settings (a modal of widgets),
-// and the results (og.ui.resultsScreen) under the dawn look. Screens change
+// the mole or the bell), the mole's talk (the game's letterbox around
+// og.ui.dialogue) and his wares, the pause menu, the settings (a modal of
+// widgets), and the results under the dawn look. The title, the wares,
+// pause and the results are the game's own screen documents
+// (assets/ui/*.ogt, ejected with `og ui eject` from the library's
+// main-menu, vendor, pause and results). Screens change
 // through an iris (a fade with reduced motion). Every string is a key of
 // assets/strings/*.ogt.
 //
@@ -17,7 +20,7 @@
 // tree's unnamed controls for the playtests.
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GameSettings, Look, Sound as SoundHandle, TextureArray, Value, World } from "@origingame/engine";
+import type { Look, Sound as SoundHandle, TextureArray, Value, World } from "@origingame/engine";
 import { CHIMES, Game, HEARTS, Layer, NAME_CHARS, Phase, Prefs, Sound } from "./components.ts";
 import { say } from "./feel.ts";
 import { apply, askRecords, chimesIn, followRecords, resetProgress, savedRecord, writeBest, writeSave } from "./save.ts";
@@ -77,7 +80,33 @@ export function setLanguage(world: World, p: PrefsV, code: string): void {
   og.i18n.setLocale(world, LANGUAGES[p.language]!.code);
 }
 
-function settingsOf(p: PrefsV): GameSettings {
+/** The settings as og.platform keeps them (`og.settings`). */
+interface Settings {
+  masterVolume?: number;
+  musicVolume?: number;
+  sfxVolume?: number;
+  muted?: boolean;
+  reducedMotion?: boolean;
+  highContrast?: boolean;
+  language?: string;
+}
+
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "pause", "shop", "results"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
+function settingsOf(p: PrefsV): Settings {
   return {
     masterVolume: p.master,
     musicVolume: p.music,
@@ -93,7 +122,7 @@ function prefsValue(p: PrefsV) {
   return { ...settingsOf(p), name: p.name };
 }
 
-function takeSettings(world: World, p: PrefsV, s: GameSettings): void {
+function takeSettings(world: World, p: PrefsV, s: Settings): void {
   if (typeof s.masterVolume === "number") p.master = s.masterVolume;
   if (typeof s.musicVolume === "number") p.music = s.musicVolume;
   if (typeof s.sfxVolume === "number") p.effects = s.sfxVolume;
@@ -209,43 +238,65 @@ function hud(world: World, g: GameV): void {
 function talk(world: World, g: GameV, p: PrefsV): void {
   const keeper = p.name === "" ? say(world, "name.placeholder") : p.name;
   const mole = say(world, "talk.mole");
-  const r = og.ui.cutscene("Talk", {
-    open: g.talking,
-    index: g.talkIndex,
-    lines: [
-      { speaker: mole, text: say(world, "talk.1"), portrait: "person" },
-      { speaker: mole, text: say(world, "talk.2"), portrait: "person" },
-      { speaker: mole, text: say(world, "talk.3"), portrait: "person" },
-      { speaker: keeper, text: say(world, "talk.4"), portrait: "music" },
-    ],
-    skipLabel: say(world, "talk.skip"),
-  });
+  const lines = [
+    { speaker: mole, text: say(world, "talk.1"), portrait: "person" },
+    { speaker: mole, text: say(world, "talk.2"), portrait: "person" },
+    { speaker: mole, text: say(world, "talk.3"), portrait: "person" },
+    { speaker: keeper, text: say(world, "talk.4"), portrait: "music" },
+  ];
   if (!g.talking) return;
-  // The talk's box takes the focus as it opens, so Enter, Space and the pad's A answer it from the
-  // first line (FINDINGS.md #10, fixed in the engine: the navigate workaround is gone).
+  const r = letterboxTalk(world, lines, Math.min(g.talkIndex, lines.length - 1));
   g.talkIndex = r.index;
   if (r.finished || r.skipped) {
     g.talking = false;
     g.shopping = true;
+    g.shopSelected = 0;
   }
+}
+
+/**
+ * A talk in the film's frame: a black bar a tenth of the picture top and bottom (run out under a notch, as a
+ * film's are), the line in og.ui.dialogue a step above the bottom bar, typed out (a press or Activate shows it
+ * whole, the next one goes on), and Skip at the top right, as Back is.
+ */
+function letterboxTalk(world: World, lines: { speaker: string; text: string; portrait: string }[], index: number): { index: number; finished: boolean; skipped: boolean } {
+  const out = { index, finished: false, skipped: false };
+  og.ui.setNavigation(true);
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const barH = Math.round((vp.height - sa.top - sa.bottom) * 0.1);
+  const black = { color: { r: 0, g: 0, b: 0 } };
+  for (const [name, anchor, y, h] of [["Top", "topLeft", -sa.top, barH + sa.top], ["Bottom", "bottomLeft", sa.bottom, barH + sa.bottom]] as const) {
+    og.ui.anchor(`Talk.${name}`, { anchor, margin: 0, offsetX: -sa.left, offsetY: y, width: px(vp.width), height: px(h) }, () => {
+      og.ui.row("Bar", { width: grow, height: grow, background: black }, () => {});
+    });
+  }
+  const line = lines[index]!;
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  og.ui.anchor("Talk.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -Math.max(0, barH + S.md - 16) }, () => {
+    const r = og.ui.dialogue("Dialogue", { speaker: line.speaker, text: line.text, portraitIcon: line.portrait });
+    if (r.advanced) {
+      if (index + 1 >= lines.length) out.finished = true;
+      else out.index = index + 1;
+    }
+  });
+  og.ui.anchor("Talk.skip", { anchor: "topRight", offsetY: barH + S.sm }, () => {
+    if (og.ui.button("Skip", say(world, "talk.skip"), { variant: "quiet", size: "small" }).clicked) out.skipped = true;
+  });
+  if (og.ui.back()) out.skipped = true;
+  return out;
 }
 
 function shop(world: World, g: GameV): void {
   if (!g.shopping) return;
   const owned = (id: string) => (id === "wick" && g.wick) || (id === "cloak" && g.cloak);
-  const r = og.ui.shopScreen("Shop", {
-    title: say(world, "shop.title"),
-    currency: say(world, "shop.currency"),
-    currencyIcon: "coin",
-    // The template's own words from the tables (FINDINGS.md #12, fixed: ShopDesc has the fields now).
-    priceLabel: say(world, "shop.price"),
-    buyLabel: say(world, "shop.buy"),
-    shortLabel: say(world, "shop.short"),
-    ownedLabel: say(world, "shop.owned"),
-    emptyLabel: say(world, "shop.empty"),
-    balance: g.glimmers,
-    items: WARES.map((w) => ({ id: w.id, name: say(world, `shop.${w.id}`), description: say(world, `shop.${w.id}Doc`), price: w.price, icon: w.icon, owned: owned(w.id) })),
-  });
+  const wares = WARES.map((w) => ({ name: say(world, `shop.${w.id}`), doc: say(world, `shop.${w.id}Doc`), price: w.price, icon: w.icon, owned: owned(w.id) }));
+  const at = Math.min(g.shopSelected, WARES.length - 1);
+  const sel = wares[at]!;
+  // assets/ui/shop.ogt: the wares, the selected one's line, Buy; short of the price its Buy shakes, refused.
+  const asked = screen(world, "shop", true, { glimmers: g.glimmers, wares, selected: at, name: sel.name, doc: sel.doc, price: sel.price, owned: sel.owned, short: g.glimmers < sel.price, unit: say(world, "shop.currency") });
+  if (asked.includes("select")) g.shopSelected = (og.ui.screenVm(world, "shop") as { selected?: number } | null)?.selected ?? at;
+  const r = { bought: asked.includes("buy") ? WARES[at]!.id : null, closed: asked.includes("back") };
   if (r.bought !== null) {
     const w = WARES.find((x) => x.id === r.bought);
     if (w !== undefined && g.glimmers >= w.price && !owned(w.id)) {
@@ -292,10 +343,9 @@ function naming(world: World, g: GameV, p: PrefsV): void {
 /**
  * The settings: the music and effects sliders, the language, reduced motion
  * and high contrast, and a label mixing Latin and Chinese. Built from widgets
- * rather than og.ui.settingsScreen: FINDINGS.md #11 is fixed (SettingsDesc
- * has a field for each of its words now), but this dialog stays, as it
- * shows exactly the settings Hollowbell has on one page (no Graphics or
- * Controls tab, no master volume) with its prefs and the mixed-script label.
+ * (the fixed settings template is gone since U8): it shows exactly the
+ * settings Hollowbell has on one page (no Graphics or Controls tab, no
+ * master volume) with its prefs and the mixed-script label.
  */
 function settings(world: World, g: GameV, p: PrefsV): void {
   let done = false;
@@ -339,18 +389,22 @@ function seconds(s: number): string {
   return `${m}:${r < 10 ? "0" : ""}${r}`;
 }
 
+/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
+const COUNT_FRAMES = 54;
+
 function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
   const stars = 1 + (g.hurts <= 3 ? 1 : 0) + (g.kills >= 6 ? 1 : 0);
-  const r = og.ui.resultsScreen("Results", {
-    open: g.phase === Phase.Over,
+  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  let since = og.ui.memory("resultsSince", -1);
+  if (since < 0) since = og.ui.tick();
+  og.ui.remember("resultsSince", since);
+  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const asked = screen(world, "results", true, {
     title: say(world, "results.title"),
-    score: g.score,
-    best: g.best,
+    score: k >= 1 ? g.score : Math.round(g.score * (1 - (1 - k) ** 3)),
+    best: g.best > 0 ? say(world, "results.best", { best: String(g.best).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }) : "",
     newBest: g.newBest,
-    bestLabel: say(world, "results.best"),
-    newBestLabel: say(world, "results.newBest"),
-    stars,
-    maxStars: 3,
+    landed: k >= 1,
     stats: [
       { label: say(world, "results.keeper"), value: p.name === "" ? say(world, "results.nobody") : p.name },
       { label: say(world, "results.time"), value: seconds(g.time) },
@@ -358,12 +412,12 @@ function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
       { label: say(world, "results.beaten"), value: `${g.kills}` },
       { label: say(world, "results.hurts"), value: `${g.hurts}` },
     ],
-    actions: [
-      { id: "again", label: say(world, "results.again"), primary: true },
-      { id: "menu", label: say(world, "results.menu") },
-    ],
   });
-  return r.selected === "again" ? "again" : r.selected === "menu" ? "menu" : null;
+  if (og.ui.openSlot("results/Stars")) {
+    og.ui.starRating("Rating", { earned: stars, max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars, max: 3 }) });
+    og.ui.close();
+  }
+  return asked.includes("again") ? "again" : asked.includes("menu") ? "menu" : null;
 }
 
 /** The bell rung and the tolls heard: the score, the best, the results under the dawn look. */
@@ -403,7 +457,7 @@ export const Ui = defineSystem(
     }
     const s = followRecords(world, g, p);
     if (s !== null) {
-      takeSettings(world, p, s as GameSettings);
+      takeSettings(world, p, s as Settings);
       if (typeof s.name === "string" && p.name === "") setName(p, s.name);
       applyPrefs(world, p);
     }
@@ -423,25 +477,15 @@ export const Ui = defineSystem(
       if (info.ok && info.value.chunks !== 0) g.musicChunks = info.value.chunks;
     }
 
-    const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
-    const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;
+    const want = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
+    const shown = og.ui.screenTransition("Screens", want, { kind: p.reducedMotion ? "fade" : "iris", durationMs: 600 }).shown;
     if (shown !== "title") g.leftTitle = true;
     if (shown === "title") {
       og.ui.setNavigation(true);
       const saved = savedRecord(g);
-      const r = og.ui.mainMenu("Title", {
-        title: say(world, "title.name"),
-        subtitle: say(world, "title.tagline"),
-        items: [
-          { id: "continue", label: say(world, "title.continue"), primary: saved !== null, disabled: saved === null },
-          { id: "new", label: say(world, "title.new"), primary: saved === null },
-          { id: "settings", label: say(world, "title.settings") },
-        ],
-        footer: say(world, "title.footer"),
-        // The title the game opens on is built settled: the web draws it behind the play gate, where
-        // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-        instant: !g.leftTitle,
-      });
+      // assets/ui/main-menu.ogt: Continue (the primary with a save), New game, Settings. It has no entrance: the
+      // title the game opens on is built settled, as the web draws it behind the play gate (og-platform-sdk §3).
+      const asked = screen(world, "main-menu", true, { canContinue: saved !== null });
       if (saved !== null) {
         og.ui.anchor("Slot", { anchor: "bottomLeft" }, () => {
           capsule("Saved", () => {
@@ -451,26 +495,19 @@ export const Ui = defineSystem(
         });
       }
       if (!g.settingsOpen && !g.naming && g.phase === Phase.Title) {
-        if (r.selected === "new") g.naming = true;
-        if (r.selected === "continue") continueRun(world, g, p);
+        if (asked.includes("new")) g.naming = true;
+        if (asked.includes("continue")) continueRun(world, g, p);
       }
-      if (r.selected === "settings") g.settingsOpen = true;
+      if (asked.includes("settings")) g.settingsOpen = true;
       naming(world, g, p);
     } else if (shown === "play") {
       hud(world, g);
       if (g.phase === Phase.Play && !g.paused && !g.settingsOpen && !g.talking && !g.shopping && og.ui.back()) g.paused = true;
-      const m = og.ui.pauseMenu("Pause", {
-        open: g.paused && !g.settingsOpen,
-        title: say(world, "pause.title"),
-        items: [
-          { id: "resume", label: say(world, "pause.resume"), primary: true },
-          { id: "settings", label: say(world, "pause.settings") },
-          { id: "quit", label: say(world, "pause.quit") },
-        ],
-      });
-      if (m.selected === "resume") g.paused = false;
-      if (m.selected === "settings") g.settingsOpen = true;
-      if (m.selected === "quit") {
+      // assets/ui/pause.ogt: Resume (and Back), Settings, Save and quit.
+      const asked = screen(world, "pause", g.paused && !g.settingsOpen);
+      if (asked.includes("resume")) g.paused = false;
+      if (asked.includes("settings")) g.settingsOpen = true;
+      if (asked.includes("quit")) {
         writeSave(world, g, p);
         toTitle(world, g);
       }
@@ -482,6 +519,11 @@ export const Ui = defineSystem(
       if (c === "again") newRun(world, g);
       if (c === "menu") toTitle(world, g);
     }
+    // The screen documents of the screens not shown leave the layer stack.
+    if (shown !== "title") screen(world, "main-menu", false);
+    if (shown !== "play") screen(world, "pause", false);
+    if (shown !== "play" || !g.shopping) screen(world, "shop", false);
+    if (shown === "title" || shown === "play") screen(world, "results", false);
     settings(world, g, p);
 
     // The accessibility tree, for the playtests: every half second, and every tick a dialog is open.

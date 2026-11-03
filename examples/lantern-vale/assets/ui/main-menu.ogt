@@ -1,0 +1,97 @@
+type screen
+version 1
+---
+# Lantern Vale's title, ejected from the library's main-menu (og ui eject
+# main-menu) and made the game's own: the vale's name and its line in a
+# card in the middle of the frame, Set out and Settings, and the keys in the
+# bottom-right corner. Every word is a key of
+# assets/strings/<locale>.ogt.
+#
+# Viewmodel: none. Events to code: play, settings. src/ui.ts mounts it
+# while the title is the screen. It has no entrance, so the title the game
+# opens on is built settled (the web draws it behind the play gate).
+name "main-menu"
+layer menu
+under none
+back none
+focus "Card/Items/play"
+actions {
+  confirm "Select"
+}
+fixture default "{}"
+column Title {
+  width grow
+  height grow
+  align center
+  cross center
+  at phone {
+    align end
+  }
+  column Card {
+    width 380
+    padding 24
+    gap 24
+    cross center
+    background token hud
+    radius 10
+    at phone {
+      width grow
+      padding 16
+    }
+    column Heading {
+      width grow
+      gap 4
+      cross center
+      label Title {
+        key "title.name"
+        text "Lantern Vale"
+        step displayLg
+        font display
+        textAlign center
+        width grow
+        heading true
+        at phone {
+          step displayMd
+        }
+      }
+      label Subtitle {
+        key "title.tagline"
+        text "Light the four lanterns before night falls"
+        color token inkMuted
+        textAlign center
+        width grow
+      }
+    }
+    column Items {
+      width grow
+      gap 8
+      cross stretch
+      button play {
+        key "title.play"
+        text "Set out"
+        variant primary
+        size large
+        width grow
+        autofocus true
+        on click emit play
+      }
+      button settings {
+        key "title.settings"
+        text "Settings"
+        size large
+        width grow
+        on click emit settings
+      }
+    }
+  }
+  label Footer {
+    key "title.footer"
+    text "WASD move · Shift run · hold E by a lantern to light it · Esc pause"
+    step meta
+    color token inkFaint
+    nowrap true
+    position absolute
+    end 16
+    bottom 16
+  }
+}

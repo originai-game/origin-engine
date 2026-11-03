@@ -1,28 +1,33 @@
 // The Kestrel Stair's screens, on og.ui with the paper style
 // (assets/styles/kestrel, brought by the look):
 //
-// - the title (og.ui.mainMenu): Continue with the save slot's place and
-//   hour, New journey, Chapters (og.ui.levelSelect: the four chapters, their
-//   stars, the ones not yet reached locked), Records (og.ui.leaderboardScreen:
-//   the fastest ascents and the courier's neighbours, loading, error and
-//   empty states honest), Settings (og.ui.settingsScreen, every word from the
-//   string tables);
-// - the intro and the ending (og.ui.cutscene), the tutorial on a first
-//   journey (og.ui.tutorialOverlay, a spotlight on each part of the HUD);
+// - the title, the chapters, the records, the settings, pause, the bag,
+//   the tutorial and the results: the game's own screen documents
+//   (assets/ui/*.ogt, ejected from the library's main-menu, saga-map,
+//   leaderboard, settings, pause, inventory, tutorial and results with
+//   `og ui eject`). The title: Continue with the save slot's place and hour,
+//   New journey, Chapters (the four chapters, their stars, the ones not yet
+//   reached locked), Records (the fastest ascents and the courier's
+//   neighbours, loading, error and empty states honest), Settings
+//   (og.ui.settingsTree in its slot), every word from the string tables;
+// - the intro and the ending (the game's own letterbox around
+//   og.ui.dialogue), the tutorial on a first journey (og.ui.spotlight on
+//   each part of the HUD, the card beside it);
 // - the HUD: strength and sigils top left, the hour and the bag and pause
 //   buttons top right, the prompt for what F would use at the bottom (it
 //   shakes when F is refused);
-// - the bag (og.ui.inventoryScreen: the letter, the sigils, the hillwort;
-//   items dragged between slots, hillwort eaten with Use), the pause menu,
-//   the results (og.ui.resultsScreen, under the summit look after a won
-//   climb), toasts; a wipe between screens (a fade with reduced motion).
+// - the bag (og.ui.inventoryGrid in its slot: the letter, the sigils, the
+//   hillwort; items dragged between cells, hillwort eaten with Use), the
+//   pause menu, the results (og.ui.starRating in its slot, under the summit
+//   look after a won climb), toasts; a wipe between screens (a fade with
+//   reduced motion).
 //
 // The Ui system also runs the clock, the hold (time scale 0 under a menu),
 // the run's start and end, the looks, and og.platform's answers
 // (src/save.ts).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GameSettings, LevelInfo, Look, Sound as SoundHandle, Value, World } from "@origingame/engine";
+import type { GridItem, Look, SettingEntry, SettingsPage, Sound as SoundHandle, Value, World } from "@origingame/engine";
 import { Ending, Game, Hero, HOURS, MAX_HP, Near, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
 import { placeHero } from "./hero.ts";
 import { CHAPTERS, chapterAt, WAYSTONES } from "./layout.ts";
@@ -43,14 +48,43 @@ export const LANGUAGES = [
 export const OVER_DELAY = 90;
 
 const S = { xs: 4, sm: 8, md: 12, lg: 16 } as const;
+const grow = { kind: "grow" } as const;
 const px = (n: number) => ({ kind: "fixed", px: n }) as const;
 
 type GameV = Value<typeof Game>;
 type PrefsV = Value<typeof Prefs>;
 
-/** The bag's slots: item ids by slot, kept as text in Game.bag. */
+/** The bag's slots: item ids by slot, kept as text in Game.bag; six cells a row. */
 const BAG_SLOTS = 12;
-const ITEMS = ["letter", "sigil0", "sigil1", "sigil2", "herb"] as const;
+const BAG_COLUMNS = 6;
+
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "chapters", "leaderboard", "settings", "pause", "bag", "tutorial", "results"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
+/** The settings as og.platform keeps them (`og.settings`). */
+interface Settings {
+  masterVolume?: number;
+  musicVolume?: number;
+  sfxVolume?: number;
+  muted?: boolean;
+  reducedMotion?: boolean;
+  highContrast?: boolean;
+  sensitivity?: number;
+  invertY?: boolean;
+  language?: string;
+}
 
 /** The UI's sounds and the player's motion and contrast: og.ui.configure keeps the look's style. */
 export function configureUi(world: World, p: PrefsV): void {
@@ -73,7 +107,7 @@ function setLanguage(world: World, p: PrefsV, index: number): void {
   og.i18n.setLocale(world, LANGUAGES[p.language]!.code);
 }
 
-function settingsOf(p: PrefsV): GameSettings {
+function settingsOf(p: PrefsV): Settings {
   return { masterVolume: p.master, musicVolume: p.music, sfxVolume: p.effects, muted: p.muted, reducedMotion: p.reducedMotion, highContrast: p.highContrast, sensitivity: p.sensitivity, invertY: p.invertY, language: LANGUAGES[p.language]!.code };
 }
 
@@ -113,6 +147,7 @@ export function startRun(world: World, g: GameV, c: number): void {
   g.chapter = c;
   g.paused = false;
   g.bagOpen = false;
+  g.bagSelected = "";
   g.chaptersOpen = false;
   g.recordsOpen = false;
   g.hp = MAX_HP;
@@ -294,7 +329,7 @@ function promptText(world: World, g: GameV, kind: number): string {
   }
 }
 
-/** The bag: the letter, the sigils carried, the hillwort; drag to move, Use to eat. */
+/** The bag: the letter, the sigils carried, the hillwort; drag to move, Use (or a double press) to eat. */
 function bag(world: World, g: GameV): void {
   let slots: string[];
   try {
@@ -303,28 +338,61 @@ function bag(world: World, g: GameV): void {
     slots = [];
   }
   while (slots.length < BAG_SLOTS) slots.push("");
-  const items = slots
+  const carried = (id: string) => id === "letter" || (id.startsWith("sigil") && (g.sigils & (1 << Number(id.slice(5)))) !== 0) || (id === "herb" && g.herbs > 0);
+  const items: GridItem[] = slots
     .map((id, slot) => ({ id, slot }))
-    .filter(({ id }) => id === "letter" || (id.startsWith("sigil") && (g.sigils & (1 << Number(id.slice(5)))) !== 0) || (id === "herb" && g.herbs > 0))
+    .filter(({ id }) => carried(id))
     .map(({ id, slot }) => ({
-      slot,
-      id,
+      key: id,
       name: say(world, `item.${id}`),
-      description: say(world, `item.${id}.about`),
       icon: id === "letter" ? "map" : id === "herb" ? "leaf" : "gem",
+      x: slot % BAG_COLUMNS,
+      y: Math.floor(slot / BAG_COLUMNS),
+      w: 1,
+      h: 1,
       count: id === "herb" ? g.herbs : 0,
     }));
-  const r = og.ui.inventoryScreen("Bag", { title: say(world, "bag.title"), slots: BAG_SLOTS, columns: 6, items, useLabel: say(world, "bag.use"), hintLabel: say(world, "bag.hint"), countLabel: say(world, "bag.count") });
-  if (r.moved) {
-    const a = slots[r.moved.from] ?? "";
-    slots[r.moved.from] = slots[r.moved.to] ?? "";
-    slots[r.moved.to] = a;
-    g.bag = JSON.stringify(slots);
-    g.bagMoves += 1;
+  if (g.bagSelected !== "" && !items.some((i) => i.key === g.bagSelected)) g.bagSelected = "";
+  const sel = g.bagSelected;
+  // assets/ui/bag.ogt: the cells in its Grid slot, the selected item's name, line, count and Use beside them.
+  const asked = screen(world, "bag", true, {
+    chosen: sel !== "",
+    name: sel !== "" ? say(world, `item.${sel}`) : "",
+    about: sel !== "" ? say(world, `item.${sel}.about`) : "",
+    count: sel === "herb" ? g.herbs : 0,
+    usable: sel === "herb",
+  });
+  let used = asked.includes("use") ? sel : null;
+  if (og.ui.openSlot("bag/Grid")) {
+    const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
+    const r = og.ui.inventoryGrid("Grid", {
+      columns: BAG_COLUMNS,
+      rows: BAG_SLOTS / BAG_COLUMNS,
+      items,
+      cellSize: phone ? 64 : 72,
+      selected: sel,
+      label: say(world, "bag.title"),
+      emptyLabel: say(world, "bag.empty"),
+      rotateLabel: say(world, "bag.rotate"),
+    });
+    og.ui.close();
+    if (r.selected !== null) g.bagSelected = r.selected;
+    if (r.used !== null) used = r.used;
+    const m = r.move;
+    if (m !== null) {
+      const from = slots.indexOf(m.key);
+      const to = m.y * BAG_COLUMNS + m.x;
+      if (from >= 0 && to >= 0 && to < BAG_SLOTS && to !== from) {
+        slots[from] = slots[to] ?? "";
+        slots[to] = m.key;
+        g.bag = JSON.stringify(slots);
+        g.bagMoves += 1;
+      }
+      g.bagSelected = m.key;
+    }
   }
-  if (r.used === "herb") eatHerb(world, g);
-  if (r.closed) g.bagOpen = false;
-  void ITEMS;
+  if (used === "herb") eatHerb(world, g);
+  if (asked.includes("close")) g.bagOpen = false;
 }
 
 function intro(world: World): { speaker: string; text: string; portrait: string }[] {
@@ -348,6 +416,42 @@ function ending(world: World): { speaker: string; text: string; portrait: string
   ];
 }
 
+/**
+ * A cutscene in the film's frame: a black bar a tenth of the picture top and bottom (run out under a notch, as a
+ * film's are), the line in og.ui.dialogue a step above the bottom bar, typed out (a press or Enter shows it whole,
+ * the next one goes on), and Skip at the top right, as Back is.
+ */
+function letterboxTalk(world: World, lines: { speaker: string; text: string; portrait: string }[], index: number): { index: number; finished: boolean; skipped: boolean } {
+  const out = { index, finished: false, skipped: false };
+  og.ui.setNavigation(true);
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const barH = Math.round((vp.height - sa.top - sa.bottom) * 0.1);
+  const black = { color: { r: 0, g: 0, b: 0 } };
+  for (const [name, anchor, y, h] of [["Top", "topLeft", -sa.top, barH + sa.top], ["Bottom", "bottomLeft", sa.bottom, barH + sa.bottom]] as const) {
+    og.ui.anchor(`Story.${name}`, { anchor, margin: 0, offsetX: -sa.left, offsetY: y, width: px(vp.width), height: px(h) }, () => {
+      og.ui.row("Bar", { width: grow, height: grow, background: black }, () => {});
+    });
+  }
+  const line = lines[Math.min(index, lines.length - 1)]!;
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  og.ui.anchor("Story.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -Math.max(0, barH + S.md - 16) }, () => {
+    const r = og.ui.dialogue("Dialogue", { speaker: line.speaker, text: line.text, portraitIcon: line.portrait });
+    if (r.advanced) {
+      if (index + 1 >= lines.length) out.finished = true;
+      else out.index = index + 1;
+    }
+  });
+  // The line takes the focus as it appears, but not while the wipe from the title still moves (the screens are inert
+  // then): it is given it once nothing holds it, so Enter, Space and the pad's A walk the lines.
+  if (og.ui.focus(0) === "") og.ui.setFocus("Story.box/Dialogue");
+  og.ui.anchor("Story.skip", { anchor: "topRight", offsetY: barH + S.sm }, () => {
+    if (og.ui.button("Skip", say(world, "story.skip"), { variant: "quiet", size: "small" }).clicked) out.skipped = true;
+  });
+  if (og.ui.back()) out.skipped = true;
+  return out;
+}
+
 function tutorialSteps(world: World) {
   return [
     { target: "Health", title: say(world, "tut.health.title"), text: say(world, "tut.health.text") },
@@ -357,18 +461,70 @@ function tutorialSteps(world: World) {
   ];
 }
 
+/** The card's room from the screen's edges and from the part it points at. */
+const GUTTER = 16;
+
+/**
+ * The tutorial (assets/ui/tutorial.ogt): og.ui.spotlight on the step's part of the HUD under it, the card under
+ * the part where there is room, else over it; Next walks the steps, Done (the last step's Next) and Skip
+ * (Back too) end it.
+ */
+function tutorial(world: World, g: GameV): { finished: boolean } {
+  const steps = tutorialSteps(world);
+  const index = Math.min(g.tutorialStep, steps.length - 1);
+  const step = steps[index]!;
+  const vp = og.ui.frameViewport();
+  const safe = vp.safeArea;
+  const hole = og.ui.bounds(step.target);
+  const width = Math.min(320, vp.width - 2 * GUTTER);
+  const height = og.ui.bounds("Tutorial/Card")?.height ?? 160;
+  let x = vp.width / 2 - width / 2;
+  let y = vp.height / 2 - height / 2;
+  if (hole) {
+    x = Math.min(Math.max(hole.x, safe.left + GUTTER), vp.width - safe.right - GUTTER - width);
+    const below = hole.y + hole.height + S.lg;
+    y = below + height <= vp.height - safe.bottom - GUTTER ? below : Math.max(safe.top + GUTTER, hole.y - S.lg - height);
+  }
+  const last = index + 1 >= steps.length;
+  // The scrim with the part left clear, under the document's layer.
+  og.ui.spotlight("Spotlight", hole, {});
+  const asked = screen(world, "tutorial", true, {
+    count: say(world, "tut.step", { step: index + 1, count: steps.length }),
+    title: step.title,
+    text: step.text,
+    nextLabel: say(world, last ? "tut.done" : "tut.next"),
+    x,
+    y,
+  });
+  if (asked.includes("skip")) return { finished: true };
+  if (asked.includes("next")) {
+    if (last) return { finished: true };
+    g.tutorialStep = index + 1;
+  }
+  return { finished: false };
+}
+
 function chapters(world: World, g: GameV): void {
-  // FINDINGS #15 is fixed: two columns are two wide cards, and a name is read whole or wrapped,
-  // so the chapters are named again (numerals only before).
-  const levels: LevelInfo[] = CHAPTERS.map((c, i) => ({
-    name: say(world, `chapter.${c.key}`),
-    stars: (g.chapterStars >> (i * 2)) & 3,
-    locked: (g.chaptersReached & (1 << i)) === 0,
-    best: i === 0 && g.best > 0 ? seconds(g.best) : "",
-  }));
-  const r = og.ui.levelSelect("Chapters", { title: say(world, "chapters.title"), levels, columns: 2 });
-  if (r.chosen !== null && (g.chaptersReached & (1 << r.chosen)) !== 0) startRun(world, g, r.chosen);
-  if (r.closed) g.chaptersOpen = false;
+  // assets/ui/chapters.ogt: two wide cards a row, each chapter named whole (FINDINGS #15), its stars, the best
+  // ascent on the first; one not yet reached locked and refused; Back (Escape, the pad's B, a tap on the scrim).
+  let earned = 0;
+  const levels = CHAPTERS.map((c, i) => {
+    const name = say(world, `chapter.${c.key}`);
+    const stars = (g.chapterStars >> (i * 2)) & 3;
+    earned += stars;
+    return {
+      name,
+      starsLabel: say(world, "chapters.stars", { stars, max: 3 }),
+      lockedLabel: say(world, "chapters.locked", { name }),
+      stars,
+      locked: (g.chaptersReached & (1 << i)) === 0,
+      best: i === 0 && g.best > 0 ? seconds(g.best) : "",
+    };
+  });
+  const asked = screen(world, "chapters", true, { earned: `${earned} / ${CHAPTERS.length * 3}`, levels, picked: -1 });
+  const picked = (og.ui.screenVm(world, "chapters") as { picked?: number } | null)?.picked ?? -1;
+  if (asked.includes("pick") && picked >= 0 && (g.chaptersReached & (1 << picked)) !== 0) startRun(world, g, picked);
+  else if (asked.includes("back")) g.chaptersOpen = false;
 }
 
 function records(world: World, g: GameV): void {
@@ -378,59 +534,72 @@ function records(world: World, g: GameV): void {
   } catch {
     rows = [];
   }
-  const entries = rows.map(([rank, name, secs, me]) => ({ rank, name: me ? say(world, "records.you") : name === "" ? say(world, "records.courier", { n: rank }) : name, score: seconds(secs), player: me === 1 }));
-  const r = og.ui.leaderboardScreen("Records", {
-    title: say(world, "records.title"),
-    scopes: [say(world, "records.fastest"), say(world, "records.around")],
-    entries,
-    loading: g.recordsState === 1,
-    error: g.recordsState === 3 ? say(world, "records.error") : "",
-    empty: say(world, "records.empty"),
-    retryLabel: say(world, "records.retry"),
-  });
-  if (r.changed) {
-    g.recordsScope = r.scope;
-    readRecords(world, g);
+  const shown = rows.map(([rank, name, secs, me]) => ({ rank, name: me ? say(world, "records.you") : name === "" ? say(world, "records.courier", { n: rank }) : name, time: seconds(secs), you: me === 1 }));
+  // assets/ui/leaderboard.ogt: the fastest ascents or the courier's neighbours; loading, error (Try again) and empty.
+  const vm = { scope: g.recordsScope, state: g.recordsState === 1 || g.recordsState === 3 ? g.recordsState : 0, rows: shown };
+  for (const e of screen(world, "leaderboard", true, vm)) {
+    if (e === "scope") {
+      g.recordsScope = (og.ui.screenVm(world, "leaderboard") as { scope?: number } | null)?.scope ?? g.recordsScope;
+      readRecords(world, g);
+    }
+    if (e === "retry") readRecords(world, g);
+    if (e === "back") g.recordsOpen = false;
   }
-  if (r.retry) readRecords(world, g);
-  if (r.closed) g.recordsOpen = false;
 }
 
+/** The settings tree's pages: what Prefs keeps, every word from the tables. */
+function pages(world: World, p: PrefsV): SettingsPage[] {
+  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
+  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
+  return [
+    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
+    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
+    { key: "controls", label: say(world, "settings.controls"), entries: [{ key: "sensitivity", kind: "slider", label: say(world, "settings.sensitivity"), value: p.sensitivity, min: 0.1, max: 3, step: 0.1 }, toggle("invertY", "settings.invert", p.invertY)] },
+    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.language"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
+  ];
+}
+
+/** The defaults of a page's entries (Defaults). */
+const DEFAULTS: Record<string, Settings> = {
+  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
+  graphics: { reducedMotion: false, highContrast: false },
+  controls: { sensitivity: 1, invertY: false },
+  language: { language: "en" },
+};
+
 function settings(world: World, g: GameV, p: PrefsV): void {
-  // Built with its words only while it shows, and for a moment after it closes (its exit):
-  // two dozen string lookups a tick are not free (src/state.ts says why that matters here).
-  if (!g.settingsOpen && world.tick - g.settingsClosedAt > 30) {
-    og.ui.settingsScreen("Settings", { open: false });
-    return;
-  }
-  const r = og.ui.settingsScreen("Settings", {
-    open: g.settingsOpen,
-    settings: settingsOf(p),
-    languages: LANGUAGES.map((l) => ({ code: l.code, label: say(world, l.key) })),
-    title: say(world, "settings.title"),
-    audioLabel: say(world, "settings.audio"),
-    graphicsLabel: say(world, "settings.graphics"),
-    controlsLabel: say(world, "settings.controls"),
-    languageLabel: say(world, "settings.language"),
-    masterLabel: say(world, "settings.master"),
-    musicLabel: say(world, "settings.music"),
-    effectsLabel: say(world, "settings.effects"),
-    muteLabel: say(world, "settings.mute"),
-    qualityLabel: say(world, "settings.quality"),
-    lowLabel: say(world, "settings.low"),
-    mediumLabel: say(world, "settings.medium"),
-    highLabel: say(world, "settings.high"),
-    fpsLabel: say(world, "settings.fps"),
-    motionLabel: say(world, "settings.motion"),
-    contrastLabel: say(world, "settings.contrast"),
-    sensitivityLabel: say(world, "settings.sensitivity"),
-    invertLabel: say(world, "settings.invert"),
-    vibrationLabel: say(world, "settings.vibration"),
-    doneLabel: say(world, "settings.done"),
-  });
+  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once, saved on Done.
+  const asked = screen(world, "settings", g.settingsOpen);
   if (!g.settingsOpen) return;
-  if (r.changed) takeSettings(world, p, r.settings as unknown as Record<string, unknown>);
-  if (r.closed) {
+  if (og.ui.openSlot("settings/Tree")) {
+    const r = og.ui.settingsTree(world, "Tree", {
+      title: "",
+      pages: pages(world, p),
+      page: g.settingsPage,
+      applyLabel: say(world, "settings.apply"),
+      revertLabel: say(world, "settings.revert"),
+      defaultsLabel: say(world, "settings.defaults"),
+      changedLabel: say(world, "settings.changed"),
+    }, () => {});
+    og.ui.close();
+    if (r.page !== null) g.settingsPage = r.page;
+    const c = r.change;
+    if (c !== null) {
+      const s: Settings = {};
+      if (c.key === "master") s.masterVolume = c.value;
+      else if (c.key === "music") s.musicVolume = c.value;
+      else if (c.key === "effects") s.sfxVolume = c.value;
+      else if (c.key === "muted") s.muted = c.on;
+      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
+      else if (c.key === "highContrast") s.highContrast = c.on;
+      else if (c.key === "sensitivity") s.sensitivity = c.value;
+      else if (c.key === "invertY") s.invertY = c.on;
+      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
+      takeSettings(world, p, s as Record<string, unknown>);
+    }
+    if (r.defaults) takeSettings(world, p, (DEFAULTS[g.settingsPage || "audio"] ?? {}) as Record<string, unknown>);
+  }
+  if (asked.includes("done")) {
     g.settingsOpen = false;
     g.settingsClosedAt = world.tick;
     must(og.platform.saveSettings(world, settingsOf(p)));
@@ -438,32 +607,37 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   }
 }
 
+/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
+const COUNT_FRAMES = 54;
+
 function results(world: World, g: GameV): "again" | "title" | "records" | null {
   const won = g.ending === Ending.Rung;
   const sigils = [0, 1, 2].filter((b) => (g.sigils & (1 << b)) !== 0).length;
-  const r = og.ui.resultsScreen("Results", {
-    open: g.phase === Phase.Over,
+  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  let since = og.ui.memory("resultsSince", -1);
+  if (since < 0) since = og.ui.tick();
+  og.ui.remember("resultsSince", since);
+  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  // assets/ui/results.ogt: how it ended, the stars, the score, the best, the rows, Again, Records and Title.
+  const asked = screen(world, "results", true, {
     title: say(world, won ? "results.won" : g.ending === Ending.Night ? "results.night" : "results.fallen"),
-    score: g.score,
-    best: g.bestScore,
+    score: k >= 1 ? g.score : Math.round(g.score * (1 - (1 - k) ** 3)),
+    best: say(world, "results.best", { best: String(g.bestScore).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }),
     newBest: g.newBest,
-    bestLabel: say(world, "results.best"),
-    newBestLabel: say(world, "results.newBest"),
-    stars: stars(g),
-    maxStars: 3,
+    landed: k >= 1,
     stats: [
       { label: say(world, "results.time"), value: seconds(g.time) },
       { label: say(world, "results.sigils"), value: `${sigils}/3` },
       { label: say(world, "results.foes"), value: `${g.kills}` },
       { label: say(world, "results.herbs"), value: `${g.herbsUsed}` },
     ],
-    actions: [
-      { id: "again", label: say(world, "results.again"), primary: true },
-      { id: "records", label: say(world, "results.records") },
-      { id: "title", label: say(world, "results.title") },
-    ],
   });
-  return r.selected === "again" || r.selected === "title" || r.selected === "records" ? r.selected : null;
+  if (og.ui.openSlot("results/Stars")) {
+    og.ui.starRating("Rating", { earned: stars(g), max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars(g), max: 3 }) });
+    og.ui.close();
+  }
+  const c = asked.find((e) => e === "again" || e === "title" || e === "records");
+  return (c as "again" | "title" | "records" | undefined) ?? null;
 }
 
 /** The screens, the run's start, clock and end, the hold, the looks, the platform. */
@@ -502,35 +676,43 @@ export const Ui = defineSystem(
 
       // One wipe for every change of screen, the chapters and the records included.
       const sub = g.chaptersOpen ? "-chapters" : g.recordsOpen ? "-records" : "";
-      const screen = (g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play") + (g.phase === Phase.Play ? "" : sub);
-      const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
+      const want = (g.phase === Phase.Title ? "title" : g.phase === Phase.Over ? "over" : "play") + (g.phase === Phase.Play ? "" : sub);
+      const shown = og.ui.screenTransition("Screens", want, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 700 }).shown;
       if (shown !== "title") g.leftTitle = true;
+      // The screen documents of the screens not shown leave the layer stack first: popped after the new screen is
+      // built, a layer would hand the focus back over what that screen just focused (the cutscene's line).
+      if (shown !== "title") screen(world, "main-menu", false);
+      if (shown !== "title-chapters") screen(world, "chapters", false);
+      if (shown !== "title-records" && shown !== "over-records") screen(world, "leaderboard", false);
+      if (shown !== "over") screen(world, "results", false);
+      if (shown !== "play") screen(world, "pause", false);
+      let tutorialUp = false;
+      let bagUp = false;
       if (shown.startsWith("title")) {
         og.ui.setNavigation(true);
         if (shown === "title-chapters") chapters(world, g);
         else if (shown === "title-records") records(world, g);
         else {
-          const items = [
-            ...(g.hasSave ? [{ id: "continue", label: say(world, "title.continue", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`), clock: clockText(g.saveClock) }), primary: true }] : []),
-            { id: "new", label: say(world, "title.new"), primary: !g.hasSave },
-            { id: "chapters", label: say(world, "title.chapters") },
-            { id: "records", label: say(world, "title.records") },
-            { id: "settings", label: say(world, "title.settings") },
-          ];
-          // The title the game opens on is built settled: the web draws it behind the play gate, where the
-          // style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-          const r = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: say(world, "title.tagline"), items, footer: say(world, "title.footer"), instant: !g.leftTitle });
-          // FINDINGS #14 is fixed: the menu's first item takes the focus as it appears, so Enter,
-          // Space and the pad's A answer at once (the game put it there itself before).
+          // assets/ui/main-menu.ogt: Continue (the place and the hour; primary and focused, FINDINGS #14), New journey,
+          // Chapters, Records, Settings. It has no entrance: the web draws the title the game opens on behind the play
+          // gate, where an entrance would stand part-way until the tap (og-platform-sdk §3).
+          const asked = screen(world, "main-menu", true, {
+            hasSave: g.hasSave,
+            continueLine: g.hasSave ? say(world, "title.continue", { place: say(world, `place.${WAYSTONES[g.savePlace]!.key}`), clock: clockText(g.saveClock) }) : "",
+          });
+          // The save is read after the title first shows (New journey focused then): Continue takes the focus once it
+          // appears, as the primary action.
+          const focused = og.ui.memory("continueFocused", 0);
+          if (g.hasSave && focused === 0) og.ui.setFocus("main-menu/Title/Card/Items/continue");
+          og.ui.remember("continueFocused", g.hasSave ? 1 : 0);
           if (!g.settingsOpen && g.phase === Phase.Title) {
-            if (r.selected === "new") startRun(world, g, 0);
-            if (r.selected === "continue") continueRun(world, g);
-            if (r.selected === "chapters") g.chaptersOpen = true;
-            if (r.selected === "records") {
+            if (asked.includes("new")) startRun(world, g, 0);
+            else if (asked.includes("continue")) continueRun(world, g);
+            else if (asked.includes("chapters")) g.chaptersOpen = true;
+            else if (asked.includes("records")) {
               g.recordsOpen = true;
               readRecords(world, g);
-            }
-            if (r.selected === "settings") g.settingsOpen = true;
+            } else if (asked.includes("settings")) g.settingsOpen = true;
           }
         }
       } else if (shown === "play") {
@@ -539,8 +721,7 @@ export const Ui = defineSystem(
         // The cutscenes: the abbess's words at the start, the bell-keeper's at the end.
         if (g.scene !== Scene.None) {
           const lines = g.scene === Scene.Intro ? intro(world) : ending(world);
-          og.ui.setNavigation(true);
-          const c = og.ui.cutscene("Story", { open: true, lines, index: g.line, letterbox: true, skippable: true, skipLabel: say(world, "story.skip") });
+          const c = letterboxTalk(world, lines, g.line);
           g.line = c.index;
           if (c.finished || c.skipped) {
             const was = g.scene;
@@ -554,9 +735,8 @@ export const Ui = defineSystem(
           }
         } else if (g.tutorial) {
           og.ui.setNavigation(true);
-          const r = og.ui.tutorialOverlay("Tutorial", { open: true, steps: tutorialSteps(world), index: g.tutorialStep, skipLabel: say(world, "tut.skip"), nextLabel: say(world, "tut.next"), doneLabel: say(world, "tut.done"), stepLabel: say(world, "tut.step") });
-          g.tutorialStep = r.index;
-          if (r.finished || r.skipped) {
+          tutorialUp = true;
+          if (tutorial(world, g).finished) {
             g.tutorial = false;
             g.tutorialDone = true;
             writeProgress(world, g);
@@ -569,26 +749,20 @@ export const Ui = defineSystem(
         }
         if (g.bagOpen && g.scene === Scene.None) {
           og.ui.setNavigation(true);
+          bagUp = true;
           bag(world, g);
         }
         if (g.phase === Phase.Ending && g.scene === Scene.None && g.overTicks >= OVER_DELAY) finish(world, g, t);
-        const m = og.ui.pauseMenu("Pause", {
-          open: g.paused && !g.settingsOpen,
-          title: say(world, "pause.title"),
-          items: [
-            { id: "resume", label: say(world, "pause.resume"), primary: true },
-            { id: "bag", label: say(world, "pause.bag") },
-            { id: "settings", label: say(world, "pause.settings") },
-            { id: "quit", label: say(world, "pause.quit") },
-          ],
-        });
-        if (m.selected === "resume") g.paused = false;
-        if (m.selected === "bag") {
-          g.paused = false;
-          g.bagOpen = true;
+        // assets/ui/pause.ogt: Resume (and Back), Bag, Settings, Rest and quit.
+        for (const e of screen(world, "pause", g.paused && !g.settingsOpen)) {
+          if (e === "resume") g.paused = false;
+          if (e === "bag") {
+            g.paused = false;
+            g.bagOpen = true;
+          }
+          if (e === "settings") g.settingsOpen = true;
+          if (e === "quit") toTitle(world, g);
         }
-        if (m.selected === "settings") g.settingsOpen = true;
-        if (m.selected === "quit") toTitle(world, g);
       } else {
         og.ui.setNavigation(true);
         if (shown === "over-records") records(world, g);
@@ -602,6 +776,9 @@ export const Ui = defineSystem(
           }
         }
       }
+      // The bag and the tutorial leave the layer stack once they are done.
+      if (!bagUp) screen(world, "bag", false);
+      if (!tutorialUp) screen(world, "tutorial", false);
       settings(world, g, p);
       // The accessibility tree, for the playtests: every half second, and on every tick a dialog is open.
       if (!g.settingsOpen && !g.paused && !g.bagOpen && time.tick % 30 !== 0) return;

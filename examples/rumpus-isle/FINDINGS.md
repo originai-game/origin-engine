@@ -113,6 +113,24 @@ The coordinator still owes metal reference capture and inspection, and its
 normal integration gate before merging. No rendering, physics or game
 behaviour was changed in this recovery.
 
+### U8: off the fixed templates (2026-11-03)
+
+The fixed screen templates the game used (`og.ui.mainMenu`, `og.ui.pauseMenu`,
+`og.ui.settingsScreen`) are removed from the engine (docs/ui.md §11). The
+title, pause and the settings are now the game's own screen documents,
+ejected with `og ui eject` and edited: `assets/ui/main-menu.ogt` (the isle's
+name, Play, Settings, the records in the corner), `assets/ui/pause.ogt`
+(Resume and Back, Settings, Back to the lobby, Quit to title) and
+`assets/ui/settings.ogt` (the title and Done over a slot that
+`og.ui.settingsTree` fills with the pages Sound, Graphics, Controls and
+Language, each change applied at once by `src/prefs.ts`). Every word is a
+key of the game's tables, the tree's Apply, Revert and Defaults included
+(new keys `settings.apply`, `settings.revert`, `settings.defaults` in both
+locales). #10's `instant` belonged to `og.ui.mainMenu`: the title document
+has no entrance, so it is built settled on every visit. The playtests tap
+the tree's tabs by their keys (`Row/language`) and read its capitalised
+names without case.
+
 ## What worked well
 
 og cook: 40 assets with no warnings, three glTF models from a script (`tools/glb.ts`) with their materials, a 30 s stereo music streamed in chunks, og sfx presets for every sound, the cartoon style pack copied and recoloured. Dynamic sphere critters with locked rotation about x and z, damping and no gravity drove, dashed, bumped (`og.physics.applyImpulse`, a squash each) and fell into `og.Water` with an `og.WaterSurface` that splashed; a kinematic island sank under a grid of kinematic tiles that cracked and dropped one by one, and three kinematic boxes made the podium's steps ground (an instantiated glTF has no collider, as og-game §13 shows: one is inserted). Six input sources on one world, four pads and two halves of the keyboard, sat down in a lobby where every pad has its own focus ring (`og.ui.setPlayers`) and the keys pick colours with left and right; `og.ui.screenTransition`'s iris between every screen, `og.ui.settingsScreen` every word in French from the tables (spaces before `?` and `!`, accents from the cartoon pack's faces), `og.ui.mainMenu` and `og.ui.pauseMenu` with their Back, count-ups and bursts on the scoreboard. og.platform kept the settings and the isle's records across a relaunch at the revision read, with a conflict merged by the best of each; a match by the keys alone from the title through two rounds ended on one hash in two processes; `og.time.hitStop` and `og.time.setScale` froze the critters and not the UI. The playtests: nine suites, 216 checks, 40 s together with no renderer.

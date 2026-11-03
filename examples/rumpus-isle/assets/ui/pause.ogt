@@ -1,0 +1,77 @@
+type screen
+version 1
+---
+# Rumpus Isle's pause, ejected from the library's pause (og ui eject pause)
+# and made the game's own: a panel over the dimmed round with its title,
+# Resume, Settings, Back to the lobby and Quit to title. The round's clock
+# is the game's to hold (src/ui.ts sets the time scale while it is up).
+# Every word is a key of assets/strings/<locale>.ogt.
+#
+# Viewmodel: none. Events to code: resume (also Back), settings, lobby,
+# quit.
+name "pause"
+layer menu
+under dim
+back emit resume
+focus "Panel/Items/resume"
+actions {
+  confirm "Select"
+  back "Resume"
+}
+fixture default "{}"
+column Pause {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 340
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    label Title {
+      key "pause.title"
+      text "Paused"
+      step xl2
+      font display
+      heading true
+    }
+    column Items {
+      width grow
+      gap 8
+      cross stretch
+      focusGroup wrap
+      button resume {
+        key "pause.resume"
+        text "Resume"
+        variant primary
+        size large
+        width grow
+        on click emit resume
+      }
+      button settings {
+        key "pause.settings"
+        text "Settings"
+        size large
+        width grow
+        on click emit settings
+      }
+      button lobby {
+        key "pause.lobby"
+        text "Back to the lobby"
+        size large
+        width grow
+        on click emit lobby
+      }
+      button quit {
+        key "pause.quit"
+        text "Quit to title"
+        size large
+        width grow
+        on click emit quit
+      }
+    }
+  }
+}

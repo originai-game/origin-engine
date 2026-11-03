@@ -59,3 +59,66 @@ Each finding's state on main at ce93d34b (the streams' sections in `docs/phase-1
 19. Fixed: runtime-ui-2, 27e245f6 (a resource handle is a typed view of the record's packed bytes: a field write about 0.03 µs, a read after an engine call about 2 µs; og-core §4). Workaround removed in the same commit: `src/state.ts`'s plain copy and field-by-field write-back; `begin` hands back the live handle and `flush` does nothing, kept so the systems' call sites read as before. Step 7.5 to 4.8 ms median, feel 79 to 97. A comment in `src/sound.ts` (Voices) still says a write to Game costs in proportion to the whole resource.
 20. Fixed: runtime-ui-2, fbd6e3a2 (`og polish` reads a text's ink over its own glyphs; og-build §5). No workaround in the game: contrast 97 to 98, "You" on the records row 2.14 to 9.94:1; the bag's stack count stays 3.36 to 4.04:1, its real ink.
 21. Fixed: physics-anim-2, a4169c06 (`og.ReverbZone`; og-audio §4 and §6). Workaround removed in the same commit: the crypt is a zone (`src/sound.ts`), the Fx system's easing of the effects bus's send, the room and the damping is gone and only the sky's light dims with the zone's `weight`; `chapters`, `records` and `results` re-recorded (the summit look's own sky light, which the old easing overwrote).
+
+## U8: off the fixed templates (2026-11-03)
+
+The fixed templates the game used (`og.ui.mainMenu`, `og.ui.levelSelect`,
+`og.ui.leaderboardScreen`, `og.ui.settingsScreen`, `og.ui.pauseMenu`,
+`og.ui.inventoryScreen`, `og.ui.cutscene`, `og.ui.tutorialOverlay`,
+`og.ui.resultsScreen`) are removed from the engine (docs/ui.md §11). The
+screens are the game's own documents, ejected with `og ui eject` and
+edited (`assets/ui/`, loaded in `start`, shown with `og.ui.screen`, their
+events answered in `src/ui.ts`):
+
+- `main-menu.ogt` (from main-menu): the name and its line, Continue with
+  the place and the hour while there is a save (primary and focused), New
+  journey, Chapters, Records, Settings, the keys in the corner; no
+  entrance, so the title the game opens on is drawn settled behind the
+  web's play gate, which `mainMenu`'s `instant` did.
+- `chapters.ogt` (from saga-map): the four chapters as two wide cards a
+  row, each named whole, its stars, the best ascent on the first, the ones
+  not yet reached locked and refused; Back.
+- `leaderboard.ogt` (from leaderboard): the fastest ascents and the ones
+  round the courier, the courier's row lit, loading, error (Try again) and
+  empty states.
+- `settings.ogt` (from settings): `og.ui.settingsTree` in its Tree slot,
+  with Sound, Picture, Controls (the camera's speed, the vertical look
+  inverted) and Language; each change is applied at once and saved on
+  Done.
+- `pause.ogt` (from pause): Resume (and Back), Bag, Settings, Rest and
+  quit.
+- `bag.ogt` (from inventory): `og.ui.inventoryGrid` (six cells a row, two
+  rows) in its Grid slot, the selected item's name, line, count and Use
+  beside it; a drag moves an item to another cell, a double press uses it.
+- `tutorial.ogt` (from tutorial): the step's card (its count, title, text,
+  Skip and Next or Done) placed under the HUD part it names, or over it;
+  the scrim with that part left clear is `og.ui.spotlight`.
+- `results.ogt` (from results): how the climb ended, `og.ui.starRating` in
+  its Stars slot, the score counting up, the best and the New record badge,
+  the time, the sigils, the foes and the hillwort eaten, Again, Records
+  and Title.
+
+The intro and the ending are the game's own letterbox (two black bars and
+Skip) around `og.ui.dialogue`. New keys in both tables: the bag's Close,
+empty cell and turn button, the chapters' stars, lock and Back, the
+records' loading line and Back, the results' stars, the settings tree's
+Apply, Revert, Defaults and changed; the old settings screen's words the
+tree does not show (quality, frame rate, vibration) are gone. The Noto
+Sans JP subset was rebuilt by `tools/subset-font.py` for the new
+characters.
+
+This closes three findings about the templates: #14 (the title menu took
+no focus; the game's title document focuses its first item, and Continue
+once the save is read), #15 (the level select and the bag ignored
+`columns`; the chapters document lays out two 284 px cards a row and the
+bag grid six cells) and #18 (the templates' own English words; every word
+of every document is a key of the tables, and `tests/locales.og.ts` still
+asserts none is left in English). #20's contrast numbers were measured on
+the old leaderboard and bag and want measuring again on a GPU.
+
+Met while doing it:
+
+1. **A dialogue box that appears during `og.ui.screenTransition`'s wipe never gets the focus** — annoyance. `og.ui.dialogue` asks for the focus on the frame it first appears, and the screens are inert while the wipe moves, so the intro (which opens with New journey, behind the wipe) kept no focus and Enter never walked it. Workaround: `letterboxTalk` gives the line the focus (`og.ui.setFocus`) once nothing holds it.
+2. **A document button's `autofocus` does not take the focus from a sibling already focused** — nit. Continue appears only when the save slot answers, a few ticks after the title, whose New journey has already taken the focus. Workaround: `og.ui.setFocus` on Continue the first frame it shows.
+3. **`og.ui.spotlight` cannot fill a document slot** — nit. The library's tutorial document has a Highlight slot for "the scrim's hole", but a spotlight is an overlay at the root, drawn over the document's card and taking its taps. Workaround: the spotlight is drawn before the document, which is on its own layer above it; the slot is gone.
+4. **`og.ui.inventoryGrid` has no element for an empty cell, and its icons are not in `dump_ui`'s text** — nit (probe). The probe ids name `<id>/Cells/Cell#<index>`, but only items and the grid's lines are elements, so a playtest drags to an empty cell by coordinates (`touch_move:536,403` in `tests/bag.og.ts`) and checks the items by their keys, not their icons.

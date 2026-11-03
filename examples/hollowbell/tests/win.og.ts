@@ -47,7 +47,7 @@ export default playtest({
     t.ok(Math.abs(over.score - s) <= 2 && over.newBest && over.best === over.score, `the score ${over.score} is a new best`);
     const shown = texts(run, "results.json");
     t.ok(shown.includes("The bell rings again") && shown.includes("Mira") && shown.includes("New best"), "the results name the bell-keeper and the new best");
-    t.ok(elements(run, "results.json").filter((e) => e.text === "star").length === 3, "three stars are drawn");
+    t.ok(elements(run, "results.json").filter((e) => e.parent === "Rating" && e.id.startsWith("Star#")).length === 3, "three stars are drawn");
     const calls = run.json<{ calls: Array<{ method: string; args: Record<string, unknown> }> }>("calls.json").calls;
     t.ok(calls.some((c) => c.method === "store.set" && c.args["key"] === "best" && c.args["value"] === over.score), "the best is kept in og.platform's store");
     const dawn = value<{ pixelHeight: number }>(run, "dawn.json");

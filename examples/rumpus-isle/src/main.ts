@@ -30,10 +30,11 @@ import { Answers, Saves } from "./save.ts";
 import { joined, put, seat } from "./seats.ts";
 import { spawnVoices, Voices } from "./sound.ts";
 import { Ui } from "./ui.ts";
-import { must, named } from "./util.ts";
+import { must, named, SCREENS } from "./util.ts";
 
 function start(world: World): void {
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   const g = must(world.resource(Game));
   g.font = must(og.load.font(world, "styles/rumpus/LilitaOne-Regular.ttf"));
   buildArena(world);

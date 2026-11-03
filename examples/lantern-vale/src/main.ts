@@ -20,12 +20,13 @@ import { FEET, HeroMove, spawnHero, View } from "./hero.ts";
 import { Lanterns, lightLantern } from "./lanterns.ts";
 import { hurt, Slimes, spawnSlimes } from "./slimes.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { configureUi, LANGUAGES, score, startRun, toTitle, Ui } from "./ui.ts";
+import { configureUi, LANGUAGES, SCREENS, score, startRun, toTitle, Ui } from "./ui.ts";
 import { buildVale, groundY, HOURS, LANTERNS, must, setHour } from "./world.ts";
 
 function start(world: World): void {
   const g = must(world.resource(Game));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   g.dusk = must(og.load.look(world, "looks/lantern-vale.ogt")) as unknown as number;
   g.dawn = must(og.load.look(world, "looks/dawn.ogt")) as unknown as number;
   configureUi(world, false);

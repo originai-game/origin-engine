@@ -24,13 +24,14 @@ import { HeroMove, hurtHero, placeHero, spawnHero } from "./hero.ts";
 import { BELL, CRYPT, FOES, GATE, HERBS, LEDGES, SIGILS, WAYSTONES } from "./layout.ts";
 import { Pickups, raiseGate, rest, ringBell, takeSigil } from "./pickups.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { LANGUAGES, setLanguage, startRun, Ui } from "./ui.ts";
+import { LANGUAGES, SCREENS, setLanguage, startRun, Ui } from "./ui.ts";
 import { spawnListener, View } from "./view.ts";
 import { buildStair, gateObstacle, groundAt, must } from "./world.ts";
 
 function start(world: World): void {
   const g = must(world.resource(Game));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   g.lookStair = must(og.load.look(world, "looks/kestrel.ogt")) as unknown as number;
   g.lookSummit = must(og.load.look(world, "looks/summit.ogt")) as unknown as number;
   buildStair(world, g);

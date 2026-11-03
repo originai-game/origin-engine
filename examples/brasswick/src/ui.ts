@@ -1,30 +1,47 @@
 // Brasswick's screens on og.ui, dressed by the brasswick style (the fantasy
 // pack recoloured; the look applies it): the title over the first level
 // (Continue when the vault slot answered, New game, Levels, Settings), the
-// level select (og.ui.levelSelect: stars, best gears and time, locks), the
-// HUD (og.ui.platformerHud: gears and the level, touch controls on a
-// phone), the pause menu, the settings (og.ui.settingsScreen, every word
-// from the string tables, English and Spanish) and the results
-// (og.ui.resultsScreen: the score counting up, the stars, the best). The
-// screens change through an iris (a fade with reduced motion).
+// level select (stars, best gears and time, locks), the HUD (gears and the
+// level, touch controls on a phone), the pause menu, the settings
+// (og.ui.settingsTree, every word from the string tables, English and
+// Spanish) and the results (the score counting up, the stars, the best).
+// The title, the level select, pause, the settings and the results are the
+// game's own screen documents (assets/ui/*.ogt, ejected with `og ui eject`
+// from the library's main-menu, saga-map, pause, settings and results).
+// The screens change through an iris (a fade with reduced motion).
 //
 // The Ui system also starts levels, holds the world (time scale 0) while
 // paused or in the settings, counts the level's clock, and finishes a level
 // when the exit's cheer is over (the score, the stars, the progress write).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { Value, World } from "@origingame/engine";
+import type { SettingEntry, SettingsPage, Value, World } from "@origingame/engine";
 import { Game, GEARS, LEVELS, Phase, Prefs, Tuning, Zone } from "./components.ts";
 import { say } from "./feel.ts";
 import { intent } from "./hero.ts";
 import { must } from "./level.ts";
-import { LANGUAGES, settingsOf, takeSettings } from "./prefs.ts";
+import { LANGUAGES, takeSettings, type Settings } from "./prefs.ts";
 import { askContinue } from "./save.ts";
 
 type GameV = Value<typeof Game>;
 type PrefsV = Value<typeof Prefs>;
 
 const LEVEL_KEYS = ["level.1", "level.2", "level.3"] as const;
+
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "levels", "pause", "settings", "results"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
 
 /** m:ss.t */
 export function clock(seconds: number): string {
@@ -130,52 +147,41 @@ export function finishLevel(world: World, g: GameV): void {
 }
 
 function title(world: World, g: GameV): void {
-  const items = [
-    { id: "continue", label: g.hasSlot ? say(world, "title.continueAt", { level: g.slotLevel + 1 }) : say(world, "title.continue"), disabled: !g.hasSlot },
-    { id: "new", label: say(world, "title.new"), primary: true },
-    { id: "levels", label: say(world, "title.levels") },
-    { id: "settings", label: say(world, "title.settings") },
-  ];
-  const r = og.ui.mainMenu("Title", { title: "Brasswick", subtitle: say(world, "title.subtitle"), items, footer: say(world, "title.footer") });
+  // assets/ui/main-menu.ogt: Continue (with the saved level), New game, Levels, Settings.
+  const asked = screen(world, "main-menu", true, {
+    canContinue: g.hasSlot,
+    continueLine: g.hasSlot ? say(world, "title.continueAt", { level: g.slotLevel + 1 }) : say(world, "title.continue"),
+  });
   if (g.levelsOpen || g.settingsOpen) return;
-  switch (r.selected) {
-    case "continue":
-      askContinue(world, g);
-      break;
-    case "new":
-      startLevel(world, g, 0);
-      break;
-    case "levels":
-      g.levelsOpen = true;
-      break;
-    case "settings":
-      g.settingsOpen = true;
-      break;
-  }
+  if (asked.includes("continue")) askContinue(world, g);
+  else if (asked.includes("new")) startLevel(world, g, 0);
+  else if (asked.includes("levels")) g.levelsOpen = true;
+  else if (asked.includes("settings")) g.settingsOpen = true;
 }
 
 function levels(world: World, g: GameV): void {
-  if (!g.levelsOpen) return;
-  const r = og.ui.levelSelect("Levels", {
-    title: say(world, "levels.title"),
-    backLabel: say(world, "levels.back"),
-    // What a screen reader says for a card's stars and a locked card; the template fills {stars}, {max} and {name}.
-    starsLabel: say(world, "levels.stars"),
-    lockedLabel: say(world, "levels.locked"),
-    columns: 3,
-    levels: LEVEL_KEYS.map((key, n) => {
-      const b = bestOf(g, n);
-      return {
-        name: say(world, "levels.card", { n: n + 1, name: say(world, key) }),
-        stars: b.stars,
-        locked: n >= g.unlocked,
-        best: b.time === 0 ? "" : say(world, "levels.best", { gears: b.gears, of: GEARS[n], time: clock(b.time) }),
-      };
-    }),
+  // assets/ui/levels.ogt: a card per level (its stars, best gears and time; locked ones refused), Back; a tap on
+  // the scrim, Escape and the pad's B are Back too (FINDINGS.md #10). A card is named by its level and its stars.
+  let earned = 0;
+  const cards = LEVEL_KEYS.map((key, n) => {
+    const b = bestOf(g, n);
+    const name = say(world, "levels.card", { n: n + 1, name: say(world, key) });
+    const locked = n >= g.unlocked;
+    earned += Math.min(3, b.stars);
+    return {
+      name,
+      starsLabel: say(world, "levels.stars", { stars: b.stars, max: 3 }),
+      lockedLabel: say(world, "levels.locked", { name }),
+      stars: b.stars,
+      locked,
+      best: b.time === 0 ? "" : say(world, "levels.best", { gears: b.gears, of: GEARS[n], time: clock(b.time) }),
+    };
   });
-  // Its Back button, a tap on its scrim, Escape and the pad's B all answer closed (FINDINGS.md #10, fixed).
-  if (r.chosen !== null && r.chosen < g.unlocked) startLevel(world, g, r.chosen);
-  else if (r.closed) g.levelsOpen = false;
+  const asked = screen(world, "levels", g.levelsOpen, { earned: `${earned} / ${LEVELS * 3}`, levels: cards, picked: -1 });
+  if (!g.levelsOpen) return;
+  const picked = (og.ui.screenVm(world, "levels") as { picked?: number } | null)?.picked ?? -1;
+  if (asked.includes("pick") && picked >= 0 && picked < g.unlocked) startLevel(world, g, picked);
+  else if (asked.includes("back")) g.levelsOpen = false;
 }
 
 const S = { xs: 4, sm: 8, md: 12 } as const;
@@ -185,9 +191,8 @@ function capsule(id: string, build: () => void): void {
 }
 
 /**
- * The HUD, from widgets: og.ui.platformerHud draws a hearts capsule even with maxLives 0 and a score
- * capsule always, and its level name has no frame (FINDINGS.md #4), so a puzzle game without lives or
- * a score builds its own (og-taste §2: capsules with an icon and a number, in the corners).
+ * The HUD, from widgets: a puzzle game without lives or a score builds its own (og-taste §2: capsules
+ * with an icon and a number, in the corners).
  */
 function hud(world: World, g: GameV): void {
   // All in the top-right corner: on the published page the shell's Back handle sits over the top-left
@@ -219,102 +224,116 @@ function hud(world: World, g: GameV): void {
 }
 
 function pause(world: World, g: GameV): void {
-  const r = og.ui.pauseMenu("Pause", {
-    open: g.paused && !g.settingsOpen,
-    title: say(world, "pause.title"),
-    items: [
-      { id: "resume", label: say(world, "pause.resume"), primary: true },
-      { id: "retry", label: say(world, "pause.retry") },
-      { id: "restart", label: say(world, "pause.restart") },
-      { id: "settings", label: say(world, "pause.settings") },
-      { id: "quit", label: say(world, "pause.quit") },
-    ],
-  });
-  switch (r.selected) {
-    case "resume":
-      g.paused = false;
-      break;
-    case "retry":
-      g.paused = false;
-      g.hurt = 1;
-      g.deaths += 1;
-      break;
-    case "restart":
-      startLevel(world, g, g.level);
-      break;
-    case "settings":
-      g.settingsOpen = true;
-      break;
-    case "quit":
-      toTitle(world, g);
-      break;
+  // assets/ui/pause.ogt: Resume (and Back), Back to the lamp, Restart the level, Settings, Quit to the title.
+  for (const e of screen(world, "pause", g.paused && !g.settingsOpen)) {
+    switch (e) {
+      case "resume":
+        g.paused = false;
+        break;
+      case "retry":
+        g.paused = false;
+        g.hurt = 1;
+        g.deaths += 1;
+        break;
+      case "restart":
+        startLevel(world, g, g.level);
+        break;
+      case "settings":
+        g.settingsOpen = true;
+        break;
+      case "quit":
+        toTitle(world, g);
+        break;
+    }
   }
 }
 
+/** The settings tree's pages: what Prefs keeps, every word from the tables. */
+function pages(world: World, p: PrefsV): SettingsPage[] {
+  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
+  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
+  return [
+    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
+    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
+    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.languages"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
+  ];
+}
+
+/** The defaults of a page's entries (Defaults). */
+const DEFAULTS: Record<string, Settings> = {
+  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
+  graphics: { reducedMotion: false, highContrast: false },
+  language: { language: "en" },
+};
+
 function settings(world: World, g: GameV, p: PrefsV): void {
-  const r = og.ui.settingsScreen("Settings", {
-    open: g.settingsOpen,
-    settings: settingsOf(p),
-    languages: LANGUAGES.map((l) => ({ code: l.code, label: say(world, l.key) })),
-    title: say(world, "settings.title"),
-    audioLabel: say(world, "settings.audio"),
-    graphicsLabel: say(world, "settings.graphics"),
-    controlsLabel: say(world, "settings.controls"),
-    languageLabel: say(world, "settings.language"),
-    masterLabel: say(world, "settings.master"),
-    musicLabel: say(world, "settings.music"),
-    effectsLabel: say(world, "settings.effects"),
-    muteLabel: say(world, "settings.mute"),
-    qualityLabel: say(world, "settings.quality"),
-    lowLabel: say(world, "settings.low"),
-    mediumLabel: say(world, "settings.medium"),
-    highLabel: say(world, "settings.high"),
-    fpsLabel: say(world, "settings.fps"),
-    motionLabel: say(world, "settings.motion"),
-    contrastLabel: say(world, "settings.contrast"),
-    sensitivityLabel: say(world, "settings.sensitivity"),
-    invertLabel: say(world, "settings.invert"),
-    vibrationLabel: say(world, "settings.vibration"),
-    doneLabel: say(world, "settings.done"),
-    sectionLabel: say(world, "settings.section"),
-    languagesLabel: say(world, "settings.languages"),
-  });
+  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once (src/prefs.ts).
+  const asked = screen(world, "settings", g.settingsOpen);
   if (!g.settingsOpen) return;
-  if (r.changed) takeSettings(world, p, r.settings);
-  if (r.closed) {
+  if (og.ui.openSlot("settings/Tree")) {
+    const r = og.ui.settingsTree(world, "Tree", {
+      title: "",
+      pages: pages(world, p),
+      page: g.settingsPage,
+      applyLabel: say(world, "settings.apply"),
+      revertLabel: say(world, "settings.revert"),
+      defaultsLabel: say(world, "settings.defaults"),
+      changedLabel: say(world, "settings.changed"),
+    }, () => {});
+    og.ui.close();
+    if (r.page !== null) g.settingsPage = r.page;
+    const c = r.change;
+    if (c !== null) {
+      const s: Settings = {};
+      if (c.key === "master") s.masterVolume = c.value;
+      else if (c.key === "music") s.musicVolume = c.value;
+      else if (c.key === "effects") s.sfxVolume = c.value;
+      else if (c.key === "muted") s.muted = c.on;
+      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
+      else if (c.key === "highContrast") s.highContrast = c.on;
+      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
+      takeSettings(world, p, s);
+    }
+    if (r.defaults) takeSettings(world, p, DEFAULTS[g.settingsPage || "audio"] ?? {});
+  }
+  if (asked.includes("done")) {
     g.settingsOpen = false;
     g.settingsNow = true;
   }
 }
 
+/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
+const COUNT_FRAMES = 54;
+
 function results(world: World, g: GameV): void {
   const n = g.level;
   const b = bestOf(g, n);
-  const actions = [
-    ...(n + 1 < LEVELS ? [{ id: "next", label: say(world, "results.next"), primary: true }] : []),
-    { id: "retry", label: say(world, "results.retry"), primary: n + 1 >= LEVELS },
-    { id: "menu", label: say(world, "results.menu") },
-  ];
-  const r = og.ui.resultsScreen("Results", {
-    open: g.phase === Phase.Results,
+  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  let since = og.ui.memory("resultsSince", -1);
+  if (since < 0) since = og.ui.tick();
+  og.ui.remember("resultsSince", since);
+  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const best = Math.max(b.score, g.newBest ? g.score : 0);
+  const asked = screen(world, "results", true, {
     title: say(world, n + 1 < LEVELS ? "results.title" : "results.end", { level: n + 1 }),
-    score: g.score,
-    best: b.score,
+    score: k >= 1 ? g.score : Math.round(g.score * (1 - (1 - k) ** 3)),
+    best: say(world, "results.bestScore", { best: String(best).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }),
     newBest: g.newBest,
-    stars: g.stars,
-    maxStars: 3,
+    landed: k >= 1,
+    hasNext: n + 1 < LEVELS,
     stats: [
       { label: say(world, "results.gears"), value: say(world, "results.gearsOf", { n: g.gears, of: GEARS[n] }) },
       { label: say(world, "results.time"), value: clock(g.time) },
       { label: say(world, "results.best"), value: clock(b.time) },
       { label: say(world, "results.falls"), value: `${g.deaths}` },
     ],
-    actions,
-    bestLabel: say(world, "results.bestScore"),
-    newBestLabel: say(world, "results.newBest"),
-    shareLabel: say(world, "results.share"),
   });
-  switch (r.selected) {
+  if (og.ui.openSlot("results/Stars")) {
+    og.ui.starRating("Rating", { earned: g.stars, max: 3, size: 44, revealAt: since, name: say(world, "levels.stars", { stars: g.stars, max: 3 }) });
+    og.ui.close();
+  }
+  const chosen = asked.find((e) => e === "next" || e === "retry" || e === "menu") ?? null;
+  switch (chosen) {
     case "next":
       startLevel(world, g, n + 1);
       break;
@@ -342,8 +361,8 @@ export const Ui = defineSystem(
     if (g.phase === Phase.Play && !held && g.exiting === 0 && g.hurt === 0) g.time += time.scaledDt;
     if (g.exiting >= t.exitTicks && g.phase === Phase.Play) finishLevel(world, g);
 
-    const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "results";
-    const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "iris" }).shown;
+    const want = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "results";
+    const shown = og.ui.screenTransition("Screens", want, { kind: p.reducedMotion ? "fade" : "iris" }).shown;
     if (shown === "title") {
       title(world, g);
       levels(world, g);
@@ -351,6 +370,13 @@ export const Ui = defineSystem(
       hud(world, g);
       pause(world, g);
     } else results(world, g);
+    // The screen documents of the screens not shown leave the layer stack.
+    if (shown !== "title") {
+      screen(world, "main-menu", false);
+      screen(world, "levels", false);
+    }
+    if (shown !== "play") screen(world, "pause", false);
+    if (shown !== "results") screen(world, "results", false);
     settings(world, g, p);
 
     // Pause: Escape or Back with nothing open, or the pad's Start. og.ui.back is asked after the dialogs are built:

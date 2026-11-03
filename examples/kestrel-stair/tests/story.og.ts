@@ -1,8 +1,9 @@
-// The story screens (og-ui §2): New journey opens the abbess's words on
-// og.ui.cutscene (letterbox, the speaker, the line typed out; the world held
-// at time scale 0), walked line by line with Enter (a press shows the whole
-// line, the next press moves on). Then, on a first journey, the tutorial
-// (og.ui.tutorialOverlay) points at the HUD's strength, sigils, clock and
+// The story screens (og-ui §2): New journey opens the abbess's words in the
+// game's letterbox around og.ui.dialogue (the speaker, the line typed out;
+// the world held at time scale 0), walked line by line with Enter (a press
+// shows the whole line, the next press moves on). Then, on a first journey,
+// the tutorial (assets/ui/tutorial.ogt, og.ui.spotlight in its slot)
+// points at the HUD's strength, sigils, clock and
 // bag, one step at a time; Next walks it, the last step's Done ends it, the
 // progress records it (og.platform's store), the clock starts, and a second
 // journey goes straight to the stair.

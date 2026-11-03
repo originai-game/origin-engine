@@ -1,7 +1,7 @@
 // Old Burrow's talk and wares. Up beside the mole opens the talk
-// (og.ui.cutscene): the world holds (time scale 0) and Enter walks the four
+// (the game's letterbox around og.ui.dialogue): the world holds (time scale 0) and Enter walks the four
 // lines, the bell-keeper's name in the last. Then the shop
-// (og.ui.shopScreen): a Buy short of the price is refused (the button
+// (the game's document, assets/ui/shop.ogt): a Buy short of the price is refused (the button
 // shakes with the error sound), the wing cloak bought with enough glimmers
 // takes its price and gives Wren an air jump; Escape closes the shop and
 // the world moves again.
@@ -27,7 +27,7 @@ export default playtest({
     "3.9:get:Game:refused.json",
     "3.9:get:sfx-256.Sfx:buy0.json",
     "4.0:give:glimmers:20",
-    tap("Cell#2", 4.1),
+    tap("Ware#2", 4.1),
     tap("Buy", 4.4),
     "4.7:get:Game:bought.json",
     "4.7:get:sfx-256.Sfx:buy1.json",

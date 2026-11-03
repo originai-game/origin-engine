@@ -1,13 +1,25 @@
 // The player's settings: what the settings screen shows and answers
-// (GameSettings), what Prefs keeps, and how they apply (the buses' volumes,
+// (Settings), what Prefs keeps, and how they apply (the buses' volumes,
 // the UI's reduced motion, contrast and sounds, the language).
 
 import { og } from "@origingame/engine";
-import type { GameSettings, Value, World } from "@origingame/engine";
+import type { Value, World } from "@origingame/engine";
 import { Prefs } from "./components.ts";
 import { must } from "./util.ts";
 
 type PrefsV = Value<typeof Prefs>;
+
+/** The settings as og.platform keeps them (`og.settings`) and the settings screen changes them. */
+export interface Settings {
+  masterVolume?: number;
+  musicVolume?: number;
+  sfxVolume?: number;
+  muted?: boolean;
+  reducedMotion?: boolean;
+  highContrast?: boolean;
+  vibration?: boolean;
+  language?: string;
+}
 
 /** The languages offered: their codes and the key of each one's name in itself. */
 export const LANGUAGES = [
@@ -47,7 +59,7 @@ export function setLanguage(world: World, p: PrefsV, code: string): void {
   og.i18n.setLocale(world, LANGUAGES[p.language]!.code);
 }
 
-export function settingsOf(p: PrefsV): GameSettings {
+export function settingsOf(p: PrefsV): Settings {
   return {
     masterVolume: p.master,
     musicVolume: p.music,
@@ -61,7 +73,7 @@ export function settingsOf(p: PrefsV): GameSettings {
 }
 
 /** Takes what the settings screen (or the saved og.settings) answered, and applies it. */
-export function takeSettings(world: World, p: PrefsV, s: Partial<GameSettings>): void {
+export function takeSettings(world: World, p: PrefsV, s: Partial<Settings>): void {
   if (typeof s.masterVolume === "number") p.master = s.masterVolume;
   if (typeof s.musicVolume === "number") p.music = s.musicVolume;
   if (typeof s.sfxVolume === "number") p.effects = s.sfxVolume;

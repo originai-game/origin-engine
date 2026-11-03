@@ -25,6 +25,30 @@ Top five: #6, #13, #9, #10, #15 (with #4).
 15. **On the published page the shell's Back handle covers the HUD's top-left corner** — annoyance. docs/web-export.md puts Back "top left inside the safe area ... a small handle while playing"; og.ui's safe area (og-ui §5) does not include it, and og-taste §2 and the HUD templates put a group at `topLeft`, so the 40 px handle sits over its first capsule (Brasswick's gear count, Hollowbell's first heart). Nothing in the knowledge package says to keep the corner clear. Repro: `bun tests/web/dogfood.ts --project examples/hollowbell` in `packages/engine`, then `dist/dogfood/hollowbell/webgpu/played.png`. Workaround: the whole HUD in the top-right corner (#15 in `src/ui.ts` `hud`). **Fixed on main** by [41f49c78](https://github.com/originai-game/origin-engine/commit/41f49c7853a3e22b425ae66b401e099591cebff2) (anchored groups keep out of `Viewport.covered`, the shell's Back) and [80008fbb](https://github.com/originai-game/origin-engine/commit/80008fbba178233273c6cf455bf398bdc1ead5ef) (a corner group steps down past it where moving along the edge would land on another group; og-ui `a_corner_group_steps_down_past_the_control_when_moving_along_lands_on_another`, `packages/engine/tests/ui-hud-corner.test.ts`); og-ui §5 says to build a game's own HUD from `og.ui.anchor` groups, as Brasswick's is. Confirmed in r4 author-loop; the workaround can go.
 16. **An answer applied by a system after the one that builds the title shows the defaults behind the play gate** — nit (docs). og-platform-sdk §3 says to apply an answer the tick it arrives, so the title behind the gate shows the saved language; it does not say the system that reads answers must run before the one that builds the screens. With the settings read in a system after `Ui`, the frame the shell primes is that tick's English title: the web play's reload had `Partida nueva` missing behind the gate, though the answer had landed that tick. Workaround: an `Answers` system first in `GameDesc.systems` reads every answer, `Saves` later writes (#16 in `src/save.ts`); the second web play read the title in Spanish behind the gate. **Fixed on main** by [80008fbb](https://github.com/originai-game/origin-engine/commit/80008fbba178233273c6cf455bf398bdc1ead5ef) (og-platform-sdk §3: the system that reads the answers comes before the one that builds the title, `systems: [Answers, ..., Ui, Saves]`), confirmed in r4 author-loop.
 
+## U8: off the fixed templates (2026-11-03)
+
+The fixed templates the game used (`og.ui.mainMenu`, `og.ui.levelSelect`,
+`og.ui.pauseMenu`, `og.ui.settingsScreen`, `og.ui.resultsScreen`) are
+removed from the engine (docs/ui.md §11), which closes #4 (the HUD was
+already the game's own widgets), #10, #11 and #12 for good. The title, the
+level select, pause, the settings and the results are the game's own
+screen documents, ejected with `og ui eject` and edited:
+`assets/ui/main-menu.ogt` (Continue with the saved level, New game, Levels,
+Settings), `assets/ui/levels.ogt` (from the library's `saga-map`: three
+cards with their stars, best gears and time, locks refused; Back, a tap on
+the scrim, Escape and B close it, #10), `assets/ui/pause.ogt`,
+`assets/ui/settings.ogt` (the title and Done over `og.ui.settingsTree`:
+Sound, Display and Language; the old Controls tab, whose sensitivity and
+vibration this game never read, is gone with its keys) and
+`assets/ui/results.ogt` (`og.ui.starRating` in its Stars slot, the score
+counting up, the best and its badge, Next level, Play again, Levels).
+Every word is a key of both tables (new: `settings.apply`, `.revert`,
+`.defaults`, `.changed`). A card is named by its level and its stars in the
+table's words (#11): a document's `name` applies to icons, images and art
+but not to a container, so the card's first star carries the stars' line,
+as the template's did. The language choice is named `Idiomas` (#12); the
+tree's tab row has no name of the game's to give.
+
 ## What worked well
 
 og cook: 54 assets cold in 2.8 s, about 50 ms after a change, no warnings, and the engine's own `type tilemap` grammar for three maps written by a script (a blob47 terrain with collision, numeric layers, `parallax`, `repeat x`, `lit false`, objects with props) cooked the first time; its refusal of a `pause` command ("'pause' is a core action; register under another name") named the fix. og.PlatformerController gave a run, a full jump to the height asked at its time to apex, coyote time, a jump buffer, wall slides held under `wallSlideSpeed`, wall jumps up a three-cell shaft, grates dropped through, a lift ridden and crates shoved, with no stutter or sink on tile seams. Dynamic crates tipped off a slab onto a plate and dropped into a pit; a kinematic door moved by its og.Velocity and a gate on a prismatic og.Joint with a position motor slid exactly their travel; `og.physics.overlap` made the plates; og.Lighting2D lit the map's layers with lamps, wall lamps and Wick's flame, crates casting shadows and the far layer left out by `lit false`. world.snapshot() of a 115-entity 2D world (22,574 bytes) went through saveSlot and came back through loadSlot and world.restore across a relaunch with the crates, the lamp, the gear taken and the tick stomped; the first level played by keys alone (gears, the pit, two crates, a plate and its door, four wall jumps, the hatch) ended on one hash in two processes. The title, level select, pause, settings and results templates took every word from the tables (Spanish accents and `¿¡ñ` from the fantasy pack's Latin-1 faces, nothing else to do). The published build played on WebGPU in Chrome: first frame and title at 290 ms, lanes on (8 Workers), 60 ticks a second with step 1.5 ms and render 0.6 ms (p50) over 600 ticks, a clean console, the settings saved and read back after a reload (in Spanish behind the gate after #16's fix), Back reporting `end`.

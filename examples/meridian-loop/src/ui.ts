@@ -1,26 +1,26 @@
 // Meridian Loop's screens, on og.ui with the neon style (assets/styles/meridian,
 // brought by the look):
 //
-// - the title (og.ui.mainMenu): Time trial, Leaderboard
-//   (og.ui.leaderboardScreen: the fastest laps and the ones round the
-//   player, its loading, error and empty states honest), Settings
-//   (og.ui.settingsScreen, every word from the string tables, English and
-//   German); the record under the title;
-// - the race: og.ui.racingHud as a time trial (no place, no boost meter:
-//   speed, gear, lap, the lap time, the last split's delta against the
-//   record under it, the record, the three sectors as its splits, the
-//   mini-map with the car and the ghost; touch steering on a phone; every
-//   word from the tables), the countdown, Wrong way;
-// - pause (og.ui.pauseMenu: Resume, Restart, the ghost on or off, Settings,
-//   Quit), the results (og.ui.resultsScreen: the race's time, the session's
-//   best before it), toasts; a wipe between the
-//   screens (a fade with reduced motion).
+// - the title, pause, the settings, the results and the leaderboard: the
+//   game's own screen documents (assets/ui/*.ogt, ejected from the library's
+//   main-menu, pause, settings, results and leaderboard with `og ui eject`):
+//   Time trial, Leaderboard (the fastest laps and the ones round the player,
+//   its loading, error and empty states honest), Settings (og.ui.settingsTree
+//   in its slot), every word from the string tables, English and German;
+// - the race: og.ui.lapTimer (the lap, the lap's time, the record, the last
+//   lap and the split against the record), the three sectors as the game's
+//   own rows, og.ui.minimap with the car and the ghost, og.ui.speedometer
+//   (speed and gear), touch steering on a phone; the countdown, Wrong way;
+// - pause (Resume, Restart, the ghost on or off, Settings, Quit), the
+//   results (the race's time counting up, the session's best before it, the
+//   stars by og.ui.starRating), toasts; a wipe between the screens (a fade
+//   with reduced motion).
 //
 // The Ui system also holds time under a menu, and takes og.platform's
 // answers (src/save.ts).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GameSettings, MapMarker, RaceSplit, Texture, Value, World } from "@origingame/engine";
+import type { MapMarker, SettingEntry, SettingsPage, Texture, Value, World } from "@origingame/engine";
 import { Phase, Prefs, Race, Racer, Sound, TapeChunk } from "./components.ts";
 import { lapText, seconds, startRace } from "./race.ts";
 import { replayAnswers, saveStart, SNAPSHOT_AT, watch } from "./replay.ts";
@@ -62,7 +62,34 @@ export function setLanguage(world: World, p: PrefsV, index: number): void {
   og.i18n.setLocale(world, LANGUAGES[p.language]!.code);
 }
 
-function settingsOf(p: PrefsV): GameSettings {
+/** The settings as og.platform keeps them (`og.settings`). */
+interface Settings {
+  masterVolume?: number;
+  musicVolume?: number;
+  sfxVolume?: number;
+  muted?: boolean;
+  reducedMotion?: boolean;
+  highContrast?: boolean;
+  language?: string;
+  ghost?: boolean;
+}
+
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "pause", "settings", "results", "leaderboard"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
+function settingsOf(p: PrefsV): Settings {
   return { masterVolume: p.master, musicVolume: p.music, sfxVolume: p.effects, muted: p.muted, reducedMotion: p.reducedMotion, highContrast: p.highContrast, language: LANGUAGES[p.language]!.code };
 }
 
@@ -81,7 +108,7 @@ export function takeSettings(world: World, p: PrefsV, s: Partial<Record<string, 
 }
 
 function saveSettings(world: World, p: PrefsV): void {
-  must(og.platform.saveSettings(world, { ...settingsOf(p), ghost: p.ghost } as GameSettings));
+  must(og.platform.saveSettings(world, { ...settingsOf(p), ghost: p.ghost }));
   p.saves += 1;
 }
 
@@ -89,15 +116,24 @@ function capsule(id: string, build: () => void): void {
   og.ui.row(id, { gap: S.sm, cross: "center", padding: { left: S.md, top: S.xs, right: S.md, bottom: S.xs }, frame: "hud", background: { token: "panel" } }, build);
 }
 
-/** The lap's sectors as the HUD's splits: each one's time once crossed, and its delta against the record's sector. */
-function splits(world: World, r: RaceV): RaceSplit[] {
+/** The lap's sectors: each one's time once crossed (ticks, 0 not yet), and the record's. */
+function sectors(world: World, r: RaceV): void {
   const mine = [r.split1, r.split2 > 0 ? r.split2 - r.split1 : 0, 0];
   const recs = [r.recordS1, r.recordS2, r.recordS3];
-  return mine.map((t, i) => ({
-    label: say(world, "hud.split", { n: i + 1 }),
-    time: t === 0 ? null : seconds(t),
-    delta: t === 0 || recs[i]! === 0 ? null : seconds(t - recs[i]!),
-  }));
+  capsule("Sectors", () => {
+    og.ui.column("Rows", { gap: 0, cross: "end" }, () => {
+      mine.forEach((t, i) => {
+        og.ui.row(og.ui.idi("Split", i), { gap: S.sm, cross: "center" }, () => {
+          og.ui.label("Label", say(world, "hud.split", { n: i + 1 }), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
+          og.ui.label("Time", t === 0 ? "-:--.---" : lapText(t), { step: "meta", font: "mono", color: { token: t === 0 ? "inkFaint" : "ink" }, nowrap: true });
+          if (t !== 0 && recs[i]! !== 0) {
+            const d = seconds(t - recs[i]!);
+            og.ui.label("Delta", `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(3)}`, { step: "meta", font: "mono", color: { token: d < 0 ? "success" : "danger" }, nowrap: true });
+          }
+        });
+      });
+    });
+  });
 }
 
 function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
@@ -110,34 +146,53 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
     markers.push({ ...mapPoint(gh.x, gh.z), tone: "info" });
   }
   const lapTicks = r.phase === Phase.Racing ? r.clock - r.lapStart : 0;
-  const h = og.ui.racingHud("Hud", {
+  const done = [r.lap1, r.lap2, r.lap3].filter((t) => t > 0);
+  // A time trial: no place. The lap, its time, the record, the last lap and the last split's (or the line's)
+  // delta against the record, for three seconds; every caption from the tables.
+  og.ui.lapTimer("Lap", {
+    lap: Math.min(LAPS, r.lap),
+    lapTotal: LAPS,
+    currentMs: (lapTicks * 1000) / 60,
+    bestMs: r.record > 0 ? (r.record * 1000) / 60 : null,
+    lastMs: done.length > 0 ? (done[done.length - 1]! * 1000) / 60 : null,
+    deltaMs: r.deltaShow > 0 && r.deltaAt > 0 ? seconds(r.delta) * 1000 : null,
+    lapLabel: say(world, "hud.lap"),
+    finalLabel: say(world, "hud.final"),
+    currentLabel: say(world, "hud.current"),
+    bestLabel: say(world, "hud.best"),
+    lastLabel: say(world, "hud.last"),
+    splitLabel: say(world, "hud.delta"),
+  });
+  let paused = false;
+  og.ui.anchor("Side", { anchor: "topRight", direction: "column", cross: "end", gap: S.xs }, () => {
+    // The Pause button, or Back (Escape, the pad's B): nothing else is open while the HUD is drawn.
+    if (og.ui.button("Pause", say(world, "hud.pause"), { size: "small", variant: "secondary" }).clicked || og.ui.back()) paused = true;
+    sectors(world, r);
+    og.ui.minimap("Map", { texture: r.minimap as unknown as Texture, markers, size: og.ui.frameViewport().breakpoint.startsWith("phone") ? 112 : 150 });
+  });
+  og.ui.speedometer("Speed", {
     speed: Math.round(r.kmh),
     maxSpeed: 180,
+    rpm: Math.min(1, r.kmh / 180),
     gear: r.gear === 0 ? "R" : `${r.gear}`,
-    lap: Math.min(LAPS, r.lap),
-    laps: LAPS,
-    // A time trial: no place, no boost.
-    racers: 0,
-    boostMeter: false,
-    time: lapTicks / 60,
-    // The last split's (or the line's) delta against the record, for three seconds.
-    delta: r.deltaShow > 0 && r.deltaAt > 0 ? seconds(r.delta) : null,
-    best: r.record > 0 ? seconds(r.record) : null,
-    splits: splits(world, r),
-    map: { texture: r.minimap as unknown as Texture, markers, size: 150 },
-    touch,
-    // Every word of the HUD from the tables.
     unit: say(world, "hud.kmh"),
-    lapLabel: say(world, "hud.lap"),
-    bestLabel: say(world, "hud.best"),
-    pauseLabel: say(world, "hud.pause"),
-    brakeLabel: say(world, "hud.brake"),
-    leftLabel: say(world, "hud.left"),
-    rightLabel: say(world, "hud.right"),
+    anchor: touch ? "bottom" : "bottomRight",
   });
   // Touch: the arrows steer, Brake brakes; the throttle is held for the player.
-  r.touchSteer = touch ? h.moveX : 0;
-  r.touchThrottle = touch ? (h.held.includes("brake") ? -1 : 1) : 0;
+  let steer = 0;
+  let brake = false;
+  if (touch) {
+    og.ui.anchor("Steer", { anchor: "bottomLeft", gap: S.md }, () => {
+      const left = og.ui.actionButton("left", say(world, "hud.left"), { size: 72 });
+      const right = og.ui.actionButton("right", say(world, "hud.right"), { size: 72 });
+      steer = (right.pressed ? 1 : 0) - (left.pressed ? 1 : 0);
+    });
+    og.ui.anchor("Pedals", { anchor: "bottomRight", gap: S.md, cross: "center" }, () => {
+      brake = og.ui.actionButton("brake", say(world, "hud.brake"), { size: 64 }).pressed;
+    });
+  }
+  r.touchSteer = touch ? steer : 0;
+  r.touchThrottle = touch ? (brake ? -1 : 1) : 0;
   if (r.phase === Phase.Countdown) {
     const n = Math.ceil(r.countdown / 60);
     og.ui.anchor("Count", { anchor: "center", direction: "column", cross: "center" }, () => {
@@ -159,7 +214,7 @@ function hud(world: World, r: RaceV, p: PrefsV): { pause: boolean } {
   og.ui.anchor("ReplayTag", { anchor: "left", direction: "column", gap: S.xs }, () => {
     if (r.replaying) capsule("ReplayCapsule", () => og.ui.label("ReplayText", say(world, "hud.replay"), { step: "lg", nowrap: true, color: { token: "highlight" } }));
   });
-  return { pause: h.paused };
+  return { pause: paused };
 }
 
 function board(world: World, r: RaceV): void {
@@ -169,57 +224,67 @@ function board(world: World, r: RaceV): void {
   } catch {
     rows = [];
   }
-  const entries = rows.map(([rank, name, seconds, me]) => ({ rank, name: me ? say(world, "board.you") : name === "" ? say(world, "board.driver", { n: rank }) : name, score: lapText(Math.round(seconds * 60)), player: me === 1 }));
-  const res = og.ui.leaderboardScreen("Board", {
-    title: say(world, "board.title"),
-    scopes: [say(world, "board.fastest"), say(world, "board.around")],
-    entries,
-    loading: r.boardState === 1,
-    error: r.boardState === 3 ? say(world, "board.error") : "",
-    empty: say(world, "board.empty"),
-    retryLabel: say(world, "board.retry"),
-  });
-  if (res.changed) {
-    r.boardScope = res.scope;
-    readBoard(world, r);
+  const shown = rows.map(([rank, name, secs, me]) => ({ rank, name: me ? say(world, "board.you") : name === "" ? say(world, "board.driver", { n: rank }) : name, time: lapText(Math.round(secs * 60)), you: me === 1 }));
+  const vm = { scope: r.boardScope, state: r.boardState === 1 || r.boardState === 3 ? r.boardState : 0, rows: shown };
+  for (const e of screen(world, "leaderboard", true, vm)) {
+    if (e === "scope") {
+      const at = (og.ui.screenVm(world, "leaderboard") as { scope?: number } | null)?.scope ?? r.boardScope;
+      r.boardScope = at;
+      readBoard(world, r);
+    }
+    if (e === "retry") readBoard(world, r);
+    if (e === "back") r.boardOpen = false;
   }
-  if (res.retry) readBoard(world, r);
-  if (res.closed) r.boardOpen = false;
 }
 
+/** The settings tree's pages: what Prefs keeps, every word from the tables. */
+function pages(world: World, p: PrefsV): SettingsPage[] {
+  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
+  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
+  return [
+    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
+    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
+    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.language"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
+  ];
+}
+
+/** The defaults of a page's entries (Defaults). */
+const DEFAULTS: Record<string, Settings> = {
+  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
+  graphics: { reducedMotion: false, highContrast: false },
+  language: { language: "en" },
+};
+
 function settings(world: World, r: RaceV, p: PrefsV): void {
-  if (!r.settingsOpen && world.tick - r.settingsClosedAt > 30) {
-    og.ui.settingsScreen("Settings", { open: false });
-    return;
-  }
-  const res = og.ui.settingsScreen("Settings", {
-    open: r.settingsOpen,
-    settings: settingsOf(p),
-    languages: LANGUAGES.map((l) => ({ code: l.code, label: say(world, l.key) })),
-    title: say(world, "settings.title"),
-    audioLabel: say(world, "settings.audio"),
-    graphicsLabel: say(world, "settings.graphics"),
-    controlsLabel: say(world, "settings.controls"),
-    languageLabel: say(world, "settings.language"),
-    masterLabel: say(world, "settings.master"),
-    musicLabel: say(world, "settings.music"),
-    effectsLabel: say(world, "settings.effects"),
-    muteLabel: say(world, "settings.mute"),
-    qualityLabel: say(world, "settings.quality"),
-    lowLabel: say(world, "settings.low"),
-    mediumLabel: say(world, "settings.medium"),
-    highLabel: say(world, "settings.high"),
-    fpsLabel: say(world, "settings.fps"),
-    motionLabel: say(world, "settings.motion"),
-    contrastLabel: say(world, "settings.contrast"),
-    sensitivityLabel: say(world, "settings.sensitivity"),
-    invertLabel: say(world, "settings.invert"),
-    vibrationLabel: say(world, "settings.vibration"),
-    doneLabel: say(world, "settings.done"),
-  });
+  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once.
+  const asked = screen(world, "settings", r.settingsOpen);
   if (!r.settingsOpen) return;
-  if (res.changed) takeSettings(world, p, res.settings as unknown as Record<string, unknown>);
-  if (res.closed) {
+  if (og.ui.openSlot("settings/Tree")) {
+    const res = og.ui.settingsTree(world, "Tree", {
+      title: "",
+      pages: pages(world, p),
+      page: r.settingsPage,
+      applyLabel: say(world, "settings.apply"),
+      revertLabel: say(world, "settings.revert"),
+      defaultsLabel: say(world, "settings.defaults"),
+    }, () => {});
+    og.ui.close();
+    if (res.page !== null) r.settingsPage = res.page;
+    const c = res.change;
+    if (c !== null) {
+      const s: Settings = {};
+      if (c.key === "master") s.masterVolume = c.value;
+      else if (c.key === "music") s.musicVolume = c.value;
+      else if (c.key === "effects") s.sfxVolume = c.value;
+      else if (c.key === "muted") s.muted = c.on;
+      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
+      else if (c.key === "highContrast") s.highContrast = c.on;
+      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
+      takeSettings(world, p, s as Record<string, unknown>);
+    }
+    if (res.defaults) takeSettings(world, p, (DEFAULTS[r.settingsPage || "audio"] ?? {}) as Record<string, unknown>);
+  }
+  if (asked.includes("done")) {
     r.settingsOpen = false;
     r.settingsClosedAt = world.tick;
     saveSettings(world, p);
@@ -234,35 +299,35 @@ export function stars(r: RaceV): number {
   return MEDALS.filter((m) => s <= m).length;
 }
 
+/** The results' count-up: 0.9 s from their opening, ease-out cubic. */
+const COUNT_TICKS = 54;
+
 function results(world: World, r: RaceV): "again" | "board" | "title" | "replay" | null {
   const lapsText = [r.lap1, r.lap2, r.lap3].map((t, i) => ({ label: say(world, "results.lap", { n: i + 1 }), value: t === 0 ? "—" : lapText(t) }));
-  const res = og.ui.resultsScreen("Results", {
-    open: r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY,
+  const open = r.finishedFor - RESULTS_DELAY;
+  const k = Math.min(1, Math.max(0, open / COUNT_TICKS));
+  // The race's time is the headline, counted up as m:ss.mmm; the best is the session's fastest race before it (none on the first).
+  const vm = {
     title: say(world, r.replaying ? (r.replayMatched === 1 ? "results.replayed" : "results.replayOff") : r.newRecord ? "results.record" : "results.finished"),
-    // The race's time is the headline, counted up as m:ss.mmm; the best is the session's fastest race before it (none on the first).
-    format: "time",
-    scoreLabel: say(world, "results.total"),
-    score: seconds(r.total),
-    best: seconds(r.totalBefore),
+    score: lapText(k >= 1 ? r.total : Math.round(r.total * (1 - (1 - k) ** 3))),
+    best: r.totalBefore > 0 ? say(world, "results.best", { best: lapText(r.totalBefore) }) : "",
     newBest: r.totalBefore > 0 && r.total < r.totalBefore,
-    bestLabel: say(world, "results.best"),
-    newBestLabel: say(world, "results.newBest"),
-    stars: stars(r),
-    maxStars: 3,
+    landed: k >= 1,
     stats: [
       { label: say(world, "results.lapRecord"), value: r.record === 0 ? "—" : lapText(r.record) },
       { label: say(world, "results.bestLap"), value: r.runBest === 0 ? "—" : lapText(r.runBest) },
       ...lapsText,
       { label: say(world, "results.rank"), value: r.rank > 0 ? `#${r.rank}` : "—" },
     ],
-    actions: [
-      { id: "again", label: say(world, "results.again"), primary: true },
-      ...(r.replayReady ? [{ id: "replay", label: say(world, "results.replay") }] : []),
-      { id: "board", label: say(world, "results.board") },
-      { id: "title", label: say(world, "results.title") },
-    ],
-  });
-  return res.selected === "again" || res.selected === "board" || res.selected === "title" || res.selected === "replay" ? res.selected : null;
+    replay: r.replayReady,
+  };
+  const asked = screen(world, "results", true, vm);
+  if (og.ui.openSlot("results/Stars")) {
+    og.ui.starRating("Rating", { earned: stars(r), max: 3, size: 44, revealAt: og.ui.tick() - Math.max(0, open), name: say(world, "results.stars", { earned: stars(r), max: 3 }) });
+    og.ui.close();
+  }
+  const c = asked.find((e) => e === "again" || e === "board" || e === "title" || e === "replay");
+  return (c as "again" | "board" | "title" | "replay" | undefined) ?? null;
 }
 
 function toTitle(world: World, r: RaceV): void {
@@ -303,24 +368,20 @@ export const Ui = defineSystem(
     if (r.phase === Phase.Finished) r.finishedFor += 1;
     if (r.wrongWay === 46) og.ui.toast(world, say(world, "hud.wrongWay"), { tone: "danger" });
 
-    const screen = r.phase === Phase.Title ? (r.boardOpen ? "board" : "title") : r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY ? (r.boardOpen ? "board" : "results") : "race";
-    const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 600 }).shown;
+    const want = r.phase === Phase.Title ? (r.boardOpen ? "board" : "title") : r.phase === Phase.Finished && r.finishedFor >= RESULTS_DELAY ? (r.boardOpen ? "board" : "results") : "race";
+    const shown = og.ui.screenTransition("Screens", want, { kind: p.reducedMotion ? "fade" : "wipe", durationMs: 600 }).shown;
     if (shown === "title") {
       og.ui.setNavigation(true);
-      const items = [
-        { id: "start", label: say(world, "title.start"), primary: true },
-        { id: "board", label: say(world, "title.board") },
-        { id: "settings", label: say(world, "title.settings") },
-      ];
       const sub = r.record > 0 ? say(world, "title.record", { time: lapText(r.record) }) : say(world, "title.tagline");
-      const m = og.ui.mainMenu("Title", { title: say(world, "title.name"), subtitle: sub, items, footer: say(world, "title.footer") });
+      // assets/ui/main-menu.ogt: Time trial, Leaderboard, Settings.
+      const asked = screen(world, "main-menu", true, { sub });
       if (!r.settingsOpen && r.phase === Phase.Title) {
-        if (m.selected === "start") startRace(world, r);
-        if (m.selected === "board") {
+        if (asked.includes("start")) startRace(world, r);
+        if (asked.includes("board")) {
           r.boardOpen = true;
           readBoard(world, r);
         }
-        if (m.selected === "settings") r.settingsOpen = true;
+        if (asked.includes("settings")) r.settingsOpen = true;
       }
     } else if (shown === "board") {
       og.ui.setNavigation(true);
@@ -336,31 +397,27 @@ export const Ui = defineSystem(
         readBoard(world, r);
       }
     } else {
-      // Not drawn under pause or the settings: the racing HUD takes Back even under a dialog, so Escape
-      // and the pad's B would never close them (FINDINGS #9).
+      // Not drawn under pause or the settings: the race's frames show those over the bare road.
       const h = r.paused || r.settingsOpen ? { pause: false } : hud(world, r, p);
       if (racing && !r.paused && !r.settingsOpen && (h.pause || must(world.resource(og.Input)).pressed("KeyP"))) r.paused = true;
-      const m = og.ui.pauseMenu("Pause", {
-        open: r.paused && !r.settingsOpen,
-        title: say(world, "pause.title"),
-        items: [
-          { id: "resume", label: say(world, "pause.resume"), primary: true },
-          { id: "restart", label: say(world, "pause.restart") },
-          { id: "ghost", label: say(world, p.ghost ? "pause.ghostOn" : "pause.ghostOff") },
-          { id: "settings", label: say(world, "pause.settings") },
-          { id: "quit", label: say(world, "pause.quit") },
-        ],
-      });
-      if (m.selected === "resume") r.paused = false;
-      if (m.selected === "restart") startRace(world, r);
-      if (m.selected === "ghost") {
-        p.ghost = !p.ghost;
-        if (!p.ghost) r.ghostActive = false;
-        saveSettings(world, p);
+      // assets/ui/pause.ogt: Resume (and Back), Restart, the ghost, Settings, Quit to title.
+      for (const e of screen(world, "pause", r.paused && !r.settingsOpen, { ghost: say(world, p.ghost ? "pause.ghostOn" : "pause.ghostOff") })) {
+        if (e === "resume") r.paused = false;
+        if (e === "restart") startRace(world, r);
+        if (e === "ghost") {
+          p.ghost = !p.ghost;
+          if (!p.ghost) r.ghostActive = false;
+          saveSettings(world, p);
+        }
+        if (e === "settings") r.settingsOpen = true;
+        if (e === "quit") toTitle(world, r);
       }
-      if (m.selected === "settings") r.settingsOpen = true;
-      if (m.selected === "quit") toTitle(world, r);
     }
+    // The screen documents of the screens not shown leave the layer stack.
+    if (shown !== "title") screen(world, "main-menu", false);
+    if (shown !== "board") screen(world, "leaderboard", false);
+    if (shown !== "results") screen(world, "results", false);
+    if (shown !== "race") screen(world, "pause", false);
     settings(world, r, p);
     // The accessibility counts, for the locales playtest: every half second, and each tick a dialog is open.
     if (!r.settingsOpen && !r.paused && time.tick % 30 !== 0) return;

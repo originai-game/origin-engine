@@ -1,0 +1,69 @@
+type screen
+version 1
+---
+# Meridian Loop's settings, ejected from the library's settings (og ui eject
+# settings) and made the game's own: a panel over the dimmed screen with
+# the title and Done at its head, and the settings tree under them.
+#
+# Slot Tree takes og.ui.settingsTree(world, "Tree", desc, custom) (src/ui.ts
+# `settings`): Audio, Graphics and Language as its pages, each
+# change applied at once (src/ui.ts takeSettings); its words are the game's string
+# keys. Viewmodel: none. Events to code: done (Done and Back: the settings
+# close and are saved).
+name "settings"
+layer menu
+under dim
+back emit done
+focus "Panel/Tree"
+remember true
+actions {
+  confirm "Select"
+  back "Done"
+  tabNext "Next page"
+  tabPrev "Previous page"
+}
+fixture default "{}"
+column Settings {
+  width grow
+  height grow
+  padding 24
+  align center
+  cross center
+  at phone {
+    padding 8
+  }
+  column Panel {
+    width grow 0 720
+    height grow 0 560
+    padding 24
+    gap 16
+    frame panel
+    at phone {
+      padding 12
+      gap 8
+    }
+    row Header {
+      width grow
+      gap 12
+      cross center
+      label Title {
+        key "settings.title"
+        text "Settings"
+        step xl2
+        font display
+        heading true
+        width grow
+      }
+      button Done {
+        key "settings.done"
+        text "Done"
+        variant primary
+        on click emit done
+      }
+    }
+    slot Tree {
+      width grow
+      height grow
+    }
+  }
+}

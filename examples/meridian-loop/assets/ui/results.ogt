@@ -1,0 +1,151 @@
+type screen
+version 1
+---
+# Meridian Loop's results, ejected from the library's results (og ui eject
+# results) and made the game's own: a time trial's result is a time. The
+# race's title (Finished, New lap record, the replay's verdict), the stars
+# the best lap earned, the total time counting up as m:ss.mmm under its
+# caption, the session's best race before it and the Best race badge, the
+# laps and the record as rows, and Again, Watch replay, Leaderboard and
+# Title. Every word is a key of assets/strings/<locale>.ogt or a line the
+# game says from them.
+#
+# Viewmodel: title, score (the total as the game formats it, counted up),
+# best (the best race line; empty: none), newBest, landed (the count-up
+# ended: the badge pops), stats ({ label, value }), replay (a replay is
+# ready). Events to code: again, replay, board, title. Slots: Stars takes
+# og.ui.starRating.
+name "results"
+layer menu
+under dim
+back none
+focus "Panel/Actions/again"
+props {
+  title string "The result's line."
+  score string "The total time, as shown this tick (it counts up)."
+  best string "The best race before this one, as a line; empty: none."
+  newBest bool "This race beat the session's best."
+  landed bool "The count-up has landed: the badge shows."
+  stats list "The rows: { label, value }."
+  replay bool "A replay of this race is ready."
+}
+actions {
+  confirm "Select"
+}
+fixture default "{\"title\": \"Finished\", \"score\": \"1:36.233\", \"best\": \"Best race 1:38.100\", \"newBest\": true, \"landed\": true, \"stats\": [{\"label\": \"Lap record\", \"value\": \"0:31.050\"}, {\"label\": \"Best lap\", \"value\": \"0:31.050\"}], \"replay\": true}"
+column Results {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 420
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    label Title {
+      text bind title
+      step xl2
+      font display
+      heading true
+    }
+    row StarRow {
+      width grow
+      align center
+      slot Stars {
+      }
+    }
+    column ScoreBlock {
+      width grow
+      gap 2
+      cross center
+      label ScoreLabel {
+        key "results.total"
+        text "Total time"
+        step meta
+        color token inkMuted
+        textAlign center
+        nowrap true
+      }
+      label Score {
+        text bind score
+        step displayLg
+        font display
+        textAlign center
+        nowrap true
+      }
+      row BestRow {
+        gap 8
+        cross center
+        label Best {
+          text bind best
+          step meta
+          color token inkMuted
+          nowrap true
+          visible bind "best != \"\""
+        }
+        badge NewBest {
+          key "results.newBest"
+          text "Best race"
+          tone accent
+          visible bind "newBest && landed"
+          enter pop
+        }
+      }
+    }
+    column Stats {
+      width grow
+      for s in stats {
+        row Stat {
+          width grow
+          padding 4
+          gap 12
+          label Key {
+            text bind s.label
+            color token inkMuted
+            nowrap true
+          }
+          spacer
+          label Value {
+            text bind s.value
+            font mono
+            nowrap true
+          }
+        }
+      }
+    }
+    row Actions {
+      width grow
+      gap 8
+      wrap true
+      button again {
+        key "results.again"
+        text "Again"
+        variant primary
+        width grow
+        on click emit again
+      }
+      button replay {
+        key "results.replay"
+        text "Watch replay"
+        width grow
+        visible bind replay
+        on click emit replay
+      }
+      button board {
+        key "results.board"
+        text "Leaderboard"
+        width grow
+        on click emit board
+      }
+      button title {
+        key "results.title"
+        text "Title"
+        width grow
+        on click emit title
+      }
+    }
+  }
+}

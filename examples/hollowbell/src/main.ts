@@ -19,12 +19,13 @@ import { Enemies, touchHero } from "./enemies.ts";
 import { Control } from "./hero.ts";
 import { Areas, Backdrop, Bells, Effects, Flickers, Hazards, Lanterns, Lifts, Moles, Pickups, Stones } from "./props.ts";
 import { spawnVoices, Voices } from "./sound.ts";
-import { continueRun, LANGUAGES, newRun, setLanguage, setName, toTitle, Ui } from "./ui.ts";
+import { continueRun, LANGUAGES, newRun, SCREENS, setLanguage, setName, toTitle, Ui } from "./ui.ts";
 import { buildHollow, loadArt, must } from "./world.ts";
 
 function start(world: World): void {
   const g = must(world.resource(Game));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   g.mainLook = must(og.load.look(world, "looks/hollowbell.ogt")) as unknown as number;
   g.dawnLook = must(og.load.look(world, "looks/dawn.ogt")) as unknown as number;
   // One handle on Game for the whole of start, passed down (FINDINGS.md #6, fixed: handles are live, this stays as plain practice).

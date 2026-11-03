@@ -2,11 +2,11 @@
 // prompt says how many it needs and shakes, the error sound); with three it
 // rises (its collider gone, its navmesh obstacle lifted) and the courier
 // walks through. F at the bell rings it (its spatial toll, the win) and
-// plays the bell-keeper's ending on og.ui.cutscene under the summit look
+// plays the bell-keeper's ending in the game's letterbox under the summit look
 // (looks/summit.ogt: depth bands down the stair). The results
-// (og.ui.resultsScreen) give the score, three stars and a new record; the
+// (assets/ui/results.ogt) give the score, three stars and a new record; the
 // ascent's time goes on the `ascent` leaderboard (og.platform, lower is
-// better) and the Records screen (og.ui.leaderboardScreen) shows it,
+// better) and the Records screen (assets/ui/leaderboard.ogt) shows it,
 // highlighted as the courier's own. Again starts a new journey under the
 // stair's look.
 import { playtest } from "@origingame/engine/playtest";

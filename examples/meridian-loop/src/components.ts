@@ -30,6 +30,8 @@ export const Race = defineResource("Race", {
   phase: u32(0),
   paused: bool(false),
   settingsOpen: bool(false),
+  /** The settings tree's page shown (its key: audio, graphics, language). */
+  settingsPage: str(16, "audio"),
   boardOpen: bool(false),
   settingsClosedAt: u32(0),
   /** Time scale held at 0 under a menu. */

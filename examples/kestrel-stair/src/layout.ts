@@ -161,7 +161,7 @@ export const FOES: readonly { kind: "imp" | "warden"; name: string; route: [numb
   { kind: "warden", name: "warden-1", route: [[9, 8, -38], [-9, 8, -38]] },
 ];
 
-/** The chapters (og.ui.levelSelect): each starts at a waystone with what the chapters before it guarantee. */
+/** The chapters (the chapters screen, assets/ui/chapters.ogt): each starts at a waystone with what the chapters before it guarantee. */
 export const CHAPTERS: readonly { waystone: number; sigils: number; key: string }[] = [
   { waystone: 0, sigils: 0, key: "court" },
   { waystone: 1, sigils: 0, key: "terrace" },

@@ -3,20 +3,22 @@
 // records), the lobby (four seats, the colours, Ready and Start, every pad
 // with a focus ring of its own: og.ui.setPlayers), the round's HUD (the
 // round and its clock at the top, a box per player at the bottom), its
-// card and count-in, pause, the settings (og.ui.settingsScreen, every word
-// from the tables, English and French), the scoreboard between rounds and
-// the podium. The screens change through an iris (a fade with reduced
+// card and count-in, pause, the settings (og.ui.settingsTree in the game's
+// settings document, every word from the tables, English and French), the
+// scoreboard between rounds and the podium. The title, pause and the
+// settings are the game's own screen documents (assets/ui/*.ogt, ejected
+// from the library's main-menu, pause and settings). The screens change through an iris (a fade with reduced
 // motion). What a screen decides it asks Rules to do (Game.ask).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { Value, World } from "@origingame/engine";
+import type { SettingEntry, SettingsPage, Value, World } from "@origingame/engine";
 import { Ask, COLOURS, Game, MAX_PLAYERS, Phase, Prefs, ROUND_KEYS, ROUNDS, Round, Sfx, Sound, Source } from "./components.ts";
 import { sourceKey } from "./input.ts";
 import { freeColour, LAUNCH_TICKS, sit } from "./lobby.ts";
-import { LANGUAGES, settingsOf, takeSettings } from "./prefs.ts";
+import { LANGUAGES, takeSettings, type Settings } from "./prefs.ts";
 import { INTRO_TICKS } from "./rules.ts";
 import { joined, put, seat, seats, type Seat } from "./seats.ts";
-import { clock, must, say } from "./util.ts";
+import { clock, must, say, screen } from "./util.ts";
 
 type GameV = Value<typeof Game>;
 type PrefsV = Value<typeof Prefs>;
@@ -45,22 +47,13 @@ function title(world: World, g: GameV): void {
   const records: string[] = [];
   if (g.bestBerries > 0) records.push(say(world, "title.recordBerries", { n: g.bestBerries }));
   if (g.bestCrumble > 0) records.push(say(world, "title.recordTiles", { s: g.bestCrumble.toFixed(1) }));
-  const r = og.ui.mainMenu("Title", {
-    title: "Rumpus Isle",
-    subtitle: say(world, "title.subtitle"),
-    items: [
-      { id: "play", label: say(world, "title.play"), primary: true },
-      { id: "settings", label: say(world, "title.settings") },
-    ],
-    footer: records.length > 0 ? records.join("  ·  ") : say(world, "title.footer"),
-    // Built settled while it is the screen the game opens on (the frame behind the play gate, og-ui §6).
-    instant: !g.leftTitle,
-  });
+  // assets/ui/main-menu.ogt: the isle's name, Play, Settings and the records in the corner.
+  const asked = screen(world, "main-menu", true, { footer: records.length > 0 ? records.join("  ·  ") : say(world, "title.footer") });
   if (g.settingsOpen) return;
-  if (r.selected === "play") {
+  if (asked.includes("play")) {
     g.leftTitle = true;
     g.ask = Ask.Lobby;
-  } else if (r.selected === "settings") g.settingsOpen = true;
+  } else if (asked.includes("settings")) g.settingsOpen = true;
 }
 
 // ------------------------------------------------------------------ lobby
@@ -198,31 +191,24 @@ function over(world: World, g: GameV): void {
 
 function pause(world: World, g: GameV): void {
   if (g.paused) og.ui.setPlayers(MAX_PLAYERS);
-  const r = og.ui.pauseMenu("Pause", {
-    open: g.paused && !g.settingsOpen,
-    title: say(world, "pause.title"),
-    items: [
-      { id: "resume", label: say(world, "pause.resume"), primary: true },
-      { id: "settings", label: say(world, "pause.settings") },
-      { id: "lobby", label: say(world, "pause.lobby") },
-      { id: "quit", label: say(world, "pause.quit") },
-    ],
-  });
-  switch (r.selected) {
-    case "resume":
-      g.paused = false;
-      break;
-    case "settings":
-      g.settingsOpen = true;
-      break;
-    case "lobby":
-      g.paused = false;
-      g.ask = Ask.Lobby;
-      break;
-    case "quit":
-      g.paused = false;
-      g.ask = Ask.Title;
-      break;
+  // assets/ui/pause.ogt: Resume (and Back), Settings, Back to the lobby, Quit to title.
+  for (const e of screen(world, "pause", g.paused && !g.settingsOpen)) {
+    switch (e) {
+      case "resume":
+        g.paused = false;
+        break;
+      case "settings":
+        g.settingsOpen = true;
+        break;
+      case "lobby":
+        g.paused = false;
+        g.ask = Ask.Lobby;
+        break;
+      case "quit":
+        g.paused = false;
+        g.ask = Ask.Title;
+        break;
+    }
   }
 }
 
@@ -284,35 +270,57 @@ function podium(world: World, g: GameV): void {
 
 // ------------------------------------------------------------------ settings
 
+/** The settings tree's pages: what Prefs keeps, every word from the tables. */
+function pages(world: World, p: PrefsV): SettingsPage[] {
+  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
+  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
+  return [
+    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
+    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
+    { key: "controls", label: say(world, "settings.controls"), entries: [toggle("vibration", "settings.vibration", p.vibration)] },
+    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.language"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
+  ];
+}
+
+/** The defaults of a page's entries (Defaults). */
+const DEFAULTS: Record<string, Settings> = {
+  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
+  graphics: { reducedMotion: false, highContrast: false },
+  controls: { vibration: true },
+  language: { language: "en" },
+};
+
 function settings(world: World, g: GameV, p: PrefsV): void {
-  const r = og.ui.settingsScreen("Settings", {
-    open: g.settingsOpen,
-    settings: settingsOf(p),
-    languages: LANGUAGES.map((l) => ({ code: l.code, label: say(world, l.key) })),
-    title: say(world, "settings.title"),
-    audioLabel: say(world, "settings.audio"),
-    graphicsLabel: say(world, "settings.graphics"),
-    controlsLabel: say(world, "settings.controls"),
-    languageLabel: say(world, "settings.language"),
-    masterLabel: say(world, "settings.master"),
-    musicLabel: say(world, "settings.music"),
-    effectsLabel: say(world, "settings.effects"),
-    muteLabel: say(world, "settings.mute"),
-    qualityLabel: say(world, "settings.quality"),
-    lowLabel: say(world, "settings.low"),
-    mediumLabel: say(world, "settings.medium"),
-    highLabel: say(world, "settings.high"),
-    fpsLabel: say(world, "settings.fps"),
-    motionLabel: say(world, "settings.motion"),
-    contrastLabel: say(world, "settings.contrast"),
-    sensitivityLabel: say(world, "settings.sensitivity"),
-    invertLabel: say(world, "settings.invert"),
-    vibrationLabel: say(world, "settings.vibration"),
-    doneLabel: say(world, "settings.done"),
-  });
+  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once (src/prefs.ts).
+  const asked = screen(world, "settings", g.settingsOpen);
   if (!g.settingsOpen) return;
-  if (r.changed) takeSettings(world, p, r.settings);
-  if (r.closed) {
+  if (og.ui.openSlot("settings/Tree")) {
+    const r = og.ui.settingsTree(world, "Tree", {
+      title: "",
+      pages: pages(world, p),
+      page: g.settingsPage,
+      applyLabel: say(world, "settings.apply"),
+      revertLabel: say(world, "settings.revert"),
+      defaultsLabel: say(world, "settings.defaults"),
+    }, () => {});
+    og.ui.close();
+    if (r.page !== null) g.settingsPage = r.page;
+    const c = r.change;
+    if (c !== null) {
+      const s: Settings = {};
+      if (c.key === "master") s.masterVolume = c.value;
+      else if (c.key === "music") s.musicVolume = c.value;
+      else if (c.key === "effects") s.sfxVolume = c.value;
+      else if (c.key === "muted") s.muted = c.on;
+      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
+      else if (c.key === "highContrast") s.highContrast = c.on;
+      else if (c.key === "vibration") s.vibration = c.on;
+      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
+      takeSettings(world, p, s);
+    }
+    if (r.defaults) takeSettings(world, p, DEFAULTS[g.settingsPage || "audio"] ?? {});
+  }
+  if (asked.includes("done")) {
     g.settingsOpen = false;
     g.saveSettings = true;
   }
@@ -355,6 +363,9 @@ export const Ui = defineSystem("Ui", { reads: [og.Gamepad], writes: [Game, Prefs
     pause(world, g);
   } else if (shown === "scores") scores(world, g);
   else if (shown === "podium") podium(world, g);
+  // The screen documents of the screens not shown leave the layer stack.
+  if (shown !== "title") screen(world, "main-menu", false);
+  if (shown !== "round") screen(world, "pause", false);
   settings(world, g, p);
 
   // Back (Escape, pad 0's B) with nothing open: pause in a round, the title from the lobby. Any seated pad's

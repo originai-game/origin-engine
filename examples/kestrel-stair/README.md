@@ -8,7 +8,7 @@ the 3D top-down [`lantern-vale`](../lantern-vale) and the 2D platformer
 [`hollowbell`](../hollowbell)), written to exercise what those two did not:
 a 3D character controller over a glTF level, navmesh minds, retargeted
 skinned characters, cloth and rope, spatial audio and the UI templates
-neither used. What it found is [`FINDINGS.md`](FINDINGS.md).
+neither used (the game's own screen documents since U8). What it found is [`FINDINGS.md`](FINDINGS.md).
 
 The afternoon is going. Ilse the courier carries the Abbess's sealed
 letter up the Kestrel Stair, a ruined hillside monastery, to Oswin the
@@ -65,7 +65,7 @@ SHA-256), from which the committed 79 KB subset is cut.
 | Cloth and rope | the courier's cape (`og.Cloth` on a child of the body, pinned at the shoulders, trailing as she runs), four banners in a gusting wind; the crypt's chain (`og.Rope`) with its lamp hung at the last link (`og.physics.ropePoints`) | `src/hero.ts`, `src/world.ts`, `src/fx.ts` |
 | Spatial audio, a reverb zone, streamed music | the braziers' crackle, the imps' chitter, the wardens' slams, the crypt's drip and the bell are spatial sources heard from the listener on the camera (distance, pan, `distanceCutoff`, `occlude` behind the crypt's walls); the crypt is an `og.ReverbZone` (the engine eases the effects bus's send to the shared reverb, the room size and the damping by where the listener is; the sky's light dims with its weight); "The Kestrel Stair" (2:40, 48 kHz stereo) cooked in 4-second chunks and streamed on the music bus, ducked under the effects; a limiter on the master | `src/sound.ts`, `src/fx.ts`, `tests/audio.og.ts` |
 | A painterly look and a day | `looks/kestrel.ogt` extends `watercolor-wash` (pigment pooling, bleed, cold-pressed paper laid on the surfaces), with AgX, bloom, a violet shadow tint, a pale fog and the synthetic sky; `og.DayNight` held at the run's hour from 16:30 to 19:30; `looks/summit.ogt` extends `luminous-layered-painting` (depth bands down the stair) for the ending and the results | `assets/looks/`, `src/world.ts`, `src/ui.ts` |
-| og.ui templates on the paper pack | `mainMenu` (Continue names the slot), `cutscene` (the intro and the ending), `tutorialOverlay` (strength, sigils, clock, bag), `inventoryScreen` (the bag: drag to move, Use to eat), `levelSelect` (the chapters, locked until reached, stars), `leaderboardScreen` (fastest and around you), `pauseMenu`, `settingsScreen` (every word from the tables), `resultsScreen`; a HUD of capsules and a meter; a wipe between screens; toasts at the top | `src/ui.ts` |
+| og.ui on the paper pack | the game's own screen documents (`assets/ui/`, ejected with `og ui eject` and edited): the title (Continue names the slot), the chapters (locked until reached, stars), the records (fastest and around you), pause, the settings (`og.ui.settingsTree`, every word from the tables), the bag (`og.ui.inventoryGrid`: drag to move, Use to eat), the tutorial (strength, sigils, clock, bag; `og.ui.spotlight`), the results (`og.ui.starRating`); the intro and the ending in the game's own letterbox around `og.ui.dialogue`; a HUD of capsules and a meter; a wipe between screens; toasts at the top | `src/ui.ts`, `assets/ui/` |
 | Two languages | `strings/en.ogt` and `strings/ja.ogt`; Noto Sans JP subset to the Japanese table by `tools/subset-font.py` (CJK only, so key names in a Japanese line stay in the style's Latin face), the style's fallback | `assets/strings/`, `tools/` |
 | Saves | resting at a waystone saves the whole world (`world.snapshot()`, about 78 KB, through `og.platform.saveSlot`: two parts of a key's 64 KiB and the manifest; FINDINGS #13, fixed) beside the slot's place and hour; Continue restores it (`world.restore`); the progress (chapters, stars, the tutorial, the best) at the revision read, a conflict merged; the settings through `saveSettings` | `src/save.ts`, `tests/save.og.ts` |
 | The leaderboard | a won ascent from chapter I goes on the `ascent` board (`order: "asc"`, seconds); the Records screen reads the top ten or the ten around the courier | `src/save.ts`, `tests/win.og.ts` |
@@ -82,7 +82,7 @@ SHA-256), from which the committed 79 KB subset is cut.
 | `anim.og.ts` | three 21-joint skeletons on retargeted clips through blend trees, the air state; the cape hanging and trailing, a banner stirring, the lamp on its chain |
 | `audio.og.ts` | the music chunked, looping and unclipped; a brazier near and far (gain, pan, distance dulling); the drip occluded and clear; the crypt's reverb zone |
 | `story.og.ts` | the intro walked with Enter, the tutorial's four steps, the progress keeping it seen |
-| `bag.og.ts` | Tab, a drag between slots, an item's details, Use, H, the error sound, the bag from pause |
+| `bag.og.ts` | Tab, a drag between cells, an item's details, Use, H, the error sound, the bag from pause |
 | `save.og.ts` | a rest saves the world in parts; a relaunch (`store: "keep"`) continues it by that waystone, focused Continue, the welcome, chapter II unlocked |
 | `win.og.ts` | the gate refused and raised, the bell, the ending under the summit look, the results, the leaderboard entry and the Records screen, Again |
 | `lose.og.ts` | night at 19:30 and its results (no board entry); strength gone, the fall and its results; Title |

@@ -57,3 +57,26 @@ Each finding's state on main at 517d8c4e, updated after wave 10's first merges (
 18. Fixed: ui-runtime, 536f8397 (the kept store is `<out>/.store/platform.json`; output names starting with `.` are refused). `tests/save.og.ts` keeps `calls.json`; its note says fixed.
 19. Fixed: ui-runtime, 536f8397 (`get:` answers an enum by its variant's name). `tests/music.og.ts` accepts only `"music"` now.
 20. Fixed: ui-runtime, ad36ce7c, with the game's copy at e528effe. The diagnosis above was wrong: the label was drawn in `accentFg`, but DotGothic16's one-pixel strokes fell between device pixels at 16 px, so no pixel took more than about half the ink. The pixel pack has `textWeight body 0.5` and the font at `px_range 8`; the packs' test reads the primary label from a frame at 9.11, 12.69 and 5.92:1 (rest, hovered, pressed; 3.44, 3.76 and 2.96 before). The pale-gold accent and 16 px ramp stay as the look; the frames re-recorded at 1e706a5a and 517d8c4e. The README's og polish figures predate the fix.
+
+## U8: off the fixed templates (2026-11-03)
+
+The fixed templates the game used (`og.ui.mainMenu`, `og.ui.cutscene`,
+`og.ui.shopScreen`, `og.ui.pauseMenu`, `og.ui.resultsScreen`) are removed
+from the engine (docs/ui.md §11), which closes #10, #11 and #12 for good.
+The title, the wares, pause and the results are the game's own screen
+documents, ejected with `og ui eject` and edited: `assets/ui/main-menu.ogt`
+(Continue the primary with a save, New game, Settings; no entrance, so the
+title the game opens on is built settled, as `instant` did),
+`assets/ui/shop.ogt` (from the library's `vendor`: the purse, a card per
+ware, the selected one's line and price, Buy; short of the price the
+button reads Not enough and a press plays its `refuse` timeline, a shake
+with the error sound), `assets/ui/pause.ogt` and `assets/ui/results.ogt`
+(`og.ui.starRating` in its Stars slot, the score counting up, the best and
+its badge). The mole's talk is the game's own letterbox around
+`og.ui.dialogue` (`src/ui.ts` `letterboxTalk`: the bars, the typed line
+that takes the focus, Skip and Back), as the cutscene template was. The
+stars' accessible name is a new key, `results.stars`, in both tables; the
+Noto Sans SC subset was rebuilt by `tools/subset-font.py` for 星, with the
+marks − × · … ← → (which the tool does not add) copied back from the
+previous subset. The settings dialog was already the game's own widgets.
+

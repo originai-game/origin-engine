@@ -1,0 +1,176 @@
+type screen
+version 1
+---
+# The Kestrel Stair's records, ejected from the library's leaderboard (og
+# ui eject leaderboard) and made the game's own: Back and the title, the
+# two scopes (the fastest ascents, the ones round the courier), and the
+# ascents as rows (rank, courier, time; the courier's own row lit), with
+# its loading, error and empty states honest. Every word is a key of
+# assets/strings/<locale>.ogt.
+#
+# Viewmodel: scope (0 fastest, 1 around you), state (0 rows, 1 loading, 3
+# error), rows ({ rank, name, time, you }). Events to code: back (Back and
+# the Back action), scope (the click wrote scope), retry.
+name "leaderboard"
+layer menu
+under dim
+back emit back
+focus "Panel/Tabs/Fastest"
+props {
+  scope number "The scope shown: 0 the fastest ascents, 1 the ones round the courier."
+  state number "0 the rows, 1 loading, 3 the board did not answer."
+  rows list "The ascents: { rank, name, time (formatted), you (bool) }."
+}
+actions {
+  confirm "Select"
+  back "Back"
+}
+fixture default "{\"scope\": 0, \"state\": 0, \"rows\": [{\"rank\": 1, \"name\": \"You\", \"time\": \"3:12\", \"you\": true}, {\"rank\": 2, \"name\": \"Courier 2\", \"time\": \"3:40\", \"you\": false}]}"
+column Board {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 520
+    padding 24
+    gap 12
+    frame panel
+    enter slideUp 24 token enter
+    row Header {
+      width grow
+      gap 12
+      cross center
+      button Back {
+        key "records.back"
+        text "Back"
+        variant quiet
+        on click emit back
+      }
+      label Title {
+        key "records.title"
+        text "Records"
+        step xl2
+        font display
+        heading true
+        width grow
+      }
+    }
+    row Tabs {
+      width grow
+      gap 6
+      focusGroup wrap
+      button Fastest {
+        key "records.fastest"
+        text "Fastest"
+        variant ghost
+        width grow
+        on click set scope 0
+        on click emit scope
+        state selection bind "scope == 0" {
+          off {
+            opacity 0.6
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Around {
+        key "records.around"
+        text "Around you"
+        variant ghost
+        width grow
+        on click set scope 1
+        on click emit scope
+        state selection bind "scope == 1" {
+          off {
+            opacity 0.6
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+    column Body {
+      width grow
+      height 360
+      gap 4
+      if "state == 1" {
+        label Loading {
+          key "records.loading"
+          text "Loading…"
+          color token inkMuted
+          textAlign center
+          width grow
+        }
+      }
+      if "state == 3" {
+        column Error {
+          width grow
+          gap 12
+          cross center
+          label Message {
+            key "records.error"
+            text "The records could not be read"
+            color token danger
+            textAlign center
+            width grow
+          }
+          button Retry {
+            key "records.retry"
+            text "Try again"
+            on click emit retry
+          }
+        }
+      }
+      if "state == 0 && rows.length == 0" {
+        label Empty {
+          key "records.empty"
+          text "No ascents yet"
+          color token inkMuted
+          textAlign center
+          width grow
+        }
+      }
+      if "state == 0" {
+        for r in rows {
+          row Row {
+            width grow
+            padding 8
+            gap 12
+            cross center
+            radius 8
+            label Rank {
+              text bind r.rank
+              width 40
+              font mono
+              color token inkMuted
+            }
+            label Name {
+              text bind r.name
+              width grow
+              maxLines 1
+              ellipsis true
+            }
+            label Time {
+              text bind r.time
+              font mono
+              nowrap true
+            }
+            state mine bind r.you {
+              other {
+                background token panel
+              }
+              you {
+                background token primarySoft
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

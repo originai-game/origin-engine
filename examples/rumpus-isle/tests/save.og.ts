@@ -12,8 +12,8 @@ export default playtest({
   store: "keep",
   commands: script(
     tap("settings", 0.6),
-    tap("Tab#3", 1.2),
-    tap("Option#1", 1.6),
+    tap("Row/language", 1.2),
+    tap("Choice/Strip/Track/Item#1", 1.6),
     tap("Done", 2.0),
     "2.4:get:Prefs:prefs.json",
     ...twoPlayers(2.5, 3),

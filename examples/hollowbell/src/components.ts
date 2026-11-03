@@ -50,7 +50,7 @@ export const NAME_CHARS = 12;
 /** The run: progress, the hero's state for the other systems, the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
-  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the style's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on (the title document, assets/ui/main-menu.ogt, has no entrance, so every title is built settled: the web draws the first behind the play gate)." }),
   naming: bool(false, { doc: "The name dialog is open over the title (a new game)." }),
   paused: bool(false),
   settingsOpen: bool(false),
@@ -112,6 +112,8 @@ export const Game = defineResource("Game", {
   talking: bool(false),
   talkIndex: u32(0),
   shopping: bool(false),
+  /** The ware selected in the shop (its index in WARES). */
+  shopSelected: u32(0),
   talks: u32(0),
   bought: u32(0),
   // The gloam.

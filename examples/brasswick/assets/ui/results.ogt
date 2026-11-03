@@ -1,0 +1,133 @@
+type screen
+version 1
+---
+# Brasswick's results, ejected from the library's results (og ui eject
+# results) and made the game's own: the level cleared, the stars,
+# the score counting up, the best and the New best badge when it lands,
+# the gears, the time, the best time and the falls as rows, and Next level
+# (while one is left), Play again and Levels. Every
+# word is a key of assets/strings/<locale>.ogt or a line the game says
+# from them.
+#
+# Viewmodel: title, score (counted up this tick), best (the best line;
+# empty: none), newBest, landed (the count-up ended: the badge pops),
+# stats ({ label, value }). hasNext (a level is left). Events to code: next, retry, menu. Slots: Stars
+# takes og.ui.starRating.
+name "results"
+layer menu
+under dim
+back none
+focus "Panel/Actions/next"
+props {
+  title string "How the run ended."
+  score number "The score, as shown this tick (it counts up)."
+  best string "The best score, as a line; empty: none."
+  newBest bool "This run set the best."
+  landed bool "The count-up has landed: the badge shows."
+  stats list "The rows: { label, value }."
+  hasNext bool "A level is left after this one."
+}
+actions {
+  confirm "Select"
+}
+fixture default "{\"title\": \"Level 1 cleared\", \"score\": 1092, \"best\": \"Best 1,092\", \"newBest\": true, \"landed\": true, \"hasNext\": true, \"stats\": [{\"label\": \"Gears\", \"value\": \"6 of 6\"}, {\"label\": \"Time\", \"value\": \"0:41.2\"}]}"
+column Results {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 420
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    label Title {
+      text bind title
+      step xl2
+      font display
+      heading true
+    }
+    row StarRow {
+      width grow
+      align center
+      slot Stars {
+      }
+    }
+    column ScoreBlock {
+      width grow
+      gap 2
+      cross center
+      label Score {
+        text bind score grouped
+        step displayLg
+        font display
+        textAlign center
+        nowrap true
+      }
+      row BestRow {
+        gap 8
+        cross center
+        label Best {
+          text bind best
+          step meta
+          color token inkMuted
+          nowrap true
+          visible bind "best != \"\""
+        }
+        badge NewBest {
+          key "results.newBest"
+          text "New best"
+          tone accent
+          visible bind "newBest && landed"
+        }
+      }
+    }
+    column Stats {
+      width grow
+      for s in stats {
+        row Stat {
+          width grow
+          padding 4
+          gap 12
+          label Key {
+            text bind s.label
+            color token inkMuted
+            nowrap true
+          }
+          spacer
+          label Value {
+            text bind s.value
+            font mono
+            nowrap true
+          }
+        }
+      }
+    }
+    row Actions {
+      width grow
+      gap 8
+      button next {
+        key "results.next"
+        text "Next level"
+        variant primary
+        width grow
+        visible bind hasNext
+        on click emit next
+      }
+      button retry {
+        key "results.retry"
+        text "Play again"
+        width grow
+        on click emit retry
+      }
+      button menu {
+        key "results.menu"
+        text "Levels"
+        width grow
+        on click emit menu
+      }
+    }
+  }
+}

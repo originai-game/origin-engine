@@ -1,0 +1,228 @@
+type screen
+version 1
+---
+# Old Burrow's wares, ejected from the library's vendor (og ui eject vendor,
+# renamed shop) and made the game's own: one tab of three wares, so no
+# tabs, no selling and no amounts. The title and the purse in glimmers, a
+# card per ware (its icon, its name, its price or Owned), and the selected
+# ware's name, line and price with Buy. Short of the price, Buy reads Not
+# enough and a press shakes it with the error sound, buying nothing. Every
+# word is a key of assets/strings/<locale>.ogt.
+#
+# Viewmodel: glimmers, wares ({ name, doc, price, icon, owned }), selected,
+# the selected ware's name, doc, price, owned and short, and unit (the
+# currency's word). Events to
+# code: select (the click wrote selected), buy, back (Escape, the pad's B).
+name "shop"
+layer menu
+under dim
+back emit back
+focus "Panel/Body/Detail/Buy"
+props {
+  glimmers number "The purse."
+  wares list "The wares: { name, doc, price, icon, owned (bool) }."
+  selected number "The selected ware's index."
+  name string "The selected ware's name."
+  doc string "The selected ware's line."
+  price number "The selected ware's price."
+  owned bool "The selected ware is owned."
+  short bool "The purse is short of the selected ware's price."
+  unit string "The currency's word after a price (glimmers)."
+}
+actions {
+  confirm "Buy"
+  back "Leave"
+}
+timeline refuse {
+  track "" x {
+    key 0 0
+    key 50 -6 out
+    key 100 6 out
+    key 150 -4 out
+    key 200 3 out
+    key 260 0 out
+  }
+  event 0 "" sound error
+  duration 260
+}
+fixture default "{\"glimmers\": 8, \"selected\": 0, \"wares\": [{\"name\": \"Honey cake\", \"doc\": \"Restores a heart.\", \"price\": 6, \"icon\": \"heart\", \"owned\": false}, {\"name\": \"Wing cloak\", \"doc\": \"Jump once more in the air.\", \"price\": 16, \"icon\": \"leaf\", \"owned\": false}], \"name\": \"Honey cake\", \"doc\": \"Restores a heart.\", \"price\": 6, \"owned\": false, \"short\": false, \"unit\": \"glimmers\"}"
+column Shop {
+  width grow
+  height grow
+  padding 16
+  align center
+  cross center
+  column Panel {
+    width grow 0 720
+    padding 24
+    gap 16
+    frame panel
+    enter slideUp 24 token enter
+    row Header {
+      width grow
+      gap 12
+      cross center
+      label Title {
+        key "shop.title"
+        text "Old Burrow's wares"
+        step xl2
+        font display
+        heading true
+        width grow
+      }
+      row Balance {
+        gap 6
+        cross center
+        padding 6
+        frame hud
+        icon Coin {
+          icon coin
+          iconSize 18
+          color token gold
+        }
+        label Amount {
+          text bind glimmers grouped
+          font mono
+          nowrap true
+        }
+        label Unit {
+          key "shop.currency"
+          text "glimmers"
+          color token inkMuted
+          nowrap true
+        }
+      }
+    }
+    row Body {
+      width grow
+      gap 16
+      at phone {
+        wrap true
+      }
+      row Wares {
+        gap 8
+        focusGroup wrap
+        for w in wares {
+          column Ware {
+            width 112
+            height 124
+            padding 8
+            gap 6
+            align center
+            cross center
+            frame card
+            interactive true
+            focusable true
+            on click set selected "$index"
+            on click emit select
+            icon Picture {
+              icon bind w.icon
+              iconSize 36
+            }
+            label Name {
+              text bind w.name
+              textAlign center
+              width grow
+              maxLines 2
+            }
+            if "w.owned" {
+              badge Owned {
+                key "shop.owned"
+                text "Owned"
+                tone success
+              }
+            }
+            if "!w.owned" {
+              row Price {
+                gap 4
+                cross center
+                icon Coin {
+                  icon coin
+                  iconSize 14
+                  color token gold
+                }
+                label Amount {
+                  text bind w.price
+                  step meta
+                  font mono
+                  nowrap true
+                }
+              }
+            }
+            state selection bind "$index == selected" {
+              off {
+                opacity 0.75
+              }
+              on {
+                opacity 1
+                background token primarySoft
+              }
+            }
+          }
+        }
+      }
+      column Detail {
+        width grow
+        gap 8
+        label Name {
+          text bind name
+          step lg
+          width grow
+        }
+        label Description {
+          text bind doc
+          step meta
+          color token inkMuted
+          width grow
+        }
+        row Price {
+          width grow
+          gap 12
+          cross center
+          label Key {
+            key "shop.price"
+            text "Price"
+            color token inkMuted
+            nowrap true
+          }
+          spacer
+          icon Coin {
+            icon coin
+            iconSize 18
+            color token gold
+          }
+          label Value {
+            text "{price} {unit}"
+            font mono
+            nowrap true
+          }
+        }
+        if "owned" {
+          button Owned {
+            key "shop.owned"
+            text "Owned"
+            width grow
+            disabled true
+          }
+        }
+        if "!owned && !short" {
+          button Buy {
+            key "shop.buy"
+            text "Buy"
+            variant primary
+            width grow
+            on click emit buy
+          }
+        }
+        if "!owned && short" {
+          button Buy {
+            key "shop.short"
+            text "Not enough"
+            width grow
+            on click play refuse
+          }
+        }
+      }
+    }
+  }
+}

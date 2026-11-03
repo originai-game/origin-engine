@@ -58,7 +58,7 @@ three are in the world at once, side by side in x, each inside its
 | Crates (dynamic boxes), pressure plates (`og.physics.overlap`), doors (kinematic bodies moved by og.Velocity), the gate (og.Joint, `JOINT_PRISMATIC`, `MOTOR_POSITION`), the lift (kinematic) | `src/puzzle.ts` | og-game §13 |
 | Flipbooks: Wick (idle, run, jump, fall, wall, push, hurt, cheer; `step` and `shove` events), ticks, gears, plates, lamps, the hatch | `assets/sprites/*.ogt`, `src/hero.ts`, `src/actors.ts` | og-game §8, og-feel §9 |
 | Juice: hit stop, shake, squash and stretch, floating text, one-shot emitters restarted by `startTick` | `src/hero.ts`, `src/actors.ts`, `src/feel.ts` | og-feel §3–§7 |
-| The title, level select, pause, settings and results templates; a HUD from widgets | `src/ui.ts` | og-ui §2–§6 |
+| The title, level select, pause, settings and results as the game's screen documents (`assets/ui/*.ogt`, ejected with `og ui eject`; the settings tree is `og.ui.settingsTree`); a HUD from widgets | `src/ui.ts` | og-ui §2–§6 |
 | English and Spanish string tables, the settings' words from them | `assets/strings/`, `src/ui.ts` | og-i18n |
 | og sfx presets on voices, the music streamed in chunks on its bus, ducked under the effects | `src/sound.ts`, `assets/audio/`, `assets/music/vault.wav.ogt` | og-audio |
 | og.platform: the settings (loaded on the first tick, saved on close), the progress record at its revision, the whole world in a slot at each lamp, Continue restoring it | `src/save.ts`, `src/prefs.ts` | og-platform-sdk, og-game §17 |

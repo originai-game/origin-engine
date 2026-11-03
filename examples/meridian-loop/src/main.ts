@@ -23,13 +23,14 @@ import { Tapes } from "./ghost.ts";
 import { lapText, RaceSystem, resetCar, startRace } from "./race.ts";
 import { spawnVoices, Voices } from "./sound.ts";
 import { fromStart, LAPS, SAMPLES } from "./track.ts";
-import { LANGUAGES, setLanguage, takeSettings, Ui } from "./ui.ts";
+import { LANGUAGES, SCREENS, setLanguage, takeSettings, Ui } from "./ui.ts";
 import { View } from "./view.ts";
 import { buildCircuit, entity, LAYER, must, placeCar, spawnCars, spawnEffects } from "./world.ts";
 
 function start(world: World): void {
   const r = must(world.resource(Race));
   for (const l of LANGUAGES) must(og.i18n.load(world, `strings/${l.code}.ogt`));
+  for (const s of SCREENS) must(og.load.document(world, `ui/${s}.ogt`));
   r.minimap = must(og.load.texture(world, "textures/minimap.png")) as unknown as number;
   buildCircuit(world);
   spawnCars(world);

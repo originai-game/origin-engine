@@ -2,10 +2,10 @@
 // in Noto Sans JP, subset to the table's characters by tools/subset-font.py
 // (CJK only, so the footer's key names keep the style's Latin face, run by
 // run). The title, the intro, the HUD, the bag, the pause menu, the
-// settings (og.ui.settingsScreen, every word passed from the table) and the
-// results read in Japanese, the templates' own words too (the cutscene's
-// and the tutorial's Skip, Next and step count, the bag's hint and count:
-// desc fields since wave 10, FINDINGS #18); back in English, the title
+// settings (assets/ui/settings.ogt with og.ui.settingsTree, every word from
+// the table) and the results read in Japanese, the screens' own words too
+// (the cutscene's and the tutorial's Skip, Next and step count, the bag's
+// hint and count: keys of the game's documents); back in English, the title
 // does too. And the accessibility tree (og.ui.a11y, counted by the Ui system): no focusable
 // control unnamed on any of these screens.
 import { playtest } from "@origingame/engine/playtest";
@@ -25,7 +25,7 @@ export default playtest({
     "2.8:dump_ui:hud.json",
     "2.85:give:herbs:2",
     press("Tab", 3.0),
-    tap("Slots/Cell#4", 3.4),
+    tap("Cells/herb", 3.4),
     "3.8:dump_ui:bag.json",
     "3.8:get:Game:a11y-bag.json",
     press("Escape", 4.0),

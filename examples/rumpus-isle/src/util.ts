@@ -21,6 +21,21 @@ export function say(world: World, key: string, args?: Record<string, string | nu
   return og.i18n.t(world, key, args);
 }
 
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "pause", "settings"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+export function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
 /** "#rrggbb" (sRGB) to a linear colour. */
 export function linear(hex: string): Color {
   const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));

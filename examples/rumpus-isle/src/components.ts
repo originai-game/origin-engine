@@ -3,7 +3,7 @@
 // components of the critters, tiles and berries. Everything a tick reads is
 // here, in the world, so snapshots, replays and the world hash carry it.
 
-import { bool, defineComponent, defineResource, Entity, f32, f64, i32, Material, u32 } from "@origingame/engine";
+import { bool, defineComponent, defineResource, Entity, f32, f64, i32, Material, str, u32 } from "@origingame/engine";
 
 /** The screens and what the match is doing. */
 export const Phase = {
@@ -57,6 +57,8 @@ export const Game = defineResource("Game", {
   round: u32(0, { min: 0, max: 2 }),
   paused: bool(),
   settingsOpen: bool(),
+  /** The settings tree's page shown (its key: audio, graphics, controls, language). */
+  settingsPage: str(16, "audio"),
   /** Ticks left in the phase's own clock: the intro's count-in, the round, the beat after it. */
   ticks: u32(0),
   /** Seconds left in the round (shown), from ticks. */

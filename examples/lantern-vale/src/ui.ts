@@ -4,8 +4,10 @@
 // and Pause top-right, the lighting prompt and its progress at the
 // bottom), the pause menu, the settings (music and effects sliders, the
 // lamplighter's name in a text field, the language, reduced motion, and a
-// label mixing Latin and Chinese), and the results on og.ui.resultsScreen
-// under a second look (looks/dawn.ogt). Screens change through a dissolve
+// label mixing Latin and Chinese), and the results under a second look
+// (looks/dawn.ogt). The title, pause and the results are the game's own
+// screen documents (assets/ui/*.ogt, ejected from the library's main-menu,
+// pause and results with `og ui eject`). Screens change through a dissolve
 // (a fade with reduced motion). Every string is a key of
 // assets/strings/*.ogt.
 //
@@ -285,33 +287,53 @@ export function score(world: World, g: GameV): number {
   return g.lit * 250 + (g.ending === Ending.Lit ? Math.max(0, Math.round(t.duskSeconds - g.time)) : 0);
 }
 
+/** The game's screen documents (assets/ui/), loaded once at the start. */
+export const SCREENS = ["main-menu", "pause", "results"] as const;
+
+/**
+ * A screen document shown while `on`: mounted (pushed when it is not on the layer stack) and built here with its
+ * viewmodel, answering the events it emitted this tick (Back's too); taken off the stack when it is no longer wanted.
+ */
+function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: Record<string, unknown> = {}): string[] {
+  if (!on) {
+    while (og.ui.layers(world).some((l) => l.screen === name)) og.ui.pop(world);
+    return [];
+  }
+  return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
+}
+
+/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
+const COUNT_FRAMES = 54;
+
 function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
   const won = g.ending === Ending.Lit;
   const stars = won ? Math.max(1, 3 - g.hurts) : 0;
   const name = p.name;
-  const r = og.ui.resultsScreen("Results", {
-    open: g.phase === Phase.Over,
+  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  let since = og.ui.memory("resultsSince", -1);
+  if (since < 0) since = og.ui.tick();
+  og.ui.remember("resultsSince", since);
+  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const total = score(world, g);
+  const asked = screen(world, "results", true, {
     title: say(world, won ? "results.won" : g.ending === Ending.Caught ? "results.caught" : "results.night"),
-    score: score(world, g),
-    best: g.best,
+    score: k >= 1 ? total : Math.round(total * (1 - (1 - k) ** 3)),
+    // The best is set when the run ends (clock), grouped as og.ui's counters group.
+    best: g.best > 0 ? say(world, "results.best", { best: String(g.best).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }) : "",
     newBest: g.newBest,
-    // og.ui's own words, from the tables too: "{best}" is the kit's to fill.
-    bestLabel: say(world, "results.best"),
-    newBestLabel: say(world, "results.newBest"),
-    stars,
-    maxStars: 3,
+    landed: k >= 1,
     stats: [
       { label: say(world, "results.player"), value: name === "" ? say(world, "results.nobody") : name },
       { label: say(world, "results.lanterns"), value: `${g.lit}/${LANTERN_COUNT}` },
       { label: say(world, "results.time"), value: seconds(g.time) },
       { label: say(world, "results.hurts"), value: `${g.hurts}` },
     ],
-    actions: [
-      { id: "again", label: say(world, "results.again"), primary: true },
-      { id: "menu", label: say(world, "results.menu") },
-    ],
   });
-  return r.selected === "again" ? "again" : r.selected === "menu" ? "menu" : null;
+  if (og.ui.openSlot("results/Stars")) {
+    og.ui.starRating("Rating", { earned: stars, max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars, max: 3 }) });
+    og.ui.close();
+  }
+  return asked.includes("again") ? "again" : asked.includes("menu") ? "menu" : null;
 }
 
 /** The screens, the run's start, clock and end, the hold, the looks, the stream, the platform's answers. */
@@ -332,45 +354,33 @@ export const Ui = defineSystem(
     looks(world, g);
     stream(world, g);
 
-    const screen = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
-    const shown = og.ui.screenTransition("Screens", screen, { kind: p.reducedMotion ? "fade" : "dissolve", durationMs: 600 }).shown;
+    const want = g.phase === Phase.Title ? "title" : g.phase === Phase.Play ? "play" : "over";
+    const shown = og.ui.screenTransition("Screens", want, { kind: p.reducedMotion ? "fade" : "dissolve", durationMs: 600 }).shown;
     if (shown !== "title") g.leftTitle = true;
     if (shown === "title") {
       og.ui.setNavigation(true);
-      const r = og.ui.mainMenu("Title", {
-        title: say(world, "title.name"),
-        subtitle: say(world, "title.tagline"),
-        items: [
-          { id: "play", label: say(world, "title.play"), primary: true },
-          { id: "settings", label: say(world, "title.settings") },
-        ],
-        footer: say(world, "title.footer"),
-        // The title the game opens on is built settled: the web draws it behind the play gate, where
-        // the style's entrance would stand part-way until the tap (og-platform-sdk §3). Later titles enter.
-        instant: !g.leftTitle,
-      });
-      if (!g.settingsOpen && r.selected === "play" && g.phase === Phase.Title) startRun(world, g);
-      if (r.selected === "settings") g.settingsOpen = true;
+      // assets/ui/main-menu.ogt: Set out and Settings. It has no entrance: the title the game opens on is built
+      // settled, as the web draws it behind the play gate (og-platform-sdk §3).
+      const asked = screen(world, "main-menu", true);
+      if (!g.settingsOpen && asked.includes("play") && g.phase === Phase.Title) startRun(world, g);
+      if (asked.includes("settings")) g.settingsOpen = true;
     } else if (shown === "play") {
       hud(world, g);
-      const m = og.ui.pauseMenu("Pause", {
-        open: g.paused && !g.settingsOpen,
-        title: say(world, "pause.title"),
-        items: [
-          { id: "resume", label: say(world, "pause.resume"), primary: true },
-          { id: "settings", label: say(world, "pause.settings") },
-          { id: "quit", label: say(world, "pause.quit") },
-        ],
-      });
-      if (m.selected === "resume") g.paused = false;
-      if (m.selected === "settings") g.settingsOpen = true;
-      if (m.selected === "quit") toTitle(world, g);
+      // assets/ui/pause.ogt: Resume (and Back), Settings, Quit to title.
+      const asked = screen(world, "pause", g.paused && !g.settingsOpen);
+      if (asked.includes("resume")) g.paused = false;
+      if (asked.includes("settings")) g.settingsOpen = true;
+      if (asked.includes("quit")) toTitle(world, g);
     } else {
       og.ui.setNavigation(true);
       const c = results(world, g, p);
       if (c === "again") startRun(world, g);
       if (c === "menu") toTitle(world, g);
     }
+    // The screen documents of the screens not shown leave the layer stack.
+    if (shown !== "title") screen(world, "main-menu", false);
+    if (shown !== "play") screen(world, "pause", false);
+    if (shown === "title" || shown === "play") screen(world, "results", false);
     settings(world, g, p);
     // The accessibility tree, for the playtests: every half second, and on every tick a dialog is open.
     if (!g.settingsOpen && !g.paused && time.tick % 30 !== 0) return;

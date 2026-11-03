@@ -30,7 +30,7 @@ export const NAME_CHARS = 12;
 /** The run: the hero's progress, the clock and the effects' bookkeeping. */
 export const Game = defineResource("Game", {
   phase: u32(Phase.Title, { doc: "Phase.* of src/components.ts." }),
-  leftTitle: bool(false, { doc: "The player has left the title the game opened on: from then on the title enters with the style's entrance (the opening one is built settled, og.ui.mainMenu's instant: the web draws it behind the play gate)." }),
+  leftTitle: bool(false, { doc: "The player has left the title the game opened on (the title document, assets/ui/main-menu.ogt, has no entrance, so every title is built settled: the web draws the first behind the play gate)." }),
   ending: u32(Ending.None, { doc: "Ending.* once a run is over." }),
   paused: bool(false),
   settingsOpen: bool(false),

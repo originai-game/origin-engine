@@ -1,8 +1,8 @@
 // The title, the mole's talk, his wares and the Chinese settings laid out
-// as the game shipped them: every element's parent, id, kind, role and text
-// as shipped.ts has them (recorded from the engine its reference frames
-// were drawn with), each within a pixel of its place. An engine update may
-// draw a screen better; it never adds, drops or moves what is on it.
+// as the game's own screen documents lay them out (U8 moved them off the
+// fixed templates): every element's parent, id, kind, role and text as
+// shipped.ts has them, each within a pixel of its place. An engine update
+// may draw a screen better; it never adds, drops or moves what is on it.
 import { playtest } from "@origingame/engine/playtest";
 import { press, script, tap } from "./lib.ts";
 import { checkScreens } from "./screens.ts";

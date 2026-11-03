@@ -1,0 +1,86 @@
+type screen
+version 1
+---
+# The Kestrel Stair's tutorial, ejected from the library's tutorial (og ui
+# eject tutorial) and made the game's own: a coach mark over the HUD on a
+# first journey. A card beside the step's target (under it where there is room, else over it) with the step's
+# count, its title and text, Skip and Next (Done on the last step). Every
+# word is a key of assets/strings/<locale>.ogt or a line the game says
+# from them.
+#
+# Viewmodel: count (the step's count, as a line: 1 of 4), title, text,
+# nextLabel (Next, or Done on the last step), x, y (where the card sits,
+# CSS px from the top start). Events to code: next, skip (Skip and Back).
+# The scrim with the target left clear is og.ui.spotlight, which src/ui.ts
+# draws under this layer (the library's Highlight slot is gone: a
+# spotlight is an overlay of its own, not a box in the card's stack).
+name "tutorial"
+layer popover
+under none
+back emit skip
+focus "Card/Actions/Next"
+props {
+  count string "The step's count, as a line (1 of 4)."
+  title string "The step's title."
+  text string "What it is for."
+  nextLabel string "Next, or Done on the last step."
+  x number "The card's left, CSS px."
+  y number "The card's top, CSS px."
+}
+actions {
+  confirm "Next"
+  back "Skip"
+}
+fixture default "{\"count\": \"1 of 4\", \"title\": \"Your strength\", \"text\": \"Imps bite and wardens crush. Hillwort and the waystones restore it.\", \"nextLabel\": \"Next\", \"x\": 24, \"y\": 96}"
+stack Tutorial {
+  width grow
+  height grow
+  column Card {
+    position absolute
+    start bind x
+    top bind y
+    width 320
+    padding 16
+    gap 8
+    background token panelRaised
+    radius 10
+    enter pop
+    label Count {
+      text bind count
+      step meta
+      color token inkMuted
+    }
+    label Title {
+      text bind title
+      step lg
+      width grow
+      heading true
+    }
+    label Text {
+      text bind text
+      step reading
+      color token inkMuted
+      width grow
+    }
+    row Actions {
+      width grow
+      gap 8
+      cross center
+      button Skip {
+        key "tut.skip"
+        text "Skip"
+        variant quiet
+        size small
+        on click emit skip
+      }
+      spacer
+      button Next {
+        text bind nextLabel
+        variant primary
+        size small
+        on click emit next
+        on action confirm emit next
+      }
+    }
+  }
+}
