@@ -1,0 +1,27 @@
+type project
+version 1
+---
+# The introduction site's live hero (engine.origingame.ai): an open sea at
+# golden hour under the physical sky and volumetric clouds, a schooner
+# riding the swell by buoyancy, a headland with its lighthouse; it plays
+# itself through a 90 s loop of the day and a storm (README.md).
+name "Site: ocean"
+id "site-ocean"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+  # The site frames it as a non-interactive hero: no gate, the whole frame,
+  # no cross-origin isolation (single-threaded; the page and its video
+  # stay free of COOP/COEP).
+  gate none
+  fit fill
+  isolation off
+  dpr_cap 1.5
+  made_with false
+  telemetry off
+}

@@ -1,0 +1,26 @@
+type look
+version 1
+---
+# The sea's frame: AgX, a soft bloom round the sun and the lamps, an eye
+# that adapts from noon to a moonlit night, TAA, a light vignette.
+name "Site ocean"
+ui "styles/site/style.ogt"
+antialias taa
+RenderSettings {
+  toneMapping agx
+  bloom true
+  bloomIntensity 0.22
+  bloomThreshold 1.1
+  bloomKnee 0.6
+  autoExposure true
+  adaptSpeedUp 1.2
+  adaptSpeedDown 2.5
+  environmentIntensity 1
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.22
+  vignetteRadius 0.75
+  vignetteSmoothness 0.5
+  filmGrain 0.012
+}
