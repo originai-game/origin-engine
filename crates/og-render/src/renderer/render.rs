@@ -3311,7 +3311,8 @@ impl Renderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.shadow_pipelines[&(Side::Front, false, false)]);
+            // No pipeline first: the draw list sets each batch's own, as do
+            // the meshlet, skinned, terrain and scatter casters below.
             pass.set_bind_group(
                 0,
                 &self.shadow_bind_group,
