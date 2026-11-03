@@ -98,6 +98,9 @@ pub(crate) struct State {
     pub layouts: BTreeMap<String, Layout>,
     /// Schema name by id index, for archetype type lists.
     pub names_by_id: Vec<String>,
+    /// Game records only other games of the process name, registered when
+    /// this world's game first names one (crate::lazy::ensure).
+    pub deferred: std::collections::BTreeSet<String>,
     pub resources: Vec<String>,
     pub systems: Vec<SystemEntry>,
     pub commands: BTreeMap<String, CommandDecl>,

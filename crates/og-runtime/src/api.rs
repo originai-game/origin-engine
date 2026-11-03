@@ -679,7 +679,7 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     // A lazy resource no game has named yet (og.TimeGroups): its default,
     // read without registering it, so reading leaves the hash alone.
     let Ok(id) = w.id_by_name(name) else {
-        if crate::lazy::is_lazy(name) {
+        if crate::lazy::is_deferred(eng, name) {
             return Ok(layout.decode(&layout.encode(None, None)?));
         }
         return Err(format!("no type named '{name}'"));

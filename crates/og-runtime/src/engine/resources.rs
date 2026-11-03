@@ -186,7 +186,7 @@ fn resource_id(eng: &Engine, name: &str) -> Result<SchemaId, String> {
 /// A lazy resource no game has named yet, read outside systems: its
 /// default, without registering it (reading leaves the hash alone).
 fn unregistered_default(eng: &Engine, name: &str) -> Option<Vec<u8>> {
-    if running(eng.id).is_some() || !crate::lazy::is_lazy(name) {
+    if running(eng.id).is_some() || !crate::lazy::is_deferred(eng, name) {
         return None;
     }
     if eng.world().ok()?.id_by_name(name).is_ok() {

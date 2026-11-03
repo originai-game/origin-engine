@@ -319,7 +319,7 @@ pub(crate) fn is_lazy(name: &str) -> bool {
 /// to the caller's own lookup.
 pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), String> {
     let Some(lazy) = LAZY.iter().find(|l| l.name == name) else {
-        return Ok(());
+        return ensure_deferred(eng, world, name);
     };
     if world.id_by_name(name).is_ok() {
         return Ok(());
@@ -370,6 +370,46 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
     Ok(())
 }
 
+/// Whether `name` is a record `eng`'s world registers when first named:
+/// an engine record in [`LAZY`] or a game record only other games of the
+/// process name (assembly's `deferred`).
+pub(crate) fn is_deferred(eng: &Engine, name: &str) -> bool {
+    is_lazy(name) || eng.state.borrow().deferred.contains(name)
+}
+
+/// Registers game record `name` if assembly deferred it (it was only other
+/// games' then): its layout's schema, a resource at its default.
+fn ensure_deferred(eng: &Engine, world: &mut World, name: &str) -> Result<(), String> {
+    let layout = {
+        let mut st = eng.state.borrow_mut();
+        if !st.deferred.remove(name) {
+            return Ok(());
+        }
+        st.layouts
+            .get(name)
+            .cloned()
+            .ok_or_else(|| format!("{name} has no layout"))?
+    };
+    let id = world
+        .register_schema(layout.schema())
+        .map_err(|e| e.reason().to_string())?;
+    if layout.kind == crate::codec::RecordKind::Resource && !world.has_resource_id(id) {
+        let bytes = layout.encode(None, None)?;
+        world
+            .insert_resource_bytes(id, &bytes)
+            .map_err(|e| e.reason().to_string())?;
+    }
+    let mut st = eng.state.borrow_mut();
+    if st.names_by_id.len() == id.index() as usize {
+        st.names_by_id.push(name.to_string());
+    }
+    if layout.kind == crate::codec::RecordKind::Resource && !st.resources.iter().any(|r| r == name)
+    {
+        st.resources.push(name.to_string());
+    }
+    Ok(())
+}
+
 /// Runs lazy record `name`'s module grant on a world that has registered
 /// it (assembly, once the modules are mounted).
 pub(crate) fn enable(world: &mut World, engine: u32, name: &str) -> Result<(), String> {
@@ -396,7 +436,7 @@ pub(crate) fn before_restore(eng: &Engine, world: &mut World, snapshot: &[u8]) {
         return;
     };
     for n in names {
-        if is_lazy(&n) {
+        if is_deferred(eng, &n) {
             let _ = ensure(eng, world, &n);
         }
     }
@@ -405,7 +445,8 @@ pub(crate) fn before_restore(eng: &Engine, world: &mut World, snapshot: &[u8]) {
 /// Whether a snapshot names a lazy record `world` has not registered: a
 /// restore asked for inside a system waits for the tick's end, where
 /// [`before_restore`] can register it.
-pub(crate) fn snapshot_needs(world_has: impl Fn(&str) -> bool, snapshot: &[u8]) -> bool {
+pub(crate) fn snapshot_needs(eng: &Engine, snapshot: &[u8]) -> bool {
+    let has = |n: &str| eng.state.borrow().names_by_id.iter().any(|have| have == n);
     og_ecs::snapshot_type_names(snapshot)
-        .is_ok_and(|names| names.iter().any(|n| is_lazy(n) && !world_has(n)))
+        .is_ok_and(|names| names.iter().any(|n| is_deferred(eng, n) && !has(n)))
 }

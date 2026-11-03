@@ -357,10 +357,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
     if let Some(f) = running(world) {
         // A save that holds a lazy record the world has not registered
         // (super::lazy): registered and checked as the tick ends.
-        if super::lazy::snapshot_needs(
-            |n| eng.state.borrow().names_by_id.iter().any(|have| have == n),
-            &snapshot,
-        ) {
+        if super::lazy::snapshot_needs(&eng, &snapshot) {
             eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
             return ok(Value::Null);
         }

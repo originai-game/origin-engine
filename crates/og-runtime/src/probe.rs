@@ -423,7 +423,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // `set` of a lazy record's field names it (super::lazy).
     probe.set_register(Box::new(move |world, name| {
         if let Ok(eng) = engine(id)
-            && super::lazy::is_lazy(name)
+            && super::lazy::is_deferred(&eng, name)
         {
             let _ = super::lazy::ensure(&eng, world, name);
         }
@@ -561,6 +561,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
         super::engine::bump_layout_epoch();
         st.layouts = a.layouts;
         st.names_by_id = a.names_by_id;
+        st.deferred = a.deferred;
         st.resources = a.resources;
         st.systems = a.systems;
         st.commands = a.commands;

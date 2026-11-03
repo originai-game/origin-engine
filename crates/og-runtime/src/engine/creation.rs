@@ -72,6 +72,9 @@ pub(crate) struct Assembled {
     pub probe: Option<og_probe::Probe>,
     pub layouts: BTreeMap<String, Layout>,
     pub names_by_id: Vec<String>,
+    /// Game records only other games name, left unregistered until this
+    /// game names one (super::super::lazy::ensure).
+    pub deferred: BTreeSet<String>,
     pub resources: Vec<String>,
     pub systems: Vec<SystemEntry>,
     pub commands: BTreeMap<String, CommandDecl>,
@@ -140,10 +143,16 @@ pub(crate) fn assemble(
     previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
 ) -> Result<Assembled, String> {
     bump_layout_epoch();
-    let (decl, records, errors, all_systems, all_hooks, commands) = DECL.with(|d| {
+    let (decl, others, records, errors, all_systems, all_hooks, commands) = DECL.with(|d| {
         let d = d.borrow();
         (
             d.games.get(game as usize).cloned(),
+            d.games
+                .iter()
+                .enumerate()
+                .filter(|&(i, _)| i != game as usize)
+                .map(|(_, g)| g.clone())
+                .collect::<Vec<_>>(),
             d.records.clone(),
             d.errors.clone(),
             d.systems.clone(),
@@ -244,8 +253,24 @@ pub(crate) fn assemble(
         layouts.insert(layout.schema.clone(), layout);
     }
     // The game's own records, in declaration order; its resources start at
-    // their defaults.
+    // their defaults. A record only other games of the process name (a
+    // second game's resource, declared beside this one in a test run) is
+    // not this world's: it is registered when this game first names it
+    // (super::super::lazy::ensure), so one game's declarations never reach
+    // another's type table, snapshot or hash.
+    let ours = named_by(&game, &all_systems, &all_hooks);
+    let theirs: BTreeSet<String> = others
+        .iter()
+        .flat_map(|g| named_by(g, &all_systems, &all_hooks))
+        .filter(|n| !ours.contains(n))
+        .collect();
+    let mut deferred = BTreeSet::new();
     for layout in &records {
+        if theirs.contains(&layout.schema) {
+            deferred.insert(layout.schema.clone());
+            layouts.insert(layout.schema.clone(), layout.clone());
+            continue;
+        }
         world.register_schema(layout.schema()).map_err(err)?;
         if layout.kind == RecordKind::Resource {
             let bytes = layout.encode(None, None)?;
@@ -540,6 +565,7 @@ pub(crate) fn assemble(
         probe: Some(probe),
         layouts,
         names_by_id,
+        deferred,
         resources,
         systems,
         commands: all_commands,
@@ -550,6 +576,28 @@ pub(crate) fn assemble(
         feel,
         feel_records,
     })
+}
+
+/// Every record name game `g` declares it uses: its resources and what its
+/// systems and hooks read, write and filter on.
+fn named_by(g: &GameDecl, systems: &[SystemDecl], hooks: &[HookDecl]) -> BTreeSet<String> {
+    let mut names: BTreeSet<String> = g.resources.iter().cloned().collect();
+    for s in g.systems.iter().filter_map(|&i| systems.get(i as usize)) {
+        names.extend(s.reads.iter().chain(&s.writes).map(|t| t.name.clone()));
+        names.extend(
+            s.without
+                .iter()
+                .chain(&s.changed)
+                .chain(&s.added)
+                .chain(&s.removed)
+                .cloned(),
+        );
+    }
+    for h in g.hooks.iter().filter_map(|&i| hooks.get(i as usize)) {
+        names.insert(h.component.clone());
+        names.extend(h.reads.iter().chain(&h.writes).map(|t| t.name.clone()));
+    }
+    names
 }
 
 /// The layouts extraction reads, from an engine's registered records.
@@ -609,6 +657,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     let state = State {
         layouts: a.layouts,
         names_by_id: a.names_by_id,
+        deferred: a.deferred,
         resources: a.resources,
         systems: a.systems,
         commands: a.commands,

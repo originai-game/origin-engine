@@ -17,6 +17,9 @@
 // - the hosts write different saves for one world, or one host's save does
 //   not restore on the other to the same hash, or a publish build lacks it →
 //   "one world saves to the same text on both hosts …"
+// - one game's records reach another game's world in the same process (a
+//   test file's resource in every later file's snapshots and hashes) →
+//   "a world holds only its own game's records …"
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
@@ -100,6 +103,30 @@ function x(engine: Engine, name: string): number {
 
 beforeAll(() => {
   loadNativeHost();
+});
+
+test("a world holds only its own game's records: another game's resource and component are registered when it names them", () => {
+  const lone = createEngine(og.game({ tick: 60, seed: 11 }) as unknown as GameToken);
+  if (!lone.ok) throw new Error(lone.reason);
+  const engine = lone.value;
+  const types = () => {
+    const s = engine.world.snapshot();
+    if (!s.ok) throw new Error(s.reason);
+    const opened = engine.world.openSave(s.value);
+    if (!opened.ok) throw new Error(opened.reason);
+    return opened.value.types().map((t) => t.name);
+  };
+  expect(types()).not.toContain("SvRun");
+  expect(types()).not.toContain("SvPos");
+  // Named, they are this world's too: the resource at its default, the component inserted.
+  const runs = engine.world.resource(SvRun);
+  expect(runs.ok && (runs.value as { coins: number }).coins).toBe(0);
+  const e = engine.world.spawn({ name: "lone" });
+  if (!e.ok) throw new Error(e.reason);
+  expect(engine.world.insert(e.value, SvPos, { x: 4, v: 1 }).ok).toBeTrue();
+  expect(types()).toContain("SvPos");
+  expect(x(engine, "lone")).toBe(4);
+  engine.destroy();
 });
 
 test("a save restored between ticks hashes as the saved world, and the world goes on as if it never left", () => {
