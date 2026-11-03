@@ -222,7 +222,9 @@ impl SkyCapture {
         let size = std::mem::size_of::<FrameUniform>();
         for face in faces {
             let mut u = crate::probes::face_uniform(base, &frames[face as usize], camera.position);
-            // No stars: they would only add noise to the light.
+            // No stars: they would only add noise to the light. The sky
+            // as drawn: it is the environment the intensity then scales.
+            u.view_up[3] = 0.0;
             u.atmosphere.sky[2][3] = 0.0;
             let at = face as usize * self.stride as usize;
             bytes[at..at + size].copy_from_slice(bytemuck::bytes_of(&u));

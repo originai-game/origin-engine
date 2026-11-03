@@ -43,7 +43,7 @@ fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
   let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
   let eye = near.xyz / near.w;
   let dir = normalize(far.xyz / far.w - eye);
-  return vec4<f32>(sky_fog(sky_background(eye, dir), dir), 1.0);
+  return vec4<f32>(sky_fog(sky_background(eye, dir) * (1.0 - frame.view_up.w), dir), 1.0);
 }
 
 // The background along a view ray (through the grounded dome when there
@@ -516,5 +516,5 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   var sky = sky_look(dir);
   if (scatter_on()) { sky = sky_physical_look(dir); }
   sky = aurora_over(sky, dir, in.pos.xy);
-  return vec4<f32>(sky_fog(clouds_over(sky, dir, in.pos.xy), dir), 1.0);
+  return vec4<f32>(sky_fog(clouds_over(sky, dir, in.pos.xy) * (1.0 - frame.view_up.w), dir), 1.0);
 }

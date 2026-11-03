@@ -622,6 +622,12 @@ pub(crate) fn face_uniform(
     u.view_pos = at.extend(0.0).to_array();
     u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
     (u.view_right, u.view_up) = f.axes();
+    // The capture holds the light as it reaches surfaces, as the frame
+    // draws them: its sky by the environment's intensity, as a surface
+    // outside the box takes the sky's light (the lit surfaces carry it
+    // already). The shaders then take the capture as it is (the probe's
+    // and the light volumes' intensity over params.x).
+    u.view_up[3] = 1.0 - base.params[0].max(0.0);
     u.cluster = [0.0; 4];
     u.caustics = [[0.0; 4]; 4];
     u.stylise = [0.0; 4];

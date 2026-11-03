@@ -66,7 +66,7 @@ struct Frame {
   // The camera's axes in the world: billboards face the camera of the
   // group they are drawn with (sprite.wgsl face_axes).
   view_right: vec4<f32>,      // xyz: right
-  view_up: vec4<f32>,         // xyz: up
+  view_up: vec4<f32>,         // xyz: up, w: 1 - the background's scale (a probe face: the environment's intensity; 0 elsewhere)
   hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / pi (0: off)
   hemi_ground: vec4<f32>,     // rgb: its ground colour
   material_surface: vec4<f32>,  // the material style's surface: x 0 none, 1 clay, 2 paper, 3 plastic; y strength; z scale (m)

@@ -401,3 +401,29 @@ green on its right, the lit ceiling above, sharp at 0.3 and blurring at
 environment intensity 0.6), whose probe reflections and ambient inside
 the probe's box brighten by 1/0.6. Scenes at intensity 1
 (`probe-interior`, the two rooms, outdoor) must not move.
+
+### Second fix-forward: the capture's sky is scaled as the environment is
+
+The art director found a seam in `meshlet-views` after c84208366: the
+floor inside the probe's box stepped up from 0.667 to 0.711, and its
+shadows lifted from 0.556 to 0.630 and turned teal. Dividing the
+intensity out was right for the capture's lit surfaces, whose ambient
+already carries the environment's intensity. It was wrong for the sky
+the capture draws behind them, which the sky pass draws at full
+radiance. Outside the box a surface takes that sky × 0.6 (the scene's
+intensity); inside, the probe gave it × 1. Probe faces (and the
+light-volume grid's captures, the same path) now draw their background
+× the environment's intensity (`frame.view_up.w` = 1 − scale, 0 in every
+other uniform; the live sky's capture resets it, as it is the
+environment itself). Now the probe's sky matches the environment's on
+both sides of the face, and only the lit surfaces it adds differ.
+
+Frames: `meshlet-views` should be flat across the box's far face again:
+no step on the ground, and the shadows inside at their old level, not
+teal. The ball's reflection should keep its new brightness on the trees
+and ground, with the sky as before. The light-volume mirror, glossy and
+rough stills keep c84208366's fix (black background, nothing scaled).
+Baked probe files from `og bake probes` hold their sky at full radiance;
+re-bake them for scenes with an environment intensity other than 1.
+What's left at the box's face is its 1 m blend distance (the default),
+about 4 rows at that grazing angle. That's the scene's setting.
