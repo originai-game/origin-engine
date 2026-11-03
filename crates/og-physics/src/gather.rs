@@ -9,7 +9,7 @@
 use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
-    CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Garment, Joint,
+    Buoyancy, CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Garment, Joint,
     PlatformerController, Ragdoll, Rope, SoftBody, Vehicle, VehicleWheel, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
@@ -407,6 +407,13 @@ pub(crate) struct Scene {
     /// The garments (lazy), by entity (ascending): their skin's pose comes
     /// from the host (`Shared::garment_poses`).
     pub garments: Vec<(Entity, Garment)>,
+    /// The floating bodies (og.Buoyancy, lazy), by entity (ascending).
+    pub floats: Vec<(Entity, Buoyancy)>,
+    /// The world's clock in seconds (its tick over its rate) for the sea
+    /// the floating bodies ride, and a tick's length in it; set only with
+    /// some.
+    pub seconds: f64,
+    pub tick_seconds: f64,
 }
 
 /// The most og.VehicleWheel children a vehicle takes.
@@ -430,6 +437,7 @@ pub(crate) struct LazyIds {
     pub wheel: Option<SchemaId>,
     pub soft: Option<SchemaId>,
     pub garment: Option<SchemaId>,
+    pub buoyancy: Option<SchemaId>,
 }
 
 impl LazyIds {
@@ -439,6 +447,7 @@ impl LazyIds {
             wheel: id(VehicleWheel::NAME),
             soft: id(SoftBody::NAME),
             garment: id(Garment::NAME),
+            buoyancy: id(Buoyancy::NAME),
         }
     }
 }
@@ -920,6 +929,28 @@ pub(crate) fn softs<'w>(
                 transform_of,
             );
             out.push((*e, p, q, body));
+        }
+    }
+    og_core::sort::sort_by_key(&mut out, |s| s.0.to_bits());
+    Ok(out)
+}
+
+/// The og.Buoyancy entities (`buoyancy`, lazily registered, so found by a
+/// query made while the step runs), in entity order.
+pub(crate) fn floats<'w>(
+    query: &dyn Fn(&QueryDesc) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    buoyancy: SchemaId,
+) -> Result<Vec<(Entity, Buoyancy)>> {
+    let desc = QueryDesc {
+        read: vec![Buoyancy::NAME.to_string()],
+        ..QueryDesc::default()
+    };
+    let layout = Layout::of(&Buoyancy::schema());
+    let mut out = Vec::new();
+    for a in query(&desc)? {
+        for e in a.entities() {
+            out.push((*e, layout.decode::<Buoyancy>(&get(*e, buoyancy)?)?));
         }
     }
     og_core::sort::sort_by_key(&mut out, |s| s.0.to_bits());

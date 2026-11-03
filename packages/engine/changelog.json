@@ -396,6 +396,10 @@
       {
         "member": "og.Water.flowMap",
         "summary": "three.js Water2's flow map: the flow's direction per point, for the normal map's layers or the travelling waves (R5)."
+      },
+      {
+        "member": "og.Buoyancy",
+        "summary": "Floats a dynamic body on og.Water (a lake or a sea's waves) and og.WaterSurface by its voxelised hull: each cell under the surface lifts by the water it displaces at that cell, so hulls right themselves and pitch and roll with the waves, computed in the tick; submerged is written. Lazily registered: a world without it hashes as before."
       }
     ],
     "fixed": [

@@ -7,6 +7,7 @@
 mod beyond_determinism;
 mod bodies;
 mod breaks_and_hooks;
+mod buoyancy;
 mod character_ground;
 mod compound;
 mod contact_hits;

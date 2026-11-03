@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Added: `og.Buoyancy`, floating bodies on water (R5).** A component
+  beside og.RigidBody and og.Collider (`waterDensity`, `samples`, `drag`,
+  `angularDrag`, written `submerged`): the body's colliders voxelised into
+  a hull whose cells under an og.Water (a flat lake, or a sea's waves as
+  the grid draws them) or an og.WaterSurface (its rest level) lift it by
+  the water they displace at each cell, so hulls right themselves and
+  pitch and roll with the waves, computed in the tick and the same through
+  a restore. `og.physics.waterHeight`'s sea is the same surface. Lazily
+  registered: a world that never names it hashes as before.
 - **Screen documents and `og ui eject` (docs/ui.md §11.1).** The engine
   package ships `src/ui/screens/`: 59 `type screen` documents, one or
   more for every screen type of docs/ui.md Appendix B, each with its

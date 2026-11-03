@@ -841,6 +841,7 @@ fn step_here(
     super::ragdolls(scene, dt, sim, shared, &mut out)?;
     laps.lap(Phase::Ragdolls);
     ext::water(scene, settings, dt, sim, &handles, &mut out)?;
+    ext::buoyancy(scene, settings, dt, &shared.waters, sim, &handles, &mut out);
     laps.lap(Phase::Water);
     let sleeping = sleep::before_step(settings, scene, sim, &handles);
     let pre = rest_poses(scene, sim, &handles);

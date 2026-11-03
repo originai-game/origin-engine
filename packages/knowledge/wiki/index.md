@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2360 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2361 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -939,6 +939,7 @@ Field units the docs and Tune use.
 | [`og.Blendshapes`](anim.md#record-Blendshapes) | component | anim | — |
 | [`og.BodySlept`](physics.md#record-BodySlept) | event | physics | — |
 | [`og.BodyWoke`](physics.md#record-BodyWoke) | event | physics | — |
+| [`og.Buoyancy`](physics.md#record-Buoyancy) | component | physics | — |
 | [`og.Camera`](camera.md#record-Camera) | resource | camera | — |
 | [`og.camera.kick`](camera.md#fn-kick) | function | camera | `og_camera_kick` |
 | [`og.camera.punch`](camera.md#fn-punch) | function | camera | `og_camera_punch` |

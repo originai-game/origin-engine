@@ -1555,6 +1555,55 @@ pub struct Splash {
     pub speed: f32,
 }
 
+/// Floats a dynamic rigid body (3D profile) on the water under it: an
+/// og.WaterSurface, an og.Water (a flat lake, or a sea with a wind: its
+/// waves as drawn) or both on one entity. Its hull is its colliders' box
+/// cut into `samples` cells a side, kept where a cell's centre lies in a
+/// collider; each cell under the surface at its point pushes up by the
+/// water it displaces (Archimedes: `waterDensity` × gravity × volume) at
+/// that point, so a body rights itself and pitches with the waves, and is
+/// slowed by `drag` and `angularDrag` as far as it is under. Lazily
+/// registered: a world without it keeps its hash. A body with it takes no
+/// og.WaterSurface `buoyancy` (only its splash).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Buoyancy")]
+pub struct Buoyancy {
+    /// The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface.
+    #[reflect(name = "waterDensity", min = 0, unit = "kg/m3", default = 2, tunable)]
+    pub water_density: f32,
+    /// Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely.
+    #[reflect(min = 1, max = 12, default = 4)]
+    pub samples: u32,
+    /// How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its spin too.
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 4, tunable)]
+    pub drag: f32,
+    /// How much of its spin it loses each second when fully under (in part when in part).
+    #[reflect(
+        name = "angularDrag",
+        min = 0,
+        max = 100,
+        unit = "1/s",
+        default = 3,
+        tunable
+    )]
+    pub angular_drag: f32,
+    /// Written: the fraction of its hull under water after the last step (0 afloat above it or out of water, 1 sunk).
+    #[reflect(min = 0, max = 1)]
+    pub submerged: f32,
+}
+
+impl Default for Buoyancy {
+    fn default() -> Self {
+        Buoyancy {
+            water_density: 2.0,
+            samples: 4,
+            drag: 4.0,
+            angular_drag: 3.0,
+            submerged: 0.0,
+        }
+    }
+}
+
 // ---- ragdolls -------------------------------------------------------------
 
 /// A ragdoll over an og.Skeleton: a capsule body per bone with a parent,

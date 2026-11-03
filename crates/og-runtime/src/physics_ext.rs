@@ -291,61 +291,82 @@ fn position_of(eng: &Engine, e: Entity) -> Result<Vec3, String> {
     Ok(at)
 }
 
+/// The world's og.Water bodies in entity order (those drawn over a mesh
+/// left out: an arbitrary shape, no square of water): each at its world
+/// position, its sea (og.Water.wind) and og.WorldOrigin's zero. What
+/// og.Buoyancy floats on and og.physics.waterHeight adds.
+pub(crate) fn waters(eng: &Engine, w: &og_ecs::World) -> Vec<og_physics::WaterBody> {
+    use og_physics::{Parent, Transform};
+    let (layout, origin) = {
+        let st = eng.state.borrow();
+        (
+            st.layouts.get("og.Water").cloned(),
+            st.layouts.get(crate::origin::RESOURCE).cloned(),
+        )
+    };
+    let rows = rows(w, layout.as_ref());
+    if rows.is_empty() {
+        return Vec::new();
+    }
+    let zero = crate::origin::zero(w, origin.as_ref());
+    rows.into_iter()
+        .filter(|(_, v)| v["geometry"].as_f64().unwrap_or(0.0) as u64 == 0)
+        .filter_map(|(id, v)| {
+            let e = Entity::from_bits(id);
+            let t = w.get::<Transform>(e).ok()?;
+            let (position, _) = og_physics::world_pose(
+                e,
+                (t.position, t.quaternion),
+                |c| w.get::<Parent>(c).ok().map(|p| Entity::from_bits(p.entity)),
+                |p| w.get::<Transform>(p).ok(),
+            );
+            let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
+            Some(og_physics::WaterBody {
+                entity: id,
+                position,
+                size: pair("size", 16.0),
+                segments: f(&v, "segments", 1.0).max(1.0) as u32,
+                sea: og_core::ocean::Ocean::new(
+                    pair("wind", 0.0),
+                    f(&v, "swell", 1.0),
+                    f(&v, "choppiness", 0.6),
+                ),
+                zero,
+            })
+        })
+        .collect()
+}
+
+/// As each tick starts (after og.WorldOrigin's shift): the og.Water bodies
+/// og.physics floats og.Buoyancy bodies on this tick, read only once a game
+/// names og.Buoyancy.
+pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
+    let Ok(p) = physics(eng) else {
+        return;
+    };
+    if world.id_by_name("og.Buoyancy").is_ok() {
+        p.set_waters(waters(eng, world));
+    }
+}
+
 /// An og.Water's sea (og.Water.wind, `og_core::ocean`) at world point
 /// (`x`, `z`) this tick: its height over the water's rest level, inside the
-/// surface's size around `at` (0 outside); `None` without an og.Water with
+/// surface's size around it (0 outside); `None` without an og.Water with
 /// a wind. The waves are the absolute world's (og.WorldOrigin's zero added),
-/// at the tick over its rate, as the renderer draws them.
-fn sea_height(eng: &Engine, e: Entity, at: Vec3, x: f64, z: f64) -> Result<Option<f32>, String> {
-    let layout = eng.state.borrow().layouts.get("og.Water").cloned();
+/// at the tick over its rate, as the grid the renderer draws them on
+/// ([`og_physics::WaterBody::height`], what og.Buoyancy rides).
+fn sea_height(eng: &Engine, e: Entity, x: f64, z: f64) -> Result<Option<f32>, String> {
     let w = eng.world()?;
-    let Some((_, v)) = rows(w, layout.as_ref())
-        .into_iter()
-        .find(|(id, _)| *id == e.to_bits())
-    else {
+    let Some(water) = waters(eng, w).into_iter().find(|b| b.entity == e.to_bits()) else {
         return Ok(None);
     };
-    let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
-    // A surface over a mesh has no sea (og.Water.wind).
-    if v["geometry"].as_f64().unwrap_or(0.0) as u64 != 0 {
+    if water.sea.is_none() {
         return Ok(None);
     }
-    let Some(sea) = og_core::ocean::Ocean::new(
-        pair("wind", 0.0),
-        f(&v, "swell", 1.0),
-        f(&v, "choppiness", 0.6),
-    ) else {
-        return Ok(None);
-    };
-    let half = pair("size", 16.0) * 0.5;
-    if (x - f64::from(at.x)).abs() > f64::from(half.x)
-        || (z - f64::from(at.z)).abs() > f64::from(half.y)
-    {
-        return Ok(Some(0.0));
-    }
-    let origin = eng
-        .state
-        .borrow()
-        .layouts
-        .get(crate::origin::RESOURCE)
-        .cloned();
-    let zero = crate::origin::zero(w, origin.as_ref());
     let time = w.time();
     let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     let seconds = time.tick as f64 / f64::from(rate);
-    // The sea as its grid draws it (og-render water.rs, the same cells): a
-    // body rides the waves the player sees, not the ripples only the
-    // normals carry.
-    let size = pair("size", 16.0);
-    let segments =
-        og_core::ocean::grid_segments(f(&v, "segments", 1.0).max(1.0) as u32, size.max_element());
-    let local = glam::Vec2::new((x - f64::from(at.x)) as f32, (z - f64::from(at.z)) as f32);
-    let cell = og_core::ocean::grid_cell(local, half, size.max_element() / segments as f32);
-    Ok(Some(sea.height_on_grid(
-        glam::DVec2::new(x + zero.x, z + zero.z),
-        seconds,
-        cell,
-    )))
+    Ok(Some(water.height(x, z, seconds).unwrap_or(0.0)))
 }
 
 pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
@@ -353,7 +374,7 @@ pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
         let eng = engine(world)?;
         let e = entity(e)?;
         let at = position_of(&eng, e)?;
-        let sea = sea_height(&eng, e, at, x, z)?;
+        let sea = sea_height(&eng, e, x, z)?;
         let p = match (physics(&eng), sea) {
             (Ok(p), _) => p,
             (Err(_), Some(h)) => return Ok(json!(at.y + h)),

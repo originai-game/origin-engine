@@ -99,6 +99,7 @@ module physics {
 | [`og.Fluid3D`](#record-Fluid3D) | component | A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers. |
 | [`og.WaterSurface`](#record-WaterSurface) | component | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them. |
 | [`og.WaterLine`](#record-WaterLine) | component | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it. |
+| [`og.Buoyancy`](#record-Buoyancy) | component | Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (a flat lake, or a sea with a wind: its waves as drawn, og.physics.waterHeight's) or both on one entity. Its hull is its colliders' box cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up by the water it displaces (Archimedes: `waterDensity` × gravity × its share of the colliders' volume) at that cell, so a hull rights itself, pitches and rolls with the waves, and is slowed by `drag` and `angularDrag` as far as it is under. Computed in the tick, the same on every run and after a restore; the sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides the same water. A body with it takes no og.WaterSurface `buoyancy` (only its splash). Insert it beside og.RigidBody and og.Collider: `{}` floats a body of the default density half under. |
 | [`og.Splash`](#record-Splash) | event | Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick. |
 | [`og.Ragdoll`](#record-Ragdoll) | component | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state (the og.physics state block), not entities. |
 | [`QueryFilter`](#type-QueryFilter) | desc struct | Which colliders a scene query considers. The zero value considers every solid collider on every layer. |
@@ -172,7 +173,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 9843</sub>
+<sub>`api.ogt` line 9877</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -202,7 +203,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 9850</sub>
+<sub>`api.ogt` line 9884</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -232,7 +233,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 9857</sub>
+<sub>`api.ogt` line 9891</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -262,7 +263,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 9864</sub>
+<sub>`api.ogt` line 9898</sub>
 
 <a id="fn-overlap"></a>
 
@@ -292,7 +293,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 9871</sub>
+<sub>`api.ogt` line 9905</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -328,7 +329,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 9878</sub>
+<sub>`api.ogt` line 9912</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -364,7 +365,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 9889</sub>
+<sub>`api.ogt` line 9923</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -396,7 +397,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 9900</sub>
+<sub>`api.ogt` line 9934</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -428,7 +429,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 9908</sub>
+<sub>`api.ogt` line 9942</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -460,7 +461,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 9916</sub>
+<sub>`api.ogt` line 9950</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -490,7 +491,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 9978</sub>
+<sub>`api.ogt` line 10012</sub>
 
 <a id="fn-garmentPoints"></a>
 
@@ -520,7 +521,7 @@ fn garmentPoints {
 }
 ```
 
-<sub>`api.ogt` line 9985</sub>
+<sub>`api.ogt` line 10019</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -550,7 +551,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 9992</sub>
+<sub>`api.ogt` line 10026</sub>
 
 <a id="fn-softBodyPoints"></a>
 
@@ -580,7 +581,7 @@ fn softBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 10005</sub>
+<sub>`api.ogt` line 10039</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -610,7 +611,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 10012</sub>
+<sub>`api.ogt` line 10046</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -640,7 +641,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 10019</sub>
+<sub>`api.ogt` line 10053</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -674,7 +675,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 10026</sub>
+<sub>`api.ogt` line 10060</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -704,7 +705,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 10035</sub>
+<sub>`api.ogt` line 10069</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -734,7 +735,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 10042</sub>
+<sub>`api.ogt` line 10076</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -766,7 +767,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 10049</sub>
+<sub>`api.ogt` line 10083</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -796,7 +797,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 10057</sub>
+<sub>`api.ogt` line 10091</sub>
 
 <a id="fn-stats"></a>
 
@@ -824,7 +825,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 10085</sub>
+<sub>`api.ogt` line 10119</sub>
 
 ## Components, resources and events
 
@@ -3053,6 +3054,60 @@ component WaterLine {
 
 <sub>`api.ogt` line 9579</sub>
 
+<a id="record-Buoyancy"></a>
+
+### `og.Buoyancy` (component)
+
+Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (a flat lake, or a sea with a wind: its waves as drawn, og.physics.waterHeight's) or both on one entity. Its hull is its colliders' box cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up by the water it displaces (Archimedes: `waterDensity` × gravity × its share of the colliders' volume) at that cell, so a hull rights itself, pitches and rolls with the waves, and is slowed by `drag` and `angularDrag` as far as it is under. Computed in the tick, the same on every run and after a restore; the sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides the same water. A body with it takes no og.WaterSurface `buoyancy` (only its splash). Insert it beside og.RigidBody and og.Collider: `{}` floats a body of the default density half under.
+
+Token `og.Buoyancy`, registered under the schema name `og.Buoyancy`; its value type is `Buoyancy`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `waterDensity` | `number` | `2` | ≥ 0 | `kgPerM3` | tunable | The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks. |
+| `samples` | `number` | `4` | 1 … 12 | — | — | Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely, at more cost. |
+| `drag` | `number` | `4` | 0 … 100 | `perSecond` | tunable | How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its turning too, so it settles instead of bobbing. |
+| `angularDrag` | `number` | `3` | 0 … 100 | `perSecond` | tunable | How much of its spin it loses each second when fully under (in part when in part). |
+| `submerged` | `number` | `0` | 0 … 1 | — | read only | Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship. |
+
+```ogt
+component Buoyancy {
+  doc "Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (a flat lake, or a sea with a wind: its waves as drawn, og.physics.waterHeight's) or both on one entity. Its hull is its colliders' box cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up by the water it displaces (Archimedes: `waterDensity` × gravity × its share of the colliders' volume) at that cell, so a hull rights itself, pitches and rolls with the waves, and is slowed by `drag` and `angularDrag` as far as it is under. Computed in the tick, the same on every run and after a restore; the sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides the same water. A body with it takes no og.WaterSurface `buoyancy` (only its splash). Insert it beside og.RigidBody and og.Collider: `{}` floats a body of the default density half under."
+  field waterDensity f32 "The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks." {
+    default 2
+    min 0
+    unit kgPerM3
+    tunable true
+  }
+  field samples u32 "Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely, at more cost." {
+    default 4
+    min 1
+    max 12
+  }
+  field drag f32 "How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its turning too, so it settles instead of bobbing." {
+    default 4
+    min 0
+    max 100
+    unit perSecond
+    tunable true
+  }
+  field angularDrag f32 "How much of its spin it loses each second when fully under (in part when in part)." {
+    default 3
+    min 0
+    max 100
+    unit perSecond
+    tunable true
+  }
+  field submerged f32 "Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship." {
+    min 0
+    max 1
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 9632</sub>
+
 <a id="record-Splash"></a>
 
 ### `og.Splash` (event)
@@ -3083,7 +3138,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 9632</sub>
+<sub>`api.ogt` line 9666</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -3151,7 +3206,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 9645</sub>
+<sub>`api.ogt` line 9679</sub>
 
 ## Types
 
@@ -3179,7 +3234,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 9690</sub>
+<sub>`api.ogt` line 9724</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -3214,7 +3269,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 9698</sub>
+<sub>`api.ogt` line 9732</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -3243,7 +3298,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 9714</sub>
+<sub>`api.ogt` line 9748</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -3283,7 +3338,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 9725</sub>
+<sub>`api.ogt` line 9759</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -3318,7 +3373,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 9745</sub>
+<sub>`api.ogt` line 9779</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -3351,7 +3406,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 9761</sub>
+<sub>`api.ogt` line 9795</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -3393,7 +3448,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 9775</sub>
+<sub>`api.ogt` line 9809</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -3432,7 +3487,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 9797</sub>
+<sub>`api.ogt` line 9831</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -3459,7 +3514,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 9815</sub>
+<sub>`api.ogt` line 9849</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -3489,7 +3544,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 9825</sub>
+<sub>`api.ogt` line 9859</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -3513,7 +3568,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 9836</sub>
+<sub>`api.ogt` line 9870</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -3549,7 +3604,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 9924</sub>
+<sub>`api.ogt` line 9958</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -3592,7 +3647,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 9941</sub>
+<sub>`api.ogt` line 9975</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -3616,7 +3671,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 9963</sub>
+<sub>`api.ogt` line 9997</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3639,7 +3694,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 9970</sub>
+<sub>`api.ogt` line 10004</sub>
 
 <a id="type-SoftBodyPoints"></a>
 
@@ -3660,7 +3715,7 @@ struct SoftBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 9999</sub>
+<sub>`api.ogt` line 10033</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3685,7 +3740,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 10064</sub>
+<sub>`api.ogt` line 10098</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3716,7 +3771,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 10073</sub>
+<sub>`api.ogt` line 10107</sub>
 
 ## Constants
 

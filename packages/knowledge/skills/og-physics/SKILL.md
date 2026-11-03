@@ -155,6 +155,23 @@ deterministic and part of snapshots (`og api show physics`):
   side-on skinned model whose bones lie in the xy plane: the bones are
   rapier2d bodies on hinges about z (the fx-showcase `ragdoll2d` station).
 
+- `og.Buoyancy` — floats a dynamic body (3D) on the water under it: an
+  og.Water (a flat lake, or a sea with `wind`, riding its waves as drawn)
+  or an og.WaterSurface (at its rest level). Insert it beside
+  og.RigidBody and og.Collider; `{}` floats a body of the colliders'
+  default density half under (`waterDensity` 2; a body denser than it
+  sinks). Its hull is its colliders' box cut into `samples` cells a side
+  (4: up to 64 points; 6 follows a boat's shape and the swell better),
+  each lifting where it is under, so a hull rights itself and pitches and
+  rolls with the waves; `drag` and `angularDrag` settle it. Read
+  `submerged` (0 to 1) for wakes, splashes and a sinking ship. Set a
+  boat down on the water where it starts (`og.physics.waterHeight` in
+  `start`), or it drops in and bobs; a light cube floats tipped on an
+  edge, as a wooden one does, so give a hull a flat box. Steer one with
+  `applyForce` at its stern. A body with it takes no og.WaterSurface
+  `buoyancy`, only its splash. `tests/evidence/r5-water/boats` floats
+  three boats and four buoys on a gale.
+
 Readouts (`ropePoints`, `clothPoints`, `fluidParticles`,
 `fluid3dParticles`, `waterHeight`, `vehicleWheels`, `ragdollPose`) show
 the last step. `templates/fx-showcase` has a station for each.

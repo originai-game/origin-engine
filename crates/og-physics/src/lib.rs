@@ -370,6 +370,53 @@ pub(crate) struct Shared {
     /// Forces and impulses waiting for the next step, in the order given
     /// (world state, saved with the simulation).
     pub pushes: Vec<Push>,
+    /// The og.Water bodies og.Buoyancy floats on, as the host read them
+    /// as the tick started ([`PhysicsSystem::set_waters`]; derived from the
+    /// world's components, not world state).
+    pub waters: Vec<WaterBody>,
+}
+
+/// A body of water from an og.Water (a renderer's record the host reads),
+/// for og.Buoyancy: a square of `size` centred on `position` (its y the
+/// rest level), flat or raised by its `sea` (og.Water.wind), whose waves
+/// are the absolute world's (`zero`, og.WorldOrigin's, added to a point)
+/// as its grid of `segments` cells a side draws them
+/// ([`og_core::ocean::Ocean::height_on_grid`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct WaterBody {
+    pub entity: u64,
+    pub position: Vec3,
+    pub size: og_core::glam::Vec2,
+    pub segments: u32,
+    pub sea: Option<og_core::ocean::Ocean>,
+    pub zero: og_core::glam::DVec3,
+}
+
+impl WaterBody {
+    /// The surface's height over the rest level at world point (`x`, `z`)
+    /// at `seconds` of the world's clock (its tick over its rate); `None`
+    /// outside the square.
+    pub fn height(&self, x: f64, z: f64, seconds: f64) -> Option<f32> {
+        let half = self.size * 0.5;
+        let local = og_core::glam::Vec2::new(
+            (x - f64::from(self.position.x)) as f32,
+            (z - f64::from(self.position.z)) as f32,
+        );
+        if !(local.x.abs() <= half.x && local.y.abs() <= half.y) {
+            return None;
+        }
+        let Some(sea) = &self.sea else {
+            return Some(0.0);
+        };
+        let extent = self.size.max_element();
+        let segments = og_core::ocean::grid_segments(self.segments.max(1), extent);
+        let cell = og_core::ocean::grid_cell(local, half, extent / segments as f32);
+        Some(sea.height_on_grid(
+            og_core::glam::DVec2::new(x + self.zero.x, z + self.zero.z),
+            seconds,
+            cell,
+        ))
+    }
 }
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
@@ -668,7 +715,7 @@ pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
 /// The physics types registered only once a game uses them, so a world
 /// that never does keeps the type table, saves and hash it had before
 /// G2-3 added them: [`install`] leaves them out and [`enable`] adds one.
-pub const LAZY: [&str; 7] = [
+pub const LAZY: [&str; 8] = [
     BodySlept::NAME,
     BodyWoke::NAME,
     JointBroken::NAME,
@@ -676,6 +723,7 @@ pub const LAZY: [&str; 7] = [
     VehicleWheel::NAME,
     SoftBody::NAME,
     Garment::NAME,
+    Buoyancy::NAME,
 ];
 
 /// Registers lazy physics type `name` (one of [`LAZY`]) and grants it to
@@ -691,6 +739,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         VehicleWheel::NAME => world.register::<VehicleWheel>().map(drop)?,
         SoftBody::NAME => world.register::<SoftBody>().map(drop)?,
         Garment::NAME => world.register::<Garment>().map(drop)?,
+        Buoyancy::NAME => world.register::<Buoyancy>().map(drop)?,
         other => {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -1315,6 +1364,13 @@ impl PhysicsSystem {
             .ragdoll_targets
             .insert(entity.to_bits(), targets);
     }
+
+    /// The og.Water bodies the next steps float og.Buoyancy bodies on (the
+    /// host reads them from the world as each tick starts, in entity
+    /// order), replacing the last ones.
+    pub fn set_waters(&self, waters: Vec<WaterBody>) {
+        lock(&self.shared).waters = waters;
+    }
 }
 
 /// Scene queries over a fixed set of colliders (see [`PhysicsSystem::query`]).
@@ -1521,6 +1577,8 @@ pub(crate) struct StepOut {
     pub splashes: Vec<Splash>,
     /// The soft volumes' written fields.
     pub softs: Vec<(Entity, SoftBody)>,
+    /// The floating bodies' written fields (og.Buoyancy.submerged).
+    pub floats: Vec<(Entity, Buoyancy)>,
     /// What sleep changed (og.Physics.sleepTicks).
     pub sleep: SleepOut,
     /// The step's phases, timed on the thread it ran on.
@@ -1562,6 +1620,18 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
             &|e, id| ctx.get_bytes(e, id),
             garment,
         )?;
+    }
+    if let Some(buoyancy) = lazy.buoyancy {
+        scene.floats = gather::floats(
+            &|d| ctx.query_with(d),
+            &|e, id| ctx.get_bytes(e, id),
+            buoyancy,
+        )?;
+        // The world's clock as the sea's (og.physics.waterHeight's, the renderer's): its tick over its rate.
+        let time = ctx.time();
+        let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+        scene.seconds = time.tick as f64 / f64::from(rate);
+        scene.tick_seconds = 1.0 / f64::from(rate);
     }
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
@@ -1621,6 +1691,9 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     for (e, s) in &out.softs {
         ctx.set(*e, *s)?;
+    }
+    for (e, b) in &out.floats {
+        ctx.set(*e, *b)?;
     }
     for (e, b) in &out.sleep.writes {
         ctx.set(*e, *b)?;

@@ -7,7 +7,10 @@
 
 use super::mover::Mover;
 use super::sim::{BodyPoses, Sim};
-use super::{DIM, flat, heightfield_surface, joint_frame, pose, rp, surface_only, unpose, unv, v};
+use super::{
+    DIM, angvel, flat, heightfield_surface, joint_frame, pose, rp, surface_only, unangvel, unpose,
+    unv, v,
+};
 use crate::fluid::FluidState;
 use crate::gather::Scene;
 use crate::schema::*;
@@ -1239,10 +1242,17 @@ fn bounds(points: &[Vec3], slack: f32) -> (Vec3, Vec3) {
 fn floaters(scene: &Scene, sim: &Sim, handles: &super::sim::Handles<'_>) -> Vec<Floater> {
     let mut list = Vec::new();
     for b in &scene.bodies {
-        let dynamic = b.body.kind == BODY_DYNAMIC && b.control.is_none();
-        if !(dynamic || b.control.is_some()) {
+        let moving = b.body.kind == BODY_DYNAMIC && b.control.is_none();
+        if !(moving || b.control.is_some()) {
             continue;
         }
+        // A body with og.Buoyancy floats by its own hull (`buoyancy`): the
+        // surface only takes its splash.
+        let floats = scene
+            .floats
+            .binary_search_by_key(&b.entity.to_bits(), |f| f.0.to_bits())
+            .is_ok();
+        let dynamic = moving && !floats;
         let Some(&h) = handles.get(&b.entity.to_bits()) else {
             continue;
         };
@@ -1354,4 +1364,221 @@ pub(crate) fn water(
         rb.apply_impulse(v(flat(f.impulse)), true);
     }
     Ok(())
+}
+
+// ---- og.Buoyancy -------------------------------------------------------------
+
+/// A body's hull for og.Buoyancy, in its own frame: the centres of the
+/// cells of its colliders' box (`samples` a side, `lo` its low corner)
+/// that lie in a solid collider, with their cell indices, each standing
+/// for an equal share (`each`) of the colliders' volume; `cell` is a
+/// cell's size.
+struct Hull {
+    points: Vec<(Vec3, [u32; 3])>,
+    lo: Vec3,
+    cell: Vec3,
+    each: f32,
+}
+
+fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option<Hull> {
+    let parts: Vec<&rp::Collider> = rb
+        .colliders()
+        .iter()
+        .map(|&c| &colliders[c])
+        .filter(|c| !c.is_sensor())
+        .collect();
+    let at = |c: &rp::Collider| *c.position_wrt_parent().unwrap_or(&rp::Pose::IDENTITY);
+    let mut lo = Vec3::splat(f32::MAX);
+    let mut hi = Vec3::splat(f32::MIN);
+    for c in &parts {
+        let b = c.shape().compute_aabb(&at(c));
+        lo = lo.min(unv(b.mins));
+        hi = hi.max(unv(b.maxs));
+    }
+    if parts.is_empty() || lo.x > hi.x {
+        return None;
+    }
+    let n = samples.clamp(1, 12);
+    let nz = if DIM == 3 { n } else { 1 };
+    let cell = (hi - lo) / Vec3::new(n as f32, n as f32, nz as f32);
+    let mut points = Vec::new();
+    for k in 0..nz {
+        for j in 0..n {
+            for i in 0..n {
+                let p = lo + cell * Vec3::new(i as f32 + 0.5, j as f32 + 0.5, k as f32 + 0.5);
+                if parts.iter().any(|c| c.shape().contains_point(&at(c), v(p))) {
+                    points.push((p, [i, j, k]));
+                }
+            }
+        }
+    }
+    if points.is_empty() {
+        let mid = n / 2;
+        let p = lo + cell * Vec3::new(mid as f32 + 0.5, mid as f32 + 0.5, (nz / 2) as f32 + 0.5);
+        points.push((p, [mid, mid, nz / 2]));
+    }
+    let volume: f32 = parts
+        .iter()
+        .map(|c| c.shape().mass_properties(1.0).mass())
+        .sum();
+    let volume = if volume > 0.0 {
+        volume
+    } else {
+        cell.x * cell.y * cell.z.max(if DIM == 3 { 0.0 } else { 1.0 }) * points.len() as f32
+    };
+    Some(Hull {
+        each: volume / points.len() as f32,
+        points,
+        lo,
+        cell,
+    })
+}
+
+/// The water surface's height (world y) over world point (`x`, `z`): the
+/// highest of the og.WaterSurface squares and og.Water bodies over it (one
+/// entity with both: its rest level and its sea together); `None` over no
+/// water. An og.WaterSurface lifts at its rest level, as its own buoyancy
+/// does: its waves are the bodies' splashes, and a body riding its own
+/// wake would pump them.
+fn water_level(
+    scene: &Scene,
+    waters: &[crate::WaterBody],
+    x: f32,
+    z: f32,
+    seconds: f64,
+) -> Option<f32> {
+    let mut level: Option<f32> = None;
+    let mut take = |y: f32| level = Some(level.map_or(y, |l| l.max(y)));
+    for (e, position, surface) in &scene.surfaces {
+        let half = surface.size * 0.5;
+        if (x - position.x).abs() > half || (z - position.z).abs() > half {
+            continue;
+        }
+        let key = e.to_bits();
+        let sea = waters
+            .iter()
+            .find(|w| w.entity == key)
+            .and_then(|w| w.height(f64::from(x), f64::from(z), seconds))
+            .unwrap_or(0.0);
+        take(position.y + sea);
+    }
+    for w in waters {
+        if scene.surfaces.iter().any(|s| s.0.to_bits() == w.entity) {
+            continue;
+        }
+        if let Some(h) = w.height(f64::from(x), f64::from(z), seconds) {
+            take(w.position.y + h);
+        }
+    }
+    level
+}
+
+/// og.Buoyancy before the step (3D): each floating body's hull cells under
+/// the water at their points push it up by the water they displace, at
+/// those points (a torque that rights and pitches it), and slow it as far
+/// as they are under; its `submerged` is written. Cells and bodies in a
+/// fixed order, og-core's deterministic math: the same on every run.
+pub(crate) fn buoyancy(
+    scene: &Scene,
+    settings: &Physics,
+    dt: f32,
+    waters: &[crate::WaterBody],
+    sim: &mut Sim,
+    handles: &super::sim::Handles<'_>,
+    out: &mut StepOut,
+) {
+    if DIM != 3 || scene.floats.is_empty() {
+        return;
+    }
+    let g = -settings.gravity.y;
+    for (e, b) in &scene.floats {
+        let Some(&h) = handles.get(&e.to_bits()) else {
+            continue;
+        };
+        let rb = &sim.world.bodies[h];
+        if !rb.is_dynamic() {
+            continue;
+        }
+        let Some(hull) = hull(&sim.world.colliders, rb, b.samples) else {
+            continue;
+        };
+        let at = *rb.position();
+        // A cell's half height in the world, its box turned with the body.
+        let up = [Vec3::X, Vec3::Y, Vec3::Z].map(|a| unv(at.rotation * v(a)).y.abs());
+        let half = 0.5 * (up[0] * hull.cell.x + up[1] * hull.cell.y + up[2] * hull.cell.z);
+        // The water level is read once per column of cells along the body's
+        // axis nearest the world's up, at the column's middle: a sea's
+        // height costs some 300 sines a point.
+        let column = if up[1] >= up[0] && up[1] >= up[2] {
+            1
+        } else if up[0] >= up[2] {
+            0
+        } else {
+            2
+        };
+        let middle =
+            (hull.lo + hull.cell * Vec3::splat(b.samples.clamp(1, 12) as f32) * 0.5)[column];
+        // Each column's level and how fast it rises (the sea's heave over
+        // the last tick): a hull is slowed against the water, not against
+        // still water, so it rides a wave rather than lagging under it.
+        let mut levels: BTreeMap<[u32; 2], Option<(f32, f32)>> = BTreeMap::new();
+        let mass = rb.mass();
+        let share = 1.0 / hull.points.len() as f32;
+        let mut under = 0.0;
+        let mut pushes = Vec::with_capacity(hull.points.len());
+        for (p, index) in &hull.points {
+            let w = unv(at.transform_point(v(*p)));
+            let key = match column {
+                0 => [index[1], index[2]],
+                1 => [index[0], index[2]],
+                _ => [index[0], index[1]],
+            };
+            let level = *levels.entry(key).or_insert_with(|| {
+                let mut q = *p;
+                q[column] = middle;
+                let c = unv(at.transform_point(v(q)));
+                let now = water_level(scene, waters, c.x, c.z, scene.seconds)?;
+                let before =
+                    water_level(scene, waters, c.x, c.z, scene.seconds - scene.tick_seconds)
+                        .unwrap_or(now);
+                Some((now, (now - before) / scene.tick_seconds.max(1e-6) as f32))
+            });
+            let Some((level, rise)) = level else {
+                continue;
+            };
+            let fraction = if half > 1e-6 {
+                ((level - (w.y - half)) / (2.0 * half)).clamp(0.0, 1.0)
+            } else if w.y < level {
+                1.0
+            } else {
+                0.0
+            };
+            if fraction <= 0.0 {
+                continue;
+            }
+            under += fraction * share;
+            pushes.push((w, fraction, rise));
+        }
+        let rb = &mut sim.world.bodies[h];
+        for (w, fraction, rise) in pushes {
+            let lift = Vec3::Y * (b.water_density * g * hull.each * fraction * dt);
+            // The drag: its share of the mass losing `drag` of its speed
+            // through the water a second, never more than all of it.
+            let speed = unv(rb.velocity_at_point(v(w))) - Vec3::Y * rise;
+            let slow = (b.drag * dt).min(1.0) * mass * share * fraction;
+            rb.apply_impulse_at_point(v(flat(lift - speed * slow)), v(w), true);
+        }
+        if under > 0.0 {
+            let keep = 1.0 - (b.angular_drag * under * dt).min(1.0);
+            let spin = unangvel(rb.angvel());
+            rb.set_angvel(angvel(spin * keep), true);
+        }
+        out.floats.push((
+            *e,
+            Buoyancy {
+                submerged: under,
+                ..*b
+            },
+        ));
+    }
 }

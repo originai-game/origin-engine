@@ -14727,6 +14727,55 @@ export interface WaterLine {
 }
 
 /**
+ * Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (a flat lake, or a sea with a wind: its waves as drawn, og.physics.waterHeight's) or both on one entity. Its hull is its colliders' box cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up by the water it displaces (Archimedes: `waterDensity` × gravity × its share of the colliders' volume) at that cell, so a hull rights itself, pitches and rolls with the waves, and is slowed by `drag` and `angularDrag` as far as it is under. Computed in the tick, the same on every run and after a restore; the sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides the same water. A body with it takes no og.WaterSurface `buoyancy` (only its splash). Insert it beside og.RigidBody and og.Collider: `{}` floats a body of the default density half under.
+ *
+ * The value of the `Buoyancy` component (token `og.Buoyancy`).
+ */
+export interface Buoyancy {
+  /**
+   * The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks.
+   *
+   * @default 2
+   * @range 0..
+   * @unit kgPerM3 (kilograms per cubic metre (per square metre in the 2D profile))
+   * @tunable
+   */
+  waterDensity: number;
+  /**
+   * Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely, at more cost.
+   *
+   * @default 4
+   * @range 1..12
+   */
+  samples: number;
+  /**
+   * How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its turning too, so it settles instead of bobbing.
+   *
+   * @default 4
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  drag: number;
+  /**
+   * How much of its spin it loses each second when fully under (in part when in part).
+   *
+   * @default 3
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  angularDrag: number;
+  /**
+   * Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship.
+   *
+   * @range 0..1
+   * @readonly written by the engine
+   */
+  readonly submerged: number;
+}
+
+/**
  * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
  *
  * The payload of the `Splash` event (token `og.Splash`).
@@ -52667,6 +52716,10 @@ export declare namespace og {
    * 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.
    */
   const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly tension: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
+  /**
+   * Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (a flat lake, or a sea with a wind: its waves as drawn, og.physics.waterHeight's) or both on one entity. Its hull is its colliders' box cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up by the water it displaces (Archimedes: `waterDensity` × gravity × its share of the colliders' volume) at that cell, so a hull rights itself, pitches and rolls with the waves, and is slowed by `drag` and `angularDrag` as far as it is under. Computed in the tick, the same on every run and after a restore; the sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides the same water. A body with it takes no og.WaterSurface `buoyancy` (only its splash). Insert it beside og.RigidBody and og.Collider: `{}` floats a body of the default density half under.
+   */
+  const Buoyancy: ComponentType<{ readonly waterDensity: FieldSpec<"f32">; readonly samples: FieldSpec<"u32">; readonly drag: FieldSpec<"f32">; readonly angularDrag: FieldSpec<"f32">; readonly submerged: FieldSpec<"f32"> }, Buoyancy>;
   /**
    * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
    */

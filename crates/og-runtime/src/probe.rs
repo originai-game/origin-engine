@@ -381,6 +381,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             // The world's zero follows its focus (R12), before anything
             // reads a place: cells, the raycast record, interpolation.
             super::origin::before_tick(&eng, world);
+            // The water og.Buoyancy floats on this tick, at the new zero.
+            super::physics_ext::before_tick(&eng, world);
             // World cells load and unload as the tick starts (G3-3).
             super::stream::cells::before_tick(&eng, world);
             super::geometry::before_tick(&eng, world);

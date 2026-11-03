@@ -76,6 +76,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.VehicleWheel",
         enable: |w, _| og_physics::enable(w, "og.VehicleWheel"),
     },
+    // R5: og.physics floats the bodies with it on og.Water and
+    // og.WaterSurface once a game names it.
+    Lazy {
+        name: "og.Buoyancy",
+        enable: |w, _| og_physics::enable(w, "og.Buoyancy"),
+    },
     // G2-7: og.net sends them once a world runs lockstep in a room.
     Lazy {
         name: "og.SeatDropped",

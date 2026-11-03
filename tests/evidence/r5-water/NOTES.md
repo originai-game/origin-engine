@@ -40,3 +40,40 @@ og run tests/evidence/r5-water/sea --headless --size 1280x720 --out /tmp/r5 \
 `sea-later` (a second and a half on): the swells have moved on (each crest
 a few metres further along the wind), the buoys at new heights, still on
 the surface.
+
+## Buoyancy (og.Buoyancy)
+
+`boats/` is the storm frame's gale (og.Water.wind 7 −18.7, 20 m/s,
+choppiness 1: waves some 330 m long, a significant height near 10 m)
+under a dark overcast (og.Clouds coverage 0.97, grey) at 13 h, seen from
+10 m up. Three boats (box hulls 2.4 × 1 × 6 m of density 0.6, with a
+drawn cabin aft of the middle; one red, two white) and four orange
+buoys (spheres of radius 0.6, density 0.8) carry og.Buoyancy and nothing
+else moves them: the og.physics step lifts each hull's cells under the
+sea it computes in the tick (og_core::ocean, the waves the grid draws),
+so they ride, pitch and roll. Each starts set down on the water at tick
+0 (`og.physics.waterHeight`).
+
+Without a renderer it runs to `tick 396 hash b346de0709ba562a entities
+11` with the commands below (OG_RENDERER=none on the orb, a fresh
+og-host-node in OG_NATIVE_ADDON).
+
+```sh
+og run tests/evidence/r5-water/boats --headless --size 1280x720 --out /tmp/r5 \
+  --commands "5.0:screenshot:boats.png;6.5:screenshot:boats-later.png;6.6:quit"
+```
+
+`boats` should show:
+
+- the gale as the storm frame draws it (grey overcast, rough grey-green
+  sea, whitecaps), the horizon a little above the frame's middle;
+- three box boats 30 to 70 m out at different headings, each sitting in
+  the water about a third of its hull deep (the waterline cutting its
+  sides, never floating above the surface nor buried under it), tilted
+  with the slope of the swell under it: bow up or down, rolled to one
+  side, the three at different heights and angles;
+- four orange balls a little under half submerged, at the height of the
+  water around each.
+
+`boats-later` (1.5 s on): every boat and buoy at a new height and tilt,
+still on the surface; the boats have barely drifted sideways.
