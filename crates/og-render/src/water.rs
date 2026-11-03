@@ -424,15 +424,32 @@ const FRESH_GAIN: f32 = 2.5;
 const FOAM_GAIN: f32 = 2.0;
 
 /// The Jacobians under which the drawn sea of `water` lays down foam that
-/// persists, and under which a crest is white as it folds: the levels a
-/// share of the surface falls under, that share whitecap coverage as
-/// Monahan and O'Muircheartaigh (1980) measured it at the wind's speed U
-/// (W = 3.84·10⁻⁶ U^3.41: 0.7 % at 9 m/s, 10 % at 20 m/s), half of it for
-/// the foam laid down and a quarter for the crests breaking now (the
-/// persistent foam trails behind them). At a breeze these are web-ocean's
-/// own (0.68 and 0.48 at its foam setting 1 against 0.52 and 0.48 here);
-/// a gale's steeper sea reaches them over much of its surface, where
-/// web-ocean's fixed levels whitened a third of it.
+/// persists, and under which a crest is white as it folds.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FoamLevels {
+    /// Per level of the persistent foam ([`crate::ocean_fft::foam`]): the
+    /// Jacobian as that level resolves it, under which it lays foam down.
+    pub laid: [f32; 2],
+    /// The drawn crest's own, under which it is white as it folds.
+    pub fresh: f32,
+}
+
+/// [`FoamLevels`] of `water`: the levels a share of the surface falls
+/// under, that share whitecap coverage as Monahan and O'Muircheartaigh
+/// (1980) measured it at the wind's speed U (W = 3.84·10⁻⁶ U^3.41: 0.7 %
+/// at 9 m/s, 10 % at 20 m/s), half of it for the foam laid down and a
+/// quarter for the crests breaking now (the persistent foam trails behind
+/// them). At a breeze these are web-ocean's own (0.68 and 0.48 at its foam
+/// setting 1 against 0.52 and 0.48 here); a gale's steeper sea reaches them
+/// over much of its surface, where web-ocean's fixed levels whitened a
+/// third of it.
+///
+/// Each foam level reads the Jacobian at its own texel (ocean_foam.wgsl
+/// `jacobian`: the tick's waves faded at it, the cascades from their mips),
+/// much smoother than the drawn crest's at its 2 m: one threshold for all
+/// let the coarse level, everything past some 20 m, lay down a small share
+/// of the coverage (a gale with two or three whitecaps in view). So each
+/// level's is the quantile of the Jacobian as that level resolves it.
 ///
 /// The Jacobian's distribution is sampled where the tick's grid is finest
 /// (the surface's centre): og_core's waves as drawn there, plus the
@@ -440,7 +457,30 @@ const FOAM_GAIN: f32 = 2.0;
 /// spectrum gives. Seeded, so the same sea always has the same levels.
 /// A sea that never bunches enough (a round swell: no horizontal
 /// displacement) never foams.
-fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) -> (f32, f32) {
+fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) -> FoamLevels {
+    let coverage = 3.84e-6 * f64::from(water.wind.length()).powf(3.41);
+    let level = |resolve: f32, share: f64| {
+        let jac = jacobians(water, built, resolve);
+        let i = ((share.min(1.0) * jac.len() as f64) as usize).min(jac.len() - 1);
+        // Never above 0.9: a sea whose surface hardly bunches lays none.
+        jac[i].min(0.9) as f32
+    };
+    let ts = |l: usize| {
+        (crate::ocean_fft::foam::LEVEL_SIZE[l] / f64::from(crate::ocean_fft::foam::RES)) as f32
+    };
+    FoamLevels {
+        laid: [level(ts(0), coverage * 0.5), level(ts(1), coverage * 0.5)],
+        fresh: level(0.0, coverage * 0.25),
+    }
+}
+
+/// The Jacobian of `water`'s drawn surface at seeded points, sorted, its
+/// waves resolved at `resolve` metres (0: all of them, as drawn).
+fn jacobians(
+    water: &Water,
+    built: &crate::ocean_fft::spectrum::Spectrum,
+    resolve: f32,
+) -> Vec<f64> {
     let centre = water.transform.w_axis;
     let tc = tick_cell(water, Vec2::new(centre.x, centre.z));
     let lam = built.choppiness;
@@ -452,6 +492,16 @@ fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) 
         let w2 = f64::from(1.0 - og_core::ocean::grid_keep(k_mid, tc)).powi(2);
         let n = cs.resolution as i64;
         let dk = std::f64::consts::TAU / cs.size;
+        // Read from the fields' mip at ocean_foam.wgsl's lod: a box of 2^lod
+        // texels, whose response to a wave is the product of sincs along
+        // its axes (none past the shader's last lod).
+        let texel = cs.size / n as f64;
+        let lod = (f64::from(resolve) / texel).max(1.0).log2();
+        if lod >= 4.5 {
+            continue;
+        }
+        let width = texel * lod.exp2();
+        let sinc = |x: f64| if x.abs() < 1e-9 { 1.0 } else { x.sin() / x };
         let signed = |i: i64| if i >= n / 2 { i - n } else { i } as f64 * dk;
         for (t, a) in cs.amplitudes.chunks(4).enumerate() {
             let a2 = f64::from(a[0]).powi(2) + f64::from(a[1]).powi(2);
@@ -460,7 +510,16 @@ fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) 
             if a2 == 0.0 || k < 1e-9 {
                 continue;
             }
-            let v = [lam * kx * kx / k, lam * kz * kz / k, lam * kx * kz / k];
+            let mip = if resolve > 0.0 {
+                sinc(kx * width * 0.5) * sinc(kz * width * 0.5)
+            } else {
+                1.0
+            };
+            let v = [
+                lam * kx * kx / k * mip,
+                lam * kz * kz / k * mip,
+                lam * kx * kz / k * mip,
+            ];
             for r in 0..3 {
                 for q in 0..3 {
                     c[r][q] += a2 * v[r] * v[q] * w2;
@@ -500,8 +559,10 @@ fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) 
             for w in swell.chunks(2) {
                 let (a, b) = (w[0], w[1]);
                 let k = Vec2::new(a[0], a[1]);
-                let s =
-                    f64::from((k.dot(p) + a[3]).sin() * og_core::ocean::grid_keep(k.length(), tc));
+                let s = f64::from(
+                    (k.dot(p) + a[3]).sin()
+                        * og_core::ocean::grid_keep(k.length(), tc.max(resolve)),
+                );
                 j[0] -= f64::from(b[0] * a[0]) * s;
                 j[1] -= f64::from(b[1] * a[1]) * s;
                 j[2] -= f64::from(b[0] * a[1]) * s;
@@ -518,13 +579,7 @@ fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) 
         })
         .collect();
     jac.sort_by(f64::total_cmp);
-    let coverage = 3.84e-6 * f64::from(water.wind.length()).powf(3.41);
-    let level = |share: f64| {
-        let i = ((share.min(1.0) * SAMPLES as f64) as usize).min(SAMPLES - 1);
-        // Never above 0.9: a sea whose surface hardly bunches lays none.
-        jac[i].min(0.9) as f32
-    };
-    (level(coverage * 0.5), level(coverage * 0.25))
+    jac
 }
 
 /// Levels of a sea's clipmap ([`clipmap`]).
@@ -760,7 +815,7 @@ struct FftSea {
     tail: f32,
     /// The Jacobians under which foam is laid down and a crest is white
     /// ([`foam_thresholds`]).
-    foam: (f32, f32),
+    foam: FoamLevels,
     /// Each cascade's band's middle wavenumber (rad/m).
     bands: [f32; 4],
 }
@@ -1092,7 +1147,7 @@ impl WaterRenderer {
                 None => (0, [[0.0; 4]; 2 * MAX_HULLS]),
             };
             if let Some(f) = drawn_sea {
-                ocean[2] = f.foam.1;
+                ocean[2] = f.foam.fresh;
             }
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
@@ -1409,7 +1464,7 @@ impl WaterRenderer {
             cascades: cascade_uv(Some(info), origin),
             bands: info.bands,
             wind: water.wind,
-            threshold: info.foam.0,
+            thresholds: info.foam.laid,
             gain: FOAM_GAIN,
         };
         let world = |v: Vec3| glam::DVec2::new(f64::from(v.x), f64::from(v.z));
@@ -2047,15 +2102,63 @@ mod tests {
             foam_thresholds(&water, &sea_spectrum(&water, &sea, 3))
         };
         let breeze = thresholds(Vec2::new(-3.0, -8.5), 0.6);
-        assert!((breeze.1 - 0.48).abs() < 0.05, "{breeze:?}");
-        assert!(breeze.1 < breeze.0);
         let gale = thresholds(Vec2::new(7.0, -18.7), 1.0);
+        println!("breeze {breeze:?}, gale {gale:?}");
+        assert!((breeze.fresh - 0.48).abs() < 0.05, "{breeze:?}");
+        assert!(breeze.fresh < breeze.laid[0]);
         assert!(
-            gale.0 < breeze.0 - 0.15 && gale.1 < breeze.1 - 0.15,
+            gale.laid[0] < breeze.laid[0] - 0.15 && gale.fresh < breeze.fresh - 0.15,
             "{gale:?}"
         );
-        assert!(gale.1 > 0.0, "{gale:?}");
-        assert_eq!(thresholds(Vec2::new(7.0, -18.7), 0.0), (0.9, 0.9));
+        assert!(gale.fresh > 0.0, "{gale:?}");
+        let round = FoamLevels {
+            laid: [0.9; 2],
+            fresh: 0.9,
+        };
+        assert_eq!(thresholds(Vec2::new(7.0, -18.7), 0.0), round);
+    }
+
+    /// Each persistent foam level lays foam on the whitecap coverage's half
+    /// of the surface as it resolves the Jacobian (ocean_foam.wgsl reads the
+    /// cascades from their mips at its texel): the gale's coarse level, 2 m
+    /// texels, is much smoother than its crests, and under the fine level's
+    /// threshold it laid only a small part of it (r5 at 88d021868: two or
+    /// three whitecaps in the storm's view).
+    #[test]
+    fn each_foam_level_lays_the_whitecap_coverage_it_resolves() {
+        let water = Water {
+            size: Vec2::splat(6000.0),
+            segments: 256,
+            wind: Vec2::new(7.0, -18.7),
+            choppiness: 1.0,
+            ..Default::default()
+        };
+        let sea = ocean(&water).expect("a sea");
+        let built = sea_spectrum(&water, &sea, 3);
+        let levels = foam_thresholds(&water, &built);
+        let half_w = 3.84e-6 * f64::from(water.wind.length()).powf(3.41) * 0.5;
+        let share = |jac: &[f64], under: f32| {
+            jac.iter().filter(|&&j| j < f64::from(under)).count() as f64 / jac.len() as f64
+        };
+        for (l, &under) in levels.laid.iter().enumerate() {
+            let ts = (crate::ocean_fft::foam::LEVEL_SIZE[l]
+                / f64::from(crate::ocean_fft::foam::RES)) as f32;
+            let jac = jacobians(&water, &built, ts);
+            let got = share(&jac, under);
+            let fine = share(&jac, levels.laid[0]);
+            println!(
+                "level {l} ({ts} m): threshold {under}, lays {got:.4} (W/2 {half_w:.4}); under level 0's {fine:.4}"
+            );
+            assert!(
+                (got / half_w - 1.0).abs() < 0.05,
+                "level {l}: {got} of the surface, not {half_w}"
+            );
+        }
+        let coarse = jacobians(&water, &built, 2.0);
+        assert!(
+            levels.laid[1] > levels.laid[0] + 0.05 && share(&coarse, levels.laid[0]) < 0.5 * half_w,
+            "{levels:?}"
+        );
     }
 
     /// The sea the shader draws at a frame point is og_core's at the same

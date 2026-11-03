@@ -887,6 +887,14 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let ambient = amb_up * 1.3 + amb_n * 0.5;
     deep += SEA_SSS.rgb * (sun_e * 0.05 + ambient * 0.35) * clamp(sea_f.cover, 0.0, 1.0);
     deep += vec3<f32>(0.10, 0.32, 0.30) * amb_up * sea_f.young * 0.35;
+    // Under a closed deck the deck is the light the crests carry: the Atlas talk's (GDC 2019) scatter terms with the
+    // deck for the sun, a Lambert share towards its bright side over the hidden sun and a share facing the eye, both
+    // through the thin upper part of a wave (its height, as the sun's term above), so the crests lift a faint
+    // blue-green from the troughs (the storm read as one dark sheet once the hidden sun no longer lit it).
+    let l_deck = normalize(vec3<f32>(l.x, 1.0, l.z));
+    let vn = max(dot(v, n), 0.0);
+    let k_deck = crest * (0.8 * max(dot(n, l_deck), 0.0) + 0.6 * vn * vn) * exp(-dist / 600.0);
+    deep += SEA_SSS.rgb * deck_up.rgb * 1.4 * deck_up.a * k_deck;
   }
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
@@ -1030,13 +1038,15 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // A sea's foam, whatever the shore foam's width, web-ocean's (`ocean.js` fs): a matte, diffuse layer over the
     // water, its albedo the foam colour varied by the bubbles inside it, lit by the sun (half of it: the lumpy foam
     // shadows itself at a grazing sun) and by the whole sky above, nearly grey (foam scatters every part of it).
+    // The sun's share is Lambert's, its irradiance over pi as web-ocean's (0.318) and pbr_fs's: the port had dropped
+    // the 1/pi, lighting sunlit foam three times too bright.
     let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
     // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
     // as 1 + 0.6 * 2/3.
     let sky_light = mix(amb_grey * 1.55, deck_up.rgb * 1.4, deck_up.a);
-    let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 + sky_light);
+    let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 * 0.31831 + sky_light);
     color = mix(color, foam_lit, sea_f.mask * 0.95);
   }
   return vec4<f32>(apply_fog(color, in.world), 1.0);

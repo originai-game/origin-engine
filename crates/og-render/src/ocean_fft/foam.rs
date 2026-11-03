@@ -68,8 +68,9 @@ pub struct FoamSea {
     pub bands: [f32; 4],
     /// The wind (m/s) in the frame's xz.
     pub wind: glam::Vec2,
-    /// The Jacobian under which foam is injected, and the injection's gain.
-    pub threshold: f32,
+    /// Per level the Jacobian (as that level resolves it) under which foam
+    /// is injected, and the injection's gain.
+    pub thresholds: [f32; 2],
     pub gain: f32,
 }
 
@@ -83,6 +84,7 @@ pub(super) struct FoamGpu {
     p1: [f32; 4],
     tick: [f32; 4],
     half: [f32; 4],
+    thresholds: [f32; 4],
     cascades: [[f32; 4]; 3],
     bands: [f32; 4],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
@@ -127,10 +129,11 @@ pub(super) fn step_gpu(
     FoamGpu {
         snap,
         base,
-        p0: [dt, DECAY, sea.threshold, sea.gain],
+        p0: [dt, DECAY, 0.0, sea.gain],
         p1: [1.0, drift.x, drift.y, cascades as f32],
         tick: sea.tick,
         half: sea.half,
+        thresholds: [sea.thresholds[0], sea.thresholds[1], 0.0, 0.0],
         cascades: sea.cascades,
         bands: sea.bands,
         swell,

@@ -6,7 +6,7 @@
 // (MIT, Copyright (c) 2026 Maksymilian Dendura; third_party/ocean/). Changed here: the Jacobian is the drawn surface's,
 // the tick's Gerstner waves (og_core::ocean, faded at the tick's grid cell, water.wgsl ocean_displace) with the
 // cascades weighted where the tick leaves their band out; 256 texels a level, not 1024; the threshold from the wind's
-// whitecap cover (water.rs foam_threshold) rather than a slider.
+// whitecap cover at each level's resolution (water.rs foam_thresholds) rather than a slider.
 
 fn pcg_hash(v: u32) -> u32 {
   let s = v * 747796405u + 2891336453u;
@@ -107,13 +107,15 @@ struct FoamParams {
   snap: array<vec4<i32>, 2>,
   // Per level: the frame xz of the corner of texel snap.xy, the texel (m), unused.
   base: array<vec4<f32>, 2>,
-  // x the step (s), y the foam's decay (1/s), z the Jacobian under which it is injected, w the injection's gain.
+  // x the step (s), y the foam's decay (1/s), z unused, w the injection's gain.
   p0: vec4<f32>,
   // x the growth of foam held by a fold, yz its drift downwind (m/s), w the cascades.
   p1: vec4<f32>,
   // xy the surface's centre (frame xz), z the tick's grid's even cell (m), w unused; then its half size (xy).
   tick: vec4<f32>,
   half: vec4<f32>,
+  // Per level the Jacobian, as that level resolves it, under which foam is injected (water.rs foam_thresholds).
+  thresholds: vec4<f32>,
   // As water.wgsl's WaterUniform: per cascade 1 / tile, uv at the frame's origin, tile; each band's middle; the
   // tick's waves.
   cascades: array<vec4<f32>, 3>,
@@ -197,7 +199,7 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
     let back = (vec2<f32>(id.xy) + 0.5 - foam.p1.yz * dt / ts) / f32(RES);
     last = textureSampleLevel(prev, lin, back, level, 0.0);
   }
-  let inject = clamp((foam.p0.z - j) * foam.p0.w, 0.0, 1.0);
+  let inject = clamp((foam.thresholds[level] - j) * foam.p0.w, 0.0, 1.0);
   var f = last.r * exp(-dt * foam.p0.y);
   f = max(f, inject);
   f = min(f + inject * dt * foam.p1.x, 1.6);

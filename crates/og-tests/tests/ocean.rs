@@ -145,6 +145,20 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
         foam(&gale),
         foam(&round)
     );
+    // And enough of them to see: at least 1 % of the band's pixels, a
+    // tenth of the 10 % Monahan's whitecap coverage gives this 20 m/s wind
+    // (the count sees only the dense, white foam). 88d021868's storm passed
+    // the comparison with two or three small whitecaps in view.
+    let band = 1280 * (720 - 380);
+    println!(
+        "the gale's whitecaps: {:.2} % of the band",
+        100.0 * foam(&gale) as f32 / band as f32
+    );
+    assert!(
+        foam(&gale) * 100 >= band,
+        "the gale's whitecaps cover {} of the band's {band} pixels, under 1 %",
+        foam(&gale)
+    );
 
     // The sun's glitter path: the column of sea under the low sun (the
     // camera faces it) is much brighter than the sea to the side.
