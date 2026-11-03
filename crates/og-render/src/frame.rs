@@ -83,6 +83,8 @@ pub(crate) struct FrameUniform {
     /// The grounded dome the environment is drawn on and reflected from
     /// (`GroundProjection::gpu`; zero: at infinity).
     pub env_dome: [[f32; 4]; 2],
+    /// Current and previous drawn foliage winds, packed as seven vec4s each.
+    pub foliage_wind: [crate::foliage::FoliageWind; 2],
 }
 
 /// The camera's matrices for one frame.
@@ -743,7 +745,7 @@ mod tests {
             .expect("frame.wgsl");
         let mut layouter = naga::proc::Layouter::default();
         layouter.update(module.to_ctx()).expect("layout");
-        let (handle, _) = module
+        let (handle, ty) = module
             .types
             .iter()
             .find(|(_, t)| t.name.as_deref() == Some("Frame"))
@@ -751,6 +753,21 @@ mod tests {
         assert_eq!(
             layouter[handle].size as usize,
             std::mem::size_of::<FrameUniform>()
+        );
+        let naga::TypeInner::Struct { members, .. } = &ty.inner else {
+            panic!("Frame must be a struct")
+        };
+        let wind = members
+            .iter()
+            .find(|m| m.name.as_deref() == Some("foliage_wind"))
+            .unwrap();
+        assert_eq!(
+            wind.offset as usize,
+            std::mem::offset_of!(FrameUniform, foliage_wind)
+        );
+        assert_eq!(
+            layouter[wind.ty].size as usize,
+            std::mem::size_of::<[crate::foliage::FoliageWind; 2]>()
         );
     }
 

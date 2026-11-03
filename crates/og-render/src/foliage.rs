@@ -15,6 +15,25 @@ use glam::Vec3;
 pub const WGSL: &str = wgsl!("meshlet_foliage.wgsl");
 pub const WIND_WGSL: &str = wgsl!("grass_common.wgsl");
 
+/// Both drawn states, shared by meshlets and conventional instancing.
+pub(crate) fn foliage_winds(
+    scene: &crate::RenderScene,
+    previous: Option<(Wind, u64, f32)>,
+) -> ([Wind; 2], [FoliageWind; 2]) {
+    let current = scene.wind.unwrap_or(Wind {
+        strength: 0.0,
+        ..Wind::default()
+    });
+    let (old, tick, rate) = previous.unwrap_or((current, scene.tick, scene.tick_rate));
+    (
+        [current, old],
+        [
+            FoliageWind::new(current, scene.tick, scene.tick_rate, 0.0, scene.origin),
+            FoliageWind::new(old, tick, rate, 0.0, scene.origin),
+        ],
+    )
+}
+
 /// `_OG_PIVOT` and `_OG_ANCHOR`, in mesh-local space. The eight floats travel
 /// together through cooking and vertex remapping, separately from the ordinary
 /// vertex stream. A leaf and the wood at its anchor share the branch pivot.
@@ -107,6 +126,41 @@ impl FoliageBounds {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wind_vec4_packing_matches_the_shader() {
+        let module = naga::front::wgsl::parse_str(&format!("{WIND_WGSL}{WGSL}")).unwrap();
+        let mut layouter = naga::proc::Layouter::default();
+        layouter.update(module.to_ctx()).unwrap();
+        let (handle, ty) = module
+            .types
+            .iter()
+            .find(|(_, t)| t.name.as_deref() == Some("FoliageWind"))
+            .unwrap();
+        let naga::TypeInner::Struct { members, .. } = &ty.inner else {
+            panic!("FoliageWind must be a struct")
+        };
+        for (name, offset) in [
+            (
+                "dir_strength",
+                std::mem::offset_of!(FoliageWind, dir_strength),
+            ),
+            ("gust_top", std::mem::offset_of!(FoliageWind, gust_top)),
+            ("origin", std::mem::offset_of!(FoliageWind, origin)),
+            ("field", std::mem::offset_of!(FoliageWind, field)),
+        ] {
+            let member = members
+                .iter()
+                .find(|m| m.name.as_deref() == Some(name))
+                .unwrap();
+            assert_eq!(member.offset as usize, offset, "{name}");
+        }
+        assert_eq!(
+            layouter[handle].size as usize,
+            std::mem::size_of::<FoliageWind>()
+        );
+        assert_eq!(std::mem::size_of::<FoliageWind>(), 7 * 16);
+    }
 
     #[test]
     fn margins_cover_leaf_branch_and_trunk_rotations() {

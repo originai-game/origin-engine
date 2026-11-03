@@ -13,7 +13,60 @@ pub(crate) struct ShadowPassUniform {
     /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
     /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).
     pub(crate) paraboloid: [f32; 4],
-    pub(crate) pad: [f32; 36],
+    pub(crate) foliage_wind: [crate::foliage::FoliageWind; 2],
+    pub(crate) pad: [f32; 44],
+}
+
+#[cfg(test)]
+mod foliage_layout_tests {
+    use super::*;
+
+    #[test]
+    fn shadow_wind_layout_matches_rust_and_dynamic_stride() {
+        let module =
+            naga::front::wgsl::parse_str(include_str!("../../shaders/shadow_pass.wgsl")).unwrap();
+        let mut layouter = naga::proc::Layouter::default();
+        layouter.update(module.to_ctx()).unwrap();
+        let (handle, ty) = module
+            .types
+            .iter()
+            .find(|(_, t)| t.name.as_deref() == Some("ShadowPass"))
+            .unwrap();
+        let naga::TypeInner::Struct { members, .. } = &ty.inner else {
+            panic!("ShadowPass must be a struct")
+        };
+        for (name, offset) in [
+            (
+                "view_proj",
+                std::mem::offset_of!(ShadowPassUniform, view_proj),
+            ),
+            ("light", std::mem::offset_of!(ShadowPassUniform, light)),
+            ("time", std::mem::offset_of!(ShadowPassUniform, time)),
+            (
+                "paraboloid",
+                std::mem::offset_of!(ShadowPassUniform, paraboloid),
+            ),
+            (
+                "foliage_wind",
+                std::mem::offset_of!(ShadowPassUniform, foliage_wind),
+            ),
+        ] {
+            let member = members
+                .iter()
+                .find(|m| m.name.as_deref() == Some(name))
+                .unwrap();
+            assert_eq!(member.offset as usize, offset, "{name}");
+        }
+        assert_eq!(
+            layouter[handle].size as usize,
+            std::mem::offset_of!(ShadowPassUniform, pad)
+        );
+        assert_eq!(
+            std::mem::size_of::<ShadowPassUniform>() as u64,
+            SHADOW_SLOT_STRIDE
+        );
+        assert_eq!(SHADOW_SLOT_STRIDE % 256, 0);
+    }
 }
 
 /// An instance in the instance buffers: its columns' xyz, its

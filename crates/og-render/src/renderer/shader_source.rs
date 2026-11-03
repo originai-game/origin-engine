@@ -192,7 +192,7 @@ pub(crate) const SHELTER_SLOT: usize = CASCADES + LOCAL_SHADOW_LAYERS;
 /// Uniform slots of the shadow passes (dynamic offsets): the cascades, the
 /// local faces, then the weather occlusion map.
 pub(crate) const SHADOW_SLOTS: usize = SHELTER_SLOT + 1;
-pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
+pub(crate) const SHADOW_SLOT_STRIDE: u64 = 512;
 
 #[cfg(test)]
 mod tests {

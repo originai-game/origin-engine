@@ -12,6 +12,12 @@ struct FoliageWind {
   field: GrassWind,   // this drawn state's shared grass gust field
 };
 
+// Frame and ShadowPass keep this as vec4s so non-foliage shaders need no
+// wind includes. The layout is checked against FoliageWind on the CPU.
+fn foliage_wind_unpack(v: array<vec4f, 7>) -> FoliageWind {
+  return FoliageWind(v[0], v[1], v[2], WindField(v[3], v[4], v[5], v[6]));
+}
+
 // SeedThree's canopy dome, blended before the inverse-transpose and normal
 // mapping. The centre comes from all leaf anchors, not the trunk's bounds.
 fn foliage_normal(n: vec3f, anchor: vec3f, center: vec3f, strength: f32) -> vec3f {

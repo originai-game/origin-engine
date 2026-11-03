@@ -1774,6 +1774,7 @@ impl Renderer {
             material_surface: scene.stylise.material.surface_uniform(),
             origin: scene.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
+            foliage_wind: crate::foliage::foliage_winds(scene, self.previous_wind).1,
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
@@ -1789,7 +1790,8 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
-                pad: [0.0; 36],
+                foliage_wind: uniform.foliage_wind,
+                pad: [0.0; 44],
             };
         }
         for ls in &local_shadows {
@@ -1811,7 +1813,8 @@ impl Renderer {
                     } else {
                         [0.0; 4]
                     },
-                    pad: [0.0; 36],
+                    foliage_wind: uniform.foliage_wind,
+                    pad: [0.0; 44],
                 };
             }
         }
@@ -1839,7 +1842,8 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
-                pad: [0.0; 36],
+                foliage_wind: uniform.foliage_wind,
+                pad: [0.0; 44],
             };
         }
         self.queue
