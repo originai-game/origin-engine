@@ -264,6 +264,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Clouds",
         enable: |_, _| Ok(()),
     },
+    // The aurora: read by extraction alone, as the clouds.
+    Lazy {
+        name: "og.Aurora",
+        enable: |_, _| Ok(()),
+    },
     // R5: the 3D water surface, read by extraction (and og.physics.waterHeight's
     // sea) alone: a world without water keeps its type table and hash as the
     // surface grows (the sea, the flow map).
