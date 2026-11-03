@@ -304,9 +304,11 @@ fn ocean_gpu(
 }
 
 /// The waves whose crests whiten: no shorter than the longest over this
-/// (an eighth of the peak's length), so whitecaps are patches the size of
-/// the swells' crests, not specks the size of the ripples.
-const WHITECAP_K: f32 = 12.8;
+/// (a 25th of the peak's length, some 13 m in a 20 m/s gale), so whitecaps
+/// are patches metres across, not specks the size of the ripples. (At an
+/// eighth, only the swells' own crests whitened, and a view 50 m deep lay
+/// on one trough or one crest: whitecaps everywhere or nowhere.)
+const WHITECAP_K: f32 = 40.0;
 
 /// Where the sea's whitecaps start and over how much they grow, in the
 /// crests' bunching of the waves that whiten (`Σ k lean sin`, water.wgsl

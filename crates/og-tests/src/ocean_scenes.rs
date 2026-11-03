@@ -102,6 +102,9 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             scene.water.push(gale);
             sea_haze(&mut scene);
+            // 96 s in: the swell's crests under the near sea (at 90 s the
+            // view's first 50 m lay in one long trough, with no whitecaps).
+            scene.tick = TICK + 360;
             scene.camera = Camera {
                 position: Vec3::new(0.0, 10.0, 0.0),
                 target: Vec3::new(-10.0, 1.0, -80.0),
