@@ -1107,3 +1107,33 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
     .map((x) => x.paths.join(" × "));
   expect(overlaps.join("; ")).toBe("");
 });
+
+test("og.ui.standingsTower relative window: only the cars around the player, kept whole at the front, one each side on a phone, the player's row without a place or gap", () => {
+  // Wrong: the leaders shown with the window, a window cut short at the front of the field, a phone given two each
+  // side, or the player's place and gap repeated in its row.
+  let player = 11;
+  const PHONE = { width: 844, height: 390, dpr: 3, safeArea: { left: 47, top: 0, right: 34, bottom: 0 }, coarsePointer: true, breakpoint: "phoneLandscape" };
+  const tower = (view?: object) => engineFor("HudWindow", () => {
+    const entries = Array.from({ length: 14 }, (_, i) => ({ key: `c${i}`, name: `Car ${i}`, gap: (i - player) * 0.5, player: i === player }));
+    og.ui.standingsTower("Tower", { entries, ahead: 2, behind: 2, relative: true } as never);
+  }, view);
+  const ids = (e: ReturnType<typeof tower>) => below(dump(e), "TowerHud/Tower").filter((x) => x.path.split("/").length === 3).map((x) => x.id);
+  const e = tower();
+  e.advance(3);
+  expect(ids(e)).toEqual(["c9", "c10", "c11", "c12", "c13"]);
+  const els = dump(e);
+  expect(at(els, "TowerHud/Tower/c11/PositionBox/Position")).toBe(undefined);
+  expect(at(els, "TowerHud/Tower/c11/Gap")?.text).toBe("");
+  expect(at(els, "TowerHud/Tower/c10/Gap")?.text).toBe("−0.50");
+  expect(at(els, "TowerHud/Tower/c9/PositionBox/Position")?.text).toBe("10");
+  player = 1;
+  e.advance(2);
+  expect(ids(e)).toEqual(["c0", "c1", "c2", "c3", "c4"]);
+  player = 13;
+  e.advance(2);
+  expect(ids(e)).toEqual(["c9", "c10", "c11", "c12", "c13"]);
+  player = 6;
+  const p = tower(PHONE);
+  p.advance(3);
+  expect(ids(p)).toEqual(["c5", "c6", "c7"]);
+});

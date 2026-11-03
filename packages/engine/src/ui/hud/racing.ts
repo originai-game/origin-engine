@@ -60,9 +60,16 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
   const fit = Math.floor(((vp.height - vp.safeArea.top - vp.safeArea.bottom) * 0.4) / (rowH + gap));
   const most = Math.max(3, Math.min(desc.rows || (f.phone ? 5 : 10), fit));
   const pi = all.findIndex((e) => e.player);
+  // A relative window: the player and the cars either side of it (at most one each side on a phone).
+  const cap = (n: number | undefined) => Math.min(n ?? 0, f.phone ? 1 : 99);
+  const windowed = pi >= 0 && cap(desc.ahead) + cap(desc.behind) > 0;
   // More cars than rows: the leaders, a break, then the cars either side of the player.
   let shown: Array<number | null> = all.map((_, i) => i);
-  if (all.length > most && pi >= most - 1 && most < 5) {
+  if (windowed) {
+    const len = Math.min(all.length, cap(desc.ahead) + cap(desc.behind) + 1);
+    const from = Math.max(0, Math.min(pi - cap(desc.ahead), all.length - len));
+    shown = shown.slice(from, from + len);
+  } else if (all.length > most && pi >= most - 1 && most < 5) {
     // Too few rows for a break: the cars either side of the player, the player kept in view.
     const from = Math.max(0, Math.min(pi - Math.floor((most - 1) / 2), all.length - most));
     shown = shown.slice(from, from + most);
@@ -80,6 +87,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
     if (en.out) return desc.outLabel ?? "OUT";
     if (en.pit) return desc.pitLabel ?? "PIT";
     if ((en.lapsDown ?? 0) > 0) return `+${en.lapsDown} L`;
+    if (windowed) return en.player ? "" : signedSeconds(en.gap ?? 0);
     if (desc.relative) return en.player ? "\u2014" : signedSeconds(en.gap ?? 0);
     return i === 0 ? (desc.leaderLabel ?? "Leader") : signedSeconds(en.gap ?? 0);
   };
@@ -105,16 +113,19 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           part: sel("StandingsTower", "row", en.player ? "player" : null, en.pit ? "pit" : null, en.out ? "out" : null),
         }, {
           // One mark for the player (docs/ui.md §15.5): a solid position cell over a lightly tinted row, no outline.
-          fills: en.player ? [solid(token("highlight", 0.18))] : [],
+          fills: en.player ? [solid(windowed ? token("primary", 0.85) : token("highlight", 0.18))] : [],
         }, () => {
           // A hairline between rows, none against the player's lit row.
           const prev = r > 0 ? shown[r - 1] : null;
           if (r > 0 && !en.player && !(prev != null && all[prev]?.player)) leaf("Rule", { width: pct(1), height: px(1), part: sel("StandingsTower", "rule") }, { fills: [solid(lit(WHITE, 0.08))] }, absolute({ start: 0, top: 0 }));
-          box("PositionBox", { width: px(posW), height: pct(1), align: "center", cross: "center", part: sel("StandingsTower", "position") }, en.player ? {
+          box("PositionBox", { width: px(posW), height: pct(1), align: "center", cross: "center", part: sel("StandingsTower", "position") }, en.player && !windowed ? {
             fills: [solid(token("highlight", 0.9))],
-          } : undefined, () => text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true }));
+          } : undefined, () => {
+            // In a window the player's place is the lap block's: its row shows none.
+            if (!(windowed && en.player)) text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true });
+          });
           leaf("Stripe", { width: px(Math.max(3, u(3))), height: pct(0.62), part: sel("StandingsTower", "stripe") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(ink))] });
-          text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+          text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : windowed && en.player ? token("onPrimary") : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
           // Names win over marks: where the name would be cut, a rival's change arrow goes first, then the leader's
           // fastest-lap chip moves into the gap column in place of the leader label.
           const ch = en.change ?? 0;
@@ -141,7 +152,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
               text("Count", String(Math.abs(ch)), { step: ts(10), font: "mono", color: lit(c), nowrap: true });
             });
           }
-          const gInk = en.pit ? lit(role("warn")) : en.out ? token("inkFaint") : desc.relative && !en.player ? lit((en.gap ?? 0) < 0 ? role("danger") : role("success")) : token("ink");
+          const gInk = en.pit ? lit(role("warn")) : en.out ? token("inkFaint") : windowed ? token("ink") : desc.relative && !en.player ? lit((en.gap ?? 0) < 0 ? role("danger") : role("success")) : token("ink");
           if (flIn === "gap") box("GapCell", { width: px(gapW), direction: "row", align: "end", cross: "center" }, undefined, flChip);
           else text("Gap", g, { step: ts(12), font: "mono", color: gInk, nowrap: true, width: px(gapW), align: "end" });
         }, {

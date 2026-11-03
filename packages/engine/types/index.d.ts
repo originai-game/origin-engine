@@ -43810,6 +43810,18 @@ export interface StandingsTowerDesc {
    */
   readonly rows?: number;
   /**
+   * A relative window (the racing HUD's): only the player and this many cars ahead of it (at most 1 on a phone), with behind. With ahead or behind above 0 the gaps are intervals in neutral ink, the player's row takes the accent fill with no gap and no place (the lap block has it), and rows is not used. A window at the front or the back of the field keeps its length by showing more on the other side.
+   *
+   * @default 0
+   */
+  readonly ahead?: number;
+  /**
+   * The relative window's cars behind the player (at most 1 on a phone).
+   *
+   * @default 0
+   */
+  readonly behind?: number;
+  /**
    * The leader's gap (with relative off).
    *
    * @default "Leader"

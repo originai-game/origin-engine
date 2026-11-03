@@ -9927,6 +9927,8 @@ module ui {
     field entries List.StandingsEntry "The cars in race order, the leader first."
     field relative bool "Gaps are to the player (signed, ahead negative) rather than to the leader."
     field rows u32 "The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between."
+    field ahead u32 "A relative window (the racing HUD's): only the player and this many cars ahead of it (at most 1 on a phone), with behind. With ahead or behind above 0 the gaps are intervals in neutral ink, the player's row takes the accent fill with no gap and no place (the lap block has it), and rows is not used. A window at the front or the back of the field keeps its length by showing more on the other side."
+    field behind u32 "The relative window's cars behind the player (at most 1 on a phone)."
     field leaderLabel String "The leader's gap (with relative off)." {
       default "Leader"
     }
