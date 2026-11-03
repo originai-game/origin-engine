@@ -27,6 +27,8 @@ interface Ask {
   /** Metres past the start line (negative: on the grid behind it). */
   distance: number;
   kmh: number;
+  /** A phone in portrait: the camera aims lower so the car rides above the HUD's instrument. */
+  portrait: boolean;
 }
 let ask: Ask | null = null;
 let active = false;
@@ -64,6 +66,11 @@ export function buildRaceScene(world: World): void {
     const asset = og.load.gltf(world, `models/race/${m}.glb`, { castShadow: shadow, receiveShadow: true });
     if (asset.ok) must(world.instantiate(asset.value, { name: `race-${m}`, parent: root }));
   }
+  // The arcade packs' noon: a grass field in place of the Meridian Loop's neon grid (race-ground, parked under the world then).
+  const grass = must(world.spawn({ name: "race-grass", parent: root, position: { x: 100, y: -0.56, z: 0 }, quaternion: { x: -Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 } }));
+  const plane = og.render.planeGeometry(world, { width: 1800, height: 1800 });
+  const turf = og.render.standardMaterial(world, { color: { r: 0.36, g: 0.66, b: 0.3 }, roughness: 0.95 });
+  if (plane.ok && turf.ok) must(world.insert(grass, og.Mesh, { geometry: plane.value, material: turf.value, receiveShadow: true, visible: false }));
   const car = og.load.gltf(world, "models/race/car.glb", { castShadow: true });
   const wheel = og.load.gltf(world, "models/race/wheel.glb", { castShadow: true });
   ["race-car", ...RIVALS.map((_, i) => `race-rival-${i}`)].forEach((name, i) => {
@@ -141,35 +148,54 @@ export function pose(d: number, side: number): { position: V; heading: number } 
   return { position: { x, y, z }, heading: Math.atan2(a.tx + (b.tx - a.tx) * u, a.tz + (b.tz - a.tz) * u) };
 }
 
-const LIGHTS: Record<RaceLight, { sun: Color; sunI: number; lamps: number; bg: Color; sky: Record<string, unknown>; fog: Record<string, unknown>; env: number; exposure: number; bloom: boolean }> = {
+/** A directional light's rotation: pitched down by `down` radians, then turned by `turn` about y (it shines down its -z). */
+function sunAt(down: number, turn: number): Q {
+  return mul(yaw(turn), { x: -Math.sin(down / 2), y: 0, z: 0, w: Math.cos(down / 2) });
+}
+
+// Each light keeps the fog off its sky (fog.sky, the share of the fog laid over the sky: at its default the sky was a flat
+// haze in every pack) and gives the sun a direction, its shadow soft and close under the car.
+const LIGHTS: Record<RaceLight, { sun: Color; sunI: number; sunQ: Q; lamps: number; bg: Color; sky: Record<string, unknown>; fog: Record<string, unknown>; env: number; exposure: number; bloom: boolean }> = {
+  // Real night: a near-black sky with stars, so the neon edges, the windows and the tail lights carry the picture; a cool moon high behind.
   night: {
-    sun: { r: 0.62, g: 0.66, b: 1 }, sunI: 1.6, lamps: 60, bg: { r: 0.02, g: 0.012, b: 0.06 }, env: 0.35, exposure: 1.15, bloom: true,
-    sky: { enabled: true, zenith: { r: 0.02, g: 0.012, b: 0.06 }, horizon: { r: 0.42, g: 0.11, b: 0.39 }, ground: { r: 0.03, g: 0.016, b: 0.055 }, sunDirection: { x: 0.1, y: 0.06, z: -1 }, sunColor: { r: 1, g: 0.44, b: 0.24 }, sunSize: 9, sunIntensity: 6, glow: 1.2 },
-    fog: { enabled: true, color: { r: 0.165, g: 0.06, b: 0.24 }, density: 0.0026 },
+    sun: { r: 0.55, g: 0.62, b: 1 }, sunI: 0.9, sunQ: sunAt(1.15, 2.6), lamps: 60, bg: { r: 0.008, g: 0.006, b: 0.025 }, env: 0.25, exposure: 1.05, bloom: true,
+    sky: { enabled: true, zenith: { r: 0.006, g: 0.006, b: 0.02 }, horizon: { r: 0.09, g: 0.04, b: 0.16 }, ground: { r: 0.01, g: 0.008, b: 0.02 }, sunDirection: { x: 0.1, y: 0.06, z: -1 }, sunColor: { r: 0.9, g: 0.4, b: 0.7 }, sunSize: 0, sunIntensity: 0, glow: 0.4, stars: 0.8 },
+    fog: { enabled: true, color: { r: 0.05, g: 0.025, b: 0.09 }, density: 0.0016, sky: 0.05 },
   },
+  // Golden hour: a warm low sun ahead and to the side, a blue zenith fading to amber, a light warm haze on the distance only.
   dusk: {
-    sun: { r: 1, g: 0.78, b: 0.55 }, sunI: 3.2, lamps: 18, bg: { r: 0.55, g: 0.45, b: 0.5 }, env: 0.7, exposure: 1, bloom: true,
-    sky: { enabled: true, zenith: { r: 0.18, g: 0.3, b: 0.58 }, horizon: { r: 0.98, g: 0.66, b: 0.38 }, ground: { r: 0.26, g: 0.22, b: 0.2 }, sunDirection: { x: 0.3, y: 0.12, z: -1 }, sunColor: { r: 1, g: 0.72, b: 0.4 }, sunSize: 7, sunIntensity: 8, glow: 1 },
-    fog: { enabled: true, color: { r: 0.86, g: 0.66, b: 0.55 }, density: 0.0018 },
+    sun: { r: 1, g: 0.74, b: 0.48 }, sunI: 3.4, sunQ: sunAt(0.45, 0.5), lamps: 10, bg: { r: 0.3, g: 0.36, b: 0.55 }, env: 0.6, exposure: 1, bloom: true,
+    sky: { enabled: true, zenith: { r: 0.12, g: 0.24, b: 0.55 }, horizon: { r: 1, g: 0.62, b: 0.32 }, ground: { r: 0.22, g: 0.18, b: 0.16 }, sunDirection: { x: 0.3, y: 0.1, z: -1 }, sunColor: { r: 1, g: 0.7, b: 0.38 }, sunSize: 7, sunIntensity: 8, glow: 1 },
+    fog: { enabled: true, color: { r: 0.95, g: 0.68, b: 0.48 }, density: 0.0009, sky: 0.1 },
   },
+  // A clear cartoon noon: a saturated blue sky lightening only near the horizon, a strong sun, almost no haze.
   noon: {
-    sun: { r: 1, g: 0.97, b: 0.9 }, sunI: 3.6, lamps: 0, bg: { r: 0.55, g: 0.8, b: 1 }, env: 0.9, exposure: 1, bloom: false,
-    sky: { enabled: true, zenith: { r: 0.25, g: 0.6, b: 1 }, horizon: { r: 0.78, g: 0.92, b: 1 }, ground: { r: 0.42, g: 0.62, b: 0.38 }, sunDirection: { x: 0.4, y: 0.8, z: -0.6 }, sunColor: { r: 1, g: 0.98, b: 0.9 }, sunSize: 4, sunIntensity: 4, glow: 0.6 },
-    fog: { enabled: true, color: { r: 0.8, g: 0.92, b: 1 }, density: 0.0012 },
+    sun: { r: 1, g: 0.96, b: 0.86 }, sunI: 4.4, sunQ: sunAt(1.35, 0.3), lamps: 0, bg: { r: 0.3, g: 0.6, b: 1 }, env: 1, exposure: 1.1, bloom: false,
+    sky: { enabled: true, zenith: { r: 0.08, g: 0.36, b: 0.95 }, horizon: { r: 0.5, g: 0.78, b: 1 }, ground: { r: 0.36, g: 0.62, b: 0.3 }, sunDirection: { x: 0.4, y: 0.8, z: -0.6 }, sunColor: { r: 1, g: 0.97, b: 0.88 }, sunSize: 4, sunIntensity: 5, glow: 0.4 },
+    fog: { enabled: true, color: { r: 0.62, g: 0.82, b: 1 }, density: 0.0004, sky: 0 },
   },
 };
 
 function lights(world: World, on: RaceLight | null): void {
   const l = on ? LIGHTS[on] : null;
+  // Noon swaps the neon grid for grass.
+  const noon = on === "noon";
+  const ground = world.find("race-ground");
+  if (ground !== null) must(world.set(ground, og.Transform, { position: { x: 0, y: noon ? -500 : 0, z: 0 } }));
+  const grass = world.find("race-grass");
+  if (grass !== null) must(world.set(grass, og.Mesh, { visible: noon }));
   const sun = world.find("race-sun");
-  if (sun !== null) must(world.set(sun, og.DirectionalLight, { intensity: l ? l.sunI : 0, ...(l ? { color: l.sun } : {}) }));
+  if (sun !== null) {
+    must(world.set(sun, og.DirectionalLight, { intensity: l ? l.sunI : 0, shadowSoftness: 0.25, ...(l ? { color: l.sun } : {}) }));
+    if (l) must(world.set(sun, og.Transform, { quaternion: l.sunQ }));
+  }
   LAMPS.forEach((_, i) => {
     const e = world.find(`race-lamp-${i}`);
     if (e !== null) must(world.set(e, og.PointLight, { intensity: l ? l.lamps : 0 }));
   });
 }
 
-export const RaceView = defineSystem("RaceView", { reads: [], writes: [og.Camera, og.RenderSettings, og.Sky, og.Fog, og.Transform, og.DirectionalLight, og.PointLight], after: ["Kit"] }, (_q, _time, world) => {
+export const RaceView = defineSystem("RaceView", { reads: [], writes: [og.Camera, og.RenderSettings, og.Sky, og.Fog, og.Transform, og.DirectionalLight, og.PointLight, og.Mesh], after: ["Kit"] }, (_q, _time, world) => {
   const a = ask;
   ask = null;
   const root = world.find("race-root");
@@ -197,9 +223,9 @@ export const RaceView = defineSystem("RaceView", { reads: [], writes: [og.Camera
   if (!active) {
     saved ??= {
       camera: { orthographic: cam.orthographic, height: cam.height, position: { ...cam.position }, quaternion: { ...cam.quaternion }, background: { ...cam.background }, exposure: cam.exposure, fov: cam.fov, near: cam.near, far: cam.far },
-      render: { toneMapped: rs.toneMapped, environmentIntensity: rs.environmentIntensity, sky: rs.sky, bloom: rs.bloom, exposure: rs.exposure },
-      sky: pick(sky, ["enabled", "zenith", "horizon", "ground", "sunDirection", "sunColor", "sunSize", "sunIntensity", "glow"]),
-      fog: pick(fog, ["enabled", "color", "density"]),
+      render: { toneMapped: rs.toneMapped, environmentIntensity: rs.environmentIntensity, sky: rs.sky, bloom: rs.bloom, exposure: rs.exposure, bloomIntensity: rs.bloomIntensity, bloomThreshold: rs.bloomThreshold },
+      sky: pick(sky, ["enabled", "zenith", "horizon", "ground", "sunDirection", "sunColor", "sunSize", "sunIntensity", "glow", "stars"]),
+      fog: pick(fog, ["enabled", "color", "density", "sky"]),
     };
     active = true;
     must(world.set(root, og.Transform, { position: { x: 0, y: 0, z: 0 } }));
@@ -210,6 +236,9 @@ export const RaceView = defineSystem("RaceView", { reads: [], writes: [og.Camera
   rs.environmentIntensity = l.env;
   rs.sky = true;
   rs.bloom = l.bloom;
+  // Half the Meridian Loop's bloom, over a higher threshold: the tail lights glow without outshining the HUD.
+  rs.bloomIntensity = 0.45;
+  rs.bloomThreshold = 0.9;
   rs.exposure = l.exposure;
   Object.assign(sky, l.sky);
   Object.assign(fog, l.fog);
@@ -239,7 +268,8 @@ export const RaceView = defineSystem("RaceView", { reads: [], writes: [og.Camera
   const h = me.heading;
   const p = me.position;
   const eye = { x: p.x - Math.sin(h) * back, y: p.y + 2.3, z: p.z - Math.cos(h) * back };
-  const target = { x: p.x + Math.sin(h) * 6, y: p.y + 0.9, z: p.z + Math.cos(h) * 6 };
+  // On a phone in portrait the aim drops in front of the car, which rides higher in the frame, clear of the instrument.
+  const target = a.portrait ? { x: p.x + Math.sin(h) * 3, y: p.y - 1.4, z: p.z + Math.cos(h) * 3 } : { x: p.x + Math.sin(h) * 6, y: p.y + 0.9, z: p.z + Math.cos(h) * 6 };
   cam.orthographic = false;
   cam.position = eye;
   cam.quaternion = lookAt(eye, target);

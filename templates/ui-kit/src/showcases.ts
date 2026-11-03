@@ -16,7 +16,7 @@ import { og } from "@origingame/engine";
 import type { Anchor, Size, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
 import { fightHud, horrorHud, mmoHud, mobaHud, openHud, rhythmHud, rogueHud, rpgHud, survivalHud, tdHud } from "./huds2.ts";
-import { raceCommand, raceHud, raceResultsViewmodel, resetRace } from "./race.ts";
+import { raceClassification, raceCommand, raceHud, raceResultsViewmodel, resetRace } from "./race.ts";
 import { actionHud, hudArt, loadHudArt, manageHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
 
 const grow: Size = { kind: "grow" };
@@ -175,6 +175,8 @@ function artIn(slot: string, texture: unknown, kind: string, focal = { x: 0.5, y
 
 /** Each reward's art in its Icon slot of the results document (the rewards of its viewmodel). */
 function rewardArt(vm: Record<string, unknown>): void {
+  // The rewards are on the summary tab: on the others their slots are not built.
+  if ((vm["tab"] ?? "summary") !== "summary") return;
   const rewards = (vm["rewards"] ?? []) as ReadonlyArray<{ texture?: unknown }>;
   rewards.forEach((r, i) => artIn(`results/Results/Panel/Page/Summary/Rewards/Reward#${i}/Icon`, r.texture, "itemIcon"));
 }
@@ -305,7 +307,12 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
         if (e === "continue") go("raceBoard");
         if (e === "again" || e === "replay") go("raceHud");
       });
+      artIn("results/Background", hudArt("scenes/genre-racing"), "keyArt", { x: 0.5, y: 0.6 });
       rewardArt(vm);
+      if (og.ui.openSlot("results/Results/Panel/Page/Scores")) {
+        raceClassification();
+        og.ui.close();
+      }
       return true;
     }
     case "raceBoard": {
@@ -346,12 +353,12 @@ const HUDS2 = { mobaHud, rpgHud, mmoHud, rogueHud, tdHud, rhythmHud, fightHud, s
  * Where a HUD page leaves the kit's chrome, desktop then phone (and a phone
  * in landscape, when it differs): a spot its HUD keeps free (the middle of
  * the start edge on most; the racing HUD's place and standings take that, so
- * its chrome sits bottom start, or top centre on a phone in landscape).
+ * its chrome sits bottom start, or in the top safe area on a phone, off the road).
  * Document pages take it in their Kit slot.
  */
 const CHROME: Record<string, [desktop: Anchor, phone: Anchor, phoneLandscape?: Anchor]> = {
   actionHud: ["left", "left"], shooterHud: ["left", "left"], shooterScore: ["left", "left"], manageHud: ["left", "left"],
-  raceHud: ["bottomLeft", "left", "top"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
+  raceHud: ["bottomLeft", "top", "top"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
   mobaHud: ["left", "left"], rpgHud: ["left", "left"], mmoHud: ["bottomLeft", "left"], rogueHud: ["left", "left"], tdHud: ["left", "left"],
   rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left"], horrorHud: ["left", "left"], openHud: ["left", "left"],
 };

@@ -71,7 +71,7 @@ const HUES: Paint[] = [rgba(0.86, 0.16, 0.18), rgba(0.12, 0.42, 0.86), rgba(0.98
 const TRACK: Vector2[] = SAMPLES.filter((_, i) => i % 10 === 0).map((p) => mapPoint(p.x, p.z));
 
 /** The map's markers: the player and the rivals where the scene drives them, the start line; the heading the player's. */
-function markers(d: number): { me: { heading: number }; list: MapMarkerItem[] } {
+function markers(d: number): { me: { x: number; y: number; heading: number }; list: MapMarkerItem[] } {
   const mark = (dd: number, side: number) => {
     const p = pose(dd, side);
     return { ...mapPoint(p.position.x, p.position.z), heading: (p.heading * 180) / Math.PI };
@@ -107,6 +107,19 @@ let lastBuilt = -10;
 let shownAt = 0;
 
 // ── the HUD ─────────────────────────────────────────────────────────────
+
+/**
+ * On a phone in portrait the kit's chrome takes the top safe area (showcases.ts' CHROME, off the road): how far the
+ * HUD's top anchors drop to start under it, from the chrome as laid out last tick (it grows with the text size).
+ */
+function chromeDrop(m: number): number {
+  const vp = og.ui.frameViewport();
+  if (vp.breakpoint !== "phonePortrait") return 0;
+  // Only the chrome laid out in the top band counts: on the first tick its bounds are the screen before's (elsewhere).
+  const b = og.ui.bounds("Back");
+  if (!b || b.y > vp.height * 0.25) return 0;
+  return Math.max(0, Math.round(b.y + b.height + og.ui.frameTheme().space.sm - (vp.safeArea.top + m)));
+}
 
 /** This lap's state, shared by the HUD's parts. */
 interface Lap {
@@ -150,7 +163,7 @@ export function raceHud(world: World): void {
   // Metres driven since the HUD showed, from a place before the banked sweeper (the speed's integral); on the grid at the start.
   const run = tick - shownAt;
   const distance = starting ? -10 : 100 + ((222 * run) / 60 - 46 * (156 / 60) * (Math.cos(tick / 156) - Math.cos(shownAt / 156))) / 3.6;
-  raceScene({ light: lightOf(style), distance, kmh: car.speed });
+  raceScene({ light: lightOf(style), distance, kmh: car.speed, portrait });
   const pos = markers(distance);
 
   if (look === "arcade") arcade(small, portrait, touch, k, m, lap, car.speed);
@@ -176,7 +189,7 @@ export function raceHud(world: World): void {
     og.ui.anchor("Instrument", instrument, () => og.ui.speedometer("Speed", {
       style: look === "pixel" ? "digital" : "tach",
       speed: car.speed, maxSpeed: 340, unit: L("sc.race.kmh"), rpm: car.rpm, maxRpm: MAX_RPM, rpmStep: 1000, redline: 0.85, shiftAt: SHIFT_RPM / MAX_RPM,
-      gear: car.gear, boost: 0.62, size: Math.round((portrait ? 210 : small ? 168 : 236) * k),
+      gear: car.gear, boost: 0.62, size: Math.round((portrait ? 176 : small ? 168 : 236) * k),
       anchor: null,
     }));
   }
@@ -208,16 +221,20 @@ function tower(): void {
   og.ui.standingsTower("Standings", { entries, relative: true, ahead: 2, behind: 2, leaderLabel: L("sc.race.leader"), pitLabel: L("sc.race.pit"), outLabel: L("sc.race.out"), fastestLabel: L("sc.race.fastest"), anchor: null });
 }
 
-/** The circuit, player-up, its start line checkered and its sectors ticked, its name under it. */
+/**
+ * The circuit, player-up round the player (the map's centre follows the car: the loop runs round the edge of its
+ * square, so a window on the square's middle would show only the infield), its start line checkered and its sectors
+ * ticked, its name under it.
+ */
 function map(size: number, anchor: "topRight" | "bottomLeft" | null, shape: "square" | "circle", pos: ReturnType<typeof markers>, caption = true): void {
-  og.ui.minimapView("Track", { size, shape, heading: pos.me.heading, track: TRACK, sectors: [0.36, 0.64], markers: pos.list, zone: caption ? L("sc.race.circuit") : "", north: "N", anchor });
+  og.ui.minimapView("Track", { size, shape, heading: pos.me.heading, centerX: pos.me.x, centerY: pos.me.y, zoom: 0.62, track: TRACK, sectors: [0.36, 0.64], markers: pos.list, zone: caption ? L("sc.race.circuit") : "", north: "N", anchor });
 }
 
 /** On a phone in portrait: one bar across the top (the place and lap, the times), the tower and the map under it. */
 function phoneTop(m: number, lap: Lap, big: boolean, pos: ReturnType<typeof markers>): void {
   const t = og.ui.frameTheme();
   const k = frame().k;
-  og.ui.anchor("Race", { anchor: "top", margin: m, direction: "column", gap: t.space.sm, width: { kind: "grow" } }, () => {
+  og.ui.anchor("Race", { anchor: "top", margin: m, offsetY: chromeDrop(m), direction: "column", gap: t.space.sm, width: { kind: "grow" } }, () => {
     og.ui.row("Bar", { width: { kind: "grow" }, align: "spaceBetween", cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, wrap: true }, () => {
       og.ui.setDraw({ shape: { kind: "rect", radii: Array(4).fill(t.radius["panel"] ?? 10) }, fills: [{ kind: "solid", color: { token: "hud", alpha: 0.82 } }] } as never);
       og.ui.lapTimer("Head", timer(lap, "head", true));
@@ -232,19 +249,29 @@ function phoneTop(m: number, lap: Lap, big: boolean, pos: ReturnType<typeof mark
   });
 }
 
-/** The touch pads: steer as one split pill, brake and boost round, each with its state ring (72, 64 and 84 pt). */
+/**
+ * The touch pads (the brief's 72, 64 and 84 pt): steer as two chevrons, brake and boost round, each in a full state
+ * ring (a faint track, the value lit along it). The atlas's back chevron, mirrored for Right, is in every pack.
+ */
 function pads(k: number, m: number, small: boolean, arcadeLook: boolean): void {
   const t = og.ui.frameTheme();
   // On a tablet the kit's chrome takes the bottom start corner: the steering sits over it.
   og.ui.anchor("Steer", { anchor: "bottomLeft", margin: m, direction: "row", gap: 2, offsetY: small ? 0 : -Math.round(64 * k * t.textScale) }, () => {
-    og.ui.actionButton("Left", L("sc.race.left"), { icon: "nav-arrow-left", size: 72 });
-    og.ui.actionButton("Right", L("sc.race.right"), { icon: "nav-arrow-right", size: 72 });
+    og.ui.actionButton("Left", L("sc.race.left"), { icon: "back", size: 72 });
+    og.ui.actionButton("Right", L("sc.race.right"), { icon: "back", size: 72 });
+    og.ui.props({ transform: { scaleX: -1 } } as never);
   });
   const ring = (id: string, side: number, value: number, ink: string, build: () => void) => {
-    const d = side + 12;
+    const d = side + 16;
+    const arc = (_: number, color: Record<string, unknown>) => ({ kind: "solid", color });
     og.ui.column(id, { width: { kind: "fixed", px: d }, height: { kind: "fixed", px: d }, align: "center", cross: "center" }, () => {
-      og.ui.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2 * Math.max(0.001, value), thickness: 4, cap: "round" }, fills: [{ kind: "solid", color: { token: ink } }] } as never);
-      build();
+      og.ui.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2, thickness: 5, cap: "butt" }, fills: [arc(1, { token: "shadow", alpha: 0.55 })] } as never);
+      og.ui.column("Lit", { width: { kind: "fixed", px: d }, height: { kind: "fixed", px: d } }, () => {});
+      og.ui.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2 * Math.max(0.001, value), thickness: 5, cap: "round" }, fills: [arc(1, { token: ink })] } as never);
+      og.ui.props({ position: "absolute", insets: { start: 0, top: 0 }, inert: true } as never);
+      // The pad itself round inside its ring: the button clipped to a circle.
+      og.ui.column("Pad", { width: { kind: "fixed", px: side }, height: { kind: "fixed", px: side }, align: "center", cross: "center" }, build);
+      og.ui.setDraw({ shape: { kind: "ellipse" }, clip: "shape" } as never);
     });
   };
   // On a phone in the bottom end corner (the instrument centred); on a tablet over the instrument in that corner.
@@ -259,7 +286,7 @@ function pads(k: number, m: number, small: boolean, arcadeLook: boolean): void {
 /** Where the arcade map sits: bottom start over the kit's chrome and the steering, or under the item slot on a phone in portrait. */
 function arcadeMapPlace(small: boolean, portrait: boolean, touch: boolean, k: number, m: number) {
   const lift = small ? 84 : (touch ? 148 : 56) * og.ui.frameTheme().textScale;
-  return portrait ? { anchor: "topRight" as const, margin: m, offsetY: Math.round(92 * k) } : { anchor: "bottomLeft" as const, margin: m, offsetY: -Math.round(lift * k) };
+  return portrait ? { anchor: "topRight" as const, margin: m, offsetY: Math.round(92 * k) + chromeDrop(m) } : { anchor: "bottomLeft" as const, margin: m, offsetY: -Math.round(lift * k) };
 }
 
 /** Mario Kart's read on the same parts: the huge ordinal over its lap top start, coins, the item slot top end, the arcade speedometer's nitro tube bottom end, a drift chain by the car. */
@@ -272,14 +299,14 @@ function arcade(small: boolean, portrait: boolean, touch: boolean, k: number, m:
     og.ui.icon("Coin", "coin", { size: Math.round(26 * k), tint: { token: "gold" } } as never);
     og.ui.label("Count", `\u00d7 ${12 + (Math.floor(tick / 240) % 3)}`, { step: "lg", font: "display", nowrap: true });
   });
-  og.ui.anchor("Race", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs, cross: "start" }, () => {
+  og.ui.anchor("Race", { anchor: "topLeft", margin: m, offsetY: chromeDrop(m), direction: "column", gap: t.space.xs, cross: "start" }, () => {
     og.ui.lapTimer("Head", { ...timer(lap, "head", true), placeBadge: true, positionText: L("sc.race.ord3") });
     // On a phone the coins join the column (the top centre is the kit's chrome in landscape); else they sit top centre.
     if (small) coins();
   });
   if (!small) og.ui.anchor("Top", { anchor: "top", margin: m }, coins);
   const bolt = hudArt("race/item-bolt" as HudArt);
-  og.ui.itemSlot("Item", { item: bolt, label: L("sc.race.boost"), size: Math.round((small ? 64 : 84) * k), anchor: "topRight" });
+  og.ui.anchor("ItemHud", { anchor: "topRight", margin: m, offsetY: chromeDrop(m) }, () => og.ui.itemSlot("Item", { item: bolt, label: L("sc.race.boost"), size: Math.round((small ? 64 : 84) * k), anchor: null }));
   // A drift chain over the car (the screen's centre, a little right and up); left out on a phone at a large text size.
   const vp = og.ui.frameViewport();
   if (!(small && t.textScale >= 1.5)) og.ui.driftScore("Drift", { score: 2450, multiplier: 3, total: 18_200, label: L("sc.race.drift"), at: { x: Math.round(vp.width * (portrait ? 0.7 : 0.66)), y: Math.round(vp.height * (portrait ? 0.37 : 0.46)) } });
@@ -291,8 +318,45 @@ function arcade(small: boolean, portrait: boolean, touch: boolean, k: number, m:
 /** The results after the finish: the results document with the race's line and stats. */
 export function raceResultsViewmodel(): Record<string, unknown> {
   return {
-    won: true, grade: "", title: L("sc.race.podium"), tab: "summary", level: 14, xp: 0.38, gained: 860,
+    won: true, grade: "", title: L("sc.race.podium"), tab: "board", level: 14, xp: 0.38, gained: 860,
     stats: [{ name: L("sc.race.overtakes"), value: 5, best: false }, { name: L("sc.race.topSpeed"), value: 291, best: true }, { name: L("sc.race.clean"), value: 7, best: false }],
     rewards: [{ name: L("sc.race.credits"), amount: 1200, texture: hudArt("boons/gold") ?? 0 }],
   };
+}
+
+/** The race's classification (the results' board): place, driver, race time, best lap, gap; the fastest lap purple, the player's row lit. */
+const CLASSIFIED: ReadonlyArray<[string, number, number]> = [
+  ["Nyx", 219_402, 72_118], ["Ferro", 221_387, 72_904], ["You", 221_287, 71_861], ["Lumen", 222_884, 73_012], ["Quill", 223_571, 73_240], ["Sable", 227_282, 73_910],
+];
+
+export function raceClassification(): void {
+  const t = og.ui.frameTheme();
+  const rows = [...CLASSIFIED].sort((a, b) => a[1] - b[1]);
+  const fastest = Math.min(...rows.map((r) => r[2]));
+  const leader = rows[0]![1];
+  const w = (n: number) => ({ kind: "fixed" as const, px: Math.round(n * Math.min(1.4, t.textScale)) });
+  og.ui.column("Classification", { width: { kind: "grow" }, gap: 2 }, () => {
+    rows.forEach(([name, total, best], i) => {
+      const you = name === "You";
+      og.ui.row(name, { width: { kind: "grow" }, gap: t.space.md, cross: "center", padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.xs } }, () => {
+        if (you) og.ui.setDraw({ shape: { kind: "rect", radii: Array(4).fill(t.radius["control"] ?? 6) }, fills: [{ kind: "solid", color: { token: "primary" } }] } as never);
+        const ink = you ? ({ token: "onPrimary" } as Paint) : null;
+        const muted = you ? ink : ({ token: "inkMuted" } as Paint);
+        og.ui.label("Place", String(i + 1), { step: "lg", font: "display", color: ink, nowrap: true, width: w(28), align: "end" });
+        og.ui.label("Name", you ? L("sc.you") : name, { step: "base", font: you ? "display" : "body", color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" } });
+        og.ui.label("Total", lapTime(total), { step: "base", font: "mono", color: ink, nowrap: true });
+        og.ui.label("Best", lapTime(best), { step: "sm", font: "mono", color: best === fastest ? FASTEST : muted, nowrap: true });
+        og.ui.label("Gap", i === 0 ? "" : `+${((total - leader) / 1000).toFixed(3)}`, { step: "sm", font: "mono", color: muted, nowrap: true, width: w(64), align: "end" });
+      });
+    });
+  });
+}
+
+/** The fastest lap's purple, as F1 timing marks it. */
+const FASTEST = rgba(0.68, 0.42, 1);
+
+/** A time as racing games write it: m:ss.mmm. */
+function lapTime(ms: number): string {
+  const t = Math.round(ms);
+  return `${Math.floor(t / 60000)}:${String(Math.floor((t % 60000) / 1000)).padStart(2, "0")}.${String(t % 1000).padStart(3, "0")}`;
 }

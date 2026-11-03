@@ -48,7 +48,7 @@ export default playtest({
     t.ok(texts("checkpoint.json").includes("Checkpoint 2"), "a checkpoint names itself");
     t.ok(has("wrongway.json", "Banner/WrongWay/Label"), "the wrong way banner shows");
     t.ok(texts("finish.json").includes("3rd") && texts("finish.json").includes("3:41.287"), "the finish shows the place and the race time");
-    t.ok(texts("idle.json").includes("Saltmarsh Ring"), "the circuit's map names it");
+    t.ok(texts("idle.json").includes("Meridian Loop"), "the circuit's map names it");
     t.ok(has("pixel.json", "Instrument/Speed") && !has("arcade-cartoon.json", "Instrument/Speed/Num#2"), "pixel keeps its readout; the arcade look has no tach numbers");
     t.ok(texts("arcade-cartoon.json").includes("3rd"), "the arcade look's place is its ordinal");
     t.frame(FILES, () => {
