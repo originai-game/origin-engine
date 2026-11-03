@@ -267,7 +267,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // the environment's intensity; the hemisphere light adds at its own.
   let irradiance = ambient_irradiance(ambient_light(n, in.world_pos), in.world_pos, n);
   let diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
-  let r = reflect(-v, n);
+  // three.js's getIBLRadiance (r170): the reflection bent towards the normal by roughness² before the prefiltered map is
+  // read (rough surfaces reflect around their normal, not the mirror direction). A back-facing leaf card's normal turned
+  // away from the eye (three's back-face rule) otherwise mirrors the bright sky behind it: grey-blue crowns.
+  let r = normalize(mix(reflect(-v, n), n, s.roughness * s.roughness));
   let mip = s.roughness * frame.params.y;
   let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
