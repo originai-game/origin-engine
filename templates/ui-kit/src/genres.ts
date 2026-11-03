@@ -26,7 +26,10 @@ export function frame(id: string, title: string, build: () => void, hints: Array
   const small = phone();
   const big = !small && vp.height >= 1000;
   const pad = bleed ? 0 : small ? t.space.sm : t.space.xl;
-  const bottom = bleed ? 0 : small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1));
+  // Room for the action hints at the foot: 72 px a line, or last tick's hints where they wrapped taller.
+  const hintsBox = og.ui.bounds("Hints");
+  const hintsH = hintsBox && hints.length > 0 ? vp.height - sa.bottom - hintsBox.y + t.space.sm : 0;
+  const bottom = bleed ? 0 : small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), Math.round(hintsH));
   const top = bleed ? 0 : small ? t.space.sm : t.space.lg;
   const height = vp.height - sa.top - sa.bottom;
   // The pattern's room is exact (the header's last height taken off): a screen-filling pattern sizes its parts from it.
