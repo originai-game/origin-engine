@@ -798,6 +798,12 @@ function isPendingCapture(frame: string, answer: string): boolean {
   }
 }
 
+/**
+ * Fork s75: the warmed pipelines compiling at once (s60/s70 warm). Chrome compiles
+ * `createRenderPipelineAsync` off its GPU-process main thread, so two at a time left
+ * it idle: the warm tail after the 1072-cell boot was 4-8 s at two.
+ */
+const WARM_COMPILING = 6;
 /** Display frames a pending `capture` is asked again on before it is given up on. */
 const CAPTURE_RETRIES = 60;
 
@@ -1116,8 +1122,8 @@ export function startWorker(game: GameToken): void {
         pumpRoom(engine);
         if (typeof answered.tick === "number") lastTick = answered.tick;
         // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
-        // (og-render warm) are made here, one a frame, at most two compiling.
-        if (covered && coveredWarmLeft && glueRef?.og_web_warm && (glueRef.og_web_pipelines_state?.()[0] ?? 0) < 2) {
+        // (og-render warm) are made here, one a frame, at most WARM_COMPILING compiling (s75).
+        if (covered && coveredWarmLeft && glueRef?.og_web_warm && (glueRef.og_web_pipelines_state?.()[0] ?? 0) < WARM_COMPILING) {
           coveredWarmLeft = glueRef.og_web_warm(engine.id);
           if (coveredWarmLeft) coveredWarm++;
         }
@@ -1186,9 +1192,9 @@ export function startWorker(game: GameToken): void {
     let made = 0;
     const step = () => {
       if (playing || crashed || !engine) return;
-      // Fork s60: with the pipelines asynchronous a warm call returns at once; at most two
-      // compile at a time, so the ones a frame needs are not queued behind every pass's.
-      if ((glueRef?.og_web_pipelines_state?.()[0] ?? 0) >= 2) {
+      // Fork s60: with the pipelines asynchronous a warm call returns at once; at most WARM_COMPILING
+      // (s75) compile at a time, so the ones a frame needs are not queued behind every pass's.
+      if ((glueRef?.og_web_pipelines_state?.()[0] ?? 0) >= WARM_COMPILING) {
         setTimeout(step, 50);
         return;
       }
