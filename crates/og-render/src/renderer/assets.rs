@@ -181,6 +181,7 @@ impl Renderer {
             };
             self.taa_history = None;
             self.gi_history = None;
+            self.previous_time = None;
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
             let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());
@@ -423,6 +424,18 @@ impl Renderer {
                 let params = scene
                     .material_shader(MaterialHandle::from_index(i))
                     .map(|h| h.1);
+                // Advance even when the current parameters stopped changing:
+                // a paused wind must stop producing velocity on its next frame.
+                if m.previous_params != m.params
+                    && let Some(previous) = m.params
+                {
+                    self.queue.write_buffer(
+                        &m.factors,
+                        std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64,
+                        bytemuck::bytes_of(&previous),
+                    );
+                    m.previous_params = m.params;
+                }
                 if m.params != params
                     && let Some(p) = params
                 {
@@ -449,6 +462,22 @@ impl Renderer {
             }
             let (bind_group, array, factors) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1))?;
+            // A colour/texture edit rebuilds the group, not the vertex's
+            // history. A different shader has no comparable previous state.
+            let previous_params = self
+                .cache
+                .materials
+                .get(i)
+                .filter(|m| m.shader == hooked.map(|h| h.0.index()))
+                .and_then(|m| m.params)
+                .or_else(|| hooked.map(|h| h.1));
+            if let Some(previous) = previous_params {
+                self.queue.write_buffer(
+                    &factors,
+                    std::mem::offset_of!(material::MaterialUniform, previous_custom) as u64,
+                    bytemuck::bytes_of(&previous),
+                );
+            }
             // A full shader (custom.rs) draws a physical material with its
             // own entries: no physical pipelines.
             let full = hooked.is_some_and(|(sh, _)| {
@@ -474,6 +503,7 @@ impl Renderer {
             let gpu = GpuMaterial {
                 revision,
                 params: hooked.map(|h| h.1),
+                previous_params,
                 factors,
                 bind_group,
                 physical,

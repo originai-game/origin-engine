@@ -1017,6 +1017,7 @@ impl Renderer {
             trails: ribbons::Trails::default(),
             gpu_trails,
             prev_view_proj: None,
+            previous_time: None,
             warned_planar: false,
             fx_groups: None,
             mips,

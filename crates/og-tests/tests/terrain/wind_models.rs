@@ -62,3 +62,55 @@ fn the_wind_leans_a_swaying_model_by_its_height() {
     let (later, _) = render(&ws::wind_scene(true, 130));
     assert_ne!(later.pixels, windy.pixels);
 }
+
+/// A bent tree is not a moving tree. History must contain the previous
+/// deformation, and advance when the wind pauses, not just when it changes.
+#[test]
+fn model_wind_velocity_stops_when_the_wind_stops_changing() {
+    let mut scene = ws::wind_scene(true, 90);
+    let red = scene.instances[1].material;
+    scene.set_shader_param(red, "wind", &[1.0, 0.0, 0.15, 0.0]);
+    let blur = og_render::MotionBlur {
+        shutter: 1.0,
+        samples: 16,
+        max_pixels: 24.0,
+    };
+    scene.post.motion_blur = Some(blur);
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let draw = |r: &mut Renderer, s: &RenderScene| {
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    draw(&mut renderer, &scene);
+    let stationary = draw(&mut renderer, &scene);
+    scene.post.motion_blur = None;
+    let crisp = draw(&mut renderer, &scene);
+    let different = |a: &RgbaImage, b: &RgbaImage| {
+        a.pixels
+            .chunks_exact(4)
+            .zip(b.pixels.chunks_exact(4))
+            .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(a, b)| a.abs_diff(*b) > 8))
+            .count()
+    };
+    assert!(
+        different(&stationary, &crisp) < 10,
+        "steady bend produced motion blur"
+    );
+
+    // Change strength without a tick: motion is between drawn frames, not
+    // inferred from elapsed tick time or a hard-coded previous tick.
+    scene.set_shader_param(red, "wind", &[1.0, 0.0, 0.4, 0.0]);
+    scene.post.motion_blur = Some(blur);
+    let moving = draw(&mut renderer, &scene);
+    let paused = draw(&mut renderer, &scene);
+    scene.post.motion_blur = None;
+    let crisp = draw(&mut renderer, &scene);
+    assert!(
+        different(&moving, &crisp) > 50,
+        "wind change lost its motion vectors"
+    );
+    assert!(
+        different(&paused, &crisp) < 10,
+        "paused wind retained stale velocity"
+    );
+}

@@ -1775,6 +1775,7 @@ impl Renderer {
             origin: scene.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
         };
+        uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
         // (`h.origin`, `origin.rs`).
         let t = uniform.atmosphere.time;
@@ -3919,6 +3920,7 @@ impl Renderer {
         // The main pass copied its lit image for the next frame's GI.
         self.gi_history = gi_copy.then_some(self.frame_index);
         self.prev_view_proj = Some(cam.view_proj);
+        self.previous_time = Some(t[0]);
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not
         // only when the renderer is dropped (a killed process never is).

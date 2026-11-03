@@ -40,7 +40,7 @@ struct Frame {
   sky_sun_dir: vec4<f32>,     // xyz: towards the drawn sun
   sky_moon: vec4<f32>,        // xyz: towards the moon, w: its angular radius (0: none)
   sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
-  time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second
+  time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second, w: previous drawn seconds
   sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
   clouds: array<vec4<f32>, 6>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none)
   aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)

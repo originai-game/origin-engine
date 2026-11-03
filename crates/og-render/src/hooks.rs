@@ -28,7 +28,10 @@
 //! skinned meshes alike, and the shadow passes and the depth prepass see
 //! the mesh where `vertex_offset` moved it and cut where `surface_color`'s
 //! alpha falls below the alpha test (the shadow shader is built with the
-//! same hooks, `shadow_source`). `og-cook` compiles every shader asset with naga
+//! same hooks, `shadow_source`). The prepass evaluates `vertex_offset` again
+//! with the previous drawn frame's parameters, position and clock for motion
+//! vectors; unchanged parameters settle on the next frame even when no tick
+//! advances. `og-cook` compiles every shader asset with naga
 //! (WGSL, SPIR-V and MSL) and refuses the asset
 //! with naga's message when it does not.
 
@@ -236,15 +239,21 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
     for p in params {
         s.push_str(&format!("  {}: {},\n", p.name, p.kind.wgsl()));
     }
-    s.push_str("};\nfn shader_params() -> Params {\n  var p: Params;\n");
-    for (i, p) in params.iter().enumerate() {
-        s.push_str(&format!(
-            "  p.{} = material.custom[{i}]{};\n",
-            p.name,
-            p.kind.swizzle()
-        ));
+    s.push_str("};\n");
+    for (function, field) in [
+        ("shader_params", "custom"),
+        ("previous_shader_params", "previous_custom"),
+    ] {
+        s.push_str(&format!("fn {function}() -> Params {{\n  var p: Params;\n"));
+        for (i, p) in params.iter().enumerate() {
+            s.push_str(&format!(
+                "  p.{} = material.{field}[{i}]{};\n",
+                p.name,
+                p.kind.swizzle()
+            ));
+        }
+        s.push_str("  return p;\n}\n");
     }
-    s.push_str("  return p;\n}\n");
     s.push_str(code);
     s.push('\n');
     for (name, default) in SHADER_HOOKS.iter().zip(DEFAULT_HOOKS) {

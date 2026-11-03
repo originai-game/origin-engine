@@ -138,6 +138,7 @@ pub(crate) struct GpuMaterial {
     /// parameters it holds: a parameter change is written into it in place.
     pub(crate) factors: wgpu::Buffer,
     pub(crate) params: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
+    pub(crate) previous_params: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
     /// The standard group: every pass but a physical material's lit one.
     pub(crate) bind_group: wgpu::BindGroup,
     /// A physical material's group for its lit pass (`physical.rs`).

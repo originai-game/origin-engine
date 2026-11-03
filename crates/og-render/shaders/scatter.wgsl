@@ -67,7 +67,10 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   // was swayed to the previous frame.
   o.cur_clip = mul_point(scatter.view_proj, world);
   let prev_sway = scatter_sway(v.position, i.m3, scale, scatter.wind_phase.zw);
-  o.prev_clip = mul_point(scatter.prev_view_proj, vec4<f32>(world.xyz - sway + prev_sway, world.w));
+  h.world = (model * vec4<f32>(v.position, 1.0)).xyz + prev_sway;
+  h.time = frame.time.w;
+  let previous = h.world + vertex_offset(h, previous_shader_params());
+  o.prev_clip = mul_point(scatter.prev_view_proj, vec4<f32>(previous, 1.0));
   return o;
 }
 

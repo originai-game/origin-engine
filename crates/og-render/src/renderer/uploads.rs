@@ -372,6 +372,7 @@ impl Renderer {
         let mut uniform: MaterialUniform = material::uniform(m, two_channel);
         if let Some(c) = custom {
             uniform.custom = c;
+            uniform.previous_custom = c;
         }
         // The array maps' views (a material shader keeps the standard path).
         let arrays = match self.array_maps.as_ref() {

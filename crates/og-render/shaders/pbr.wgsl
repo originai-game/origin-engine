@@ -315,7 +315,19 @@ fn prepass_vertex_from(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn, befor
   p.color = o.color;
   p.local_pos = o.local_pos;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(o.world_pos, 1.0);
-  p.prev_clip = mul_point(fx.prev_view_proj, prev * vec4<f32>(before, 1.0));
+  var previous = prev * vec4<f32>(before, 1.0);
+  var h: Hook;
+  h.world = previous.xyz;
+  h.local = before;
+  h.normal = world_normal(prev, v.normal);
+  h.uv = v.uv;
+  h.color = v.color;
+  h.time = frame.time.w;
+  h.origin = frame.origin.xyz;
+  h.eye = frame.view_pos.xyz;
+  h.front = 1.0;
+  previous = vec4<f32>(previous.xyz + vertex_offset(h, previous_shader_params()), previous.w);
+  p.prev_clip = mul_point(fx.prev_view_proj, previous);
   p.object = object_id(model[0].xyz, model[1].xyz, model[2].xyz, model[3].xyz);
   return p;
 }
@@ -543,4 +555,3 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
   }
   return r;
 }
-

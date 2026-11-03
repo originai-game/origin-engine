@@ -469,6 +469,8 @@ pub struct Renderer {
     gpu_trails: Option<ribbons_gpu::GpuTrails>,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
+    /// The last drawn clock, including frames with no simulation tick.
+    previous_time: Option<f32>,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

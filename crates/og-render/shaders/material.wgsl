@@ -15,6 +15,7 @@ struct MaterialFactors {
   coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness
   uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on) its uv transform: [a, b, c, d], [tx, ty]
   custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
+  previous_custom: array<vec4<f32>, 8>,  // the last drawn frame, not the last simulation tick
 };
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;

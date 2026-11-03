@@ -926,6 +926,8 @@ pub(crate) struct MaterialUniform {
     pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
+    /// The last drawn frame's parameters, for vertex motion vectors.
+    pub previous_custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
 }
 
 /// `m` with the scene's [`crate::MaterialStyle`] filled into every stylised
@@ -1042,6 +1044,7 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
         ],
         uv: uv_rows(&m.uv_transforms()),
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
+        previous_custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
     }
 }
 
