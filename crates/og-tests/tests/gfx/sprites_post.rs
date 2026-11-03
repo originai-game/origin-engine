@@ -32,6 +32,76 @@ fn bloom_spreads_light_beyond_the_emitters() {
     assert!(frac > 0.05, "bloom brightened only {:.2}%", frac * 100.0);
 }
 
+/// The first downsample's Karis average (bloom_chain.wgsl
+/// `downsample13_karis`): one pixel far brighter than its neighbours (a
+/// firefly) blooms much less than a 4x4 patch with the same light spread
+/// over it. Without the average the chain is linear, so both halos carry
+/// the same energy and the firefly spreads into a block.
+#[test]
+fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
+    // An orthographic camera 7.2 m tall over 720 rows: 1 cm a pixel, the
+    // squares' edges between pixel centres.
+    let scene = |side: f32, emission: f32| {
+        let mut scene = RenderScene::new();
+        let quad = scene.add_mesh(shapes::plane_xy(side, side));
+        let m = scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: [emission; 3],
+            ..Default::default()
+        });
+        let centre = if side < 0.02 { 0.005 } else { 0.0 };
+        scene.add_instance(
+            quad,
+            m,
+            Mat4::from_translation(Vec3::new(centre, centre, 0.0)),
+        );
+        scene.light.intensity = 0.0;
+        scene.environment.intensity = 0.0;
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.0, 5.0),
+            target: Vec3::ZERO,
+            projection: og_render::Projection::Orthographic { height: 7.2 },
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+        scene.post.bloom = Some(og_render::Bloom {
+            threshold: 1.0,
+            knee: 0.5,
+            intensity: 0.8,
+        });
+        scene
+    };
+    let desc = RenderDesc {
+        antialias: Antialias::Off,
+        ..scenes::base_desc()
+    };
+    // The halo: light between 8 and 64 pixels from the emitter.
+    let halo = |img: &RgbaImage| {
+        let (cx, cy) = (img.width as f32 / 2.0, img.height as f32 / 2.0);
+        let mut sum = 0.0f64;
+        for y in 0..img.height {
+            for x in 0..img.width {
+                let d = (x as f32 + 0.5 - cx).hypot(y as f32 + 0.5 - cy);
+                if (8.0..64.0).contains(&d) {
+                    let i = ((y * img.width + x) * 4) as usize;
+                    sum += luma(img.pixels[i..i + 4].try_into().expect("rgba")) as f64;
+                }
+            }
+        }
+        sum
+    };
+    let (firefly, _) = frame(&desc, &scene(0.01, 1600.0), 1);
+    let (patch, _) = frame(&desc, &scene(0.04, 100.0), 1);
+    let (f, p) = (halo(&firefly), halo(&patch));
+    println!("bloom halo: lone pixel {f:.0}, the same light over 4x4 {p:.0}");
+    assert!(p > 1000.0, "the patch blooms: {p:.0}");
+    assert!(
+        f < 0.5 * p,
+        "the lone pixel blooms less: {f:.0} against {p:.0}"
+    );
+}
+
 #[test]
 fn exposure_matches_its_reference() {
     check("exposure");

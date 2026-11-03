@@ -289,7 +289,9 @@ fn fs_bloom_prefilter(in: VsOut) -> @location(0) vec4<f32> {
     let half_size = max(textureDimensions(source) / 2u, vec2<u32>(1u));
     out = unreal_blur(in.uv, 1.0 / vec2<f32>(half_size), 0) * unreal_weight(0);
   } else if (post.mode.z > 0.5) {
-    let c = downsample13(in.uv) * exposure();
+    // Mip 0 from the lit image: with the Karis average, so a lone bright
+    // pixel does not bloom into a block.
+    let c = downsample13_karis(in.uv, exposure()) * exposure();
     // (With untonemapped sprites the taps are weighted by the lit image's
     // alpha, `bloom_tap`, so they never bloom.)
     // Soft threshold (a quadratic knee around the threshold).
