@@ -27,7 +27,7 @@ function niceStep(max: number): number {
 
 export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
   // The dial grows with the player's text size (to 1.4×), so its numerals keep their spacing at 200 %.
-  const size = Math.round(u(desc.size || (bp().phone ? 132 : 180)) * Math.min(1.4, textScale()));
+  let size = Math.round(u(desc.size || (bp().phone ? 132 : 180)) * Math.min(1.4, textScale()));
   const max = Math.max(1, desc.maxSpeed ?? 300);
   const speed = Math.max(0, desc.speed ?? 0);
   const rpm = clamp01(desc.rpm ?? 0);
@@ -35,8 +35,14 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
   const over = rpm >= red;
   const style: Api.SpeedoStyle = desc.style ?? "dial";
   const unit = desc.unit ?? "km/h";
+  if (style === "tach") {
+    // A tach never takes more than a third of the screen's short side.
+    const v = frame().viewport;
+    size = Math.min(size, Math.round(0.34 * Math.min(v.width, v.height)));
+  }
   hudPlace(id, anchorOf(desc, "bottomRight"), () => {
     if (style === "digital") digital(id, speed, rpm, red, unit, desc, size);
+    else if (style === "tach") tach(id, speed, rpm, red, unit, desc, size);
     else {
       box(id, { width: px(size), height: px(size), part: sel("Speedometer", "dial") }, {
         shape: ellipseShape(),
@@ -165,6 +171,133 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
         ...groups({ rev: over ? "redline" : "normal" }, { rev: ["normal", "redline"] }),
       });
     }
+  });
+}
+
+const TACH_START = (5 * Math.PI) / 6;
+const TACH_SWEEP = (4 * Math.PI) / 3;
+
+/**
+ * The tach (the racing HUD brief): a 240° arc of the revs with its numbers
+ * (thousands) outside it, so no number can reach the readout; the last
+ * stretch from the redline in the danger role, the fill turning from the
+ * accent to danger as it crosses; a row of shift lights over the readout
+ * filling green, accent, danger and all flashing at the shift point; the
+ * speed the largest numeral, condensed italic in a fixed three-digit box,
+ * its unit under it; the gear a square badge beside it (N and R in warn);
+ * boost a thin inner arc. At a large text size the numbers go before the
+ * readout shrinks.
+ */
+function tach(id: string, speed: number, rpm: number, red: number, unit: string, desc: Api.SpeedometerDesc, size: number): void {
+  const maxRpm = Math.max(1, desc.maxRpm || 8000);
+  const rpmStep = Math.max(1, desc.rpmStep || 1000);
+  const shiftAt = clamp01(desc.shiftAt || red);
+  const over = rpm >= red;
+  const shifting = rpm >= shiftAt;
+  const c = size / 2;
+  // Numbers at caption size round the outside; dropped where they would be
+  // larger than a tenth of the dial (200 % text on a small dial).
+  const numStep = tsFit(10, size * 0.1);
+  const numLine = stepSize(numStep).line;
+  const showNums = size >= 120 && stepSize(numStep).size <= size * 0.075 + 0.5;
+  const ring = showNums ? numLine + Math.max(2, size * 0.01) : Math.max(2, size * 0.02);
+  const Ro = c - ring;
+  const band = Math.max(5, Math.round(size / 20));
+  const accent = role("primary");
+  const danger = role("danger");
+  const arc = (rid: string, r: number, from: number, sweep: number, thick: number, paint: Api.Paint, part: string, effects: Api.Effect[] = []) =>
+    leaf(rid, { width: px(r * 2), height: px(r * 2), part }, {
+      shape: { kind: "arc", start: TACH_START + TACH_SWEEP * from, sweep: Math.max(0.0001, TACH_SWEEP * sweep), thickness: thick, cap: "butt" },
+      fills: [solid(paint)],
+      effects,
+    }, fixed({ start: c - r, top: c - r }));
+  box(id, { width: px(size), height: px(size), part: sel("Speedometer", "dial", "tach") }, {
+    shape: ellipseShape(),
+    fills: [vgrad([[0, token("hud", 0.5)], [1, token("hud", 0.88)]])],
+    strokes: [stroke(1, token("shadow", 0.9), "outside")],
+    effects: [{ kind: "dropShadow", offset: { x: 0, y: 3 }, blur: 12, spread: 0, color: token("shadow", 0.5) }],
+  }, () => {
+    arc("TachTrack", Ro, 0, 1, band, token("shadow", 0.65), sel("Speedometer", "tach"));
+    arc("TachRed", Ro, red, 1 - red, band, lit(danger, 0.35), sel("Speedometer", "tach", "red"));
+    const shown = reduced() ? rpm : clamp01(springTo("rpm", rpm, 120));
+    if (shown > 0) arc("Tach", Ro, 0, Math.min(shown, red), band, lit(accent), sel("Speedometer", "tach"));
+    if (shown > red) arc("TachOver", Ro, red, shown - red, band, lit(danger), sel("Speedometer", "tach", "red"), [glow(6, lit(danger, 0.6))]);
+    // Ticks across the band every rpmStep (and half-steps), numbers outside.
+    const n = Math.floor(maxRpm / rpmStep + 1e-6);
+    for (let i = 0; i <= n * 2; i++) {
+      const v = (i * rpmStep) / 2;
+      if (v > maxRpm + 1e-6) break;
+      const major = i % 2 === 0;
+      const f = v / maxRpm;
+      const a = TACH_START + f * TACH_SWEEP;
+      const r0 = Ro - band - (major ? Math.max(3, size * 0.03) : 0);
+      const r1 = major ? Ro : Ro - band * 0.45;
+      leaf(kit.idi("Tick", i), { width: px(size), height: px(size), part: sel("Speedometer", "tick", major ? "major" : null) }, {
+        shape: { kind: "path", points: [{ x: c + Math.cos(a) * r0, y: c + Math.sin(a) * r0 }, { x: c + Math.cos(a) * r1, y: c + Math.sin(a) * r1 }], width: major ? 2 : 1, cap: "butt" },
+        fills: [solid(f >= red - 1e-6 ? lit(danger) : major ? token("ink") : token("inkMuted"))],
+      }, fixed({ start: 0, top: 0 }));
+      if (major && showNums) {
+        const rt = Ro + ring / 2;
+        const lw = numLine * 1.6;
+        text(kit.idi("Num", i), String(Math.round(v / 1000)), { step: numStep, font: "mono", color: f >= red - 1e-6 ? lit(danger) : token("inkMuted"), nowrap: true, width: px(lw), align: "center" },
+          fixed({ start: c + Math.cos(a) * rt - lw / 2, top: c + Math.sin(a) * rt - numLine / 2 }));
+      }
+    }
+    // Boost: a thin arc inside the ticks.
+    if (desc.boost !== null && desc.boost !== undefined) {
+      const rb = Ro - band - Math.max(5, size * 0.05);
+      const th = Math.max(2, Math.round(band * 0.4));
+      arc("BoostTrack", rb, 0, 1, th, token("shadow", 0.6), sel("Speedometer", "boost"));
+      if (desc.boost > 0) arc("Boost", rb, 0, clamp01(desc.boost), th, lit(role("info")), sel("Speedometer", "boost"));
+    }
+    // The readout: the speed, the largest numeral, in a fixed box of three
+    // digits (condensed and slanted), its unit under it, the gear beside it.
+    const speedStep = tsFit(40, size * 0.27, true);
+    const sp = stepSize(speedStep);
+    const unitStep = tsFit(10, size * 0.07);
+    const digitsW = Math.ceil(3 * sp.size * 0.62 * 0.88);
+    const gearStep = tsFit(12, sp.size * 0.45, true);
+    const gearSide = Math.ceil(Math.max(stepSize(gearStep).line, (desc.gear ?? "").length * stepSize(gearStep).size * 0.62 + 6));
+    const gap = Math.max(3, Math.round(size * 0.02));
+    // The slant leans the speed's top right by a fifth of its line: the gear sits past that.
+    const lean = Math.ceil(sp.line * 0.2);
+    const rowW = digitsW + (desc.gear ? lean + gap + gearSide : 0);
+    const speedTop = c - sp.line * 0.6;
+    const left = c - rowW / 2;
+    text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(digitsW), align: "end" },
+      fixed({ start: left, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
+    text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true, width: px(digitsW), align: "center" },
+      fixed({ start: left, top: speedTop + sp.line }));
+    if (desc.gear) {
+      const g = desc.gear;
+      const neutral = g === "N" || g === "R";
+      box("Gear", { width: px(gearSide), height: px(gearSide), align: "center", cross: "center", part: sel("Speedometer", "gear", neutral ? "neutral" : null) }, {
+        shape: { kind: "rect", radii: [3, 3, 3, 3] },
+        fills: [solid(token("shadow", 0.7))],
+        strokes: [stroke(1.5, neutral ? lit(role("warn")) : token("lineStrong"))],
+      }, () => text("Text", g, { step: gearStep, font: "display", color: neutral ? lit(role("warn")) : token("ink"), nowrap: true }),
+      fixed({ start: left + digitsW + lean + gap, top: speedTop + (sp.line - sp.size * 0.72) / 2 }));
+    }
+    // Shift lights over the readout: green, accent, danger, filling to the shift point; all flash there.
+    const lights = size >= 150 ? 7 : 5;
+    const d = Math.max(5, Math.round(size * 0.04));
+    const lgap = Math.max(2, Math.round(d * 0.5));
+    const from = Math.max(0, shiftAt - 0.25);
+    const flash = shifting && !reduced() ? 0.35 + 0.65 * pulse(8) : 1;
+    box("Lights", { direction: "row", gap: lgap, part: sel("Speedometer", "shift") }, undefined, () => {
+      for (let k = 0; k < lights; k++) {
+        const on = shifting || rpm >= from + ((k + 1) / lights) * (shiftAt - from) - 1e-6;
+        const hue = k < lights * 0.4 ? role("success") : k < lights * 0.75 ? accent : danger;
+        leaf(kit.idi("Light", k), { width: px(d), height: px(d), part: sel("Speedometer", "light", on ? "on" : null) }, {
+          shape: ellipseShape(),
+          fills: [solid(on ? lit(hue, flash) : token("shadow", 0.6))],
+          effects: on ? [glow(d * 0.8, lit(hue, 0.5 * flash))] : [],
+        });
+      }
+    }, fixed({ start: c - (lights * d + (lights - 1) * lgap) / 2, top: speedTop - d - Math.max(4, size * 0.05) }));
+  }, {
+    a11y: a11y("meter", "Speed", { value: `${Math.round(speed)} ${unit}${desc.gear ? `, gear ${desc.gear}` : ""}`, valueMin: 0, valueMax: desc.maxSpeed ?? 300, valueNow: speed }),
+    ...groups({ rev: over ? "redline" : "normal" }, { rev: ["normal", "redline"] }),
   });
 }
 

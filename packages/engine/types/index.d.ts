@@ -42952,8 +42952,9 @@ export interface TurnOrderDesc {
  * A speedometer's look.
  * - `"dial"`: A dial with a needle and the tach round it (the default).
  * - `"digital"`: The speed in large digits over a tach bar.
+ * - `"tach"`: A 240° tach arc driven by rpm with its numbers outside it, a shift-light row, and the speed as the largest numeral (no needle) with the gear in a badge beside it.
  */
-export type SpeedoStyle = "dial" | "digital";
+export type SpeedoStyle = "dial" | "digital" | "tach";
 
 /**
  * A speedometer and tachometer.
@@ -42993,6 +42994,27 @@ export interface SpeedometerDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly redline?: number;
+  /**
+   * The tach's top in revolutions per minute (tach: its numbers are thousands, every rpmStep).
+   *
+   * @default 8000
+   * @range 0..
+   */
+  readonly maxRpm?: number;
+  /**
+   * The revs between the tach's numbered ticks.
+   *
+   * @default 1000
+   * @range 0..
+   */
+  readonly rpmStep?: number;
+  /**
+   * Where the shift lights are all lit and flash, 0 to 1 of the tach; 0 is the redline.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly shiftAt?: number;
   /**
    * The gear (N, R, 1 …); empty is none.
    *
@@ -56138,7 +56160,8 @@ export declare namespace og {
     function turnOrder(id: string, desc?: TurnOrderDesc): void;
     /**
      * A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar.
-     * Parts: Speedometer.dial, Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear, Speedometer.shift, Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear.
+     * The tach style (style tach) is the racing HUD's instrument: a 240° arc of the revs with its numbers (thousands of maxRpm, every rpmStep) outside the arc, its last stretch from the redline in danger and the fill turning from the accent to danger as it crosses; a row of shift lights (7, 5 on a small dial) over the readout filling green, accent, danger up to shiftAt and all flashing there; the speed the largest numeral, condensed italic in a fixed three-digit box with its unit under it; the gear a square badge beside it, N and R in warn; boost a thin inner arc. It caps at 34 % of the screen's short side, and at a large text size its numbers drop before the readout shrinks.
+     * Parts: Speedometer.dial[tach|digital], Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear[neutral], Speedometer.shift, Speedometer.light[on], Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear.
      *
      * @param id Its id.
      * @param desc Speed, revs and gear.

@@ -998,3 +998,54 @@ test("og.ui.unitFrame and og.ui.partyFrames: a level badge's figure is never und
     .map((x) => x.paths.join(" × "));
   expect(overlaps.join("; ")).toBe("");
 });
+
+test("og.ui.speedometer tach: shift lights fill to the shift point and all light there, numbers outside the arc, dropped at 200 % before the readout shrinks, capped at a third of the short side", () => {
+  // Wrong: the lights lit by the redline instead of shiftAt, a number laid out inside the arc where it can reach the
+  // readout, the speed shrunk to keep the numbers at 200 %, or a dial wider than 34 % of a phone's short side.
+  const tachFor = (rpm: number, view: object, textScale = 1) => {
+    const sys = defineSystem("HudTach", {}, () => {
+      og.ui.speedometer("Tach", { style: "tach", size: 200, speed: 187, maxSpeed: 300, rpm, redline: 0.85, shiftAt: 0.9, gear: "N", boost: 0.5, anchor: "bottomRight" } as never);
+    });
+    const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
+    if (!r.ok) throw new Error(r.reason);
+    const e = r.value;
+    og.ui.previewViewport(e.world, view as never);
+    const font = og.load.font(e.world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (!font.ok) throw new Error(font.reason);
+    og.ui.configure(e.world, { font: font.value, textScale, reducedMotion: true });
+    e.advance(3);
+    const draws = drawsDuring(() => e.advance(1));
+    return { draws, els: dump(e), frame: JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot };
+  };
+  const lights = (els: El[]) => els.filter((x) => /\/Light#\d+$/.test(x.path));
+  expect(lights(tachFor(0.5, DESKTOP_SAFE).els).length).toBe(7);
+  // A light is lit when it glows. 7 lights from shiftAt − 0.25 (0.65) to 0.9: at 0.8, 0.15 of 0.25 in, four are lit.
+  const on = (rpm: number) => [...tachFor(rpm, DESKTOP_SAFE).draws].filter(([p, d]) => /\/Light#\d+$/.test(p) && (d.at(-1)?.effects?.length ?? 0) > 0).length;
+  expect([on(0.5), on(0.8), on(0.89), on(0.9)]).toEqual([0, 4, 6, 7]);
+  // Desktop: every number sits outside the arc's box and nothing in the dial overlaps.
+  const desk = tachFor(0.7, DESKTOP_SAFE);
+  const dial = desk.els.find((x) => x.path.endsWith("/Tach"))!;
+  const track = desk.els.find((x) => x.path.endsWith("/Tach/TachTrack"))!;
+  const nums = desk.els.filter((x) => /\/Num#\d+$/.test(x.path));
+  expect(nums.map((x) => x.text)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+  const c = { x: dial.x + dial.width / 2, y: dial.y + dial.height / 2 };
+  for (const n of nums) {
+    const d = Math.hypot(n.x + n.width / 2 - c.x, n.y + n.height / 2 - c.y);
+    expect(d).toBeGreaterThan(track.width / 2);
+  }
+  const overlaps = (f: UiFrameSnapshot) => checkFrame(f, { screen: "hud", breakpoint: "desktop", locale: "", style: "", scale: 100, highContrast: false })
+    .filter((x) => x.rule === "overlap" && x.paths.some((p) => p.includes("/Tach/")))
+    .map((x) => x.paths.join(" × "));
+  expect(overlaps(desk.frame).join("; ")).toBe("");
+  const speed = (els: El[]) => els.find((x) => x.path.endsWith("/Tach/Speed"))!;
+  // A phone at 200 %: the dial a third of the short side at most, its numbers gone, the speed no smaller than at 100 %.
+  const PHONE = { width: 844, height: 390, dpr: 3, safeArea: { left: 47, top: 0, right: 34, bottom: 0 }, coarsePointer: true, breakpoint: "phoneLandscape" };
+  const small = tachFor(0.7, PHONE, 1);
+  const big = tachFor(0.7, PHONE, 2);
+  const bigDial = big.els.find((x) => x.path.endsWith("/Tach"))!;
+  expect(bigDial.width).toBeLessThanOrEqual(Math.round(0.34 * 390));
+  expect(big.els.filter((x) => /\/Num#\d+$/.test(x.path)).length).toBe(0);
+  expect(speed(big.els).height).toBeGreaterThanOrEqual(speed(small.els).height);
+  expect(overlaps(big.frame).join("; ")).toBe("");
+  expect(speed(desk.els).text).toBe("187");
+});
