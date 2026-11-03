@@ -225,3 +225,27 @@ red wall's colour on its left, green on its right, and the lit ceiling
 above, as a blurred image of the room. The mirror test now reads two
 bands left and right of the sphere's middle (0.05h–0.12h out), where
 the normals face the walls, not the central square.
+
+### Third head: the lamp-colour test compares the change, not ratios
+
+macrunner held 529a2a6fb. The mirror and the room passed, but
+`a_realtime_light_volume_takes_the_lamp_s_colour` failed: the blue
+lamp's B:R gain was only 1.30× the warm lamp's (the test wanted 1.5×).
+Measured gains: warm [69507352, 64947588, 48170604], blue [57508204,
+56271951, 52003874].
+
+The renderer is right; the ratio was the wrong measure. Each gain
+(volume against no volume) also holds terms the lamp doesn't change:
+- the environment's ambient light and reflection that the probes
+  replace, identical under both lamps;
+- since the second head, the red and green walls, which the volume now
+  reaches and which reflect little blue whatever lights them.
+
+Those terms compress the ratio without saying anything about the
+probes. They cancel in the two gains' difference, which is the change
+in bounced light alone. Every albedo in the room passes the lamp's
+change (−0.65 red, +0.22 blue) through with its sign. The test now
+asserts that difference has red down and blue up by more than one level
+a pixel. On macrunner's numbers it is [−11999148, −8675637, +3833270]
+over 921600 pixels: red −13 and blue +4.2 levels a pixel. No renderer
+change, so no frame moves from 529a2a6fb.

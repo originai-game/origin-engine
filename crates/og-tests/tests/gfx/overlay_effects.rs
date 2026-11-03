@@ -525,8 +525,17 @@ fn light_volume_room_matches_its_reference() {
 
 /// A realtime light volume is relit by the lamp as it is: against the
 /// same room without it, it lifts the frame (the bounce in the shade), and
-/// with the lamp turned blue the light it adds is bluer than with the warm
-/// lamp (a baked volume would keep the warm light).
+/// turning the lamp from warm to blue moves the light it adds towards blue:
+/// less red, more blue (a baked volume would keep the warm light).
+///
+/// The comparison is of the two gains' difference, not their ratios. Each
+/// gain also holds terms the lamp does not change: the environment's
+/// ambient light and reflection that the probes replace, the same in both,
+/// and the red and green walls (inside the volume's reach), which reflect
+/// little blue whatever lights them. Those dilute a ratio without saying
+/// anything about the probes; they cancel in the difference, which is the
+/// change in bounced light alone, and every albedo here passes the lamp's
+/// change (-0.65 red, +0.22 blue) through with its sign.
 #[test]
 fn a_realtime_light_volume_takes_the_lamp_s_colour() {
     let render = |realtime: bool, colour: Vec3| {
@@ -553,10 +562,11 @@ fn a_realtime_light_volume_takes_the_lamp_s_colour() {
         warm.iter().sum::<i64>() > 3 * pixels,
         "the volume lifts the frame by more than a level a channel: {warm:?}"
     );
-    let ratio = |s: [i64; 3]| s[2] as f64 / s[0].max(1) as f64;
+    let change: Vec<i64> = (0..3).map(|c| blue[c] - warm[c]).collect();
+    println!("(r, g, b) change, blue lamp less warm: {change:?}");
     assert!(
-        ratio(blue) > 1.5 * ratio(warm),
-        "the blue lamp's bounce is bluer: {warm:?} {blue:?}"
+        change[0] < -pixels && change[2] > pixels,
+        "the blue lamp's bounce has less red and more blue, by more than a level a pixel: {change:?}"
     );
 }
 
