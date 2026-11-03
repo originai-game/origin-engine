@@ -198,3 +198,30 @@ gfx tests:
 - `light-volume-room` moves slightly from batch 2 (its matte surfaces'
   reflections are now the probes'). If it was recorded on batch 2's
   head, re-record it.
+
+### Batch 3, second head: macrunner's findings fixed
+
+macrunner held 585fc47cf. Two findings, both confirmed in the code:
+
+1. The mirror reflected the sky, not the room. `volume_reflected`
+   scaled the environment cube by an irradiance ratio, and the probes'
+   SH along the ray only entered from roughness 0.4 up, so a 0.3
+   chrome sphere never got it. It now reflects the probes' L1 radiance
+   along `r` (`c0 + 1.5 c1·r`, the band going to 1.0 as roughness
+   rises) at every roughness. Only inside a ReflectionProbe's box do
+   smooth surfaces keep that capture, scaled by the irradiance ratio.
+2. `light-volume-room`'s floor in the block's shadow was navy: it was
+   outside the volume. The box (y 0.15–2.75, x/z ±2.7) ends 0.15–0.3
+   short of the floor, walls and ceiling, and a volume's weight fades
+   to 0 at its faces, so those surfaces took the environment's sky
+   ambient. A realtime volume is now whole up to its faces and fades
+   out over one spacing beyond them, so the room's surfaces take the
+   probes. Baked volumes keep their old fade, so no baked frame moves.
+
+Frames: `light-volume-room` and `light-volume-mirror` should both be
+drawn from this head. The floor in the block's shadow should take the
+room's warm, red and green light, not navy. The mirror should show the
+red wall's colour on its left, green on its right, and the lit ceiling
+above, as a blurred image of the room. The mirror test now reads two
+bands left and right of the sphere's middle (0.05h–0.12h out), where
+the normals face the walls, not the central square.

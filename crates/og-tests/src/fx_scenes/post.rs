@@ -247,7 +247,9 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 /// the lamp's `colour`. With `mirror` a chrome sphere stands in the middle
 /// of the frame: lit by the lamp's highlight alone and reflecting the dark
 /// environment, unless the realtime probes relight its reflection with the
-/// room (red on its left, green on its right).
+/// room (red on its left, green on its right). The probes' box ends 0.3
+/// short of the walls, floor and ceiling, which take its light from just
+/// outside it.
 pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));

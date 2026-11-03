@@ -136,7 +136,11 @@ fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
     let cmax = vec3<f32>(c - vec3<u32>(1u));
     let size = max(h1.xyz - h0.xyz, vec3<f32>(1e-4));
     let d = min(p - h0.xyz, h1.xyz - p) / (size / cmax);
-    let w = clamp(min(d.x, min(d.y, d.z)), 0.0, 1.0);
+    // A baked volume fades in over its outer spacing; a realtime one is
+    // whole up to its faces and fades out over a spacing beyond them, so
+    // the walls, floor and ceiling just outside its probes take them.
+    let inside = min(d.x, min(d.y, d.z));
+    let w = clamp(select(inside, inside + 1.0, kind == 1u), 0.0, 1.0);
     if (w <= 0.0) { continue; }
     let g = clamp((p - h0.xyz) / size * cmax, vec3<f32>(0.0), cmax);
     let g0 = min(vec3<u32>(floor(g)), c - vec3<u32>(2u));
@@ -176,19 +180,26 @@ var<private> live_sh: array<vec4<f32>, 3>;
 var<private> live_weight: f32;
 var<private> live_env: vec3<f32>;
 
-// The realtime light volumes' reflection of `prefiltered` (the reflected
-// environment along `r`, in its units, before its intensity) for normal
-// `n` and `roughness`: scaled by the probes' irradiance over the
-// environment's, so a room lit by a blue lamp reflects blue, a dark one
-// dark; towards rough, the probes' light along `r` itself. Outside every
+// The realtime light volumes' reflection at `p` along `r` for
+// `roughness`, given `prefiltered` (the reflected environment, or a
+// ReflectionProbe's capture, in its units before its intensity): the
+// radiance the probes' harmonics give along `r` (the L1 radiance, its
+// first band 3/2 of the irradiance's), which shows the room around the
+// fragment, red off a red wall, dark where it is dark. Where a reflection
+// probe covers `p` its sharper capture is kept for smooth surfaces,
+// scaled by the probes' light over the environment's. Outside every
 // realtime volume (and on lightmapped fragments) `prefiltered` as it came.
-fn volume_reflected(prefiltered: vec3<f32>, n: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
+fn volume_reflected(prefiltered: vec3<f32>, p: vec3<f32>, n: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
   if (live_weight <= 0.0) { return prefiltered; }
   let scale = 1.0 / max(frame.params.x, 1e-4);
   let irr_n = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, n), live_sh[1].w + dot(live_sh[1].xyz, n), live_sh[2].w + dot(live_sh[2].xyz, n)), vec3<f32>(0.0)) * scale;
-  let irr_r = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, r), live_sh[1].w + dot(live_sh[1].xyz, r), live_sh[2].w + dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
+  // Rough surfaces blur towards the irradiance along `r`.
+  let band = mix(1.5, 1.0, roughness);
+  let rad_r = max(vec3<f32>(live_sh[0].w + band * dot(live_sh[0].xyz, r), live_sh[1].w + band * dot(live_sh[1].xyz, r), live_sh[2].w + band * dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
   let norm = clamp(irr_n / max(live_env, vec3<f32>(1e-3)), vec3<f32>(0.0), vec3<f32>(16.0));
-  let relit = mix(prefiltered * norm, irr_r, smoothstep(0.4, 1.0, roughness));
+  let probe = select(0.0, probe_weight(p), frame.probe_min.w > 0.5);
+  let sharp = probe * (1.0 - smoothstep(0.4, 1.0, roughness));
+  let relit = mix(rad_r, prefiltered * norm, sharp);
   return mix(prefiltered, relit, live_weight);
 }
 

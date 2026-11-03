@@ -577,26 +577,28 @@ fn a_realtime_light_volume_relights_a_mirror_s_reflection() {
         gfx::render_built(&mut g).expect("rendered").image
     };
     let (on, off) = (render(true), render(false));
-    // A square of the sphere's middle, a twelfth of the frame's height a
-    // side, split into its left and right halves: (r, g, b) gained.
+    // The sphere (about 0.3 of the frame's height across, centred) has
+    // two bands either side of its middle, from 0.05 to 0.12 of the
+    // frame's height out and 0.04 tall, whose normals face left or right:
+    // (r, g, b) gained in each.
     let (w, h) = (on.width as i64, on.height as i64);
-    let half = h / 24;
+    let (inner, outer, tall) = (h / 20, h * 3 / 25, h / 25);
     let mut gain = [[0i64; 3]; 2];
-    for y in h / 2 - half..h / 2 + half {
-        for x in w / 2 - half..w / 2 + half {
-            let i = ((y * w + x) * 4) as usize;
-            let side = (x >= w / 2) as usize;
-            for (c, g) in gain[side].iter_mut().enumerate() {
-                *g += on.pixels[i + c] as i64 - off.pixels[i + c] as i64;
+    let mut count = 0i64;
+    for y in h / 2 - tall..h / 2 + tall {
+        for dx in inner..outer {
+            for (side, x) in [(0usize, w / 2 - dx), (1, w / 2 + dx)] {
+                let i = ((y * w + x) * 4) as usize;
+                for (c, g) in gain[side].iter_mut().enumerate() {
+                    *g += on.pixels[i + c] as i64 - off.pixels[i + c] as i64;
+                }
+                count += 1;
             }
         }
     }
     println!("(r, g, b) gained: left {:?}, right {:?}", gain[0], gain[1]);
     let total: i64 = gain.iter().flatten().sum();
-    assert!(
-        total > 3 * (2 * half) * (2 * half),
-        "the reflection is brighter: {gain:?}"
-    );
+    assert!(total > 3 * count, "the reflection is brighter: {gain:?}");
     assert!(gain[0][0] > gain[0][1], "red on the left: {:?}", gain[0]);
     assert!(gain[1][1] > gain[1][0], "green on the right: {:?}", gain[1]);
 }

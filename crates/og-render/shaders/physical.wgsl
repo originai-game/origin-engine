@@ -469,7 +469,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   let r = reflect(-v, bent);
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  let prefiltered = volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), bent, r, s.roughness) * frame.params.x;
+  let prefiltered = volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, bent, r, s.roughness) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;
