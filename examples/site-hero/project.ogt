@@ -1,0 +1,27 @@
+type project
+version 1
+---
+# The introduction site's live hero (engine.origingame.ai): "Skyreach
+# Meadow", a stylised painterly RPG shot. A traveller in a red cloak stands
+# at a cliff-top meadow over a sea of cloud with floating islands; the wind
+# carries a seamless 60 s loop (README.md).
+name "Site: hero"
+id "site-hero"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+  # The site frames it as a non-interactive hero: no gate, the whole frame,
+  # no cross-origin isolation (single-threaded; the page stays free of
+  # COOP/COEP).
+  gate none
+  fit fill
+  isolation off
+  dpr_cap 1.5
+  made_with false
+  telemetry off
+}

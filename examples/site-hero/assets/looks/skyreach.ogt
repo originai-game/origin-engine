@@ -1,0 +1,28 @@
+type look
+version 1
+---
+# Skyreach Meadow: the painted-worlds preset's light brush strokes over a
+# bright frame, no canvas, AgX, bloom only where the sun is.
+name "Skyreach"
+extends "lush-painted-worlds"
+ui "styles/site/style.ogt"
+antialias taa
+RenderSettings {
+  toneMapping agx
+  bloom true
+  bloomIntensity 0.35
+  bloomThreshold 1.2
+  bloomKnee 0.6
+  exposure 1.05
+  environmentIntensity 1
+}
+Stylise {
+  paintRadius 2
+  paintAnisotropy 0.5
+}
+PostEffects {
+  vignette true
+  vignetteIntensity 0.18
+  vignetteRadius 0.8
+  vignetteSmoothness 0.5
+}
