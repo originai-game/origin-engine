@@ -33,6 +33,10 @@
 //! - a `[wave]`, `[shake]` or `[pulse]` span that mixes faces drawn still,
 //!   or its runs drawn from the wrong face when they move →
 //!   `a_moving_span_that_mixes_faces_moves`
+//! - a step's weight or an italic drawn with the regular face (faked) when
+//!   the style has the real one, a weight within 100 of a real face still
+//!   faked, or a Japanese or Korean text given the Simplified Chinese
+//!   companion → `a_weight_and_a_locale_pick_the_styles_real_faces`
 
 use crate::support;
 
@@ -558,4 +562,150 @@ fn a_display_face_falls_back_to_the_body_face() {
             .metrics
             .is_mixed()
     );
+}
+
+#[test]
+fn a_weight_and_a_locale_pick_the_styles_real_faces() {
+    let mut scene = RenderScene::new();
+    let f = faces(&mut scene);
+    let (png, json, csv) = test_font_files();
+    let ascii: String = csv
+        .lines()
+        .filter(|l| {
+            l.split(',')
+                .next()
+                .and_then(|c| c.trim().parse::<u32>().ok())
+                .is_some_and(|c| c < 0x80)
+        })
+        .map(|l| format!("{l}\n"))
+        .collect();
+    // Each face its own handle: Latin ones cut to ASCII, CJK ones whole.
+    let mut face = |csv: &str| {
+        add_font(
+            &mut scene,
+            &FontFiles {
+                png: &png,
+                json: &json,
+                csv,
+            },
+        )
+    };
+    let (bold, italic) = (face(&ascii), face(&ascii));
+    let (sc, ja, ja_bold) = (face(&csv), face(&csv), face(&csv));
+    let latin = |role, weight, italic, font: &UiFont| FontFace {
+        role,
+        cjk: false,
+        locale: CjkLocale::Hans,
+        weight,
+        italic,
+        font: font.clone(),
+    };
+    let companion = |locale, weight, font: &UiFont| FontFace {
+        role: FontRole::Body,
+        cjk: true,
+        locale,
+        weight,
+        italic: false,
+        font: font.clone(),
+    };
+    let mut fonts = Fonts {
+        body: f.latin.clone(),
+        cjk: Some(sc.clone()),
+        faces: vec![
+            latin(FontRole::Body, 700, false, &bold),
+            latin(FontRole::Body, 400, true, &italic),
+            companion(CjkLocale::Ja, 400, &ja),
+            companion(CjkLocale::Ja, 700, &ja_bold),
+        ],
+        // The locale's own face, every character cooked.
+        chain: vec![f.cjk.clone()],
+        ..Fonts::default()
+    };
+    fonts.link();
+    let styled = |fonts: &Fonts, weight, italic, text| {
+        let (font, synth) = fonts.for_styled(FontRole::Body, weight, italic, text);
+        (font.handle_of(0), synth)
+    };
+    // The weight picks the real face, which needs no thickening.
+    assert_eq!(
+        styled(&fonts, 0, false, "Score"),
+        (f.latin.handle, Synth::default())
+    );
+    assert_eq!(
+        styled(&fonts, 700, false, "Score"),
+        (bold.handle, Synth::default())
+    );
+    // 600 is within 100 of the bold face; 500 is nearer the regular.
+    assert_eq!(styled(&fonts, 600, false, "Score").0, bold.handle);
+    assert_eq!(styled(&fonts, 500, false, "Score").0, f.latin.handle);
+    // An italic face first; its weight is short of bold, so bold is faked.
+    assert_eq!(
+        styled(&fonts, 700, true, "Score"),
+        (
+            italic.handle,
+            Synth {
+                bold: true,
+                italic: false
+            }
+        )
+    );
+    // A style with one face fakes both, as before.
+    let mut one = Fonts {
+        body: f.latin.clone(),
+        ..Fonts::default()
+    };
+    one.link();
+    assert_eq!(
+        styled(&one, 700, true, "Score"),
+        (
+            f.latin.handle,
+            Synth {
+                bold: true,
+                italic: true
+            }
+        )
+    );
+
+    // Simplified Chinese: the style's own companion.
+    let cjk = |fonts: &Fonts, weight| {
+        let font = fonts
+            .for_styled(FontRole::Body, weight, false, "Score 原点")
+            .0;
+        assert!(font.metrics.is_mixed());
+        font.handle_of(1)
+    };
+    assert_eq!(cjk(&fonts, 0), sc.handle);
+    // Japanese: its own companion, at the text's weight, never the SC one.
+    fonts.cjk_locale = CjkLocale::of_locale("ja-JP");
+    fonts.link();
+    assert_eq!(cjk(&fonts, 0), ja.handle);
+    assert_eq!(cjk(&fonts, 700), ja_bold.handle);
+    // Korean, which the style names no companion for: the locale's face
+    // sets it whole rather than another locale's forms.
+    fonts.cjk_locale = CjkLocale::of_locale("ko");
+    fonts.link();
+    assert_eq!(fonts.for_text(FontRole::Body, "原点").handle, f.cjk.handle);
+    assert_eq!(CjkLocale::of_locale("zh-TW"), CjkLocale::Hant);
+    assert_eq!(CjkLocale::of_locale("zh_Hant_HK"), CjkLocale::Hant);
+    assert_eq!(CjkLocale::of_locale("zh-CN"), CjkLocale::Hans);
+
+    // Rich text's [b] draws the bold face once, with no faked copy; without
+    // one it is the regular face twice (the smear), as before.
+    let drawn = |fonts: Fonts| {
+        let mut ui = Ui::new(UiDesc {
+            fonts,
+            ..UiDesc::default()
+        });
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+        ui.rich_text("Hint", "[b]Go[/b]", RichTextDesc::default());
+        ui.end();
+        commands(ui.frame())
+            .into_iter()
+            .map(|c| (c.0, c.1))
+            .collect::<Vec<_>>()
+    };
+    let go = |h: Option<og_render::FontHandle>| ("Go".to_string(), h.unwrap());
+    fonts.cjk_locale = CjkLocale::Hans;
+    assert_eq!(drawn(fonts), [go(bold.handle)]);
+    assert_eq!(drawn(one), [go(f.latin.handle), go(f.latin.handle)]);
 }

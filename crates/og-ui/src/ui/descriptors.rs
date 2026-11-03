@@ -182,6 +182,100 @@ pub struct Fonts {
     /// after the locale's: a text the role's font cannot draw whole takes
     /// the first that can.
     pub fallbacks: Vec<UiFont>,
+    /// The weight each of body, display, mono, fallback, cjk and
+    /// cjk_display is (a style's `fonts { body 300 "…" }`; 0: 400).
+    pub weights: [u16; 6],
+    /// The style's other faces: a role's other weights and italics, and the
+    /// companions of other CJK locales ([`Fonts::for_styled`]).
+    pub faces: Vec<FontFace>,
+    /// The active locale's CJK forms (og.i18n): a companion draws Han and
+    /// kana only in its own locale's forms, so Japanese never takes a
+    /// Simplified Chinese face ([`Fonts::companion_styled`]).
+    pub cjk_locale: CjkLocale,
+}
+
+/// Which national forms a CJK face draws Han in (`fonts { cjk ja "…" }`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum CjkLocale {
+    /// Simplified Chinese: the companion of every locale that is not one of
+    /// the others (a Chinese name in an English menu).
+    #[default]
+    Hans,
+    Hant,
+    Ja,
+    Ko,
+}
+
+impl CjkLocale {
+    pub const ALL: [CjkLocale; 4] = [
+        CjkLocale::Hans,
+        CjkLocale::Hant,
+        CjkLocale::Ja,
+        CjkLocale::Ko,
+    ];
+
+    /// Its name in a style's `fonts` block: a BCP 47 tag.
+    pub fn tag(self) -> &'static str {
+        match self {
+            CjkLocale::Hans => "zh-Hans",
+            CjkLocale::Hant => "zh-Hant",
+            CjkLocale::Ja => "ja",
+            CjkLocale::Ko => "ko",
+        }
+    }
+
+    /// The forms a locale tag reads in: `zh-Hant`, `zh-TW`, `zh-HK` and
+    /// `zh-MO` traditional, `ja` Japanese, `ko` Korean, any other
+    /// (Simplified Chinese, or a locale that is not CJK) simplified.
+    pub fn of_locale(tag: &str) -> CjkLocale {
+        let t = tag.to_ascii_lowercase().replace('_', "-");
+        let mut parts = t.split('-');
+        match parts.next().unwrap_or("") {
+            "ja" => CjkLocale::Ja,
+            "ko" => CjkLocale::Ko,
+            "zh" if parts.any(|p| matches!(p, "hant" | "tw" | "hk" | "mo")) => CjkLocale::Hant,
+            _ => CjkLocale::Hans,
+        }
+    }
+}
+
+/// One of a style's other faces: a role's real weight or italic, or a CJK
+/// companion of a locale ([`Fonts::faces`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FontFace {
+    /// Body, Display or Mono; with `cjk`, Body is the text companion and
+    /// Display the display one.
+    pub role: FontRole,
+    pub cjk: bool,
+    /// A companion's forms (Hans for a Latin face).
+    pub locale: CjkLocale,
+    /// 100 to 900.
+    pub weight: u16,
+    pub italic: bool,
+    pub font: UiFont,
+}
+
+/// What [`Fonts::for_styled`] could not find a real face for: the weight
+/// and slant the draw synthesises (rich text's `[b]` thickening, `[i]`
+/// oblique).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Synth {
+    pub bold: bool,
+    pub italic: bool,
+}
+
+/// The candidate nearest `want` (CSS's rule: from 500 up a tie goes
+/// heavier, below it lighter), with its weight.
+fn nearest<'a>(
+    candidates: impl Iterator<Item = (u16, &'a UiFont)>,
+    want: u16,
+) -> Option<(u16, &'a UiFont)> {
+    candidates.min_by_key(|&(w, _)| {
+        let d = (i32::from(w) - i32::from(want)).unsigned_abs() * 2;
+        // The tie-break: half a step towards the preferred side.
+        let away = if want >= 500 { w < want } else { w > want };
+        d + u32::from(away)
+    })
 }
 
 impl Fonts {
@@ -212,7 +306,85 @@ impl Fonts {
     /// runtime true }`); else (no one font draws it all) the mixed font,
     /// so only the characters no font has are missing.
     pub fn for_text(&self, role: FontRole, text: &str) -> &UiFont {
-        let f = self.get(role);
+        self.resolve(self.get(role), self.companion(role), text)
+    }
+
+    /// [`Fonts::for_text`] at a weight (100 to 900; 0: the role's own face)
+    /// and slant: the role's face nearest the weight among its own and
+    /// [`Fonts::faces`], an italic one first when `italic`, with the CJK
+    /// companion nearest the same weight; and what it could not find a
+    /// real face for ([`Synth`]: a bold asked for 600 or more with no face
+    /// within 100 of it, an italic with no italic face).
+    pub fn for_styled(
+        &self,
+        role: FontRole,
+        weight: u16,
+        italic: bool,
+        text: &str,
+    ) -> (&UiFont, Synth) {
+        let (f, got, slanted) = self.latin(role, weight, italic);
+        let synth = Synth {
+            bold: weight >= 600 && got + 100 < weight,
+            italic: italic && !slanted,
+        };
+        let face = self.resolve(f, self.companion_styled(role, weight), text);
+        (face, synth)
+    }
+
+    /// The weight of the `i`-th face of body, display, mono, fallback, cjk
+    /// and cjk_display.
+    fn weight(&self, i: usize) -> u16 {
+        match self.weights[i] {
+            0 => 400,
+            w => w,
+        }
+    }
+
+    /// The role whose faces `role` takes (display and mono fall back to
+    /// body's, rounded to display's) and its index in `weights` (`None`:
+    /// the game's own rounded font, which has no others).
+    fn slot(&self, role: FontRole) -> (FontRole, Option<usize>) {
+        match role {
+            FontRole::Body => (FontRole::Body, Some(0)),
+            FontRole::Display if self.display.is_some() => (FontRole::Display, Some(1)),
+            FontRole::Mono if self.mono.is_some() => (FontRole::Mono, Some(2)),
+            FontRole::Rounded if self.rounded.is_some() => (FontRole::Rounded, None),
+            FontRole::Rounded => self.slot(FontRole::Display),
+            FontRole::Display | FontRole::Mono => (FontRole::Body, Some(0)),
+        }
+    }
+
+    /// The Latin face of `role` nearest `weight` (0: its own) and `italic`,
+    /// with its weight and whether it is italic.
+    fn latin(&self, role: FontRole, weight: u16, italic: bool) -> (&UiFont, u16, bool) {
+        let base = self.get(role);
+        let (slot, i) = self.slot(role);
+        let own = i.map_or(400, |i| self.weight(i));
+        if weight == 0 && !italic {
+            return (base, own, false);
+        }
+        let want = if weight == 0 { own } else { weight };
+        let faces = |it: bool| {
+            self.faces
+                .iter()
+                .filter(move |f| !f.cjk && i.is_some() && f.role == slot && f.italic == it)
+                .map(|f| (f.weight, &f.font))
+        };
+        if italic && let Some((w, f)) = nearest(faces(true), want) {
+            return (f, w, true);
+        }
+        let (w, f) = nearest(faces(false).chain([(own, base)]), want).unwrap_or((own, base));
+        (f, w, false)
+    }
+
+    /// [`Fonts::for_text`]'s order for a text of the face `f` with the CJK
+    /// companion `companion`.
+    fn resolve<'a>(
+        &'a self,
+        f: &'a UiFont,
+        companion: Option<&'a UiFont>,
+        text: &str,
+    ) -> &'a UiFont {
         let cooked = |font: &UiFont| {
             text.chars()
                 .all(|c| c.is_whitespace() || font.metrics.in_atlas(c))
@@ -221,7 +393,7 @@ impl Fonts {
             return f;
         }
         // The style's companion draws what the role's face lacks.
-        if let Some(c) = self.companion(role)
+        if let Some(c) = companion
             && let Some(m) = f.metrics.mixed.as_deref()
             && text
                 .chars()
@@ -266,10 +438,12 @@ impl Fonts {
         mixed.unwrap_or(f)
     }
 
-    /// Makes each role's mixed font ([`Fonts::for_text`]): the role's font
-    /// with `chain`, `fallbacks` and `fallback` after it (and, for every
-    /// role but body, the body face last), for a text that mixes scripts. [`crate::Ui`] links the fonts it is given; call it
-    /// again after changing them by hand.
+    /// Makes each face's mixed font ([`Fonts::for_text`]): the role's font
+    /// (and each of its [`Fonts::faces`]) with its companion, `chain`,
+    /// `fallbacks` and `fallback` after it (and, for every role but body,
+    /// the body face last), for a text that mixes scripts. [`crate::Ui`]
+    /// links the fonts it is given; call it again after changing them by
+    /// hand.
     pub fn link(&mut self) {
         let others: Vec<UiFont> = self
             .chain
@@ -282,36 +456,52 @@ impl Fonts {
         // its own face lacks (Orbitron has no middle dot) is drawn in the
         // style's body rather than missing.
         let body = self.body.alone();
-        let linked = |companion: Option<&UiFont>,
-                      last: Option<&UiFont>|
-         -> Option<std::sync::Arc<[UiFont]>> {
+        // The runs of a face of `role` at `weight`, and how many of them
+        // come before the locale's (its companion).
+        let runs = |role: FontRole, weight: u16| {
+            let companion = self.companion_styled(role, weight);
+            let last = (role != FontRole::Body).then_some(&body);
             let all: Vec<UiFont> = companion
                 .map(UiFont::alone)
                 .into_iter()
                 .chain(others.iter().cloned())
                 .chain(last.cloned())
                 .collect();
-            (!all.is_empty()).then(|| all.into())
+            let runs: Option<std::sync::Arc<[UiFont]>> = (!all.is_empty()).then(|| all.into());
+            (runs, usize::from(companion.is_some()))
         };
-        let text_runs = linked(self.companion(FontRole::Body), None);
-        let mono_runs = linked(self.companion(FontRole::Mono), Some(&body));
-        let display_runs = linked(self.companion(FontRole::Display), Some(&body));
-        let (text_prefer, display_prefer) = (
-            usize::from(self.companion(FontRole::Body).is_some()),
-            usize::from(self.companion(FontRole::Display).is_some()),
-        );
+        // The mono role's runs end with body too, its companion is body's.
         let roles = [
-            (Some(&mut self.body), &text_runs, text_prefer),
-            (self.display.as_mut(), &display_runs, display_prefer),
-            (self.mono.as_mut(), &mono_runs, text_prefer),
-            (self.rounded.as_mut(), &display_runs, display_prefer),
+            runs(FontRole::Body, 0),
+            runs(FontRole::Display, 0),
+            runs(FontRole::Mono, 0),
+            runs(FontRole::Display, 0),
         ];
-        for (f, runs, prefer) in roles {
-            let Some(f) = f else { continue };
+        let faces: Vec<_> = self
+            .faces
+            .iter()
+            .map(|f| (!f.cjk).then(|| runs(f.role, f.weight)))
+            .collect();
+        let fonts = [
+            Some(&mut self.body),
+            self.display.as_mut(),
+            self.mono.as_mut(),
+            self.rounded.as_mut(),
+        ];
+        let targets = fonts.into_iter().zip(roles.iter().map(Some)).chain(
+            self.faces
+                .iter_mut()
+                .map(|f| Some(&mut f.font))
+                .zip(faces.iter().map(Option::as_ref)),
+        );
+        for (f, runs) in targets {
+            let (Some(f), Some((runs, prefer))) = (f, runs) else {
+                continue;
+            };
             f.metrics.mixed = runs.as_ref().map(|o| {
                 let mut m = f.alone();
                 m.metrics.runs = Some(o.clone());
-                m.metrics.prefer = prefer;
+                m.metrics.prefer = *prefer;
                 std::sync::Arc::new(m)
             });
         }
@@ -331,18 +521,61 @@ impl Fonts {
         ]
         .into_iter()
         .flatten()
+        .chain(self.faces.iter().map(|f| &f.font))
         .chain(&self.chain)
         .chain(&self.fallbacks)
         .find(|f| f.handle == Some(handle))
     }
 
-    /// The style's Chinese companion of `role` ([`Fonts::cjk`]).
+    /// The style's CJK companion of `role` in the active locale's forms
+    /// ([`Fonts::companion_styled`] at the role's own weight).
     pub fn companion(&self, role: FontRole) -> Option<&UiFont> {
-        match role {
-            FontRole::Body | FontRole::Mono => self.cjk.as_ref(),
-            FontRole::Display | FontRole::Rounded => {
-                self.cjk_display.as_ref().or(self.cjk.as_ref())
+        self.companion_styled(role, 0)
+    }
+
+    /// The style's CJK companion of `role` at `weight` (0: the companion's
+    /// own): of the active locale's ([`Fonts::cjk_locale`]) companions, the
+    /// display one beside display and rounded (the text one when it has
+    /// none), the text one beside body and the numeric role, nearest the
+    /// weight. `cjk` and `cjk_display` are the Simplified Chinese ones; a
+    /// locale the style names no companion for has none, so its text takes
+    /// the locale's own faces (`chain`) and never another locale's forms.
+    pub fn companion_styled(&self, role: FontRole, weight: u16) -> Option<&UiFont> {
+        let loc = self.cjk_locale;
+        let set = |display: bool| {
+            let own = match (loc, display) {
+                (CjkLocale::Hans, true) => self.cjk_display.as_ref().map(|f| (self.weight(5), f)),
+                (CjkLocale::Hans, false) => self.cjk.as_ref().map(|f| (self.weight(4), f)),
+                _ => None,
+            };
+            own.into_iter().chain(
+                self.faces
+                    .iter()
+                    .filter(move |f| {
+                        f.cjk
+                            && !f.italic
+                            && f.locale == loc
+                            && (f.role == FontRole::Display) == display
+                    })
+                    .map(|f| (f.weight, &f.font)),
+            )
+        };
+        let pick = |display: bool| {
+            if weight == 0 {
+                // The companion's own face first, as before weights.
+                let mut s = set(display);
+                let first = s.next();
+                match first {
+                    Some((_, f)) if loc == CjkLocale::Hans => Some(f),
+                    _ => nearest(first.into_iter().chain(s), 400).map(|(_, f)| f),
+                }
+            } else {
+                nearest(set(display), weight).map(|(_, f)| f)
             }
+        };
+        match role {
+            FontRole::Body | FontRole::Mono => pick(false),
+            FontRole::Display | FontRole::Rounded => pick(true).or_else(|| pick(false)),
         }
     }
 }
@@ -350,6 +583,16 @@ impl Fonts {
 impl Metrics for Fonts {
     fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics {
         &self.for_text(role, text).metrics
+    }
+
+    fn metrics_styled(
+        &self,
+        role: FontRole,
+        weight: u16,
+        italic: bool,
+        text: &str,
+    ) -> &FontMetrics {
+        &self.for_styled(role, weight, italic, text).0.metrics
     }
 }
 

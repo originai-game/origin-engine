@@ -712,7 +712,19 @@ Fonts (the one rule for every label, field and button):
    Noto Sans Regular beside a display face. The cook brings the companions
    only into a game with a `zh` string table. A game's own style names
    them as `cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"` (the faces:
-   templates/styles/cjk/LICENSES.md).
+   templates/styles/cjk/LICENSES.md). `cjk` and `cjkDisplay` are the
+   Simplified Chinese forms; a style names each other locale's own,
+   `cjk ja "…"`, `cjk zh-Hant "…"`, `cjkDisplay ko 700 "…"`, used only
+   while that locale is active (Japanese never takes a Chinese face; a
+   locale with no companion takes its string table's fonts), and the
+   cook brings each only into a game with a string table of its locale.
+   A role names its real weights and italics too: `body 300 "Light.ttf"`
+   (the first plain line is the role's own face), `body 600 "SemiBold.ttf"`,
+   `body italic "Italic.ttf"`, `display 800 italic "…"`. A type step's
+   weight (the `typography` block) and rich text's `[b]` (700) and `[i]`
+   take the nearest real face, and its companion the nearest weight; only
+   a weight more than 100 from every face, or an italic with no italic
+   face, is synthesised (thickened, slanted).
 2. Else the first of the locale's fonts (its string table's `fonts` line)
    that has every character: the whole label in that face, its Latin and
    digits too. A CJK subset that carries Latin-1, as the archetypes cook

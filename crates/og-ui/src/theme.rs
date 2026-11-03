@@ -274,6 +274,9 @@ pub struct TypeStep {
     /// OpenType features the step turns on (small caps, tabular figures;
     /// the tokens' `fontFeatures`), applied where its font ships them.
     pub features: crate::shape::Features,
+    /// The weight (100 to 900) the step's text takes the nearest real face
+    /// of (a style's `fonts { body 600 "…" }`); 0: the role's own face.
+    pub weight: u16,
 }
 
 /// The type ramp.
@@ -344,6 +347,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 32.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl3: TypeStep {
         size: 26.0,
@@ -352,6 +356,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 36.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl4: TypeStep {
         size: 30.0,
@@ -360,6 +365,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 40.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl5: TypeStep {
         size: 36.0,
@@ -368,6 +374,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 46.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl6: TypeStep {
         size: 44.0,
@@ -376,6 +383,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 54.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl7: TypeStep {
         size: 52.0,
@@ -384,6 +392,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 62.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl8: TypeStep {
         size: 64.0,
@@ -392,6 +401,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 74.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     base: TypeStep {
         size: 16.0,
@@ -400,6 +410,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 24.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     body: TypeStep {
         size: 14.0,
@@ -408,6 +419,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 20.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     caption: TypeStep {
         size: 13.0,
@@ -416,6 +428,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 18.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     display_xl2: TypeStep {
         size: 56.0,
@@ -424,6 +437,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 68.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     display_lg: TypeStep {
         size: 40.0,
@@ -432,6 +446,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 50.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     display_md: TypeStep {
         size: 34.0,
@@ -440,6 +455,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 44.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     display_sm: TypeStep {
         size: 28.0,
@@ -448,6 +464,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 38.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     display_xl: TypeStep {
         size: 48.0,
@@ -456,6 +473,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 60.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     lg: TypeStep {
         size: 18.0,
@@ -464,6 +482,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 26.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     meta: TypeStep {
         size: 13.0,
@@ -472,6 +491,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 18.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     reading: TypeStep {
         size: 15.0,
@@ -480,6 +500,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 24.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     sm: TypeStep {
         size: 14.0,
@@ -488,6 +509,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 20.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xl: TypeStep {
         size: 20.0,
@@ -496,6 +518,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 30.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
     xs: TypeStep {
         size: 12.0,
@@ -504,6 +527,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_line_height: 16.0,
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
+        weight: 0,
     },
 };
 

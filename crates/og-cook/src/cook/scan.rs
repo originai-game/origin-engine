@@ -68,10 +68,8 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
             for (id, bytes) in look::shared_files(&text) {
                 builtins.insert(id.to_string(), bytes);
             }
-            if look::shows_chinese(assets_dir) {
-                for (id, bytes) in look::companion_files(&text) {
-                    builtins.insert(id.to_string(), bytes);
-                }
+            for (id, bytes) in look::companion_files(&text, &look::shown_cjk(assets_dir)) {
+                builtins.insert(id.to_string(), bytes);
             }
         }
     }

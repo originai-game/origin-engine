@@ -132,6 +132,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         atlas: None,
         atlas_dense: Default::default(),
         fonts: Default::default(),
+        font_weights: [0; 6],
+        font_faces: Vec::new(),
         icons: None,
         sounds: Default::default(),
         feedback_sounds: Default::default(),
@@ -334,22 +336,73 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 }
             }
             "fonts" => {
+                // `<role> [<locale>] [<weight>] [italic] "<file>"`: the
+                // first plain face of a role is its own (cjk's in
+                // Simplified Chinese forms); the rest are its other faces.
                 for c in &p.block()?.entries {
                     let q = P { e: c };
-                    let i = match c.key.as_str() {
-                        "body" => 0,
-                        "display" => 1,
-                        "numeric" | "mono" => 2,
-                        "fallback" => 3,
-                        "cjk" => 4,
-                        "cjkDisplay" => 5,
+                    let (i, role, cjk) = match c.key.as_str() {
+                        "body" => (0, crate::FontRole::Body, false),
+                        "display" => (1, crate::FontRole::Display, false),
+                        "numeric" | "mono" => (2, crate::FontRole::Mono, false),
+                        "fallback" => (3, crate::FontRole::Body, false),
+                        "cjk" => (4, crate::FontRole::Body, true),
+                        "cjkDisplay" => (5, crate::FontRole::Display, true),
                         _ => {
                             return Err(q.err(
                                 "is a font role: body, display, numeric, fallback, cjk or cjkDisplay",
                             ));
                         }
                     };
-                    file.fonts[i] = Some(q.string(0)?.to_string());
+                    let last = c.values.len().saturating_sub(1);
+                    let path = q.string(last)?.to_string();
+                    let (mut locale, mut weight, mut italic) = (None, 0u16, false);
+                    for k in 0..last {
+                        if let Ok(n) = q.num(k) {
+                            if !(100.0..=900.0).contains(&n) || n % 100.0 != 0.0 {
+                                return Err(q.err("takes a weight of 100 to 900 in hundreds"));
+                            }
+                            weight = n as u16;
+                            continue;
+                        }
+                        match q.word(k)? {
+                            "italic" => italic = true,
+                            w if cjk => {
+                                locale = Some(
+                                    crate::CjkLocale::ALL
+                                        .into_iter()
+                                        .find(|l| l.tag() == w)
+                                        .ok_or_else(|| {
+                                            q.err(&format!(
+                                                "names '{w}', not a CJK locale: zh-Hans, zh-Hant, ja or ko"
+                                            ))
+                                        })?,
+                                );
+                            }
+                            w => {
+                                return Err(q.err(&format!(
+                                    "takes a weight, `italic` and the file, not '{w}'"
+                                )));
+                            }
+                        }
+                    }
+                    if i == 3 && (weight != 0 || italic) {
+                        return Err(q.err("is one face: the fallback takes no weight or italic"));
+                    }
+                    let locale = locale.unwrap_or_default();
+                    if file.fonts[i].is_none() && !italic && locale == crate::CjkLocale::Hans {
+                        file.fonts[i] = Some(path);
+                        file.font_weights[i] = weight;
+                    } else {
+                        file.font_faces.push(crate::style_file::StyleFace {
+                            role,
+                            cjk,
+                            locale,
+                            weight: if weight == 0 { 400 } else { weight },
+                            italic,
+                            path,
+                        });
+                    }
                 }
             }
             "slice" => {

@@ -118,6 +118,12 @@ pub(crate) struct TextContent {
 }
 
 impl TextContent {
+    /// The metrics of the face it is drawn in: its role's nearest its
+    /// step's weight ([`crate::Fonts::for_styled`]).
+    pub(crate) fn metrics<'a>(&self, fonts: &'a dyn Metrics) -> &'a FontMetrics {
+        fonts.metrics_styled(self.font, self.step.weight, false, &self.text)
+    }
+
     /// The type step's tracking, in em: the CJK tracking for text with CJK
     /// characters (0 unless a skin sets it), none for a shaped script.
     pub fn tracking(&self) -> f32 {

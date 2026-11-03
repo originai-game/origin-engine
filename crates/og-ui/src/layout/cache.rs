@@ -3,6 +3,18 @@ use super::*;
 /// The fonts layout measures with, by role.
 pub(crate) trait Metrics {
     fn metrics_for(&self, role: FontRole, text: &str) -> &FontMetrics;
+    /// The metrics of the face [`crate::Fonts::for_styled`] draws `text`
+    /// in at `weight` (0: the role's own) and `italic`.
+    fn metrics_styled(
+        &self,
+        role: FontRole,
+        weight: u16,
+        italic: bool,
+        text: &str,
+    ) -> &FontMetrics {
+        let _ = (weight, italic);
+        self.metrics_for(role, text)
+    }
 }
 
 /// What layout measures text with: the fonts, and the measurements kept
@@ -22,6 +34,7 @@ struct TextKey {
     tracking: u32,
     cjk_tracking: u32,
     features: u8,
+    weight: u16,
     wrap: bool,
     ellipsis: bool,
     max_lines: u32,
@@ -37,6 +50,7 @@ impl TextKey {
             tracking: t.step.tracking_em.to_bits(),
             cjk_tracking: t.step.cjk_tracking_em.to_bits(),
             features: t.step.features.bits(),
+            weight: t.step.weight,
             wrap: t.wrap,
             ellipsis: t.ellipsis,
             max_lines: t.max_lines,

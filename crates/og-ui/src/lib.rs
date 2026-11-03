@@ -107,10 +107,10 @@ pub use text::{
 };
 pub use tokens::StyleTokens;
 pub use ui::{
-    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, ControlSize,
-    FeedbackPlay, FieldDesc, Fonts, HUD_MAX_ASPECT, IconAtlas, ImageDesc, InlineImage, LabelDesc,
-    PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc,
-    TextTarget, Ui, UiDesc, UiFrame, Viewport,
+    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, ButtonDesc, ButtonVariant, CjkLocale,
+    ControlSize, FeedbackPlay, FieldDesc, FontFace, Fonts, HUD_MAX_ASPECT, IconAtlas, ImageDesc,
+    InlineImage, LabelDesc, PanelDesc, ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc,
+    Synth, TextAreaDesc, TextTarget, Ui, UiDesc, UiFrame, Viewport,
 };
 pub use vcursor::VirtualCursorDesc;
 pub use viewport::{ViewportDesc, ViewportResponse};

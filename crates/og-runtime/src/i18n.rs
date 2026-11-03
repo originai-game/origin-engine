@@ -116,6 +116,7 @@ fn apply(eng: &Engine) -> Result<(), String> {
         let mut ui = ui.lock();
         let fonts = og_ui::Fonts {
             chain,
+            cjk_locale: og_ui::CjkLocale::of_locale(&tag(eng.id)),
             ..ui.fonts().clone()
         };
         ui.set_fonts(fonts);

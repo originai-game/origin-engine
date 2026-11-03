@@ -437,11 +437,11 @@ pub(super) fn run(
                 .map_err(|_| CookError("a style is text (UTF-8)".into()))?;
             let mut file = og_ui::parse_style(text).map_err(CookError)?;
             file.resolve(&s.rel, |id| known.contains(crate::runtime::asset_id(id)));
-            let companions: Vec<String> = file.fonts[4..].iter().flatten().cloned().collect();
+            let companions: Vec<String> = file.companions().into_iter().map(|(_, p)| p).collect();
             let missing: Vec<String> = file
                 .references()
                 .into_iter()
-                // A Chinese companion is cooked in only for a game that shows Chinese.
+                // A CJK companion is cooked in only for a game that shows its locale.
                 .filter(|r| !known.contains(crate::runtime::asset_id(r)) && !companions.contains(r))
                 .collect();
             if !missing.is_empty() {

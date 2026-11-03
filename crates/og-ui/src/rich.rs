@@ -39,6 +39,10 @@ pub(crate) struct RichSpan {
     pub font: FontRole,
     pub bold: bool,
     pub italic: bool,
+    /// The weight its face is picked at: 700 for bold, else its step's.
+    pub weight: u16,
+    /// The bold and slant no real face of the style draws, synthesised.
+    pub synth: crate::ui::Synth,
     pub underline: bool,
     pub strike: bool,
     /// An outline's width (CSS px) and colour.
@@ -129,7 +133,7 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
         }
         None => {}
     }
-    let m = fonts.metrics_for(s.font, text);
+    let m = fonts.metrics_styled(s.font, s.weight, s.italic, text);
     m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
 }
 
@@ -140,7 +144,7 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
 /// [`bold_overhang`] after it.
 fn span_tracking(s: &RichSpan, text: &str) -> f32 {
     let step = crate::layout::step_tracking(&s.step, text);
-    if s.bold && !text.chars().any(og_i18n::needs_shaping) {
+    if s.synth.bold && !text.chars().any(og_i18n::needs_shaping) {
         step + bold_weight(s.step.size) / s.step.size
     } else {
         step
@@ -152,7 +156,7 @@ fn span_tracking(s: &RichSpan, text: &str) -> f32 {
 /// pixel to the right (at most 1 px). Reserved after each bold run, so the
 /// space after it does not close up.
 fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
-    if s.bold && !text.trim().is_empty() {
+    if s.synth.bold && !text.trim().is_empty() {
         bold_weight(s.step.size) + 1.0
     } else {
         0.0
@@ -169,7 +173,7 @@ fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     if s.atom.is_some() {
         return (s.step.line_height, s.step.size * 0.85, -s.step.size * 0.25);
     }
-    let m = fonts.metrics_for(s.font, &s.text);
+    let m = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
     let lh = if s.text.chars().any(crate::text::is_cjk) {
         s.step.cjk_line_height
     } else {
@@ -359,7 +363,10 @@ fn visual_segments(
 ) -> Vec<Segment> {
     let mixed = |p: &Piece| {
         let s = &rc.spans[p.span];
-        s.atom.is_none() && fonts.metrics_for(s.font, &p.text).is_mixed()
+        s.atom.is_none()
+            && fonts
+                .metrics_styled(s.font, s.weight, s.italic, &p.text)
+                .is_mixed()
     };
     // The line's paragraph direction is its first strong character's (the
     // UI's with none, and skipping isolates), as a plain text's is: an
@@ -430,7 +437,7 @@ fn visual_segments(
                 continue;
             }
             let piece_text = &text[r.clone()];
-            let m = fonts.metrics_for(s.font, piece_text);
+            let m = fonts.metrics_styled(s.font, s.weight, s.italic, piece_text);
             let tracking = span_tracking(s, piece_text);
             let needs = rtl || crate::text::needs_visual(piece_text) || m.is_mixed();
             if !needs {
@@ -581,6 +588,14 @@ impl Ui {
                 None
             };
             probe.push_str(&text);
+            // A real bold or italic face when the style has one; else the
+            // thickening and the oblique stand in for it.
+            let weight = if s.bold { 700 } else { step.weight };
+            let synth = self.fonts.for_styled(font, weight, s.italic, "").1;
+            let synth = crate::ui::Synth {
+                bold: s.bold && synth.bold,
+                italic: synth.italic,
+            };
             spans.push(RichSpan {
                 text: if atom.is_some() { String::new() } else { text },
                 step,
@@ -588,6 +603,8 @@ impl Ui {
                 font,
                 bold: s.bold,
                 italic: s.italic,
+                weight,
+                synth,
                 underline: s.underline,
                 strike: s.strike,
                 outline,
@@ -847,7 +864,7 @@ impl Ui {
                 }
                 continue;
             }
-            let font = self.fonts.for_text(s.font, &text);
+            let font = self.fonts.for_styled(s.font, s.weight, s.italic, &text).0;
             let Some(handle) = font.handle else { continue };
             let first = cmds.len();
             let mixed = font.metrics.is_mixed();
@@ -856,8 +873,8 @@ impl Ui {
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
             // right, so small text whose field is thin is bold too.
-            let weight = if s.bold { bold_weight(size) } else { 0.0 };
-            let smear = if s.bold { 1.0 / dpr } else { 0.0 };
+            let weight = if s.synth.bold { bold_weight(size) } else { 0.0 };
+            let smear = if s.synth.bold { 1.0 / dpr } else { 0.0 };
             let glyph = |x: f32,
                          dy: f32,
                          a: f32,
@@ -1008,7 +1025,7 @@ impl Ui {
             }
             // Italic and outline: the piece's glyphs slanted about their
             // baseline and outlined from the distance field.
-            if s.italic || s.outline.is_some() {
+            if s.synth.italic || s.outline.is_some() {
                 for c in &mut cmds[first..] {
                     let DrawCmd::Text { bounds, .. } = c else {
                         continue;
@@ -1020,7 +1037,7 @@ impl Ui {
                             align: og_render::UiAlign::Outside,
                         }),
                         fill_box: [bounds.x, bounds.y, bounds.width, bounds.height],
-                        transform: if s.italic {
+                        transform: if s.synth.italic {
                             [1.0, 0.0, -SLANT, 1.0]
                         } else {
                             [1.0, 0.0, 0.0, 1.0]

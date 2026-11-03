@@ -220,7 +220,10 @@ impl Ui {
         }
         match &n.content {
             Content::Text(tc) => {
-                let font = self.fonts.for_text(tc.font, &tc.text);
+                let font = self
+                    .fonts
+                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
+                    .0;
                 if font.handle.is_some() {
                     let m = &font.metrics;
                     let sk = n.scale;

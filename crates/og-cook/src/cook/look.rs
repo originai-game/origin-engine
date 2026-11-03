@@ -91,14 +91,19 @@ pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
         .collect()
 }
 
-/// The shared built-in Chinese companions (`@styles/cjk/`, each with its
-/// import settings) a style's text names as `cjk` and `cjkDisplay`.
-pub fn companion_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
+/// The shared built-in CJK companions (`@styles/cjk/`, each with its
+/// import settings) a style's text names as `cjk` and `cjkDisplay` for the
+/// locales in `shown` (each companion is 1 to 3 MB of outlines, so a game
+/// carries only those of the locales it shows: [`shown_cjk`]).
+pub fn companion_files(
+    style_text: &str,
+    shown: &[og_ui::CjkLocale],
+) -> Vec<(&'static str, &'static [u8])> {
     let Ok(file) = og_ui::parse_style(style_text) else {
         return Vec::new();
     };
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
-    for r in file.fonts[4..].iter().flatten() {
+    for (_, r) in file.companions().iter().filter(|(l, _)| shown.contains(l)) {
         let settings = format!("{r}.ogt");
         for f in styles()
             .iter()
@@ -139,27 +144,52 @@ pub fn shared_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
     out
 }
 
-/// Whether the project under `root` (its assets directory) shows Chinese:
-/// a string table (`type strings`) of a `zh` locale. A style's Chinese
-/// companions join the bundle only then (each is 1 to 3 MB of outlines).
-pub fn shows_chinese(root: &Path) -> bool {
-    fn walk(dir: &Path) -> bool {
+/// The CJK forms the project under `root` (its assets directory) shows:
+/// those of each `type strings` table's Chinese, Japanese or Korean
+/// `locale` (`zh-TW` traditional, `zh` simplified). A style's companions
+/// of a locale join the bundle only then.
+pub fn shown_cjk(root: &Path) -> Vec<og_ui::CjkLocale> {
+    fn walk(dir: &Path, out: &mut Vec<og_ui::CjkLocale>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
-            return false;
+            return;
         };
-        entries.flatten().any(|e| {
+        for e in entries.flatten() {
             let p = e.path();
             if p.is_dir() {
-                return walk(&p);
+                walk(&p, out);
+                continue;
             }
-            p.extension().is_some_and(|x| x == "ogt")
-                && std::fs::read_to_string(&p).is_ok_and(|t| {
-                    t.lines().any(|l| l.trim() == "type strings")
-                        && t.lines().any(|l| l.trim_start().starts_with("locale \"zh"))
-                })
-        })
+            if p.extension().is_none_or(|x| x != "ogt") {
+                continue;
+            }
+            let Ok(t) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            if !t.lines().any(|l| l.trim() == "type strings") {
+                continue;
+            }
+            for l in t.lines() {
+                let Some(tag) = l.trim_start().strip_prefix("locale \"") else {
+                    continue;
+                };
+                let tag = tag.split('"').next().unwrap_or("");
+                let primary = tag
+                    .split(['-', '_'])
+                    .next()
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
+                if matches!(primary.as_str(), "zh" | "ja" | "ko") {
+                    let l = og_ui::CjkLocale::of_locale(tag);
+                    if !out.contains(&l) {
+                        out.push(l);
+                    }
+                }
+            }
+        }
     }
-    walk(root)
+    let mut out = Vec::new();
+    walk(root, &mut out);
+    out
 }
 
 /// The built-in asset `name` names (`"@canvas/paper"` or its full id
@@ -213,9 +243,7 @@ pub(super) fn builtin_files(
                     out.push(f);
                 }
             }
-            if shows_chinese(root) {
-                out.extend(companion_files(&text));
-            }
+            out.extend(companion_files(&text, &shown_cjk(root)));
         }
     }
     out

@@ -60,6 +60,13 @@ pub struct StyleFile {
     /// style's own Simplified Chinese faces beside body and display: see
     /// [`crate::Fonts::companions`]).
     pub fonts: [Option<String>; 6],
+    /// The weight of each of `fonts` (`body 300 "…"`; 0: unstated, 400).
+    pub font_weights: [u16; 6],
+    /// The style's other faces: a role's other weights and italics
+    /// (`body 700 "…"`, `body italic "…"`, `display 800 italic "…"`) and
+    /// the CJK companions of each locale's forms (`cjk ja "…"`, `cjkDisplay
+    /// ko 700 "…"`): see [`crate::Fonts::faces`].
+    pub font_faces: Vec<StyleFace>,
     /// The icon texture's asset id, its grid and names.
     pub icons: Option<(String, u32, u32, Vec<String>)>,
     /// Sound asset ids by [`UiSound`] (in version 2 the first of the
@@ -79,6 +86,7 @@ impl StyleFile {
         out.extend(self.atlas.clone());
         out.extend(self.atlas_dense.iter().flatten().cloned());
         out.extend(self.fonts.iter().flatten().cloned());
+        out.extend(self.font_faces.iter().map(|f| f.path.clone()));
         out.extend(self.icons.as_ref().map(|i| i.0.clone()));
         out.extend(self.sounds.iter().flatten().cloned());
         for s in self.feedback_sounds.iter().flatten() {
@@ -177,6 +185,9 @@ impl StyleFile {
         }
         for f in self.fonts.iter_mut().flatten() {
             at(f);
+        }
+        for f in &mut self.font_faces {
+            at(&mut f.path);
         }
         if let Some(i) = self.icons.as_mut() {
             at(&mut i.0);
@@ -367,6 +378,40 @@ pub fn parse_color(s: &str) -> Option<Srgba> {
             1.0
         },
     })
+}
+
+/// One of a style file's other faces ([`StyleFile::font_faces`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleFace {
+    /// Body, Display or Mono (`numeric`); with `cjk`, Body is `cjk` and
+    /// Display `cjkDisplay`.
+    pub role: crate::FontRole,
+    pub cjk: bool,
+    pub locale: crate::CjkLocale,
+    /// 100 to 900.
+    pub weight: u16,
+    pub italic: bool,
+    /// Its asset id.
+    pub path: String,
+}
+
+impl StyleFile {
+    /// Every CJK companion's asset id with the forms it draws: `cjk` and
+    /// `cjkDisplay` (Simplified Chinese) and the other locales' faces. The
+    /// cook bundles each only for a game that shows its locale.
+    pub fn companions(&self) -> Vec<(crate::CjkLocale, String)> {
+        self.fonts[4..]
+            .iter()
+            .flatten()
+            .map(|p| (crate::CjkLocale::Hans, p.clone()))
+            .chain(
+                self.font_faces
+                    .iter()
+                    .filter(|f| f.cjk)
+                    .map(|f| (f.locale, f.path.clone())),
+            )
+            .collect()
+    }
 }
 
 pub(crate) struct P<'a> {

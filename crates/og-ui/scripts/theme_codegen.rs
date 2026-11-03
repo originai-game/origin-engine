@@ -290,7 +290,7 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         };
         writeln!(
             o,
-            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n        features: {features},\n    }},",
+            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n        features: {features},\n        weight: 0,\n    }},",
             num(size),
             num(lh),
             num(track),
@@ -574,6 +574,9 @@ pub struct TypeStep {
     /// OpenType features the step turns on (small caps, tabular figures;
     /// the tokens' `fontFeatures`), applied where its font ships them.
     pub features: crate::shape::Features,
+    /// The weight (100 to 900) the step's text takes the nearest real face
+    /// of (a style's `fonts { body 600 "…" }`); 0: the role's own face.
+    pub weight: u16,
 }
 
 /// The type ramp.

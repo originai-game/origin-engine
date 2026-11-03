@@ -111,7 +111,7 @@ fn gaps(gap: f32, n: usize) -> f32 {
 /// A text's preferred width (its widest line) and the least it can take:
 /// its ellipsis, its longest word when it wraps, else all of it.
 fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
-    let m = fonts.metrics_for(t.font, &t.text);
+    let m = t.metrics(fonts);
     let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.step.features);
     let min = if t.ellipsis {
         // It can shrink to its ellipsis.
@@ -128,7 +128,7 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
 /// A text shows whole at `width` at its step: one line no wider, or (wrapping)
 /// no word wider and no more lines than its limit.
 fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
-    let m = fonts.metrics_for(t.font, &t.text);
+    let m = t.metrics(fonts);
     let (size, tr, ft) = (t.step.size, t.tracking(), t.step.features);
     if !t.wrap {
         return widest_line(&t.text, m, size, tr, ft) <= width;
@@ -308,7 +308,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
         let lines = measure
             .texts
             .lines(t, (t.wrap || t.ellipsis).then_some(width), || {
-                let m = fonts.metrics_for(t.font, &t.text);
+                let m = t.metrics(fonts);
                 let mut lines = break_lines(
                     &t.text,
                     m,

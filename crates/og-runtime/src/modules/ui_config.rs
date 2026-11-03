@@ -60,6 +60,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
+        // The style's other faces as loaded: (face, font handle).
+        let mut style_faces: Vec<(og_ui::style_file::StyleFace, f64)> = Vec::new();
         let style = match d["style"].as_f64() {
             Some(h) => {
                 let i = super::assets::index_of(h)
@@ -69,6 +71,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .styles
                     .get(i)
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
+                style_faces = s.faces.clone();
                 Some((
                     s.file.clone(),
                     (s.atlas, s.atlas_dense),
@@ -162,8 +165,23 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             fallback: style_font(3)?,
             cjk: style_font(4)?,
             cjk_display: style_font(5)?,
-            // The locale's chain (og.i18n) stays.
+            weights: style.as_ref().map_or([0; 6], |s| s.0.font_weights),
+            faces: style_faces
+                .iter()
+                .map(|(f, h)| {
+                    Ok(og_ui::FontFace {
+                        role: f.role,
+                        cjk: f.cjk,
+                        locale: f.locale,
+                        weight: f.weight,
+                        italic: f.italic,
+                        font: ui_font(&eng, *h)?,
+                    })
+                })
+                .collect::<Result<Vec<_>, String>>()?,
+            // The locale's chain and forms (og.i18n) stay.
             chain: Vec::new(),
+            cjk_locale: og_ui::CjkLocale::default(),
         };
         let ui = eng
             .state
@@ -284,8 +302,12 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 .as_ref()
                 .map_or_else(og_ui::default_dressings, |s| s.0.dressings.clone()),
         );
-        let chain = ui.fonts().chain.clone();
-        let fonts = Fonts { chain, ..fonts };
+        let (chain, cjk_locale) = (ui.fonts().chain.clone(), ui.fonts().cjk_locale);
+        let fonts = Fonts {
+            chain,
+            cjk_locale,
+            ..fonts
+        };
         let fontless = fonts.body.handle.is_none()
             && fonts.display.is_none()
             && fonts.mono.is_none()
@@ -331,6 +353,9 @@ pub(crate) struct LoadedStyle {
     pub atlas_dense: [Option<og_render::TextureHandle>; 2],
     /// Font asset handles: body, display, numeric, fallback, cjk, cjkDisplay.
     pub fonts: [Option<f64>; 6],
+    /// Its other faces ([`og_ui::StyleFile::font_faces`]) that are in the
+    /// bundle, with their font handles.
+    pub faces: Vec<(og_ui::style_file::StyleFace, f64)>,
     pub icons: Option<og_render::TextureHandle>,
     pub sounds: [u64; 6],
     /// The sound handle of each asset id its feedback sets name.
@@ -396,6 +421,15 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
                 fonts[k] = Some(super::assets::handle(i) as f64);
             }
         }
+        let mut faces = Vec::new();
+        for f in &file.font_faces {
+            // A locale's companion is in the bundle only when the game shows that locale.
+            if f.cjk && eng.assets.borrow().bundle_for(&f.path).is_err() {
+                continue;
+            }
+            let i = super::assets::load_font(eng, &f.path)?;
+            faces.push((f.clone(), super::assets::handle(i) as f64));
+        }
         let mut sounds = [0u64; 6];
         for (k, p) in file.sounds.iter().enumerate() {
             if let Some(p) = p {
@@ -423,6 +457,7 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
             atlas,
             atlas_dense,
             fonts,
+            faces,
             icons,
             sounds,
             feedback,

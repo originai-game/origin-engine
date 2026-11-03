@@ -1077,7 +1077,11 @@ impl Ui {
         match &n.content {
             Content::Text(tc) => {
                 let line = n.lines.first()?;
-                let m = &self.fonts.for_text(tc.font, &tc.text).metrics;
+                let m = &self
+                    .fonts
+                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
+                    .0
+                    .metrics;
                 let lh = tc.line_height();
                 let inner = n.rect.inset(&n.el.padding);
                 let block = lh * n.lines.len() as f32;

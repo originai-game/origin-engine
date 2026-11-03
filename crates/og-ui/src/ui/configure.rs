@@ -764,6 +764,7 @@ impl Ui {
             cjk_line_height: line_height.max((size * 1.45).round()),
             cjk_tracking_em: 0.0,
             features: tok.features,
+            weight: tok.weight,
         }
     }
 
