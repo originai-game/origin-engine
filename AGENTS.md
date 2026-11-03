@@ -226,6 +226,16 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   into the author's next round. Only macrunner runs `scripts/check.sh`,
   wasm builds and references. No contact sheets or films unless the
   coordinator asks for one. No `references/vulkan-cpu/` frame is recorded.
+- **Fix at the root; port the state of the art (the owner, 2026-11-03).**
+  A problem found anywhere (a scene, a kit, the site, a test) is fixed in
+  the engine where it arises, never worked around, faked or waived in the
+  game, kit or page; a kit's interim workaround is removed once the engine
+  fix lands. A missing feature is implemented carefully and completely:
+  its author first searches the current state of the art (recent papers,
+  talks, permissive open-source implementations) and ports the best fit,
+  its licence kept under `third_party/` or in the file header, rather
+  than hand-rolling a simplistic version. The introduction site
+  (engine.origingame.ai) deploys only once the features it shows are done.
 - **Landing on the author's word (the owner, 2026-11-02).** To speed
   development, a branch whose author reports it drawn, read and tested
   is merged on that report, with no second review by the coordinator.
