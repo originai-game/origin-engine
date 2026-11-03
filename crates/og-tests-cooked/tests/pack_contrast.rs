@@ -941,18 +941,27 @@ fn cooked_fonts() -> Vec<(String, [CookedFont; 2])> {
     for (name, dir) in styles() {
         let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
             .expect("parses");
-        let base = |i: usize| {
+        // A shared face (`@styles/cjk/…`, the pixel pack's Fusion Pixel)
+        // is read from templates/styles, its import settings with it.
+        let styles = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+        let source = |i: usize| -> (String, PathBuf) {
             let f = file.fonts[i]
                 .clone()
                 .unwrap_or_else(|| panic!("{name}: font {i}"));
-            f.rsplit('/').next().expect("a file name").to_string()
+            let base = f.rsplit('/').next().expect("a file name").to_string();
+            let from = match f.strip_prefix("@styles/") {
+                Some(rel) => styles.join(rel),
+                None => dir.join(&base),
+            };
+            (base, from)
         };
-        let files = [base(0), base(1)];
-        for f in &files {
+        let sources = [source(0), source(1)];
+        let files = [sources[0].0.clone(), sources[1].0.clone()];
+        for (f, from) in &sources {
             let dst = root.join("assets/styles").join(&name).join(f);
             std::fs::create_dir_all(dst.parent().expect("dir")).expect("dir");
-            std::fs::copy(dir.join(f), &dst).unwrap_or_else(|e| panic!("{name}/{f}: {e}"));
-            let settings = dir.join(format!("{f}.ogt"));
+            std::fs::copy(from, &dst).unwrap_or_else(|e| panic!("{name}/{f}: {e}"));
+            let settings = from.with_file_name(format!("{f}.ogt"));
             if settings.exists() {
                 std::fs::copy(&settings, dst.with_file_name(format!("{f}.ogt"))).expect("settings");
             }
@@ -1019,7 +1028,8 @@ fn add_cooked(scene: &mut RenderScene, f: &CookedFont) -> UiFont {
             .collect(),
     };
     let metrics = FontMetrics::from_msdf(&font)
-        .with_file(f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))));
+        .with_file(f.ttf.clone().and_then(|t| FontFile::new(Arc::new(t))))
+        .with_pixel(f.pixel);
     UiFont {
         handle: Some(scene.add_font(font)),
         metrics,

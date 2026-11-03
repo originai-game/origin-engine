@@ -188,9 +188,11 @@ to fit it.
   style's deep ones);
   it also reads the primary and secondary labels from a rendered frame,
   where thin strokes may never reach their colour: a pixel font's one-pixel
-  strokes fall between pixels and took half their ink, so the pixel style
-  thickens them with `textWeight body 0.5` and cooks DotGothic16 at
-  `px_range 8`; a copy of the style made before that needs both lines).
+  strokes fell between pixels and took half their ink, so a pixel face is
+  imported with `pixel <grid>` (its pixels to the em) and drawn at whole
+  multiples of its grid, every font pixel whole screen pixels; the pixel
+  style sets Fusion Pixel 12 at 12, 24, 36, 48 and 72 px, and a copy of
+  it with a DotGothic16 face still needs `textWeight body 0.5`).
 - Saturated colour on large areas tires the eye: keep saturation for small
   things (the primary, icons, effects) and keep grounds calmer.
 - Status colours mean status: never use `danger` red as decoration.

@@ -1,12 +1,16 @@
 type import
 version 1
 ---
-# A style's Chinese companion: CJK punctuation cooked, every other character
-# rendered from the outlines at run time (og-ui README §Text), so a game pays
-# only for the characters it shows. px_range is a third of em_px, so a 2 px outline reaches 16 px text and a textWeight holds.
+# The pixel style's one face, Latin and Chinese on one 12-pixel grid: cooked
+# as its cells (`pixel 12`; og-ui sets it at 12, 24, 36 ... px only), Latin-1,
+# the typographic punctuation and CJK punctuation in the atlas, every other
+# character rendered from the outlines at run time on the same cells.
+# 48 px per em (four texels a font pixel), px_range a third of the em.
 font {
-  charset cjk-punct
+  charset latin punct cjk-punct
+  chars "−←→"
   em_px 48
   px_range 16
   runtime true
+  pixel 12
 }

@@ -2293,9 +2293,11 @@ fn retired() -> Vec<StyleChoices> {
             M::Mechanical,
             F::Bevel,
             fonts(
-                "pixel/DotGothic16-Regular.ttf",
-                "pixel/DotGothic16-Regular.ttf",
-                "pixel/DotGothic16-Regular.ttf",
+                // The pixel pack's one face, Latin and Chinese on one
+                // 12-pixel grid (its import's `pixel 12`).
+                "FusionPixel12-zhHans.ttf",
+                "FusionPixel12-zhHans.ttf",
+                "FusionPixel12-zhHans.ttf",
                 "FusionPixel12-zhHans.ttf",
                 "FusionPixel12-zhHans.ttf",
             ),

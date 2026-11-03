@@ -1031,7 +1031,10 @@ mod tests {
             note.contains("pixel font") && !note.contains("off the"),
             "{note}"
         );
-        let (_, note) = cook_px(&read("styles/pixel/DotGothic16-Regular.ttf"), 16);
+        let (_, note) = cook_px(
+            &read("../examples/hollowbell/assets/styles/hollowbell/DotGothic16-Regular.ttf"),
+            16,
+        );
         assert!(note.contains("off the 16 px grid"), "{note}");
         let (plain, _) = cook_px(&read("styles/cjk/FusionPixel12-zhHans.ttf"), 0);
         assert!(

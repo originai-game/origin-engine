@@ -198,7 +198,7 @@ fn cells_that_meet_at_a_corner_stay_apart() {
 /// cells, one cell per dot, and advances whole cells.
 #[test]
 fn an_off_pitch_face_lands_on_whole_cells() {
-    let ttf = font("styles/pixel/DotGothic16-Regular.ttf");
+    let ttf = font("../examples/hollowbell/assets/styles/hollowbell/DotGothic16-Regular.ttf");
     let face = ttf_parser::Face::parse(&ttf, 0).unwrap();
     for c in ['O', 'v', 'i', 'e', 'w', 'N', 'l'] {
         let gid = face.glyph_index(c).unwrap();

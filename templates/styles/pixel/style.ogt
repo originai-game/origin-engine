@@ -78,19 +78,16 @@ colors {
   series8 "#bcbcbc"
 }
 typography {
-  display 44 48 0.04 400 display {
-    phonePortrait 35 38
-    phoneLandscape 40 43
+  display 72 80 0 400 display {
+    phonePortrait 60 68
+    phoneLandscape 60 68
   }
-  title 32 36 0.02 400 display {
-    phonePortrait 28 32
-    phoneLandscape 30 34
-  }
-  heading 22 28 0 400 display
-  body 16 20 0 400 body
-  label 16 20 0.02 400 body
-  caption 13 18 0 400 body
-  numeric 18 24 0 400 numeric
+  title 48 56 0 400 display
+  heading 36 44 0 400 display
+  body 24 32 0 400 body
+  label 12 16 0 400 body
+  caption 12 16 0 400 body
+  numeric 24 32 0 400 numeric
 }
 space {
   xxs 2
@@ -157,24 +154,24 @@ shape {
 }
 ramp {
   xs 12 16
-  meta 13 18
-  caption 13 18
-  sm 14 18
-  body 16 20
-  reading 16 22
-  base 16 22
-  lg 18 24
-  xl 22 28
-  xl2 24 28
-  xl3 28 32
-  displaySm 32 36
-  displayMd 36 40
-  displayLg 44 48
+  meta 12 16
+  caption 12 16
+  sm 12 16
+  body 24 32
+  reading 24 32
+  base 24 32
+  lg 24 32
+  xl 36 44
+  xl2 36 44
+  xl3 48 56
+  displaySm 48 56
+  displayMd 60 68
+  displayLg 72 80
 }
 fonts {
-  body "DotGothic16-Regular.ttf"
-  display "DotGothic16-Regular.ttf"
-  numeric "DotGothic16-Regular.ttf"
+  body "@styles/cjk/FusionPixel12-zhHans.ttf"
+  display "@styles/cjk/FusionPixel12-zhHans.ttf"
+  numeric "@styles/cjk/FusionPixel12-zhHans.ttf"
   cjk "@styles/cjk/FusionPixel12-zhHans.ttf"
   cjkDisplay "@styles/cjk/FusionPixel12-zhHans.ttf"
 }
@@ -185,9 +182,8 @@ soft 252 104 64 64 24
 divider 4 172 128 24 128 24 line
 flourish 136 172 64 24 32 12 primary 0
 tile 204 172 64 64 16 16 0.06 6
-textShadow display 3 3 0 "#000000c0"
+textShadow display 2 2 0 "#000000c0"
 textShadow body 1 1 0 "#00000080"
-textWeight body 0.5
 motion {
   enter slideDown
   toast slideUp

@@ -374,22 +374,27 @@ def pixel_pack():
             health="#6bd36b", mana="#0a84ff", xp="#bf5af2", gold="#ffcd4a",
         ),
         radius=dict(small=0, control=0, bar=0, panel=0),
-        ramp=dict(xs=(12, 16), meta=(13, 18), caption=(13, 18), sm=(14, 18), body=(16, 20), reading=(16, 22), base=(16, 22),
-                  lg=(18, 24), xl=(22, 28), xl2=(24, 28), xl3=(28, 32), displaySm=(32, 36), displayMd=(36, 40), displayLg=(44, 48)),
+        # Fusion Pixel 12, Latin and Chinese on one 12-pixel grid (`pixel 12`
+        # in its import): every size a whole multiple of 12, size the only
+        # step of the hierarchy (the art director's ramp C, 2026-11-03).
+        ramp=dict(xs=(12, 16), meta=(12, 16), caption=(12, 16), sm=(12, 16), body=(24, 32), reading=(24, 32), base=(24, 32),
+                  lg=(24, 32), xl=(36, 44), xl2=(36, 44), xl3=(48, 56), displaySm=(48, 56), displayMd=(60, 68), displayLg=(72, 80)),
+        typography=dict(display=(72, 80), title=(48, 56), heading=(36, 44), body=(24, 32), label=(12, 16), caption=(12, 16),
+                        numeric=(24, 32)),
+        # A phone's display takes the next multiple down, 60.
+        phone_display=(60, 68),
         durations=dict(instant=80, fast=120, base=160, slow=320),
-        fonts=dict(body="DotGothic16-Regular.ttf", display="DotGothic16-Regular.ttf", numeric="DotGothic16-Regular.ttf", cjk="FusionPixel12-zhHans.ttf", cjkDisplay="FusionPixel12-zhHans.ttf"),
+        fonts=dict(body="@styles/cjk/FusionPixel12-zhHans.ttf", display="@styles/cjk/FusionPixel12-zhHans.ttf",
+                   numeric="@styles/cjk/FusionPixel12-zhHans.ttf", cjk="FusionPixel12-zhHans.ttf", cjkDisplay="FusionPixel12-zhHans.ttf"),
         slices=dict(panel=(8,), card=(4,), button=(6,), buttonHover=(6,), buttonPressed=(6,), buttonDisabled=(6,),
                     field=(4,), slot=(4,), tooltip=(4,), hud=(4,), track=(4,), fill=(4,)),
         scale=1, divider=(128, 24, "line"), flourish=(32, 12, "primary", 0),
         tile=(16, 16, 0.06, 6, ["panel"]),
         shadows=dict(panel=(6, 6, 0, 0, "#000000b0"), card=(4, 4, 0, 0, "#00000080"), button=(0, 4, 0, 0, "#000000a0"),
                      hud=(3, 3, 0, 0, "#00000080"), tooltip=(3, 3, 0, 0, "#00000080")),
-        # DotGothic16's one-dot strokes are one pixel wide at the body's 16 px
-        # but sit between device pixels, so no pixel took more than about half
-        # the ink: the gold primary button's label read 2.9:1 (hollowbell
-        # FINDINGS #20). Half a pixel each side fills them.
-        text=dict(textShadow=[("display", 3, 3, 0, "#000000c0"), ("body", 1, 1, 0, "#00000080")],
-                  textWeight=[("body", 0.5)]),
+        # Hard drops; og-ui puts a pixel face's at one font pixel. Its cells
+        # are whole pixels, so no textWeight (DotGothic16 needed one).
+        text=dict(textShadow=[("display", 2, 2, 0, "#000000c0"), ("body", 1, 1, 0, "#00000080")]),
         press=(1.0, 1.0, 3), hover=(-1, 1.0),
         motion=dict(enter="slideDown", stagger=0, toast="slideUp", progress=240, shake=4, pop=0.0),
         icons="pixel",
@@ -764,7 +769,7 @@ TOKENS = {
                 ("#9878f8", "pattern grid"), ("#f878f8", "pattern diamonds")],
         series=["#3cbcfc", "#f8b800", "#f83800", "#58d854", "#d878f8", "#00e8d8", "#fca044", "#bcbcbc"],
         weights=dict(display=400, title=400, heading=400, body=400, label=400, caption=400, numeric=400),
-        tracking=dict(display=0.04, title=0.02, label=0.02),
+        tracking=dict(),
         sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
         radius=dict(xs=0, sm=0, md=0, lg=0, xl=0, pill=0),
         stroke=dict(hairline=2, thin=2, regular=2, thick=4, focus=2),
@@ -891,8 +896,16 @@ def tokens_lines(s):
                  numeric="lg")
     L.append("typography {")
     for role, step in steps.items():
-        size, lh = ramp[step]
+        size, lh = s.get("typography", {}).get(role) or ramp[step]
         head = f"  {role} {size} {lh} {t['tracking'].get(role, 0)} {t['weights'][role]} {fonts[role]}"
+        if "typography" in s:
+            # A grid's sizes as given; only the display steps down on a phone.
+            if role == "display" and s.get("phone_display"):
+                pp = s["phone_display"]
+                L += [head + " {", f"    phonePortrait {pp[0]} {pp[1]}", f"    phoneLandscape {pp[0]} {pp[1]}", "  }"]
+            else:
+                L.append(head)
+            continue
         # Phones take display steps down: a title screen's word still fits a 360 px column.
         if role in ("display", "title") and size >= 28:
             k = 0.8 if role == "display" else 0.875
@@ -1163,7 +1176,9 @@ def main():
         roles = s["fonts"]
         imports = {}
         for role in ("body", "display", "numeric"):
-            imports[roles[role]] = imports.get(roles[role], False) or role != "body"
+            # A shared face (@styles/...) has its own import there.
+            if not roles[role].startswith("@"):
+                imports[roles[role]] = imports.get(roles[role], False) or role != "body"
         for name, display in imports.items():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
                 f.write(font_import(os.path.join(d, name), display))

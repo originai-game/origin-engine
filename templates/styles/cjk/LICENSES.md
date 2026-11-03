@@ -7,7 +7,9 @@ each pack's Latin voice. Each is a subset made with fontTools
 `kern`, `palt`, `halt`, `liga`, `locl` and `ccmp` features; no hinting); a
 variable source is instanced at the weight named. The cook bakes only the CJK
 punctuation into the atlas (`*.ttf.ogt`: `runtime true`); every other
-character renders from the outlines when a game first shows it.
+character renders from the outlines when a game first shows it. Fusion Pixel
+is also the pixel style's Latin face: its import cooks Latin-1 too, on its
+12-pixel grid (`pixel 12`).
 
 | File | Licence | Origin |
 |---|---|---|
