@@ -281,7 +281,9 @@ not the probes; see below.
   hangs under the middle of the ceiling (0, 2.7, -0.4), so each wall
   bleeds onto its own side.
 - **Occlusion (note 2).** Probes 1.35 m apart can't darken a corner or
-  ground an object. The scenes now turn on GTAO (radius 0.6), which
+  ground an object. The scenes now turn on GTAO (radius 0.35, intensity
+  0.8, ambient light only, per the art director's follow-up: short-range
+  and subtle, no grey ring around the block's base), which
   darkens the probes' ambient light in the corners and under the block
   and sphere, and the API doc says to pair the volume with AO or
   GlobalIllumination. The gap between the box's shadow and its base is
@@ -320,3 +322,18 @@ on its right.
 
 Orb checks: naga shaders, og-render lib, wasm32 check, clippy, fmt, og
 api check.
+
+### Art round 1, second head: the art director's follow-up
+
+- Two more stills beside the mirror (roughness 0.3): `light-volume-glossy`
+  (0.4) and `light-volume-rough` (0.7). Each is a new reference. The
+  sphere's reflection should blur steadily from 0.3 through 0.4 (the
+  probe capture's own blur) to 0.7 (blending into the probes' soft
+  light). There should be no step between the sharp and soft looks.
+- GTAO is shorter and lighter, as above. The open walls keep their
+  bounce colour.
+- Cornell blotches: if `baked` shows them too, the cause is `og bake
+  lightmaps` noise (more samples, or a denoise pass). No running thread
+  owns the baker (it came from the S7 depth wave). R3 takes it, as baked
+  lighting sits beside the probes, unless the coordinator assigns it
+  elsewhere.

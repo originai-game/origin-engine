@@ -703,7 +703,7 @@ fn light_volume_room_matches_its_reference() {
 fn a_realtime_light_volume_takes_the_lamp_s_colour() {
     let render = |realtime: bool, colour: Vec3| {
         let mut g = scenes::build("light-volume-room").expect("light-volume-room");
-        g.scene = og_tests::fx_scenes::light_volume_scene(realtime, colour, false);
+        g.scene = og_tests::fx_scenes::light_volume_scene(realtime, colour, None);
         gfx::render_built(&mut g).expect("rendered").image
     };
     // The summed (red, green, blue) the volume adds under each lamp.
@@ -736,6 +736,16 @@ fn a_realtime_light_volume_takes_the_lamp_s_colour() {
 #[test]
 fn light_volume_mirror_matches_its_reference() {
     check("light-volume-mirror");
+}
+
+#[test]
+fn light_volume_glossy_matches_its_reference() {
+    check("light-volume-glossy");
+}
+
+#[test]
+fn light_volume_rough_matches_its_reference() {
+    check("light-volume-rough");
 }
 
 /// The realtime probes relight reflections: a chrome sphere (no diffuse

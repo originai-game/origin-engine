@@ -60,6 +60,8 @@ pub const SCENES: &[&str] = &[
     "gi-room-taa",
     "light-volume-room",
     "light-volume-mirror",
+    "light-volume-glossy",
+    "light-volume-rough",
     "dof-low",
     "dof-high",
     "god-rays",
@@ -737,14 +739,27 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // probes a frame): the lamp's bounce in the shade, light bouncing
         // once more with each sweep.
         "light-volume-room" => |g, _| {
-            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), false);
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), None);
             g.frames = 48;
             Ok(())
         },
         // The same with a chrome sphere in the middle, its reflection
         // relit by the probes.
         "light-volume-mirror" => |g, _| {
-            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), true);
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.3));
+            g.frames = 48;
+            Ok(())
+        },
+        // The same sphere rough (0.4 and 0.7): the probe's capture blurred
+        // with its level, then blending into the probes' soft light, with
+        // no step between them.
+        "light-volume-glossy" => |g, _| {
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.4));
+            g.frames = 48;
+            Ok(())
+        },
+        "light-volume-rough" => |g, _| {
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.7));
             g.frames = 48;
             Ok(())
         },

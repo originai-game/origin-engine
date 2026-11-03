@@ -248,12 +248,13 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 /// and is relit 8 probes a frame: the shade takes the lamp's light off the
 /// walls, pink on the left, mint on the right, and the lamp's `colour`.
 /// The probes' box ends 0.3 short of the walls, floor and ceiling, which
-/// take its light from just outside it. With `mirror` a chrome sphere
-/// stands in the middle of the frame under a realtime reflection probe
-/// over the room: it reflects the room as the probe captures it, lit by
-/// the probes when they are there (red on its left, green on its right),
-/// by the lamp alone when not.
-pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderScene {
+/// take its light from just outside it. With `mirror` a chrome sphere of
+/// that roughness stands in the middle of the frame under a realtime
+/// reflection probe over the room: it reflects the room as the probe
+/// captures it, lit by the probes when they are there (red on its left,
+/// green on its right), by the lamp alone when not, blurring into the
+/// probes' own soft light as the roughness rises past 0.4.
+pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> RenderScene {
     let mut scene = RenderScene::new();
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let sphere = scene.add_mesh(shapes::sphere(32, 24));
@@ -289,11 +290,11 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderS
         white,
         Mat4::from_translation(Vec3::new(1.2, 0.5, 0.3)),
     );
-    if mirror {
+    if let Some(roughness) = mirror {
         let chrome = scene.add_material(Material {
             base_color: [0.95, 0.95, 0.95, 1.0],
             metallic: 1.0,
-            roughness: 0.3,
+            roughness,
             ..Default::default()
         });
         // On the camera's axis, clear of the block and the other sphere.
@@ -329,9 +330,13 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderS
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
     };
+    // Short-range and light: corners and contact darken, the open walls
+    // keep their bounce (the ambient light alone, not the lamp's).
     scene.post.ao = Some(AmbientOcclusion {
-        radius: 0.6,
+        radius: 0.35,
+        intensity: 0.8,
         method: AoMethod::Gtao,
+        direct: 0.0,
         ..Default::default()
     });
     if realtime {
