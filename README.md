@@ -6,6 +6,9 @@ executors, driven by game code written in TypeScript. It is built for one
 author above all others: an AI agent that has to write, run, observe and
 correct a game in minutes without a human at the editor.
 
+- Platform: [origingame.ai](https://origingame.ai)
+- Engine: [engine.origingame.ai](https://engine.origingame.ai)
+
 ## What it is, in one paragraph
 
 A game is a TypeScript package against `@origingame/engine`. The engine owns
