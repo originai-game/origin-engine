@@ -475,6 +475,10 @@ function applyTheme(world: World, d: DemoState): void {
 }
 
 /** The gallery: the list of screens. */
+/** The gallery rows' height (the tallest row text measured) and whether the subtitle is clamped, for one style, locale,
+ * text size and viewport. */
+const rowNeed = { key: "", px: 0, tight: false };
+
 function gallery(d: DemoState): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
@@ -489,22 +493,35 @@ function gallery(d: DemoState): void {
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "UI kit", { step: "displayMd", font: "display" });
-    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" } });
-    // Rows as tall as a name over a blurb of two lines (three at a large text size), at the player's text size (16 px
-    // text at 1080p); the list takes the room the title and subtitle leave (last tick's).
+    // Where the title and subtitle leave the list less than a row (a large body at a large text size on a phone), the
+    // subtitle keeps two lines for the rest of that look.
     const ts = Math.max(1, t.textScale ?? 1);
-    const rowHeight = Math.round((t.typeRamp["base"]?.lineHeight ?? 24 * ts) * (ts > 1.25 ? 4 : 3) + 8 * ts + 8);
+    const key = `${d.style}|${d.language}|${ts}|${vp.width}|${vp.height}`;
+    if (rowNeed.key !== key) Object.assign(rowNeed, { key, px: 0, tight: false });
+    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, ...(rowNeed.tight ? { maxLines: 2, ellipsis: true } : {}) } as never);
+    // Rows at least as tall as a name over a blurb of two lines (three at a large text size, where a longer blurb ends
+    // in an ellipsis; whole otherwise), at the player's text size (16 px text at 1080p), and as tall as the tallest
+    // row's text last tick: a style whose body is larger than the default's wraps a name to a second line, and the
+    // rows grow to hold it rather than cut it.
+    const floor = Math.round((t.typeRamp["base"]?.lineHeight ?? 24 * ts) * (ts > 1.25 ? 4 : 3) + 8 * ts + 8);
+    for (let i = 0; i < SHOWCASES.length + SCREENS.length - 1; i++) {
+      const b = og.ui.bounds(`Gallery/Screens/Row#${i}/Text`);
+      if (b) rowNeed.px = Math.max(rowNeed.px, Math.ceil(b.height) + 8);
+    }
+    const rowHeight = Math.max(floor, rowNeed.px);
     const g = og.ui.bounds("Gallery");
     const list = og.ui.bounds("Gallery/Screens");
     const above = g && list ? list.y - g.y : 200 * ts;
-    const height = Math.max(rowHeight * 2, Math.min(phone ? Infinity : 460 * ts, vp.height - vp.safeArea.top - vp.safeArea.bottom - above - t.space.lg - 2 * t.space.md));
+    const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - above;
+    if (g && list && room < rowHeight) rowNeed.tight = true;
+    const height = Math.max(Math.min(rowHeight * 2, room), Math.min(phone ? Infinity : 460 * ts, vp.height - vp.safeArea.top - vp.safeArea.bottom - above - t.space.lg - 2 * t.space.md));
     // The genre showcases first (each opens on its first page), then every screen of the kit.
     const n = SHOWCASES.length;
     const r = og.ui.list("Screens", { count: n + SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
       const row = i < n ? showcaseRow(SHOWCASES[i]!) : { name: SCREENS[i - n + 1]!, blurb: BLURBS[SCREENS[i - n + 1]!] };
       og.ui.column("Text", { width: { kind: "grow" }, gap: 0, padding: { left: 0, top: 4, right: 0, bottom: 4 } }, () => {
-        og.ui.label("Name", row.name, { step: "base", nowrap: true, font: i < n ? "display" : "body" } as never);
-        og.ui.label("Blurb", row.blurb, { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, maxLines: 2 } as never);
+        og.ui.label("Name", row.name, { step: "base", width: { kind: "grow" }, font: i < n ? "display" : "body" } as never);
+        og.ui.label("Blurb", row.blurb, { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, ...(ts > 1.25 ? { maxLines: 3, ellipsis: true } : {}) } as never);
       });
     });
     if (r.clicked !== null) d.screen = r.clicked < n ? screenIndex(SHOWCASES[r.clicked]!.pages[0]!.screen) : r.clicked - n + 1;

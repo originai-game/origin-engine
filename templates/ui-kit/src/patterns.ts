@@ -541,8 +541,9 @@ export function rewardsScreen(): void {
   const portrait = vp.breakpoint === "phonePortrait";
   // The choice is the screen: its title the display line centred over the cards, what to do as the caption under it,
   // the actions under the cards (docked at the foot on a phone in portrait). A phone keeps the Gallery's row clear; a
-  // short frame or large text scrolls.
-  const scrolls = !portrait || (t.textScale ?? 1) >= 1.5;
+  // short frame, large text or a style whose body is larger than the default's (pixel's 24) scrolls.
+  const ts = t.textScale ?? 1;
+  const scrolls = !portrait || ts >= 1.5 || (t.typeRamp["base"]?.size ?? 16) > 18 * ts;
   const top = small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + t.space.lg) : t.space.xl;
   og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: scrolls && !small ? "center" : "start", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1)) } }, () => {
     const body = (build: () => void): void => (scrolls ? og.ui.scrollArea("Body", { width: grow, height: small ? grow : null, gap: t.space.md, fade: small ? 40 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build) : build());
