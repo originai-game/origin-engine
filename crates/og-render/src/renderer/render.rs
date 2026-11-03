@@ -1694,7 +1694,8 @@ impl Renderer {
             outline_style: [
                 scene.stylise.material.outline_distance.max(0.0),
                 scene.stylise.material.shadow_darkness.clamp(0.0, 1.0),
-                0.0,
+                // The terrain's toon (terrain_lit.wgsl): it has no material to carry it.
+                f32::from(u8::from(scene.stylise.material.toon)),
                 0.0,
             ],
             probe: [[0.0; 4]; 3],
