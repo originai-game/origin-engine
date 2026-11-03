@@ -223,6 +223,7 @@ pub fn cook(
     let mut meshes: Vec<MeshRow> = Vec::new();
     let mut vertices: Vec<u8> = Vec::new();
     let mut indices: Vec<u8> = Vec::new();
+    let mut cluster_indices: Vec<u8> = Vec::new();
     let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
     let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
@@ -272,6 +273,8 @@ pub fn cook(
                     c.row.vertex_size = c.vertices.len() as u32;
                     c.row.index_offset = indices.len() as u32;
                     c.row.index_size = c.indices.len() as u32;
+                    c.row.cluster_index_offset = cluster_indices.len() as u32;
+                    c.row.cluster_index_size = c.cluster_indices.len() as u32;
                     c.row.lod_first = lods.len() as u32;
                     c.row.bvh_node_first = bvh_nodes.len() as u32;
                     c.row.bvh_node_count = c.bvh_nodes.len() as u32;
@@ -281,6 +284,7 @@ pub fn cook(
                     bvh_tris.extend_from_slice(&c.bvh_tris);
                     vertices.extend_from_slice(&c.vertices);
                     indices.extend_from_slice(&c.indices);
+                    cluster_indices.extend_from_slice(&c.cluster_indices);
                     let cluster_base = clusters.len() as u32;
                     lods.extend(c.lods.iter().map(|l| LodRow {
                         cluster_first: l.cluster_first + cluster_base,
@@ -502,6 +506,7 @@ pub fn cook(
         .raw("strings", strings.0, 1)
         .raw("vertices", vertices, 16)
         .raw("indices", indices, 16)
+        .raw("cluster_indices", cluster_indices, 16)
         .raw("bvh_nodes", zlib(bytemuck::cast_slice(&bvh_nodes)), 4)
         .raw("bvh_tris", zlib(bytemuck::cast_slice(&bvh_tris)), 4)
         .table("lights", &lights, row_hash::<LightRow>())

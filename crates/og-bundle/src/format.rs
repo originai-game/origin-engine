@@ -9,6 +9,10 @@
 //! `schema_version` the root schema's version: changing any row layout
 //! changes the type hash and old blobs are refused.
 //!
+//! Models keep a second meshopt index stream, `cluster_indices`, for
+//! drawing. It shares the vertices and LOD ranges of `indices` without
+//! changing the simulation mesh's triangle or vertex order.
+//!
 //! | blob | root | sections |
 //! |---|---|---|
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] |
@@ -190,7 +194,7 @@ row!(
     /// `i16 x 2` (snorm octahedral), then when present uv `u16 x 2` (unorm over
     /// the uv range), colour `u8 x 4` (unorm), tangent `i16 x 4` (snorm
     /// octahedral `xy`, `z` the bitangent sign as +-32767, `w` zero).
-    PrimitiveRow, "og.ModelPrimitive", 2 {
+    PrimitiveRow, "og.ModelPrimitive", 3 {
         material: u32,
         attributes: u32,
         vertex_count: u32,
@@ -202,6 +206,10 @@ row!(
         index_offset: u32,
         index_size: u32,
         index_count: u32,
+        /// The same triangles in draw-cluster order, meshopt-encoded in
+        /// `cluster_indices`; decoded count and LOD ranges match `indices`.
+        cluster_index_offset: u32,
+        cluster_index_size: u32,
         lod_first: u32,
         lod_count: u32,
         /// Dequantisation: `p = offset + q / 65535 * scale` (also the exact local bounds' minimum and size).
@@ -257,8 +265,8 @@ row!(
 row!(
     /// One cluster (meshlet) of a level: at most
     /// `og_render::meshlet::CLUSTER_TRIANGLES` triangles, a contiguous
-    /// range of the primitive's decoded indices, with its bounding sphere
-    /// and normal cone in the model's units (meshoptimizer's
+    /// range of the primitive's decoded cluster indices, with its bounding
+    /// sphere and normal cone in the model's units (meshoptimizer's
     /// `meshopt_computeMeshletBounds`). The GPU culls each cluster on its
     /// own: the sphere against the frustum and the depth pyramid, the cone
     /// against the eye (every triangle faces away when

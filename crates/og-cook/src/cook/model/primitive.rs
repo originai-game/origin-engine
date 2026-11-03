@@ -174,11 +174,12 @@ pub(crate) struct CookedPrimitive {
     pub(super) row: PrimitiveRow,
     pub(super) lods: Vec<LodRow>,
     /// Every level's clusters, `index_first` relative to the primitive's
-    /// indices; each [`LodRow`] names its range of them (relative here,
+    /// cluster indices; each [`LodRow`] names its range of them (relative here,
     /// made absolute when the blob's table is written).
     pub(super) clusters: Vec<ClusterRow>,
     pub(super) vertices: Vec<u8>,
     pub(super) indices: Vec<u8>,
+    pub(super) cluster_indices: Vec<u8>,
     /// The raycast BVH over LOD 0 (empty with `raycast false`): its nodes,
     /// `first` of a leaf relative to `bvh_tris`.
     pub(super) bvh_nodes: Vec<BvhNodeRow>,
@@ -708,9 +709,11 @@ pub(crate) fn cook_primitive(
     if coarsest && let Some((last, _)) = levels.pop() {
         levels = vec![(last, 0.0)];
     }
-    // Every level cut into clusters (og-render's `meshlet`): its indices
-    // reordered so each cluster is a range of them.
+    // Keep the simulation mesh's triangle and vertex order independent of
+    // meshlets: changing the order changes physics contacts and ray hits.
+    // Only the draw stream is reordered into contiguous clusters.
     let mut all: Vec<u32> = Vec::new();
+    let mut cluster_indices = Vec::new();
     let mut lods = Vec::new();
     let mut clusters = Vec::new();
     // Selection per cluster in the per-level chain (format's ClusterRow):
@@ -756,7 +759,8 @@ pub(crate) fn cook_primitive(
             cluster_count: cut.len() as u32,
         });
         clusters.extend(cut);
-        all.extend_from_slice(&ordered);
+        all.extend_from_slice(l);
+        cluster_indices.extend_from_slice(&ordered);
     }
     // Reorder vertices for fetch locality (LOD 0 first decides the order).
     let mut remap = vec![0u32; q.len()];
@@ -776,7 +780,7 @@ pub(crate) fn cook_primitive(
             ordered_sources[new as usize] = sources[old];
         }
     }
-    for i in all.iter_mut() {
+    for i in all.iter_mut().chain(&mut cluster_indices) {
         *i = remap[*i as usize];
     }
     let mut stride = 12;
@@ -823,6 +827,8 @@ pub(crate) fn cook_primitive(
     let vertices = encode_vertices(&packed, vertex_count, stride)?;
     let index_bytes =
         meshopt::encode_index_buffer(&all, vertex_count).map_err(|e| format!("meshopt: {e}"))?;
+    let cluster_indices = meshopt::encode_index_buffer(&cluster_indices, vertex_count)
+        .map_err(|e| format!("meshopt: {e}"))?;
     Ok(Some(CookedPrimitive {
         row: PrimitiveRow {
             material,
@@ -863,6 +869,7 @@ pub(crate) fn cook_primitive(
         clusters,
         vertices,
         indices: index_bytes,
+        cluster_indices,
         bvh_nodes,
         bvh_tris,
         sources: ordered_sources,

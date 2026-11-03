@@ -306,7 +306,11 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
     assert_eq!(p.triangle_count(0), full);
     let mc = p.mesh_clusters().expect("every level has clusters");
     assert_eq!(mc.levels.len(), p.lods.len());
-    mc.validate(p.indices.len() as u32).unwrap();
+    mc.validate(mc.indices.len() as u32).unwrap();
+    assert_ne!(
+        mc.indices, p.indices,
+        "draw order differs from simulation order"
+    );
     // Level 0's clusters are nearly full: 9216 triangles in at most 160.
     let l0 = &mc.levels[0];
     let n0 = (l0.clusters.end - l0.clusters.start) as usize;
@@ -324,6 +328,24 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
         .collect();
     let mut culled = 0;
     for (k, level) in mc.levels.iter().enumerate() {
+        // Same oriented triangles, including duplicates; the codec may
+        // rotate a triangle's corners but must not reverse its winding.
+        let triangles = |indices: &[u32]| {
+            let mut tris: Vec<_> = indices
+                .chunks_exact(3)
+                .map(|t| {
+                    let [a, b, c] = [t[0], t[1], t[2]];
+                    [a, b, c].min([b, c, a]).min([c, a, b])
+                })
+                .collect();
+            tris.sort_unstable();
+            tris
+        };
+        let range = level.first as usize..(level.first + level.count) as usize;
+        assert_eq!(
+            triangles(&mc.indices[range.clone()]),
+            triangles(&p.indices[range])
+        );
         // Selection per cluster in the per-level chain: the level's error
         // (never under the one before), the next level's as the parent's,
         // the level as the group, one sphere holding the whole mesh.
@@ -341,7 +363,7 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
                 (c.error_center, c.error_radius),
                 (mc.clusters[0].error_center, mc.clusters[0].error_radius)
             );
-            let tris = &p.indices[c.first as usize..(c.first + c.triangles * 3) as usize];
+            let tris = &mc.indices[c.first as usize..(c.first + c.triangles * 3) as usize];
             for tri in tris.chunks(3) {
                 for &i in tri {
                     assert!(pos(i).distance(c.error_center) <= c.error_radius * 1.001 + 1e-5);
@@ -376,4 +398,34 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
         culled > 64 * n0 / 4,
         "the cone culled {culled} cluster views"
     );
+}
+
+#[test]
+fn meshlet_cooking_preserves_the_simulation_mesh() {
+    let (mut positions, indices) = grid(12);
+    // An asymmetric height field without host-libm trigonometry in the pin.
+    for (i, p) in positions.iter_mut().enumerate() {
+        p[1] = ((i * 17) % 11) as f32 / 128.0;
+    }
+    let root = project(
+        "og-cook-lod-simulation",
+        &[("models/road.glb", &glb(&[(positions, indices)], false))],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let (model, _) = bundle.load_model_with_textures("models/road.glb").unwrap();
+    let mesh = model.primitives[0].mesh(0);
+    let mut bytes = Vec::new();
+    for v in &mesh.vertices {
+        for x in v.position {
+            bytes.extend(x.to_le_bytes());
+        }
+    }
+    for i in &mesh.indices {
+        bytes.extend(i.to_le_bytes());
+    }
+    // Recorded at 8cba5f1a6, before meshlets. Physics consumes this mesh:
+    // both vertex order and triangle order affect its contacts and ray hits.
+    assert_eq!(og_core::hash::hash_bytes(&bytes), 6451550772589549131);
 }

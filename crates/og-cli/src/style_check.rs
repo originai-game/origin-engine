@@ -1374,6 +1374,7 @@ mod tests {
                     ..Default::default()
                 }],
                 clusters: Vec::new(),
+                cluster_indices: Vec::new(),
                 min: glam::Vec3::ZERO,
                 max: glam::Vec3::ONE,
                 bvh_parts: None,

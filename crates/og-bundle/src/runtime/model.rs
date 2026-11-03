@@ -26,8 +26,10 @@ pub struct CookedPrimitive {
     pub indices: Vec<u32>,
     pub lods: Vec<Lod>,
     /// Every level's clusters (og-render's `meshlet`), each a range of
-    /// `indices`; empty for a primitive made without them.
+    /// `cluster_indices`; empty for a primitive made without them.
     pub clusters: Vec<og_render::meshlet::Cluster>,
+    /// Draw order only: the simulation mesh keeps `indices` and its vertex order.
+    pub cluster_indices: Vec<u32>,
     /// Exact local bounds of the source positions.
     pub min: Vec3,
     pub max: Vec3,
@@ -81,7 +83,7 @@ impl CookedPrimitive {
         Some(og_render::meshlet::MeshClusters {
             levels,
             clusters: self.clusters.clone(),
-            indices: self.indices.clone(),
+            indices: self.cluster_indices.clone(),
         })
     }
 
@@ -304,6 +306,7 @@ impl CookedModel {
         let strings = blob.raw("strings")?;
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
+        let cluster_indices = blob.raw("cluster_indices")?;
         let bad = |r: String| invalid(blob, r);
         // The raycast BVHs: zlib-compressed rows, as many as the
         // primitives' ranges reach.
@@ -384,7 +387,15 @@ impl CookedModel {
             .map_err(|e| bad(format!("primitive {i}: {e}")))?;
             let idx = meshopt_codec::decode_index_buffer(ib, p.index_count as usize)
                 .map_err(|e| bad(format!("primitive {i}: {e}")))?;
-            if idx.iter().any(|&v| v >= p.vertex_count) {
+            let cb = &cluster_indices[range(
+                cluster_indices,
+                p.cluster_index_offset,
+                p.cluster_index_size,
+                "cluster index stream",
+            )?];
+            let cluster_idx = meshopt_codec::decode_index_buffer(cb, p.index_count as usize)
+                .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+            if idx.iter().chain(&cluster_idx).any(|&v| v >= p.vertex_count) {
                 return Err(bad(format!("primitive {i}: index out of range")));
             }
             let (verts, tangents) = dequantize(p, &raw);
@@ -479,6 +490,7 @@ impl CookedModel {
                 indices: idx,
                 lods: prim_lods,
                 clusters: prim_clusters,
+                cluster_indices: cluster_idx,
                 min,
                 max: min + Vec3::new(p.pos_scale_x, p.pos_scale_y, p.pos_scale_z),
             });

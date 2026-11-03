@@ -747,6 +747,7 @@ impl UncookedGltf {
                 ..Default::default()
             }],
             clusters: Vec::new(),
+            cluster_indices: Vec::new(),
             indices,
             min,
             max,

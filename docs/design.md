@@ -660,8 +660,14 @@ tests in orbs and CI, and the probe's CPU description of a frame.
 `meshlet.rs`). The cook cuts every level of every model primitive into
 clusters of at most 64 triangles (meshoptimizer's `buildMeshlets`, up to
 192 distinct vertices, so a faceted mesh still fills them) and reorders
-the level's indices so each cluster is a contiguous range of them; each
-cluster keeps its bounding sphere (widened to its farthest vertex) and
+the level's draw indices so each cluster is a contiguous range of them.
+The model blob keeps that stream in `cluster_indices`, separate from
+`indices`: the simulation mesh, its vertex-fetch order and its raycast
+BVH retain the pre-meshlet order. Reordering a collision mesh changes
+ray hits and contacts through floating-point arithmetic; a rendering
+optimization must not change the simulation. Both streams use the same
+vertices and LOD ranges. Each cluster keeps its bounding sphere (widened
+to its farthest vertex) and
 its normal cone (the model blob's `clusters` table, each `lods` row
 naming its range). The levels are the ones per-instance LOD already uses
 (`lod.rs`): simplified levels with their measured error, not a cluster
