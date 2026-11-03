@@ -345,3 +345,56 @@ fn floaters_stay_in_the_water_through_the_gales_crests() {
         );
     }
 }
+
+/// Each sea records the og.Buoyancy hulls in it for the renderer, which
+/// calms its render-only chop under them (not world state): a boat turned
+/// about y is a rectangle of its own length and beam along its own axes,
+/// at its place; a flat lake records none.
+#[test]
+fn a_sea_records_the_hulls_in_it_for_the_renderer() {
+    let (mut w, p) = world(6);
+    p.set_waters(vec![sea(DVec3::ZERO)]);
+    let turn = 0.6f32;
+    let e = floater(
+        &mut w,
+        Transform {
+            quaternion: Quat::from_rotation_y(turn),
+            ..at(4.0, 1.0, -30.0)
+        },
+        Vec3::new(2.0, 0.8, 5.0),
+        0.5,
+        Buoyancy {
+            samples: 6,
+            ..Buoyancy::default()
+        },
+    );
+    run(&mut w, 3);
+    let wakes = p
+        .water_wakes(Entity::from_bits(1 << 40))
+        .expect("the sea's hulls");
+    let (_, cuts) = wakes.ticks.back().expect("a tick");
+    assert_eq!(cuts.len(), 1);
+    let c = cuts[0];
+    assert_eq!(c.entity, e.to_bits());
+    let t = transform(&w, e);
+    assert!(
+        c.centre.distance(Vec2::new(t.position.x, t.position.z)) < 0.2,
+        "{:?} at {:?}",
+        c.centre,
+        t.position
+    );
+    let x = Quat::from_rotation_y(turn) * Vec3::X;
+    assert!(c.axis.dot(Vec2::new(x.x, x.z)) > 0.99, "{:?}", c.axis);
+    assert!(
+        (c.half - Vec2::new(1.0, 2.5)).abs().max_element() < 0.15,
+        "{:?}",
+        c.half
+    );
+    assert!(c.min.x <= c.centre.x - c.half.x && c.max.y >= c.centre.y + c.half.x);
+
+    let (mut w, p) = world(6);
+    p.set_waters(vec![lake()]);
+    boat(&mut w, 0.0);
+    run(&mut w, 3);
+    assert!(p.water_wakes(Entity::from_bits(1 << 40)).is_none());
+}

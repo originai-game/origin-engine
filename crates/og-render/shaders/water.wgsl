@@ -43,7 +43,7 @@ struct WaterUniform {
   clip: vec4<f32>,        // the sea's clipmap: x levels, y cells along a level's edge, z the horizon ring's radius, w 1 endless
   levels: array<vec4<f32>, 10>,  // per level: its centre (frame xz), its cell (m)
   inverse: mat4x4<f32>,   // the surface's frame from the world
-  fft: vec4<f32>,         // x cascades, z the slope variance under the finest cascade
+  fft: vec4<f32>,         // x cascades, y the hulls in the sea, z the slope variance under the finest cascade
   cascades: array<vec4<f32>, 3>,  // per cascade: 1 / tile (1/m), its uv at the frame's origin, the tile (m)
   bands: vec4<f32>,       // each cascade's band's middle wavenumber (xyz; cascade_weight)
   // The persistent foam's two levels (ocean_fft/foam.rs), in the fields' layers after the cascades: per level 1 / its
@@ -52,6 +52,9 @@ struct WaterUniform {
   // The foam micro-structure's uv at the frame's origin (whole repeats dropped): its lace (xy), finer lace (zw); its
   // bubbles (xy), its streaks along and across the wind (zw).
   foam_uv: array<vec4<f32>, 2>,
+  // The og.Buoyancy hulls in the sea (water.rs `hulls`, fft.y of them): per hull its centre (frame xz) and its own x
+  // axis (xz), then its half extents along its axes.
+  hulls: array<vec4<f32>, 32>,
   // Per wave of og_core::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
   // (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
@@ -150,17 +153,38 @@ fn ocean_swell(p: vec2<f32>, cell: f32) -> vec3<f32> {
   return d;
 }
 
-// ocean_displace's FFT cascades (render only).
+// How much of the FFT's chop is drawn at rest point p: none under an og.Buoyancy hull, all from HULL_CALM metres
+// beyond its footprint. The tick floats a hull on its own waves alone, so under it the drawn surface is the tick's (the
+// chop it does not ride bared a keel corner by centimetres in a trough), and a hull damps the short waves round it as
+// it displaces the water there.
+const HULL_CALM: f32 = 1.5;
+
+fn hull_calm(p: vec2<f32>) -> f32 {
+  var k = 1.0;
+  for (var i = 0u; i < u32(water.fft.y); i++) {
+    let a = water.hulls[2u * i];
+    let h = water.hulls[2u * i + 1u].xy;
+    let q = p - a.xy;
+    let u = vec2<f32>(dot(q, a.zw), dot(q, vec2<f32>(-a.w, a.z)));
+    let out = length(max(abs(u) - h, vec2<f32>(0.0)));
+    k = min(k, smoothstep(0.0, HULL_CALM, out));
+  }
+  return k;
+}
+
+// ocean_displace's FFT cascades (render only), calmed under the hulls.
 fn ocean_cascades(p: vec2<f32>, cell: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
   let tc = tick_cell(p);
+  let calm = hull_calm(p);
+  if (calm <= 0.0) { return d; }
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
     let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * cascade_weight(c, tc);
     if (fade <= 0.0) { continue; }
     d += textureSampleLevel(heights, ripple_sampler, cascade_uv(c, p), 3u * c, min(lod, 4.0)).xyz * fade;
   }
-  return d;
+  return d * calm;
 }
 
 // The sea's normal at rest point p (frame xz), each long wave faded where it is shorter than four of the pixel's
@@ -182,6 +206,7 @@ fn ocean_normal(p: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> S
   var s = vec2<f32>(0.0);
   var cov = vec3<f32>(water.fft.z * 0.5, water.fft.z * 0.5, 0.0);
   var j = vec3<f32>(0.0);
+  let calm = hull_calm(p);
   // og_core's waves as the surface carries them (faded at the tick's cell), those the pixel cannot hold left to the
   // facets' roughness.
   let tc = tick_cell(p);
@@ -202,7 +227,7 @@ fn ocean_normal(p: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> S
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let uv = cascade_uv(c, p);
     let k = water.cascades[c].x;
-    let w = cascade_weight(c, tc);
+    let w = cascade_weight(c, tc) * calm;
     let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
     let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
     s += first.xy * w;

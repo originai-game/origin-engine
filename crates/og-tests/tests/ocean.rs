@@ -177,11 +177,12 @@ fn the_sea_darkens_with_the_sky() {
 /// (`boats/waterline.txt`, the run's dump), the drawn surface's height
 /// under each, read back from the GPU (`Renderer::sea_heights`), has the
 /// tick's waves drawn as og.physics.waterHeight floats them on (to 2 cm:
-/// og_core::ocean at the tick's grid cell) and every buoy crosses the drawn
-/// surface. Prints each floater's clearance against the drawn sea and the
-/// tick's, and the highest keel corner: the cascades' chop (3 to 14 m
-/// waves the tick does not float hulls on) can still bare a corner by a few
-/// centimetres, which hull wave suppression is to close.
+/// og_core::ocean at the tick's grid cell), every buoy crosses the drawn
+/// surface, and no keel corner of a hull stands 5 cm clear of it: the FFT's
+/// chop (3 to 14 m waves the tick does not float hulls on) is calmed under
+/// each hull (its footprint in `Water::wakes`, as og.Buoyancy's step
+/// records it), where it bared a corner by 6 cm. Prints each floater's
+/// clearance against the drawn sea and the tick's.
 #[test]
 fn the_floaters_sit_in_the_drawn_sea() {
     let text = std::fs::read_to_string(concat!(
@@ -209,7 +210,14 @@ fn the_floaters_sit_in_the_drawn_sea() {
         let mut scene = RenderScene::new();
         scene.tick = tick;
         scene.tick_rate = 60.0;
-        scene.water.push(water.clone());
+        let mut sea_now = water.clone();
+        sea_now.wakes = Some(std::sync::Arc::new(og_render::WaterWakes {
+            epoch: 1,
+            dt: 1.0 / 60.0,
+            ticks: vec![(tick, hull_cuts(&text, tick))],
+            ..Default::default()
+        }));
+        scene.water.push(sea_now);
         scene.camera = og_render::Camera {
             position: Vec3::new(0.0, 10.0, 0.0),
             target: Vec3::new(-4.0, 0.0, -60.0),
@@ -275,6 +283,55 @@ fn the_floaters_sit_in_the_drawn_sea() {
         }
     }
     println!("highest keel corner over the drawn sea: {worst_keel:+.3} m");
+    assert!(
+        worst_keel < 0.05,
+        "a keel corner stands {worst_keel} m clear of the drawn sea"
+    );
+}
+
+/// The floaters' footprints at `tick` as og.Buoyancy's step records them
+/// for a sea (og-physics ext.rs `hull_cuts`): each hull's box (a boat's
+/// 2.4 × 1 × 6 m, a buoy's 1.2 m cube) turned by its pose, as the rectangle
+/// its own x and z axes span over the water's xz.
+fn hull_cuts(text: &str, tick: u64) -> Vec<og_render::WaterCut> {
+    let mut cuts = Vec::new();
+    for line in text.lines().filter(|l| !l.starts_with('#')) {
+        let f: Vec<&str> = line.split_whitespace().collect();
+        if f[0].parse::<u64>() != Ok(tick) {
+            continue;
+        }
+        let v: Vec<f32> = f[2..]
+            .iter()
+            .map(|x| x.parse().expect("a number"))
+            .collect();
+        let q = glam::Quat::from_xyzw(v[3], v[4], v[5], v[6]);
+        let half = if f[1].starts_with("boat") {
+            Vec3::new(1.2, 0.5, 3.0)
+        } else {
+            Vec3::splat(0.6)
+        };
+        let (ax, ay, az) = (q * Vec3::X, q * Vec3::Y, q * Vec3::Z);
+        let flat = |a: Vec3| Vec2::new(a.x, a.z);
+        let axis = flat(ax).try_normalize().unwrap_or(Vec2::X);
+        let reach = |d: Vec2| {
+            (flat(ax).dot(d) * half.x).abs()
+                + (flat(ay).dot(d) * half.y).abs()
+                + (flat(az).dot(d) * half.z).abs()
+        };
+        let centre = Vec2::new(v[0], v[2]);
+        let extent = Vec2::new(reach(Vec2::X), reach(Vec2::Y));
+        cuts.push(og_render::WaterCut {
+            entity: cuts.len() as u64,
+            min: centre - extent,
+            max: centre + extent,
+            centre,
+            half: Vec2::new(reach(axis), reach(Vec2::new(-axis.y, axis.x))),
+            axis,
+            depth: 0.0,
+            speed: 0.0,
+        });
+    }
+    cuts
 }
 
 /// A one-pixel flow map pointing all one way (rg `* 2 - 1`).

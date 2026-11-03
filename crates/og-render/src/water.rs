@@ -34,15 +34,13 @@ pub struct WaterHeights {
     pub resolution: u32,
     pub size: f32,
     pub heights: Arc<[f32]>,
-    /// The bodies that cut the surface in its last ticks: the renderer
-    /// draws finer ripples over the heights from them where it has compute
-    /// (`water_ripples.rs`). `None`: the heights alone.
-    pub wakes: Option<Arc<WaterWakes>>,
 }
 
-/// The ticks that stir a height field's ripples (og-physics' `Wakes`, not
-/// world state): the bodies that cut the surface after each of the last
-/// ticks (at most [`WAKE_TICKS`]) and the waves' settings.
+/// The bodies in a water in its last ticks (og-physics' `Wakes`, not world
+/// state): what cut a height field after each of the last ticks (at most
+/// [`WAKE_TICKS`]) and the waves' settings, which stir its ripples; or the
+/// og.Buoyancy hulls in a sea, under which its render-only chop is calmed
+/// (the newest tick's).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WaterWakes {
     /// A new world (made, restored or gone back) has a new epoch: the
@@ -58,14 +56,20 @@ pub struct WaterWakes {
     pub ticks: Vec<(u64, Vec<WaterCut>)>,
 }
 
-/// A body cutting a height field's rest level: its entity, its footprint
-/// (min and max over the surface's xz, relative to its centre), its depth
-/// below the rest level and its vertical speed.
+/// A body cutting a water (og-physics' `WaterCut`): its entity; its
+/// footprint over the surface's xz relative to its centre, as a box (`min`,
+/// `max`) and as the rectangle it turns with (`centre`, `half` its half
+/// extents along its own axes, `axis` its own x, unit); its depth below the
+/// rest level (on a sea, below the water at its centre) and its vertical
+/// speed.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WaterCut {
     pub entity: u64,
     pub min: Vec2,
     pub max: Vec2,
+    pub centre: Vec2,
+    pub half: Vec2,
+    pub axis: Vec2,
     pub depth: f32,
     pub speed: f32,
 }
@@ -180,6 +184,11 @@ pub struct Water {
     /// R5: the sea reaches the horizon all round the camera (its waves stay
     /// where they are in the world), not only its `size` rectangle.
     pub endless: bool,
+    /// The bodies in the water in its last ticks: over a height field the
+    /// renderer draws finer ripples from them where it has compute
+    /// (`water_ripples.rs`); on a sea it calms the FFT's chop under each
+    /// og.Buoyancy hull (the tick floats none on it). `None`: neither.
+    pub wakes: Option<Arc<WaterWakes>>,
 }
 
 impl Default for Water {
@@ -218,6 +227,7 @@ impl Default for Water {
             swell: 1.0,
             choppiness: 0.6,
             endless: false,
+            wakes: None,
         }
     }
 }
@@ -309,8 +319,9 @@ struct WaterGpu {
     /// The surface's frame from the world: a bounded sea is clamped to its
     /// rectangle in it.
     inverse: [[f32; 4]; 4],
-    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y unused, z the
-    /// slope variance finer than the finest cascade, w unused.
+    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y the hulls in
+    /// it ([`hulls`]), z the slope variance finer than the finest cascade,
+    /// w unused.
     fft: [f32; 4],
     /// Per cascade: one over its tile (1/m), its uv at the frame's origin
     /// (whole tiles dropped), its tile (m).
@@ -321,6 +332,9 @@ struct WaterGpu {
     foam_levels: [[f32; 4]; 2],
     /// The foam micro-structure's uv at the frame's origin ([`foam_uv`]).
     foam_uv: [[f32; 4]; 2],
+    /// The og.Buoyancy hulls in the sea ([`hulls`]): per hull its centre
+    /// (frame xz) and its own x axis (xz), then its half extents.
+    hulls: [[f32; 4]; 2 * MAX_HULLS],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
@@ -597,6 +611,36 @@ fn sea_spectrum(
         spectrum::SeaParameters::from_ocean(water.wind, water.swell, water.choppiness, Some(sea))
             .with_tick_cell(tick_cell(water, Vec2::new(centre.x, centre.z)));
     spectrum::build(&spectrum::cascades(cascades as usize, &params), &params)
+}
+
+/// The most og.Buoyancy hulls a sea calms its chop under (the nearest the
+/// camera).
+const MAX_HULLS: usize = 16;
+
+/// The og.Buoyancy hulls in `water`'s sea at its newest tick
+/// ([`Water::wakes`]), the [`MAX_HULLS`] nearest `eye` (frame
+/// coordinates): how many, and per hull its centre (frame xz) and its own x
+/// axis, then its half extents along its axes. water.wgsl `hull_calm`
+/// leaves the FFT's chop out under each: the tick floats a hull on its own
+/// waves alone, so the drawn surface under a hull is the tick's.
+fn hulls(water: &Water, eye: Vec3) -> (usize, [[f32; 4]; 2 * MAX_HULLS]) {
+    let mut rows = [[0.0; 4]; 2 * MAX_HULLS];
+    let Some((_, cuts)) = water.wakes.as_deref().and_then(|w| w.ticks.last()) else {
+        return (0, rows);
+    };
+    let at = Vec2::new(water.transform.w_axis.x, water.transform.w_axis.z);
+    let eye = Vec2::new(eye.x, eye.z);
+    let mut near: Vec<(f32, Vec2, &WaterCut)> = cuts
+        .iter()
+        .map(|c| ((at + c.centre).distance_squared(eye), at + c.centre, c))
+        .collect();
+    near.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.2.entity.cmp(&b.2.entity)));
+    near.truncate(MAX_HULLS);
+    for (i, (_, centre, c)) in near.iter().enumerate() {
+        rows[2 * i] = [centre.x, centre.y, c.axis.x, c.axis.y];
+        rows[2 * i + 1] = [c.half.x, c.half.y, 0.0, 0.0];
+    }
+    (near.len(), rows)
 }
 
 /// The foam micro-structure's uv at the scene's `origin` (water.wgsl
@@ -1014,7 +1058,7 @@ impl WaterRenderer {
                 );
             }
             // The ripples over the heights, stepped to this frame's tick.
-            match field.and_then(|f| Some((f, f.wakes.as_deref()?))) {
+            match field.and_then(|f| Some((f, water.wakes.as_deref()?))) {
                 Some((f, wakes)) if self.compute => {
                     let pipes = self
                         .ripple_pipelines
@@ -1043,6 +1087,10 @@ impl WaterRenderer {
             };
             let (mut ocean, swell) = ocean_gpu(water, seconds, origin);
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
+            let (hull_count, hull_rows) = match drawn_sea {
+                Some(_) => hulls(water, camera.position),
+                None => (0, [[0.0; 4]; 2 * MAX_HULLS]),
+            };
             if let Some(f) = drawn_sea {
                 ocean[2] = f.foam.1;
             }
@@ -1118,12 +1166,13 @@ impl WaterRenderer {
                 fft: match drawn_sea {
                     Some(f) => [
                         f.tiles.iter().filter(|t| **t > 0.0).count() as f32,
-                        0.0,
+                        hull_count as f32,
                         f.tail,
                         0.0,
                     ],
                     None => [0.0; 4],
                 },
+                hulls: hull_rows,
                 bands: drawn_sea.map_or([0.0; 4], |f| f.bands),
                 cascades: cascade_uv(drawn_sea, origin),
                 foam_levels: match drawn_sea {

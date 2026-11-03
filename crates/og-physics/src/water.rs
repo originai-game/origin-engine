@@ -56,22 +56,46 @@ pub(crate) struct Crossing {
     pub speed: f32,
 }
 
-/// A body cutting a surface's rest level in one tick, for the renderer's
-/// ripples: its entity, its footprint in the surface's frame (xz relative
-/// to the entity), how deep it reaches below the rest level and its
-/// vertical speed.
+/// A body cutting a surface in one tick, for the renderer: an
+/// og.WaterSurface's ripples, an og.Water sea's hull wave suppression. Its
+/// entity; its footprint in the surface's frame (xz relative to the
+/// entity), as a box (`min`, `max`) and as the rectangle it turns with
+/// (`centre`, `half` its half extents along its own axes, `axis` its own x
+/// in xz, unit); how deep it reaches below the rest level (on a sea, below
+/// the water at its centre) and its vertical speed.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WaterCut {
     pub entity: u64,
     pub min: Vec2,
     pub max: Vec2,
+    pub centre: Vec2,
+    pub half: Vec2,
+    pub axis: Vec2,
     pub depth: f32,
     pub speed: f32,
 }
 
-/// What the renderer's ripple layer reads of an og.WaterSurface: the
-/// bodies that cut it in each of the last [`Wakes::TICKS`] ticks and the
-/// wave settings they travel at. Not world state: never saved, never read
+impl WaterCut {
+    /// A cut whose footprint is its box, unturned.
+    pub fn boxed(entity: u64, min: Vec2, max: Vec2, depth: f32, speed: f32) -> WaterCut {
+        WaterCut {
+            entity,
+            min,
+            max,
+            centre: (min + max) * 0.5,
+            half: (max - min) * 0.5,
+            axis: Vec2::X,
+            depth,
+            speed,
+        }
+    }
+}
+
+/// What the renderer reads of the bodies in a water: of an
+/// og.WaterSurface (its ripple layer), the bodies that cut it in each of
+/// the last [`Wakes::TICKS`] ticks and the wave settings they travel at; of
+/// an og.Water sea, the og.Buoyancy hulls in it (its hull wave
+/// suppression). Not world state: never saved, never read
 /// by the tick. A world made or restored starts a new `epoch`, so the
 /// ripples drawn from it start again too.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -106,13 +130,6 @@ impl Wakes {
         centre: Vec3,
         floaters: &[Floater],
     ) {
-        static EPOCHS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-        // A tick that does not follow the last one (the world went back):
-        // the ripples start again.
-        if self.epoch == 0 || self.ticks.back().is_some_and(|(t, _)| *t >= tick) {
-            self.epoch = EPOCHS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            self.ticks.clear();
-        }
         self.wave_speed = w.wave_speed.min(0.5 * cell / dt.max(1e-6));
         self.damping = w.damping.clamp(0.0, 1.0);
         self.splash = w.splash;
@@ -128,14 +145,37 @@ impl Wakes {
                     && f.max.z >= centre.z - half
                     && f.min.z <= centre.z + half
             })
-            .map(|f| WaterCut {
-                entity: f.entity,
-                min: Vec2::new(f.min.x - centre.x, f.min.z - centre.z),
-                max: Vec2::new(f.max.x - centre.x, f.max.z - centre.z),
-                depth: centre.y - f.min.y,
-                speed: f.velocity.y,
+            .map(|f| {
+                WaterCut::boxed(
+                    f.entity,
+                    Vec2::new(f.min.x - centre.x, f.min.z - centre.z),
+                    Vec2::new(f.max.x - centre.x, f.max.z - centre.z),
+                    centre.y - f.min.y,
+                    f.velocity.y,
+                )
             })
             .collect();
+        self.push(tick, cuts);
+    }
+
+    /// Records `tick`'s og.Buoyancy hulls in an og.Water sea (`cuts`, from
+    /// og.Buoyancy's step): no ripples travel on a sea, so no wave settings.
+    pub(crate) fn record_sea(&mut self, dt: f32, tick: u64, cuts: Vec<WaterCut>) {
+        self.wave_speed = 0.0;
+        self.damping = 0.0;
+        self.splash = 0.0;
+        self.dt = dt;
+        self.push(tick, cuts);
+    }
+
+    fn push(&mut self, tick: u64, cuts: Vec<WaterCut>) {
+        static EPOCHS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        // A tick that does not follow the last one (the world went back):
+        // the ripples start again.
+        if self.epoch == 0 || self.ticks.back().is_some_and(|(t, _)| *t >= tick) {
+            self.epoch = EPOCHS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.ticks.clear();
+        }
         self.ticks.push_back((tick, cuts));
         while self.ticks.len() > Self::TICKS {
             self.ticks.pop_front();

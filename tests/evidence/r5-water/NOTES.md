@@ -130,6 +130,14 @@ centre 8 cm over; the cascades' 3 to 14 m chop (render only) still moves
 the drawn surface ±0.3 m under them, which bares one corner (boat-0 at
 6.5 s) by about 6 cm on the CPU's estimate.
 
+Hull wave suppression closes that: og.Buoyancy's step records each hull's
+footprint (the rectangle its own axes span over the water) in the sea's
+`Wakes` (`record_sea`, the same path og.WaterSurface's ripples read; not
+world state), og.Water carries them to the renderer (`Water::wakes`), and
+water.wgsl `hull_calm` leaves the FFT's chop out under each hull, fading
+back in 1.5 m beyond it. Under a hull the drawn surface is then the
+tick's, and the test asserts no keel corner stands 5 cm clear of it.
+
 ## Foam (the FFT sea's batches 3 and 4)
 
 Ported from web-ocean (third_party/ocean/): two world foam levels about the

@@ -1291,27 +1291,35 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::sim::Handles<'_>) -> Vec<
 /// Water before the step: each surface and line is splashed by and pushes
 /// the bodies in it (buoyancy and drag on dynamic bodies), then its waves
 /// travel one tick.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn water(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
     tick: u64,
+    waters: &[crate::WaterBody],
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
+    // The wakes of every surface and sea still there (a sea's are og.Buoyancy's: `buoyancy`).
+    let live: BTreeSet<u64> = og_core::sort::set(
+        scene
+            .surfaces
+            .iter()
+            .map(|s| s.0.to_bits())
+            .chain(waters.iter().filter(|w| w.sea.is_some()).map(|w| w.entity)),
+    );
+    sim.wakes.retain(|e, _| live.contains(e));
     if scene.surfaces.is_empty() && scene.lines.is_empty() {
         sim.surfaces.clear();
-        sim.wakes.clear();
         sim.lines.clear();
         return Ok(());
     }
     let list = floaters(scene, sim, handles);
     let g = -settings.gravity.y;
     let mut forces: Vec<WaterForce> = Vec::new();
-    let live: BTreeSet<u64> = og_core::sort::set(scene.surfaces.iter().map(|s| s.0.to_bits()));
     sim.surfaces.retain(|e, _| live.contains(e));
-    sim.wakes.retain(|e, _| live.contains(e));
     for (e, position, surface) in &scene.surfaces {
         let key = e.to_bits();
         let rebuild = sim
@@ -1384,6 +1392,7 @@ pub(crate) fn water(
 struct Hull {
     points: Vec<(Vec3, [u32; 3])>,
     lo: Vec3,
+    hi: Vec3,
     cell: Vec3,
     each: f32,
 }
@@ -1438,6 +1447,7 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
         each: volume / points.len() as f32,
         points,
         lo,
+        hi,
         cell,
     })
 }
@@ -1487,12 +1497,95 @@ fn water_level(
     level
 }
 
+/// The footprint of a floating body's hull (its box `hull.lo` to `hull.hi`,
+/// turned and placed by `at`) in each sea of `waters` it lies over:
+/// the rectangle its own x and z axes span over the water's xz, its box,
+/// and how far it reaches under the water at its centre.
+fn hull_cuts(
+    entity: u64,
+    hull: &Hull,
+    at: &rp::Pose,
+    speed: f32,
+    scene: &Scene,
+    waters: &[crate::WaterBody],
+    cuts: &mut BTreeMap<u64, Vec<crate::water::WaterCut>>,
+) {
+    let size = hull.hi - hull.lo;
+    let centre = unv(at.transform_point(v(hull.lo + size * 0.5)));
+    let turn = |a: Vec3| unv(at.rotation * v(a));
+    let (ax, ay, az) = (turn(Vec3::X), turn(Vec3::Y), turn(Vec3::Z));
+    let flat = |a: Vec3| og_core::glam::Vec2::new(a.x, a.z);
+    let axis = flat(ax).try_normalize().unwrap_or(og_core::glam::Vec2::X);
+    let side = og_core::glam::Vec2::new(-axis.y, axis.x);
+    // The box's half extents along `axis` and across it.
+    let half = size * 0.5;
+    let reach = |d: og_core::glam::Vec2| {
+        (flat(ax).dot(d) * half.x).abs()
+            + (flat(ay).dot(d) * half.y).abs()
+            + (flat(az).dot(d) * half.z).abs()
+    };
+    let foot = og_core::glam::Vec2::new(reach(axis), reach(side));
+    let extent =
+        og_core::glam::Vec2::new(reach(og_core::glam::Vec2::X), reach(og_core::glam::Vec2::Y));
+    let low = centre.y - (ax.y.abs() * half.x + ay.y.abs() * half.y + az.y.abs() * half.z);
+    let level =
+        water_level(scene, waters, centre.x, centre.z, scene.seconds).map_or(low, |l| l.height);
+    for w in waters.iter().filter(|w| w.sea.is_some()) {
+        let Some(list) = cuts.get_mut(&w.entity) else {
+            continue;
+        };
+        let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
+        if local.x.abs() > w.size.x * 0.5 + extent.x || local.y.abs() > w.size.y * 0.5 + extent.y {
+            continue;
+        }
+        list.push(crate::water::WaterCut {
+            entity,
+            min: local - extent,
+            max: local + extent,
+            centre: local,
+            half: foot,
+            axis,
+            depth: level - low,
+            speed,
+        });
+    }
+}
+
 /// og.Buoyancy before the step (3D): each floating body's hull cells under
 /// the water at their points push it up by the water they displace, at
 /// those points (a torque that rights and pitches it), and slow it as far
 /// as they are under; its `submerged` is written. Cells and bodies in a
-/// fixed order, og-core's deterministic math: the same on every run.
+/// fixed order, og-core's deterministic math: the same on every run. Each
+/// sea (an og.Water with a wind) records the hulls in it for the renderer
+/// ([`crate::water::Wakes::record_sea`]; never read by the tick).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn buoyancy(
+    scene: &Scene,
+    settings: &Physics,
+    dt: f32,
+    tick: u64,
+    waters: &[crate::WaterBody],
+    sim: &mut Sim,
+    handles: &super::sim::Handles<'_>,
+    out: &mut StepOut,
+) {
+    let mut cuts: BTreeMap<u64, Vec<crate::water::WaterCut>> = waters
+        .iter()
+        .filter(|w| w.sea.is_some())
+        .map(|w| (w.entity, Vec::new()))
+        .collect();
+    if DIM == 3 {
+        floats(scene, settings, dt, waters, sim, handles, out, &mut cuts);
+    }
+    for (key, list) in cuts {
+        sim.wakes.entry(key).or_default().record_sea(dt, tick, list);
+    }
+}
+
+/// [`buoyancy`]'s floating bodies, each hull's footprint added to the
+/// `cuts` of the seas it lies in.
+#[allow(clippy::too_many_arguments)]
+fn floats(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
@@ -1500,10 +1593,8 @@ pub(crate) fn buoyancy(
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
+    cuts: &mut BTreeMap<u64, Vec<crate::water::WaterCut>>,
 ) {
-    if DIM != 3 || scene.floats.is_empty() {
-        return;
-    }
     let g = -settings.gravity.y;
     for (e, b) in &scene.floats {
         let Some(&h) = handles.get(&e.to_bits()) else {
@@ -1595,6 +1686,15 @@ pub(crate) fn buoyancy(
             let spin = unangvel(rb.angvel());
             rb.set_angvel(angvel(spin * keep), true);
         }
+        hull_cuts(
+            e.to_bits(),
+            &hull,
+            &at,
+            unv(rb.linvel()).y,
+            scene,
+            waters,
+            cuts,
+        );
         out.floats.push((
             *e,
             Buoyancy {
