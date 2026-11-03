@@ -144,17 +144,21 @@ struct MeshletRecord {
   v: VertexOut,
   prev_world: vec3<f32>,
   object: u32,
+  // The lit pass's uv gradients: pbr.wgsl `stylised_uv`'s (affine
+  // texturing's mix), the raw uv's without the stylised rows.
+  lit_uv: vec4<f32>,
 };
 
 fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   var r: MeshletRecord;
-  // meshlet_screen: (width, height, its pixels rounded up to a row).
+  // meshlet_screen: (width, height, its pixels rounded up to a row, vec4
+  // rows per record).
   let pixel = u32(pos.y) * meshlet_screen.x + u32(pos.x);
   let slot = meshlet_attrs[pixel / 4u][pixel % 4u];
   r.ok = false;
   r.depth = 1.0;
   if (slot == 0u) { return r; }
-  let at = meshlet_screen.z / 4u + (slot - 1u) * 8u;
+  let at = meshlet_screen.z / 4u + (slot - 1u) * meshlet_screen.w;
   let a = meshlet_attrs[at];
   let b = meshlet_attrs[at + 1u];
   let c = meshlet_attrs[at + 2u];
@@ -166,9 +170,12 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   r.v.normal = meshlet_oct(unpack2x16snorm(b.x));
   r.v.uv = bitcast<vec2<f32>>(b.yz);
   r.v.color = unpack4x8unorm(b.w);
-  // Read only by a material shader's hooks and the dissolve, neither of
-  // which a soft batch has.
-  r.v.local_pos = r.v.world_pos;
+  // The material style's surface pattern lies in the mesh's own space.
+  r.v.local_pos = vec3<f32>(
+    bitcast<f32>(meshlet_attrs[at + 4u].w),
+    bitcast<f32>(meshlet_attrs[at + 6u].w),
+    bitcast<f32>(meshlet_attrs[at + 7u].w),
+  );
   r.v.tangent = vec4<f32>(meshlet_oct(unpack2x16snorm(c.x)), bitcast<f32>(c.y));
   if (r.v.tangent.w == 0.0) { r.v.tangent = vec4<f32>(0.0); }
   r.v.affine = vec3<f32>(r.v.uv, 1.0);
@@ -178,6 +185,17 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   analytic_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 5u]);
   analytic_dx = bitcast<vec3<f32>>(meshlet_attrs[at + 6u].xyz);
   analytic_dy = bitcast<vec3<f32>>(meshlet_attrs[at + 7u].xyz);
+  r.lit_uv = analytic_uv;
+  if (meshlet_screen.w > 8u) {
+    // The stylised rows (meshlet_raster.wgsl `setup`).
+    let lx = bitcast<vec4<f32>>(meshlet_attrs[at + 8u]);
+    let ly = bitcast<vec4<f32>>(meshlet_attrs[at + 9u]);
+    analytic_local_dx = lx.xyz;
+    analytic_local_dy = ly.xyz;
+    // Affine texturing's uv, which `stylised_uv` mixes in.
+    r.v.affine = vec3<f32>(lx.w, ly.w, 1.0);
+    r.lit_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 10u]);
+  }
   r.object = c.w;
   return r;
 }
@@ -195,6 +213,7 @@ fn fs_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolveLit {
   o.depth = r.depth;
   // Read only by a material shader's hooks, which no soft batch has.
   hook_front = 1.0;
+  analytic_uv = r.lit_uv;
   o.color = lit_fragment(r.v);
   return o;
 }

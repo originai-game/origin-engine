@@ -11,7 +11,9 @@
 //! and one uniform beside the lit pipelines' own: no texture, as the lit
 //! fragment stage already samples 15 of WebGPU's 16.
 
-use super::{RECORD_WORDS, RasterParams, WORKGROUPS_PER_ROW, buffer, entry, storage};
+use super::{
+    RECORD_ROWS, RECORD_ROWS_STYLISED, RasterParams, WORKGROUPS_PER_ROW, buffer, entry, storage,
+};
 use crate::Side;
 use std::collections::HashMap;
 
@@ -49,6 +51,12 @@ pub(crate) struct VisFrame<'a> {
     pub indices: &'a wgpu::Buffer,
     pub vertices: &'a wgpu::Buffer,
     pub lod_debug: bool,
+    /// The frame's retro 3D (`Retro3d::uniform`): its vertices snap, its
+    /// depth steps and its uv go affine here as in pbr.wgsl.
+    pub stylise: [f32; 4],
+    /// The material style's surface is on: the records carry the local
+    /// position's gradients its pattern reads (pbr_fs.wgsl).
+    pub surface: bool,
     pub max_binding: u64,
 }
 
@@ -134,8 +142,15 @@ impl VisBuffer {
         // The slots, rounded up to a vec4, then at most a record a pixel
         // within the binding limit.
         let base = pixels.div_ceil(4) * 4;
-        let records = (pixels.min((f.max_binding / 4).saturating_sub(base) / RECORD_WORDS)).max(1);
-        let attrs = (base + records * RECORD_WORDS) * 4;
+        // The stylised records' three more rows only when the frame reads
+        // them (fewer records fit the binding).
+        let rows = if f.surface || f.stylise[2] > 0.0 {
+            RECORD_ROWS_STYLISED
+        } else {
+            RECORD_ROWS
+        };
+        let records = (pixels.min((f.max_binding / 4).saturating_sub(base) / (rows * 4))).max(1);
+        let attrs = (base + records * rows * 4) * 4;
         let words = (2 * pixels + 1) * 4;
         if words > self.words.size() {
             self.words = buffer(
@@ -158,12 +173,13 @@ impl VisBuffer {
         queue.write_buffer(
             &self.screen,
             0,
-            bytemuck::cast_slice(&[w, h, base as u32, 0]),
+            bytemuck::cast_slice(&[w, h, base as u32, rows as u32]),
         );
         let params = RasterParams {
             view_proj: f.view_proj.to_cols_array_2d(),
             size: [w, h, records as u32, f.lod_debug as u32],
-            soft: [f.list.0, f.list.1, 0, 0],
+            soft: [f.list.0, f.list.1, 0, rows as u32],
+            stylise: f.stylise,
         };
         queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
         // The cull's count into `soft.z`.

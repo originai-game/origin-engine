@@ -17,8 +17,12 @@ struct RasterParams {
   // each instance by its level (RenderScene::lod_debug).
   size: vec4<u32>,
   // x: the soft list's first item, y: its capacity in clusters, z: its
-  // count (copied from the cull's), w: 0.
+  // count (copied from the cull's), w: vec4 rows per record (8, or 11
+  // with the stylised rows).
   soft: vec4<u32>,
+  // Retro 3D (frame.wgsl `stylise`, stylise.rs `Retro3d::uniform`): the
+  // snap grid in cells, the affine share, the depth bits.
+  stylise: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> raster: RasterParams;
@@ -44,7 +48,23 @@ const WORKGROUPS_PER_ROW: u32 = 65535u;
 // meshlet.rs SUBPIXEL and RASTER_MAX.
 const SUBPIXEL: i32 = 256;
 const RASTER_MAX: f32 = 64.0;
-const RECORD_WORDS: u32 = 32u;
+
+// pbr.wgsl `retro_clip` (meshlet.rs `retro_clip`) over the raster's
+// stylise: the hardware path's clip position, snapped and stepped.
+fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
+  var c = clip;
+  if (c.w <= 0.0) { return c; }
+  if (raster.stylise.x > 0.0) {
+    let half = raster.stylise.xy * 0.5;
+    let ndc = c.xy / c.w;
+    c = vec4<f32>(round(ndc * half) / half * c.w, c.zw);
+  }
+  if (raster.stylise.w > 0.0) {
+    let steps = exp2(raster.stylise.w);
+    c.z = floor(c.z / c.w * steps) / steps * c.w;
+  }
+  return c;
+}
 
 fn transform_at(buf_index: u32, from_previous: bool) -> mat4x4<f32> {
   var t0: vec4<f32>;
@@ -88,7 +108,7 @@ fn triangle(k: u32, tri: u32) -> Tri {
   for (var j = 0u; j < 3u; j++) {
     let index = f.y + indices[c.x + tri * 3u + j];
     let world = model * vec4<f32>(vertices[index * 4u].xyz, 1.0);
-    let clip = mul_point(raster.view_proj, world);
+    let clip = raster_retro(mul_point(raster.view_proj, world));
     // Never for a soft cluster (it lies past the near plane): skipped.
     if (clip.w <= 1e-6 || clip.z < 0.0) { return t; }
     let ndc = clip.xyz / clip.w;
@@ -223,18 +243,23 @@ fn raster_level_color(level: u32) -> f32 {
   return f32((q.x << 16u) | (q.y << 8u) | q.z);
 }
 
-// meshlet.rs `barycentrics`: the perspective-correct weights at `ndc`,
-// extrapolated past the triangle's edges as a quad's helper pixels are.
-fn raster_bary(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
+// meshlet.rs `screen_weights`: the screen-linear weights at `ndc` (affine
+// texturing's), extrapolated past the triangle's edges as a quad's helper
+// pixels are.
+fn raster_screen(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
   let p0 = clip[0].xy / clip[0].w;
   let p1 = clip[1].xy / clip[1].w;
   let p2 = clip[2].xy / clip[2].w;
   let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-  let l = vec3<f32>(
+  return vec3<f32>(
     (p1.x - ndc.x) * (p2.y - ndc.y) - (p1.y - ndc.y) * (p2.x - ndc.x),
     (p2.x - ndc.x) * (p0.y - ndc.y) - (p2.y - ndc.y) * (p0.x - ndc.x),
     (p0.x - ndc.x) * (p1.y - ndc.y) - (p0.y - ndc.y) * (p1.x - ndc.x),
   ) / area;
+}
+
+// meshlet.rs `barycentrics`: the perspective-correct weights.
+fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
   let q = l / vec3<f32>(clip[0].w, clip[1].w, clip[2].w);
   return q / (q.x + q.y + q.z);
 }
@@ -242,10 +267,15 @@ fn raster_bary(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
 // One thread a pixel: the seen soft triangle's attributes at the pixel's
 // centre, perspective-correct, as a record: (world, depth), (normal oct,
 // uv, colour), (tangent oct, tangent w, its batch row, object id), the
-// instance's look, (last frame's world, 0), (d(uv)/dx, d(uv)/dy),
-// (d(world)/dx, 0), (d(world)/dy, 0): the gradients are the differences to the next pixel right and
-// down on the same triangle's plane, which the hardware's quads take and
-// the resolve's full-screen quads cannot (pbr_fs.wgsl `ANALYTIC`).
+// instance's look, (last frame's world, local x), (d(uv)/dx, d(uv)/dy),
+// (d(world)/dx, local y), (d(world)/dy, local z); with the stylised rows
+// (`raster.soft.w` 11) then (d(local)/dx, affine u), (d(local)/dy,
+// affine v), (d(lit uv)/dx, d(lit uv)/dy), the lit uv being pbr.wgsl
+// `stylised_uv`'s mix of the two. The gradients are the differences to
+// the next pixel right and down on the same triangle's plane, which the
+// hardware's quads take and the resolve's full-screen quads cannot
+// (pbr_fs.wgsl `ANALYTIC`). The triangle's corners are the hardware's,
+// retro 3D's snap and depth steps included (`raster_retro`).
 @compute @workgroup_size(8, 8)
 fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (gid.x >= raster.size.x || gid.y >= raster.size.y) { return; }
@@ -269,12 +299,15 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   var clip: array<vec4<f32>, 3>;
   for (var j = 0u; j < 3u; j++) {
     vi[j] = f.y + indices[c.x + tri * 3u + j];
-    clip[j] = mul_point(raster.view_proj, model * vec4<f32>(vertices[vi[j] * 4u].xyz, 1.0));
+    clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(vertices[vi[j] * 4u].xyz, 1.0)));
   }
-  let b = raster_bary(clip, ndc);
+  let l = raster_screen(clip, ndc);
   // The next pixel right and down (framebuffer y runs down, ndc y up).
-  let bx = raster_bary(clip, ndc + vec2<f32>(2.0 / size.x, 0.0));
-  let by = raster_bary(clip, ndc - vec2<f32>(0.0, 2.0 / size.y));
+  let lx = raster_screen(clip, ndc + vec2<f32>(2.0 / size.x, 0.0));
+  let ly = raster_screen(clip, ndc - vec2<f32>(0.0, 2.0 / size.y));
+  let b = raster_bary(clip, l);
+  let bx = raster_bary(clip, lx);
+  let by = raster_bary(clip, ly);
   var position = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
   var uv = vec2<f32>(0.0);
@@ -284,6 +317,9 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   var dpos_y = vec3<f32>(0.0);
   var duv_x = vec2<f32>(0.0);
   var duv_y = vec2<f32>(0.0);
+  var affine = vec2<f32>(0.0);
+  var daff_x = vec2<f32>(0.0);
+  var daff_y = vec2<f32>(0.0);
   for (var j = 0u; j < 3u; j++) {
     let a = vertices[vi[j] * 4u];
     let v = vertices[vi[j] * 4u + 1u];
@@ -291,6 +327,9 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     dpos_y += a.xyz * (by[j] - b[j]);
     duv_x += v.zw * (bx[j] - b[j]);
     duv_y += v.zw * (by[j] - b[j]);
+    affine += v.zw * l[j];
+    daff_x += v.zw * (lx[j] - l[j]);
+    daff_y += v.zw * (ly[j] - l[j]);
     position += a.xyz * b[j];
     normal += vec3<f32>(a.w, v.xy) * b[j];
     uv += v.zw * b[j];
@@ -325,15 +364,27 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       raster_object(model),
     ),
     bitcast<vec4<u32>>(look),
-    vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(position, 1.0)).xyz), 0u),
+    vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(position, 1.0)).xyz), bitcast<u32>(position.x)),
     bitcast<vec4<u32>>(vec4<f32>(duv_x, duv_y)),
-    vec4<u32>(bitcast<vec3<u32>>(dwx), 0u),
-    vec4<u32>(bitcast<vec3<u32>>(dwy), 0u),
+    vec4<u32>(bitcast<vec3<u32>>(dwx), bitcast<u32>(position.y)),
+    vec4<u32>(bitcast<vec3<u32>>(dwy), bitcast<u32>(position.z)),
   );
   // The records from the slots' end, rounded up to a vec4.
-  let r = ((wh + 3u) & ~3u) + slot * RECORD_WORDS;
+  let stride = raster.soft.w;
+  let r = ((wh + 3u) & ~3u) + slot * stride * 4u;
   for (var i = 0u; i < 8u; i++) {
     for (var j = 0u; j < 4u; j++) { attrs[r + i * 4u + j] = rows[i][j]; }
+  }
+  if (stride > 8u) {
+    let k = raster.stylise.z;
+    let more = array<vec4<u32>, 3>(
+      bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
+      bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
+      bitcast<vec4<u32>>(vec4<f32>(mix(duv_x, daff_x, k), mix(duv_y, daff_y, k))),
+    );
+    for (var i = 0u; i < 3u; i++) {
+      for (var j = 0u; j < 4u; j++) { attrs[r + (8u + i) * 4u + j] = more[i][j]; }
+    }
   }
   attrs[pixel] = slot + 1u;
 }

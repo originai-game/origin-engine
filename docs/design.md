@@ -749,8 +749,7 @@ any view past the storage binding limit.
 The visibility buffer (`meshlet_gpu/vis.rs`, `meshlet_raster.wgsl`)
 takes the camera's small clusters: of an occluder batch (opaque, with no
 alpha cut, dissolve or material shader), under a perspective camera
-without retro vertex snapping (`RenderScene::visibility_buffer`, on by
-default), a cluster wholly past the near plane whose sphere covers at
+(`RenderScene::visibility_buffer`, on by default), a cluster wholly past the near plane whose sphere covers at
 most 24 pixels across (`meshlet::soft`) goes to a soft list instead of
 its batch's indirect draw. One workgroup per soft cluster and one thread
 per triangle rasterise it in compute, in two passes because WebGPU has no
@@ -771,9 +770,16 @@ sample its coarsest mip): the setup also records each pixel's uv and
 world-position differences to the next pixel right and down on its
 triangle's plane, and the resolve's pipelines set `pbr_fs.wgsl`'s
 `ANALYTIC`, which samples the material's maps with those gradients
-(`textureSampleGrad`) and takes them as the position's derivatives. The
-material style's surface pattern takes derivatives of its own, so under it
-the camera's clusters stay on the hardware. three.js decides per triangle (8 pixels); per
+(`textureSampleGrad`) and takes them as the position's derivatives.
+Retro 3D's vertex path is repeated in the rasteriser: each corner snaps
+to the frame's grid and its depth to its steps before it is rasterised
+(`meshlet::retro_clip`, pbr.wgsl's `retro_clip`), and with affine
+texturing the setup records the screen-linear uv (`meshlet::screen_weights`:
+the hardware's perspective-correct `uv w` over `w`). Under the material
+style's surface or affine texturing each record carries three more rows,
+the local position's gradients and the lit uv's, so the surface pattern's
+fade, coarse albedo and height bump (the pattern again at the next pixel
+right and down) are the hardware's. three.js decides per triangle (8 pixels); per
 cluster keeps each hardware cluster in its batch's one indirect draw. The
 resolve's fragment stage adds one storage buffer (each pixel's record
 slot, then the records) and one uniform to the lit stage's, and no

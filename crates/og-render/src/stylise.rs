@@ -313,6 +313,34 @@ pub struct Retro3d {
     pub depth_bits: u32,
 }
 
+impl Retro3d {
+    /// The frame's `stylise` uniform (frame.wgsl) for `retro` on a
+    /// `width` by `height` target: the snap grid in cells, the affine
+    /// share and the depth bits, all 0 without retro 3D. pbr.wgsl
+    /// `retro_clip` and the visibility buffer's rasteriser
+    /// (meshlet_raster.wgsl) read the same four numbers.
+    pub fn uniform(retro: Option<Retro3d>, width: u32, height: u32) -> [f32; 4] {
+        match retro {
+            Some(r) if r.vertex_snap > 0.0 || r.affine > 0.0 || r.depth_bits > 0 => {
+                let cells = |size: u32| {
+                    if r.vertex_snap > 0.0 {
+                        size as f32 / r.vertex_snap
+                    } else {
+                        0.0
+                    }
+                };
+                [
+                    cells(width),
+                    cells(height),
+                    r.affine.clamp(0.0, 1.0),
+                    r.depth_bits.min(24) as f32,
+                ]
+            }
+            _ => [0.0; 4],
+        }
+    }
+}
+
 /// Stylised defaults for every lit material that leaves the field at its
 /// own default (the IDL's `MaterialStyle`).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

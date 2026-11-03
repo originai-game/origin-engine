@@ -114,11 +114,14 @@ struct RasterParams {
     view_proj: [[f32; 4]; 4],
     size: [u32; 4],
     soft: [u32; 4],
+    stylise: [f32; 4],
 }
 
-/// u32 words per visibility-buffer record (meshlet_raster.wgsl
-/// `RECORD_ROWS` vec4s).
-const RECORD_WORDS: u64 = 32;
+/// vec4 rows per visibility-buffer record (meshlet_raster.wgsl `setup`).
+const RECORD_ROWS: u64 = 8;
+/// With the frame's material surface or affine texturing: three more, the
+/// local position's gradients, the affine uv and the lit uv's gradients.
+const RECORD_ROWS_STYLISED: u64 = 11;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]
@@ -988,12 +991,10 @@ impl MeshletGpu {
         let pools = self.pools.as_ref()?;
         // The visibility buffer takes the camera's small clusters of
         // occluder batches (opaque, depth exactly their triangles') under
-        // a perspective camera without retro vertex snapping.
-        // Nor under the material style's surface, whose pattern takes
-        // screen derivatives of its own (pbr_fs.wgsl).
+        // a perspective camera (retro 3D's vertices snap and its uv go
+        // affine in the rasteriser too, and the material style's surface
+        // takes its gradients from the records).
         let soft_on = scene.visibility_buffer
-            && scene.stylise.retro.is_none()
-            && !scene.stylise.material.surface_on()
             && matches!(
                 scene.camera.projection,
                 crate::Projection::Perspective { .. }
@@ -1265,6 +1266,8 @@ impl MeshletGpu {
                     indices: &pools.indices,
                     vertices: &pools.vertices,
                     lod_debug: scene.lod_debug,
+                    stylise: crate::Retro3d::uniform(scene.stylise.retro, width, height),
+                    surface: scene.stylise.material.surface_on(),
                     max_binding: self.max_binding,
                 },
             );

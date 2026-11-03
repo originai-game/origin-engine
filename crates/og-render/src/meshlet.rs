@@ -466,17 +466,46 @@ pub fn covers(p: [Vec3; 3], x: i32, y: i32) -> Option<f32> {
 /// triangle of clip positions `clip`: what the hardware interpolates a
 /// varying with (the resolve rebuilds a pixel's attributes with them).
 pub fn barycentrics(clip: [Vec4; 3], ndc: Vec2) -> Vec3 {
+    // The screen weights, then each over its corner's w.
+    let q = screen_weights(clip, ndc) / Vec3::new(clip[0].w, clip[1].w, clip[2].w);
+    q / (q.x + q.y + q.z)
+}
+
+/// The screen-linear barycentric weights of a pixel at `ndc` on the
+/// triangle of clip positions `clip`: what affine texturing (retro 3D,
+/// pbr.wgsl `stylised_uv`) interpolates uv with, the hardware's
+/// perspective-correct ratio of `uv w` over `w` being exactly these.
+pub fn screen_weights(clip: [Vec4; 3], ndc: Vec2) -> Vec3 {
     let p = clip.map(|c| c.truncate().truncate() / c.w);
     let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
     let area = cross(p[1] - p[0], p[2] - p[0]);
-    // The screen weights, then each over its corner's w.
-    let l = Vec3::new(
+    Vec3::new(
         cross(p[1] - ndc, p[2] - ndc),
         cross(p[2] - ndc, p[0] - ndc),
         cross(p[0] - ndc, p[1] - ndc),
-    ) / area;
-    let q = l / Vec3::new(clip[0].w, clip[1].w, clip[2].w);
-    q / (q.x + q.y + q.z)
+    ) / area
+}
+
+/// Retro 3D's vertex (pbr.wgsl `retro_clip`, which the compute
+/// rasteriser repeats): the clip position snapped to the frame's grid of
+/// `stylise.xy` cells and its depth quantised to `stylise.w` bits
+/// ([`crate::Retro3d::uniform`]); the identity when both are 0.
+pub fn retro_clip(clip: Vec4, stylise: [f32; 4]) -> Vec4 {
+    let mut c = clip;
+    if c.w <= 0.0 {
+        return c;
+    }
+    if stylise[0] > 0.0 {
+        let half = Vec2::new(stylise[0], stylise[1]) * 0.5;
+        let ndc = Vec2::new(c.x, c.y) / c.w;
+        let snapped = (ndc * half).round() / half * c.w;
+        c = Vec4::new(snapped.x, snapped.y, c.z, c.w);
+    }
+    if stylise[3] > 0.0 {
+        let steps = stylise[3].exp2();
+        c.z = (c.z / c.w * steps).floor() / steps * c.w;
+    }
+    c
 }
 
 #[cfg(test)]
@@ -843,5 +872,62 @@ mod tests {
         // At a corner, that corner's attributes.
         let b = barycentrics(clip, clip[1].truncate().truncate() / clip[1].w);
         assert!((b - Vec3::Y).length() < 1e-5);
+    }
+
+    /// Affine texturing as the hardware does it (pbr.wgsl: `uv w` and `w`
+    /// interpolated perspective-correct, then divided) is the screen
+    /// weights' interpolation of uv, and differs from the perspective one
+    /// where the corners' depths differ.
+    #[test]
+    fn affine_uv_is_the_screen_weights_interpolation() {
+        let clip = [
+            Vec4::new(-1.0, -0.5, 0.2, 1.0),
+            Vec4::new(3.0, -1.0, 2.0, 4.0),
+            Vec4::new(0.5, 6.0, 4.5, 7.0),
+        ];
+        let uv = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(0.0, 1.0),
+        ];
+        let ndc = Vec2::new(0.1, 0.25);
+        let b = barycentrics(clip, ndc);
+        let w = Vec3::new(clip[0].w, clip[1].w, clip[2].w);
+        let hardware = (uv[0] * w.x * b.x + uv[1] * w.y * b.y + uv[2] * w.z * b.z) / w.dot(b);
+        let l = screen_weights(clip, ndc);
+        let affine = uv[0] * l.x + uv[1] * l.y + uv[2] * l.z;
+        assert!(
+            (hardware - affine).length() < 1e-5,
+            "{hardware:?} {affine:?}"
+        );
+        let perspective = uv[0] * b.x + uv[1] * b.y + uv[2] * b.z;
+        assert!((perspective - affine).length() > 0.05);
+    }
+
+    /// Retro 3D snaps a vertex to the nearest multiple of the snap size in
+    /// pixels and floors its depth to the bits' steps.
+    #[test]
+    fn retro_vertices_snap_to_the_pixel_grid_and_depth_steps() {
+        let stylise = crate::Retro3d::uniform(
+            Some(crate::Retro3d {
+                vertex_snap: 4.0,
+                affine: 0.0,
+                depth_bits: 8,
+            }),
+            640,
+            480,
+        );
+        let w = 3.0;
+        // Pixel x (0.1234 / 2 + 0.5) 640 = 359.49 snaps to 360, ndc 0.125;
+        // pixel y from the top (0.5 + 0.2 / 2) 480 = 288 stays on the grid.
+        let c = retro_clip(Vec4::new(0.1234 * w, -0.2 * w, 0.5004 * w, w), stylise);
+        assert!((c.x / w - 0.125).abs() < 1e-6, "{c:?}");
+        assert!((c.y / w + 0.2).abs() < 1e-6, "{c:?}");
+        // 0.5004 x 256 = 128.1: step 128, depth 0.5.
+        assert!((c.z / w - 0.5).abs() < 1e-6, "{c:?}");
+        assert_eq!(c.w, w);
+        // Without retro 3D, the identity.
+        let p = Vec4::new(0.3, 0.2, 0.1, 2.0);
+        assert_eq!(retro_clip(p, crate::Retro3d::uniform(None, 640, 480)), p);
     }
 }

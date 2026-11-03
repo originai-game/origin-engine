@@ -1745,23 +1745,7 @@ impl Renderer {
                 0.0,
                 0.0,
             ],
-            stylise: match scene.stylise.retro {
-                Some(r) if r.vertex_snap > 0.0 || r.affine > 0.0 || r.depth_bits > 0 => [
-                    if r.vertex_snap > 0.0 {
-                        self.width as f32 / r.vertex_snap
-                    } else {
-                        0.0
-                    },
-                    if r.vertex_snap > 0.0 {
-                        self.height as f32 / r.vertex_snap
-                    } else {
-                        0.0
-                    },
-                    r.affine.clamp(0.0, 1.0),
-                    r.depth_bits.min(24) as f32,
-                ],
-                _ => [0.0; 4],
-            },
+            stylise: crate::Retro3d::uniform(scene.stylise.retro, self.width, self.height),
             shadow_tint: {
                 let m = &scene.stylise.material;
                 let a = m.shadow_tint_amount.clamp(0.0, 1.0);

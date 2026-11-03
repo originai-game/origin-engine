@@ -20,10 +20,13 @@ override DISCARD: bool = true;
 // texture samples and the position's derivatives take the gradients the
 // rasteriser computed for the pixel (`analytic_*`, set by the resolve).
 override ANALYTIC: bool = false;
-// d(uv)/dx and d(uv)/dy, and d(world)/dx and d(world)/dy.
+// d(uv)/dx and d(uv)/dy, d(world)/dx and d(world)/dy, and d(local)/dx
+// and d(local)/dy (the material style's surface, set when it is on).
 var<private> analytic_uv: vec4<f32>;
 var<private> analytic_dx: vec3<f32>;
 var<private> analytic_dy: vec3<f32>;
+var<private> analytic_local_dx: vec3<f32>;
+var<private> analytic_local_dy: vec3<f32>;
 
 // The gradient along `d` (uv per pixel) of slot `slot`'s uv.
 fn analytic_grad(slot: u32, uv: vec2<f32>, d: vec2<f32>) -> vec2<f32> {
@@ -178,13 +181,27 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (kind != 2u) {
       // Clay and toys are painted or moulded, not photographed: the base
       // texture's detail gives way to its local average (a coarse mip).
-      let coarse = look_tint(material.base_color * textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0) * in.color, in.look).rgb;
+      // (A bias of 6 is the gradients 2^6 times longer.)
+      var coarse_sample: vec4<f32>;
+      if (ANALYTIC) {
+        let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy) * 64.0;
+        let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw) * 64.0;
+        coarse_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
+      } else {
+        coarse_sample = textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0);
+      }
+      let coarse = look_tint(material.base_color * coarse_sample * in.color, in.look).rgb;
       s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
     }
     // The pattern fades where it spans fewer than about four pixels, so a
     // far surface keeps its form instead of shimmering grain (the pixel's
     // footprint in the mesh's own space, where the pattern lies).
-    let footprint = max(length(dpdx(in.local_pos)), length(dpdy(in.local_pos)));
+    var footprint: f32;
+    if (ANALYTIC) {
+      footprint = max(length(analytic_local_dx), length(analytic_local_dy));
+    } else {
+      footprint = max(length(dpdx(in.local_pos)), length(dpdy(in.local_pos)));
+    }
     let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
     let made = material_surface(kind, ms.y, in.local_pos / ms.z, s, fade);
     s = made.s;
@@ -197,7 +214,18 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let r1 = cross(dpy, n);
     let r2 = cross(n, dpx);
     let det = dot(dpx, r1);
-    let grad = sign(det) * (dpdx(hm) * r1 + dpdy(hm) * r2);
+    // The height's screen derivatives: with ANALYTIC the pattern again
+    // at the next pixel right and down on the triangle's plane, as the
+    // hardware's quad takes them.
+    var dh: vec2<f32>;
+    if (ANALYTIC) {
+      let hx = material_surface(kind, ms.y, (in.local_pos + analytic_local_dx) / ms.z, s, fade).height * ms.z;
+      let hy = material_surface(kind, ms.y, (in.local_pos + analytic_local_dy) / ms.z, s, fade).height * ms.z;
+      dh = vec2<f32>(hx - hm, hy - hm);
+    } else {
+      dh = vec2<f32>(dpdx(hm), dpdy(hm));
+    }
+    let grad = sign(det) * (dh.x * r1 + dh.y * r2);
     // det is n · (dpx × dpy): where the shading normal lies in the face (a
     // smooth mesh's silhouette, a rim turning away) the frame is degenerate,
     // abs(det) n - grad tends to zero and its normalize to NaN, which the

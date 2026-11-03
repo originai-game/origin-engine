@@ -898,26 +898,61 @@ fn cooked_gltf_reference() -> og_tests::scenes::GfxScene {
 /// each with its maps) through the compute rasteriser and the resolve,
 /// against every cluster drawn by the hardware. A resolve that shades
 /// another batch's pixels, or samples its maps with the full-screen
-/// pass's own screen derivatives (the coarsest mip), fails it.
+/// pass's own screen derivatives (the coarsest mip), fails it. The same
+/// under retro 3D (snapped vertices, stepped depth, affine uv: a
+/// rasteriser that skips them puts every soft triangle off the hardware's
+/// grid and its texels at the perspective uv) and under the material
+/// style's clay (its pattern's fade, coarse albedo and height bump read
+/// the local position's gradients from the records).
 #[test]
 fn cooked_models_draw_the_same_through_the_visibility_buffer() {
-    let render = |vbuffer: bool| {
-        let mut gfx = cooked_gltf_reference();
-        gfx.scene.visibility_buffer = vbuffer;
-        og_tests::gfx::render_built(&mut gfx).unwrap()
-    };
-    let (on, off) = (render(true), render(false));
-    let tolerance = og_tests::compare::Tolerance::default();
-    let cmp = og_tests::compare::compare(
-        &on.image.pixels,
-        &off.image.pixels,
-        on.image.width,
-        on.image.height,
-        &tolerance,
-    )
-    .unwrap();
-    cmp.check(&tolerance)
-        .unwrap_or_else(|e| panic!("visibility buffer against the hardware: {e}"));
+    let styles: [(&str, og_render::Stylise); 3] = [
+        ("plain", og_render::Stylise::default()),
+        (
+            "retro",
+            og_render::Stylise {
+                retro: Some(og_render::Retro3d {
+                    vertex_snap: 2.0,
+                    affine: 1.0,
+                    depth_bits: 16,
+                }),
+                ..Default::default()
+            },
+        ),
+        (
+            "clay",
+            og_render::Stylise {
+                material: og_render::MaterialStyle {
+                    surface: og_render::MaterialSurface::Clay,
+                    surface_strength: 1.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        ),
+    ];
+    for (name, stylise) in styles {
+        let render = |vbuffer: bool| {
+            let mut gfx = cooked_gltf_reference();
+            gfx.scene.visibility_buffer = vbuffer;
+            gfx.scene.stylise = stylise;
+            og_tests::gfx::render_built(&mut gfx).unwrap()
+        };
+        let (on, off) = (render(true), render(false));
+        let ev = evidence_dir();
+        og_tests::gfx::save_png(&ev.join(format!("vbuffer-{name}.png")), &on.image).unwrap();
+        let tolerance = og_tests::compare::Tolerance::default();
+        let cmp = og_tests::compare::compare(
+            &on.image.pixels,
+            &off.image.pixels,
+            on.image.width,
+            on.image.height,
+            &tolerance,
+        )
+        .unwrap();
+        cmp.check(&tolerance)
+            .unwrap_or_else(|e| panic!("{name}: visibility buffer against the hardware: {e}"));
+    }
 }
 
 #[test]
