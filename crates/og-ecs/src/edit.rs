@@ -208,6 +208,13 @@ impl SnapshotEdit {
         &self.names
     }
 
+    /// Whether an archetype stores this type, including an empty archetype.
+    /// Empty archetypes preserve storage order for entities spawned later.
+    pub fn has_archetype(&self, ty: &str) -> bool {
+        self.index(ty)
+            .is_some_and(|t| self.archetypes.iter().any(|a| a.types.contains(&t)))
+    }
+
     /// Every component of a type, packed, by entity in storage order.
     pub fn components(&self, ty: &str) -> Vec<(Entity, Vec<u8>)> {
         let Some(t) = self.index(ty) else {

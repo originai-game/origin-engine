@@ -324,12 +324,14 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
     let mut done = Vec::new();
     // Older engines registered some now-lazy records eagerly. An unused
     // schema must not opt the restored world into those modules again.
+    // An empty archetype still uses its schemas: a later spawn reuses its
+    // position in storage order (for example when a persisted cell reloads).
     let unused: Vec<String> = edit
         .schemas()
         .iter()
         .filter(|s| {
             crate::lazy::is_lazy(&s.name)
-                && edit.components(&s.name).is_empty()
+                && !edit.has_archetype(&s.name)
                 && edit.resource(&s.name).is_none()
                 && !edit.has_events(&s.name)
         })
@@ -401,7 +403,9 @@ mod tests {
                                 world.send_bytes(id, &bytes).unwrap();
                             }
                             crate::codec::RecordKind::Component => {
-                                world.spawn_bytes(vec![(id, bytes)]).unwrap();
+                                let entity = world.spawn_bytes(vec![(id, bytes)]).unwrap();
+                                assert!(upgrade(&world.snapshot()).unwrap().is_none());
+                                world.despawn(entity).unwrap();
                             }
                         }
                     }
