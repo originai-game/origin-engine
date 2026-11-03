@@ -677,6 +677,13 @@ fn drawn(
         );
         let mut rows = super::feel::byte_rows(world, id, layout);
         og_core::sort::sort_by_key(&mut rows, |(e, _)| og_ecs::Entity::from_bits(*e).index());
+        // Each part's geometry index through a map (its first position, as
+        // a search gave): a search per part made this read, every tick,
+        // parts × geometries (Daguanyuan, native: a 8.7 ms tick, 1.8 ms after).
+        let mut geometry_of = std::collections::HashMap::with_capacity(rs.geometries.len());
+        for (i, g) in rs.geometries.iter().enumerate() {
+            geometry_of.entry(*g).or_insert(i);
+        }
         for (e, bytes) in &rows {
             let v = Row::new(layout, bytes);
             let Some(parts) = rs.models.get(&(v.num(&asset).unwrap_or(0.0) as u64)) else {
@@ -687,11 +694,7 @@ fn drawn(
             for &(mesh, _, local) in parts.iter() {
                 out.push(Drawn {
                     entity: *e,
-                    geometry: rs
-                        .geometries
-                        .iter()
-                        .position(|g| *g == mesh)
-                        .unwrap_or(usize::MAX),
+                    geometry: geometry_of.get(&mesh).copied().unwrap_or(usize::MAX),
                     mesh,
                     part: Some(local),
                     visible,
