@@ -190,6 +190,13 @@ impl Ui {
     /// offscreen through a material; over its background.
     pub fn set_draw(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(last) = self.nodes.len().checked_sub(1) {
+            if self.draws.contains_key(&last) {
+                let path = self.path_of(last);
+                self.warnings.push(format!(
+                    "setDraw replaced the draw set on {path} this tick: setDraw draws the element added last, \
+                     so call it right after the element's open or control, before its children"
+                ));
+            }
             self.draws.insert(last, draw);
             self.dressable.remove(&last);
         }

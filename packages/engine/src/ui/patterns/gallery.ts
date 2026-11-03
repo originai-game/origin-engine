@@ -176,7 +176,9 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
             props: { ...(shakeOf(rt, rk, k) ? { transform: { x: shakeOf(rt, rk, k) } } : {}) },
           }, () => {
             const ix = lastInteraction(k);
-            artSlot("Picture", "CgGallery.picture", { texture: locked ? null : e.image ?? null, kind: "cg", width: px(cw), height: px(chH), radius: rr, label: "" }, () => {
+            // The focus ring and lift shadow are the picture's own: setDraw after it would replace its draw (it is the element added last).
+            const lit = ix.hovered || ix.focused;
+            artSlot("Picture", "CgGallery.picture", { texture: locked ? null : e.image ?? null, kind: "cg", width: px(cw), height: px(chH), radius: rr, label: "", strokes: lit ? [line(u(2), token("focus"), "outside")] : [], effects: !locked && lit ? [shadow(u(6), u(18), 0.5)] : [] }, () => {
               if (locked) {
                 kit.column("Veil", { width: grow(), height: grow(), gap: u(6), align: "center", cross: "center", padding: xy(u(10), u(8)), part: "CgGallery.veil", partClass: "panel" }, () => {
                   kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [vgrad([[0, token("well", 0.94)], [1, token("shadow", 0.96)]])], strokes: [line(1, token("ink", 0.1))] });
@@ -193,7 +195,6 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
                 over({ insets: { end: u(6), top: u(6) }, inert: true });
               }
             });
-            kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [], strokes: ix.hovered || ix.focused ? [line(u(2), token("focus"), "outside")] : [], effects: !locked && (ix.hovered || ix.focused) ? [shadow(u(6), u(18), 0.5)] : [] } as never);
             text("Title", locked ? desc.lockedLabel ?? "???" : e.title ?? k, { step: st(phone ? 13 : 15), nowrap: true, ellipsis: true, width: grow(), color: locked ? "inkFaint" : "ink" });
             // A veil too short for the lock and two lines of the hint: the hint stands in its own row under the title.
             if (locked && short && e.hint) text("Hint", e.hint, { step: st(12), color: "inkMuted", width: grow(), maxLines: 2 });

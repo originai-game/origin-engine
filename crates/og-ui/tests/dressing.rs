@@ -744,3 +744,37 @@ fn a_part_without_a_class_takes_nothing_from_the_tokens() {
         "the style's stroke on a classless part draws: {ring:?}"
     );
 }
+
+/// setDraw draws the element added last: a second call meant for its
+/// parent, made after a childless picture closed, replaces the picture's
+/// draw (the CG gallery's tiles lost their art), so og-ui names it.
+#[test]
+fn a_set_draw_that_replaces_a_draw_set_this_tick_is_named() {
+    let solid = |c: Srgba| og_ui::paint::ElementDraw {
+        fills: vec![og_ui::paint::Paint::Solid(c.into())],
+        ..Default::default()
+    };
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+    ui.open("Tile", Element::column());
+    ui.open(
+        "Picture",
+        Element {
+            width: Size::Fixed(120.0),
+            height: Size::Fixed(80.0),
+            ..Element::default()
+        },
+    );
+    ui.set_draw(solid(Srgba::rgb(0, 0, 255)));
+    ui.close();
+    // Meant for the tile, but the picture is the element added last.
+    ui.set_draw(solid(Srgba::rgb(0, 0, 0)));
+    ui.close();
+    ui.end();
+    let w = &ui.frame().warnings;
+    assert!(
+        w.iter()
+            .any(|m| m.contains("setDraw replaced") && m.contains("Tile/Picture")),
+        "{w:?}"
+    );
+}

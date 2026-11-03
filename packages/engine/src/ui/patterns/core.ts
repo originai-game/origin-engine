@@ -300,6 +300,9 @@ export interface Slot {
   /** Its size; null grows. */
   width?: Api.Size | null | undefined;
   height?: Api.Size | null | undefined;
+  /** Strokes and effects round the art (a tile's focus ring and lift shadow), drawn with it. */
+  strokes?: readonly Api.Stroke[] | undefined;
+  effects?: readonly Api.Effect[] | undefined;
 }
 
 /** The placeholder silhouette per art kind: a symbol that reads as the kind (never a grey box). */
@@ -450,9 +453,9 @@ export function artSlot(id: string, part: string, s: Slot, build?: () => void): 
     partClass: "slot",
   });
   if (!placeholder) {
-    kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "image", texture: s.texture!, fit: s.fit ?? "cover", focal: s.focal ?? { x: 0.5, y: 0.5 } }], clip: "shape" });
+    kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "image", texture: s.texture!, fit: s.fit ?? "cover", focal: s.focal ?? { x: 0.5, y: 0.5 } }], strokes: s.strokes ?? [], effects: s.effects ?? [], clip: "shape" });
   } else {
-    placeholderArt(s, tier, radii);
+    placeholderArt(s, tier, radii, s.strokes ? [...s.strokes] : undefined);
   }
   try {
     build?.();
