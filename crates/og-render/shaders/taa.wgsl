@@ -141,6 +141,9 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   // the prepass drew this sample (objects and skinned meshes move it).
   let here = in.pos.xy / out_size;
   var motion = vec2<f32>(0.0);
+  // Whether this sample moves otherwise than the camera moves it (an
+  // object or a skinned mesh on its motion vectors).
+  var own_motion = false;
   if (taa.still.x < 0.5) {
     // This pixel's world point, seen by the previous frame, from its
     // window position (exact on every backend).
@@ -154,7 +157,9 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
     motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
   }
   if (taa.still.y > 0.5 && textureLoad(view_depth_tex, at, 0).r < 1.0e8) {
-    motion = textureLoad(velocity_tex, at, 0).zw;
+    let v = textureLoad(velocity_tex, at, 0).zw;
+    own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
+    motion = v;
   }
   var hist4: vec4<f32>;
   if (all(abs(motion) * out_size < vec2<f32>(1e-3))) {
@@ -174,12 +179,23 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
       hist4 = textureSampleLevel(history, linear_sampler, prev_uv, 0.0);
     }
   }
-  let hist = from_ycocg(clamp(to_ycocg(hist4.rgb), lo, hi));
-  let hist_a = clamp(hist4.a, a_lo, a_hi);
-
   // Under TAAU a sample counts as much as it is near this pixel's centre
   // (a Gaussian of about half an output pixel).
-  let a = taa.params.x * select(1.0, exp(-2.0 * dot(off, off)), upscale);
+  let near = select(1.0, exp(-2.0 * dot(off, off)), upscale);
+  // The clamp trusts the neighbourhood only as far as it saw this pixel:
+  // under TAAU a detail thinner than a scene pixel (a pole) can fall
+  // between this frame's samples, and a box of what lies beside it would
+  // erase it from the history. Far from a sample the clamped history is
+  // eased back towards the history itself; a sample near the centre comes
+  // round every few frames of the jitter and clamps it fully, so a stale
+  // colour lasts no longer than that. Where the sample moves on its own
+  // motion vectors (objects, skinned meshes) the clamp stays whole: their
+  // edges are where a ghost would trail.
+  let relax = select(0.0, 0.9 * (1.0 - near), upscale && !own_motion);
+  let hist = from_ycocg(mix(clamp(to_ycocg(hist4.rgb), lo, hi), to_ycocg(hist4.rgb), relax));
+  let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
+
+  let a = taa.params.x * near;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
   return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));
