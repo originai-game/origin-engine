@@ -788,11 +788,14 @@ fn project_conform_off_keeps_models_their_textures_clips_and_flipbooks_as_made()
         triangles(&on, "models/ball.glb")[0].len()
             < triangles(&control, "models/ball.glb")[0].len()
     );
+    // The model's own texture, by the id its blob names (unconformed, it is
+    // the one cooked texture of its image, shared by id).
     let tex = |root: &Path| {
-        let t = Bundle::open(&root.join("cooked"))
-            .unwrap()
-            .load_texture("models/ball.glb#tex0")
-            .unwrap();
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let id = bundle.load_model("models/ball.glb").unwrap().textures[0]
+            .id
+            .clone();
+        let t = bundle.load_texture(&id).unwrap();
         (t.meta.width, t.meta.height)
     };
     assert_eq!(tex(&on), (32, 32));

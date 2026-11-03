@@ -298,6 +298,9 @@ pub(crate) struct RenderState {
     /// The models' levels of detail by asset handle bits (models with one
     /// level have none).
     pub model_lods: IdMap<u64, ModelLods>,
+    /// The textures, materials and meshes loaded models share (assets.rs
+    /// `add_gltf`).
+    pub shared: og_bundle::runtime::SharedParts,
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
     pub lod_drawn: IdMap<u64, u8>,
@@ -401,6 +404,7 @@ impl RenderState {
             geometries: Vec::new(),
             models: IdMap::new(),
             model_lods: IdMap::new(),
+            shared: Default::default(),
             lod_drawn: IdMap::new(),
             wind: Default::default(),
             probe_bakes: Default::default(),

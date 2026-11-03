@@ -463,7 +463,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         None => id.clone(),
     };
     let formats = texture_formats(eng);
-    let (model, textures, impostor) = {
+    let (model, textures, impostor, keys) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&source)?;
         let model = bundle
@@ -480,7 +480,23 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             }
         };
         let mut textures = Vec::with_capacity(model.textures.len());
+        let mut keys = Vec::with_capacity(model.textures.len());
         for t in &model.textures {
+            // A texture another unstreamed model loaded (the same cooked
+            // bytes: the cook writes one per image) is shared, not decoded
+            // again (fork s24).
+            let key = {
+                use std::hash::{Hash, Hasher};
+                let (tb, _) = assets.blob(&t.id)?;
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                tb.bytes().hash(&mut h);
+                h.finish()
+            };
+            keys.push(key);
+            if group.is_none() && eng.render.borrow().shared.has_texture(key) {
+                textures.push(og_render::TextureSource::Rgba(super::stream::placeholder()));
+                continue;
+            }
             textures.push(texture(&t.id)?);
         }
         // The impostor's atlases: a model whose atlases are missing draws
@@ -489,9 +505,12 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             Some(i) => Some([texture(&i.albedo)?, texture(&i.normal)?]),
             None => None,
         };
-        (model, textures, impostor)
+        (model, textures, impostor, keys)
     };
-    insert_model(eng, &id, group, model, &textures, impostor, into, true).map(|(i, _)| i)
+    insert_model(
+        eng, &id, group, model, &textures, &keys, impostor, into, true,
+    )
+    .map(|(i, _)| i)
 }
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
@@ -501,6 +520,9 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 /// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
 /// `impostor` holds its impostor's two atlases (albedo, normal), when it
 /// has one. Answers the asset index and the model's textures in the scene.
+/// A registered, unstreamed model shares identical textures (by `keys`, in
+/// texture order: their cooked bytes' hash), materials and meshes with the
+/// models loaded before (fork s24).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn insert_model(
     eng: &Engine,
@@ -508,6 +530,7 @@ pub(crate) fn insert_model(
     group: Option<String>,
     model: og_bundle::runtime::CookedModel,
     textures: &[og_render::TextureSource],
+    keys: &[u64],
     impostor: Option<[og_render::TextureSource; 2]>,
     into: Option<usize>,
     registered: bool,
@@ -529,29 +552,38 @@ pub(crate) fn insert_model(
         }
     }
     let material_base = rs.scene.material_count();
-    let parts = model.add_to_with(&mut rs.scene, textures);
+    // Unstreamed models share identical textures, materials and meshes with
+    // those loaded before (a streamed one swaps its own stand-ins in place).
+    let (parts, prim_meshes) = {
+        let rs = &mut *rs;
+        let shared = (registered && group.is_none()).then_some(&mut rs.shared);
+        model.add_to_shared(&mut rs.scene, textures, keys, shared)
+    };
     for (h, t) in parts.textures.iter().zip(&model.textures) {
         rs.decoded.ids.insert(*h, t.id.clone());
     }
     let texture_handles = parts.textures.clone();
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
-    // mesh, so the first og.render.raycast builds nothing.
+    // mesh, so the first og.render.raycast builds nothing (a mesh shared
+    // with a model loaded before has its own already).
     for (p, prim) in model.primitives.iter().enumerate() {
-        if let Some(h) = rs.scene.mesh_handle(base + p) {
+        if let Some(&h) = prim_meshes.get(p)
+            && h.index() >= base
+        {
             super::geometry::adopt_cooked_bvh(&mut rs, h, prim)
                 .map_err(|e| format!("{source}: primitive {p}: {e}"))?;
         }
     }
-    // The coarser levels of detail join the scene after the full meshes, so
-    // the model's primitives stay consecutive from `base`. A streamed model
+    // The coarser levels of detail join the scene after the full meshes. A streamed model
     // draws its proxy (one level) and then its full meshes without levels.
     let lods = match group {
         Some(_) => None,
         None => {
-            let levels = model.add_lod_levels(&mut rs.scene);
-            let prim_of = |mesh| {
-                (0..model.primitives.len()).find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+            let levels = {
+                let rs = &mut *rs;
+                model.add_lod_levels_shared(&mut rs.scene, &prim_meshes, &mut rs.shared)
             };
+            let prim_of = |mesh| prim_meshes.iter().position(|&m| m == mesh);
             // Each part's levels with their errors in the model's units: a
             // part's node scale is folded in.
             let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
@@ -603,11 +635,9 @@ pub(crate) fn insert_model(
         }
     };
     let stand_in = group.as_ref().map(|_| {
-        let meshes: Vec<_> = (0..model.primitives.len())
-            .filter_map(|p| {
-                let h = rs.scene.mesh_handle(base + p)?;
-                Some((h, rs.scene.mesh(h)?.clone()))
-            })
+        let meshes: Vec<_> = prim_meshes
+            .iter()
+            .filter_map(|&h| Some((h, rs.scene.mesh(h)?.clone())))
             .collect();
         let materials: Vec<_> = rs
             .scene
@@ -638,7 +668,7 @@ pub(crate) fn insert_model(
         if !geometries.contains(&handle(g)) {
             geometries.push(handle(g));
             let bake = (0..model.primitives.len())
-                .find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+                .find(|&p| prim_meshes.get(p) == Some(&mesh))
                 .and_then(|p| model.primitives[p].collider.clone());
             baked.extend(bake.map(|b| (handle(g), b)));
         }
@@ -673,7 +703,7 @@ pub(crate) fn insert_model(
         handle(index),
         super::fx::ModelInfo {
             id: id.clone(),
-            base,
+            meshes: prim_meshes,
             prim_mesh,
             part_nodes: parts.nodes,
             part_shown: parts.shown,
