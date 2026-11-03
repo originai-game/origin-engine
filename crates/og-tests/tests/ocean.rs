@@ -206,6 +206,8 @@ fn the_floaters_sit_in_the_drawn_sea() {
     let even = extent / og_core::ocean::grid_segments(water.segments, extent) as f32;
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut worst_keel = f32::MIN;
+    // Every point is printed before anything is asserted, so one mismatch does not hide the rest.
+    let mut failures: Vec<String> = Vec::new();
     for tick in [300u64, 390] {
         let mut scene = RenderScene::new();
         scene.tick = tick;
@@ -267,26 +269,28 @@ fn the_floaters_sit_in_the_drawn_sea() {
                 cascades,
                 p.y - tick_height
             );
-            assert!(
-                (swell - tick_height).abs() < 0.02,
-                "{seconds} s {name}: the tick's waves drawn at {swell} m, og.physics.waterHeight {tick_height} m"
-            );
+            if (swell - tick_height).abs() >= 0.02 {
+                failures.push(format!(
+                    "{seconds} s {name} {what}: the tick's waves drawn at {swell} m, og.physics.waterHeight {tick_height} m"
+                ));
+            }
             if *keel {
                 worst_keel = worst_keel.max(p.y - height);
-            } else {
-                assert!(
-                    (p.y - height).abs() < 0.6,
+            } else if (p.y - height).abs() >= 0.6 {
+                failures.push(format!(
                     "{seconds} s {name}: its centre {} m off the drawn sea (radius 0.6)",
                     p.y - height
-                );
+                ));
             }
         }
     }
     println!("highest keel corner over the drawn sea: {worst_keel:+.3} m");
-    assert!(
-        worst_keel < 0.05,
-        "a keel corner stands {worst_keel} m clear of the drawn sea"
-    );
+    if worst_keel >= 0.05 {
+        failures.push(format!(
+            "a keel corner stands {worst_keel} m clear of the drawn sea"
+        ));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
 /// The floaters' footprints at `tick` as og.Buoyancy's step records them
