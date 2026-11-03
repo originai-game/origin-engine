@@ -33,6 +33,7 @@ pub(crate) struct AtmoLayouts {
     sky: Option<Layout>,
     physical_sky: Option<Layout>,
     clouds: Option<Layout>,
+    aurora: Option<Layout>,
     day_night: Option<Layout>,
     weather: Option<Layout>,
     weather_state: Option<Layout>,
@@ -59,6 +60,7 @@ impl AtmoLayouts {
             sky: get("og.Sky"),
             physical_sky: get("og.PhysicalSky"),
             clouds: get("og.Clouds"),
+            aurora: get("og.Aurora"),
             day_night: get("og.DayNight"),
             weather: get("og.Weather"),
             weather_state: get("og.WeatherState"),
@@ -382,6 +384,33 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             // A strike's flash, set by lightning_and_surfaces.
             flash: glam::Vec4::ZERO,
         });
+    // The aurora, in the same procedural sky.
+    scene.aurora = resource(world, layouts.aurora.as_ref())
+        .filter(|a| on(a, "enabled", false))
+        .map(|a| og_render::Aurora {
+            intensity: f(&a, "intensity", 1.0),
+            activity: f(&a, "activity", 0.4),
+            curtains: u(&a, "curtains", 3),
+            direction: f(&a, "direction", 90.0),
+            distance: f(&a, "distance", 150_000.0),
+            spread: f(&a, "spread", 70_000.0),
+            energy: f(&a, "energy", 2.0),
+            speed: f(&a, "speed", 1.0),
+            seed: u(&a, "seed", 0),
+            green: color(&a["greenColor"], og_render::Aurora::SPECTRAL[0]),
+            red: color(&a["redColor"], og_render::Aurora::SPECTRAL[1]),
+            nitrogen: color(&a["nitrogenColor"], og_render::Aurora::SPECTRAL[2]),
+        });
+    if scene.aurora.is_some()
+        && scene.clouds.is_none()
+        && !matches!(scene.environment.background, Background::Procedural { .. })
+    {
+        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        scene.environment.background = Background::Procedural {
+            sun_direction: dir,
+            sun_color: scene.environment.sky.sun_color,
+        };
+    }
     if let Some(c) = &scene.clouds {
         if !matches!(scene.environment.background, Background::Procedural { .. }) {
             let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);

@@ -199,6 +199,9 @@ pub struct RenderScene {
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
     /// only with [`crate::Background::Procedural`].
     pub clouds: Option<crate::Clouds>,
+    /// An aurora in the procedural sky (`aurora.rs`; `None`: none). Drawn
+    /// only with [`crate::Background::Procedural`].
+    pub aurora: Option<crate::Aurora>,
     /// How much of the image-based light's strength
     /// ([`crate::Environment::intensity`]) is the eye's adaptation to shade
     /// rather than the sky's own light: the day-night cycle's twilight lift

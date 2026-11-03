@@ -664,6 +664,41 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     assert!(warm[0] > warm[2], "the sunset clouds are warm: {warm:?}");
 }
 
+/// The aurora: each frame matches its reference; the arcs turn the night
+/// sky over the colonnade green (green gained well over blue against the
+/// same night without them) and break it up into curtains (more variation
+/// across the upper sky).
+#[test]
+fn aurora_scenes_match_their_references_and_read_as_aurora() {
+    use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
+    for scene in SKY_SCENES.iter().filter(|s| s.starts_with("aurora-")) {
+        check(scene);
+    }
+    let clear = frame(&sky_scene("aurora-arcs-clear"));
+    let arcs = frame(&sky_scene("aurora-arcs"));
+    let (sky_clear, sky_arcs) = (rgb(&clear, 0, 0, 1280, 300), rgb(&arcs, 0, 0, 1280, 300));
+    let green = sky_arcs[1] - sky_clear[1];
+    let blue = sky_arcs[2] - sky_clear[2];
+    assert!(
+        green > 4.0 && green > 2.0 * blue,
+        "the arcs are green: {sky_clear:?} -> {sky_arcs:?}"
+    );
+    let spread = |img: &RgbaImage| {
+        let l: Vec<f32> = (0..300)
+            .flat_map(|y| (0..1280).step_by(2).map(move |x| (x, y)))
+            .map(|(x, y)| luma(px(img, x, y)))
+            .collect();
+        let m = l.iter().sum::<f32>() / l.len() as f32;
+        (l.iter().map(|v| (v - m).powi(2)).sum::<f32>() / l.len() as f32).sqrt()
+    };
+    assert!(
+        spread(&arcs) > 1.5 * spread(&clear),
+        "curtains break up the sky: {} vs {}",
+        spread(&arcs),
+        spread(&clear)
+    );
+}
+
 /// R4's weather on surfaces: each frame matches its reference. The wet
 /// ground is darker than the same ground dry; snow makes it much brighter
 /// and whiter; the lightning frame is brighter than the same night

@@ -27,6 +27,26 @@ is one line here, written at the merge that changes
   height. Schedule arrival from `motion.status`, not distance / speed;
   existing walks now take longer. Existing saved walks retain their old
   constant-speed rule; new saves include the performance envelopes.
+- **Added: `og.Aurora`, the aurora in the procedural sky.** A resource
+  (`enabled`, `intensity`, `activity`, `curtains`, `direction`,
+  `distance`, `spread`, `energy`, `speed`, `seed`, `greenColor`,
+  `redColor`, `nitrogenColor`), off by default. It ports Lawlor and
+  Genetti, "Interactive Volume Rendering Aurora on the GPU" (Journal of
+  WSCG 19, 2011). The curtains are curves along the auroral oval, folded
+  by travelling waves. Their curls come from a Kelvin–Helmholtz
+  stable-fluids strip wrapped along each curve. The 2D electron-flux
+  footprint is drawn each frame with a distance field the sky's march
+  steps by, and is extruded upward by the Lazarev energy deposition over
+  the U.S. Standard Atmosphere 1976, tabulated by altitude and
+  characteristic energy. The line heights and colours follow Whiter et
+  al., "The altitude of green OI 557.7 nm and blue N₂⁺ 427.8 nm aurora"
+  (Ann. Geophys. 41, 2023, CC BY 4.0): green and blue peak near 114 km,
+  red glows above 200 km, and a nitrogen lower border appears for hard
+  electrons. The aurora is drawn under the clouds and dimmed by the air
+  toward the horizon. The sky pass gains one texture, made only the
+  first frame a scene has an aurora (8 of 16 sampled textures).
+  Frames: `aurora-arcs`, `aurora-breakup`.
+
 - **Added: `og.PlatformNoticeKind.host`, a message from the framing page.**
   A Player sends `platform` `{ notice: { kind: "host", data: { name, ...
   } } }` and the game reads it as og.PlatformNotice at the next tick's

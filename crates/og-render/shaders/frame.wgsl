@@ -43,6 +43,7 @@ struct Frame {
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second
   sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
   clouds: array<vec4<f32>, 6>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none)
+  aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)
   weather: vec4<f32>,         // weather_surface.wgsl: x wetness, y puddles, z snow cover, w rain ripples
   weather_look: vec4<f32>,    // rgb: snow colour, w: puddle size (m)
   weather_view_proj: mat4x4<f32>,  // the weather occlusion map's view (weather.rs shelter_view)

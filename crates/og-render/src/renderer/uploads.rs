@@ -680,6 +680,27 @@ impl Renderer {
             self.cloud_noise.make(&self.device, &self.queue);
             self.environment = None;
         }
+        // The aurora's footprint follows the clock every frame; the first
+        // frame with one makes its texture, and the sky group again.
+        if let Some(a) = &scene.aurora {
+            let made = self.aurora_map.made();
+            let viewer = scene.camera.position + scene.origin;
+            let rate = if scene.tick_rate > 0.0 {
+                scene.tick_rate
+            } else {
+                60.0
+            };
+            self.aurora_map.update(
+                &self.device,
+                &self.queue,
+                a,
+                scene.tick as f64 / f64::from(rate),
+                glam::Vec2::new(viewer.x, viewer.z),
+            );
+            if !made {
+                self.environment = None;
+            }
+        }
         if self.environment.as_ref().is_some_and(|(k, ..)| *k == key) {
             return;
         }
@@ -758,6 +779,7 @@ impl Renderer {
                 self.sky_params.as_entire_binding(),
                 wgpu::BindingResource::TextureView(map.map_or(&ibl.sky, |m| view(m.map.index()))),
                 wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| view(b.0))),
+                wgpu::BindingResource::TextureView(&self.aurora_map.view),
             ],
         );
         self.environment = Some((key, group, sky_group, reflection_group));

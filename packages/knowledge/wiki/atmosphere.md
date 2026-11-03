@@ -32,6 +32,7 @@ module atmosphere {
 | [`og.DayNight`](#record-DayNight) | resource | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`. |
 | [`og.PhysicalSky`](#record-PhysicalSky) | resource | A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world. |
 | [`og.Clouds`](#record-Clouds) | resource | Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them. |
+| [`og.Aurora`](#record-Aurora) | resource | The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it. |
 | [`og.WeatherState`](#record-WeatherState) | resource | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it. |
 | [`og.LightningStrike`](#record-LightningStrike) | event | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
@@ -68,7 +69,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10897</sub>
+<sub>`api.ogt` line 10960</sub>
 
 ## Components, resources and events
 
@@ -528,6 +529,97 @@ resource Clouds {
 
 <sub>`api.ogt` line 10476</sub>
 
+<a id="record-Aurora"></a>
+
+### `og.Aurora` (resource)
+
+The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it.
+
+Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type is `Aurora`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `enabled` | `boolean` | `false` | — | — | — | Draw the aurora. |
+| `intensity` | `number` | `1` | 0 … 20 | — | tunable | How bright the display is: 1 a bright display against a night sky, 0.3 a faint one. |
+| `activity` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | 0 quiet, smooth arcs; 0.5 folding, rayed curtains; 1 a substorm's breakup, curled and fragmented, moving fast. |
+| `curtains` | `number` | `3` | 1 … 6 | — | — | How many arcs, one behind another. |
+| `direction` | `number` | `90` | — | `deg` | tunable | Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth). |
+| `distance` | `number` | `150000` | 0 … 1500000 | `m` | tunable | How far the first arc is from the world's origin over the ground (0: overhead). |
+| `spread` | `number` | `70000` | ≥ 0 | `m` | tunable | The distance between successive arcs. |
+| `energy` | `number` | `2` | 0.3 … 20 | — | tunable | The falling electrons' characteristic energy in keV: about 2 for a typical display; under 1 a high, red-topped aurora; over 5 a low one with a pink-violet lower border. |
+| `speed` | `number` | `1` | 0 … 20 | — | tunable | How fast the folds travel and the rays drift (1: as observed). |
+| `seed` | `number` | `0` | — | — | — | The display's seed: its curtains' shapes and their curls. |
+| `greenColor` | `Color` | `{ r: 0.29, g: 1, b: 0 }` | — | — | — | The oxygen green line's colour (557.7 nm): by default its spectral colour, a yellow-green; a camera's photograph renders it bluer (0.1 1 0.55). |
+| `redColor` | `Color` | `{ r: 1, g: 0, b: 0.06 }` | — | — | — | The oxygen red line's colour (630.0 nm), of the high tops. |
+| `nitrogenColor` | `Color` | `{ r: 0.57, g: 0, b: 1 }` | — | — | — | The nitrogen bands' colour (427.8 nm and the red first positive band), of the lower border: violet to pink. |
+
+```ogt
+resource Aurora {
+  doc "The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it."
+  field enabled bool "Draw the aurora."
+  field intensity f32 "How bright the display is: 1 a bright display against a night sky, 0.3 a faint one." {
+    default 1
+    min 0
+    max 20
+    tunable true
+  }
+  field activity f32 "0 quiet, smooth arcs; 0.5 folding, rayed curtains; 1 a substorm's breakup, curled and fragmented, moving fast." {
+    default 0.4
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field curtains u32 "How many arcs, one behind another." {
+    default 3
+    min 1
+    max 6
+  }
+  field direction f32 "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth)." {
+    default 90
+    unit deg
+    tunable true
+  }
+  field distance f32 "How far the first arc is from the world's origin over the ground (0: overhead)." {
+    default 150000
+    min 0
+    max 1500000
+    unit m
+    tunable true
+  }
+  field spread f32 "The distance between successive arcs." {
+    default 70000
+    min 0
+    unit m
+    tunable true
+  }
+  field energy f32 "The falling electrons' characteristic energy in keV: about 2 for a typical display; under 1 a high, red-topped aurora; over 5 a low one with a pink-violet lower border." {
+    default 2
+    min 0.3
+    max 20
+    tunable true
+  }
+  field speed f32 "How fast the folds travel and the rays drift (1: as observed)." {
+    default 1
+    min 0
+    max 20
+    tunable true
+  }
+  field seed u32 "The display's seed: its curtains' shapes and their curls."
+  field greenColor Color "The oxygen green line's colour (557.7 nm): by default its spectral colour, a yellow-green; a camera's photograph renders it bluer (0.1 1 0.55)." {
+    default 0.29 1 0
+  }
+  field redColor Color "The oxygen red line's colour (630.0 nm), of the high tops." {
+    default 1 0 0.06
+  }
+  field nitrogenColor Color "The nitrogen bands' colour (427.8 nm and the red first positive band), of the lower border: violet to pink." {
+    default 0.57 0 1
+  }
+}
+```
+
+<sub>`api.ogt` line 10546</sub>
+
 <a id="record-WeatherState"></a>
 
 ### `og.WeatherState` (resource)
@@ -653,7 +745,7 @@ resource WeatherState {
 }
 ```
 
-<sub>`api.ogt` line 10546</sub>
+<sub>`api.ogt` line 10609</sub>
 
 <a id="record-LightningStrike"></a>
 
@@ -679,7 +771,7 @@ event LightningStrike {
 }
 ```
 
-<sub>`api.ogt` line 10640</sub>
+<sub>`api.ogt` line 10703</sub>
 
 <a id="record-Weather"></a>
 
@@ -741,7 +833,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10649</sub>
+<sub>`api.ogt` line 10712</sub>
 
 <a id="record-Wind"></a>
 
@@ -787,7 +879,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10689</sub>
+<sub>`api.ogt` line 10752</sub>
 
 <a id="record-Water"></a>
 
@@ -982,7 +1074,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10716</sub>
+<sub>`api.ogt` line 10779</sub>
 
 <a id="record-Water2D"></a>
 
@@ -1036,7 +1128,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10865</sub>
+<sub>`api.ogt` line 10928</sub>
 
 ## Constants
 

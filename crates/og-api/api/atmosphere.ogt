@@ -328,6 +328,69 @@ module atmosphere {
     }
   }
 
+  resource Aurora {
+    doc "The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it."
+    field enabled bool "Draw the aurora."
+    field intensity f32 "How bright the display is: 1 a bright display against a night sky, 0.3 a faint one." {
+      default 1
+      min 0
+      max 20
+      tunable true
+    }
+    field activity f32 "0 quiet, smooth arcs; 0.5 folding, rayed curtains; 1 a substorm's breakup, curled and fragmented, moving fast." {
+      default 0.4
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field curtains u32 "How many arcs, one behind another." {
+      default 3
+      min 1
+      max 6
+    }
+    field direction f32 "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth)." {
+      default 90
+      unit deg
+      tunable true
+    }
+    field distance f32 "How far the first arc is from the world's origin over the ground (0: overhead)." {
+      default 150000
+      min 0
+      max 1500000
+      unit m
+      tunable true
+    }
+    field spread f32 "The distance between successive arcs." {
+      default 70000
+      min 0
+      unit m
+      tunable true
+    }
+    field energy f32 "The falling electrons' characteristic energy in keV: about 2 for a typical display; under 1 a high, red-topped aurora; over 5 a low one with a pink-violet lower border." {
+      default 2
+      min 0.3
+      max 20
+      tunable true
+    }
+    field speed f32 "How fast the folds travel and the rays drift (1: as observed)." {
+      default 1
+      min 0
+      max 20
+      tunable true
+    }
+    field seed u32 "The display's seed: its curtains' shapes and their curls."
+    field greenColor Color "The oxygen green line's colour (557.7 nm): by default its spectral colour, a yellow-green; a camera's photograph renders it bluer (0.1 1 0.55)." {
+      default 0.29 1 0
+    }
+    field redColor Color "The oxygen red line's colour (630.0 nm), of the high tops." {
+      default 1 0 0.06
+    }
+    field nitrogenColor Color "The nitrogen bands' colour (427.8 nm and the red first positive band), of the lower border: violet to pink." {
+      default 0.57 0 1
+    }
+  }
+
   resource WeatherState {
     doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it."
     field soakTime f32 "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1)." {

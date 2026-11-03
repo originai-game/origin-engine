@@ -10213,6 +10213,98 @@
     },
     {
       "id": 23,
+      "name": "Aurora",
+      "schema": "og.Aurora",
+      "module": "atmosphere",
+      "fields": [
+        {
+          "name": "enabled",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "intensity",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "activity",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "curtains",
+          "column": "u32",
+          "default": 3
+        },
+        {
+          "name": "direction",
+          "column": "f32",
+          "default": 90,
+          "tunable": true
+        },
+        {
+          "name": "distance",
+          "column": "f32",
+          "default": 150000,
+          "tunable": true
+        },
+        {
+          "name": "spread",
+          "column": "f32",
+          "default": 70000,
+          "tunable": true
+        },
+        {
+          "name": "energy",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "speed",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "greenColor",
+          "column": "Color",
+          "default": {
+            "r": 0.29,
+            "g": 1,
+            "b": 0
+          }
+        },
+        {
+          "name": "redColor",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 0,
+            "b": 0.06
+          }
+        },
+        {
+          "name": "nitrogenColor",
+          "column": "Color",
+          "default": {
+            "r": 0.57,
+            "g": 0,
+            "b": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": 24,
       "name": "WeatherState",
       "schema": "og.WeatherState",
       "module": "atmosphere",
@@ -10335,7 +10427,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "Weather",
       "schema": "og.Weather",
       "module": "atmosphere",
@@ -10390,7 +10482,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
@@ -10426,7 +10518,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -10504,7 +10596,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "Story",
       "schema": "og.Story",
       "module": "story",
@@ -10530,7 +10622,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "PlatformGrants",
       "schema": "og.PlatformGrants",
       "module": "platform",
@@ -10544,7 +10636,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
@@ -10604,7 +10696,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -10643,7 +10735,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -10682,7 +10774,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -10710,7 +10802,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -10753,7 +10845,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -10790,7 +10882,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -10813,7 +10905,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",

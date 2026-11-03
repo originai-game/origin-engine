@@ -301,6 +301,9 @@ impl Renderer {
                 // blends towards (the sky cube again without a map).
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 texture_entry(5, true, wgpu::TextureViewDimension::Cube),
+                // The aurora's footprint and table (aurora.rs), read with
+                // the frame group's IBL sampler.
+                texture_entry(6, true, wgpu::TextureViewDimension::D2),
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -589,6 +592,7 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let aurora_map = aurora::AuroraMap::placeholder(&device, &queue);
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
@@ -909,6 +913,7 @@ impl Renderer {
             sky_layout,
             cloud_noise,
             sky_params,
+            aurora_map,
             material_layout,
             sprite_layout,
             frame_buffer,

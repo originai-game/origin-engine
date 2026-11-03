@@ -179,6 +179,8 @@ pub(crate) struct AtmosphereGpu {
     pub scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
     /// The clouds' block (`Clouds::gpu`; zero: none), `frame.clouds`.
     pub clouds: [[f32; 4]; crate::clouds::CLOUD_VEC4S],
+    /// The aurora's block (`Aurora::gpu`; zero: none), `frame.aurora`.
+    pub aurora: [[f32; 4]; crate::aurora::AURORA_VEC4S],
     /// Weather on the lit surfaces (`SurfaceWeather::gpu`; zero: dry).
     pub weather: [[f32; 4]; 2],
     /// The weather occlusion map (`weather::shelter_view`): its view
@@ -196,6 +198,7 @@ impl AtmosphereGpu {
         fog: Option<&Fog>,
         sky: Option<(&SkyLook, Vec3, Vec3)>,
         clouds: Option<&crate::Clouds>,
+        aurora: Option<&crate::Aurora>,
         weather: Option<&crate::SurfaceWeather>,
         tick: u64,
         rate: f32,
@@ -238,12 +241,18 @@ impl AtmosphereGpu {
         if let Some(w) = weather {
             a.weather = w.gpu();
         }
-        // Clouds belong to the procedural sky the sky pass draws per pixel.
-        if let (Some(c), Some((look, ..))) = (clouds, sky) {
+        // Clouds and the aurora belong to the procedural sky the sky pass
+        // draws per pixel.
+        if let Some((look, ..)) = sky {
             let radius = look
                 .physical
                 .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
-            a.clouds = c.gpu(tick as f64 / f64::from(rate), radius);
+            if let Some(c) = clouds {
+                a.clouds = c.gpu(tick as f64 / f64::from(rate), radius);
+            }
+            if let Some(au) = aurora {
+                a.aurora = au.gpu(radius * 0.001);
+            }
         }
         // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
         a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];

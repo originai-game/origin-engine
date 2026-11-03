@@ -200,6 +200,8 @@ pub const SCENES: &[&str] = &[
     "weather-shelter-snow",
     "weather-shelter-rain",
     "weather-shelter-meshlet",
+    "aurora-arcs",
+    "aurora-breakup",
     "water-ocean",
     "water-ocean-storm",
     "water-ocean-sunset",
@@ -1082,7 +1084,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "weather-lightning"
         | "weather-shelter-snow"
         | "weather-shelter-rain"
-        | "weather-shelter-meshlet" => |g, name| {
+        | "weather-shelter-meshlet"
+        | "aurora-arcs"
+        | "aurora-breakup" => |g, name| {
             g.scene = crate::sky_scenes::sky_scene(name);
             Ok(())
         },

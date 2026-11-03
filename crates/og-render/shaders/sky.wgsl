@@ -20,6 +20,9 @@ struct SkyParams {
 // it blends towards; the sky cube again without a map.
 @group(1) @binding(4) var map_cube: texture_cube<f32>;
 @group(1) @binding(5) var blend_cube: texture_cube<f32>;
+// The aurora's footprint and deposition table (aurora.rs): a 1×1
+// placeholder until a frame has an aurora.
+@group(1) @binding(6) var aurora_map: texture_2d<f32>;
 
 struct SkyOut { @builtin(position) pos: vec4<f32>, @location(0) ndc: vec2<f32> };
 
@@ -400,6 +403,106 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   return mix(behind, color * transmittance + scattered, fade);
 }
 
+// ── the aurora (aurora.rs) ──────────────────────────────────────────
+// A port of Lawlor & Genetti, "Interactive Volume Rendering Aurora on the
+// GPU" (J. WSCG 19, 2011): emission only, marched through the shell of
+// the upper atmosphere, the step read from the footprint's distance field
+// (section 3.2), each sample the footprint's flux times the deposition
+// table at the sample's height and the flux's characteristic energy
+// (section 2.1). Line heights and colours after Whiter et al., Ann.
+// Geophys. 41, 2023 (CC BY 4.0). frame.aurora: [0] on (y), the planet's
+// radius and the footprint's radius (km); [1] the shell's bottom and top
+// (km), the footprint's side and the texture's rows; [2..4] the prompt
+// nitrogen bands', the green and the red line's colours, w: the least
+// step (km), the largest, the margin per texel.
+
+// The aurora's light along `d` over `background`, dimmed by the air below it.
+fn aurora_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  let a = frame.aurora;
+  if (a[0].y < 0.5) { return background; }
+  let radius = a[0].z;
+  let reach = a[0].w;
+  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0) * 0.001;
+  let o = vec3<f32>(0.0, radius + viewer, 0.0);
+  // The ground hides it (the eye is always under the shell here).
+  if (cloud_sphere(o, d, radius).x > 0.0) { return background; }
+  let bottom = cloud_sphere(o, d, radius + a[1].x);
+  let top = cloud_sphere(o, d, radius + a[1].y);
+  if (top.y <= 0.0) { return background; }
+  var start = max(bottom.y, 0.0);
+  if (viewer > a[1].x) { start = 0.0; }
+  let end = min(top.y, start + 3000.0);
+  let side = a[1].z;
+  let rows = a[1].w;
+  let least = a[2].w;
+  let most = a[3].w;
+  // Interleaved gradient noise offsets the first step per pixel (as the
+  // clouds' march does), so TAA resolves the steps into a smooth integral.
+  var ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  if (pixel.x < 0.0) { ign = 0.5; }
+  var t = start + ign * max(least, start * 0.004);
+  var light = vec3<f32>(0.0);
+  for (var i = 0; i < 128; i++) {
+    if (t >= end) { break; }
+    let p = o + d * t;
+    let r = length(p);
+    let h = r - radius;
+    // The footprint's place: the ground distance from the viewer's foot
+    // (azimuthal equidistant), square-root warped.
+    let flat = vec2<f32>(p.x, p.z);
+    let fl = length(flat);
+    let ground = radius * atan2(fl, p.y);
+    let q = flat / max(fl, 1e-6) * sqrt(ground / reach);
+    // The step: as far as the nearest curtain (less a texel, which the
+    // filtering may hide it in), at least a cone's width, at most `most`.
+    let cone = max(least, t * 0.004);
+    if (max(abs(q.x), abs(q.y)) >= 1.0) {
+      t += most;
+      continue;
+    }
+    let uv = vec2<f32>(q.x * 0.5 + 0.5, (q.y * 0.5 + 0.5) * side / rows);
+    let f = textureSampleLevel(aurora_map, ibl_sampler, uv, 0.0);
+    let texel = a[4].w * sqrt(ground * reach) + 0.1;
+    let step = clamp(f.g - texel, cone, most);
+    if (f.r + f.a > 0.0) {
+      // The table's row by the characteristic energy (0.5 keV, then every
+      // 0.67 octave), its column by height; rows interpolate.
+      let row = clamp(log2(max(f.b, 0.01) / 0.5) / 0.67, 0.0, 7.0);
+      let x = clamp((h - a[1].x) / (a[1].y - a[1].x), 0.0, 1.0);
+      let tuv = vec2<f32>((x * (side - 1.0) + 0.5) / side, (side + row + 0.5) / rows);
+      let e = textureSampleLevel(aurora_map, ibl_sampler, tuv, 0.0);
+      light += (f.r * (e.r * a[2].rgb + e.g * a[3].rgb) + f.a * e.b * a[4].rgb) * step;
+    }
+    t += step;
+  }
+  if (max(max(light.r, light.g), light.b) <= 0.0) { return background; }
+  return background + light * aurora_air(d, viewer);
+}
+
+// How much of the aurora's light the lower air lets through along `d`
+// from a viewer `viewer` km up: under the physical sky its transmittance
+// to space; else the paper's airmass (appendix A) of an exponential
+// atmosphere of 8 km scale height, integrated in 12 widening steps, through
+// Rayleigh extinction at sea level and a little haze.
+fn aurora_air(d: vec3<f32>, viewer: f32) -> vec3<f32> {
+  if (scatter_on()) {
+    return scatter_sun_transmittance(frame.sky_scatter[3].x + sky_viewer_km(), d.y);
+  }
+  let radius = frame.aurora[0].z;
+  let o = vec3<f32>(0.0, radius + viewer, 0.0);
+  var mass = 0.0;
+  var t = 0.0;
+  var dt = 0.25;
+  for (var i = 0; i < 12; i++) {
+    let h = length(o + d * (t + dt * 0.5)) - radius;
+    mass += exp(-h / 8.0) * dt;
+    t += dt;
+    dt *= 1.9;
+  }
+  let extinction = vec3<f32>(5.8, 13.5, 33.1) * 1e-3 + vec3<f32>(4e-3);
+  return exp(-extinction * mass);
+}
+
 // The procedural sky drawn per pixel with the chosen look (frame.sky_*):
 // its sun is where it is this frame, not where the lighting was baked.
 @fragment
@@ -407,5 +510,6 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   let dir = view_dir(in.ndc);
   var sky = sky_look(dir);
   if (scatter_on()) { sky = sky_physical_look(dir); }
+  sky = aurora_over(sky, dir, in.pos.xy);
   return vec4<f32>(sky_fog(clouds_over(sky, dir, in.pos.xy), dir), 1.0);
 }

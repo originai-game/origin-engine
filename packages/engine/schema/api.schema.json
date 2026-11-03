@@ -7935,6 +7935,7 @@
         "DayNight",
         "PhysicalSky",
         "Clouds",
+        "Aurora",
         "WeatherState",
         "LightningStrike",
         "Weather",
@@ -37722,6 +37723,120 @@
           "default": 48,
           "minimum": 8,
           "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "Aurora": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Draw the aurora.",
+          "default": false
+        },
+        "intensity": {
+          "type": "number",
+          "description": "How bright the display is: 1 a bright display against a night sky, 0.3 a faint one.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "activity": {
+          "type": "number",
+          "description": "0 quiet, smooth arcs; 0.5 folding, rayed curtains; 1 a substorm's breakup, curled and fragmented, moving fast.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "curtains": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many arcs, one behind another.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 6
+        },
+        "direction": {
+          "type": "number",
+          "description": "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth).",
+          "default": 90,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far the first arc is from the world's origin over the ground (0: overhead).",
+          "default": 150000,
+          "minimum": 0,
+          "maximum": 1500000,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "spread": {
+          "type": "number",
+          "description": "The distance between successive arcs.",
+          "default": 70000,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "energy": {
+          "type": "number",
+          "description": "The falling electrons' characteristic energy in keV: about 2 for a typical display; under 1 a high, red-topped aurora; over 5 a low one with a pink-violet lower border.",
+          "default": 2,
+          "minimum": 0.3,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "How fast the folds travel and the rays drift (1: as observed).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The display's seed: its curtains' shapes and their curls.",
+          "default": 0
+        },
+        "greenColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The oxygen green line's colour (557.7 nm): by default its spectral colour, a yellow-green; a camera's photograph renders it bluer (0.1 1 0.55).",
+          "default": {
+            "r": 0.29,
+            "g": 1,
+            "b": 0
+          }
+        },
+        "redColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The oxygen red line's colour (630.0 nm), of the high tops.",
+          "default": {
+            "r": 1,
+            "g": 0,
+            "b": 0.06
+          }
+        },
+        "nitrogenColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The nitrogen bands' colour (427.8 nm and the red first positive band), of the lower border: violet to pink.",
+          "default": {
+            "r": 0.57,
+            "g": 0,
+            "b": 1
+          }
         }
       },
       "additionalProperties": false

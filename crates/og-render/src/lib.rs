@@ -64,6 +64,7 @@ pub use renderer::*;
 
 mod area;
 mod atmosphere;
+mod aurora;
 mod auto_quality;
 mod blue_noise;
 mod capture;
@@ -173,6 +174,7 @@ pub mod shared_frames;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};
+pub use aurora::Aurora;
 pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample};
 pub use capture::{
     BACKLOG_TIMEOUT, CAPTURE_TIMEOUT, CaptureRequest, capture_timeouts, png, png_best,
@@ -354,6 +356,8 @@ pub struct Renderer {
     /// The sky pass's own uniform (sky.wgsl `SkyParams`): the background's
     /// blurriness and the map it draws, written every frame.
     sky_params: wgpu::Buffer,
+    /// The aurora's footprint and table, bound in the sky group (`aurora.rs`).
+    aurora_map: aurora::AuroraMap,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,

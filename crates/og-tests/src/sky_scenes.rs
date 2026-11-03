@@ -2,12 +2,13 @@
 //! the colonnade at noon, at sunset looking into the sun, in twilight after
 //! it has set, and on a hazy afternoon; clouds; wet ground with puddles,
 //! lying snow and a lightning strike; a canopy keeping the snow and the
-//! rain off the ground under it.
+//! rain off the ground under it; the aurora on a clear night, and in a
+//! substorm behind broken cloud.
 
 use crate::atmo_scenes::{colonnade, colonnade_camera};
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog, Material,
+    Aurora, Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog, Material,
     PhysicalAtmosphere, ProceduralSky, RenderScene, SurfaceWeather, day_night, shapes,
 };
 
@@ -27,6 +28,8 @@ pub const SKY_SCENES: &[&str] = &[
     "weather-shelter-snow",
     "weather-shelter-rain",
     "weather-shelter-meshlet",
+    "aurora-arcs",
+    "aurora-breakup",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -229,6 +232,22 @@ pub fn storm(strike: bool) -> RenderScene {
     scene
 }
 
+/// The colonnade on a clear moonless night under `aurora` (its arcs out
+/// along -z, where the camera looks), the camera tilted up and opened up
+/// three stops for the night.
+fn auroral(aurora: Aurora) -> RenderScene {
+    let mut scene = exposed(
+        physical_sky_scene(23.5, PhysicalAtmosphere::EARTH, false),
+        3.0,
+    );
+    if let Some(look) = scene.environment.sky.look.as_mut() {
+        look.moon_size = 0.0;
+    }
+    scene.aurora = Some(aurora);
+    scene.camera.target += Vec3::Y * 22.0;
+    scene
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
@@ -330,6 +349,33 @@ pub fn sky_scene(name: &str) -> RenderScene {
         "clouds-gradient" => clouded(
             crate::atmo_scenes::day_night_scene(10.5, false),
             Clouds::default(),
+        ),
+        // Quiet folded arcs; and their night without them (no reference;
+        // the check compares against it).
+        "aurora-arcs" => auroral(Aurora {
+            activity: 0.3,
+            ..Aurora::default()
+        }),
+        "aurora-arcs-clear" => {
+            let mut scene = auroral(Aurora::default());
+            scene.aurora = None;
+            scene
+        }
+        // A substorm's breakup of soft electrons (red tops), behind broken
+        // cloud that hides it where it passes.
+        "aurora-breakup" => clouded(
+            auroral(Aurora {
+                activity: 0.95,
+                energy: 0.9,
+                intensity: 1.5,
+                distance: 60_000.0,
+                ..Aurora::default()
+            }),
+            Clouds {
+                coverage: 0.35,
+                layer: 0.0,
+                ..Clouds::default()
+            },
         ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
         // A camera opens up for the low light as an eye adapts: half a stop
