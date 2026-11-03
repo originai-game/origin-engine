@@ -486,12 +486,16 @@ fn environment_blurry_matches_its_reference() {
     let blurry = gfx::render_built(&mut built("environment-blurry"))
         .expect("blurry")
         .image;
-    // The spheres' middles (environment_scene's ten, 0.9 m across, seen
-    // from 8 m: some 80 px in radius) keep their light.
+    // The spheres' middles (environment_scene's ten, 0.9 m across: some
+    // 80 px in radius) keep their light.
     let (w, h) = (sharp.width as f32, sharp.height as f32);
+    let camera = og_tests::ibl_scenes::environment_scene()
+        .expect("scene")
+        .camera;
+    let fov = og_tests::ibl_scenes::ENVIRONMENT_FOV;
     let view_proj =
-        glam::camera::rh::proj::directx::perspective(50f32.to_radians(), w / h, 0.1, 100.0)
-            * glam::camera::rh::view::look_at_mat4(Vec3::new(0.0, 0.3, 8.0), Vec3::ZERO, Vec3::Y);
+        glam::camera::rh::proj::directx::perspective(fov.to_radians(), w / h, 0.1, 100.0)
+            * glam::camera::rh::view::look_at_mat4(camera.position, camera.target, Vec3::Y);
     let centres: Vec<(f32, f32)> = (0..10)
         .map(|k| {
             let at = Vec3::new(-4.4 + (k % 5) as f32 * 2.2, 1.1 - (k / 5) as f32 * 2.2, 0.0);

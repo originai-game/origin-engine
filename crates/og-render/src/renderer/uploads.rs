@@ -610,40 +610,47 @@ impl Renderer {
 
     /// (Re)generates the image-based lighting when the sky, or the
     /// environment map that replaces it, changed.
-    /// The sky pass's uniform for this frame: the background's blurriness
-    /// and grounded dome (`SkyParams`).
-    pub(crate) fn write_sky_params(&self, scene: &RenderScene) {
-        // The sky cube of a map is its background intensity over the
-        // prefiltered cube (generate_map); the built-in sky's are alike.
-        let scale = scene
-            .environment_map
-            .map_or(1.0, |m| m.background_intensity.max(0.0));
-        let params = SkyParams::new(&scene.environment, crate::ibl::PREFILTER_MIPS, scale);
-        self.queue
-            .write_buffer(&self.sky_params, 0, bytemuck::bytes_of(&params));
-    }
-
-    pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {
-        let sky = &scene.environment.sky;
-        let map = scene.environment_map.filter(|m| {
-            self.cache
-                .environment_maps
-                .get(m.map.index())
-                .is_some_and(Option::is_some)
-        });
-        // The map blended towards, while it is uploaded and the weight
-        // moves off the first (`EnvironmentBlend::drawn_weight`).
+    /// The environment map a frame draws with, when it is uploaded, and the
+    /// map it blends towards (its index and drawn weight) while that is
+    /// uploaded too and the weight moves off the first
+    /// (`EnvironmentBlend::drawn_weight`).
+    fn drawn_environment(
+        &self,
+        scene: &RenderScene,
+    ) -> Option<(crate::EnvironmentMap, Option<(usize, f32)>)> {
         let live = |i: usize| {
             self.cache
                 .environment_maps
                 .get(i)
                 .is_some_and(Option::is_some)
         };
+        let map = scene.environment_map.filter(|m| live(m.map.index()))?;
         let blend = map
-            .and_then(|m| m.blend)
+            .blend
             .filter(|b| live(b.to.index()))
             .map(|b| (b.to.index(), b.drawn_weight()))
             .filter(|b| b.1 > 0.0);
+        Some((map, blend))
+    }
+
+    /// The sky pass's uniform for this frame: the background's blurriness
+    /// and the map it draws (`SkyParams`).
+    pub(crate) fn write_sky_params(&self, scene: &RenderScene) {
+        let map = self.drawn_environment(scene).map(|(m, blend)| SkyMap {
+            rotation: m.rotation,
+            scale: m.background_intensity.max(0.0),
+            blend: blend.map_or(0.0, |b| b.1),
+        });
+        let params = SkyParams::new(&scene.environment, crate::ibl::PREFILTER_MIPS, map);
+        self.queue
+            .write_buffer(&self.sky_params, 0, bytemuck::bytes_of(&params));
+    }
+
+    pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {
+        let sky = &scene.environment.sky;
+        let drawn = self.drawn_environment(scene);
+        let map = drawn.map(|d| d.0);
+        let blend = drawn.and_then(|d| d.1);
         let key = match map {
             Some(m) => EnvironmentKey::Map {
                 scene: scene.id(),
@@ -738,6 +745,8 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&self.cloud_noise.view),
                 wgpu::BindingResource::Sampler(&self.cloud_noise.sampler),
                 self.sky_params.as_entire_binding(),
+                wgpu::BindingResource::TextureView(map.map_or(&ibl.sky, |m| view(m.map.index()))),
+                wgpu::BindingResource::TextureView(blend.map_or(&ibl.sky, |b| view(b.0))),
             ],
         );
         self.environment = Some((key, group, sky_group, reflection_group));

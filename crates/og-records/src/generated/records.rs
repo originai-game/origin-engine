@@ -6073,7 +6073,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "",
                 label: "",
-                doc: doc!("Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon. 0 (the default) draws the sky at infinity."),
+                doc: doc!("Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon, and reflections of the environment (mirrors, water, clear coats) show the same projected ground. 0 (the default) draws the sky at infinity."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

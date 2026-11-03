@@ -11,6 +11,9 @@ use og_render::{
     RenderScene, shapes,
 };
 
+/// The vertical field of view of [`environment_scene`]'s camera (degrees).
+pub const ENVIRONMENT_FOV: f32 = 40.0;
+
 /// The studio image baked as og-cook bakes an environment of `size`.
 pub fn studio_map(size: u32) -> Result<EnvironmentMapData, String> {
     let bytes = asset("env/studio.hdr")?;
@@ -75,9 +78,14 @@ pub fn environment_scene() -> Result<RenderScene, String> {
         rotation: 0.6,
         ..EnvironmentMap::new(map)
     });
+    // A 40° lens from 10 m frames the rows as a 50° one from 8 m did, with
+    // the end spheres round rather than stretched by the wide angle.
     scene.camera = Camera {
-        position: Vec3::new(0.0, 0.3, 8.0),
+        position: Vec3::new(0.0, 0.375, 10.0),
         target: Vec3::new(0.0, 0.0, 0.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: ENVIRONMENT_FOV,
+        },
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
@@ -160,13 +168,70 @@ pub fn blend_scene(weight: f32) -> Result<RenderScene, String> {
     Ok(scene)
 }
 
-/// Three spheres (chrome, white, red) standing on the outdoor map's ground,
+/// A photograph's worth of outdoor environment taken 1.5 m above a flat
+/// floor (2048×1024, as a real HDRI is large): the outdoor map's sky and
+/// sun above the horizon, and below it a floor of 1 m grey and green
+/// squares as the camera saw it, fading to their mean colour from 20 to
+/// 35 m where a photo's pixels would average them. Projected onto a
+/// grounded dome of the same height the squares come back as a flat grid.
+pub fn ground_pixels() -> (u32, u32, Vec<f32>) {
+    let (w, h) = (2048u32, 1024u32);
+    let sun = Vec3::new(0.4, 0.55, 0.73).normalize();
+    let grey = Vec3::new(0.32, 0.32, 0.30);
+    let green = Vec3::new(0.12, 0.30, 0.08);
+    let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+    for y in 0..h {
+        for x in 0..w {
+            let lon = ((x as f32 + 0.5) / w as f32 - 0.5) * std::f32::consts::TAU;
+            let lat =
+                std::f32::consts::FRAC_PI_2 - (y as f32 + 0.5) / h as f32 * std::f32::consts::PI;
+            let d = Vec3::new(lat.cos() * lon.cos(), lat.sin(), lat.cos() * lon.sin());
+            let c = if d.y >= 0.0 {
+                let up = d.y.powf(0.5);
+                let sky = Vec3::new(0.75, 0.85, 1.0).lerp(Vec3::new(0.15, 0.35, 0.9), up) * 1.6;
+                if d.dot(sun) > 0.9990 {
+                    Vec3::splat(60.0)
+                } else {
+                    sky
+                }
+            } else {
+                let p = d * (1.5 / -d.y.min(-1e-4));
+                let check = (p.x.floor() as i64 + p.z.floor() as i64).rem_euclid(2) == 0;
+                let fade = ((p.x.hypot(p.z) - 20.0) / 15.0).clamp(0.0, 1.0);
+                (if check { grey } else { green }).lerp((grey + green) * 0.5, fade)
+            };
+            rgb.extend_from_slice(&c.to_array());
+        }
+    }
+    (w, h, rgb)
+}
+
+/// Three spheres (chrome, white, red) standing on [`ground_pixels`]' floor,
 /// projected onto a grounded dome (height 1.5 m, radius 40 m, centred on
 /// the origin), seen from 1.6 m up; `grounded` false draws the same map at
 /// infinity, where its checks bend away towards the horizon instead.
 pub fn grounded_scene(grounded: bool) -> Result<RenderScene, String> {
     let mut scene = RenderScene::new();
-    let map = scene.add_environment_map(outdoor_map(128)?);
+    let (w, h, rgb) = ground_pixels();
+    let mut irradiance = og_render::EquirectIrradiance::new(w, h);
+    for (y, row) in rgb.chunks(w as usize * 3).enumerate() {
+        irradiance.add_row(y as u32, row);
+    }
+    let texels = rgb
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| og_render::rgb9e5(*c))
+        .collect();
+    let map = scene.add_environment_equirect(
+        og_render::EnvironmentEquirect {
+            width: w,
+            height: h,
+            texels,
+            size: 512,
+        },
+        irradiance.finish(),
+    )?;
     let sphere = scene.add_mesh(shapes::sphere(48, 32));
     let looks = [
         ([0.95, 0.93, 0.88, 1.0], 1.0, 0.05),

@@ -70,6 +70,8 @@ struct Frame {
   hemi_ground: vec4<f32>,     // rgb: its ground colour
   material_surface: vec4<f32>,  // the material style's surface: x 0 none, 1 clay, 2 paper, 3 plastic; y strength; z scale (m)
   origin: vec4<f32>,          // xyz: where the zero of the frame's coordinates is in the world (origin.rs)
+  // The grounded dome (GroundProjection::gpu): [0] xyz its centre, w its height above the ground (0: none); [1].x its radius.
+  env_dome: array<vec4<f32>, 2>,
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
@@ -128,10 +130,35 @@ fn ambient_light_level(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 
 // The environment reflected along `r` at `p` at prefiltered level `mip`:
 // with a probe its box-projected capture blended with the environment.
-fn reflected_light(r: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
+// Where the environment is looked up for the ray from `eye` along unit
+// `dir`: along it, or on a grounded dome (three.js GroundedSkybox) from the
+// dome's centre towards where the ray leaves the dome or meets its flat
+// ground. The sky pass draws the background through it and every
+// reflection of the environment reads it, so a mirror shows the floor the
+// frame shows around it.
+fn dome_lookup(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  let h = frame.env_dome[0].w;
+  if (h <= 0.0) { return dir; }
+  let o = eye - frame.env_dome[0].xyz;
+  let r = frame.env_dome[1].x;
+  let b = dot(o, dir);
+  let disc = b * b - (dot(o, o) - r * r);
+  if (disc < 0.0) { return dir; }
+  // The far root: from inside the dome, where the ray leaves it.
+  var t = -b + sqrt(disc);
+  if (t <= 0.0) { return dir; }
+  if (dir.y < 0.0) {
+    let tg = (-h - o.y) / dir.y;
+    if (tg > 0.0) { t = min(t, tg); }
+  }
+  return normalize(o + dir * t);
+}
+
+fn reflected_light(r_in: vec3<f32>, p: vec3<f32>, mip: f32) -> vec3<f32> {
+  let r = dome_lookup(p, r_in);
   if (frame.probe_min.w < 0.5) { return textureSampleLevel(prefiltered_map, ibl_sampler, r, mip).rgb; }
   let env = textureSampleLevel(irradiance_map, ibl_sampler, r, mip).rgb;
-  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, probe_direction(r, p), mip).rgb * frame.probe_max.w;
+  let probe = textureSampleLevel(prefiltered_map, ibl_sampler, probe_direction(r_in, p), mip).rgb * frame.probe_max.w;
   return mix(env, probe, probe_weight(p));
 }
 

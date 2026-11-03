@@ -415,38 +415,65 @@ impl Default for GroundProjection {
     }
 }
 
+impl GroundProjection {
+    /// The frame's `env_dome` (frame.wgsl `dome_lookup`, read by the sky
+    /// pass and by every reflection of the environment): xyz the dome's
+    /// centre (the frame's coordinates), w its height above the ground, then
+    /// (radius, 0, 0, 0); all zero (no dome) without a positive height and
+    /// a finite radius past it.
+    pub(crate) fn gpu(this: Option<GroundProjection>) -> [[f32; 4]; 2] {
+        match this.filter(|g| g.height > 0.0 && g.radius > g.height && g.radius.is_finite()) {
+            Some(g) => [
+                (g.center + Vec3::Y * g.height).extend(g.height).to_array(),
+                [g.radius, 0.0, 0.0, 0.0],
+            ],
+            None => [[0.0; 4]; 2],
+        }
+    }
+}
+
 /// The sky pass's uniform (sky.wgsl `SkyParams`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct SkyParams {
-    /// xyz: the grounded dome's centre (the frame's coordinates), w: its
-    /// height above the ground (0: no dome).
-    pub dome: [f32; 4],
-    /// x: the dome's radius, y: the blurriness's prefiltered level (0:
-    /// the sharp sky cube), z: what the prefiltered cube is scaled by to
-    /// match the sky cube (the background intensity of a map).
+    /// x: 1 when the background is an environment map drawn from its own
+    /// cube at its full size (`map_cube`), y: the blurriness's prefiltered
+    /// level (0: sharp), z: the map's background intensity, w: the blended
+    /// map's weight.
     pub look: [f32; 4],
+    /// (cos, sin) of the map's turn about +y; zw unused.
+    pub turn: [f32; 4],
+}
+
+/// The map the sky pass draws as the background: its turn, its
+/// background intensity and the drawn weight of the map it blends towards.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct SkyMap {
+    pub rotation: f32,
+    pub scale: f32,
+    pub blend: f32,
 }
 
 impl SkyParams {
     /// `env`'s background as the sky pass draws it: `levels` the
-    /// prefiltered cube's mip count, `scale` the sky cube's scale over it.
-    pub(crate) fn new(env: &Environment, levels: u32, scale: f32) -> SkyParams {
+    /// prefiltered cube's mip count, `map` the environment map drawn (none:
+    /// the sky cube).
+    pub(crate) fn new(env: &Environment, levels: u32, map: Option<SkyMap>) -> SkyParams {
         let blur = if env.background_blurriness.is_finite() {
             env.background_blurriness.clamp(0.0, 1.0)
         } else {
             0.0
         };
-        let ground = env
-            .ground
-            .filter(|g| g.height > 0.0 && g.radius > g.height && g.radius.is_finite());
-        let (dome, radius) = match ground {
-            Some(g) => ((g.center + Vec3::Y * g.height).extend(g.height), g.radius),
-            None => (glam::Vec4::ZERO, 0.0),
-        };
-        SkyParams {
-            dome: dome.to_array(),
-            look: [radius, blur * levels.saturating_sub(1) as f32, scale, 0.0],
+        let level = blur * levels.saturating_sub(1) as f32;
+        match map {
+            Some(m) => SkyParams {
+                look: [1.0, level, m.scale, m.blend],
+                turn: [m.rotation.cos(), m.rotation.sin(), 0.0, 0.0],
+            },
+            None => SkyParams {
+                look: [0.0, level, 1.0, 0.0],
+                turn: [1.0, 0.0, 0.0, 0.0],
+            },
         }
     }
 }
@@ -641,39 +668,49 @@ mod sky_params_tests {
     use super::*;
 
     /// The sky pass's uniform: blurriness 0..1 maps onto the prefiltered
-    /// levels (1 the roughest, out-of-range clamped), and a dome draws
-    /// only with a positive height and a radius past it, its centre
-    /// `height` above the ground point.
+    /// levels (1 the roughest, out-of-range clamped), and a map is drawn
+    /// from its own cube with its turn, scale and blend.
     #[test]
-    fn sky_params_map_blurriness_and_the_dome() {
-        let env = |blur: f32, ground: Option<GroundProjection>| Environment {
+    fn sky_params_map_blurriness_and_the_map() {
+        let env = |blur: f32| Environment {
             background_blurriness: blur,
-            ground,
             ..Environment::default()
         };
-        let p = SkyParams::new(&env(0.0, None), 5, 1.0);
         assert_eq!(
-            p,
+            SkyParams::new(&env(0.0), 5, None),
             SkyParams {
-                dome: [0.0; 4],
-                look: [0.0, 0.0, 1.0, 0.0]
+                look: [0.0, 0.0, 1.0, 0.0],
+                turn: [1.0, 0.0, 0.0, 0.0]
             }
         );
-        assert_eq!(
-            SkyParams::new(&env(1.0, None), 5, 0.5).look[1..3],
-            [4.0, 0.5]
-        );
-        assert_eq!(SkyParams::new(&env(0.5, None), 5, 1.0).look[1], 2.0);
-        assert_eq!(SkyParams::new(&env(3.0, None), 5, 1.0).look[1], 4.0);
-        assert_eq!(SkyParams::new(&env(f32::NAN, None), 5, 1.0).look[1], 0.0);
+        assert_eq!(SkyParams::new(&env(1.0), 5, None).look[1], 4.0);
+        assert_eq!(SkyParams::new(&env(0.5), 5, None).look[1], 2.0);
+        assert_eq!(SkyParams::new(&env(3.0), 5, None).look[1], 4.0);
+        assert_eq!(SkyParams::new(&env(f32::NAN), 5, None).look[1], 0.0);
+        let m = SkyMap {
+            rotation: std::f32::consts::FRAC_PI_2,
+            scale: 0.5,
+            blend: 0.25,
+        };
+        let p = SkyParams::new(&env(0.0), 5, Some(m));
+        assert_eq!(p.look, [1.0, 0.0, 0.5, 0.25]);
+        assert!(p.turn[0].abs() < 1e-6 && (p.turn[1] - 1.0).abs() < 1e-6);
+    }
+
+    /// A dome draws only with a positive height and a finite radius past
+    /// it, its centre `height` above the ground point.
+    #[test]
+    fn the_dome_is_drawn_only_when_it_can_be() {
         let g = GroundProjection {
             height: 2.0,
             radius: 30.0,
             center: Vec3::new(1.0, -1.0, 3.0),
         };
-        let p = SkyParams::new(&env(0.0, Some(g)), 5, 1.0);
-        assert_eq!(p.dome, [1.0, 1.0, 3.0, 2.0]);
-        assert_eq!(p.look[0], 30.0);
+        assert_eq!(
+            GroundProjection::gpu(Some(g)),
+            [[1.0, 1.0, 3.0, 2.0], [30.0, 0.0, 0.0, 0.0]]
+        );
+        assert_eq!(GroundProjection::gpu(None), [[0.0; 4]; 2]);
         for bad in [
             GroundProjection { height: 0.0, ..g },
             GroundProjection { radius: 2.0, ..g },
@@ -682,7 +719,7 @@ mod sky_params_tests {
                 ..g
             },
         ] {
-            assert_eq!(SkyParams::new(&env(0.0, Some(bad)), 5, 1.0).dome, [0.0; 4]);
+            assert_eq!(GroundProjection::gpu(Some(bad)), [[0.0; 4]; 2]);
         }
     }
 }

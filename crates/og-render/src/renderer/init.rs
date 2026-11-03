@@ -295,8 +295,12 @@ impl Renderer {
                 // The clouds' noise volume and its repeating sampler (clouds.rs).
                 texture_entry(1, true, wgpu::TextureViewDimension::D3),
                 sampler_entry(2, wgpu::SamplerBindingType::Filtering),
-                // The background's blurriness and grounded dome (sky.wgsl SkyParams).
+                // The background's blurriness and map (sky.wgsl SkyParams).
                 uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
+                // An environment map drawn from its own cube, and the map it
+                // blends towards (the sky cube again without a map).
+                texture_entry(4, true, wgpu::TextureViewDimension::Cube),
+                texture_entry(5, true, wgpu::TextureViewDimension::Cube),
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -80,6 +80,9 @@ pub(crate) struct FrameUniform {
     /// (`RenderScene::origin`): the shaders that read a world position for
     /// its look (layer uvs, normal maps, caustics, wind) add it back.
     pub origin: [f32; 4],
+    /// The grounded dome the environment is drawn on and reflected from
+    /// (`GroundProjection::gpu`; zero: at infinity).
+    pub env_dome: [[f32; 4]; 2],
 }
 
 /// The camera's matrices for one frame.

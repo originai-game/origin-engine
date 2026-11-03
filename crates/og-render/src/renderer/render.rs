@@ -1751,6 +1751,7 @@ impl Renderer {
             },
             material_surface: scene.stylise.material.surface_uniform(),
             origin: scene.origin.extend(0.0).to_array(),
+            env_dome: crate::GroundProjection::gpu(scene.environment.ground),
         };
         // The shadow passes' clock, and the scene's origin for the hooks
         // (`h.origin`, `origin.rs`).

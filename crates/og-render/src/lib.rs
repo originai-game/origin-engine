@@ -350,7 +350,7 @@ pub struct Renderer {
     /// The clouds' noise volume, bound in the sky group (`clouds.rs`).
     cloud_noise: clouds::CloudNoise,
     /// The sky pass's own uniform (sky.wgsl `SkyParams`): the background's
-    /// blurriness and the grounded dome, written every frame.
+    /// blurriness and the map it draws, written every frame.
     sky_params: wgpu::Buffer,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
