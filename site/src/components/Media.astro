@@ -1,0 +1,45 @@
+---
+// One slot: a responsive picture, a muted looping film that plays only while
+// on screen, or a marked placeholder naming the footage that will fill it.
+// Interim slots carry a visible "Interim" label; nothing pending is passed
+// off as engine output.
+import { copy, type Lang } from "../i18n";
+import { alt, get, provenance, srcset, url } from "../lib/media";
+import type { SlotName } from "../media";
+
+interface Props {
+  slot: SlotName;
+  lang: Lang;
+  sizes?: string;
+  eager?: boolean;
+  /** Draw the status label (off where the parent draws its own). */
+  label?: boolean;
+  /** Draw the bare media only (inside a wipe or a crossfade layer). */
+  bare?: boolean;
+}
+const { slot, lang, sizes = "(max-width: 899px) 100vw, 1280px", eager = false, label = true, bare = false } = Astro.props;
+const r = get(slot);
+const a = alt(slot, lang);
+---
+{r.kind === "image" && (
+  <picture>
+    <source type="image/avif" srcset={srcset(r.avif)} sizes={sizes} />
+    <source type="image/webp" srcset={srcset(r.webp)} sizes={sizes} />
+    <img src={url(r.jpg!)} alt={a} width={r.width} height={r.height} loading={eager ? "eager" : "lazy"} decoding="async" fetchpriority={eager ? "high" : "auto"} />
+  </picture>
+)}
+{r.kind === "video" && (
+  <video data-autoplay muted loop playsinline preload="none" poster={url(r.poster!)} width={r.width} height={r.height} aria-label={a}>
+    <source src={url(r.mp4!)} type="video/mp4" />
+  </video>
+)}
+{r.kind === "pending" && (
+  <div class="pending" role="img" aria-label={`${copy.placeholder.pending[lang]}: ${a}`}>
+    <strong>{copy.placeholder.pending[lang]} · {a}</strong>
+    <span class="mono">{r.from.pending}</span>
+  </div>
+)}
+{!bare && label && r.status === "interim" && (
+  <span class="status" data-kind="interim" title={`${copy.placeholder.interimNote[lang]} · ${provenance(r)}`}>{copy.placeholder.interim[lang]}</span>
+)}
+{!bare && label && r.status === "pending" && <span class="status" data-kind="pending">{copy.placeholder.pending[lang]}</span>}

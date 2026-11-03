@@ -1,0 +1,195 @@
+// Every picture and film the site shows, by slot. A source is a showcase
+// archive entry (`showcase/manifest.jsonl`, fetched from the bucket), a file
+// committed in this repository (a reference frame, evidence), or `pending`:
+// footage still being produced, drawn as a marked placeholder. `scripts/media.ts`
+// resolves every source into `public/m/` and writes `src/generated/media.json`;
+// `bun scripts/check.ts --final` refuses a build that still has a pending slot.
+//
+// `status` says how the slot stands against the plan: `final` is the footage
+// the page is meant to carry, `interim` is real engine output standing in
+// until the scenes thread's footage lands (labelled as such on the page).
+
+export type Source =
+  | { showcase: string }
+  | { repo: string; commit?: string }
+  | { pending: string };
+
+export interface Slot {
+  source: Source;
+  status: "final" | "interim" | "pending";
+  /** What the frame shows, for alt text and the provenance line. */
+  alt: { en: string; zh: string };
+  /** A film's poster comes from this second of the film. */
+  posterAt?: number;
+}
+
+const s = (id: string): Source => ({ showcase: id });
+const r = (path: string): Source => ({ repo: path });
+const p = (what: string): Source => ({ pending: what });
+const ref = (name: string): Source => r(`crates/og-tests/references/metal/${name}.png`);
+
+export const media = {
+  // ── Hero ──────────────────────────────────────────────────────────────
+  "hero-poster": {
+    source: s("art-cinematic-3d/d1645c2aa859"),
+    status: "interim",
+    alt: { en: "A traveller with a lantern among snowy pines at dusk", zh: "黄昏的雪松林中，提灯的旅人" },
+  },
+  "hero-film": {
+    source: p("site-hero: ocean, dawn → noon → dusk → night loop, 4K and 1080p"),
+    status: "pending",
+    alt: { en: "The ocean scene from dawn to night", zh: "海天场景，从黎明到夜晚" },
+  },
+
+  // ── AI loop ───────────────────────────────────────────────────────────
+  "loop-first": {
+    source: r("tests/evidence/depth/probe-depth/first-frame.png"),
+    status: "interim",
+    alt: { en: "The template game at tick 1, as the probe captured it", zh: "模板游戏第 1 帧，probe 截取" },
+  },
+  "loop-broken": {
+    source: r("tests/evidence/depth/probe-depth/broken-tick120.png"),
+    status: "interim",
+    alt: { en: "The broken copy at tick 120: the crate still hangs in the air", zh: "出错的副本第 120 帧：箱子仍悬在空中" },
+  },
+  "loop-fixed": {
+    source: r("tests/evidence/depth/probe-depth/smoke-tick120.png"),
+    status: "interim",
+    alt: { en: "The fixed game at tick 120: the crate has landed", zh: "修好后第 120 帧：箱子已落地" },
+  },
+  "loop-film": {
+    source: p("studio-win: an agent building a game, split-screen timelapse"),
+    status: "pending",
+    alt: { en: "An agent building a game, sped up", zh: "AI 制作一款游戏的延时录像" },
+  },
+
+  // ── Rendering ─────────────────────────────────────────────────────────
+  "render-lod-final": {
+    source: s("depth/04f643c3de8e"),
+    status: "interim",
+    alt: { en: "A forest of instanced trees with level of detail on", zh: "开启 LOD 的实例化树林" },
+  },
+  "render-lod-debug": {
+    source: s("depth/1c64d8666d6c"),
+    status: "interim",
+    alt: { en: "The same forest in the LOD debug view", zh: "同一片树林的 LOD 调试视图" },
+  },
+  "render-gi-off": {
+    source: s("depth/108e243d0200"),
+    status: "interim",
+    alt: { en: "A Cornell box with baked lighting off", zh: "关闭烘焙光照的康奈尔盒" },
+  },
+  "render-gi-on": {
+    source: s("depth/5fca67b5a249"),
+    status: "interim",
+    alt: { en: "The same box with baked global illumination", zh: "开启烘焙全局光照的同一场景" },
+  },
+  "render-refl-off": {
+    source: s("depth/417337a4426c"),
+    status: "interim",
+    alt: { en: "Spheres with the reflection probe off", zh: "关闭反射探针的球体" },
+  },
+  "render-refl-on": {
+    source: s("depth/58cda7fcfcf5"),
+    status: "interim",
+    alt: { en: "Spheres with the reflection probe on", zh: "开启反射探针的球体" },
+  },
+  "render-fog-before": {
+    source: s("debt/b42ff3bd7446"),
+    status: "interim",
+    alt: { en: "Light shafts before the volumetric fog rework", zh: "体积雾重做前的光柱" },
+  },
+  "render-fog-after": {
+    source: s("debt/30e26752a704"),
+    status: "interim",
+    alt: { en: "Light shafts after the volumetric fog rework", zh: "体积雾重做后的光柱" },
+  },
+  // One avenue, one camera, seven atmospheres (og-tests reference frames).
+  "weather-fair": { source: ref("clouds-fair"), status: "interim", alt: { en: "Fair-weather cumulus", zh: "晴天积云" } },
+  "weather-sunset": { source: ref("clouds-sunset"), status: "interim", alt: { en: "Clouds at sunset", zh: "日落时的云" } },
+  "weather-overcast": { source: ref("clouds-overcast"), status: "interim", alt: { en: "Overcast", zh: "阴天" } },
+  "weather-rain": { source: ref("weather-rain"), status: "interim", alt: { en: "Rain", zh: "雨" } },
+  "weather-lightning": { source: ref("weather-lightning"), status: "interim", alt: { en: "A lightning strike at night", zh: "夜晚的闪电" } },
+  "weather-snow": { source: ref("weather-snow-cover"), status: "interim", alt: { en: "Snow cover", zh: "积雪" } },
+  "weather-dust": { source: ref("atmosphere-dusk"), status: "interim", alt: { en: "Dust haze at dusk", zh: "黄昏沙尘" } },
+  "water-sunset": { source: ref("water-ocean-sunset"), status: "interim", alt: { en: "Open ocean at sunset", zh: "日落时的海面" } },
+  "water-storm": { source: ref("water-ocean-storm"), status: "interim", alt: { en: "Open ocean in a gale", zh: "大风中的海面" } },
+  "render-reel": {
+    source: p("studio-win: rendering reel, 4K"),
+    status: "pending",
+    alt: { en: "Rendering reel", zh: "渲染集锦" },
+  },
+
+  // ── Characters ────────────────────────────────────────────────────────
+  "char-autorig": {
+    source: s("G3-1/d15d41a5d72c"),
+    status: "interim",
+    posterAt: 1.5,
+    alt: { en: "A knight auto-rigged from one layered drawing, playing its ten clips", zh: "从一张分层原画自动绑骨的骑士，播放十段动作" },
+  },
+  "char-autorig-mage": {
+    source: s("G3-1/e0274e276163"),
+    status: "interim",
+    posterAt: 1.5,
+    alt: { en: "The auto-rigged mage's ten clips", zh: "自动绑骨法师的十段动作" },
+  },
+  "char-motion-course": {
+    source: s("og.motion/8f9c1f54284d"),
+    status: "interim",
+    alt: { en: "Two agents running og.motion on the motion course", zh: "动作训练场上由 og.motion 驱动的两个角色" },
+  },
+  "char-cloth": {
+    source: s("fx-showcase/282040ae7015"),
+    status: "interim",
+    alt: { en: "A cloth banner draped over a pole", zh: "搭在杆上的布料" },
+  },
+  "char-motion": {
+    source: p("site-characters: og.motion characters, cloth and crowd, 4K"),
+    status: "pending",
+    alt: { en: "Characters animated by og.motion", zh: "由 og.motion 驱动的角色" },
+  },
+
+  // ── Worlds ────────────────────────────────────────────────────────────
+  "world-terrain": {
+    source: s("G2-6/45b7d36ae102"),
+    status: "interim",
+    posterAt: 1,
+    alt: { en: "Noise terrain regenerating as its seed drifts", zh: "随种子漂移实时重生的噪声地形" },
+  },
+  "world-dungeon": {
+    source: s("G2-6/bf839d77fec4"),
+    status: "interim",
+    posterAt: 1,
+    alt: { en: "BSP dungeons regenerated live", zh: "实时重生的 BSP 地牢" },
+  },
+  "world-village": {
+    source: s("G2-6/5729b0364c18"),
+    status: "interim",
+    posterAt: 1,
+    alt: { en: "Wave-function-collapse villages regenerated live", zh: "实时重生的 WFC 村庄" },
+  },
+  "world-far": { source: ref("terrain-far"), status: "interim", alt: { en: "An island terrain seen from far above", zh: "高空俯瞰的岛屿地形" } },
+  "world-grass": { source: ref("terrain-grass-wind"), status: "interim", alt: { en: "Wind through terrain grass under mountains", zh: "山下随风摆动的草地" } },
+  "world-stream": {
+    source: p("site-forest: streaming cells seen from above, 4K"),
+    status: "pending",
+    alt: { en: "World cells streaming in around the camera", zh: "镜头周围的世界分块流式加载" },
+  },
+
+  // ── UI ────────────────────────────────────────────────────────────────
+  "ui-grid": {
+    source: p("U8: the 17 genre showcases × style packs × locales"),
+    status: "pending",
+    alt: { en: "Seventeen genre HUDs", zh: "十七类游戏 HUD" },
+  },
+
+  // ── Play ──────────────────────────────────────────────────────────────
+  "play-meridian": { source: r("examples/meridian-loop/references/metal/race.png"), status: "interim", alt: { en: "Meridian Loop, a neon racer", zh: "Meridian Loop，霓虹赛车" } },
+  "play-hollowbell": { source: r("examples/hollowbell/references/metal/play.png"), status: "interim", alt: { en: "Hollowbell", zh: "Hollowbell" } },
+  "play-brasswick": { source: r("examples/brasswick/references/metal/title.png"), status: "interim", alt: { en: "Brasswick", zh: "Brasswick" } },
+  "play-kestrel": { source: r("examples/kestrel-stair/references/metal/explore.png"), status: "interim", alt: { en: "Kestrel Stair", zh: "Kestrel Stair" } },
+  "play-lantern": { source: r("examples/lantern-vale/references/metal/far.png"), status: "interim", alt: { en: "Lantern Vale", zh: "Lantern Vale" } },
+  "play-rumpus": { source: r("examples/rumpus-isle/references/metal/lobby.png"), status: "interim", alt: { en: "Rumpus Isle", zh: "Rumpus Isle" } },
+} satisfies Record<string, Slot>;
+
+export type SlotName = keyof typeof media;

@@ -181,7 +181,7 @@ async function upload(key: string, bytes: Uint8Array, type: string): Promise<voi
   await retry(`uploading ${key}`, () => s3().write(key, bytes, { type }));
 }
 
-async function download(key: string): Promise<Uint8Array> {
+export async function download(key: string): Promise<Uint8Array> {
   return retry(`reading ${key}`, async () => new Uint8Array(await s3().file(key).arrayBuffer()));
 }
 

@@ -1,0 +1,1088 @@
+{
+ "hero-poster": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "hero-poster-a7f9e6862f-960.avif",
+    960
+   ],
+   [
+    "hero-poster-a7f9e6862f-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "hero-poster-a7f9e6862f-960.webp",
+    960
+   ],
+   [
+    "hero-poster-a7f9e6862f-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "hero-poster-a7f9e6862f.jpg",
+  "status": "interim",
+  "from": {
+   "id": "art-cinematic-3d/d1645c2aa859",
+   "commit": "737a70331",
+   "date": "2026-11-01"
+  }
+ },
+ "hero-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero: ocean, dawn → noon → dusk → night loop, 4K and 1080p"
+  }
+ },
+ "loop-first": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "loop-first-888d88af75-960.avif",
+    960
+   ],
+   [
+    "loop-first-888d88af75-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "loop-first-888d88af75-960.webp",
+    960
+   ],
+   [
+    "loop-first-888d88af75-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "loop-first-888d88af75.jpg",
+  "status": "interim",
+  "from": {
+   "path": "tests/evidence/depth/probe-depth/first-frame.png",
+   "commit": "01f717b8b",
+   "date": "2026-10-23"
+  }
+ },
+ "loop-broken": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "loop-broken-96f7b30148-960.avif",
+    960
+   ],
+   [
+    "loop-broken-96f7b30148-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "loop-broken-96f7b30148-960.webp",
+    960
+   ],
+   [
+    "loop-broken-96f7b30148-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "loop-broken-96f7b30148.jpg",
+  "status": "interim",
+  "from": {
+   "path": "tests/evidence/depth/probe-depth/broken-tick120.png",
+   "commit": "01f717b8b",
+   "date": "2026-10-23"
+  }
+ },
+ "loop-fixed": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "loop-fixed-b1696e83cd-960.avif",
+    960
+   ],
+   [
+    "loop-fixed-b1696e83cd-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "loop-fixed-b1696e83cd-960.webp",
+    960
+   ],
+   [
+    "loop-fixed-b1696e83cd-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "loop-fixed-b1696e83cd.jpg",
+  "status": "interim",
+  "from": {
+   "path": "tests/evidence/depth/probe-depth/smoke-tick120.png",
+   "commit": "dc1bf6466",
+   "date": "2026-10-23"
+  }
+ },
+ "loop-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "studio-win: an agent building a game, split-screen timelapse"
+  }
+ },
+ "render-lod-final": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-lod-final-c17bc4bb23-960.avif",
+    960
+   ],
+   [
+    "render-lod-final-c17bc4bb23-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-lod-final-c17bc4bb23-960.webp",
+    960
+   ],
+   [
+    "render-lod-final-c17bc4bb23-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-lod-final-c17bc4bb23.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/04f643c3de8e",
+   "commit": "97be2f1c4",
+   "date": "2026-10-23"
+  }
+ },
+ "render-lod-debug": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-lod-debug-7b918bbdc8-960.avif",
+    960
+   ],
+   [
+    "render-lod-debug-7b918bbdc8-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-lod-debug-7b918bbdc8-960.webp",
+    960
+   ],
+   [
+    "render-lod-debug-7b918bbdc8-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-lod-debug-7b918bbdc8.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/1c64d8666d6c",
+   "commit": "97be2f1c4",
+   "date": "2026-10-23"
+  }
+ },
+ "render-gi-off": {
+  "kind": "image",
+  "width": 640,
+  "height": 360,
+  "avif": [
+   [
+    "render-gi-off-675f678320-640.avif",
+    640
+   ]
+  ],
+  "webp": [
+   [
+    "render-gi-off-675f678320-640.webp",
+    640
+   ]
+  ],
+  "jpg": "render-gi-off-675f678320.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/108e243d0200",
+   "commit": "769986c9c",
+   "date": "2026-10-23"
+  }
+ },
+ "render-gi-on": {
+  "kind": "image",
+  "width": 640,
+  "height": 360,
+  "avif": [
+   [
+    "render-gi-on-39aee1c725-640.avif",
+    640
+   ]
+  ],
+  "webp": [
+   [
+    "render-gi-on-39aee1c725-640.webp",
+    640
+   ]
+  ],
+  "jpg": "render-gi-on-39aee1c725.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/5fca67b5a249",
+   "commit": "769986c9c",
+   "date": "2026-10-23"
+  }
+ },
+ "render-refl-off": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-refl-off-fb00d415a2-960.avif",
+    960
+   ],
+   [
+    "render-refl-off-fb00d415a2-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-refl-off-fb00d415a2-960.webp",
+    960
+   ],
+   [
+    "render-refl-off-fb00d415a2-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-refl-off-fb00d415a2.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/417337a4426c",
+   "commit": "05a4c71ad",
+   "date": "2026-10-23"
+  }
+ },
+ "render-refl-on": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-refl-on-763fd222a5-960.avif",
+    960
+   ],
+   [
+    "render-refl-on-763fd222a5-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-refl-on-763fd222a5-960.webp",
+    960
+   ],
+   [
+    "render-refl-on-763fd222a5-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-refl-on-763fd222a5.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/58cda7fcfcf5",
+   "commit": "05a4c71ad",
+   "date": "2026-10-23"
+  }
+ },
+ "render-fog-before": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-fog-before-738e5f378f-960.avif",
+    960
+   ],
+   [
+    "render-fog-before-738e5f378f-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-fog-before-738e5f378f-960.webp",
+    960
+   ],
+   [
+    "render-fog-before-738e5f378f-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-fog-before-738e5f378f.jpg",
+  "status": "interim",
+  "from": {
+   "id": "debt/b42ff3bd7446",
+   "commit": "8729d57b3",
+   "date": "2026-10-23"
+  }
+ },
+ "render-fog-after": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "render-fog-after-c23c2d1b20-960.avif",
+    960
+   ],
+   [
+    "render-fog-after-c23c2d1b20-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "render-fog-after-c23c2d1b20-960.webp",
+    960
+   ],
+   [
+    "render-fog-after-c23c2d1b20-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "render-fog-after-c23c2d1b20.jpg",
+  "status": "interim",
+  "from": {
+   "id": "debt/30e26752a704",
+   "commit": "8729d57b3",
+   "date": "2026-10-23"
+  }
+ },
+ "weather-fair": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-fair-6a03932dee-960.avif",
+    960
+   ],
+   [
+    "weather-fair-6a03932dee-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-fair-6a03932dee-960.webp",
+    960
+   ],
+   [
+    "weather-fair-6a03932dee-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-fair-6a03932dee.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/clouds-fair.png",
+   "commit": "4076017e8",
+   "date": "2026-11-03"
+  }
+ },
+ "weather-sunset": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-sunset-64f7b41a9d-960.avif",
+    960
+   ],
+   [
+    "weather-sunset-64f7b41a9d-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-sunset-64f7b41a9d-960.webp",
+    960
+   ],
+   [
+    "weather-sunset-64f7b41a9d-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-sunset-64f7b41a9d.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/clouds-sunset.png",
+   "commit": "4076017e8",
+   "date": "2026-11-03"
+  }
+ },
+ "weather-overcast": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-overcast-bab9154388-960.avif",
+    960
+   ],
+   [
+    "weather-overcast-bab9154388-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-overcast-bab9154388-960.webp",
+    960
+   ],
+   [
+    "weather-overcast-bab9154388-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-overcast-bab9154388.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/clouds-overcast.png",
+   "commit": "4076017e8",
+   "date": "2026-11-03"
+  }
+ },
+ "weather-rain": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-rain-5f4ecfcbf1-960.avif",
+    960
+   ],
+   [
+    "weather-rain-5f4ecfcbf1-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-rain-5f4ecfcbf1-960.webp",
+    960
+   ],
+   [
+    "weather-rain-5f4ecfcbf1-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-rain-5f4ecfcbf1.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/weather-rain.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "weather-lightning": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-lightning-97cf105e1d-960.avif",
+    960
+   ],
+   [
+    "weather-lightning-97cf105e1d-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-lightning-97cf105e1d-960.webp",
+    960
+   ],
+   [
+    "weather-lightning-97cf105e1d-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-lightning-97cf105e1d.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/weather-lightning.png",
+   "commit": "4076017e8",
+   "date": "2026-11-03"
+  }
+ },
+ "weather-snow": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-snow-fe7bcc52ae-960.avif",
+    960
+   ],
+   [
+    "weather-snow-fe7bcc52ae-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-snow-fe7bcc52ae-960.webp",
+    960
+   ],
+   [
+    "weather-snow-fe7bcc52ae-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-snow-fe7bcc52ae.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/weather-snow-cover.png",
+   "commit": "4076017e8",
+   "date": "2026-11-03"
+  }
+ },
+ "weather-dust": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "weather-dust-cf86068ca5-960.avif",
+    960
+   ],
+   [
+    "weather-dust-cf86068ca5-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "weather-dust-cf86068ca5-960.webp",
+    960
+   ],
+   [
+    "weather-dust-cf86068ca5-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "weather-dust-cf86068ca5.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/atmosphere-dusk.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "water-sunset": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "water-sunset-3eeafd58ef-960.avif",
+    960
+   ],
+   [
+    "water-sunset-3eeafd58ef-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "water-sunset-3eeafd58ef-960.webp",
+    960
+   ],
+   [
+    "water-sunset-3eeafd58ef-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "water-sunset-3eeafd58ef.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/water-ocean-sunset.png",
+   "commit": "18af53633",
+   "date": "2026-11-03"
+  }
+ },
+ "water-storm": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "water-storm-2ab654fb14-960.avif",
+    960
+   ],
+   [
+    "water-storm-2ab654fb14-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "water-storm-2ab654fb14-960.webp",
+    960
+   ],
+   [
+    "water-storm-2ab654fb14-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "water-storm-2ab654fb14.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/water-ocean-storm.png",
+   "commit": "18af53633",
+   "date": "2026-11-03"
+  }
+ },
+ "render-reel": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "studio-win: rendering reel, 4K"
+  }
+ },
+ "char-autorig": {
+  "kind": "video",
+  "width": 1600,
+  "height": 900,
+  "duration": 4,
+  "mp4": "char-autorig-d1027aa5c1.mp4",
+  "poster": "char-autorig-d1027aa5c1.jpg",
+  "status": "interim",
+  "from": {
+   "id": "G3-1/d15d41a5d72c",
+   "commit": "64c4ecedf",
+   "date": "2026-11-02",
+   "machine": "mac satellite (metal)"
+  }
+ },
+ "char-autorig-mage": {
+  "kind": "video",
+  "width": 1600,
+  "height": 900,
+  "duration": 4,
+  "mp4": "char-autorig-mage-5080b1f45e.mp4",
+  "poster": "char-autorig-mage-5080b1f45e.jpg",
+  "status": "interim",
+  "from": {
+   "id": "G3-1/e0274e276163",
+   "commit": "64c4ecedf",
+   "date": "2026-11-02",
+   "machine": "mac satellite (metal)"
+  }
+ },
+ "char-motion-course": {
+  "kind": "image",
+  "width": 960,
+  "height": 540,
+  "avif": [
+   [
+    "char-motion-course-670a21cfe7-960.avif",
+    960
+   ]
+  ],
+  "webp": [
+   [
+    "char-motion-course-670a21cfe7-960.webp",
+    960
+   ]
+  ],
+  "jpg": "char-motion-course-670a21cfe7.jpg",
+  "status": "interim",
+  "from": {
+   "id": "og.motion/8f9c1f54284d",
+   "commit": "bf39e9077",
+   "date": "2026-11-02",
+   "machine": "macrunner"
+  }
+ },
+ "char-cloth": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "char-cloth-362492479c-960.avif",
+    960
+   ],
+   [
+    "char-cloth-362492479c-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "char-cloth-362492479c-960.webp",
+    960
+   ],
+   [
+    "char-cloth-362492479c-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "char-cloth-362492479c.jpg",
+  "status": "interim",
+  "from": {
+   "id": "fx-showcase/282040ae7015",
+   "commit": "737a70331",
+   "date": "2026-11-01"
+  }
+ },
+ "char-motion": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-characters: og.motion characters, cloth and crowd, 4K"
+  }
+ },
+ "world-terrain": {
+  "kind": "video",
+  "width": 1280,
+  "height": 720,
+  "duration": 3,
+  "mp4": "world-terrain-9f0c3b774e.mp4",
+  "poster": "world-terrain-9f0c3b774e.jpg",
+  "status": "interim",
+  "from": {
+   "id": "G2-6/45b7d36ae102",
+   "commit": "6e763b9c",
+   "date": "2026-11-02",
+   "machine": "mac satellite metal"
+  }
+ },
+ "world-dungeon": {
+  "kind": "video",
+  "width": 1280,
+  "height": 720,
+  "duration": 3,
+  "mp4": "world-dungeon-4bbb10d0d3.mp4",
+  "poster": "world-dungeon-4bbb10d0d3.jpg",
+  "status": "interim",
+  "from": {
+   "id": "G2-6/bf839d77fec4",
+   "commit": "6e763b9c",
+   "date": "2026-11-02",
+   "machine": "mac satellite metal"
+  }
+ },
+ "world-village": {
+  "kind": "video",
+  "width": 1280,
+  "height": 720,
+  "duration": 3,
+  "mp4": "world-village-a7157e9a9d.mp4",
+  "poster": "world-village-a7157e9a9d.jpg",
+  "status": "interim",
+  "from": {
+   "id": "G2-6/5729b0364c18",
+   "commit": "6e763b9c",
+   "date": "2026-11-02",
+   "machine": "mac satellite metal"
+  }
+ },
+ "world-far": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "world-far-eca4acad3b-960.avif",
+    960
+   ],
+   [
+    "world-far-eca4acad3b-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "world-far-eca4acad3b-960.webp",
+    960
+   ],
+   [
+    "world-far-eca4acad3b-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "world-far-eca4acad3b.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/terrain-far.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "world-grass": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "world-grass-d94670c886-960.avif",
+    960
+   ],
+   [
+    "world-grass-d94670c886-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "world-grass-d94670c886-960.webp",
+    960
+   ],
+   [
+    "world-grass-d94670c886-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "world-grass-d94670c886.jpg",
+  "status": "interim",
+  "from": {
+   "path": "crates/og-tests/references/metal/terrain-grass-wind.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "world-stream": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-forest: streaming cells seen from above, 4K"
+  }
+ },
+ "ui-grid": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "U8: the 17 genre showcases × style packs × locales"
+  }
+ },
+ "play-meridian": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-meridian-f8b75f1994-960.avif",
+    960
+   ],
+   [
+    "play-meridian-f8b75f1994-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-meridian-f8b75f1994-960.webp",
+    960
+   ],
+   [
+    "play-meridian-f8b75f1994-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-meridian-f8b75f1994.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/meridian-loop/references/metal/race.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "play-hollowbell": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-hollowbell-cf3a26c6f1-960.avif",
+    960
+   ],
+   [
+    "play-hollowbell-cf3a26c6f1-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-hollowbell-cf3a26c6f1-960.webp",
+    960
+   ],
+   [
+    "play-hollowbell-cf3a26c6f1-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-hollowbell-cf3a26c6f1.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/hollowbell/references/metal/play.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "play-brasswick": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-brasswick-9a42f500d8-960.avif",
+    960
+   ],
+   [
+    "play-brasswick-9a42f500d8-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-brasswick-9a42f500d8-960.webp",
+    960
+   ],
+   [
+    "play-brasswick-9a42f500d8-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-brasswick-9a42f500d8.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/brasswick/references/metal/title.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "play-kestrel": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-kestrel-2fc6eaf766-960.avif",
+    960
+   ],
+   [
+    "play-kestrel-2fc6eaf766-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-kestrel-2fc6eaf766-960.webp",
+    960
+   ],
+   [
+    "play-kestrel-2fc6eaf766-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-kestrel-2fc6eaf766.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/kestrel-stair/references/metal/explore.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "play-lantern": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-lantern-d1c4fb7e4a-960.avif",
+    960
+   ],
+   [
+    "play-lantern-d1c4fb7e4a-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-lantern-d1c4fb7e4a-960.webp",
+    960
+   ],
+   [
+    "play-lantern-d1c4fb7e4a-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-lantern-d1c4fb7e4a.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/lantern-vale/references/metal/far.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ },
+ "play-rumpus": {
+  "kind": "image",
+  "width": 1280,
+  "height": 720,
+  "avif": [
+   [
+    "play-rumpus-2809523a45-960.avif",
+    960
+   ],
+   [
+    "play-rumpus-2809523a45-1280.avif",
+    1280
+   ]
+  ],
+  "webp": [
+   [
+    "play-rumpus-2809523a45-960.webp",
+    960
+   ],
+   [
+    "play-rumpus-2809523a45-1280.webp",
+    1280
+   ]
+  ],
+  "jpg": "play-rumpus-2809523a45.jpg",
+  "status": "interim",
+  "from": {
+   "path": "examples/rumpus-isle/references/metal/lobby.png",
+   "commit": "737a70331",
+   "date": "2026-11-02"
+  }
+ }
+}

@@ -1,0 +1,100 @@
+---
+// The agent loop, replayed from a recorded session: the probe-depth
+// acceptance run (tests/evidence/depth/probe-depth/NOTES.md). Commands and
+// output are as recorded there, shortened only by dropping rows; the frames
+// are that session's own captures. Lines appear as the section scrolls into
+// view; reduced motion shows the whole transcript at once.
+import { copy, type Lang } from "../i18n";
+import Media from "./Media.astro";
+import Prov from "./Prov.astro";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const l = copy.loop;
+
+type Line = { k: "cmd" | "out" | "fail" | "pass" | "say" | "del" | "add"; t: string; step?: number; shot?: "first" | "broken" | "fixed" };
+const lines: Line[] = [
+  { k: "cmd", t: "og probe describe", step: 0 },
+  { k: "out", t: "order name      box (x, y, w, h)     occlusion" },
+  { k: "out", t: "0     ground    0, 420, 1280, 300    0.072" },
+  { k: "out", t: "1     dropship  384, 248, 398, 204   0" },
+  { k: "out", t: "2     crate     276, 62, 142, 134    0" },
+  { k: "out", t: "ui    Hud › Menu › \"Origin Engine\" · Start (button)", shot: "first" },
+  { k: "cmd", t: "og probe pick '{\"x\":583,\"y\":349}'" },
+  { k: "out", t: "dropship" },
+  { k: "cmd", t: "og run . --headless --commands \"$SMOKE\"", step: 1 },
+  { k: "fail", t: "<b>FAIL</b> tick 120 entity:crate:within:-3,0.4,-1,1,0.6,2\n     observed [-2.4, 4, 0.5]" },
+  { k: "fail", t: "<b>FAIL</b> tick 120 event:og.CollisionStarted · observed 0" },
+  { k: "fail", t: "<b>FAIL</b> tick 120 entity:crate:within:380,360,280,240\n     observed {x: 276, y: 62, w: 142, h: 134}" },
+  { k: "out", t: "6 passed, 3 failed · exit 1", shot: "broken" },
+  { k: "say", t: l.agentSays[lang], step: 2 },
+  { k: "out", t: "src/main.ts:147", step: 3 },
+  { k: "del", t: "-  systems: [Move, Menu, StartSpin, Chime, Rotate]," },
+  { k: "add", t: "+  systems: [Move, Menu, StartSpin, Drop, Chime, Rotate]," },
+  { k: "cmd", t: "og test" },
+  { k: "pass", t: "<b>PASS</b> smoke (9 checks)", shot: "fixed" },
+];
+---
+<div class="loop">
+  <div class="console reveal" data-console>
+    <div class="console-head">
+      <div class="steps" aria-hidden="true">{l.steps.map((s) => <span>{s[lang]}</span>)}</div>
+      <button class="btn secondary small" data-replay>{l.replay[lang]}</button>
+    </div>
+    <ol>
+      {lines.map((x) => <li class={x.k} data-step={x.step} data-shot={x.shot} set:html={x.k === "say" ? x.t : x.t.replace(/</g, (m, i, s) => (s.startsWith("<b>", i) || s.startsWith("</b>", i) ? m : "&lt;"))} />)}
+      <li class="on" aria-hidden="true"><span class="caret"></span></li>
+    </ol>
+  </div>
+  <div class="shots">
+    <div class="frame reveal" style="--delay:120ms" data-shots>
+      <div class="layer" data-shot="first" data-on><Media slot="loop-first" lang={lang} bare /></div>
+      <div class="layer" data-shot="broken"><Media slot="loop-broken" lang={lang} bare /></div>
+      <div class="layer" data-shot="fixed"><Media slot="loop-fixed" lang={lang} bare /></div>
+      <span class="status tag" data-shot-label data-first={l.frameFirst[lang]} data-broken={l.frameBroken[lang]} data-fixed={l.frameFixed[lang]}>{l.frameFirst[lang]}</span>
+      <span class="status" data-kind="interim" title={copy.placeholder.interimNote[lang]}>{copy.placeholder.interim[lang]}</span>
+    </div>
+    <div class="frame r16x9 reveal" style="--delay:200ms">
+      <Media slot="loop-film" lang={lang} />
+    </div>
+  </div>
+</div>
+<p class="meta" style="margin-top:14px">{l.provenance[lang]}</p>
+<Prov slots={["loop-first", "loop-broken", "loop-fixed"]} lang={lang} />
+<p class="lede" style="margin-top:var(--space-xl);max-width:760px">{l.tools[lang]}</p>
+
+<script>
+  const box = document.querySelector<HTMLElement>("[data-console]")!;
+  const items = [...box.querySelectorAll<HTMLLIElement>("ol li")].slice(0, -1);
+  const steps = [...box.querySelectorAll<HTMLElement>(".steps span")];
+  const shots = document.querySelector<HTMLElement>("[data-shots]")!;
+  const label = shots.querySelector<HTMLElement>("[data-shot-label]")!;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let timer = 0;
+
+  function apply(li: HTMLLIElement) {
+    li.classList.add("on");
+    if (li.dataset.step !== undefined) steps.forEach((s, i) => s.toggleAttribute("data-on", i === Number(li.dataset.step)));
+    const shot = li.dataset.shot;
+    if (shot) {
+      shots.querySelectorAll<HTMLElement>(".layer").forEach((l) => l.toggleAttribute("data-on", l.dataset.shot === shot));
+      label.textContent = label.dataset[shot] ?? "";
+    }
+  }
+  function play() {
+    clearTimeout(timer);
+    items.forEach((li) => li.classList.remove("on"));
+    if (reduce) return items.forEach(apply);
+    let i = 0;
+    const next = () => {
+      if (i >= items.length) return;
+      const li = items[i++];
+      apply(li);
+      const pause = li.classList.contains("cmd") ? 700 : li.dataset.shot ? 1300 : li.classList.contains("say") ? 1500 : 160;
+      timer = window.setTimeout(next, pause);
+    };
+    next();
+  }
+  new IntersectionObserver((es, o) => es.forEach((e) => e.isIntersecting && (o.disconnect(), play())), { threshold: 0.35 }).observe(box);
+  box.querySelector("[data-replay]")!.addEventListener("click", play);
+</script>

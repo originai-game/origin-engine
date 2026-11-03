@@ -1,0 +1,48 @@
+---
+// The one floating bar: the engine mark and name (genesis plays once on
+// load), the section links, and the language switch, which keeps the reader
+// at the same section.
+import { mark } from "../lib/brand";
+import { copy, path, type Lang } from "../i18n";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const other: Lang = lang === "en" ? "zh" : "en";
+const n = copy.nav;
+const links = [
+  ["loop", n.loop],
+  ["rendering", n.rendering],
+  ["characters", n.characters],
+  ["worlds", n.worlds],
+  ["ui", n.ui],
+  ["play", n.play],
+] as const;
+---
+<header class="nav">
+  <a class="brand" href={path(lang)} aria-label="Origin Engine">
+    <Fragment set:html={mark("genesis", "nav")} />
+    <span>Origin Engine</span>
+  </a>
+  <nav class="capsule glass" aria-label={lang === "en" ? "Sections" : "章节"}>
+    <span class="links">
+      {links.map(([id, label]) => <a href={`#${id}`} data-nav={id}>{label[lang]}</a>)}
+    </span>
+    <span class="sep" aria-hidden="true"></span>
+    <a class="lang" href={path(other)} hreflang={other} lang={other} title={n.switchLabel[lang]} data-lang-switch>{n.switchTo[lang]}</a>
+  </nav>
+</header>
+
+<script>
+  // Keep the section when switching language, and remember the choice.
+  const sw = document.querySelector<HTMLAnchorElement>("[data-lang-switch]")!;
+  sw.addEventListener("click", () => {
+    try { localStorage.setItem("og-site-lang", sw.hreflang); } catch {}
+    sw.href = sw.pathname + location.hash;
+  });
+  // The current section's link.
+  const links = new Map([...document.querySelectorAll<HTMLAnchorElement>("[data-nav]")].map((a) => [a.dataset.nav!, a]));
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) if (e.isIntersecting) links.forEach((a, id) => a.setAttribute("aria-current", String(id === e.target.id)));
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  links.forEach((_, id) => { const s = document.getElementById(id); if (s) io.observe(s); });
+</script>

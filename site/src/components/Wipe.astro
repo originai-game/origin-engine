@@ -1,0 +1,26 @@
+---
+// Two frames of one camera, split by a handle: one label per side. The range
+// input under the pointer carries the value, so the wipe works by drag, tap,
+// keyboard and assistive technology alike.
+import { copy, type Lang } from "../i18n";
+import { alt, get } from "../lib/media";
+import type { SlotName } from "../media";
+import Media from "./Media.astro";
+
+interface Props { left: SlotName; right: SlotName; leftLabel: string; rightLabel: string; lang: Lang; title: string; start?: number }
+const { left, right, leftLabel, rightLabel, lang, title, start = 50 } = Astro.props;
+const status = [get(left), get(right)].some((r) => r.status === "pending") ? "pending" : [get(left), get(right)].some((r) => r.status === "interim") ? "interim" : "final";
+const r = get(left);
+---
+<div class="frame wipe" style={`--pos:${start}%;aspect-ratio:${r.width ?? 16} / ${r.height ?? 9}`} data-wipe>
+  <div class="layer before"><Media slot={left} lang={lang} bare /></div>
+  <div class="layer after"><Media slot={right} lang={lang} bare /></div>
+  <span class="bar"></span>
+  <span class="knob glass-thin" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5 2 10l5 5M13 5l5 5-5 5" /></svg>
+  </span>
+  <span class="side l">{leftLabel}</span>
+  <span class="side r">{rightLabel}</span>
+  <input type="range" min="0" max="100" step="0.1" value={start} aria-label={`${title}: ${leftLabel} / ${rightLabel}`} aria-valuetext={`${alt(left, lang)} / ${alt(right, lang)}`} />
+  {status !== "final" && <span class="status" data-kind={status}>{status === "interim" ? copy.placeholder.interim[lang] : copy.placeholder.pending[lang]}</span>}
+</div>

@@ -1,0 +1,16 @@
+---
+// The provenance line under a frame: what made it and when.
+import { copy, type Lang } from "../i18n";
+import { get, provenance } from "../lib/media";
+import type { SlotName } from "../media";
+
+interface Props { slots: SlotName[]; lang: Lang }
+const { slots, lang } = Astro.props;
+const lines = [...new Set(slots.map((s) => get(s)).filter((r) => r.kind !== "pending").map(provenance))];
+---
+{lines.length > 0 && (
+  <div class="prov">
+    <span>{copy.media.source[lang]}</span>
+    {lines.map((l) => <span class="mono">{l}</span>)}
+  </div>
+)}

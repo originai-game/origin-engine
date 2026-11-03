@@ -1,0 +1,55 @@
+---
+// One avenue, one camera, seven atmospheres: og-tests' reference frames of
+// the same scene, crossfaded. It steps through them while on screen and
+// stops for good once the reader picks one.
+import { copy, type Lang } from "../i18n";
+import Media from "./Media.astro";
+import Prov from "./Prov.astro";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const w = copy.rendering.weather;
+const states = [
+  ["fair", "weather-fair"],
+  ["sunset", "weather-sunset"],
+  ["overcast", "weather-overcast"],
+  ["rain", "weather-rain"],
+  ["lightning", "weather-lightning"],
+  ["snow", "weather-snow"],
+  ["dust", "weather-dust"],
+] as const;
+---
+<div class="reveal" data-xfade>
+  <div class="frame r16x9 xfade">
+    {states.map(([k, slot], i) => <div class="layer" data-key={k} data-on={i === 0 ? "" : undefined}><Media slot={slot} lang={lang} bare /></div>)}
+    <span class="status" data-kind="interim" title={copy.placeholder.interimNote[lang]}>{copy.placeholder.interim[lang]}</span>
+  </div>
+  <div class="xfade-bar">
+    <h3 class="display d-sm" style="font-weight:600">{copy.rendering.weatherTitle[lang]}</h3>
+    <div class="seg" role="group" aria-label={copy.rendering.weatherTitle[lang]}>
+      {states.map(([k], i) => <button type="button" data-key={k} aria-pressed={i === 0 ? "true" : "false"}>{w[k][lang]}</button>)}
+    </div>
+  </div>
+  <Prov slots={states.map(([, s]) => s)} lang={lang} />
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-xfade]")) {
+    const layers = [...root.querySelectorAll<HTMLElement>(".layer")];
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>(".seg button")];
+    let i = 0;
+    let auto = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let timer = 0;
+    const set = (n: number) => {
+      i = (n + layers.length) % layers.length;
+      layers.forEach((l, j) => l.toggleAttribute("data-on", j === i));
+      buttons.forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+    };
+    const tick = () => { if (auto) { set(i + 1); timer = window.setTimeout(tick, 2600); } };
+    buttons.forEach((b, j) => b.addEventListener("click", () => { auto = false; clearTimeout(timer); set(j); }));
+    new IntersectionObserver(([e]) => {
+      clearTimeout(timer);
+      if (e.isIntersecting && auto) timer = window.setTimeout(tick, 2000);
+    }, { threshold: 0.5 }).observe(root);
+  }
+</script>
