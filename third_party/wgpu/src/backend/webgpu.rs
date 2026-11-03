@@ -1490,6 +1490,10 @@ pub struct WebBuffer {
     pub(crate) inner: webgpu_sys::GpuBuffer,
     /// The mapped array buffer and mapped range.
     mapping: Rc<RefCell<WebBufferMapState>>,
+    /// Fork s71 (origin-engine): a buffer created mapped that the page can never map (no MAP_READ or
+    /// MAP_WRITE usage) is created unmapped with COPY_DST; its "mapping" is a plain ArrayBuffer, which
+    /// `unmap` writes with this queue's `writeBuffer`. See ORIGIN.md.
+    staged: Rc<RefCell<Option<webgpu_sys::GpuQueue>>>,
     /// Unique identifier for this Buffer.
     ident: crate::cmp::Identifier,
 }
@@ -1503,6 +1507,7 @@ impl WebBuffer {
                 mapped_buffer: None,
                 range: 0..desc.size,
             })),
+            staged: Rc::new(RefCell::new(None)),
             ident: crate::cmp::Identifier::create(),
         }
     }
@@ -2683,13 +2688,28 @@ impl dispatch::DeviceInterface for WebDevice {
     }
 
     fn create_buffer(&self, desc: &crate::BufferDescriptor<'_>) -> dispatch::DispatchBuffer {
-        let mapped_desc =
-            webgpu_sys::GpuBufferDescriptor::new_with_f64(desc.size as f64, desc.usage.bits());
-        mapped_desc.set_mapped_at_creation(desc.mapped_at_creation);
+        // Fork s71 (origin-engine): Chrome makes a buffer mapped at creation (`create_buffer_init`'s way)
+        // a shared-memory mapping its GPU process copies from at `unmap`, at a cost far above
+        // `queue.writeBuffer`'s (9010 such buffers, 1.8 GB: 18.7-25.7 s of GPU-process time and 1.6 s tasks
+        // on an RTX 3090, against 5.1 s, the frames' own floor, as `writeBuffer`). A buffer that can never
+        // be mapped again is made unmapped with COPY_DST and its initial contents written at `unmap`.
+        let staged = desc.mapped_at_creation
+            && !desc
+                .usage
+                .intersects(wgt::BufferUsages::MAP_READ | wgt::BufferUsages::MAP_WRITE)
+            && desc.size > 0;
+        let usage = if staged { desc.usage | wgt::BufferUsages::COPY_DST } else { desc.usage };
+        let mapped_desc = webgpu_sys::GpuBufferDescriptor::new_with_f64(desc.size as f64, usage.bits());
+        mapped_desc.set_mapped_at_creation(desc.mapped_at_creation && !staged);
         if let Some(label) = desc.label {
             mapped_desc.set_label(label);
         }
-        WebBuffer::new(self.inner.create_buffer(&mapped_desc).unwrap(), desc).into()
+        let buffer = WebBuffer::new(self.inner.create_buffer(&mapped_desc).unwrap(), desc);
+        if staged {
+            buffer.mapping.borrow_mut().mapped_buffer = Some(js_sys::ArrayBuffer::new(desc.size as u32));
+            *buffer.staged.borrow_mut() = Some(self.inner.queue());
+        }
+        buffer.into()
     }
 
     fn create_texture(&self, desc: &crate::TextureDescriptor<'_>) -> dispatch::DispatchTexture {
@@ -3197,6 +3217,15 @@ impl dispatch::BufferInterface for WebBuffer {
     }
 
     fn unmap(&self) {
+        // Fork s71: a staged buffer's contents go by writeBuffer (create_buffer).
+        if let Some(queue) = self.staged.borrow_mut().take() {
+            if let Some(data) = self.mapping.borrow_mut().mapped_buffer.take() {
+                queue
+                    .write_buffer_with_f64_and_buffer_source(&self.inner, 0.0, &data)
+                    .unwrap();
+            }
+            return;
+        }
         self.inner.unmap();
         self.mapping.borrow_mut().mapped_buffer = None;
     }
