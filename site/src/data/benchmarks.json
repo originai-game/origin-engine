@@ -118,37 +118,35 @@
    }
   },
   {
-   "key": "hero",
-   "value": null,
-   "pending": true,
+   "key": "ocean",
+   "value": "5.8",
    "unit": {
     "en": "ms",
     "zh": "ms"
    },
    "label": {
-    "en": "per frame for the hero scene in Chrome, RTX 5060, 1920×1080",
-    "zh": "首屏场景在 Chrome、RTX 5060、1920×1080 下每帧耗时"
+    "en": "of engine work per frame for the live ocean scene (sky, clouds, ocean, buoyant ship, weather) at 1920×1080 in Chrome on WebGPU; it holds 60 fps",
+    "zh": "实时海天场景（天空、云、海洋、浮力帆船、天气）在 Chrome WebGPU、1920×1080 下每帧的引擎耗时，稳定 60 fps"
    },
    "source": {
-    "en": "Being measured on studio-win",
-    "zh": "正在 studio-win 上测量"
+    "en": "studio-win, RTX 5060 (D3D12), Chrome 156 and Edge 156, site-ocean publish build, 2026-11-03",
+    "zh": "studio-win，RTX 5060（D3D12），Chrome 156 与 Edge 156，site-ocean 发布版，2026-11-03"
    }
   },
   {
    "key": "first-frame",
-   "value": null,
-   "pending": true,
+   "value": "2.5",
    "unit": {
     "en": "s",
     "zh": "s"
    },
    "label": {
-    "en": "from opening the page to the hero's first live frame",
-    "zh": "从打开页面到首屏第一帧实时画面"
+    "en": "from opening the page to the live scene's first frame (warm cache)",
+    "zh": "从打开页面到实时场景第一帧（已缓存）"
    },
    "source": {
-    "en": "Being measured on studio-win",
-    "zh": "正在 studio-win 上测量"
+    "en": "studio-win, RTX 5060 (D3D12), Chrome 156 and Edge 156, site-ocean publish build, 2026-11-03",
+    "zh": "studio-win，RTX 5060（D3D12），Chrome 156 与 Edge 156，site-ocean 发布版，2026-11-03"
    }
   }
  ],
