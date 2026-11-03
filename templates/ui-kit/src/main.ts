@@ -474,11 +474,11 @@ function applyTheme(world: World, d: DemoState): void {
   });
 }
 
-/** The gallery: the list of screens. */
 /** The gallery rows' height (the tallest row text measured) and whether the subtitle is clamped, for one style, locale,
  * text size and viewport. */
 const rowNeed = { key: "", px: 0, tight: false };
 
+/** The gallery: the list of screens. */
 function gallery(d: DemoState): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
