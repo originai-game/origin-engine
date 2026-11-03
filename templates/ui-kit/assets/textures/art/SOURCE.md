@@ -138,3 +138,9 @@ Gameplay scenes the kit's genre showcases draw their HUD pages over, in the same
 | `scenes/genre-survival.jpg` | gameplay (first person in a pine clearing at dusk: a campfire, a lean-to shelter, mist) | the same API and cut |
 | `scenes/genre-horror.jpg` | gameplay (first person down a dark abandoned hospital corridor, a flashlight pool, a door ajar at the end) | the same API and cut; regenerated once (the first had a malformed wheelchair) |
 | `scenes/genre-openworld.jpg` | gameplay (a third-person hilltop vista: a river valley, a distant castle, a ruined tower, a small cloaked adventurer from behind) | the same API and cut |
+
+Racing arcade parts (the racing HUD's arcade look, docs/ui.md §17): the item slot's pickup. An original item of no existing game; CC0 1.0.
+
+| File | Kind | Origin |
+|---|---|---|
+| `race/item-bolt.png` | icon (a lightning-bolt pickup, 256 px, cut out) | the platform's image API (gpt-image-2.5-sunburst), one 3×2 sheet of pickups on a magenta key, keyed to alpha and its cell cut out |

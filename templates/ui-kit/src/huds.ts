@@ -27,15 +27,17 @@ const ART_FILES = [
   "items/healing-draught", "items/mana-vial", "items/iron-sword", "items/iron-key", "items/hunters-bow", "items/oak-shield",
   "boons/curse", "boons/star", "boons/apple", "boons/bomb", "boons/poison", "boons/broken-chain",
   "rts/tower", "rts/wall", "rts/barracks", "rts/forge",
+  "race/item-bolt",
 ] as const;
 export type HudArt = (typeof ART_FILES)[number];
 const CUT_OUTS: ReadonlySet<string> = new Set(["loadout/raven"]);
+const cutOut = (f: string): boolean => CUT_OUTS.has(f) || f.startsWith("race/");
 const ART: Partial<Record<HudArt, number>> = {};
 
 /** Load the HUDs' art (the game's start). A file that is missing leaves its slot on the style's placeholder. */
 export function loadHudArt(world: World): void {
   for (const f of ART_FILES) {
-    const r = og.load.texture(world, `textures/art/${f}.${CUT_OUTS.has(f) ? "png" : "jpg"}`);
+    const r = og.load.texture(world, `textures/art/${f}.${cutOut(f) ? "png" : "jpg"}`);
     if (r.ok) ART[f] = r.value as unknown as number;
   }
 }
@@ -178,7 +180,14 @@ export function actionHud(world: World, under = false): boolean {
     });
     og.ui.hudTimer("Timer", { seconds: Math.max(0, 300 - tick / 60), total: 300, mode: "countdown", label: L("sc.time"), warnAt: 30, anchor: null });
   });
-  og.ui.comboCounter("Combo", { count: st.combo + Math.floor(tick / 120), multiplier: 2, decay: 1 - ((tick % 120) / 120), label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [25, 50, 100], anchor: "right" });
+  const combo = { count: st.combo + Math.floor(tick / 120), multiplier: 2, decay: 1 - ((tick % 120) / 120), label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [25, 50, 100] };
+  if (portrait) {
+    // In portrait the end edge's middle is where the scene's floating coin lands (its cover crop): the combo stands under it,
+    // on the cliff's shadow, clear of the timer above at any text size.
+    og.ui.anchor("ComboHud", { anchor: "right", margin: m, offsetY: Math.round(120 * k) }, () => og.ui.comboCounter("Combo", { ...combo, anchor: null }));
+  } else {
+    og.ui.comboCounter("Combo", { ...combo, anchor: "right" });
+  }
 
   if (touch) {
     // The thumbs' corners: the d-pad at the start, Jump (primary) and Attack at the end.
@@ -231,7 +240,7 @@ export function shooterHud(world: World): void {
     { key: "enemy", kind: "enemy", x: 0.7, y: 0.3 },
     { key: "drop", kind: "objective", x: 0.36, y: 0.66 },
   ];
-  og.ui.minimapView("Map", { texture: hudArt("maps/world"), zoom: 2.2, size: Math.round((small ? 116 : 168) * k), shape: "circle", markers, zone: L("sc.shooter.zone"), north: "", anchor: "topLeft" });
+  og.ui.minimapView("Map", { texture: hudArt("maps/world"), zoom: 0.45, size: Math.round((small ? 116 : 168) * k), shape: "circle", markers, zone: L("sc.shooter.zone"), north: "", anchor: "topLeft" });
   og.ui.hudTimer("Zone", { seconds: Math.max(0, st.zone - tick / 60), total: 120, mode: "countdown", label: L("sc.shooter.ring"), warnAt: 20, anchor: "topLeft" });
   if (!portrait) og.ui.killfeed("Feed", { entries: FEED.map((e, i) => ({ ...e, killer: e.local ? L("sc.you") : e.killer ?? "", at: tick - 60 * (i + 1) })), max: 4, durationMs: 60_000, anchor: "topRight" });
   og.ui.anchor("Squad", { anchor: "bottomLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
@@ -246,7 +255,18 @@ export function shooterHud(world: World): void {
     { key: "heal", image: hudArt("loadout/stim"), name: L("sc.shooter.stim"), action: "ability3", charges: 4, maxCharges: 4 },
     { key: "ultimate", image: hudArt("loadout/shield"), name: L("sc.shooter.ultimate"), action: "ultimate", ultimate: Math.min(1, 0.4 + (tick % 900) / 1500) },
   ];
-  og.ui.abilityBar("Abilities", { slots: touch ? slots.slice(0, 3) : slots, size: Math.round((portrait ? 44 : small ? 48 : 56) * k), anchor: "bottom" });
+  if (portrait) {
+    // A phone's foot is the ammunition's and the health's: the abilities stand over the health, at the start thumb, clear of
+    // both (their foot a gap above the ammunition's top as it was laid last tick, at any text size).
+    const vp = og.ui.frameViewport();
+    const ammo = og.ui.bounds("AmmoHud");
+    const lift = ammo ? Math.round(ammo.y - t.space.sm - (vp.height - vp.safeArea.bottom - m)) : -Math.round(118 * k);
+    og.ui.anchor("AbilitiesHud", { anchor: "bottomLeft", margin: m, offsetY: Math.min(0, lift) }, () => {
+      og.ui.abilityBar("Abilities", { slots: slots.slice(0, 3), size: Math.round(44 * k), anchor: null });
+    });
+  } else {
+    og.ui.abilityBar("Abilities", { slots: touch ? slots.slice(0, 3) : slots, size: Math.round((small ? 48 : 56) * k), anchor: "bottom" });
+  }
   og.ui.ammoCounter("Ammo", { magazine: st.ammo, magazineMax: 30, reserve: 120, weapon: "Raven", fireMode: L("sc.shooter.auto"), reloading: st.reloading ? ((tick % 90) / 90) : null, reloadLabel: L("sc.shooter.reloading"), reloadHint: L("sc.shooter.reload"), anchor: "bottomRight" });
   if (touch) {
     og.ui.anchor("Fire", { anchor: "right", margin: m }, () => og.ui.actionButton("Fire", L("sc.shooter.fire"), { primary: true, icon: "bolt", size: 76 }));
@@ -297,65 +317,41 @@ export function manageHud(world: World): void {
       anchor: "right",
     });
   }
-  // The plot under the cursor: what the chosen tool would build there, its cost and upkeep.
-  og.ui.anchor("Plot", { anchor: small ? "top" : "center", margin: m, offsetX: small ? 0 : Math.round(170 * k), offsetY: small ? Math.round(120 * k) : Math.round(-60 * k), direction: "column", gap: 2, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm }, background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud", width: px(220 * k) }, () => {
-    og.ui.label("Name", L("sc.manage.plot"), { step: "lg", font: "display", nowrap: true });
-    og.ui.label("Cost", L("sc.manage.cost", { cost: og.ui.formatNumber(1200, {}), upkeep: 18 }), { step: "sm", color: { token: "inkMuted" }, width: grow });
-  });
+  // The plot under the cursor: the chosen tool's footprint on the ground (the placement ghost), and over it, tied to it
+  // by a stem, the card of what it would build there, its cost and upkeep.
+  {
+    const vp = og.ui.frameViewport();
+    const sa = vp.safeArea;
+    const fw = Math.round((small ? 84 : 112) * k);
+    const fh = Math.round(fw * 0.62);
+    const cx = Math.round(vp.width * (portrait ? 0.5 : small ? 0.62 : 0.66));
+    const cardW = Math.round(220 * k);
+    const cardH = og.ui.bounds("Plot")?.height ?? Math.round(64 * k);
+    const stem = Math.round(18 * k);
+    // On a phone the card stays under the clock (as laid last tick, at any text size), the plot under the card.
+    const clock = small ? og.ui.bounds("Clock") : null;
+    const below = clock ? clock.y + clock.height + t.space.sm + cardH + stem + fh / 2 : 0;
+    const cy = Math.round(Math.max(vp.height * (portrait ? 0.4 : 0.56), below));
+    og.ui.anchor("PlotMark", { anchor: "topLeft", margin: 0, offsetX: cx - fw / 2 - sa.left, offsetY: cy - fh / 2 - sa.top, width: px(fw), height: px(fh) }, () => {
+      og.ui.column("Footprint", { width: grow, height: grow }, () => {});
+      og.ui.setDraw({ shape: { kind: "rect", radii: [6, 6, 6, 6] }, fills: [{ kind: "solid", color: { token: "primary", alpha: 0.28 } }], strokes: [{ width: 2, align: "inside", paint: { kind: "solid", color: { token: "highlight" } } }, { width: 1, align: "outside", paint: { kind: "solid", color: { token: "shadow", alpha: 0.6 } } }] } as never);
+      og.ui.props({ inert: true } as never);
+    });
+    og.ui.anchor("PlotStem", { anchor: "topLeft", margin: 0, offsetX: cx - 1 - sa.left, offsetY: cy - fh / 2 - stem - sa.top, width: px(2), height: px(stem) }, () => {
+      og.ui.column("Line", { width: grow, height: grow }, () => {});
+      og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "highlight" } }] } as never);
+      og.ui.props({ inert: true } as never);
+    });
+    og.ui.anchor("Plot", { anchor: "topLeft", margin: 0, offsetX: cx - cardW / 2 - sa.left, offsetY: cy - fh / 2 - stem - cardH - sa.top, direction: "column", gap: 2, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm }, background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud", width: px(cardW) }, () => {
+      og.ui.label("Name", L("sc.manage.plot"), { step: "lg", font: "display", nowrap: true });
+      og.ui.label("Cost", L("sc.manage.cost", { cost: og.ui.formatNumber(1200, {}), upkeep: 18 }), { step: "sm", color: { token: "inkMuted" }, width: grow });
+    });
+  }
   const slots: AbilitySlotDesc[] = BUILD.map(([key, art], i) => ({ key, image: hudArt(art), name: L(`ledger.line.${key}`), hotkey: String(i + 1), active: i === 0, unaffordable: key === "power" }));
   og.ui.abilityBar("Build", { slots: portrait ? slots.slice(0, 4) : slots, size: Math.round((small ? 52 : 60) * k), anchor: "bottom" });
 }
 
-// ── racing and sports ───────────────────────────────────────────────────
-
-const RACERS: ReadonlyArray<[string, number]> = [["Nyx", 0], ["Ferro", 1.204], ["You", 2.861], ["Lumen", 3.402], ["Quill", 5.119], ["Sable", 7.88], ["Orrin", 9.02], ["Brask", 12.4]];
-const TEAM_HUES: Paint[] = [
-  { color: { r: 0.86, g: 0.16, b: 0.18 } }, { color: { r: 0.12, g: 0.42, b: 0.86 } }, { color: { r: 0.98, g: 0.72, b: 0.12 } }, { color: { r: 0.18, g: 0.7, b: 0.42 } },
-  { color: { r: 0.6, g: 0.3, b: 0.86 } }, { color: { r: 0.96, g: 0.46, b: 0.14 } }, { color: { r: 0.5, g: 0.52, b: 0.58 } }, { color: { r: 0.1, g: 0.72, b: 0.8 } },
-];
-
-/**
- * A racing game's HUD (Forza Horizon, Gran Turismo, F1): the place and
- * lap with the running times and the split top start, the standings tower
- * on the start edge, the minimap top end, the speedometer bottom end; on a
- * touch screen the steering and the pedals in the bottom corners.
- */
-export function raceHud(world: World): void {
-  const { small, portrait, touch, k, m, t } = frame();
-  og.ui.setNavigation(false);
-  void world;
-  gameScene("scenes/genre-racing", { x: 0.5, y: 0.6 });
-  const tick = og.ui.tick();
-  const lapMs = 41_200 + tick * (1000 / 60);
-  og.ui.lapTimer("Lap", {
-    position: 3, positionTotal: 8, lap: 2, lapTotal: 3, currentMs: lapMs % 90_000, bestMs: 81_904, lastMs: 82_377, deltaMs: -312 + ((tick / 60) % 5) * 90,
-    positionLabel: L("sc.race.pos"), lapLabel: L("sc.race.lap"), finalLabel: L("sc.race.final"), currentLabel: L("sc.race.current"), bestLabel: L("sc.race.best"), lastLabel: L("sc.race.last"), splitLabel: L("sc.race.split"),
-    anchor: "topLeft",
-  });
-  if (!portrait) {
-    const entries: StandingsEntry[] = RACERS.map(([name, gap], i) => ({ key: name, name: name === "You" ? L("sc.you") : name, color: TEAM_HUES[i], gap, player: name === "You", fastest: name === "Ferro", change: name === "Lumen" ? -1 : 0 }));
-    og.ui.standingsTower("Standings", { entries, rows: small ? 5 : 8, leaderLabel: L("sc.race.leader"), pitLabel: L("sc.race.pit"), outLabel: L("sc.race.out"), fastestLabel: L("sc.race.fastest"), anchor: "left" });
-  }
-  og.ui.minimapView("Track", {
-    size: Math.round((small ? 120 : 176) * k), shape: "square",
-    track: [{ x: 0.2, y: 0.7 }, { x: 0.3, y: 0.25 }, { x: 0.6, y: 0.18 }, { x: 0.82, y: 0.38 }, { x: 0.74, y: 0.74 }, { x: 0.45, y: 0.84 }],
-    markers: [{ key: "me", kind: "player", x: 0.62, y: 0.19, heading: 80 }, { key: "a", kind: "enemy", x: 0.72, y: 0.27 }, { key: "b", kind: "enemy", x: 0.53, y: 0.17 }],
-    north: "",
-    anchor: "topRight",
-  });
-  const speed = 212 + 24 * Math.sin(tick / 40);
-  og.ui.speedometer("Speed", { speed, maxSpeed: 320, unit: L("sc.race.kmh"), rpm: 0.55 + 0.4 * ((tick % 90) / 90), redline: 0.88, gear: String(5 + Math.floor(((tick % 90) / 90) * 1.5)), boost: 0.62, size: Math.round((small ? 150 : 210) * k), anchor: "bottomRight" });
-  if (touch) {
-    og.ui.anchor("Steer", { anchor: "bottomLeft", margin: m, gap: t.space.md }, () => {
-      og.ui.actionButton("Left", L("sc.race.left"), { icon: "back", size: 64 });
-      og.ui.actionButton("Right", L("sc.race.right"), { icon: "play", size: 64 });
-    });
-    og.ui.anchor("Pedals", { anchor: "bottomRight", margin: m, offsetY: -Math.round((small ? 170 : 230) * k), gap: t.space.md }, () => {
-      og.ui.actionButton("Brake", L("sc.race.brake"), { size: 56 });
-      og.ui.actionButton("Boost", L("sc.race.boost"), { primary: true, icon: "bolt", size: 64 });
-    });
-  }
-}
+// ── sports ───────────────────────────────────────────────────
 
 const HOME = { abbr: "RVR", name: "Riverside", score: 2, color: { color: { r: 0.12, g: 0.36, b: 0.82 } } };
 const AWAY = { abbr: "HLD", name: "Highland", score: 1, color: { color: { r: 0.86, g: 0.2, b: 0.2 } } };
@@ -376,7 +372,7 @@ export function sportsHud(world: World): void {
   og.ui.scorebug("Bug", { home: { ...HOME, possession: true }, away: AWAY, clock: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, period: L("sc.sports.half2"), situation: tick % 600 < 300 ? L("sc.sports.corner") : "", anchor: "topLeft" });
   og.ui.playerPlate("Player", { number: "10", name: "D. Arlo", color: HOME.color, stamina: 0.64, segments: 10, anchor: "bottom" });
   og.ui.minimapView("Radar", {
-    size: Math.round((small ? 110 : 180) * k), shape: "square", north: "",
+    size: Math.round((small ? 110 : 180) * k), shape: "square", north: "", pitch: true, zoom: 1,
     markers: [
       { key: "ball", kind: "objective", x: 0.71, y: 0.38 },
       ...[[0.7, 0.4], [0.6, 0.55], [0.48, 0.3], [0.52, 0.7], [0.35, 0.5]].map(([x, y], i) => ({ key: `h${i}`, kind: "ally" as const, x: x!, y: y! })),

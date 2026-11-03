@@ -26,6 +26,7 @@ import { art, boardScreen, L, cardsScreen, gachaScreen, gearScreen, generatorsSc
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shipStatusScreen, starshipCommand, turnOrderScreen } from "./starship.ts";
+import { buildRaceScene, RaceView } from "./raceScene.ts";
 import { chromeAnchor, chromeInDocument, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
 import { defineHudActions } from "./huds.ts";
 
@@ -118,7 +119,8 @@ const BLURBS: Record<Screen, string> = {
   shooterHud: "A shooter's HUD: compass, minimap, ring timer, killfeed, crosshair, health and shields, abilities, ammo, a ping",
   shooterScore: "The scoreboard held over the match (the scoreboard document)",
   manageHud: "A management HUD: resources and rates, the date and speed, goals, the build palette, a plot's card",
-  raceHud: "A racing HUD: place and lap with splits, the standings tower, the track map, the speedometer",
+  raceHud: "A racing HUD: the place and lap with sector pips, the relative tower, the lap time and split, a player-up circuit, the tach; the race's moments",
+  raceResults: "A race's results: the place, the stats, the credits (the results document)",
   raceBoard: "Time-trial leaderboards: global and friends, a league (the leaderboard document)",
   sportsHud: "A football broadcast HUD: the scorebug, the player's plate, the radar, a substitution",
   matchFacts: "Full time: the scorers by side and the match stats face to face",
@@ -811,7 +813,8 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   // The genre patterns' screens paint their own scene (patterns.ts): a backdrop would clash with their art.
   if (PATTERN_SCREENS.has(screen)) patternScene(screen);
   const backdrop = kitArt(STYLE_BACKDROPS[STYLES[d.style] ?? "default"] ?? "neutral") ?? kitArt("neutral");
-  if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
+  // The racing HUD draws over its own engine-rendered circuit (src/raceScene.ts).
+  if (screen !== "gallery" && screen !== "widgets" && screen !== "raceHud" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
   // So does a conversation's: its caption shade and its press layer span the screen, and the button stands over them.
@@ -1100,7 +1103,7 @@ function current(world: World): DemoState | null {
 export default og.game({
   tick: 60,
   seed: 1,
-  systems: [Kit, Thud],
+  systems: [Kit, Thud, RaceView],
   resources: [Typed],
   render: { antialias: "msaa4" },
   start(world) {
@@ -1119,6 +1122,8 @@ export default og.game({
       settings.value.environmentIntensity = 0;
       settings.value.sky = false;
     }
+    // The racing showcase's circuit, parked until its HUD shows (src/raceScene.ts).
+    buildRaceScene(world);
     const e = world.spawn({ name: "demo" });
     if (!e.ok) throw new Error(e.reason);
     // A hit's thud (og sfx's hit preset), on the sfx bus.

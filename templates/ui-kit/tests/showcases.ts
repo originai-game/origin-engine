@@ -14,7 +14,7 @@ import { sheetCheck, SURFACES, unsettled, withSettleDumps } from "./styles.ts";
 
 /** The light and dark packs a family is checked in besides its own. */
 const LIGHT = (s: Showcase): string => s.light ?? (s.pack === "storybook" ? "kawaii" : "storybook");
-const DARK = (s: Showcase): string => (s.pack === "dread" ? "fantasy" : "dread");
+const DARK = (s: Showcase): string => s.dark ?? (s.pack === "dread" ? "fantasy" : "dread");
 
 /** The frames of a family, in its sheet's order: [style, screen, file]. */
 function shots(s: Showcase): Array<[string, string, string]> {

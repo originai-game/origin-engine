@@ -7,8 +7,10 @@ version 1
 # the game's input passes through to the target when the step waits for
 # the player to do it.
 #
-# The kit's copy (og ui eject): a Kit slot in the top end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page).
+# The kit's copy (og ui eject): a Kit slot in the bottom end corner takes
+# the kit's own chrome (the Gallery and the showcase's next page), clear
+# of the HUD's top corners; the card is the pack's panel over a 40 %
+# scrim, so its copy reads over any scene.
 #
 # Viewmodel: title, text, step, steps, waits (the step waits for the
 # player's action: no Next), x, y (where the card sits, CSS px from the
@@ -37,6 +39,17 @@ fixture default "{\"title\": \"Dodge\", \"text\": \"Press the dodge button just 
 stack Tutorial {
   width grow
   height grow
+  column Scrim {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background "#000000"
+    opacity 0.4
+  }
   slot Highlight {
     width grow
     height grow
@@ -53,7 +66,7 @@ stack Tutorial {
     width grow 0 360
     padding 16
     gap 8
-    frame tooltip
+    frame panel
     enter pop
     at phonePortrait {
       start 12
@@ -116,10 +129,10 @@ stack Tutorial {
   slot Kit {
     position absolute
     end 16
-    top 16
+    bottom 16
     at phone {
       end 8
-      top 56
+      bottom 42
     }
   }
 }

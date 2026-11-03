@@ -9,7 +9,10 @@ version 1
 # (code pushes it while the key is held and pops it on release). Slots:
 # Board takes og.ui.scoreboard (the teams in their colours, the rows,
 # the dead, ping bars, the MVP); Extra takes the match's own row
-# (objectives held, og.ui.matchStats).
+# (objectives held, og.ui.matchStats). The kit's copy: the head sits on
+# the pack's panel, never as bare text on the match; on a phone in
+# portrait it sits in the band between the top corners' HUD and the
+# thumbs' controls on the edges' middle.
 name "scoreboard"
 layer hud
 props {
@@ -27,12 +30,21 @@ column Scoreboard {
   at phone {
     padding 12
   }
+  at phonePortrait {
+    padding 12 300 12 12
+    align start
+  }
   at phoneLandscape {
     padding 52 8
   }
   column Panel {
     width grow 0 1100
+    padding 16
     gap 8
+    frame panel
+    at phone {
+      padding 12
+    }
     row Head {
       width grow
       gap 16

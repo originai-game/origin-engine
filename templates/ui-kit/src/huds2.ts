@@ -314,14 +314,15 @@ export function rhythmHud(world: World): void {
   const width = lane * 4;
   const left = Math.round((vp.width - width) / 2);
   const hitY = Math.round(vp.height - (portrait ? 200 : small ? 90 : 140) * k);
-  // The highway: four lanes on a dark well, the notes falling at 0.6 of the height a second.
+  // The highway: four lanes on a dark well, the notes falling at 0.6 of the height a second. The well is the game's
+  // own night-blue in every pack (a light pack's backdrop would lay a pale slab down the lane), its rules a faint light.
   og.ui.anchor("Highway", { anchor: "topLeft", margin: 0, offsetX: left - vp.safeArea.left, offsetY: -vp.safeArea.top, width: px(width), height: px(hitY + 8) }, () => {
     og.ui.column("Well", { width: grow, height: grow }, () => {});
-    og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "backdrop", alpha: 0.82 } }] } as never);
+    og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { color: { r: 0.03, g: 0.035, b: 0.07 }, alpha: 0.82 } }] } as never);
     og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
     for (let i = 1; i < 4; i++) {
       og.ui.column(`Rule${i}`, { width: px(1), height: grow }, () => {});
-      og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "line" } }] } as never);
+      og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { color: { r: 1, g: 1, b: 1 }, alpha: 0.14 } }] } as never);
       og.ui.props({ position: "absolute", insets: { start: i * lane, top: 0, bottom: 0 }, inert: true } as never);
     }
     og.ui.column("HitLine", { width: grow, height: px(3) }, () => {});

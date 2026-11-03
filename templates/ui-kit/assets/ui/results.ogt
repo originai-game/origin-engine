@@ -15,7 +15,12 @@ version 1
 # (og.ui.chart: the gold or score over time; RTS, MOBA, 4X); Scores takes
 # the final scoreboard (og.ui.scoreboard); Celebration takes the level-up
 # or the grade's flourish (og.ui.celebration, og.ui.numberCounter for the
-# XP cascade).
+# XP cascade); Icon, in each reward, takes the reward's art (the kit's
+# copy: a texture handle bound through a viewmodel number loses its index,
+# src/showcases.ts); Background takes the match's scene or key art, under
+# a 45 % scrim, so the panel never sits on a flat field. The grade is the
+# dominant element (docs/ui.md §15.5), and the panel starts below the Kit
+# slot's row so the kit's chrome never covers it.
 name "results"
 layer menu
 under hide
@@ -29,7 +34,7 @@ props {
   level number "The level after the match."
   xp number "Progress to the next level after the match, 0 to 1."
   gained number "XP gained."
-  rewards list "The rewards: { name, amount, texture }."
+  rewards list "The rewards: { name, amount, texture } (the kit draws each texture in its Icon slot)."
   tab string "summary, graphs or board."
 }
 actions {
@@ -47,11 +52,31 @@ fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"sta
 column Results {
   width grow
   height grow
-  padding 32
+  padding 32 64 32 32
   align center
   cross center
   at phone {
-    padding 12
+    padding 12 60 12 12
+  }
+  slot Background {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Scrim {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background "#000000"
+    opacity 0.45
   }
   column Panel {
     width grow 0 960
@@ -94,11 +119,14 @@ column Results {
       }
       label Grade {
         text bind grade
-        step displayLg
+        step displayXl2
+        font display
         heading true
+        nowrap true
+        color token gold
         visible bind "grade != \"\""
         at phone {
-          step xl4
+          step displayLg
         }
       }
     }
@@ -120,6 +148,7 @@ column Results {
     }
     row Tabs {
       gap 6
+      wrap true
       button Summary {
         key "screen.results.summary"
         text "Summary"
@@ -218,11 +247,9 @@ column Results {
               gap 4
               cross center
               frame card
-              art Art {
-                kind itemIcon
+              slot Icon {
                 width 56
                 height 56
-                texture bind r.texture
               }
               label Amount {
                 text "{r.name} ×{r.amount, compact}"

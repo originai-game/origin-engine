@@ -31,12 +31,14 @@ keeping the neutral dusk), and the shop, inventory and results show the kit's
 painted art (`assets/textures/art`): items, the merchant Brann, the paperdoll's
 Aria Vell with her attributes. `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
-the UI's event sounds, `sc:<reset|tutorial:<n>|hud:<key>:<value>>` sets a
-showcase's state, `pat:<area>:<key>:<value>` a pattern preview's. `dump_entity:demo` reads the demo's state (the `Demo` component).
+the UI's event sounds, `sc:<reset|tutorial:<n>|hud:<key>:<value>|race:<event>>` sets a
+showcase's state (`sc:race:countdown`, `checkpoint`, `wrongWay`, `finalLap`, `finish`: a race's moment), `pat:<area>:<key>:<value>` a pattern preview's. `dump_entity:demo` reads the demo's state (the `Demo` component).
 
 Screens: the showcases first (actionTitle, actionHud, actionPause,
 actionTutorial, actionLoading, actionResults, shooterHud, shooterScore,
-manageHud, raceHud, raceBoard, sportsHud, matchFacts), then gallery,
+manageHud, raceHud, raceResults, raceBoard, sportsHud, matchFacts; the
+racing HUD draws over an engine-rendered circuit, `src/raceScene.ts`, lit by
+its pack: night, broadcast's golden hour, the arcade packs' noon), then gallery,
 widgets, the component sheets, the genre patterns (store, gear, saga,
 dialogue, vn, lobby, select, garage, ledger, rts, deck, settingsTree and
 the rest; `SCREENS` in `src/main.ts`), toasts, players (a

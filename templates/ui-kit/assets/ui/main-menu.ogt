@@ -6,7 +6,11 @@ version 1
 # while there is a save, New game, the modes, Settings, Credits and Quit.
 #
 # The kit's copy (og ui eject): a Kit slot in the top end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page).
+# the kit's own chrome (the Gallery and the showcase's next page); the
+# logo is the game's wordmark, its title in the pack's display face over
+# the key art's dark side; the kit draws its key art in Background, over
+# the Art slot's placeholder (a texture handle bound through a viewmodel
+# number loses its index: src/showcases.ts).
 #
 # Viewmodel: canContinue, saveLine, version, news (see props). Events to
 # code: continue, newGame, modes, settings, credits, quit, news (the news
@@ -21,7 +25,6 @@ under none
 back none
 focus "Menu/Continue"
 props {
-  keyArt number "The key art's texture (og.load.texture; 0: the style's placeholder)."
   canContinue bool "A save exists: Continue shows and takes the focus."
   saveLine string "Under Continue: where the last save stands (chapter, time played)."
   version string "The build's version, shown small in the corner."
@@ -36,7 +39,6 @@ stack Menu {
   height grow
   art Art {
     kind keyArt
-    texture bind keyArt
     fit cover
     width grow
     height grow
@@ -62,20 +64,23 @@ stack Menu {
     gap 12
     align center
     at phone {
-      padding 24
+      padding 24 64 24 24
       width grow
     }
     at phoneLandscape {
       padding 12
       gap 4
     }
-    art Logo {
-      kind logo
-      width 320
-      height 120
+    label Logo {
+      key "sc.action.game"
+      text "Emberfall"
+      font display
+      step displayXl2
+      heading true
+      nowrap true
+      color "#FFF1DC"
       at phone {
-        width 240
-        height 90
+        step xl4
       }
       at phoneLandscape {
         visible false
@@ -197,6 +202,9 @@ stack Menu {
     position absolute
     start 16
     bottom 12
+    at phone {
+      bottom 40
+    }
   }
   slot Kit {
     position absolute

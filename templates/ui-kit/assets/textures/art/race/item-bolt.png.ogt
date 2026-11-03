@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Kit art (docs/ui.md §15.5.3): a cut-out colour texture.
+texture {
+  kind color
+}

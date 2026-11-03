@@ -8,11 +8,6 @@
 import { playtest } from "@origingame/engine/playtest";
 import { checkUi } from "@origingame/engine/ui-check";
 
-// og-ui's abilitySlot and status tile draw their art under their own cooldown time, charge, cost, ultimate and
-// stack badges (the og-ui thread owns the fix): a pair inside one slot or tile is recorded apart, so the check
-// stays strict for everything the kit itself lays out.
-const inSlot = (paths: readonly string[]): boolean => paths.length === 2 && /\/(Slot|Tile)\/Icon$/.test(paths[0]!) && paths[1]!.startsWith(paths[0]!.replace(/Icon$/, "")) && /\/(Time|Charges|Stacks|Cost\/Drop|Cost\/Value|Ultimate\/Value)$/.test(paths[1]!);
-
 /** Every showcase's play screen (src/showcases.ts). */
 const HUDS = ["actionHud", "shooterHud", "manageHud", "raceHud", "sportsHud", "mobaHud", "rpgHud", "mmoHud", "rogueHud", "tdHud", "rhythmHud", "fightHud", "survivalHud", "horrorHud", "openHud"] as const;
 
@@ -25,8 +20,8 @@ export default playtest({
     for (const h of HUDS) {
       const all = checkUi(run, h, { skip: ["contrast"] });
       t.ok(run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length > 20, `${h} was laid out (${run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length} elements)`);
-      const overlaps = all.filter((f) => f.rule === "overlap" && !inSlot(f.paths));
-      t.equal(overlaps.map((f) => f.paths.join(" × ")).join("; "), "", `${h} has no undeclared overlap outside og-ui's ability slots`);
+      const overlaps = all.filter((f) => f.rule === "overlap");
+      t.equal(overlaps.map((f) => f.paths.join(" × ")).join("; "), "", `${h} has no undeclared overlap`);
     }
   },
 });

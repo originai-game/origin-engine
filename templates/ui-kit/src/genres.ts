@@ -279,6 +279,14 @@ let wm = wm0();
  * detail; the whole screen on a desktop, under the kit's header on a phone (whose top end corner is the Gallery's).
  */
 export function mapScreen(): void {
+  // A pattern screen paints its own ground (no style backdrop under it): the pack's backdrop, edge to edge, so the
+  // header's title is the pack's ink on the pack's ground (never a heading's red on the clear colour's black).
+  const vp = og.ui.frameViewport();
+  og.ui.anchor("Ground", { anchor: "topLeft", margin: 0, offsetX: -vp.safeArea.left, offsetY: -vp.safeArea.top, width: px(vp.width), height: px(vp.height) }, () => {
+    og.ui.column("Fill", { width: grow, height: grow }, () => {});
+    og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "backdrop" } }] } as never);
+    og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
+  });
   frame("World", L("map.title"), () => {
     const regions: WorldRegion[] = REGIONS.map((g) => ({ key: g.key, name: L(`map.region.${g.key}`), x: g.x, y: g.y, radius: g.radius, discovered: g.discovered }));
     const markers: WorldMarker[] = PLACES.map((p) => ({

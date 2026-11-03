@@ -16,7 +16,8 @@ import { og } from "@origingame/engine";
 import type { Anchor, Size, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
 import { fightHud, horrorHud, mmoHud, mobaHud, openHud, rhythmHud, rogueHud, rpgHud, survivalHud, tdHud } from "./huds2.ts";
-import { actionHud, hudArt, loadHudArt, manageHud, raceHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
+import { raceCommand, raceHud, raceResultsViewmodel, resetRace } from "./race.ts";
+import { actionHud, hudArt, loadHudArt, manageHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
 
 const grow: Size = { kind: "grow" };
 
@@ -32,6 +33,8 @@ export interface Showcase {
   readonly pack: string;
   /** The light pack its first page is checked in, when not the default (tests/showcases.ts). */
   readonly light?: string;
+  /** The dark pack its first page is checked in, when not dread (tests/showcases.ts). */
+  readonly dark?: string;
   readonly pages: readonly ShowcasePage[];
 }
 
@@ -52,7 +55,7 @@ export const SHOWCASES: readonly Showcase[] = [
   { key: "shooter", pack: "tactical", pages: [page("shooterHud", "hud"), page("shooterScore", "scoreboard"), page("loadout", "loadout"), page("lobby", "lobby")] },
   { key: "puzzle", pack: "cartoon", pages: [page("board", "board"), page("saga", "saga"), page("store", "store")] },
   { key: "management", pack: "craft", pages: [page("manageHud", "hud"), page("generators", "generators"), page("ledger", "ledger"), page("cityMap", "cityMap")] },
-  { key: "racing", pack: "cyber", pages: [page("raceHud", "hud"), page("garage", "garage"), page("raceBoard", "leaderboard"), page("sportsHud", "sportsHud"), page("matchFacts", "matchFacts")] },
+  { key: "racing", pack: "scifi", light: "cartoon", dark: "broadcast", pages: [page("raceHud", "hud"), page("raceResults", "results"), page("garage", "garage"), page("raceBoard", "leaderboard"), page("sportsHud", "sportsHud"), page("matchFacts", "matchFacts")] },
   { key: "moba", pack: "fantasy", pages: [page("mobaHud", "hud"), page("draft", "draft")] },
   { key: "rpg", pack: "fantasy", pages: [page("rpgHud", "hud"), page("gear", "gear"), page("quests", "quests"), page("dialogue", "dialogue")] },
   { key: "mmo", pack: "fantasy", pages: [page("mmoHud", "hud"), page("chat", "chat")] },
@@ -70,7 +73,7 @@ export const SHOWCASES: readonly Showcase[] = [
 /** The screens this file builds (HUDs and mounted documents), in the order SCREENS lists them. */
 export const SHOWCASE_SCREENS = [
   "actionTitle", "actionHud", "actionPause", "actionTutorial", "actionLoading", "actionResults",
-  "shooterHud", "shooterScore", "manageHud", "raceHud", "raceBoard", "sportsHud", "matchFacts",
+  "shooterHud", "shooterScore", "manageHud", "raceHud", "raceResults", "raceBoard", "sportsHud", "matchFacts",
   "mobaHud", "rpgHud", "mmoHud", "rogueHud", "tdHud", "rhythmHud", "fightHud", "survivalHud", "horrorHud", "openHud",
 ] as const;
 
@@ -119,6 +122,8 @@ function docsOf(screen: string): Doc[] {
       return ["results"];
     case "shooterScore":
       return ["scoreboard"];
+    case "raceResults":
+      return ["results"];
     case "raceBoard":
       return ["leaderboard"];
     default:
@@ -155,6 +160,25 @@ function doc(name: Doc, vm: Record<string, unknown>, on: (event: string) => void
   for (const e of r.events) if (e.kind === "emit") on(e.name);
 }
 
+/**
+ * Draw a texture in a document's slot (a full path, or `<mount>/<slot>`).
+ * The kit's documents take their art this way, never through a viewmodel
+ * number: og-ui reads a bound number as an f32 (crates/og-ui/src/doc/build.rs,
+ * `coerce`), which rounds a texture handle (1 << 32 | index) to index 0,
+ * the first texture loaded, so a bound handle draws the wrong image.
+ */
+function artIn(slot: string, texture: unknown, kind: string, focal = { x: 0.5, y: 0.5 }): void {
+  if (!texture || !og.ui.openSlot(slot)) return;
+  og.ui.artSlot("Art", { texture: texture as never, kind, fit: "cover", focal, width: grow, height: grow, label: "" });
+  og.ui.close();
+}
+
+/** Each reward's art in its Icon slot of the results document (the rewards of its viewmodel). */
+function rewardArt(vm: Record<string, unknown>): void {
+  const rewards = (vm["rewards"] ?? []) as ReadonlyArray<{ texture?: unknown }>;
+  rewards.forEach((r, i) => artIn(`results/Results/Panel/Page/Summary/Rewards/Reward#${i}/Icon`, r.texture, "itemIcon"));
+}
+
 /** The pages whose chrome a document's Kit slot takes (the menu and modal layers; the scoreboard is a HUD layer). */
 export function chromeInDocument(screen: string): boolean {
   return docsOf(screen).some((d) => d !== "scoreboard");
@@ -174,13 +198,14 @@ export function showcaseCommand(args: readonly string[]): boolean {
   if (args[0] === "reset") {
     sc = sc0();
     resetHuds();
+    resetRace();
     return true;
   }
   if (args[0] === "tutorial") {
     sc.tutorialStep = Math.max(1, Math.min(5, Number(args[1] ?? 1)));
     return true;
   }
-  return hudCommand(args[0] ?? "", args[1] ?? "", args[2] ?? "");
+  return raceCommand(args) || hudCommand(args[0] ?? "", args[1] ?? "", args[2] ?? "");
 }
 
 /**
@@ -193,11 +218,13 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
   switch (screen) {
     case "actionTitle":
       // The title over the game's key art: the menu's events lead into the showcase.
-      doc("main-menu", { canContinue: true, saveLine: L("sc.action.save"), version: "1.0.0", news: L("sc.action.news"), keyArt: hudArt("scenes/title") ?? 0 }, (e) => {
+      doc("main-menu", { canContinue: true, saveLine: L("sc.action.save"), version: "1.0.0", news: L("sc.action.news") }, (e) => {
         if (e === "continue" || e === "newGame") go("actionLoading");
         if (e === "settings") go("settingsTree");
         if (e === "quit" || e === "credits" || e === "modes") go("gallery");
       });
+      // The figure and the ruin on the end side, the dark sky and cliff on the start side under the menu.
+      artIn("main-menu/Background", hudArt("scenes/title"), "keyArt", { x: 0.66, y: 0.45 });
       return true;
     case "actionHud":
       // A HUD is played with the game's actions, not by moving a focus (og.ui.setNavigation in actionHud); Back pauses.
@@ -232,21 +259,27 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       const t = og.ui.tick();
       if (sc.loadingFrom === 0) sc.loadingFrom = t;
       const progress = Math.min(1, (t - sc.loadingFrom) / 240);
-      doc("loading", { place: L("sc.action.place"), tip: L("sc.action.tip"), progress, ready: progress >= 1, waits: true, keyArt: hudArt("scenes/genre-action") ?? 0 }, (e) => {
+      doc("loading", { place: L("sc.action.place"), tip: L("sc.action.tip"), progress, ready: progress >= 1, waits: true }, (e) => {
         if (e === "continue") go("actionHud");
       });
+      artIn("loading/Background", hudArt("scenes/genre-action"), "keyArt", { x: 0.45, y: 0.55 });
       return true;
     }
-    case "actionResults":
-      doc("results", {
+    case "actionResults": {
+      // Over the cleared stage's scene: the grade leads.
+      const vm = {
         won: true, grade: "A", title: L("sc.action.clear"), tab: sc.resultsTab, level: 12, xp: 0.64, gained: 1240,
         stats: [{ name: L("sc.stat.score"), value: 48210, best: true }, { name: L("sc.stat.coins"), value: 86, best: false }, { name: L("sc.stat.time"), value: 102, best: false }],
-        rewards: [{ name: L("sc.reward.gold"), amount: 320, texture: hudArt("boons/gold") ?? 0 }, { name: L("sc.reward.crystal"), amount: 4, texture: hudArt("boons/crystal") ?? 0 }],
-      }, (e) => {
+        rewards: [{ name: L("sc.reward.gold"), amount: 320, texture: hudArt("boons/gold") }, { name: L("sc.reward.crystal"), amount: 4, texture: hudArt("boons/crystal") }],
+      };
+      doc("results", vm, (e) => {
         if (e === "continue") go("actionTitle");
         if (e === "again" || e === "replay") go("actionHud");
       });
+      artIn("results/Background", hudArt("scenes/genre-action"), "keyArt", { x: 0.45, y: 0.55 });
+      rewardArt(vm);
       return true;
+    }
     case "shooterHud":
       shooterHud(world);
       if (og.ui.back()) go("gallery");
@@ -265,16 +298,30 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       raceHud(world);
       if (og.ui.back()) go("gallery");
       return true;
-    case "raceBoard":
+    case "raceResults": {
+      // After the finish: the race's results over its scene, the HUD gone.
+      const vm = raceResultsViewmodel();
+      doc("results", vm, (e) => {
+        if (e === "continue") go("raceBoard");
+        if (e === "again" || e === "replay") go("raceHud");
+      });
+      rewardArt(vm);
+      return true;
+    }
+    case "raceBoard": {
+      // Over the track's scene; each racer's portrait in the row's Avatar slot.
+      const rows = [["Nyx", 61_234], ["Ferro", 61_891], ["Lumen", 62_040], ["Quill", 62_455], ["Sable", 62_910], ["Orrin", 63_118]].map(([name, ms], i) => ({ rank: i + 1, name, score: ms, you: false }));
       doc("leaderboard", {
-        tab: sc.boardTab, period: L("sc.race.week"), selected: -1,
-        rows: [["Nyx", 61_234], ["Ferro", 61_891], ["Lumen", 62_040], ["Quill", 62_455], ["Sable", 62_910], ["Orrin", 63_118]].map(([name, ms], i) => ({ rank: i + 1, name, score: ms, you: false, texture: hudArt(AVATARS[i % AVATARS.length]!) ?? 0 })),
+        tab: sc.boardTab, period: L("sc.race.week"), selected: -1, rows,
         me: { rank: 1284, name: L("sc.you"), score: 66_002 },
         league: { name: L("sc.race.league"), promote: 10, demote: 25, ends: 259200 },
       }, (e) => {
         if (e === "close") go("gallery");
       });
+      artIn("leaderboard/Background", hudArt("scenes/genre-racing"), "keyArt", { x: 0.5, y: 0.6 });
+      rows.forEach((_, i) => artIn(`leaderboard/Screen/Body/List/Row#${i}/Avatar`, hudArt(AVATARS[i % AVATARS.length]!), "emblem"));
       return true;
+    }
     case "sportsHud":
       sportsHud(world);
       if (og.ui.back()) go("gallery");
@@ -296,13 +343,15 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
 const HUDS2 = { mobaHud, rpgHud, mmoHud, rogueHud, tdHud, rhythmHud, fightHud, survivalHud, horrorHud, openHud } as const;
 
 /**
- * Where a HUD page leaves the kit's chrome, desktop then phone: a spot its
- * HUD keeps free (the middle of the start edge on most; the racing HUD's
- * standings take that on a desktop). Document pages take it in their Kit slot.
+ * Where a HUD page leaves the kit's chrome, desktop then phone (and a phone
+ * in landscape, when it differs): a spot its HUD keeps free (the middle of
+ * the start edge on most; the racing HUD's place and standings take that, so
+ * its chrome sits bottom start, or top centre on a phone in landscape).
+ * Document pages take it in their Kit slot.
  */
-const CHROME: Record<string, [Anchor, Anchor]> = {
+const CHROME: Record<string, [desktop: Anchor, phone: Anchor, phoneLandscape?: Anchor]> = {
   actionHud: ["left", "left"], shooterHud: ["left", "left"], shooterScore: ["left", "left"], manageHud: ["left", "left"],
-  raceHud: ["bottom", "left"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
+  raceHud: ["bottomLeft", "left", "top"], sportsHud: ["left", "left"], matchFacts: ["bottomLeft", "bottom"],
   mobaHud: ["left", "left"], rpgHud: ["left", "left"], mmoHud: ["bottomLeft", "left"], rogueHud: ["left", "left"], tdHud: ["left", "left"],
   rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left"], horrorHud: ["left", "left"], openHud: ["left", "left"],
 };
@@ -312,7 +361,7 @@ export function chromeAnchor(screen: string): Anchor | null {
   const c = CHROME[screen];
   if (!c) return null;
   const bp = og.ui.frameViewport().breakpoint;
-  return bp === "phonePortrait" || bp === "phoneLandscape" ? c[1] : c[0];
+  return bp === "phoneLandscape" ? (c[2] ?? c[1]) : bp === "phonePortrait" ? c[1] : c[0];
 }
 
 /**

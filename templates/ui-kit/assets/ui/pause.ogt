@@ -5,8 +5,10 @@ version 1
 # which pauses while it is up: Resume, Settings, Controls, Save, Load,
 # Quit to the menu and Quit the game, with the run's objective and time.
 #
-# The kit's copy (og ui eject): a Kit slot in the top end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page).
+# The kit's copy (og ui eject): a Kit slot in the bottom end corner takes
+# the kit's own chrome (the Gallery and the showcase's next page), clear
+# of the HUD's top corners; a 45 % scrim over the game holds the panel
+# off the scene whatever the scene's light.
 #
 # Viewmodel: objective, played (seconds), canSave. Events to code: resume
 # (also Back), settings, controls, save, load, quitToMenu, quit (code asks
@@ -37,6 +39,17 @@ row Pause {
   cross center
   at phone {
     padding 16
+  }
+  column Scrim {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background "#000000"
+    opacity 0.45
   }
   column Panel {
     width grow 0 400
@@ -137,10 +150,10 @@ row Pause {
   slot Kit {
     position absolute
     end 16
-    top 16
+    bottom 16
     at phone {
       end 8
-      top 8
+      bottom 42
     }
   }
 }
