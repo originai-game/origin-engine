@@ -21729,8 +21729,9 @@ export type AdKind = "rewarded" | "interstitial";
  * - `"purchase"`: A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`.
  * - `"entitlements"`: The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape.
  * - `"invite"`: An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`.
+ * - `"host"`: A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between the game and that page. The engine gives it no meaning of its own; a game reading it handles an unknown name by ignoring it.
  */
-export type PlatformNoticeKind = "purchase" | "entitlements" | "invite";
+export type PlatformNoticeKind = "purchase" | "entitlements" | "invite" | "host";
 
 /**
  * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.

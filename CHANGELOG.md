@@ -15,6 +15,13 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Added: `og.PlatformNoticeKind.host`, a message from the framing page.**
+  A Player sends `platform` `{ notice: { kind: "host", data: { name, ...
+  } } }` and the game reads it as og.PlatformNotice at the next tick's
+  start, like a purchase or an invite notice. The engine gives it no
+  meaning; the game and the page that frames it agree on the names
+  (engine.origingame.ai's hero preloads and switches scenes with it). A
+  publish build has no other page-to-game channel.
 - **Added: `og.Buoyancy`, floating bodies on water (R5).** A component
   beside og.RigidBody and og.Collider (`waterDensity`, `samples`, `drag`,
   `angularDrag`, written `submerged`): the body's colliders voxelised into

@@ -27130,7 +27130,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 worldspace: "",
                 label: "",
                 doc: doc!("What it is about."),
-                variants: &["purchase", "entitlements", "invite"],
+                variants: &["purchase", "entitlements", "invite", "host"],
                 capacity: 0,
                 list: 0,
             },

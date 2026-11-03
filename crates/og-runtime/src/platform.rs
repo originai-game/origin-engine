@@ -70,7 +70,7 @@ const ANSWERED: &str = "og.PlatformAnswered";
 /// The notices kept for og.platform.notice.
 const KEEP_NOTICES: usize = 256;
 /// What a notice may be about.
-const NOTICE_KINDS: &[&str] = &["purchase", "entitlements", "invite"];
+const NOTICE_KINDS: &[&str] = &["purchase", "entitlements", "invite", "host"];
 
 /// Whether `event` is og.platform's own: an answer or a notice, which a
 /// system that writes shared state in a lockstep session never hears
@@ -1498,6 +1498,21 @@ mod tests {
             bad["reason"].as_str().unwrap().contains("at most 8"),
             "{bad}"
         );
+    }
+
+    #[test]
+    fn a_host_notice_from_the_framing_page_passes_through_unread() {
+        let e = engine_at_60();
+        host(e, 1.0, "fixed");
+        let data = json!({ "name": "hero.show", "scene": "lantern-shrine" });
+        assert!(og_platform_notify(
+            e,
+            json!({ "kind": "host", "data": data }).to_string()
+        ));
+        advance(e, 1);
+        let n: Value = serde_json::from_str(&og_platform_notice(e, 1)).unwrap();
+        assert_eq!(n["kind"], json!("host"), "{n}");
+        assert_eq!(n["data"], data, "{n}");
     }
 
     #[test]

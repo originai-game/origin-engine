@@ -840,7 +840,7 @@ messages the shell now sends and hears:
 
 | Player → shell | What |
 |---|---|
-| `platform` `{ notice: { kind, data, time? } }` | unasked input (`purchase`, `entitlements`, `invite`): forwarded to the Worker as `platform-notice`, applied at the next tick's start as og.PlatformNotice |
+| `platform` `{ notice: { kind, data, time? } }` | unasked input (`purchase`, `entitlements`, `invite`, or `host`: a message from the framing page, `{ name, ... }`, whose meaning the game and that page agree): forwarded to the Worker as `platform-notice`, applied at the next tick's start as og.PlatformNotice |
 
 The answers reach og.platform renamed only where its shape differs: a
 leaderboard's `sort` is og.platform's `order`, and `top` its `entries`.
