@@ -2,5 +2,5 @@
 // (scripts/live.ts builds them with `og build --publish`). null until the
 // scene exists: the hero then shows its recording or its captured frame.
 export const live: { ocean: string | null } = {
-  ocean: null,
+  ocean: "/live/ocean/",
 };
