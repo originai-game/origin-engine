@@ -66,10 +66,13 @@ struct BatchRow {
 @group(0) @binding(2) var<storage, read> views: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> batches: array<BatchRow>;
 // Per mesh slot 10 x vec4: its sphere, (levels, its first vertex in the
-// vertex pool, 0, 0), then per level
+// vertex pool, a foliage mesh's deformation bound as bits (meshlet_gpu.rs:
+// this frame's wind and the last drawn's, at sway 1; 0 for any other), 0),
+// then per level
 // (first cluster, clusters, error as bits, 0).
 @group(0) @binding(4) var<storage, read> meshes: array<vec4<u32>>;
-// Per cluster 3 x vec4: (first index, triangles, level, 0), sphere, cone.
+// Per cluster 3 x vec4: (first index, triangles, level, its foliage region
+// plus one: meshlet_sway.wgsl), sphere, cone.
 @group(0) @binding(5) var<storage, read> clusters: array<vec4<u32>>;
 @group(0) @binding(6) var<storage, read_write> items: array<vec2<u32>>;
 // Per batch a draw: (vertices, instances, first vertex, first instance).
@@ -177,6 +180,12 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   let sphere = bitcast<vec4<f32>>(meshes[mesh]);
   let center = (m * vec4<f32>(sphere.xyz, 1.0)).xyz;
   let radius = sphere.w * scale;
+  // A swaying mesh's spheres widen by how far its vertices can move (the
+  // sway decoded as meshlet_foliage.wgsl `foliage_sway`): its
+  // bound at sway 1 times the instance's sway (the bound grows less than
+  // in proportion, so at least 1 is conservative), in the world.
+  let sway = instances[instance * 4u + 3u].x;
+  let grow = bitcast<f32>(meshes[mesh + 1u].z) * max(1.0, max(select(-sway - 1.0, sway, sway >= 0.0), 0.0)) * scale;
   let view = row.b.z;
   let seen = views[view * VIEW_ROWS + VIEW_PLANES];
   let eye = seen.xyz;
@@ -208,16 +217,17 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   // The late phase is the camera's.
   if (phase == 2u && view != 0u) { return; }
   let occlusion = phase == 2u;
-  if (outside(view, center, radius) || (occlusion && occluded(center, radius))) { return; }
+  if (outside(view, center, radius + grow) || (occlusion && occluded(center, radius + grow))) { return; }
   // The instance's cluster slots.
   let slots = row.a.w + local * row.b.w;
   let lv = meshes[mesh + 2u + level];
-  let cone = (row.b.y & 1u) != 0u && even && perspective;
+  // A swaying mesh's triangles turn: its cones do not hold.
+  let cone = (row.b.y & 1u) != 0u && even && perspective && grow <= 0.0;
   for (var i = li; i < lv.y; i += WG) {
     let ci = lv.x + i;
     let s = bitcast<vec4<f32>>(clusters[ci * 3u + 1u]);
     let wc = (m * vec4<f32>(s.xyz, 1.0)).xyz;
-    let wr = s.w * scale;
+    let wr = s.w * scale + grow;
     if (outside(view, wc, wr)) { continue; }
     if (cone) {
       // meshlet.rs `backfacing`.

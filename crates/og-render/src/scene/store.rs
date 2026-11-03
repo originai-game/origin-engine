@@ -16,6 +16,7 @@ impl RenderScene {
             mesh_revisions: Vec::new(),
             mesh_encodings: Vec::new(),
             mesh_clusters: Vec::new(),
+            mesh_foliage: Vec::new(),
             textures: Vec::new(),
             texture_revisions: Vec::new(),
             materials: Vec::new(),
@@ -861,6 +862,7 @@ impl RenderScene {
             self.mesh_revisions[i] += 1;
             self.mesh_encodings[i] = VertexEncoding::Full;
             self.mesh_clusters[i] = None;
+            self.mesh_foliage[i] = None;
         } else {
             self.meshes.push(mesh);
             self.skins.push(None);
@@ -868,6 +870,7 @@ impl RenderScene {
             self.mesh_revisions.push(0);
             self.mesh_encodings.push(VertexEncoding::Full);
             self.mesh_clusters.push(None);
+            self.mesh_foliage.push(None);
         }
         MeshHandle::from_parts(i, generation)
     }
@@ -888,6 +891,7 @@ impl RenderScene {
         self.meshes[i] = MeshData::default();
         self.mesh_revisions[i] += 1;
         self.mesh_clusters[i] = None;
+        self.mesh_foliage[i] = None;
         self.mesh_slots.remove(i, reuse);
         true
     }
@@ -910,8 +914,9 @@ impl RenderScene {
         }
         self.meshes[i] = mesh;
         self.mesh_revisions[i] += 1;
-        // Its clusters described the old indices.
+        // Its clusters described the old indices, its foliage the old vertices.
         self.mesh_clusters[i] = None;
+        self.mesh_foliage[i] = None;
         true
     }
 
@@ -954,6 +959,47 @@ impl RenderScene {
         self.contains_mesh(handle)
             .then(|| self.mesh_clusters[handle.index()].as_deref())
             .flatten()
+    }
+
+    /// Gives a clustered mesh its foliage deformation
+    /// ([`crate::meshlet::MeshFoliage`]: each vertex's branch pivot and leaf
+    /// anchor), or takes it away with `None`: on the meshlet path its
+    /// vertices then sway in [`RenderScene::wind`]. Refused (false) for a
+    /// bad handle, a skinned or morphed mesh, or foliage that does not
+    /// describe its vertices ([`crate::meshlet::MeshFoliage::validate`]).
+    /// [`RenderScene::set_mesh`] drops it.
+    pub fn set_mesh_foliage(
+        &mut self,
+        handle: MeshHandle,
+        foliage: Option<crate::meshlet::MeshFoliage>,
+    ) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation())
+            || self.skins[i].is_some()
+            || self.morphs[i].is_some()
+        {
+            return false;
+        }
+        if let Some(f) = &foliage
+            && f.validate(self.meshes[i].vertices.len()).is_err()
+        {
+            return false;
+        }
+        self.mesh_foliage[i] = foliage.map(std::sync::Arc::new);
+        true
+    }
+
+    /// A mesh's foliage ([`RenderScene::set_mesh_foliage`]).
+    pub fn mesh_foliage(&self, handle: MeshHandle) -> Option<&crate::meshlet::MeshFoliage> {
+        self.contains_mesh(handle)
+            .then(|| self.mesh_foliage[handle.index()].as_deref())
+            .flatten()
+    }
+
+    pub(crate) fn mesh_foliage_all(
+        &self,
+    ) -> &[Option<std::sync::Arc<crate::meshlet::MeshFoliage>>] {
+        &self.mesh_foliage
     }
 
     pub(crate) fn mesh_clusters_all(
@@ -1232,6 +1278,7 @@ impl RenderScene {
             fx: InstanceFx::NONE,
             cast_shadows: true,
             receive_shadows: true,
+            sway: 0.0,
         });
     }
 

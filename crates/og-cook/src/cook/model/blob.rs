@@ -224,6 +224,8 @@ pub fn cook(
     let mut vertices: Vec<u8> = Vec::new();
     let mut indices: Vec<u8> = Vec::new();
     let mut cluster_indices: Vec<u8> = Vec::new();
+    let mut foliage_rows: Vec<FoliageRow> = Vec::new();
+    let mut foliage: Vec<u8> = Vec::new();
     let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
     let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
@@ -291,6 +293,24 @@ pub fn cook(
                         ..*l
                     }));
                     clusters.extend_from_slice(&c.clusters);
+                    if let Some((f, leaves)) = c.foliage.take() {
+                        let stream = super::primitive::encode_vertices(
+                            bytemuck::cast_slice(&f),
+                            f.len(),
+                            32,
+                        )
+                        .map_err(|e| CookError(format!("{what}: foliage: {e}")))?;
+                        while !foliage.len().is_multiple_of(4) {
+                            foliage.push(0);
+                        }
+                        foliage_rows.push(FoliageRow {
+                            primitive: prims.len() as u32,
+                            stream_offset: foliage.len() as u32,
+                            stream_size: stream.len() as u32,
+                            flags: leaves as u32,
+                        });
+                        foliage.extend_from_slice(&stream);
+                    }
                     changes.extend(c.conformed.take());
                     hulls.extend((c.hull.len() as u32).to_le_bytes());
                     hulls.extend(c.hull.iter().flatten().flat_map(|x| x.to_le_bytes()));
@@ -518,6 +538,10 @@ pub fn cook(
             row_hash::<VariantMappingRow>(),
         )
         .table("impostors", &impostors, row_hash::<ImpostorRow>());
+    if !foliage_rows.is_empty() {
+        w.table("foliage_rows", &foliage_rows, row_hash::<FoliageRow>())
+            .raw("foliage", foliage, 16);
+    }
     // The art contract's outline hull (`conform::mesh` gives the layout).
     if let Some(c) = &opts.conform
         && let Some(l) = &c.line

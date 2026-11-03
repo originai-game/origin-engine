@@ -6,10 +6,7 @@
 // cluster pool's indices and the mesh's own f32 vertices (vertex pulling).
 // A corner past the cluster's triangles is degenerate (w 0: clipped).
 
-struct MeshletDraw {
-  // x: 1 colours each instance by its level (RenderScene::lod_debug).
-  flags: vec4<u32>,
-};
+// meshlet_sway.wgsl's `MeshletDraw`.
 @group(3) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
 // The culled instances' transforms (instances.rs `GpuTransform`, 4 x vec4).
 @group(3) @binding(9) var<storage, read> meshlet_instances: array<vec4<f32>>;
@@ -23,6 +20,8 @@ struct MeshletDraw {
 // The instances' previous transforms, at the same slots (the current ones
 // without object motion).
 @group(3) @binding(14) var<storage, read> meshlet_previous: array<vec4<f32>>;
+// The vertex pool, read for its foliage regions (meshlet_sway.wgsl).
+@group(3) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
 
 struct MeshletVertex {
   ok: bool,
@@ -31,7 +30,18 @@ struct MeshletVertex {
   look: vec4<f32>,
   // The instance's sorted slot.
   slot: u32,
+  // Its foliage region plus one (0: none) and the vertex's own index.
+  region: u32,
+  index: u32,
+  // Where the vertex rests (the swayed position is v.position).
+  rest: vec3<f32>,
 };
+
+// The vertex's foliage rows (meshlet_sway.wgsl).
+fn meshlet_rows(region: u32, index: u32) -> array<vec4<f32>, 3> {
+  let at = meshlet_sway_row(region, index);
+  return array<vec4<f32>, 3>(meshlet_foliage[region - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u]);
+}
 
 fn meshlet_transform(t0: vec4<f32>, t1: vec4<f32>, t2: vec4<f32>) -> mat4x4<f32> {
   return instance_matrix(t0.xyz, vec3<f32>(t0.w, t1.xy), vec3<f32>(t1.zw, t2.x), t2.yzw);
@@ -70,6 +80,13 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
   r.model = meshlet_transform(t0, t1, t2);
   r.slot = item.x;
   r.look = meshlet_instances[item.x * 4u + 3u];
+  r.region = c.w;
+  r.index = index;
+  r.rest = r.v.position;
+  if (c.w != 0u) {
+    let f = meshlet_rows(c.w, index);
+    r.v.position += meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x));
+  }
   if (meshlet_draw.flags.x != 0u) {
     r.look.y = 0.8;
     r.look.z = meshlet_level_color(c.z);
@@ -85,7 +102,14 @@ fn vs_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
     o.clip = vec4<f32>(0.0);
     return o;
   }
-  var o = lit_vertex(p.model, p.v);
+  var v = p.v;
+  if (p.region != 0u) {
+    // The leaves' canopy dome (the material's foliage, coat.w), on the lit
+    // pass alone: the shadow casters and the prepass keep the mesh's own.
+    let f = meshlet_rows(p.region, p.index);
+    v.normal = foliage_normal(v.normal, f[2].xyz, f[0].xyz, material.coat.w);
+  }
+  var o = lit_vertex(p.model, v);
   o.look = p.look;
   return o;
 }
@@ -101,7 +125,14 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
   // Last frame's transform for the velocity (TAA, motion blur).
   let q = p.slot * 4u;
   let prev = meshlet_transform(meshlet_previous[q], meshlet_previous[q + 1u], meshlet_previous[q + 2u]);
-  return prepass_vertex(p.model, prev, p.v);
+  // A foliage vertex was where the last drawn frame's wind and sway (the
+  // previous record's layer word) put it.
+  var before = p.rest;
+  if (p.region != 0u) {
+    let f = meshlet_rows(p.region, p.index);
+    before += meshlet_sway(p.rest, f[0], f[1], f[2], prev, meshlet_draw.wind[1], foliage_sway(meshlet_previous[q + 3u].x));
+  }
+  return prepass_vertex_from(p.model, prev, p.v, before);
 }
 
 // The visibility buffer's resolve (meshlet_raster.wgsl): one full-screen
@@ -145,7 +176,7 @@ struct MeshletRecord {
   prev_world: vec3<f32>,
   object: u32,
   // The lit pass's uv gradients: pbr.wgsl `stylised_uv`'s (affine
-  // texturing's mix), the raw uv's without the stylised rows.
+  // texturing's mix), the raw uv's without the extra rows.
   lit_uv: vec4<f32>,
 };
 
@@ -187,7 +218,7 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   analytic_dy = bitcast<vec3<f32>>(meshlet_attrs[at + 7u].xyz);
   r.lit_uv = analytic_uv;
   if (meshlet_screen.w > 8u) {
-    // The stylised rows (meshlet_raster.wgsl `setup`).
+    // The extra rows (meshlet_raster.wgsl `setup`).
     let lx = bitcast<vec4<f32>>(meshlet_attrs[at + 8u]);
     let ly = bitcast<vec4<f32>>(meshlet_attrs[at + 9u]);
     analytic_local_dx = lx.xyz;
@@ -195,6 +226,12 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
     // Affine texturing's uv, which `stylised_uv` mixes in.
     r.v.affine = vec3<f32>(lx.w, ly.w, 1.0);
     r.lit_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 10u]);
+    // A foliage mesh's canopy dome, by its material's foliage (coat.w),
+    // as `vs_meshlet` blends it per vertex.
+    let d = meshlet_attrs[at + 11u];
+    if (d.y != 0u && material.coat.w > 0.0) {
+      r.v.normal = normalize(mix(normalize(r.v.normal), meshlet_oct(unpack2x16snorm(d.x)), clamp(material.coat.w, 0.0, 1.0)));
+    }
   }
   r.object = c.w;
   return r;

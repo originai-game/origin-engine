@@ -42,6 +42,15 @@
 //!   specks or seams between a tree's compute and hardware clusters.
 //!   `far_scene(false)` draws it with every cluster by the hardware; the
 //!   two match.
+//! - `meshlet-sway` (foliage transport): the near tree given foliage (a
+//!   pivot at its root, stiffness 0.2, each vertex its own anchor) in a
+//!   strong wind blowing towards +x (screen right), seen from the side:
+//!   the crown leans right of its trunk's foot and its shadow leans with
+//!   it, the trunk's base stays where it was. `sway_scene(0.0, ..)` keeps
+//!   it still in the same wind and matches the tree with no foliage.
+//!   `sway_far_scene(vbuffer)`: the forest from above, every tree
+//!   swaying, through the visibility buffer and through the hardware;
+//!   the two match (the compute rasteriser sways what the hardware does).
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
@@ -239,5 +248,91 @@ pub fn far_scene(visibility_buffer: bool) -> Result<RenderScene, String> {
     scene.camera.position = Vec3::new(0.0, 40.0, 54.0);
     scene.camera.target = Vec3::new(0.0, 0.0, -50.0);
     scene.visibility_buffer = visibility_buffer;
+    Ok(scene)
+}
+
+/// Each part of the tree's foliage: one pivot at the root, bending
+/// easily, every vertex its own anchor without flutter (bark).
+fn give_foliage(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, Mat4)]) {
+    let top = parts
+        .iter()
+        .flat_map(|&(m, _, local)| {
+            let mesh = scene.mesh(m).expect("live").clone();
+            mesh.vertices
+                .iter()
+                .map(move |v| local.transform_point3(Vec3::from(v.position)).y)
+                .collect::<Vec<_>>()
+        })
+        .fold(0.0f32, f32::max);
+    let mut seen = std::collections::HashSet::new();
+    for &(m, _, _) in parts {
+        if !seen.insert(m) {
+            continue;
+        }
+        let vertices = scene
+            .mesh(m)
+            .expect("live")
+            .vertices
+            .iter()
+            .map(|v| og_render::foliage::FoliageVertex {
+                branch: [0.0, 0.0, 0.0, 0.2],
+                leaf: [v.position[0], v.position[1], v.position[2], 0.0],
+            })
+            .collect();
+        let f = og_render::meshlet::MeshFoliage {
+            vertices,
+            top,
+            canopy_center: Vec3::new(0.0, top * 0.7, 0.0),
+            leaves: false,
+        };
+        assert!(scene.set_mesh_foliage(m, Some(f)), "foliage refused");
+    }
+}
+
+/// The strong wind `meshlet-sway` blows (towards +x), at a tick past 0.
+fn windy(scene: &mut RenderScene) {
+    scene.wind = Some(og_render::Wind {
+        strength: 0.5,
+        direction: Vec3::X,
+        speed: 3.0,
+        gust: 0.3,
+    });
+    scene.tick = 90;
+    scene.tick_rate = 60.0;
+}
+
+/// `meshlet-sway` (module docs): the near tree seen from the side, its
+/// instances swaying by `sway`; without `foliage` the tree has none.
+pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
+    let (mut scene, parts) = base()?;
+    let at = Mat4::from_translation(Vec3::new(0.0, 0.0, -7.0));
+    for &(mesh, material, local) in &parts {
+        scene.add_instance(mesh, material, at * local);
+        scene.instances.last_mut().expect("added").sway = sway;
+    }
+    if foliage {
+        give_foliage(&mut scene, &parts);
+    }
+    windy(&mut scene);
+    scene.camera.position = Vec3::new(0.0, 2.0, 0.0);
+    scene.camera.target = Vec3::new(0.0, 2.0, -7.0);
+    Ok(scene)
+}
+
+/// `sway_far_scene` (module docs): `meshlet-far` with every tree swaying,
+/// its small clusters through the visibility buffer when `vbuffer`.
+pub fn sway_far_scene(vbuffer: bool) -> Result<RenderScene, String> {
+    let mut scene = far_scene(vbuffer)?;
+    let parts: Parts = scene
+        .instances
+        .iter()
+        .filter(|i| scene.mesh_clusters(i.mesh).is_some())
+        .map(|i| (i.mesh, i.material, Mat4::IDENTITY))
+        .collect();
+    give_foliage(&mut scene, &parts);
+    for i in &mut scene.instances {
+        i.sway = 1.0;
+    }
+    windy(&mut scene);
     Ok(scene)
 }

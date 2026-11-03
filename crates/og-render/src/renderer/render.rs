@@ -1400,6 +1400,11 @@ impl Renderer {
             debug_assert!(cull_passes.len() <= max_passes);
             // The sorted instances' previous transforms (as the CPU path's
             // below), compacted with the camera pass's.
+            let previous_sway = if self.previous_sway.len() == scene.instances.len() {
+                self.previous_sway.as_slice()
+            } else {
+                &[]
+            };
             let previous_sorted: Option<Vec<instances::GpuTransform>> = object_motion.then(|| {
                 let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
                 origins[..sorted as usize]
@@ -1413,7 +1418,13 @@ impl Renderer {
                             inst.mesh.index(),
                             inst.material.index(),
                         );
-                        instances::gpu_transform(&d.map_or(p, |d| p * d))
+                        let mut t = instances::gpu_transform(&d.map_or(p, |d| p * d));
+                        // The meshlet path's foliage sways from the last
+                        // drawn frame's sway (meshlet_sway.wgsl); the
+                        // layer word is not read from these otherwise.
+                        let sway = previous_sway.get(i).copied().unwrap_or(inst.sway);
+                        t.layer = instances::layer_bits(sway.max(0.0), inst.receive_shadows);
+                        t
                     })
                     .collect()
             });
@@ -1489,6 +1500,7 @@ impl Renderer {
                     (self.width, self.height),
                     previous,
                     &levels,
+                    crate::foliage::foliage_winds(scene, self.previous_wind),
                     |mesh| &meshes[mesh].vertices,
                     |b| materials[b.material].occluder,
                 ));
@@ -3929,6 +3941,9 @@ impl Renderer {
             strength: 0.0,
             ..Wind::default()
         });
+        self.previous_sway.clear();
+        self.previous_sway
+            .extend(scene.instances.iter().map(|i| i.sway));
         self.previous_wind = Some((wind, scene.tick, scene.tick_rate));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not

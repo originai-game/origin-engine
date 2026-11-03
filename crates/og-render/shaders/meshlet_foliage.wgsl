@@ -87,3 +87,10 @@ fn foliage_seed(world_root: vec3f) -> u32 {
   }
   return h ^ (h >> 16u);
 }
+
+// An instance's sway from its record's layer word (instances.rs
+// `layer_bits`: the receive-shadows flag folded into the sign; a run
+// without array maps carries `Instance::sway` there). 0: still.
+fn foliage_sway(layer: f32) -> f32 {
+  return max(select(-layer - 1.0, layer, layer >= 0.0), 0.0);
+}

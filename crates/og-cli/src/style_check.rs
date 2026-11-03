@@ -1379,6 +1379,7 @@ mod tests {
                 max: glam::Vec3::ONE,
                 bvh_parts: None,
                 collider: None,
+                foliage: None,
             }],
             meshes: vec![CookedMesh {
                 name: "m".into(),

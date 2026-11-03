@@ -475,6 +475,9 @@ pub struct Renderer {
     previous_time: Option<f32>,
     /// The last drawn wind, tick and tick rate, including paused frames.
     previous_wind: Option<(Wind, u64, f32)>,
+    /// Each instance's sway at the last drawn frame, by instance index
+    /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
+    previous_sway: Vec<f32>,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

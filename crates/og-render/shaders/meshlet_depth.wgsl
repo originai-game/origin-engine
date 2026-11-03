@@ -13,6 +13,10 @@ struct DepthView {
 @group(1) @binding(11) var<storage, read> meshlet_clusters: array<vec4<u32>>;
 @group(1) @binding(12) var<storage, read> meshlet_indices: array<u32>;
 @group(1) @binding(13) var<storage, read> meshlet_vertices: array<vec4<f32>>;
+// meshlet_sway.wgsl's `MeshletDraw`, and the vertex pool for its foliage
+// regions.
+@group(1) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
+@group(1) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
 
 @vertex
 fn vs_depth(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> @builtin(position) vec4<f32> {
@@ -25,6 +29,12 @@ fn vs_depth(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let t1 = meshlet_instances[item.x * 4u + 1u];
   let t2 = meshlet_instances[item.x * 4u + 2u];
   let model = instance_matrix(t0.xyz, vec3<f32>(t0.w, t1.xy), vec3<f32>(t1.zw, t2.x), t2.yzw);
-  let world = model * vec4<f32>(meshlet_vertices[index * 4u].xyz, 1.0);
+  var position = meshlet_vertices[index * 4u].xyz;
+  if (c.w != 0u) {
+    let at = meshlet_sway_row(c.w, index);
+    let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
+    position += meshlet_sway(position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], model, meshlet_draw.wind[0], sway);
+  }
+  let world = model * vec4<f32>(position, 1.0);
   return mul_point(depth_view.view_proj, world);
 }

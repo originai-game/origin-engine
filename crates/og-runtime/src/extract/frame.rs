@@ -429,6 +429,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 fx: look.fx,
                 cast_shadows: look.cast,
                 receive_shadows: look.receive,
+                sway: 0.0,
             });
             keys.push((e, k as u32));
         }
@@ -464,6 +465,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 },
                 cast_shadows: r.cast,
                 receive_shadows: r.receive,
+                sway: 0.0,
             });
             keys.push((e, 0));
         }

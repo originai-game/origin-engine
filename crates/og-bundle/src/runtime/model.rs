@@ -41,6 +41,11 @@ pub struct CookedPrimitive {
     /// (`model { collider true }`): og-physics' `bake_trimesh` bytes, for
     /// `PhysicsSystem::set_baked_trimesh`. `None`: none was baked.
     pub collider: Option<Vec<u8>>,
+    /// Its vertices' foliage (glTF `_OG_PIVOT`, `_OG_ANCHOR`), one per
+    /// vertex in [`Self::vertices`]' order, and whether its triangles are
+    /// leaf cards; `None` without. [`CookedModel::mesh_foliage`] makes it
+    /// og-render's.
+    pub foliage: Option<(Vec<og_render::foliage::FoliageVertex>, bool)>,
 }
 
 impl CookedPrimitive {
@@ -303,6 +308,13 @@ impl CookedModel {
         let mapping_rows = table::<VariantMappingRow>(blob, "variant_mappings")?;
         // Optional: a model cooked before impostors has no table.
         let impostor_rows = table::<ImpostorRow>(blob, "impostors").unwrap_or_default();
+        // Optional: only a model with foliage has them.
+        let foliage_rows = table::<FoliageRow>(blob, "foliage_rows").unwrap_or_default();
+        let foliage_bytes: &[u8] = if foliage_rows.is_empty() {
+            &[]
+        } else {
+            blob.raw("foliage")?
+        };
         let strings = blob.raw("strings")?;
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
@@ -481,7 +493,29 @@ impl CookedModel {
                     .collect();
                 Some((nodes, tris.to_vec()))
             };
+            let foliage = match foliage_rows.iter().find(|f| f.primitive as usize == i) {
+                None => None,
+                Some(f) => {
+                    let fb = &foliage_bytes[range(
+                        foliage_bytes,
+                        f.stream_offset,
+                        f.stream_size,
+                        "foliage stream",
+                    )?];
+                    let raw = meshopt_codec::decode_vertex_buffer(fb, p.vertex_count as usize, 32)
+                        .map_err(|e| bad(format!("primitive {i}: foliage: {e}")))?;
+                    let vertices = bytemuck::cast_slice::<u8, [f32; 8]>(&raw)
+                        .iter()
+                        .map(|v| og_render::foliage::FoliageVertex {
+                            branch: [v[0], v[1], v[2], v[3]],
+                            leaf: [v[4], v[5], v[6], v[7]],
+                        })
+                        .collect();
+                    Some((vertices, f.flags & 1 != 0))
+                }
+            };
             primitives.push(CookedPrimitive {
+                foliage,
                 bvh_parts,
                 collider: colliders.get(i).cloned().flatten(),
                 material: p.material as usize,
@@ -839,6 +873,41 @@ impl CookedModel {
             .collect()
     }
 
+    /// Primitive `i`'s foliage for [`RenderScene::set_mesh_foliage`] on
+    /// its mesh, `None` without: its vertices' pivots and anchors and what
+    /// the model's foliage shares, so its bark and leaves bend as one tree
+    /// (every foliage primitive in one space, the model's: its top is the
+    /// highest of their vertices, its canopy centre the centre of the box
+    /// of the leaf cards' anchors, of every anchor without leaf cards).
+    pub fn mesh_foliage(&self, i: usize) -> Option<og_render::meshlet::MeshFoliage> {
+        let (vertices, leaves) = self.primitives.get(i)?.foliage.as_ref()?;
+        let foliage = || {
+            self.primitives
+                .iter()
+                .filter_map(|p| Some((p, p.foliage.as_ref()?)))
+        };
+        let top = foliage()
+            .flat_map(|(p, _)| p.vertices.iter().map(|v| v.position[1]))
+            .fold(f32::MIN, f32::max);
+        let any_leaves = foliage().any(|(_, f)| f.1);
+        let (lo, hi) = foliage()
+            .filter(|(_, f)| f.1 || !any_leaves)
+            .flat_map(|(_, f)| {
+                f.0.iter()
+                    .map(|v| Vec3::new(v.leaf[0], v.leaf[1], v.leaf[2]))
+            })
+            .fold(
+                (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+                |(lo, hi), a| (lo.min(a), hi.max(a)),
+            );
+        Some(og_render::meshlet::MeshFoliage {
+            vertices: vertices.clone(),
+            top,
+            canopy_center: (lo + hi) * 0.5,
+            leaves: *leaves,
+        })
+    }
+
     /// [`CookedModel::add_to`] with textures of either kind (transcoded to
     /// the device's format: [`CookedTexture::to_texture_source`]).
     pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
@@ -872,6 +941,12 @@ impl CookedModel {
         for (p, &m) in self.primitives.iter().zip(&meshes) {
             if let Some(c) = p.mesh_clusters() {
                 scene.set_mesh_clusters(m, Some(c));
+            }
+        }
+        // And its foliage: an instance sways by its `sway` (0: still).
+        for (i, &m) in meshes.iter().enumerate() {
+            if let Some(f) = self.mesh_foliage(i) {
+                scene.set_mesh_foliage(m, Some(f));
             }
         }
         let world = self.node_world();

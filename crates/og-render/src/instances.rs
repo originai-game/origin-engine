@@ -124,10 +124,12 @@ fn run_transform(m: &Mat4, inst: &Instance, run: &Run) -> GpuTransform {
 
 /// An instance's [`GpuTransform::layer`] in `run`.
 fn run_layer(inst: &Instance, run: &Run) -> f32 {
+    // A run without array maps carries the instance's sway there instead
+    // (meshlet_sway.wgsl reads it for foliage meshes alone).
     let layer = if run.array {
         crate::material::instance_layer_bits(inst.material_layer)
     } else {
-        0.0
+        inst.sway.max(0.0)
     };
     layer_bits(layer, inst.receive_shadows)
 }

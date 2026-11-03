@@ -15,7 +15,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
@@ -325,6 +325,23 @@ row!(
         /// would be drawn (a chain's errors only rise: the impostor
         /// replaces the mesh levels no finer than it).
         error: f32,
+    }
+);
+
+row!(
+    /// A primitive's foliage (glTF `_OG_PIVOT` and `_OG_ANCHOR`, optional
+    /// `foliage` table; absent or empty: none): its vertices' range of the
+    /// `foliage` section, which holds 8 f32 per vertex (the branch pivot
+    /// and stiffness, the leaf anchor and flutter, in the cooked vertex
+    /// order) as one meshopt vertex stream per primitive. og-render's
+    /// `meshlet::MeshFoliage` sways them on the meshlet path.
+    FoliageRow, "og.ModelFoliage", 1 {
+        primitive: u32,
+        /// Its stream's bytes in the `foliage` section.
+        stream_offset: u32,
+        stream_size: u32,
+        /// Bit 0: its triangles are leaf cards (`extras.ogFoliage.leaves`).
+        flags: u32,
     }
 );
 

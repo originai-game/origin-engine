@@ -345,6 +345,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
                 fx,
                 cast_shadows: true,
                 receive_shadows: true,
+                sway: 0.0,
             });
         }
     }

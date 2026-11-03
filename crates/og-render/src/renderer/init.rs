@@ -1019,6 +1019,7 @@ impl Renderer {
             prev_view_proj: None,
             previous_time: None,
             previous_wind: None,
+            previous_sway: Vec::new(),
             warned_planar: false,
             fx_groups: None,
             mips,

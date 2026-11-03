@@ -312,6 +312,7 @@ pub fn crypt_scene() -> RenderScene {
         fx: og_render::InstanceFx::NONE,
         cast_shadows: false,
         receive_shadows: true,
+        sway: 0.0,
     });
     scene.lights = vec![Light {
         position: lamp,

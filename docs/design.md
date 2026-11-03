@@ -787,6 +787,23 @@ texture, since the lit fragment stage already samples 15 of WebGPU's 16.
 Reflections, views, probe faces and shadows keep the hardware path, as do
 orthographic cameras.
 
+Foliage (the vegetation's trees) sways on the meshlet path. A primitive's
+glTF `_OG_PIVOT` and `_OG_ANCHOR` (branch pivot and stiffness, leaf anchor
+and flutter, VEC4 floats) and `extras.ogFoliage.leaves` cook into the
+model's optional `foliage_rows` and `foliage` sections: welding keeps
+vertices of other pivots apart, a simplified level locks every vertex on
+a seam between two pivots or anchors (and, simplified by position, every
+position two branches share), and leaf cards get no simplified levels.
+`RenderScene::set_mesh_foliage` puts a mesh's foliage
+(`meshlet::MeshFoliage`) after the vertex pool, each cluster's first row
+naming its region; every pull (the lit pass, the prepass at the last drawn
+frame's wind and sway, the occluders' depth, the shadow casters and the
+compute rasteriser) moves the vertex by `foliage_offset` at
+`Instance::sway` (the record's layer word for runs without array maps).
+The cull widens the mesh's and its clusters' spheres by its deformation
+bound (`FoliageBounds::deform_margin`, the larger of this frame's wind and
+the last drawn's, times the sway when over 1) and takes no cone from them.
+
 The CPU statement of every test is `meshlet.rs`, whose unit tests check it.
 
 Runtime geometry and debug draw (depth S1). Games can make geometry from

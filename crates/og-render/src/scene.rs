@@ -42,6 +42,8 @@ pub struct RenderScene {
     mesh_encodings: Vec<VertexEncoding>,
     /// Per mesh: its levels cut into clusters ([`RenderScene::set_mesh_clusters`]).
     mesh_clusters: Vec<Option<std::sync::Arc<crate::meshlet::MeshClusters>>>,
+    /// Per mesh: its foliage deformation ([`RenderScene::set_mesh_foliage`]).
+    mesh_foliage: Vec<Option<std::sync::Arc<crate::meshlet::MeshFoliage>>>,
     textures: Vec<TextureSource>,
     /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
     texture_revisions: Vec<u64>,

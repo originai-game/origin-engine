@@ -151,6 +151,82 @@ impl MeshClusters {
     }
 }
 
+/// A foliage mesh's deformation data (the vegetation's trees: `foliage.rs`
+/// states the deformation): per vertex its branch pivot and leaf anchor
+/// ([`crate::foliage::FoliageVertex`]), in the mesh's vertex order, and
+/// what the whole model shares, so every primitive of one tree (bark and
+/// leaves) bends as one. On the meshlet path every pull of the mesh's
+/// vertices moves them by `foliage_offset` (meshlet_foliage.wgsl): the lit
+/// pass, the prepass (and its previous position, from the last drawn
+/// frame's wind), the occluders' depth, the shadow casters and the
+/// visibility buffer's rasteriser; the cull widens the mesh's and its
+/// clusters' spheres by the deformation's bound
+/// ([`crate::foliage::FoliageBounds::deform_margin`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct MeshFoliage {
+    pub vertices: Vec<crate::foliage::FoliageVertex>,
+    /// The model's top in its own units (its highest point over its
+    /// default scene): where the trunk's bend is full.
+    pub top: f32,
+    /// The model's canopy centre in its own units (the leaf anchors' box
+    /// centre over the whole model), for the leaves' dome normals.
+    pub canopy_center: Vec3,
+    /// Its triangles are leaf cards (glTF `extras.ogFoliage.leaves`).
+    pub leaves: bool,
+}
+
+/// vec4 rows of a foliage mesh's header in the vertex pool (meshlet_gpu.rs
+/// `pool_foliage`), before its two rows per vertex: (canopy centre, top),
+/// (flags: 1 leaves, 0, 0, 0).
+pub const FOLIAGE_HEADER_ROWS: u32 = 2;
+
+impl MeshFoliage {
+    /// Whether it describes a mesh of `vertex_count` vertices: one entry a
+    /// vertex, every value finite, stiffness and flutter within 0..1 and a
+    /// positive top. A mesh that fails keeps still.
+    pub fn validate(&self, vertex_count: usize) -> Result<(), String> {
+        if self.vertices.len() != vertex_count {
+            return Err(format!(
+                "{} foliage vertices for {vertex_count} vertices",
+                self.vertices.len()
+            ));
+        }
+        if !(self.top.is_finite() && self.top > 0.0) || !self.canopy_center.is_finite() {
+            return Err("its top and canopy centre must be finite, the top positive".into());
+        }
+        for (i, v) in self.vertices.iter().enumerate() {
+            let finite = v.branch.iter().chain(&v.leaf).all(|x| x.is_finite());
+            let unit = |x: f32| (0.0..=1.0).contains(&x);
+            if !finite || !unit(v.branch[3]) || !unit(v.leaf[3]) {
+                return Err(format!("vertex {i}: {v:?}"));
+            }
+        }
+        Ok(())
+    }
+
+    /// Its rows in the vertex pool: the header, then two rows a vertex.
+    pub fn pool_rows(&self) -> Vec<[f32; 4]> {
+        let c = self.canopy_center;
+        let mut rows = Vec::with_capacity(FOLIAGE_HEADER_ROWS as usize + self.vertices.len() * 2);
+        rows.push([c.x, c.y, c.z, self.top]);
+        rows.push([self.leaves as u32 as f32, 0.0, 0.0, 0.0]);
+        for v in &self.vertices {
+            rows.push(v.branch);
+            rows.push(v.leaf);
+        }
+        rows
+    }
+
+    /// The bounds of its deformation over `positions` (the mesh's).
+    pub fn bounds(&self, positions: impl Iterator<Item = Vec3>) -> crate::foliage::FoliageBounds {
+        let mut b = crate::foliage::FoliageBounds::default();
+        for (p, v) in positions.zip(&self.vertices) {
+            b.include(p, *v);
+        }
+        b
+    }
+}
+
 /// How an instance's transform carries a cluster's bounds: the largest
 /// axis scale (a sphere's radius grows by it), and whether the cone
 /// survives (an even scale and no mirroring).

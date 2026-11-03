@@ -296,3 +296,68 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
         );
     }
 }
+
+/// `meshlet-sway` (reference `meshlet-sway.png`): the near tree's crown
+/// leaning right in the wind, its shadow with it, its trunk's foot still.
+#[test]
+fn meshlet_sway_matches_its_reference() {
+    check("meshlet-sway");
+}
+
+/// The mean absolute channel difference of two frames (0..255).
+fn mean_difference(a: &og_render::RgbaImage, b: &og_render::RgbaImage) -> f64 {
+    let sum: u64 = a
+        .pixels
+        .iter()
+        .zip(&b.pixels)
+        .map(|(x, y)| x.abs_diff(*y) as u64)
+        .sum();
+    sum as f64 / a.pixels.len() as f64
+}
+
+/// Foliage sways by each instance's sway alone: at 0 the tree in the wind
+/// is the tree with no foliage, pixel for pixel (a pull that moved a still
+/// instance, or a cull whose widened spheres dropped a cluster, fails);
+/// at 1 it moves visibly (a pull that ignored the foliage region, or read
+/// another mesh's, leaves it still or tears it).
+#[test]
+fn meshlet_foliage_sways_by_the_instance_sway() {
+    let render = |sway: f32, foliage: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-sway").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::sway_scene(sway, foliage).expect("the tree");
+        og_tests::gfx::render_built(&mut g).expect("render").image
+    };
+    let plain = render(0.0, false);
+    let still = render(0.0, true);
+    let swaying = render(1.0, true);
+    assert_eq!(
+        mean_difference(&still, &plain),
+        0.0,
+        "sway 0 moved the tree"
+    );
+    let moved = mean_difference(&swaying, &plain);
+    assert!(moved > 0.5, "sway 1 moved the tree by {moved:.3} only");
+}
+
+/// The visibility buffer sways what the hardware sways: the far forest
+/// swaying, its small clusters rasterised in compute, against every
+/// cluster drawn by the hardware.
+#[test]
+fn meshlet_swaying_visibility_buffer_matches_the_hardware() {
+    let render = |vbuffer: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-far").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::sway_far_scene(vbuffer).expect("the forest");
+        og_tests::gfx::render_built(&mut g).expect("render")
+    };
+    let (on, off) = (render(true), render(false));
+    let c = compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    c.check(&Tolerance::default())
+        .unwrap_or_else(|e| panic!("swaying visibility buffer against the hardware: {e}"));
+}

@@ -35,6 +35,12 @@ pub struct Instance {
     /// alley. Carried in the instance record (`instances.rs`), so it never
     /// splits a batch. [`RenderScene::add_instance`] receives.
     pub receive_shadows: bool,
+    /// How far a foliage mesh ([`RenderScene::set_mesh_foliage`]) sways in
+    /// [`RenderScene::wind`]: its wind strength times this (0: still, 1:
+    /// the scene's wind). Carried in the instance record's layer word for
+    /// runs without array maps (`instances.rs`); a mesh without foliage
+    /// ignores it. [`RenderScene::add_instance`] keeps still.
+    pub sway: f32,
 }
 
 /// An instance's own look, beside its transform in the instance record and

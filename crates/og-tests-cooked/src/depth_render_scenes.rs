@@ -145,6 +145,7 @@ pub fn lod_scene() -> Result<LodScene, String> {
                 },
                 cast_shadows: true,
                 receive_shadows: true,
+                sway: 0.0,
             });
         }
     }

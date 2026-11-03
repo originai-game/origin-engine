@@ -12,7 +12,7 @@
 //! fragment stage already samples 15 of WebGPU's 16.
 
 use super::{
-    RECORD_ROWS, RECORD_ROWS_STYLISED, RasterParams, WORKGROUPS_PER_ROW, buffer, entry, storage,
+    RECORD_ROWS, RECORD_ROWS_EXTRA, RasterParams, WORKGROUPS_PER_ROW, buffer, entry, storage,
 };
 use crate::Side;
 use std::collections::HashMap;
@@ -54,9 +54,13 @@ pub(crate) struct VisFrame<'a> {
     /// The frame's retro 3D (`Retro3d::uniform`): its vertices snap, its
     /// depth steps and its uv go affine here as in pbr.wgsl.
     pub stylise: [f32; 4],
-    /// The material style's surface is on: the records carry the local
-    /// position's gradients its pattern reads (pbr_fs.wgsl).
-    pub surface: bool,
+    /// The foliage's wind this frame and the last drawn
+    /// (`foliage::foliage_winds`).
+    pub wind: [crate::foliage::FoliageWind; 2],
+    /// The material style's surface is on (the records carry the local
+    /// position's gradients its pattern reads, pbr_fs.wgsl) or a foliage
+    /// mesh is in the pools (its canopy dome).
+    pub extra: bool,
     pub max_binding: u64,
 }
 
@@ -142,10 +146,10 @@ impl VisBuffer {
         // The slots, rounded up to a vec4, then at most a record a pixel
         // within the binding limit.
         let base = pixels.div_ceil(4) * 4;
-        // The stylised records' three more rows only when the frame reads
+        // The extra records' four more rows only when the frame reads
         // them (fewer records fit the binding).
-        let rows = if f.surface || f.stylise[2] > 0.0 {
-            RECORD_ROWS_STYLISED
+        let rows = if f.extra || f.stylise[2] > 0.0 {
+            RECORD_ROWS_EXTRA
         } else {
             RECORD_ROWS
         };
@@ -180,6 +184,7 @@ impl VisBuffer {
             size: [w, h, records as u32, f.lod_debug as u32],
             soft: [f.list.0, f.list.1, 0, rows as u32],
             stylise: f.stylise,
+            wind: f.wind,
         };
         queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
         // The cull's count into `soft.z`.

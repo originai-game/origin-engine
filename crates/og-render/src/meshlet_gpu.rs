@@ -42,10 +42,25 @@ pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
 pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
 pub(crate) const MESHLET_DEPTH_WGSL: &str = wgsl!("meshlet_depth.wgsl");
 pub(crate) const MESHLET_RASTER_WGSL: &str = wgsl!("meshlet_raster.wgsl");
+pub(crate) const MESHLET_SWAY_WGSL: &str = wgsl!("meshlet_sway.wgsl");
+
+/// The foliage's deformation every pull reads (the vegetation's
+/// grass_common.wgsl and meshlet_foliage.wgsl, then meshlet_sway.wgsl).
+fn sway_source() -> String {
+    format!(
+        "{}{}{MESHLET_SWAY_WGSL}",
+        crate::foliage::WIND_WGSL,
+        crate::foliage::WGSL
+    )
+}
 
 /// The visibility buffer's rasteriser and setup (after instance.wgsl).
 pub(crate) fn raster_source() -> String {
-    format!("{}{MESHLET_RASTER_WGSL}", crate::INSTANCE_WGSL)
+    format!(
+        "{}{}{MESHLET_RASTER_WGSL}",
+        crate::INSTANCE_WGSL,
+        sway_source()
+    )
 }
 
 /// The lit and prepass module of the meshlet path: the standard lit module
@@ -55,14 +70,19 @@ pub(crate) fn raster_source() -> String {
 /// pulling entry points read `instance_index`.
 pub(crate) fn lit_source(planar: bool) -> String {
     format!(
-        "{}{MESHLET_WGSL}",
-        crate::lit_source_with(&crate::hooks::default_hooks(), planar)
+        "{}{}{MESHLET_WGSL}",
+        crate::lit_source_with(&crate::hooks::default_hooks(), planar),
+        sway_source()
     )
 }
 
 /// The early phase's depth module.
 pub(crate) fn depth_source() -> String {
-    format!("{}{MESHLET_DEPTH_WGSL}", crate::INSTANCE_WGSL)
+    format!(
+        "{}{}{MESHLET_DEPTH_WGSL}",
+        crate::INSTANCE_WGSL,
+        sway_source()
+    )
 }
 
 /// The params buffer's second slot (the late phase's), a uniform offset.
@@ -72,8 +92,9 @@ const PARAMS_SLOT: u64 = 256;
 /// hooks) and the pulling entry points.
 pub(crate) fn shadow_source() -> String {
     format!(
-        "{}{MESHLET_SHADOW_WGSL}",
-        crate::shadow_source(&crate::hooks::default_hooks())
+        "{}{}{MESHLET_SHADOW_WGSL}",
+        crate::shadow_source(&crate::hooks::default_hooks()),
+        sway_source()
     )
 }
 
@@ -115,13 +136,24 @@ struct RasterParams {
     size: [u32; 4],
     soft: [u32; 4],
     stylise: [f32; 4],
+    /// This frame's wind and the last drawn frame's (`foliage::foliage_winds`).
+    wind: [crate::foliage::FoliageWind; 2],
+}
+
+/// `struct MeshletDraw` in meshlet_sway.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct DrawParams {
+    flags: [u32; 4],
+    wind: [crate::foliage::FoliageWind; 2],
 }
 
 /// vec4 rows per visibility-buffer record (meshlet_raster.wgsl `setup`).
 const RECORD_ROWS: u64 = 8;
-/// With the frame's material surface or affine texturing: three more, the
-/// local position's gradients, the affine uv and the lit uv's gradients.
-const RECORD_ROWS_STYLISED: u64 = 11;
+/// With the frame's material surface, affine texturing or a foliage mesh:
+/// four more, the local position's gradients, the affine uv, the lit uv's
+/// gradients and the canopy dome.
+const RECORD_ROWS_EXTRA: u64 = 12;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]
@@ -424,6 +456,8 @@ pub(crate) fn pool_rows(
 struct Pools {
     /// What they were built from: each clustered mesh and its clusters.
     key: Vec<(usize, Arc<MeshClusters>)>,
+    /// And each one's foliage.
+    foliage_key: Vec<Option<Arc<crate::meshlet::MeshFoliage>>>,
     /// Per mesh index: its slot in the mesh table and its most clusters at
     /// any level.
     slots: HashMap<usize, (u32, u32)>,
@@ -431,8 +465,22 @@ struct Pools {
     clusters: wgpu::Buffer,
     indices: wgpu::Buffer,
     /// Every clustered mesh's f32 vertices, for the visibility buffer
-    /// (its rasteriser reads any mesh's in one dispatch).
+    /// (its rasteriser reads any mesh's in one dispatch), then each
+    /// foliage mesh's region ([`pool_foliage`]), which every pull reads.
     vertices: wgpu::Buffer,
+    /// Each foliage mesh's slot and the bounds of its deformation, and the
+    /// margin last written into its mesh row.
+    foliage: Vec<(u32, crate::foliage::FoliageBounds, f32)>,
+}
+
+/// Points the cluster rows of a foliage mesh (`rows`, [`pool_rows`]'s) at
+/// its region of the vertex pool, `region` vec4s from the pool's start:
+/// each cluster's first row's w is the region plus one (0: no foliage).
+/// The region is [`crate::meshlet::MeshFoliage::pool_rows`].
+pub(crate) fn pool_foliage(rows: &mut [[u32; 4]], region: u32) {
+    for r in rows.iter_mut().step_by(CLUSTER_ROWS) {
+        r[3] = region + 1;
+    }
 }
 
 mod vis;
@@ -611,6 +659,8 @@ impl MeshletGpu {
                 storage(12, true, v),
                 storage(13, true, v),
                 storage(14, true, v),
+                // The vertex pool's foliage regions (meshlet_sway.wgsl).
+                storage(17, true, v),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -700,7 +750,7 @@ impl MeshletGpu {
             draw_params: buffer(
                 device,
                 "meshlet draw params",
-                16,
+                std::mem::size_of::<DrawParams>() as u64,
                 wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             ),
             views: buffer(device, "meshlet views", 0, storage_usage()),
@@ -734,12 +784,26 @@ impl MeshletGpu {
             .enumerate()
             .filter_map(|(i, c)| c.clone().map(|c| (i, c)))
             .collect();
+        let foliage_all = scene.mesh_foliage_all();
+        let foliage_key: Vec<Option<Arc<crate::meshlet::MeshFoliage>>> = key
+            .iter()
+            .map(|(i, _)| foliage_all.get(*i).cloned().flatten())
+            .collect();
         let same = self.pools.as_ref().is_some_and(|p| {
             p.key.len() == key.len()
                 && p.key
                     .iter()
                     .zip(&key)
                     .all(|(a, b)| a.0 == b.0 && Arc::ptr_eq(&a.1, &b.1))
+                && p.foliage_key.len() == foliage_key.len()
+                && p.foliage_key
+                    .iter()
+                    .zip(&foliage_key)
+                    .all(|(a, b)| match (a, b) {
+                        (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+                        (None, None) => true,
+                        _ => false,
+                    })
         });
         if same {
             return;
@@ -749,7 +813,12 @@ impl MeshletGpu {
         let mut cluster_rows: Vec<[u32; 4]> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
         let mut vertices: Vec<crate::Vertex> = Vec::new();
-        for (i, c) in &key {
+        // The foliage regions (after every vertex) and, per foliage mesh,
+        // its cluster rows' range and its region in `regions`.
+        let mut regions: Vec<[f32; 4]> = Vec::new();
+        let mut pointed: Vec<(std::ops::Range<usize>, u32)> = Vec::new();
+        let mut foliage = Vec::new();
+        for ((i, c), f) in key.iter().zip(&foliage_key) {
             let Some(source) = scene.meshes().get(*i) else {
                 continue;
             };
@@ -761,9 +830,13 @@ impl MeshletGpu {
             ) else {
                 continue;
             };
+            let f_rows = f.as_ref().map(|f| f.pool_rows());
             let bytes = ((indices.len() + c.indices.len()) * 4)
                 .max((cluster_rows.len() + rows.len()) * 16)
-                .max((vertices.len() + source.vertices.len()) * 64) as u64;
+                .max(
+                    (vertices.len() + source.vertices.len()) * 64
+                        + (regions.len() + f_rows.as_ref().map_or(0, Vec::len)) * 16,
+                ) as u64;
             if bytes > self.max_binding {
                 break;
             }
@@ -782,11 +855,25 @@ impl MeshletGpu {
                 .map(|l| l.clusters.end - l.clusters.start)
                 .max()
                 .unwrap_or(0);
-            slots.insert(*i, ((mesh_rows.len() / MESH_ROWS) as u32, most));
+            let slot = (mesh_rows.len() / MESH_ROWS) as u32;
+            slots.insert(*i, (slot, most));
+            if let (Some(f), Some(f_rows)) = (f, f_rows) {
+                let at = cluster_rows.len();
+                pointed.push((at..at + rows.len(), regions.len() as u32));
+                regions.extend(f_rows);
+                let positions = source.vertices.iter().map(|v| Vec3::from(v.position));
+                foliage.push((slot, f.bounds(positions), 0.0));
+            }
             mesh_rows.extend_from_slice(&mesh);
             cluster_rows.extend(rows);
             indices.extend_from_slice(&c.indices);
         }
+        // The regions follow the vertices (four vec4s each).
+        for (range, region) in pointed {
+            pool_foliage(&mut cluster_rows[range], vertices.len() as u32 * 4 + region);
+        }
+        let mut pool: Vec<u8> = bytemuck::cast_slice(&vertices).to_vec();
+        pool.extend_from_slice(bytemuck::cast_slice(&regions));
         let make = |label: &str, bytes: &[u8]| {
             let b = buffer(device, label, bytes.len() as u64, storage_usage());
             queue.write_buffer(&b, 0, bytes);
@@ -794,11 +881,13 @@ impl MeshletGpu {
         };
         self.pools = Some(Pools {
             key,
+            foliage_key,
+            foliage,
             slots,
             meshes: make("meshlet meshes", bytemuck::cast_slice(&mesh_rows)),
             clusters: make("meshlet clusters", bytemuck::cast_slice(&cluster_rows)),
             indices: make("meshlet indices", bytemuck::cast_slice(&indices)),
-            vertices: make("meshlet vertex pool", bytemuck::cast_slice(&vertices)),
+            vertices: make("meshlet vertex pool", &pool),
         });
         self.cull_group = None;
         self.mesh_groups.clear();
@@ -984,11 +1073,12 @@ impl MeshletGpu {
         (width, height): (u32, u32),
         previous: &wgpu::Buffer,
         levels: &[u8],
+        winds: ([crate::Wind; 2], [crate::foliage::FoliageWind; 2]),
         vertices: impl Fn(usize) -> &'a wgpu::Buffer,
         occluder: impl Fn(&Batch) -> bool,
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();
-        let pools = self.pools.as_ref()?;
+        let pools = self.pools.as_mut()?;
         // The visibility buffer takes the camera's small clusters of
         // occluder batches (opaque, depth exactly their triangles') under
         // a perspective camera (retro 3D's vertices snap and its uv go
@@ -1111,8 +1201,24 @@ impl MeshletGpu {
         queue.write_buffer(
             &self.draw_params,
             0,
-            bytemuck::cast_slice(&[scene.lod_debug as u32, 0, 0, 0]),
+            bytemuck::bytes_of(&DrawParams {
+                flags: [scene.lod_debug as u32, 0, 0, 0],
+                wind: winds.1,
+            }),
         );
+        // Each foliage mesh's deformation bound at this frame's wind and
+        // the last drawn frame's (an instance's motion vector spans both),
+        // into its mesh row (`meshlet_cull.wgsl` widens its spheres by it).
+        for (slot, bounds, written) in &mut pools.foliage {
+            let margin = bounds
+                .deform_margin(winds.0[0])
+                .max(bounds.deform_margin(winds.0[1]));
+            if margin != *written {
+                *written = margin;
+                let at = (*slot as usize * MESH_ROWS + 1) * 16 + 8;
+                queue.write_buffer(&pools.meshes, at as u64, bytemuck::bytes_of(&margin));
+            }
+        }
         let items_bytes = self.items_bytes;
         let bound = vec![
             gc.instances.clone(),
@@ -1267,7 +1373,8 @@ impl MeshletGpu {
                     vertices: &pools.vertices,
                     lod_debug: scene.lod_debug,
                     stylise: crate::Retro3d::uniform(scene.stylise.retro, width, height),
-                    surface: scene.stylise.material.surface_on(),
+                    wind: winds.1,
+                    extra: scene.stylise.material.surface_on() || !pools.foliage.is_empty(),
                     max_binding: self.max_binding,
                 },
             );
@@ -1335,6 +1442,7 @@ impl MeshletGpu {
                 pools.indices.clone(),
                 v.clone(),
                 previous.clone(),
+                pools.vertices.clone(),
             ];
             let bound = (bound, self.window);
             if self
@@ -1364,6 +1472,7 @@ impl MeshletGpu {
                     entry(12, &pools.indices),
                     entry(13, v),
                     entry(14, previous),
+                    entry(17, &pools.vertices),
                 ],
             });
             self.mesh_groups.insert(mesh, (bound, group));
@@ -1724,6 +1833,18 @@ mod tests {
             indices: Vec::new(),
         };
         let (mesh, rows) = pool_rows(&c, 1000, 50, 7).unwrap();
+        // A foliage mesh's clusters name its region (plus one) in their
+        // first row's w, and only there (the sphere and cone rows keep theirs).
+        let mut pointed = rows.clone();
+        pool_foliage(&mut pointed, 40);
+        for (k, (a, b)) in pointed.iter().zip(&rows).enumerate() {
+            if k % CLUSTER_ROWS == 0 {
+                assert_eq!(a[..3], b[..3]);
+                assert_eq!(a[3], 41);
+            } else {
+                assert_eq!(a, b);
+            }
+        }
         assert_eq!(mesh[0], [0.0f32, 1.0, 0.0, 4.0].map(f32::to_bits));
         assert_eq!(mesh[1], [2, 7, 0, 0], "levels, the first vertex");
         assert_eq!(mesh[2], [50, 2, 0, 0]);

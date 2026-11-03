@@ -1238,6 +1238,7 @@ pub(crate) fn posed_model(
                     fx: look.fx,
                     cast_shadows: look.cast,
                     receive_shadows: look.receive,
+                    sway: 0.0,
                 });
                 keys.push((entity, k as u32));
             }
@@ -1439,6 +1440,7 @@ pub(crate) fn crowd_model(
                     fx: look.fx,
                     cast_shadows: look.cast,
                     receive_shadows: look.receive,
+                    sway: 0.0,
                 });
                 keys.push((entity, k as u32));
             }

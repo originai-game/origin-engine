@@ -13,6 +13,10 @@
 @group(3) @binding(12) var<storage, read> meshlet_indices: array<u32>;
 // The mesh's vertices (scene Vertex: 16 floats).
 @group(3) @binding(13) var<storage, read> meshlet_vertices: array<vec4<f32>>;
+// meshlet_sway.wgsl's `MeshletDraw`, and the vertex pool for its foliage
+// regions: a swaying caster's shadow sways with it.
+@group(3) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
+@group(3) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
 
 // Work item `ii`'s transform, and its corner `vi`'s vertex index (none
 // past the cluster's triangles).
@@ -20,6 +24,8 @@ struct MeshletCorner {
   ok: bool,
   index: u32,
   model: mat4x4<f32>,
+  // The corner's position, swayed (meshlet_sway.wgsl) for a foliage mesh.
+  position: vec3<f32>,
 };
 
 fn meshlet_corner(vi: u32, ii: u32) -> MeshletCorner {
@@ -36,6 +42,12 @@ fn meshlet_corner(vi: u32, ii: u32) -> MeshletCorner {
   let t1 = meshlet_instances[item.x * 4u + 1u];
   let t2 = meshlet_instances[item.x * 4u + 2u];
   r.model = instance_matrix(t0.xyz, vec3<f32>(t0.w, t1.xy), vec3<f32>(t1.zw, t2.x), t2.yzw);
+  r.position = meshlet_vertices[r.index * 4u].xyz;
+  if (c.w != 0u) {
+    let at = meshlet_sway_row(c.w, r.index);
+    let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
+    r.position += meshlet_sway(r.position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], r.model, meshlet_draw.wind[0], sway);
+  }
   return r;
 }
 
@@ -48,7 +60,7 @@ fn vs_meshlet_lean(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: 
     o.clip = vec4<f32>(0.0);
     return o;
   }
-  let world = p.model * vec4<f32>(meshlet_vertices[p.index * 4u].xyz, 1.0);
+  let world = p.model * vec4<f32>(p.position, 1.0);
   o.clip = shadow_project(world, mul_point(shadow_pass.view_proj, world));
   o.world = world.xyz;
   return o;
@@ -67,7 +79,7 @@ fn vs_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
   let a = meshlet_vertices[p.index * 4u];
   let b = meshlet_vertices[p.index * 4u + 1u];
   var v: VertexIn;
-  v.position = a.xyz;
+  v.position = p.position;
   v.normal = vec3<f32>(a.w, b.xy);
   v.uv = b.zw;
   v.color = meshlet_vertices[p.index * 4u + 2u];

@@ -100,6 +100,86 @@ fn weld<T: bytemuck::Pod>(
 
 /// The weld key of every source vertex of a primitive: a hash of its
 /// JOINTS_0/WEIGHTS_0 and morph-target deltas, or zero without either.
+/// A primitive's foliage (og-render's `meshlet::MeshFoliage`): each
+/// vertex's `_OG_PIVOT` (branch pivot, stiffness) and `_OG_ANCHOR` (leaf
+/// anchor, flutter), VEC4 floats in the mesh's own space. `None` without
+/// them; both or neither, stiffness and flutter within 0..1.
+fn read_foliage(
+    src: &GltfSource,
+    prim: &gltf::Primitive,
+    count: usize,
+) -> Result<Option<Vec<[f32; 8]>>, String> {
+    let read = |name: &str| -> Result<Option<Vec<[f32; 4]>>, String> {
+        let Some(a) = prim.get(&gltf::Semantic::Extras(name.into())) else {
+            return Ok(None);
+        };
+        if a.data_type() != gltf::accessor::DataType::F32
+            || a.dimensions() != gltf::accessor::Dimensions::Vec4
+            || a.count() != count
+        {
+            return Err(format!(
+                "_{name}: a VEC4 float accessor of {count} elements"
+            ));
+        }
+        let it = gltf::accessor::Iter::<[f32; 4]>::new(a, |b| Some(&src.buffers[b.index()].0[..]))
+            .ok_or_else(|| format!("_{name}: no data"))?;
+        Ok(Some(it.collect()))
+    };
+    let (pivot, anchor) = match (read("OG_PIVOT")?, read("OG_ANCHOR")?) {
+        (Some(p), Some(a)) => (p, a),
+        (None, None) => return Ok(None),
+        _ => return Err("foliage needs both _OG_PIVOT and _OG_ANCHOR".into()),
+    };
+    let mut out = Vec::with_capacity(count);
+    for (i, (p, a)) in pivot.iter().zip(&anchor).enumerate() {
+        let unit = |x: f32| (0.0..=1.0).contains(&x);
+        if !p.iter().chain(a).all(|x| x.is_finite()) || !unit(p[3]) || !unit(a[3]) {
+            return Err(format!(
+                "foliage vertex {i}: pivot {p:?}, anchor {a:?} (finite, stiffness and flutter 0..1)"
+            ));
+        }
+        out.push([p[0], p[1], p[2], p[3], a[0], a[1], a[2], a[3]]);
+    }
+    Ok(Some(out))
+}
+
+/// Whether a primitive's triangles are leaf cards: its glTF `extras`
+/// `{ "ogFoliage": { "leaves": true } }`.
+fn leaf_cards(prim: &gltf::Primitive) -> bool {
+    prim.extras()
+        .as_ref()
+        .and_then(|e| serde_json::from_str::<serde_json::Value>(e.get()).ok())
+        .and_then(|v| v["ogFoliage"]["leaves"].as_bool())
+        .unwrap_or(false)
+}
+
+/// The weld key of a foliage vertex: vertices with other pivots or
+/// anchors never weld (a seam between two branches keeps both sides').
+fn foliage_key(f: &[f32; 8]) -> [u32; 2] {
+    let mut h = og_core::hash::StableHasher::new();
+    f.iter().for_each(|&x| h.write_u64(x.to_bits() as u64));
+    let v = h.finish();
+    [v as u32, (v >> 32) as u32]
+}
+
+/// The vertices a foliage mesh's simplification keeps in place: those on
+/// an edge between two pivots or two anchors (`foliage` per vertex), so a
+/// coarser level never joins two branches (or two leaves) that sway apart.
+fn foliage_locks(indices: &[u32], foliage: &[[f32; 8]]) -> Vec<bool> {
+    let mut lock = vec![false; foliage.len()];
+    for tri in indices.as_chunks::<3>().0 {
+        for k in 0..3 {
+            let (a, b) = (tri[k] as usize, tri[(k + 1) % 3] as usize);
+            let (fa, fb) = (&foliage[a], &foliage[b]);
+            if fa[0..3] != fb[0..3] || fa[4..7] != fb[4..7] {
+                lock[a] = true;
+                lock[b] = true;
+            }
+        }
+    }
+    lock
+}
+
 fn vertex_keys(src: &GltfSource, prim: &gltf::Primitive, count: usize) -> Vec<[u32; 2]> {
     let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
     let joints: Option<Vec<[u16; 4]>> = reader.read_joints(0).map(|j| j.into_u16().collect());
@@ -186,6 +266,9 @@ pub(crate) struct CookedPrimitive {
     pub(super) bvh_tris: Vec<u32>,
     /// The source (glTF accessor) vertex of every cooked vertex.
     pub sources: Vec<u32>,
+    /// Every cooked vertex's foliage ([`read_foliage`]) and whether the
+    /// primitive is leaf cards; `None` for a primitive without foliage.
+    pub(super) foliage: Option<(Vec<[f32; 8]>, bool)>,
     /// What the art contract changed (`conform::mesh`), and with an
     /// `ArtLine` the outline hull's normal of every cooked vertex.
     pub(super) conformed: Option<super::conform::mesh::Changes>,
@@ -362,6 +445,9 @@ pub(crate) fn cook_primitive(
     let mut indices: Vec<u32> = Vec::new();
     let mut keys: Vec<[u32; 2]> = Vec::new();
     let mut given: Vec<std::ops::Range<usize>> = Vec::new();
+    // Each vertex's foliage (`read_foliage`), when the full mesh has it.
+    let mut foliage: Option<Vec<[f32; 8]>> = None;
+    let leaves = leaf_cards(prim);
     for (l, level) in levels.iter().enumerate() {
         let reader = level.reader(|b| Some(&src.buffers[b.index()].0[..]));
         let Some(p) = reader
@@ -447,7 +533,22 @@ pub(crate) fn cook_primitive(
         indices.extend(idx.iter().map(|&i| i + base));
         given.push(start..indices.len());
         positions.extend_from_slice(&p);
-        keys.extend(vertex_keys(src, level, count));
+        let mut level_keys = vertex_keys(src, level, count);
+        let level_foliage = read_foliage(src, level, count)?;
+        if l == 0 {
+            foliage = level_foliage.as_ref().map(|_| Vec::new());
+        }
+        if let Some(f) = foliage.as_mut() {
+            // A coarser level without its own takes the rigid default.
+            let rigid = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+            let level_foliage = level_foliage.unwrap_or_else(|| vec![rigid; count]);
+            for (k, fv) in level_keys.iter_mut().zip(&level_foliage) {
+                let h = foliage_key(fv);
+                *k = [k[0] ^ h[0], k[1] ^ h[1]];
+            }
+            f.extend(level_foliage);
+        }
+        keys.extend(level_keys);
     }
     let _ = prim;
     let mut verts: Vec<FVertex> = (0..positions.len())
@@ -606,11 +707,26 @@ pub(crate) fn cook_primitive(
         // vertices welded by position alone (a shadow index buffer) and
         // given its own corners with face normals below.
         let flat = flat_source || q.len() as f64 >= 0.9 * lod0.len() as f64;
-        // (the welded index buffer, each vertex's welded index, the welded positions)
-        type Welded = (Vec<u32>, Vec<u32>, Vec<[f32; 3]>);
+        // (the welded index buffer, each vertex's welded index, the welded
+        // positions, which of them are locked)
+        type Welded = (Vec<u32>, Vec<u32>, Vec<[f32; 3]>, Vec<bool>);
         let mut shadow: Option<Welded> = None;
         let mut refaceted: Vec<bool> = vec![false];
-        for fraction in opts.fractions().into_iter().skip(1) {
+        // A foliage mesh's vertices by their welded index (`sources` maps
+        // them back to the source's), and the ones its levels keep.
+        let foliage_locked = foliage.as_ref().map(|f| {
+            let at: Vec<[f32; 8]> = sources.iter().map(|&s| f[s as usize]).collect();
+            foliage_locks(&lod0, &at)
+        });
+        // Leaf cards have no simplified levels: an edge collapse merges
+        // cards and changes their coverage (the cluster DAG keeps or drops
+        // whole cards instead).
+        let fractions = if foliage.is_some() && leaves {
+            Vec::new()
+        } else {
+            opts.fractions()
+        };
+        for fraction in fractions.into_iter().skip(1) {
             let target = ((lod0.len() as f64 * fraction as f64) as usize) / 3 * 3;
             if target < 3 {
                 break;
@@ -618,43 +734,94 @@ pub(crate) fn cook_primitive(
             let previous = levels.last().map_or(lod0.len(), |l| l.0.len());
             let stalled = |s: &[u32]| s.len() < 3 || s.len() as f64 > previous as f64 * 0.95;
             let mut error = 0.0f32;
-            let mut simplified = meshopt::simplify(
-                &lod0,
-                &adapter,
-                target,
-                opts.lod_max_error,
-                meshopt::SimplifyOptions::None,
-                Some(&mut error),
-            );
-            let mut by_position = false;
-            if stalled(&simplified) {
-                // Over the distinct positions alone: vertices that share a
-                // position but no triangle would count as seams and lock it.
-                let (compact, back, compact_pos) = shadow.get_or_insert_with(|| {
-                    let sh = meshopt::generate_shadow_indices(&lod0, &adapter);
-                    let mut at = vec![u32::MAX; pos.len()];
-                    let (mut back, mut compact_pos) = (Vec::new(), Vec::new());
-                    let compact: Vec<u32> = sh
-                        .iter()
-                        .map(|&i| {
-                            if at[i as usize] == u32::MAX {
-                                at[i as usize] = back.len() as u32;
-                                back.push(i);
-                                compact_pos.push(pos[i as usize]);
-                            }
-                            at[i as usize]
-                        })
-                        .collect();
-                    (compact, back, compact_pos)
-                });
-                simplified = meshopt::simplify(
-                    compact,
-                    &positions_adapter(compact_pos),
+            let mut simplified = match &foliage_locked {
+                Some(locks) => meshopt::simplify_with_locks(
+                    &lod0,
+                    &adapter,
+                    locks,
                     target,
                     opts.lod_max_error,
                     meshopt::SimplifyOptions::None,
                     Some(&mut error),
-                )
+                ),
+                None => meshopt::simplify(
+                    &lod0,
+                    &adapter,
+                    target,
+                    opts.lod_max_error,
+                    meshopt::SimplifyOptions::None,
+                    Some(&mut error),
+                ),
+            };
+            let mut by_position = false;
+            if stalled(&simplified) {
+                // Over the distinct positions alone: vertices that share a
+                // position but no triangle would count as seams and lock it.
+                // A foliage mesh's vertices stay apart by their pivot and
+                // anchor too, and those that share a position with another
+                // branch's (or lie on a seam between two) are locked, so a
+                // level never moves a seam or joins two branches.
+                let (compact, back, compact_pos, compact_lock) = shadow.get_or_insert_with(|| {
+                    let at_foliage: Option<Vec<[f32; 8]>> = foliage
+                        .as_ref()
+                        .map(|f| sources.iter().map(|&s| f[s as usize]).collect());
+                    let key = |i: usize| {
+                        let p = pos[i].map(f32::to_bits);
+                        let f = at_foliage
+                            .as_ref()
+                            .map_or([0; 8], |f| f[i].map(f32::to_bits));
+                        (p, f)
+                    };
+                    let mut by_key = std::collections::HashMap::new();
+                    let mut by_pos: std::collections::HashMap<[u32; 3], u32> = Default::default();
+                    let (mut back, mut compact_pos, mut compact_lock) =
+                        (Vec::new(), Vec::new(), Vec::new());
+                    let compact: Vec<u32> = lod0
+                        .iter()
+                        .map(|&i| {
+                            let i = i as usize;
+                            let k = key(i);
+                            let c = *by_key.entry(k).or_insert_with(|| {
+                                back.push(i as u32);
+                                compact_pos.push(pos[i]);
+                                compact_lock.push(false);
+                                *by_pos.entry(k.0).or_insert(0) += 1;
+                                back.len() as u32 - 1
+                            });
+                            if let Some(l) = &foliage_locked {
+                                compact_lock[c as usize] |= l[i];
+                            }
+                            c
+                        })
+                        .collect();
+                    if foliage.is_some() {
+                        for (c, &i) in back.iter().enumerate() {
+                            compact_lock[c] |= by_pos[&key(i as usize).0] > 1;
+                        }
+                    }
+                    (compact, back, compact_pos, compact_lock)
+                });
+                let compact_adapter = positions_adapter(compact_pos);
+                simplified = if foliage.is_some() {
+                    meshopt::simplify_with_locks(
+                        compact,
+                        &compact_adapter,
+                        compact_lock,
+                        target,
+                        opts.lod_max_error,
+                        meshopt::SimplifyOptions::None,
+                        Some(&mut error),
+                    )
+                } else {
+                    meshopt::simplify(
+                        compact,
+                        &compact_adapter,
+                        target,
+                        opts.lod_max_error,
+                        meshopt::SimplifyOptions::None,
+                        Some(&mut error),
+                    )
+                }
                 .into_iter()
                 .map(|i| back[i as usize])
                 .collect();
@@ -872,6 +1039,10 @@ pub(crate) fn cook_primitive(
         cluster_indices,
         bvh_nodes,
         bvh_tris,
+        foliage: foliage.map(|f| {
+            let at = ordered_sources.iter().map(|&s| f[s as usize]).collect();
+            (at, leaves)
+        }),
         sources: ordered_sources,
         conformed,
         hull,

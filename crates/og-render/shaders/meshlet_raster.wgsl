@@ -17,12 +17,14 @@ struct RasterParams {
   // each instance by its level (RenderScene::lod_debug).
   size: vec4<u32>,
   // x: the soft list's first item, y: its capacity in clusters, z: its
-  // count (copied from the cull's), w: vec4 rows per record (8, or 11
-  // with the stylised rows).
+  // count (copied from the cull's), w: vec4 rows per record (8, or 12
+  // with the extra rows).
   soft: vec4<u32>,
   // Retro 3D (frame.wgsl `stylise`, stylise.rs `Retro3d::uniform`): the
   // snap grid in cells, the affine share, the depth bits.
   stylise: vec4<f32>,
+  // The foliage's wind this frame and the last drawn (meshlet_sway.wgsl).
+  wind: array<FoliageWind, 2>,
 };
 
 @group(0) @binding(0) var<uniform> raster: RasterParams;
@@ -66,6 +68,24 @@ fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
   return c;
 }
 
+// Vertex `local` (the mesh's own index) of a cluster whose first row's w
+// is `region` (meshlet_sway.wgsl; 0: no foliage), in a mesh at `base` of
+// the pool: where instance slot `inst` puts it in the mesh's own space,
+// swayed by this frame's wind, or the last drawn frame's at `model` (the
+// previous transform) with `from_previous`.
+fn raster_position(base: u32, local: u32, region: u32, inst: u32, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
+  let p = vertices[(base + local) * 4u].xyz;
+  if (region == 0u) { return p; }
+  let at = meshlet_sway_row(region, local);
+  var layer = instances[inst * 4u + 3u].x;
+  var wind = raster.wind[0];
+  if (from_previous) {
+    layer = previous[inst * 4u + 3u].x;
+    wind = raster.wind[1];
+  }
+  return p + meshlet_sway(p, vertices[region - 1u], vertices[at], vertices[at + 1u], model, wind, foliage_sway(layer));
+}
+
 fn transform_at(buf_index: u32, from_previous: bool) -> mat4x4<f32> {
   var t0: vec4<f32>;
   var t1: vec4<f32>;
@@ -106,8 +126,8 @@ fn triangle(k: u32, tri: u32) -> Tri {
   let model = transform_at(e.x, false);
   let size = vec2<f32>(raster.size.xy);
   for (var j = 0u; j < 3u; j++) {
-    let index = f.y + indices[c.x + tri * 3u + j];
-    let world = model * vec4<f32>(vertices[index * 4u].xyz, 1.0);
+    let local = indices[c.x + tri * 3u + j];
+    let world = model * vec4<f32>(raster_position(f.y, local, c.w, e.x, model, false), 1.0);
     let clip = raster_retro(mul_point(raster.view_proj, world));
     // Never for a soft cluster (it lies past the near plane): skipped.
     if (clip.w <= 1e-6 || clip.z < 0.0) { return t; }
@@ -268,10 +288,12 @@ fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
 // centre, perspective-correct, as a record: (world, depth), (normal oct,
 // uv, colour), (tangent oct, tangent w, its batch row, object id), the
 // instance's look, (last frame's world, local x), (d(uv)/dx, d(uv)/dy),
-// (d(world)/dx, local y), (d(world)/dy, local z); with the stylised rows
-// (`raster.soft.w` 11) then (d(local)/dx, affine u), (d(local)/dy,
+// (d(world)/dx, local y), (d(world)/dy, local z); with the extra rows
+// (`raster.soft.w` 12) then (d(local)/dx, affine u), (d(local)/dy,
 // affine v), (d(lit uv)/dx, d(lit uv)/dy), the lit uv being pbr.wgsl
-// `stylised_uv`'s mix of the two. The gradients are the differences to
+// `stylised_uv`'s mix of the two, and (the canopy dome's oct, 1 with
+// one, 0, 0). A foliage mesh's corners are swayed (`raster_position`):
+// now for the pixel, at the last drawn frame for last frame's world. The gradients are the differences to
 // the next pixel right and down on the same triangle's plane, which the
 // hardware's quads take and the resolve's full-screen quads cannot
 // (pbr_fs.wgsl `ANALYTIC`). The triangle's corners are the hardware's,
@@ -297,9 +319,15 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   let ndc = vec2<f32>((f32(gid.x) + 0.5) / size.x * 2.0 - 1.0, 1.0 - (f32(gid.y) + 0.5) / size.y * 2.0);
   var vi: array<u32, 3>;
   var clip: array<vec4<f32>, 3>;
+  // Each corner where it is now and where it was (swayed for foliage).
+  var at: array<vec3<f32>, 3>;
+  var was: array<vec3<f32>, 3>;
   for (var j = 0u; j < 3u; j++) {
-    vi[j] = f.y + indices[c.x + tri * 3u + j];
-    clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(vertices[vi[j] * 4u].xyz, 1.0)));
+    let local = indices[c.x + tri * 3u + j];
+    vi[j] = f.y + local;
+    at[j] = raster_position(f.y, local, c.w, e.x, model, false);
+    was[j] = raster_position(f.y, local, c.w, e.x, prev, true);
+    clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(at[j], 1.0)));
   }
   let l = raster_screen(clip, ndc);
   // The next pixel right and down (framebuffer y runs down, ndc y up).
@@ -320,17 +348,26 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   var affine = vec2<f32>(0.0);
   var daff_x = vec2<f32>(0.0);
   var daff_y = vec2<f32>(0.0);
+  var before = vec3<f32>(0.0);
+  // A foliage mesh's canopy dome (meshlet_foliage.wgsl `foliage_normal` at
+  // full strength), which the resolve blends in by its material's.
+  var dome = vec3<f32>(0.0);
   for (var j = 0u; j < 3u; j++) {
     let a = vertices[vi[j] * 4u];
     let v = vertices[vi[j] * 4u + 1u];
-    dpos_x += a.xyz * (bx[j] - b[j]);
-    dpos_y += a.xyz * (by[j] - b[j]);
+    dpos_x += at[j] * (bx[j] - b[j]);
+    dpos_y += at[j] * (by[j] - b[j]);
+    before += was[j] * b[j];
+    if (c.w != 0u) {
+      let k = meshlet_sway_row(c.w, vi[j] - f.y);
+      dome += foliage_normal(vec3<f32>(a.w, v.xy), vertices[k + 1u].xyz, vertices[c.w - 1u].xyz, 1.0) * b[j];
+    }
     duv_x += v.zw * (bx[j] - b[j]);
     duv_y += v.zw * (by[j] - b[j]);
     affine += v.zw * l[j];
     daff_x += v.zw * (lx[j] - l[j]);
     daff_y += v.zw * (ly[j] - l[j]);
-    position += a.xyz * b[j];
+    position += at[j] * b[j];
     normal += vec3<f32>(a.w, v.xy) * b[j];
     uv += v.zw * b[j];
     color += vertices[vi[j] * 4u + 2u] * b[j];
@@ -364,7 +401,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       raster_object(model),
     ),
     bitcast<vec4<u32>>(look),
-    vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(position, 1.0)).xyz), bitcast<u32>(position.x)),
+    vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(before, 1.0)).xyz), bitcast<u32>(position.x)),
     bitcast<vec4<u32>>(vec4<f32>(duv_x, duv_y)),
     vec4<u32>(bitcast<vec3<u32>>(dwx), bitcast<u32>(position.y)),
     vec4<u32>(bitcast<vec3<u32>>(dwy), bitcast<u32>(position.z)),
@@ -377,12 +414,16 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   if (stride > 8u) {
     let k = raster.stylise.z;
-    let more = array<vec4<u32>, 3>(
+    // The dome in the world (0: none).
+    var dome_world = 0u;
+    if (c.w != 0u) { dome_world = pack2x16snorm(raster_oct(raster_normal(model, dome))); }
+    let more = array<vec4<u32>, 4>(
       bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
       bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
       bitcast<vec4<u32>>(vec4<f32>(mix(duv_x, daff_x, k), mix(duv_y, daff_y, k))),
+      vec4<u32>(dome_world, u32(c.w != 0u), 0u, 0u),
     );
-    for (var i = 0u; i < 3u; i++) {
+    for (var i = 0u; i < 4u; i++) {
       for (var j = 0u; j < 4u; j++) { attrs[r + (8u + i) * 4u + j] = more[i][j]; }
     }
   }
