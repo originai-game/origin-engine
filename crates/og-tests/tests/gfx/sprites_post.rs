@@ -331,8 +331,9 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
 }
 
 /// Texture arrays through every sprite path (`sprites-array-fx`): the
-/// glowing flipbook sprites and the flipbook particles are one run, the
-/// smooth array's particles another, the strip a third, and the overlay's
+/// glowing flipbook sprites one run and the flipbook particles another
+/// (simulated in compute, their instances in a buffer of their own), the
+/// smooth array's particles another, the strip a fourth, and the overlay's
 /// four array sprites one draw beside its plain one.
 #[test]
 fn sprites_array_fx_match_their_reference_in_one_draw_per_array() {
@@ -344,8 +345,8 @@ fn sprites_array_fx_match_their_reference_in_one_draw_per_array() {
         "the overlay's array run and its plain sprite"
     );
     assert_eq!(
-        s.sprite_draws, 5,
-        "the strip, the flipbook (sprites and particles), the motes, and the overlay's two"
+        s.sprite_draws, 6,
+        "the strip, the flipbook sprites, its particles, the motes, and the overlay's two"
     );
 }
 
