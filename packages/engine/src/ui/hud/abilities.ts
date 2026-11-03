@@ -467,7 +467,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
     // so type colour belongs to debuffs alone (WoW's and Diablo IV's auras).
     const rim = fx.debuff ? Math.max(1.5, Math.round(size / 18)) : 1;
     const art = size - rim * 2;
-    open("Tile", {
+    const tilePath = open("Tile", {
       width: px(size), height: px(size), interactive: true,
       part: sel("StatusGrid", "tile", fx.debuff ? "debuff" : "buff", fx.type ? ["type", fx.type] : null, expiring ? "expiring" : null),
       partClass: "slot",
@@ -480,7 +480,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
       effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
       clip: "shape",
     });
-    artTile("Icon", fx.image, fx.icon ?? fx.name ?? "", art, fx.debuff ? ink : hueOf(fx.icon || fx.name || id), absolute({ start: rim, top: rim }), sel("StatusGrid", "icon"));
+    artTile("Icon", fx.image, fx.icon ?? fx.name ?? "", art, fx.debuff ? ink : hueOf(fx.icon || fx.name || id), absolute({ start: rim, top: rim }, { overlaps: [tilePath] }), sel("StatusGrid", "icon"));
     if (!lasting && (fx.duration ?? 0) > 0) {
       // The time gone darkens clockwise (linear-light blending: 75 % reads as about half).
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("StatusGrid", "sweep") }, {

@@ -10,7 +10,10 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
+import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize, minText, tsFit } from "./core.ts";
+
+/** How much of the level badge's height its figure takes. */
+const LEVEL_FILL = 0.6;
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
@@ -112,9 +115,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     // No plate behind the frame (§15.5.6): the portrait, the name and the bars float on their own shadows.
     // Targeted keeps the ring's own (semantic) colour, a step thicker, with a neutral light glow; a hit flashes it danger.
     const ring = ringInk;
-    // The level badge: a circle at most 40 % of the portrait, seated on its rim at the bottom inner side (45°),
-    // its figure shrunk to fit at any text size.
-    const badgeH = Math.round(Math.min(pd * 0.4, Math.max(16, pd * 0.32) * textScale()));
+    // The level badge: a circle about 40 % of the portrait, seated on its rim at the bottom inner side (45°), its
+    // figure shrunk to fit at any text size; never so small its figure falls under the smallest text the checks allow
+    // (§15.2: a small party frame's 12 px badge drew its level at 6.7 px).
+    const chars = Math.max(2, (desc.level ?? "").length);
+    const badgeH = Math.max(Math.round(Math.min(pd * 0.4, Math.max(16, pd * 0.32) * textScale())), Math.ceil(Math.max(minText() / LEVEL_FILL, (minText() * chars * 0.6) / 0.78)));
     const badgeHang = Math.max(0, Math.round(badgeH / 2 - pd * 0.146));
     const frameW = Math.min(u(m.width) + pd, shared ? (hudRoom() - tk.sm) / 2 : hudRoom());
     // The buffs under the bars in as many columns as fit the bars' width, so they never widen the frame.
@@ -188,9 +193,9 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         strokes: [stroke(1, lit(WHITE, 0.22))],
         effects: [drop(1, 3, lit(BLACK, 0.6))],
       }, () => {
-        const step = ts(11);
-        const chars = Math.max(2, (desc.level ?? "").length);
-        const fit = shrunk(step, Math.min(badgeH * 0.56, (badgeH * 0.78) / (chars * 0.6)), stepSize(step).line);
+        // A step at least the smallest text, drawn down to the badge's room.
+        const step = tsFit(11, Math.max(minText(), Math.min(badgeH * LEVEL_FILL, (badgeH * 0.78) / (chars * 0.6))), true);
+        const fit = shrunk(step, Math.min(badgeH * LEVEL_FILL, (badgeH * 0.78) / (chars * 0.6)), stepSize(step).line);
         text("Text", desc.level ?? "", { step, font: "display", color: hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
       }, absolute(desc.reverse ? { start: at, bottom: at } : { end: at, bottom: at }, { z: 2, overlaps: [portraitPath] }));
     }
