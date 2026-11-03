@@ -1579,7 +1579,7 @@ impl Renderer {
                 self.out_width,
                 self.out_height,
                 o,
-                !self.output_format.is_srgb() && !self.has_linear_view(target),
+                !self.output_format.is_srgb() && (!self.has_linear_view(target) || o.srgb_blend),
             );
             ui_uniform = Some(u);
         }
@@ -2341,6 +2341,9 @@ impl Renderer {
         // output itself with the shader encoding (a caller's non-sRGB view).
         let overlay_view = match target {
             _ if self.output_format.is_srgb() => None,
+            // A UI that blends in sRGB space: the output itself, the shader
+            // encoding.
+            _ if scene.overlay.as_ref().is_some_and(|o| o.srgb_blend) => None,
             RenderTarget::Offscreen => self.persistent.offscreen_linear.as_ref(),
             RenderTarget::Surface => surface_frame.as_ref().and_then(|f| f.2.as_ref()),
             RenderTarget::View(_) => None,

@@ -458,6 +458,28 @@ fn visual_segments(
     out
 }
 
+/// `[size=<px> <line height px> <tracking em>]`, a step of its own (CJK
+/// takes the same line height and tracking, as CSS gives them).
+pub(crate) fn explicit_step(value: &str) -> Option<TypeStep> {
+    let mut it = value.split_whitespace().map(str::parse::<f32>);
+    let (Some(Ok(size)), Some(Ok(lh)), Some(Ok(em)), None) =
+        (it.next(), it.next(), it.next(), it.next())
+    else {
+        return None;
+    };
+    if !(size.is_finite() && lh.is_finite() && em.is_finite()) || size <= 0.0 || lh < 0.0 {
+        return None;
+    }
+    Some(TypeStep {
+        size,
+        line_height: lh,
+        tracking_em: em,
+        cjk_line_height: lh,
+        cjk_tracking_em: em,
+        features: Default::default(),
+    })
+}
+
 /// A sine with `+ − × ÷` only (Bhaskara I), for per-glyph motion: the UI
 /// reads no transcendental functions.
 pub(crate) fn sine(x: f32) -> f32 {
@@ -495,9 +517,16 @@ impl Ui {
                 let mut ramp = t.type_ramp;
                 match crate::style_file::ramp_step(&mut ramp, name) {
                     Some(st) => step = *st,
-                    None => self
-                        .warnings
-                        .push(format!("rich text: [size={name}] is not a TypeStepName")),
+                    // An explicit step, `[size=<px> <line height px>
+                    // <tracking em>]`, for text a page styles itself (a CSS
+                    // font-size, line-height and letter-spacing) beyond the
+                    // ramp's steps.
+                    None => match explicit_step(name) {
+                        Some(st) => step = st,
+                        None => self.warnings.push(format!(
+                            "rich text: [size={name}] is not a TypeStepName nor \"<px> <line height> <tracking em>\""
+                        )),
+                    },
                 }
             }
             let mut color = if s.link.is_some() {
@@ -1052,5 +1081,26 @@ impl Ui {
                 rule(baseline - size * 0.3);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod explicit_step_tests {
+    #[test]
+    fn an_explicit_step_takes_three_numbers() {
+        let s = super::explicit_step("76 148.2 0.18").unwrap();
+        assert_eq!(
+            (
+                s.size,
+                s.line_height,
+                s.cjk_line_height,
+                s.tracking_em,
+                s.cjk_tracking_em
+            ),
+            (76.0, 148.2, 148.2, 0.18, 0.18)
+        );
+        assert!(super::explicit_step("lg").is_none());
+        assert!(super::explicit_step("12 20").is_none());
+        assert!(super::explicit_step("0 20 0").is_none());
     }
 }

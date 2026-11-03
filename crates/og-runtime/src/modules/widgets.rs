@@ -380,6 +380,7 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     let first_text = overlay.texts.len();
     let first_sprite = overlay.sprites.len();
     let first_shape = overlay.ui.shapes.len();
+    overlay.srgb_blend = ui.theme().art.srgb_blend;
     frame.emit_shifted(
         &og_ui::EmitDesc {
             // Over the game's screen layers up to og_render::UI_LAYER, under

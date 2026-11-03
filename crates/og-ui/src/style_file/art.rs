@@ -455,6 +455,10 @@ pub struct Art {
     pub motion: StyleMotion,
     /// Sound handles by [`UiSound`] (0: silent).
     pub sounds: [u64; 6],
+    /// `blend srgb`: the UI blends in sRGB space, as CSS does
+    /// (og_render::Overlay::srgb_blend); `blend linear` (the default) in
+    /// linear light.
+    pub srgb_blend: bool,
     /// A version 1 style: a game shipped with it keeps the screens it
     /// drew (docs/ui.md §12.1): its dialogs' titles the ramp's xl in the
     /// body face, its ramp untracked, its grid's selection an underline,

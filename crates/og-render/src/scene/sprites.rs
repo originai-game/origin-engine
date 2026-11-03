@@ -275,6 +275,11 @@ pub struct Overlay {
     /// The UI pass's shapes, clip shapes, layers, text effects and vectors
     /// ([`crate::ui`]), sorted with the sprites and text by layer.
     pub ui: crate::ui::UiList,
+    /// Blend in sRGB (gamma) space, as a browser composites CSS, instead of
+    /// linear light, where the output is not itself sRGB (the web canvas, an
+    /// offscreen capture): the shader encodes and the blend unit mixes the
+    /// encoded values. A UI style's `blend srgb`.
+    pub srgb_blend: bool,
 }
 
 /// The UI's layer among screen sprites and screen text (the IDL's
@@ -315,6 +320,7 @@ impl Overlay {
             scale,
             clips: Vec::new(),
             ui: crate::ui::UiList::default(),
+            srgb_blend: false,
         }
     }
 

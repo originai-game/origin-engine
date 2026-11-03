@@ -441,6 +441,13 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 let i = role_index(&p, p.word(0)?)?;
                 theme.art.text_glows[i] = Some(glow_at(&p, 1)?);
             }
+            "blend" => {
+                theme.art.srgb_blend = match p.word(0)? {
+                    "srgb" => true,
+                    "linear" => false,
+                    w => return Err(p.err(&format!("takes srgb or linear, not '{w}'"))),
+                };
+            }
             "textWeight" => {
                 let i = role_index(&p, p.word(0)?)?;
                 let w = p.num(1)?;
