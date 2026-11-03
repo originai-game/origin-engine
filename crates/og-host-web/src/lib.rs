@@ -73,6 +73,10 @@ thread_local! {
     static ORPHANED: RefCell<BTreeMap<String, Vec<String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Render-target sizes the shell asked for, by engine, applied before the next frame.
     static RESIZES: RefCell<IdMap<u32, (u32, u32)>> = const { RefCell::new(IdMap::new()) };
+    /// The bundle the texture calls last parsed, with its manifest text
+    /// (s58): a boot's hundreds of texture calls parse the 0.5 MB manifest
+    /// once, not twice per texture.
+    static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
@@ -535,7 +539,7 @@ pub fn og_web_put_texture_encoded(
 /// does not parse.
 #[wasm_bindgen]
 pub fn og_web_texture_target(engine: u32, manifest: String, id: String, bytes: Vec<u8>) -> String {
-    let Ok(bundle) = og_bundle::runtime::Bundle::from_manifest(&manifest) else {
+    let Some(bundle) = bundle_of(&manifest) else {
         return "rgba8".into();
     };
     let words = aligned(&bytes);
@@ -652,6 +656,8 @@ fn json_str(s: &str) -> String {
 pub fn og_web_bundle_files(manifest: String) -> String {
     match og_bundle::runtime::Bundle::from_manifest(&manifest) {
         Ok(bundle) => {
+            let bundle = std::rc::Rc::new(bundle);
+            BUNDLE.with(|cell| *cell.borrow_mut() = Some((manifest.clone(), bundle.clone())));
             let items: Vec<String> = bundle
                 .manifest()
                 .outputs()
@@ -675,6 +681,29 @@ pub fn og_web_bundle_files(manifest: String) -> String {
     }
 }
 
+/// The bundle of `manifest`, parsed once and kept (s58): the texture calls
+/// below run once or twice per texture of a boot with the same manifest,
+/// and `Bundle::from_manifest` of a large one costs milliseconds. An empty
+/// `manifest` names the one the last call parsed (the Worker then hands the
+/// text over once); `None` when it does not parse, or when it is empty and
+/// none was parsed yet.
+fn bundle_of(manifest: &str) -> Option<std::rc::Rc<og_bundle::runtime::Bundle>> {
+    BUNDLE.with(|cell| {
+        let mut cell = cell.borrow_mut();
+        if let Some((text, bundle)) = cell.as_ref()
+            && (manifest.is_empty() || text.as_str() == manifest)
+        {
+            return Some(bundle.clone());
+        }
+        if manifest.is_empty() {
+            return None;
+        }
+        let bundle = std::rc::Rc::new(og_bundle::runtime::Bundle::from_manifest(manifest).ok()?);
+        *cell = Some((manifest.to_string(), bundle.clone()));
+        Some(bundle)
+    })
+}
+
 /// `bytes` copied into 16-aligned memory, as blob views require.
 fn aligned(bytes: &[u8]) -> Vec<u128> {
     let mut words = vec![0u128; bytes.len().div_ceil(16)];
@@ -692,7 +721,7 @@ fn aligned(bytes: &[u8]) -> Vec<u128> {
 /// with the reason when it loads).
 #[wasm_bindgen]
 pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<u8> {
-    let Ok(bundle) = og_bundle::runtime::Bundle::from_manifest(&manifest) else {
+    let Some(bundle) = bundle_of(&manifest) else {
         return Vec::new();
     };
     let words = aligned(&bytes);
@@ -714,10 +743,8 @@ pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<
 pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) -> js_sys::Array {
     let out = js_sys::Array::new();
     let formats = engine.and_then(|e| FORMATS.with(|f| f.borrow().get(&e).cloned()));
-    let (Ok(bundle), Ok(files)) = (
-        og_bundle::runtime::Bundle::from_manifest(&manifest),
-        og_bundle::runtime::unpack(&pack),
-    ) else {
+    let (Some(bundle), Ok(files)) = (bundle_of(&manifest), og_bundle::runtime::unpack(&pack))
+    else {
         return out;
     };
     for (file, bytes) in files {
@@ -939,6 +966,31 @@ pub fn og_web_lose_device(engine: u32) -> bool {
 #[wasm_bindgen]
 pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
+}
+
+/// Fork s60: the frame pipelines made with `createRenderPipelineAsync` (on)
+/// or at once (off), and a draw whose pipeline is still compiling skipped
+/// meanwhile (og-render `set_async_pipelines`); the Worker turns it on before
+/// the first frame.
+#[wasm_bindgen]
+pub fn og_web_async_pipelines(on: bool) {
+    og_render::set_async_pipelines(on);
+}
+
+/// Fork s60: `[pending, skipped, deferred]`: the pipelines still compiling,
+/// the draws skipped for them since the last call, and (s63) the textures
+/// still drawn from their stand-ins.
+#[wasm_bindgen]
+pub fn og_web_pipelines_state() -> Vec<u32> {
+    let (pending, skipped) = og_render::async_pipelines_state();
+    vec![pending, skipped, og_render::textures_deferred()]
+}
+
+/// Fork s63: the texture bytes a frame uploads at most (0: no limit); a
+/// texture past it is drawn from a stand-in and uploaded by a later frame.
+#[wasm_bindgen]
+pub fn og_web_upload_budget(bytes: f64) {
+    og_render::set_upload_budget(bytes as u64);
 }
 
 /// `og render`'s every-frame capture on the web, as the native host's

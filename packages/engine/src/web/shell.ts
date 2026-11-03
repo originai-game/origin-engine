@@ -101,7 +101,9 @@ export interface ShellOptions {
   /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */
   readonly project?: string;
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
-  readonly onProgress?: (value: number, stage: string) => void;
+  readonly onProgress?: (value: number, stage: string, fraction?: number) => void;
+  /** Fork s61: a loading stage the game reported itself (worker global `ogBootStage`), for a page that draws its own loading screen. */
+  readonly onStage?: (id: string, fraction: number) => void;
   /** The highest device pixel ratio the canvas is drawn at (default 2). */
   readonly dprCap?: number;
   /** Bytes the boot fetches (the wasm, the cooked bundle), so progress is the bytes received. */
@@ -261,7 +263,9 @@ export interface HostError {
  * `Atomics.wait` for a lane that never ends): it terminates the Worker and
  * reports a `hang`. A panicking lane is caught sooner, at the lane boundary.
  */
-export const FRAME_DEADLINE_MS = 15_000;
+// Fork s61: 120 s (was 15 s): a first frame that compiles and uploads a large scene's pipelines and
+// textures on a slow GPU (a cold shader cache on Windows) took more than 15 s and was stopped as a hang.
+export const FRAME_DEADLINE_MS = 120_000;
 
 /** What the Worker reported when the engine was ready. */
 export interface Ready {
@@ -327,6 +331,8 @@ export class Shell {
   #onFirstFrame: ShellOptions["onFirstFrame"];
   #onLoadFailure: ShellOptions["onLoadFailure"];
   #onScenesSaved: ShellOptions["onScenesSaved"];
+  #onProgress: ShellOptions["onProgress"];
+  #onStage: ShellOptions["onStage"];
   #next = 1;
   #rpcNext = 1;
   #pumping = false;
@@ -392,6 +398,18 @@ export class Shell {
         this.#beatTick = (m as { tick?: number | null }).tick ?? this.#beatTick;
         // A host that answers later (an ad's answer after the resume) or sends notices on its own.
         this.#platform.poll?.(this.#link);
+        return;
+      }
+      // Fork s61: the stages after "ready" (the first tick, the first frame's pipelines) move the bar too.
+      if (m.type === "progress") {
+        const p = m as unknown as { value?: number; stage?: string; fraction?: number };
+        this.#onProgress?.(p.value ?? 0, p.stage ?? "", p.fraction);
+        return;
+      }
+      // Fork s61: the game's own loading stages (its loading screen's, after the engine's).
+      if (m.type === "og-stage") {
+        const p = m as unknown as { id?: string; fraction?: number };
+        this.#onStage?.(p.id ?? "", p.fraction ?? 0);
         return;
       }
       if (m.type === "frame") {
@@ -512,8 +530,8 @@ export class Shell {
       const onMessageError = () => failed("a message from the engine Worker could not be read");
       const on = (e: MessageEvent) => {
         arm();
-        const m = e.data as { type: string; value?: number; stage?: string; message?: string } & Partial<Ready>;
-        if (m.type === "progress") options.onProgress?.(m.value ?? 0, m.stage ?? "");
+        const m = e.data as { type: string; value?: number; stage?: string; fraction?: number; message?: string } & Partial<Ready>;
+        if (m.type === "progress") options.onProgress?.(m.value ?? 0, m.stage ?? "", m.fraction);
         else if (m.type === "ready") {
           settle();
           resolve({
@@ -558,6 +576,7 @@ export class Shell {
         ...(options.prime ? { prime: true } : {}),
         ...(options.trace ? { trace: true } : {}),
         ...(options.telemetry ? { telemetry: true } : {}),
+        ...(options.onStage ? { stages: true } : {}),
         viewport: { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false, ...pagePreferences() },
       },
       [offscreen],
@@ -577,6 +596,8 @@ export class Shell {
     shell.#onFirstFrame = options.onFirstFrame;
     shell.#onLoadFailure = options.onLoadFailure;
     shell.#onScenesSaved = options.onScenesSaved;
+    shell.#onProgress = options.onProgress;
+    shell.#onStage = options.onStage;
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#layout = { width: shell.#viewport["width"] as number, height: shell.#viewport["height"] as number };

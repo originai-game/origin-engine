@@ -217,6 +217,48 @@ impl Renderer {
         }
     }
 
+    /// Fork s63: a deferred texture's 1x1 stand-in until a later frame
+    /// uploads it: mid grey and transparent for colour, a flat normal for a
+    /// two-channel map, white occlusion and roughness for another linear one.
+    pub(crate) fn stand_in(
+        &mut self,
+        source: &TextureSource,
+        encoder: &mut crate::Encoder,
+    ) -> GpuTexture {
+        let (srgb, two_channel) = match source {
+            TextureSource::Rgba(t) => (t.color_space == ColorSpace::Srgb, false),
+            TextureSource::Encoded(u) => (
+                u.desc.color_space == ColorSpace::Srgb,
+                u.desc.format.two_channel(),
+            ),
+            TextureSource::Target(_) => (false, false),
+        };
+        let rgba = if srgb {
+            vec![128, 128, 128, 0]
+        } else if two_channel {
+            vec![128, 128, 255, 255]
+        } else {
+            vec![255, 255, 0, 255]
+        };
+        let data = TextureData {
+            width: 1,
+            height: 1,
+            rgba,
+            color_space: if srgb {
+                ColorSpace::Srgb
+            } else {
+                ColorSpace::Linear
+            },
+            mips: Mips::Generate,
+        };
+        GpuTexture {
+            view: self.upload_texture(&data, encoder),
+            format: TextureFormat::Rgba8,
+            bytes: 4,
+            target: false,
+        }
+    }
+
     pub(crate) fn upload_source(
         &mut self,
         source: &TextureSource,

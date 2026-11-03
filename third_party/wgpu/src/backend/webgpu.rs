@@ -35,6 +35,120 @@ use crate::{
 
 use defined_non_null_js_value::DefinedNonNullJsValue;
 
+/// Origin fork s60: render pipelines made off the browser's GPU thread.
+///
+/// `createRenderPipeline` compiles in the GPU process's main task: a frame
+/// that makes dozens of pipelines (a game's first frame) holds that process,
+/// and with it every page's frames and the WebGPU queue, for as long as
+/// they all take to compile. While [`set_async`] is on, a render pipeline is
+/// made with `createRenderPipelineAsync` instead (Dawn compiles it on its
+/// worker threads) and the [`RenderPipeline`](crate::RenderPipeline) is
+/// handed back at once; while [`set_skip`] is on as well, a render pass
+/// skips the draws of a pipeline that is not made yet (counted, [`take_skipped`])
+/// rather than waiting for it. Otherwise its first use makes it then, as
+/// `createRenderPipeline` would have (Dawn hands back the asynchronous
+/// one's object when it is done, by content). Both are off by default:
+/// nothing changes for a caller that never turns them on.
+pub mod async_pipelines {
+    use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+    pub(crate) static ASYNC: AtomicBool = AtomicBool::new(false);
+    pub(crate) static SKIP: AtomicBool = AtomicBool::new(false);
+    pub(crate) static PENDING: AtomicU32 = AtomicU32::new(0);
+    pub(crate) static SKIPPED: AtomicU32 = AtomicU32::new(0);
+    /// Make render pipelines with `createRenderPipelineAsync` from now on; answers what it was.
+    pub fn set_async(on: bool) -> bool {
+        ASYNC.swap(on, Ordering::Relaxed)
+    }
+    /// Skip the draws of a render pipeline that is not made yet (else its use makes it now).
+    pub fn set_skip(on: bool) {
+        SKIP.store(on, Ordering::Relaxed);
+    }
+    /// Render pipelines asked for asynchronously and not made yet.
+    pub fn pending() -> u32 {
+        PENDING.load(Ordering::Relaxed)
+    }
+    /// Draws skipped since the last call, for a pipeline that was not made yet.
+    pub fn take_skipped() -> u32 {
+        SKIPPED.swap(0, Ordering::Relaxed)
+    }
+
+    use super::webgpu_sys;
+    use alloc::{collections::VecDeque, rc::Rc};
+    use core::cell::RefCell;
+    use wasm_bindgen::{JsCast, JsValue};
+
+    /// How many asynchronous pipelines are asked for in one task: the browser
+    /// flushes a task's WebGPU commands to the GPU process together, so a
+    /// frame's dozens of requests would still be one long GPU-process task.
+    const PER_TASK: usize = 2;
+
+    type Slot = Rc<RefCell<Option<webgpu_sys::GpuRenderPipeline>>>;
+    /// A value of the one thread that drives WebGPU (wasm32 here: the Worker's).
+    struct Local<T>(T);
+    // SAFETY: only the thread that made the device reaches these (its WebGPU objects are its own).
+    unsafe impl<T> Sync for Local<T> {}
+    #[allow(clippy::type_complexity)]
+    static QUEUE: Local<RefCell<VecDeque<(webgpu_sys::GpuDevice, webgpu_sys::GpuRenderPipelineDescriptor, Slot, Rc<super::LateStates>)>>> = Local(RefCell::new(VecDeque::new()));
+    static DRAINING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
+    /// A macrotask boundary (`setTimeout(0)`): the commands so far are flushed.
+    async fn next_task() {
+        let promise = js_sys::Promise::new(&mut |resolve, _| {
+            let global = js_sys::global();
+            match js_sys::Reflect::get(&global, &JsValue::from_str("setTimeout")).map(|f| f.dyn_into::<js_sys::Function>()) {
+                Ok(Ok(f)) => {
+                    let _ = f.call2(&global, &resolve, &JsValue::from(0));
+                }
+                _ => {
+                    let _ = resolve.call0(&JsValue::NULL);
+                }
+            }
+        });
+        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+    }
+
+    /// Queues an asynchronous pipeline; the queue is asked for PER_TASK a task.
+    pub(crate) fn enqueue(device: webgpu_sys::GpuDevice, desc: webgpu_sys::GpuRenderPipelineDescriptor, slot: Slot, late: Rc<super::LateStates>) {
+        PENDING.fetch_add(1, Ordering::Relaxed);
+        QUEUE.0.borrow_mut().push_back((device, desc, slot, late));
+        if DRAINING.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        wasm_bindgen_futures::spawn_local(async {
+            loop {
+                next_task().await;
+                let batch: alloc::vec::Vec<_> = {
+                    let mut q = QUEUE.0.borrow_mut();
+                    let n = q.len().min(PER_TASK);
+                    q.drain(..n).collect()
+                };
+                if batch.is_empty() {
+                    DRAINING.store(false, Ordering::Relaxed);
+                    return;
+                }
+                for (device, desc, slot, late) in batch {
+                    // Made meanwhile by its first use (a draw that could not be skipped).
+                    if slot.borrow().is_some() {
+                        PENDING.fetch_sub(1, Ordering::Relaxed);
+                        continue;
+                    }
+                    // Fork s64: its modules made now, in this task (each once).
+                    super::bind_late(&late);
+                    let promise: js_sys::Promise = device.create_render_pipeline_async(&desc).unchecked_into();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let answer = wasm_bindgen_futures::JsFuture::from(promise).await;
+                        PENDING.fetch_sub(1, Ordering::Relaxed);
+                        // A refused pipeline stays unmade: its first use makes it, which reports why.
+                        if let Ok(p) = answer {
+                            slot.borrow_mut().get_or_insert(p.unchecked_into());
+                        }
+                    });
+                }
+            }
+        });
+    }
+}
+
 // We need to mark various types as Send and Sync to satisfy the Rust type system.
 //
 // SAFETY: All webgpu handle types in wasm32 are internally a `JsValue`, and `JsValue` is neither
@@ -120,10 +234,57 @@ impl fmt::Debug for DropGuard {
 
 #[derive(Debug, Clone)]
 pub struct WebShaderModule {
-    module: webgpu_sys::GpuShaderModule,
+    /// Fork s64: the module, made at its first use while asynchronous pipelines are on.
+    module: Rc<LateModule>,
     compilation_info: WebShaderCompilationInfo,
     /// Unique identifier for this shader module.
     ident: crate::cmp::Identifier,
+}
+
+/// Fork s64: a shader module whose `createShaderModule` waits for the first pipeline that uses it.
+///
+/// The browser compiles a module's WGSL (Tint) in the GPU process when the task that asked for it
+/// flushes: a frame that registers a game's dozens of material shaders made one task of seconds there
+/// (100 modules, 4.6 M characters of WGSL, 2.8 s, on the 3090 server). While the host has
+/// [`async_pipelines`] on (`set_skip`) a module is made where a pipeline first needs it, so in the pipeline queue's tasks, PER_TASK
+/// pipelines (and their modules) a task; any other use (a synchronous pipeline, a compute pipeline,
+/// its compilation info) makes it then.
+#[derive(Debug)]
+pub struct LateModule {
+    made: RefCell<Option<webgpu_sys::GpuShaderModule>>,
+    make: RefCell<Option<(webgpu_sys::GpuDevice, webgpu_sys::GpuShaderModuleDescriptor)>>,
+}
+
+impl LateModule {
+    fn now(module: webgpu_sys::GpuShaderModule) -> Self {
+        Self { made: RefCell::new(Some(module)), make: RefCell::new(None) }
+    }
+    fn later(device: webgpu_sys::GpuDevice, desc: webgpu_sys::GpuShaderModuleDescriptor) -> Self {
+        Self { made: RefCell::new(None), make: RefCell::new(Some((device, desc))) }
+    }
+    /// The module, made now if it was not yet.
+    pub(crate) fn get(&self) -> webgpu_sys::GpuShaderModule {
+        if let Some(m) = self.made.borrow().as_ref() {
+            return m.clone();
+        }
+        let (device, desc) = self.make.borrow_mut().take().expect("a late module keeps its descriptor until made");
+        let m = device.create_shader_module(&desc);
+        *self.made.borrow_mut() = Some(m.clone());
+        m
+    }
+    fn is_made(&self) -> bool {
+        self.made.borrow().is_some()
+    }
+}
+
+/// Fork s64: pipeline states (vertex, fragment) whose module is set when the pipeline is made.
+pub(crate) type LateStates = alloc::vec::Vec<(wasm_bindgen::JsValue, Rc<LateModule>)>;
+
+/// Fork s64: give each state its module (made now if it was not yet).
+pub(crate) fn bind_late(states: &LateStates) {
+    for (state, module) in states {
+        let _ = js_sys::Reflect::set(state, &wasm_bindgen::JsValue::from_str("module"), &module.get());
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1429,9 +1590,31 @@ pub struct WebPipelineLayout {
 
 #[derive(Debug, Clone)]
 pub struct WebRenderPipeline {
-    pub(crate) inner: webgpu_sys::GpuRenderPipeline,
+    /// The pipeline; `None` while an asynchronous one is compiling (fork s60).
+    pub(crate) inner: Rc<RefCell<Option<webgpu_sys::GpuRenderPipeline>>>,
+    /// The device and descriptor an asynchronous one is made from at its first use when it is not done yet.
+    fallback: Option<Rc<(webgpu_sys::GpuDevice, webgpu_sys::GpuRenderPipelineDescriptor, Rc<LateStates>)>>,
     /// Unique identifier for this RenderPipeline.
     ident: crate::cmp::Identifier,
+}
+
+impl WebRenderPipeline {
+    /// The pipeline to set (fork s60): made now if an asynchronous one is not done
+    /// yet, or `None` then when `may_skip` and the host skips such draws.
+    fn resolved(&self, may_skip: bool) -> Option<webgpu_sys::GpuRenderPipeline> {
+        if let Some(p) = self.inner.borrow().as_ref() {
+            return Some(p.clone());
+        }
+        if may_skip && async_pipelines::SKIP.load(core::sync::atomic::Ordering::Relaxed) {
+            async_pipelines::SKIPPED.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+            return None;
+        }
+        let (device, desc, late) = &**self.fallback.as_ref().expect("an unmade pipeline keeps its descriptor");
+        bind_late(late);
+        let p = device.create_render_pipeline(desc).unwrap();
+        *self.inner.borrow_mut() = Some(p.clone());
+        Some(p)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1464,6 +1647,8 @@ pub struct WebComputePassEncoder {
 #[derive(Debug)]
 pub struct WebRenderPassEncoder {
     pub(crate) inner: webgpu_sys::GpuRenderPassEncoder,
+    /// The pipeline set last is not made yet: its draws are skipped (fork s60).
+    skipping: bool,
     /// Unique identifier for this RenderPassEncoder.
     ident: crate::cmp::Identifier,
 }
@@ -2027,8 +2212,16 @@ impl dispatch::DeviceInterface for WebDevice {
         if let Some(label) = desc.label {
             descriptor.set_label(label);
         }
+        // Fork s64: while the host has asynchronous pipelines on (`set_skip`, og-render's
+        // set_async_pipelines; its material shaders' modules are made outside the frame
+        // pipelines' `set_async` span), made at its first use (LateModule).
+        let module = if async_pipelines::SKIP.load(core::sync::atomic::Ordering::Relaxed) {
+            LateModule::later(self.inner.clone(), descriptor)
+        } else {
+            LateModule::now(self.inner.create_shader_module(&descriptor))
+        };
         WebShaderModule {
-            module: self.inner.create_shader_module(&descriptor),
+            module: Rc::new(module),
             compilation_info,
             ident: crate::cmp::Identifier::create(),
         }
@@ -2068,8 +2261,16 @@ impl dispatch::DeviceInterface for WebDevice {
         if let Some(label) = desc.label {
             descriptor.set_label(label);
         }
+        // Fork s64: while the host has asynchronous pipelines on (`set_skip`, og-render's
+        // set_async_pipelines; its material shaders' modules are made outside the frame
+        // pipelines' `set_async` span), made at its first use (LateModule).
+        let module = if async_pipelines::SKIP.load(core::sync::atomic::Ordering::Relaxed) {
+            LateModule::later(self.inner.clone(), descriptor)
+        } else {
+            LateModule::now(self.inner.create_shader_module(&descriptor))
+        };
         WebShaderModule {
-            module: self.inner.create_shader_module(&descriptor),
+            module: Rc::new(module),
             compilation_info,
             ident: crate::cmp::Identifier::create(),
         }
@@ -2291,8 +2492,17 @@ impl dispatch::DeviceInterface for WebDevice {
         &self,
         desc: &crate::RenderPipelineDescriptor<'_>,
     ) -> dispatch::DispatchRenderPipeline {
+        // Fork s64: a module not made yet is set on its state when the pipeline is made.
+        let mut late: LateStates = alloc::vec::Vec::new();
         let module = desc.vertex.module.inner.as_webgpu();
-        let mapped_vertex_state = webgpu_sys::GpuVertexState::new(&module.module);
+        let async_on = async_pipelines::ASYNC.load(core::sync::atomic::Ordering::Relaxed);
+        let mapped_vertex_state = if async_on && !module.module.is_made() {
+            let state = webgpu_sys::GpuVertexState::new(&wasm_bindgen::JsValue::UNDEFINED.unchecked_into());
+            late.push((state.clone().into(), module.module.clone()));
+            state
+        } else {
+            webgpu_sys::GpuVertexState::new(&module.module.get())
+        };
         insert_constants_map(
             &mapped_vertex_state,
             desc.vertex.compilation_options.constants,
@@ -2373,7 +2583,13 @@ impl dispatch::DeviceInterface for WebDevice {
                 })
                 .collect::<Vec<js_sys::JsNullable<webgpu_sys::GpuColorTargetState>>>();
             let module = frag.module.inner.as_webgpu();
-            let mapped_fragment_desc = webgpu_sys::GpuFragmentState::new(&module.module, &targets);
+            let mapped_fragment_desc = if async_on && !module.module.is_made() {
+                let state = webgpu_sys::GpuFragmentState::new(&wasm_bindgen::JsValue::UNDEFINED.unchecked_into(), &targets);
+                late.push((state.clone().into(), module.module.clone()));
+                state
+            } else {
+                webgpu_sys::GpuFragmentState::new(&module.module.get(), &targets)
+            };
             insert_constants_map(&mapped_fragment_desc, frag.compilation_options.constants);
             if let Some(ep) = frag.entry_point {
                 mapped_fragment_desc.set_entry_point(ep);
@@ -2391,10 +2607,25 @@ impl dispatch::DeviceInterface for WebDevice {
         let mapped_primitive = map_primitive_state(&desc.primitive);
         mapped_desc.set_primitive(&mapped_primitive);
 
+        // Fork s60: asynchronously while the host asks for it (`async_pipelines`).
+        use core::sync::atomic::Ordering::Relaxed;
+        if async_pipelines::ASYNC.load(Relaxed) {
+            let made = Rc::new(RefCell::new(None));
+            let late = Rc::new(late);
+            async_pipelines::enqueue(self.inner.clone(), mapped_desc.clone(), made.clone(), late.clone());
+            return WebRenderPipeline {
+                inner: made,
+                fallback: Some(Rc::new((self.inner.clone(), mapped_desc, late))),
+                ident: crate::cmp::Identifier::create(),
+            }
+            .into();
+        }
+        bind_late(&late);
         let render_pipeline = self.inner.create_render_pipeline(&mapped_desc).unwrap();
 
         WebRenderPipeline {
-            inner: render_pipeline,
+            inner: Rc::new(RefCell::new(Some(render_pipeline))),
+            fallback: None,
             ident: crate::cmp::Identifier::create(),
         }
         .into()
@@ -2412,7 +2643,7 @@ impl dispatch::DeviceInterface for WebDevice {
         desc: &crate::ComputePipelineDescriptor<'_>,
     ) -> dispatch::DispatchComputePipeline {
         let shader_module = desc.module.inner.as_webgpu();
-        let mapped_compute_stage = webgpu_sys::GpuProgrammableStage::new(&shader_module.module);
+        let mapped_compute_stage = webgpu_sys::GpuProgrammableStage::new(&shader_module.module.get());
         insert_constants_map(&mapped_compute_stage, desc.compilation_options.constants);
         if let Some(ep) = desc.entry_point {
             mapped_compute_stage.set_entry_point(ep);
@@ -2888,7 +3119,7 @@ impl Drop for WebQueue {
 
 impl dispatch::ShaderModuleInterface for WebShaderModule {
     fn get_compilation_info(&self) -> Pin<Box<dyn dispatch::ShaderCompilationInfoFuture>> {
-        let compilation_info_promise = self.module.get_compilation_info();
+        let compilation_info_promise = self.module.get().get_compilation_info();
         let map_future = Box::new({
             let compilation_info = self.compilation_info.clone();
             move |result| future_compilation_info(result, &compilation_info)
@@ -3081,7 +3312,8 @@ impl Drop for WebPipelineLayout {
 
 impl dispatch::RenderPipelineInterface for WebRenderPipeline {
     fn get_bind_group_layout(&self, index: u32) -> dispatch::DispatchBindGroupLayout {
-        let bind_group_layout = self.inner.get_bind_group_layout(index);
+        let pipeline = self.resolved(false).expect("made when it may not be skipped");
+        let bind_group_layout = pipeline.get_bind_group_layout(index);
 
         WebBindGroupLayout {
             inner: bind_group_layout,
@@ -3335,6 +3567,7 @@ impl dispatch::CommandEncoderInterface for WebCommandEncoder {
 
         WebRenderPassEncoder {
             inner: render_pass,
+            skipping: false,
             ident: crate::cmp::Identifier::create(),
         }
         .into()
@@ -3565,9 +3798,13 @@ impl Drop for WebComputePassEncoder {
 
 impl dispatch::RenderPassInterface for WebRenderPassEncoder {
     fn set_pipeline(&mut self, pipeline: &dispatch::DispatchRenderPipeline) {
-        let pipeline = &pipeline.as_webgpu().inner;
-
-        self.inner.set_pipeline(pipeline);
+        match pipeline.as_webgpu().resolved(true) {
+            Some(p) => {
+                self.inner.set_pipeline(&p);
+                self.skipping = false;
+            }
+            None => self.skipping = true,
+        }
     }
 
     fn set_bind_group(
@@ -3670,6 +3907,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
     }
 
     fn draw(&mut self, vertices: Range<u32>, instances: Range<u32>) {
+        if self.skipping {
+            return;
+        }
         self.inner
             .draw_with_instance_count_and_first_vertex_and_first_instance(
                 vertices.end - vertices.start,
@@ -3680,6 +3920,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
     }
 
     fn draw_indexed(&mut self, indices: Range<u32>, base_vertex: i32, instances: Range<u32>) {
+        if self.skipping {
+            return;
+        }
         self.inner
             .draw_indexed_with_instance_count_and_first_index_and_base_vertex_and_first_instance(
                 indices.end - indices.start,
@@ -3699,6 +3942,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         indirect_buffer: &dispatch::DispatchBuffer,
         indirect_offset: crate::BufferAddress,
     ) {
+        if self.skipping {
+            return;
+        }
         let buffer = indirect_buffer.as_webgpu();
         self.inner
             .draw_indirect_with_f64(&buffer.inner, indirect_offset as f64);
@@ -3709,6 +3955,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         indirect_buffer: &dispatch::DispatchBuffer,
         indirect_offset: crate::BufferAddress,
     ) {
+        if self.skipping {
+            return;
+        }
         let buffer = indirect_buffer.as_webgpu();
         self.inner
             .draw_indexed_indirect_with_f64(&buffer.inner, indirect_offset as f64);
@@ -3728,6 +3977,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         indirect_offset: crate::BufferAddress,
         count: u32,
     ) {
+        if self.skipping {
+            return;
+        }
         let buffer = indirect_buffer.as_webgpu();
 
         for i in 0..count {
@@ -3743,6 +3995,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         indirect_offset: crate::BufferAddress,
         count: u32,
     ) {
+        if self.skipping {
+            return;
+        }
         let buffer = indirect_buffer.as_webgpu();
 
         for i in 0..count {
@@ -3769,6 +4024,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         _count_buffer_offset: crate::BufferAddress,
         _max_count: u32,
     ) {
+        if self.skipping {
+            return;
+        }
         panic!(
             "MULTI_DRAW_INDIRECT_COUNT feature must be enabled to call multi_draw_indirect_count"
         )
@@ -3782,6 +4040,9 @@ impl dispatch::RenderPassInterface for WebRenderPassEncoder {
         _count_buffer_offset: crate::BufferAddress,
         _max_count: u32,
     ) {
+        if self.skipping {
+            return;
+        }
         panic!("MULTI_DRAW_INDIRECT_COUNT feature must be enabled to call multi_draw_indexed_indirect_count")
     }
 
@@ -3857,8 +4118,9 @@ impl Drop for WebCommandBuffer {
 
 impl dispatch::RenderBundleEncoderInterface for WebRenderBundleEncoder {
     fn set_pipeline(&mut self, pipeline: &dispatch::DispatchRenderPipeline) {
-        let pipeline = &pipeline.as_webgpu().inner;
-        self.inner.set_pipeline(pipeline);
+        // A bundle is replayed: never skipped (fork s60).
+        let pipeline = pipeline.as_webgpu().resolved(false).expect("made");
+        self.inner.set_pipeline(&pipeline);
     }
 
     fn set_bind_group(

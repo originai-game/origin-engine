@@ -291,3 +291,8 @@ codegen-units = 16
 # §Determinism).
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
+# wgpu 30.0.1 with WebGPU-backend patches (fork s60, s64, s71): render
+# pipelines made with createRenderPipelineAsync while the host asks for it,
+# draws with one not made yet skipped, shader modules made late, mapped
+# buffers staged through writeBuffer (third_party/wgpu/ORIGIN.md).
+wgpu = { path = "third_party/wgpu" }

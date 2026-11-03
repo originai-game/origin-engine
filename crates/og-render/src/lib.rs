@@ -127,6 +127,78 @@ mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
 mod impostor;
+
+/// Fork s60: the frame pipelines (materials' lit, shadow and prepass
+/// pipelines, [`Renderer::warm`]'s, particles') made with
+/// `createRenderPipelineAsync` on the WebGPU tier, and a draw whose pipeline
+/// is still compiling skipped until it is made (the vendored wgpu's
+/// `async_pipelines`). One-shot passes (mips, IBL, captures) always make
+/// theirs at once. Off natively and on WebGL2 (no effect there).
+static ASYNC_PIPELINES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Turn fork s60's asynchronous frame pipelines on or off (the web host:
+/// on behind the play gate and while playing).
+pub fn set_async_pipelines(on: bool) {
+    ASYNC_PIPELINES.store(on, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(target_arch = "wasm32")]
+    wgpu::webgpu::async_pipelines::set_skip(on);
+}
+
+/// Pipelines asked for asynchronously and not made yet, and the draws
+/// skipped for them since the last call (fork s60; `(0, 0)` natively).
+pub fn async_pipelines_state() -> (u32, u32) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wgpu::webgpu::async_pipelines as a;
+        (a::pending(), a::take_skipped())
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    (0, 0)
+}
+
+/// Fork s63: the texture bytes a frame uploads at most (0: no limit, the
+/// default). A texture past it is drawn from a 1x1 stand-in (mid grey and
+/// transparent for colour, a flat normal for a two-channel map, white
+/// occlusion and roughness for another linear one) and uploaded by a later
+/// frame, as a replaced texture is; a frame always uploads at least one.
+static UPLOAD_BUDGET: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Fork s63: the textures still drawn from their stand-ins after the last frame.
+static TEXTURES_DEFERRED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// The revision a deferred texture's slot holds: never a scene's.
+const DEFERRED_REVISION: u64 = u64::MAX;
+
+/// Set fork s63's per-frame texture upload budget in bytes (0: none).
+pub fn set_upload_budget(bytes: u64) {
+    UPLOAD_BUDGET.store(bytes, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Fork s63: the textures waiting for a later frame's upload.
+pub fn textures_deferred() -> u32 {
+    TEXTURES_DEFERRED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// The bytes a texture source uploads (a render target: none).
+fn source_upload_bytes(source: &TextureSource) -> u64 {
+    match source {
+        TextureSource::Rgba(t) => t.rgba.len() as u64,
+        TextureSource::Encoded(u) => u.levels.iter().map(|l| l.len() as u64).sum(),
+        TextureSource::Target(_) => 0,
+    }
+}
+
+/// Runs `f` with the frame pipelines it makes asynchronous when fork s60 is on.
+fn frame_pipelines<R>(f: impl FnOnce() -> R) -> R {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let on = ASYNC_PIPELINES.load(std::sync::atomic::Ordering::Relaxed);
+        let was = wgpu::webgpu::async_pipelines::set_async(on);
+        let r = f();
+        wgpu::webgpu::async_pipelines::set_async(was);
+        r
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    f()
+}
 mod physical;
 mod points;
 mod post;

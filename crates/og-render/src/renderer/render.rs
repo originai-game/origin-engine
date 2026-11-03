@@ -241,8 +241,10 @@ impl Renderer {
                 self.cache.sprite_groups[i] = None;
             }
         }
-        self.particles
-            .ensure_pipelines(&self.device, &particle_frame, self.samples);
+        frame_pipelines(|| {
+            self.particles
+                .ensure_pipelines(&self.device, &particle_frame, self.samples)
+        });
         let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;
         let array_layers = |a: TextureArrayHandle| {

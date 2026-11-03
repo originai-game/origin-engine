@@ -62,6 +62,25 @@ import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
 
+// Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
+// renderer is made inside the wasm, so its device is met here, where the Worker asks for it).
+{
+  const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
+  type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
+  if (proto) {
+    const requestDevice = proto.requestDevice;
+    proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
+      const device = await requestDevice.apply(this, a);
+      void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
+      let errors = 0;
+      device.addEventListener("uncapturederror", (e) => {
+        if (errors++ < 20) console.error(`[og] WebGPU error: ${e.error?.message}`);
+      });
+      return device;
+    };
+  }
+}
+
 interface Start {
   type: "start";
   glue: string;
@@ -80,6 +99,8 @@ interface Start {
   ring?: SharedArrayBuffer;
   rpc?: RpcRings;
   autoplay?: boolean;
+  /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
+  stages?: boolean;
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
   /** The Basis transcoder's script and module. */
@@ -219,6 +240,12 @@ export interface WebExtras {
   og_web_display_interval?(engine: number, ms: number): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
+  /** Fork s60: frame pipelines made with createRenderPipelineAsync, their draws skipped while they compile (og-render set_async_pipelines). */
+  og_web_async_pipelines?(on: boolean): void;
+  /** Fork s60: [pipelines still compiling, draws skipped for them since the last call]. */
+  og_web_pipelines_state?(): Uint32Array;
+  /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */
+  og_web_upload_budget?(bytes: number): void;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
   og_web_render_frame?(engine: number): Uint8Array;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
@@ -313,7 +340,47 @@ const tellLoadFailure = (url: string, e: unknown) => {
   }
 };
 
+/** Fork s63: the texture bytes one frame uploads at most (4 MB: a 32 MB frame was one 1.3-2.5 s GPU-process task on an RTX 3090). */
+export const UPLOAD_BUDGET = 4 * 1024 * 1024;
+
+/**
+ * Fork s61: each boot stage's share of the progress bar, so it does not sit at 100 % once the
+ * bytes are in: the download (wasm, bundle, fetch) 0-70 %, the Basis transcode 70-85 %, the first
+ * tick 85-92 %, the first frame (its pipelines) 92-100 %.
+ */
+export const BOOT_SPANS: Readonly<Record<string, readonly [number, number]>> = {
+  wasm: [0, 0.7],
+  bundle: [0, 0.7],
+  fetch: [0, 0.7],
+  transcode: [0.7, 0.85],
+  ready: [0.85, 0.85],
+  prime: [0.85, 0.92],
+  present: [0.92, 1],
+};
+
+/** A stage's fraction (0 to 1) as a place on the whole bar. */
+export function onBar(stage: string, value: number): number {
+  const [a, b] = BOOT_SPANS[stage] ?? [0, 1];
+  return a + (b - a) * Math.max(0, Math.min(1, value));
+}
+
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
+  // Fork s61: a fetch that failed (not refused: HTTP 4xx) is tried again, up to 5 times, backing off;
+  // its bytes already counted come off the progress first.
+  for (let attempt = 0; ; attempt++) {
+    const before = received ? received.loaded : 0;
+    try {
+      return await bytesOnce(url, received, onChunk);
+    } catch (e) {
+      if (received) received.loaded = before;
+      if (attempt >= 5 || /HTTP 4\d\d/.test(String(e))) throw e;
+      console.warn(`fetch ${url} failed (${e instanceof Error ? e.message : String(e)}), retry ${attempt + 1}`);
+      await new Promise((ok) => setTimeout(ok, 500 * 2 ** attempt));
+    }
+  }
+}
+
+async function bytesOnce(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
   // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
   // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
   const r = await fetch(url.replaceAll("#", "%23"), typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
@@ -474,28 +541,125 @@ export async function transcodeBundle(
   progress: (value: number, stage: string) => void,
   received?: Received,
 ): Promise<Preloaded> {
+  void received;
   const used: string[] = [];
   let transcoder: BasisTranscoder | null = null;
   let transcoded = 0;
   const manifest = fetched.manifest;
-  for (const [i, t] of fetched.textures.entries()) {
-    const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
-    if (ktx2.length > 0) {
-      transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
-      const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, manifest!, t.id, t.bytes);
-      const out = transcodeKtx2(transcoder, ktx2, isTextureFormat(target) ? target : "rgba8");
-      if (out.format === "rgba8") {
-        glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
-      } else {
-        const refused = glue.og_web_put_texture_encoded(t.id, out.format, out.width, out.height, out.srgb, concat(out.levels));
-        if (refused) throw new Error(refused);
-      }
-      if (!used.includes(out.format)) used.push(out.format);
-      transcoded++;
+  const total = fetched.textures.length;
+  const put = (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => {
+    if (out.format === "rgba8") {
+      glue.og_web_put_texture(id, out.width, out.height, out.levels, out.srgb);
+    } else {
+      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, out.levels);
+      if (refused) throw new Error(refused);
     }
-    if (!received) progress(0.8 + 0.2 * ((i + 1) / fetched.textures.length), "transcode");
+    if (!used.includes(out.format)) used.push(out.format);
+    transcoded++;
+    // Fork s61: by texture, as a fraction of the stage (the Worker places it on the bar).
+    if (transcoded % 8 === 0 || transcoded === total) progress(transcoded / Math.max(1, total), "transcode");
+  };
+  // The wasm keeps the bundle it parsed last (og-host-web `bundle_of`): the manifest's text
+  // crosses once, and "" names it in every later call.
+  let named = manifest;
+  const jobs: BasisJob[] = [];
+  for (const t of fetched.textures) {
+    const ktx2 = named === null ? new Uint8Array() : glue.og_web_texture_ktx2(named, t.id, t.bytes);
+    if (named !== null) named = "";
+    if (ktx2.length > 0) jobs.push({ id: t.id, ktx2, target: engine === null ? "rgba8" : glue.og_web_texture_target(engine, "", t.id, t.bytes) });
+  }
+  // Fork s62: a bundle of many textures is transcoded by a pool of Workers (copies of this one)
+  // in parallel; a pool that does not start leaves the rest to this Worker.
+  const left = jobs.length >= POOL_MIN_JOBS ? await transcodeInPool(jobs, basis, put) : jobs;
+  for (const job of left) {
+    transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
+    const out = transcodeKtx2(transcoder, job.ktx2, isTextureFormat(job.target) ? job.target : "rgba8");
+    put(job.id, { ...out, levels: out.format === "rgba8" ? out.levels[0]! : concat(out.levels) });
   }
   return { files: fetched.files, failed: fetched.failed, textures: transcoded, textureFormat: used.length ? used.join("+") : "rgba8" };
+}
+
+interface BasisJob {
+  readonly id: string;
+  readonly ktx2: Uint8Array;
+  readonly target: string;
+}
+type BasisAnswer = { type: "og-basis"; id: number; error?: string; format: string; width: number; height: number; srgb: boolean; levels: Uint8Array };
+
+/** Fork s62: below this many Basis textures the boot transcodes them itself. */
+const POOL_MIN_JOBS = 24;
+
+/** Fork s62: the transcoding Workers: up to 4, leaving two cores to the page and this Worker. */
+function poolSize(): number {
+  const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 1;
+  return Math.max(0, Math.min(4, cores - 2));
+}
+
+/**
+ * Fork s62: transcode `jobs` on a pool of Workers running this module (its `og-basis` message,
+ * `basisJob`), each answer handed to `put` as it lands. Answers the jobs no Worker did (all of
+ * them when the pool cannot start), for this Worker to do.
+ */
+async function transcodeInPool(
+  jobs: readonly BasisJob[],
+  basis: { js: string; wasm: string } | undefined,
+  put: (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => void,
+): Promise<BasisJob[]> {
+  const n = poolSize();
+  const url = (globalThis as { location?: { href: string } }).location?.href;
+  if (n < 2 || !url || typeof Worker !== "function") return [...jobs];
+  const pool: Worker[] = [];
+  const left: BasisJob[] = [];
+  let next = 0;
+  let failure: unknown = null;
+  try {
+    await Promise.all(
+      Array.from({ length: n }, async () => {
+        const w = new Worker(url, { type: "module" });
+        pool.push(w);
+        // Each Worker takes the next job when it answered the last; one that fails gives its job back.
+        for (;;) {
+          if (failure !== null || next >= jobs.length) return;
+          const k = next++;
+          const job = jobs[k]!;
+          const answer = await new Promise<BasisAnswer | null>((resolve) => {
+            w.onmessage = (e: MessageEvent) => resolve(e.data as BasisAnswer);
+            w.onerror = () => resolve(null);
+            const ktx2 = job.ktx2.slice();
+            w.postMessage({ type: "og-basis", id: k, ktx2, target: job.target, basis }, [ktx2.buffer]);
+          });
+          if (!answer || answer.error) {
+            left.push(job);
+            if (!answer) return; // this Worker did not load: the others go on
+            continue;
+          }
+          try {
+            put(job.id, answer);
+          } catch (e) {
+            failure = e;
+          }
+        }
+      }),
+    );
+  } finally {
+    for (const w of pool) w.terminate();
+  }
+  if (failure !== null) throw failure;
+  // The jobs no Worker reached (every one failed to load) are this Worker's.
+  return [...left, ...jobs.slice(next)];
+}
+
+/** Fork s62: this Worker as one of the pool: a Basis transcode, answered with its levels (transferred). */
+let poolTranscoder: Promise<BasisTranscoder> | null = null;
+async function basisJob(data: { id: number; ktx2: Uint8Array; target: string; basis?: { js: string; wasm: string } }): Promise<void> {
+  try {
+    poolTranscoder ??= data.basis ? loadBasisTranscoder(data.basis.js, data.basis.wasm) : loadBasisTranscoder();
+    const out = transcodeKtx2(await poolTranscoder, data.ktx2, isTextureFormat(data.target) ? data.target : "rgba8");
+    const levels = out.format === "rgba8" ? out.levels[0]! : concat(out.levels);
+    (self as unknown as { postMessage(m: unknown, transfer: Transferable[]): void }).postMessage({ type: "og-basis", id: data.id, format: out.format, width: out.width, height: out.height, srgb: out.srgb, levels }, [levels.buffer as ArrayBuffer]);
+  } catch (e) {
+    self.postMessage({ type: "og-basis", id: data.id, error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 function isTextureFormat(name: string): name is TextureFormat {
@@ -715,8 +879,9 @@ export function startWorker(game: GameToken): void {
     const now = performance.now();
     boot[name] = Math.round((boot[name] ?? 0) + now - phaseAt);
     phaseAt = now;
+    console.info(`[og] boot stage "${name}" done in ${boot[name]} ms`);
   };
-  const firstFrameMessage = () => ({ type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
+  const firstFrameMessage = () => (console.info(`[og] first frame at ${Math.round(performance.now())} ms`), { type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
   /** What the trace's document records beside its events: the renderer's tier and the lanes. */
   let lastTier = "none";
   let lanesState: unknown = null;
@@ -1011,6 +1176,12 @@ export function startWorker(game: GameToken): void {
     let made = 0;
     const step = () => {
       if (playing || crashed || !engine) return;
+      // Fork s60: with the pipelines asynchronous a warm call returns at once; at most two
+      // compile at a time, so the ones a frame needs are not queued behind every pass's.
+      if ((glueRef?.og_web_pipelines_state?.()[0] ?? 0) >= 2) {
+        setTimeout(step, 50);
+        return;
+      }
       let more: boolean;
       try {
         more = warm(engine.id);
@@ -1027,6 +1198,19 @@ export function startWorker(game: GameToken): void {
   };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
+  /** Fork s60: the frames drawn behind the gate while their pipelines compiled, and when the first began. */
+  let compiling = { frames: 0, since: 0, most: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
+  // Fork s61: a game that draws its loading screen with the page (og-config bootScreen "page") reports its
+  // own stages there (`ogBootStage(id, fraction)`: og:stage on the page), and asks whether the frames still
+  // wait for pipelines compiling (s60) or textures to upload (s63) before it calls its loading done.
+  const pageStages = () => {
+    const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
+    g.ogBootStage = (id, fraction = 0) => self.postMessage({ type: "og-stage", id, fraction });
+    g.ogBootIdle = () => {
+      const s = glueRef?.og_web_pipelines_state?.();
+      return !s || (s[0] === 0 && (s[2] ?? 0) === 0);
+    };
+  };
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
     if (!engine || playing || settling) return;
@@ -1035,9 +1219,40 @@ export function startWorker(game: GameToken): void {
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
       relay(answered);
       if (!firstFrame && answered.rendered !== false) {
+        // Fork s60: a frame whose draws waited for pipelines still compiling is drawn again once
+        // they are made (each try its own task, so the GPU process never holds them all in one);
+        // the first frame is the first one drawn whole.
+        const state = glueRef?.og_web_pipelines_state?.();
+        if (state && (state[0]! > 0 || state[1]! > 0 || (state[2] ?? 0) > 0)) {
+          if (!compiling.since) compiling.since = performance.now();
+          compiling.frames++;
+          compiling.most = Math.max(compiling.most, state[0]!);
+          self.postMessage({ type: "progress", value: onBar("present", 1 - state[0]! / Math.max(1, compiling.most)), stage: "present" });
+          // Draw it again once none compiles (polled without drawing: a frame meanwhile only slows them).
+          const poll = () => {
+            compiling.again = 0;
+            const pending = glueRef?.og_web_pipelines_state?.()[0] ?? 0;
+            if (pending > 0) {
+              compiling.most = Math.max(compiling.most, pending);
+              self.postMessage({ type: "progress", value: onBar("present", 1 - pending / Math.max(1, compiling.most)), stage: "present" });
+              compiling.again = setTimeout(poll, 50);
+            } else present();
+          };
+          // Textures still waiting (s63) need frames to upload them: the next one at once.
+          if (state[0] === 0 && (state[2] ?? 0) > 0) {
+            if (!compiling.again) compiling.again = setTimeout(() => ((compiling.again = 0), present()), 0);
+            flushLog();
+            return;
+          }
+          if (!compiling.again) compiling.again = setTimeout(poll, 50);
+          flushLog();
+          return;
+        }
+        if (compiling.since) console.info(`renderer: the first frame's pipelines compiled asynchronously in ${Math.round(performance.now() - compiling.since)} ms (${compiling.frames} frames behind the gate)`);
         firstFrame = true;
         phase("present");
         self.postMessage(firstFrameMessage());
+        warmBehindGate();
       }
       flushLog();
     } catch (e) {
@@ -1118,12 +1333,17 @@ export function startWorker(game: GameToken): void {
   };
 
   self.onmessage = async ({ data }) => {
+    // Fork s62: a copy of this Worker in the boot's Basis pool.
+    if ((data as { type: string }).type === "og-basis") return basisJob(data as unknown as Parameters<typeof basisJob>[0]);
     if (data.type === "start") {
       try {
         if (data.telemetry) frameCounter = new FrameCounter();
+        if (data.stages) pageStages();
         const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
+        // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
+        // texture, the first tick, and the first frame's pipelines (present below).
         const progress = (value: number, stage: string) =>
-          self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });
+          self.postMessage({ type: "progress", value: onBar(stage, value), fraction: Math.max(0, Math.min(1, value)), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
         phaseAt = performance.now();
         // The wasm streams through a counting body, so its bytes move the bar while it compiles.
@@ -1172,6 +1392,10 @@ export function startWorker(game: GameToken): void {
           await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm));
         }
         glueRef = glue;
+        // Fork s60: the frame pipelines compile off the browser's GPU thread, behind the gate and in play.
+        glue.og_web_async_pipelines?.(true);
+        // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
+        glue.og_web_upload_budget?.(UPLOAD_BUDGET);
         phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
@@ -1254,6 +1478,7 @@ export function startWorker(game: GameToken): void {
             primed = true;
           }
           phase("prime");
+          progress(1, "prime");
           // The platform's answers to the first tick's reads (the saved language, a slot's
           // meta) applied behind the gate: before the first frame while they come quickly,
           // then each settling tick drawn as it lands (settle.ts).
@@ -1273,7 +1498,6 @@ export function startWorker(game: GameToken): void {
           }
           phase("settle");
           present();
-          warmBehindGate();
           if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
             void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
           }

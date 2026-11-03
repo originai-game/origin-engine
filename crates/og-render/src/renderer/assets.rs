@@ -290,6 +290,8 @@ impl Renderer {
                 self.cache.lut_revisions[i] = revision;
             }
         }
+        let upload_budget = UPLOAD_BUDGET.load(std::sync::atomic::Ordering::Relaxed);
+        let mut uploaded = 0u64;
         if self.cache.textures.len() < scene.textures().len() {
             // Every texture is checked before any is recorded: an error
             // never drops an encoder holding earlier textures' mip passes.
@@ -304,11 +306,29 @@ impl Renderer {
                 },
             ));
             for index in self.cache.textures.len()..scene.textures().len() {
-                let gpu = self.texture_for(scene, index, &mut encoder);
+                // Fork s63: past the frame's budget, a stand-in now and the
+                // texture later.
+                let source = &scene.textures()[index];
+                let bytes = if scene.texture_live(index) {
+                    source_upload_bytes(source)
+                } else {
+                    0
+                };
+                let defer = upload_budget > 0
+                    && bytes > 0
+                    && uploaded > 0
+                    && uploaded + bytes > upload_budget;
+                let (gpu, revision) = if defer {
+                    (self.stand_in(source, &mut encoder), DEFERRED_REVISION)
+                } else {
+                    uploaded += bytes;
+                    (
+                        self.texture_for(scene, index, &mut encoder),
+                        scene.texture_revisions()[index],
+                    )
+                };
                 self.cache.textures.push(gpu);
-                self.cache
-                    .texture_revisions
-                    .push(scene.texture_revisions()[index]);
+                self.cache.texture_revisions.push(revision);
                 self.cache.sprite_groups.push(None);
                 self.cache.ribbon_groups.push(None);
             }
@@ -317,9 +337,35 @@ impl Renderer {
         // Replaced textures: uploaded again, and everything bound to the old
         // view (materials, sprite and trail groups, fonts, the effect
         // groups' decal atlas, terrain layers) made again.
-        let replaced: Vec<usize> = (0..self.cache.textures.len())
+        let mut replaced: Vec<usize> = (0..self.cache.textures.len())
             .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
             .collect();
+        // Fork s63: the deferred textures (and replaced ones) within what is
+        // left of the budget.
+        if upload_budget > 0 {
+            let mut kept = Vec::with_capacity(replaced.len());
+            for i in replaced {
+                let bytes = if scene.texture_live(i) {
+                    source_upload_bytes(&scene.textures()[i])
+                } else {
+                    0
+                };
+                if bytes == 0 || uploaded == 0 || uploaded + bytes <= upload_budget {
+                    uploaded += bytes;
+                    kept.push(i);
+                }
+            }
+            replaced = kept;
+        }
+        TEXTURES_DEFERRED.store(
+            self.cache
+                .texture_revisions
+                .iter()
+                .enumerate()
+                .filter(|&(i, &r)| r == DEFERRED_REVISION && !replaced.contains(&i))
+                .count() as u32,
+            std::sync::atomic::Ordering::Relaxed,
+        );
         if !replaced.is_empty() {
             for &index in &replaced {
                 if scene.texture_live(index) {

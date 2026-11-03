@@ -24,6 +24,11 @@ impl Renderer {
     /// it answers false, so a pass met later does not stop a frame. The
     /// frames are the same either way.
     pub fn warm(&mut self) -> bool {
+        // Fork s60: asynchronous on the WebGPU tier while the host asks.
+        frame_pipelines(|| self.warm_now())
+    }
+
+    fn warm_now(&mut self) -> bool {
         deferred::warm_one(&[
             &self.sprite_pipeline,
             &self.msdf_pipeline,
