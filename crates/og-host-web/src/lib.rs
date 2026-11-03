@@ -993,6 +993,14 @@ pub fn og_web_upload_budget(bytes: f64) {
     og_render::set_upload_budget(bytes as u64);
 }
 
+/// Fork s70: the page's loading screen covers the canvas (on) or no longer
+/// does (off); a covered frame prepares without drawing (og-render
+/// `set_covered`).
+#[wasm_bindgen]
+pub fn og_web_covered(on: bool) {
+    og_render::set_covered(on);
+}
+
 /// `og render`'s every-frame capture on the web, as the native host's
 /// `og_node_render_frame` (development only): the display frame drawn last
 /// as RGBA8 rows at the canvas's size, read back without drawing it again
