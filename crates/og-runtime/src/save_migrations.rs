@@ -322,6 +322,24 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
         return Ok(None);
     };
     let mut done = Vec::new();
+    // Older engines registered some now-lazy records eagerly. An unused
+    // schema must not opt the restored world into those modules again.
+    let unused: Vec<String> = edit
+        .schemas()
+        .iter()
+        .filter(|s| {
+            crate::lazy::is_lazy(&s.name)
+                && edit.components(&s.name).is_empty()
+                && edit.resource(&s.name).is_none()
+                && !edit.has_events(&s.name)
+        })
+        .map(|s| s.name.clone())
+        .collect();
+    for name in unused {
+        edit.replace_types(&[&name], Vec::new())
+            .map_err(|e| e.reason().to_string())?;
+        done.push(format!("{name}: dropped the unused lazy type"));
+    }
     for m in MIGRATIONS {
         let at = match m.target {
             Target::Block => block_version(&edit, m.name),
@@ -345,6 +363,62 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unused_lazy_types_drop_but_saved_state_survives() {
+        for name in ["og.Water", "og.Clouds", "og.WorldOrigin", "og.BodySlept"] {
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == name)
+                .unwrap();
+            let layout = crate::codec::Layout::from_decl(decl).unwrap();
+            for legacy in [true, false] {
+                for used in [false, true] {
+                    let mut schema = layout.schema();
+                    if legacy && name == "og.Water" {
+                        // R5 added flowMap and the sea fields when Water became lazy,
+                        // without changing its schema version.
+                        let end = schema
+                            .fields
+                            .iter()
+                            .position(|f| f.name == "flowMap")
+                            .unwrap();
+                        schema.fields.truncate(end);
+                    }
+                    let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+                    let id = world.register_schema(schema.clone()).unwrap();
+                    if used {
+                        let bytes: Vec<u8> = schema
+                            .fields
+                            .iter()
+                            .flat_map(|f| vec![0; f.ty.size()])
+                            .collect();
+                        match layout.kind {
+                            crate::codec::RecordKind::Resource => {
+                                world.insert_resource_bytes(id, &bytes).unwrap();
+                            }
+                            crate::codec::RecordKind::Event => {
+                                world.send_bytes(id, &bytes).unwrap();
+                            }
+                            crate::codec::RecordKind::Component => {
+                                world.spawn_bytes(vec![(id, bytes)]).unwrap();
+                            }
+                        }
+                    }
+                    let saved = world.snapshot();
+                    let upgraded = upgrade(&saved).unwrap();
+                    if !used {
+                        let (bytes, _) = upgraded.expect("the unused eager type is removed");
+                        let edit = SnapshotEdit::from_bytes(&bytes).unwrap();
+                        assert!(edit.schema(name).is_none());
+                        assert!(upgrade(&bytes).unwrap().is_none());
+                    } else {
+                        assert!(upgraded.is_none(), "legacy={legacy}, used={used}");
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn every_step_moves_a_version_forward_and_each_name_chains() {
