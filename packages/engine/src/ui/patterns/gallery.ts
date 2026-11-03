@@ -28,7 +28,7 @@ function chapterTab(c: Api.GalleryChapter, on: boolean, portrait: boolean): bool
     gap: u(5),
     align: "center",
     cross: "center",
-    ...(portrait ? { height: { kind: "fit", min: 44 } as Api.Size } : {}),
+    ...(portrait ? { width: { kind: "fit", min: 44 } as Api.Size, height: { kind: "fit", min: 44 } as Api.Size } : {}),
     padding: xy(u(portrait ? 12 : 14), u(portrait ? 8 : 6)),
     radius: portrait ? 999 : Math.max(4, t.small),
     semantics: { role: "tab", name: c.label ?? k, selected: on },
@@ -155,6 +155,7 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
     const cols = Math.max(portrait ? 2 : 2, Math.floor((W - u(8) + gap) / (want + gap)));
     const cw = Math.floor((W - u(8) - gap * (cols - 1)) / cols);
     const chH = Math.round((cw * 9) / 16);
+    const short = chH < u(phone ? 56 : 60) + 2 * u(phone ? 12 : 13) * 1.35 * ts;
     kit.openScroll("Grid", { width: grow(), height: grow(), gap, padding: xy(u(4), u(4)), fade: 32, fadeInto: "shadow" } as never);
     for (let r0 = 0; r0 < shown.length; r0 += cols) {
       kit.row(kit.idi("Line", r0 / cols), { gap }, () => {
@@ -180,7 +181,7 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
                 kit.column("Veil", { width: grow(), height: grow(), gap: u(6), align: "center", cross: "center", padding: xy(u(10), u(8)), part: "CgGallery.veil", partClass: "panel" }, () => {
                   kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [vgrad([[0, token("well", 0.94)], [1, token("shadow", 0.96)]])], strokes: [line(1, token("ink", 0.1))] });
                   symbol("Lock", "lock", u(phone ? 22 : 28), role("inkMuted"), { icon: "lock" });
-                  if (e.hint) text("Hint", e.hint, { step: st(phone ? 12 : 13), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
+                  if (e.hint && !short) text("Hint", e.hint, { step: st(phone ? 12 : 13), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
                 });
                 over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
               }
@@ -194,6 +195,8 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
             });
             kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [], strokes: ix.hovered || ix.focused ? [line(u(2), token("focus"), "outside")] : [], effects: !locked && (ix.hovered || ix.focused) ? [shadow(u(6), u(18), 0.5)] : [] } as never);
             text("Title", locked ? desc.lockedLabel ?? "???" : e.title ?? k, { step: st(phone ? 13 : 15), nowrap: true, ellipsis: true, width: grow(), color: locked ? "inkFaint" : "ink" });
+            // A veil too short for the lock and two lines of the hint: the hint stands in its own row under the title.
+            if (locked && short && e.hint) text("Hint", e.hint, { step: st(12), color: "inkMuted", width: grow(), maxLines: 2 });
           });
           if (r.clicked) {
             if (locked) {
