@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Painted kit art drawn on transparent ground: a photo frame over the picture (docs/ui.md §15.5.3).
+texture {
+  kind color
+}

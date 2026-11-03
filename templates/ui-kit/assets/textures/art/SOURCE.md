@@ -100,3 +100,14 @@ Art for the garage, ledger, RTS commands, loadout and VN gallery previews, in th
 | `scenes/city.jpg` | menuBackground (the ledger's city at dusk) | the same API, cut to 1280×720 |
 | `rts/stop.jpg`, `patrol.jpg`, `build.jpg`, `rally.jpg`, `gather.jpg`, `repair.jpg`, `barracks.jpg`, `tower.jpg`, `farm.jpg`, `wall.jpg`, `forge.jpg`, `keep.jpg` | ability (the RTS command card's orders and buildings) | the same API, two 3×2 sheets cut into cells, 256 px |
 | `scenes/battlefield.jpg` | menuBackground (the RTS preview's field under the console) | the same API, cut to 1280×720 |
+
+## The last pattern previews (2026-11-03, the U6d stream, r42)
+
+Art for the photo mode, deck builder and VN gallery previews, in the same direction as the set above:
+
+| File | Kind | Origin |
+|---|---|---|
+| `photo/shot.jpg` | screenshot (photo mode's paused shot: a traveller over a valley at sunrise) | the platform's image API (`/v1/images/generations`, gpt-image-2.5-sunburst) with the development key, cut to 1280×720 |
+| `photo/vivid.jpg`, `noir.jpg`, `sepia.jpg`, `cool.jpg` | screenshot (the shot through each filter, as a game's render would draw it) | made from `photo/shot.jpg` with ImageMagick (saturation and contrast, greyscale, sepia tone, a cool colourise) |
+| `photo/frame-cinema.png`, `frame-polaroid.png`, `frame-film.png` | overlay on transparent ground (photo mode's frames: 2.39:1 bars, a print's border, a film strip) | drawn with ImageMagick for the kit, 1280×720 |
+| `photo/thumb-cinema.jpg`, `thumb-polaroid.jpg`, `thumb-film.jpg` | thumbnail (each frame over the shot, its tile) | the shot and the frame composited with ImageMagick, 384×216 |

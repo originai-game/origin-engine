@@ -12,6 +12,7 @@ import { og } from "@origingame/engine";
 import { storyCommand } from "./story.ts";
 import { genreScene, genresCommand, resetGenres } from "./genres.ts";
 import { genres2Command, resetGenres2 } from "./genres2.ts";
+import { genres3Command, resetGenres3 } from "./genres3.ts";
 import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
@@ -86,9 +87,11 @@ const ART_FILES = [
   "city/transit", "city/parks", "city/power", "city/water", "scenes/city",
   "rts/stop", "rts/patrol", "rts/build", "rts/rally", "rts/gather", "rts/repair", "rts/barracks", "rts/tower", "rts/farm", "rts/wall",
   "rts/forge", "rts/keep", "scenes/battlefield",
+  "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
+  "photo/thumb-cinema", "photo/thumb-polaroid", "photo/thumb-film",
 ] as const;
 /** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
-const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven"]);
+const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film"]);
 export type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
 let artOn = true;
@@ -695,7 +698,7 @@ export function gachaScreen(backdrop = 0): void {
 export function patternsCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
   if ((key === "dlg" || key === "quest") && storyCommand(world, key, value, args[2] ?? "")) return;
-  if (key && (genresCommand(key, value, args[2] ?? "") || genres2Command(key, value, args[2] ?? ""))) return;
+  if (key && (genresCommand(key, value, args[2] ?? "") || genres2Command(key, value, args[2] ?? "") || genres3Command(key, value, args[2] ?? ""))) return;
   if (key === "pick") p.pick = { key: value, count: 0 };
   else if (key === "highlight") p.highlight = value;
   else if (key === "select") p.selected = value;
@@ -764,6 +767,7 @@ export function patternsCommand(world: World, args: readonly string[]): void {
     ps = pass0();
     resetGenres();
     resetGenres2();
+    resetGenres3();
   }
 }
 
