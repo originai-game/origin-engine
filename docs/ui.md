@@ -661,12 +661,13 @@ words are string keys (`screen.<name>.<word>`) with English fallbacks, and
 a `fixture default` previews it (`ui:push:<name>:default`). The directory's
 README.md holds the table from each Appendix B row to its documents, which
 the cook's test (`crates/og-cook/tests/documents.rs`) holds equal to
-Appendix B, cooking every document; a slot marked `PATTERN PENDING` is
-where a pattern still being written mounts, and the table names those
-documents. `og ui eject <screen> [project] [--force]` copies one into the
-game's `assets/ui/<screen>.ogt` (refusing to overwrite without `--force`),
-where `og.load.document` loads it and the game edits it as its own; `og ui
-eject --list` prints each with its row.
+Appendix B, cooking every document. Where an og.ui pattern fills a slot
+and draws its own title, tabs or actions (the settings tree, the ledger,
+photo mode …), the document leaves those to it. `og ui eject <screen>
+[project] [--force]` copies one into the game's `assets/ui/<screen>.ogt`
+(refusing to overwrite without `--force`), where `og.load.document` loads
+it and the game edits it as its own; `og ui eject --list` prints each
+with its row.
 
 ## 12. Styles v2
 
