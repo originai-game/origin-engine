@@ -31,9 +31,9 @@ struct WaterUniform {
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
-  ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's cell (m), z: its choppiness
+  ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's centre cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
   // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0) (water.rs ocean_gpu).
-  swell: array<vec4<f32>, 32>,
+  swell: array<vec4<f32>, 64>,
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
@@ -69,7 +69,7 @@ struct WaterOut {
 // left to the fragments' normals.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  for (var i = 0u; i < 16u; i++) {
+  for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * cell);
@@ -80,12 +80,12 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
 }
 
 // The sea's normal at rest point p (frame xz; Gerstner's, GPU Gems 1 §1)
-// and, as w, how far its crests bunch there (1 - Σ k lean sin: the
-// surface's area left, whitecaps under about a half), each wave faded
-// where it is shorter than four of the pixel's `footprint` (m).
+// and, as w, how far its crests bunch there (Σ k lean sin: the surface's
+// area lost, whitecaps past water.ocean.z), each wave faded where it is
+// shorter than four of the pixel's `footprint` (m).
 fn ocean_normal(p: vec2<f32>, footprint: f32) -> vec4<f32> {
   var n = vec3<f32>(0.0, 1.0, 0.0);
-  for (var i = 0u; i < 16u; i++) {
+  for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
@@ -93,7 +93,16 @@ fn ocean_normal(p: vec2<f32>, footprint: f32) -> vec4<f32> {
     let c = cos(th) * a.z * keep;
     n -= vec3<f32>(a.x * c, b.z * sin(th) * keep, a.y * c);
   }
-  return vec4<f32>(normalize(n), n.y);
+  return vec4<f32>(normalize(n), 1.0 - n.y);
+}
+
+// A sea's grid: finest at its centre (where the camera is meant to be),
+// its cells growing outward so it reaches far towards the horizon. g in
+// [-1, 1] across the grid to [-1, 1] across the surface, w(g) = g (0.15 +
+// 0.85 g²); its slope w' = 0.15 + 2.55 g² is the cell's size over the
+// even grid's.
+fn sea_warp(g: f32) -> vec2<f32> {
+  return vec2<f32>(g * (0.15 + 0.85 * g * g), 0.15 + 2.55 * g * g);
 }
 
 // The height field at local point (x, z) of the surface, bilinear.
@@ -120,7 +129,15 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(1.0, 0.0));
   let c = corners[vi % 6u];
   let cell = vec2<f32>(f32(quad % segs), f32(quad / segs)) + c;
-  let local = (cell / f32(segs) - 0.5) * water.size.xy;
+  var local = (cell / f32(segs) - 0.5) * water.size.xy;
+  // The sea's cell here, in metres (its waves shorter than four of it are left to the fragments).
+  var sea_cell = 0.0;
+  if (water.ocean.x > 0.5) {
+    let wx = sea_warp(cell.x / f32(segs) * 2.0 - 1.0);
+    let wz = sea_warp(cell.y / f32(segs) * 2.0 - 1.0);
+    local = vec2<f32>(wx.x, wz.x) * water.size.xy * 0.5;
+    sea_cell = water.ocean.y * max(wx.y, wz.y);
+  }
   let h = height_at(local);
   // The height field's slope gives the geometric normal.
   let e = water.look.z / max(water.look.w - 1.0, 1.0);
@@ -130,7 +147,7 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   var world = water.model * vec4<f32>(local.x, h, local.y, 1.0);
   let rest = world.xz;
   if (water.ocean.x > 0.5) {
-    world = vec4<f32>(world.xyz + ocean_displace(rest, water.ocean.y), 1.0);
+    world = vec4<f32>(world.xyz + ocean_displace(rest, sea_cell), 1.0);
   }
   var o: WaterOut;
   o.clip = frame.view_proj * world;
@@ -336,7 +353,14 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let footprint = max(length(dpdx(in.rest)), length(dpdy(in.rest)));
     let sea = ocean_normal(in.rest, footprint);
     base = sea.xyz;
-    whitecap = smoothstep(0.62, 0.3, sea.w) * water.ocean.z;
+    // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
+    if (water.ocean.w > 0.0) {
+      let streaks = foam_noise(in.rest * 0.35) * 0.6 + foam_noise(in.rest * 1.7) * 0.4;
+      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.w) * smoothstep(0.25, 0.65, streaks);
+    }
+    // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
+    // stripes towards the horizon).
+    slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -453,10 +477,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
-  let crest = max(clamp((in.slope - 0.35) * 3.0, 0.0, 1.0), whitecap);
+  let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
   let foam = clamp(edge * edge * (0.55 + 0.6 * noise) + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
-  color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
+  // (A sea's whitecaps whatever the shore foam's width.)
+  color = mix(color, water.foam.rgb * lit, max(foam * step(0.001, water.foam.w), whitecap));
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 

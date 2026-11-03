@@ -155,8 +155,8 @@ fn uniform_map(scene: &mut RenderScene, rg: [u8; 2]) -> og_render::TextureHandle
 #[test]
 fn a_flow_map_turns_the_flow_and_one_way_is_the_flow_itself() {
     check("water-flow-map");
-    // The stream without its map, flowing straight down at the same speed,
-    // differs from the mapped one: the map turns the ripples round the
+    // The stream without its map, flowing straight down at the far field's
+    // speed, differs from the mapped one: the map turns the waves round the
     // boulder.
     let mapped = frame(&ocean_scene("water-flow-map"));
     let mut plain = RenderScene::new();
@@ -175,10 +175,9 @@ fn a_flow_map_turns_the_flow_and_one_way_is_the_flow_itself() {
             let mut s = RenderScene::new();
             flow_map_scene(&mut s, false);
             let handle = map.then(|| uniform_map(&mut s, [128, 0]));
+            let ripples = normal_map.then(|| og_tests::fork_scenes::ripple_map(&mut s));
             let w = &mut s.water[0];
-            if !normal_map {
-                w.normal_map = None;
-            }
+            w.normal_map = ripples;
             w.flow_map = handle;
             w.flow = Vec2::new(0.0, -0.25);
             s

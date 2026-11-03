@@ -242,8 +242,10 @@ struct WaterGpu {
     /// The lake's four normal-map layers' uv at the scene's origin, whole
     /// repeats dropped (`origin.rs`): their pattern stays put when it moves.
     layers: [[f32; 4]; 2],
-    /// The sea ([`Water::wind`]): x 1 with one, y the grid's cell (m, below
-    /// which a wave is left to the fragments), z its choppiness; then per
+    /// The sea ([`Water::wind`]): x 1 with one, y the grid's centre cell (m;
+    /// a wave under four cells is left to the fragments), z and w the
+    /// crests' bunching where whitecaps start and over which they grow
+    /// ([`whitecaps`]); then per
     /// wave (k d.x, k d.z, amplitude, phase at the origin) and (lean d.x,
     /// lean d.z, k lean, unused) ([`ocean_gpu`]).
     ocean: [f32; 4],
@@ -293,7 +295,33 @@ fn ocean_gpu(
         swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
     }
     let cell = water.size.max_element().max(0.0) / segments.max(1) as f32;
-    ([1.0, cell, water.choppiness.clamp(0.0, 1.0), 0.0], swell)
+    let (start, width) = whitecaps(&sea, water.wind.length());
+    ([1.0, cell, start, width], swell)
+}
+
+/// Where the sea's whitecaps start and over how much they grow, in the
+/// crests' bunching (`Σ k lean sin`, water.wgsl `ocean_normal`): its
+/// standard deviation σ times the normal deviate whose tail is the whitecap
+/// cover Monahan and O'Muircheartaigh measured for the wind (`3.84e-6
+/// U^3.41`: 0.7 % at 9 m/s, 6 % at 17), doubled to read at a distance.
+/// (0, 0) when the crests do not lean (no whitecaps). Rendering only.
+fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
+    let sigma = (sea
+        .waves
+        .iter()
+        .map(|w| (w.k * w.lean).powi(2) * 0.5)
+        .sum::<f32>())
+    .sqrt();
+    if sigma < 1e-4 {
+        return (0.0, 0.0);
+    }
+    let cover = (2.0 * 3.84e-6 * wind.powf(3.41)).clamp(1e-4, 0.3);
+    // Abramowitz and Stegun 26.2.23: the deviate with tail `cover`.
+    let t = (-2.0 * cover.ln()).sqrt();
+    let z = t
+        - (2.515517 + 0.802853 * t + 0.010328 * t * t)
+            / (1.0 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t);
+    (z * sigma, 0.7 * sigma)
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
@@ -1187,6 +1215,7 @@ mod tests {
         for origin in [Vec3::ZERO, Vec3::new(51_200.0, 0.0, -25_600.0)] {
             let (head, swell) = ocean_gpu(&water, 256, seconds, origin);
             assert_eq!(head[0], 1.0);
+            assert!(head[2] > 0.0 && head[3] > 0.0);
             assert!((head[1] - 800.0 / 256.0).abs() < 1e-6);
             for p in [
                 Vec2::new(0.0, 0.0),

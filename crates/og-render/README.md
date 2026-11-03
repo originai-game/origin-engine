@@ -1783,20 +1783,26 @@ once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
 Each off by default on `Water` (every earlier water frame is unchanged):
 
 - **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): the grid is
-  displaced by `og_core::ocean`'s sixteen Gerstner waves of a fully
-  developed Pierson–Moskowitz sea for the wind (peak `0.877 g / U`,
-  significant height `0.21 U² / g × swell`, wavelengths 1.6 to 1/40 of the
-  peak's, deep-water dispersion, spread about the wind more the shorter they
-  are, fixed phases; each wave's steepness `choppiness / 16`, so the sum
-  never folds). The waves lie over the absolute world's xz: the uniform
+  displaced by `og_core::ocean`'s 32 Gerstner waves of a fully developed
+  Pierson–Moskowitz sea for the wind (peak `0.877 g / U`, significant
+  height `0.21 U² / g × swell`, one wave placed at random in each of 32
+  bands of length from 1.6 to 1/80 of the peak's, so no fixed ratios and no
+  lattice; deep-water dispersion; a random spread about the wind, wider the
+  shorter; fixed phases; the waves under a sixth of the peak's length
+  raised to Cox and Munk's mean square slope `0.003 + 0.00512 U`; each
+  wave's steepness `choppiness / 32`, so the sum never folds). A sea's grid
+  is finest at its centre, `w(g) = g (0.15 + 0.85 g²)` across it, so 256
+  segments over 6 km give 3.5 m cells in the middle and 63 m at the rim,
+  which then lies under a pixel below the horizon. The waves lie over the absolute world's xz: the uniform
   holds each wave's phase at the scene's origin, `(φ - ω t + k d · origin)
   mod 2π`, computed in f64 from the tick (`water::seconds`), so the pattern
   stays put as the origin or the surface moves and long games keep their
   precision. The vertices take the waves at least four grid cells long;
   the fragments take every wave's analytic normal (each faded where it is
-  under four of the pixel's footprint), under the detail ripples, and foam
-  whitecaps where the crests bunch (Gerstner's `1 - Σ k Q a sin`, by
-  `choppiness`). The simulation reads the same surface:
+  under four of the pixel's footprint), under the detail ripples (faded
+  the same way), and foam whitecaps where the crests bunch (Gerstner's
+  `Σ k Q a sin`) past the deviate whose tail is twice Monahan's measured
+  cover for the wind (`3.84e-6 U^3.41`), whatever `foam_width`. The simulation reads the same surface:
   `og.physics.waterHeight` evaluates `og_core::ocean::Ocean::height` (the
   rest point found by fixed-point steps, then its height) at the tick, in
   the absolute world (og.WorldOrigin's zero added), never the GPU. The

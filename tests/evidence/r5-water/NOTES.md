@@ -2,16 +2,17 @@
 
 ## Batch 1: the sea (og.Water.wind) and flow maps (og.Water.flowMap)
 
-`sea/` is an og.Water 1200 m across raised by a 9 m/s wind running away
+`sea/` is an og.Water 6 km across (its grid finest at the centre, under
+the camera) raised by a 9 m/s wind running away
 from the camera and to the left (`wind -3 -8.5`, choppiness 0.6: waves
-about 65 m long at the peak, a significant height of 1.7 m), under the
+about 65 m long at the peak, a significant height of 1.8 m), under the
 physical sky (og.PhysicalSky) at 15 h with a light haze, seen from 4 m
 up. Five red buoys stand across the view 15 to 55 m out; the `float`
 command sets each one's y to `og.physics.waterHeight` at its point, the
 sea the tick computes with og_core::ocean (the same waves the renderer
 draws, never read from the GPU).
 
-Without a renderer it runs to `tick 66 hash dd5c0b2a083122ea entities 6`
+Without a renderer it runs to `tick 66 hash 5bc76283ccd85d37 entities 6`
 with `--commands "0.5:float;1.0:float;1.1:quit"` (OG_RENDERER=none on the
 orb).
 

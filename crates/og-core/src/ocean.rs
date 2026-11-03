@@ -7,11 +7,16 @@
 //! The waves sample a fully developed Pierson–Moskowitz sea for the wind's
 //! speed `U`: its peak angular frequency `0.877 g / U` (at 10 m/s, waves
 //! about 80 m long), its significant height `0.21 U² / g` (2.1 m at
-//! 10 m/s) times `swell`, wavelengths from 1.6 times the peak's down to a
-//! fortieth of it, each the deep-water dispersion `ω = √(g k)`, spread
-//! about the wind's direction more the shorter they are, with fixed
-//! phases. `choppiness` leans each wave's crest by Gerstner's steepness,
-//! shared so the sum never folds over.
+//! 10 m/s) times `swell`, wavelengths from 1.6 times the peak's down to
+//! 1/80 of it, one in each of [`OCEAN_WAVES`] bands even in the logarithm
+//! of the length and placed at random within it (so no two waves keep a
+//! fixed ratio and the sum never settles into a lattice), each the
+//! deep-water dispersion `ω = √(g k)`, travelling at a random angle to the
+//! wind (a triangular spread, wider the shorter the wave), with fixed
+//! phases. The waves under a sixth of the peak's length are then raised to
+//! Cox and Munk's measured mean square slope, `0.003 + 0.00512 U` (the
+//! spectrum alone leaves the sea glassy). `choppiness` leans each wave's
+//! crest by Gerstner's steepness, shared so the sum never folds over.
 //!
 //! The waves are the world's: they lie over the absolute world's xz (the
 //! renderer adds its origin, the simulation og.WorldOrigin's zero), so a
@@ -25,7 +30,7 @@
 use crate::math::{self, DVec2, Vec2, Vec3};
 
 /// How many waves a sea sums.
-pub const OCEAN_WAVES: usize = 16;
+pub const OCEAN_WAVES: usize = 32;
 
 /// Standard gravity, m/s².
 pub const GRAVITY: f32 = 9.81;
@@ -91,9 +96,10 @@ impl Ocean {
         let mut weight = [0.0f32; OCEAN_WAVES];
         let mut total = 0.0;
         for (i, w) in waves.iter_mut().enumerate() {
-            let at = i as f32 / (OCEAN_WAVES - 1) as f32;
-            // 1.6 to 1/40 of the peak's length, evenly in its logarithm.
-            let length = length_p * 1.6 * math::pow(1.0 / 64.0, at);
+            // Band i of N, even in the logarithm of the length from 1.6 to
+            // 1/80 of the peak's, the wave anywhere in its band but its edges.
+            let at = (i as f32 + 0.5 + 0.4 * fixed(i as u32, 3)) / OCEAN_WAVES as f32;
+            let length = length_p * 1.6 * math::pow(1.0 / 128.0, at);
             let k = std::f32::consts::TAU / length;
             let omega = (GRAVITY * k).sqrt();
             // Pierson–Moskowitz: S(ω) ∝ ω⁻⁵ exp(-1.25 (ω_p/ω)⁴), over bands
@@ -103,8 +109,10 @@ impl Ocean {
             let s = math::pow(omega, -4.0) * math::exp(-1.25 * r * r * r * r);
             weight[i] = s;
             total += s;
-            let spread = 0.25 + 0.75 * at;
-            let angle = heading + spread * fixed(i as u32, 0);
+            // A triangular spread about the wind, ±0.6 rad for the longest
+            // waves to ±1.4 for the shortest.
+            let spread = 0.6 + 0.8 * at;
+            let angle = heading + spread * 0.5 * (fixed(i as u32, 0) + fixed(i as u32, 2));
             let (sin, cos) = math::sin_cos(angle);
             *w = OceanWave {
                 direction: Vec2::new(cos, sin),
@@ -119,6 +127,29 @@ impl Ocean {
         let sigma = 0.21 * speed * speed / GRAVITY * swell / 4.0;
         for (w, s) in waves.iter_mut().zip(weight) {
             w.amplitude = sigma * (2.0 * s / total).sqrt();
+        }
+        // The waves under a sixth of the peak's length carry what the eye sees,
+        // the slopes: the spectrum's own leave the sea glassy (its mean
+        // square slope is about 0.016 at any wind), so they are raised to
+        // Cox and Munk's measured slopes, 0.003 + 0.00512 U, times the swell
+        // (they add little height).
+        let mss = |w: &OceanWave| (w.k * w.amplitude) * (w.k * w.amplitude) * 0.5;
+        let short = |w: &OceanWave| w.k > 6.0 * k_p;
+        let (long_mss, short_mss) = waves.iter().fold((0.0, 0.0), |(l, s), w| {
+            if short(w) {
+                (l, s + mss(w))
+            } else {
+                (l + mss(w), s)
+            }
+        });
+        let want = (0.003 + 0.00512 * speed) * swell.min(1.0);
+        if short_mss > 0.0 && want > long_mss + short_mss {
+            let lift = ((want - long_mss) / short_mss).sqrt();
+            for w in waves.iter_mut().filter(|w| short(w)) {
+                w.amplitude *= lift;
+            }
+        }
+        for w in &mut waves {
             // Each wave's steepness Q k a is choppiness / N, at most its own
             // amplitude across: the sum's Jacobian stays above zero.
             let q = (choppiness / (w.k * w.amplitude * OCEAN_WAVES as f32)).min(1.0);
@@ -190,21 +221,38 @@ mod tests {
         assert!(Ocean::new(Vec2::ZERO, 1.0, 1.0).is_none());
         assert!(Ocean::new(Vec2::new(10.0, 0.0), 0.0, 1.0).is_none());
         let sea = Ocean::new(Vec2::new(10.0, 0.0), 1.0, 0.5).expect("a sea");
-        // 0.21 U² / g at 10 m/s.
-        assert!((sea.significant_height() - 2.14).abs() < 0.02);
+        // 0.21 U² / g at 10 m/s (2.14 m), and a little more from the
+        // short waves raised to Cox and Munk's slopes, which it then has.
+        let hs = sea.significant_height();
+        assert!((2.14..2.5).contains(&hs), "{hs}");
+        let mss: f32 = sea
+            .waves
+            .iter()
+            .map(|w| (w.k * w.amplitude) * (w.k * w.amplitude) * 0.5)
+            .sum();
+        assert!((mss - (0.003 + 0.0512)).abs() < 1e-4, "{mss}");
         let half = Ocean::new(Vec2::new(0.0, 10.0), 0.5, 0.5).expect("a sea");
-        assert!((half.significant_height() - 1.07).abs() < 0.01);
-        // Its longest wave near 1.6 times the peak (about 83 m at 10 m/s),
-        // travelling down the wind.
+        let ratio = half.significant_height() / hs;
+        assert!((0.45..0.55).contains(&ratio), "{ratio}");
+        // Its longest wave near 1.6 times the peak (83 m at 10 m/s), within
+        // its band, travelling down the wind.
         let long = sea.waves[0];
-        assert!((std::f32::consts::TAU / long.k - 133.0).abs() < 3.0);
-        assert!(long.direction.x > 0.9);
+        let length = std::f32::consts::TAU / long.k;
+        assert!((113.0..133.0).contains(&length), "{length}");
+        assert!(long.direction.x > 0.8);
+        // Every wave shorter than the one before, by no fixed ratio.
+        let ratios: Vec<f32> = sea.waves.windows(2).map(|w| w[1].k / w[0].k).collect();
+        assert!(ratios.iter().all(|&r| r > 1.0));
+        let (lo, hi) = ratios
+            .iter()
+            .fold((f32::MAX, 0.0f32), |(a, b), &r| (a.min(r), b.max(r)));
+        assert!(hi - lo > 0.1, "{lo}..{hi}");
         // The peak band carries the most height; the shortest waves little.
         let biggest = (0..OCEAN_WAVES)
             .max_by(|&a, &b| sea.waves[a].amplitude.total_cmp(&sea.waves[b].amplitude))
             .unwrap();
-        assert!((1..=4).contains(&biggest), "the peak is wave {biggest}");
-        assert!(sea.waves[15].amplitude < 0.05 * sea.waves[biggest].amplitude);
+        assert!((1..=7).contains(&biggest), "the peak is wave {biggest}");
+        assert!(sea.waves[OCEAN_WAVES - 1].amplitude < 0.1 * sea.waves[biggest].amplitude);
     }
 
     #[test]

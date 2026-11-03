@@ -22,12 +22,14 @@ pub const OCEAN_SCENES: &[&str] = &[
 /// The sea's tick (a minute and a half in, at 60 a second).
 const TICK: u64 = 5400;
 
-/// A sea of `size` metres a side, 256 cells, under `wind`, around the
-/// world's zero (its waves are the world's: the camera at x = z = 0 sees
-/// the same ones wherever the origin is).
-fn sea(wind: Vec2, size: f32, choppiness: f32) -> Water {
+/// A sea 6 km across (its grid finest under the camera, at its centre),
+/// 256 cells, under `wind`, around the world's zero (its waves are the
+/// world's: the camera at x = z = 0 sees the same ones wherever the origin
+/// is). The sea's own waves reach down to under a metre, so the detail
+/// ripples are off.
+fn sea(wind: Vec2, choppiness: f32) -> Water {
     Water {
-        size: Vec2::splat(size),
+        size: Vec2::splat(SEA),
         segments: 256,
         wind,
         choppiness,
@@ -36,17 +38,20 @@ fn sea(wind: Vec2, size: f32, choppiness: f32) -> Water {
         deep: Vec3::new(0.01, 0.06, 0.09),
         shallow: Vec3::new(0.2, 0.5, 0.55),
         depth_fade: 30.0,
-        wave_strength: 0.2,
-        wave_scale: 0.9,
+        wave_strength: 0.0,
         ..Default::default()
     }
 }
 
-/// Haze that thickens to the horizon colour at the sea's edge, so its rim
-/// (`edge` metres away) does not show against the sky.
-fn sea_haze(scene: &mut RenderScene, edge: f32) {
+/// The sea's extent: its edge 3 km out, a pixel under the horizon from a
+/// few metres up.
+const SEA: f32 = 6000.0;
+
+/// Haze that thickens to the horizon colour by the sea's edge, so its rim
+/// does not show against the sky.
+fn sea_haze(scene: &mut RenderScene) {
     if let Some(f) = scene.fog.as_mut() {
-        f.density = 3.0 / edge;
+        f.density = 6.0 / SEA;
         f.start = 20.0;
         f.max_opacity = 1.0;
     }
@@ -64,12 +69,12 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         // afternoon sun behind the right shoulder.
         "water-ocean" => {
             physical_light(&mut scene, 15.0, earth);
-            scene.water.push(sea(Vec2::new(-3.0, -8.5), 1200.0, 0.6));
-            sea_haze(&mut scene, 600.0);
+            scene.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
+            sea_haze(&mut scene);
             scene.camera = Camera {
                 position: Vec3::new(0.0, 4.0, 0.0),
                 target: Vec3::new(0.0, 1.5, -60.0),
-                far: 3000.0,
+                far: 5000.0,
                 exposure: Exposure::linear(0.8),
                 ..Default::default()
             };
@@ -91,12 +96,12 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             scene.light.intensity *= sun;
             scene.environment.intensity *= sky;
             scene.clouds = Some(clouds);
-            scene.water.push(sea(Vec2::new(6.0, -16.0), 1600.0, 1.0));
-            sea_haze(&mut scene, 800.0);
+            scene.water.push(sea(Vec2::new(6.0, -16.0), 1.0));
+            sea_haze(&mut scene);
             scene.camera = Camera {
                 position: Vec3::new(0.0, 9.0, 0.0),
                 target: Vec3::new(-10.0, 2.0, -80.0),
-                far: 4000.0,
+                far: 5000.0,
                 exposure: Exposure::linear(1.0),
                 ..Default::default()
             };
@@ -105,14 +110,14 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         // glitter path of the sun's highlight on every wave facing it.
         "water-ocean-sunset" => {
             let look = physical_light(&mut scene, 17.85, earth);
-            scene.water.push(sea(Vec2::new(4.0, -4.5), 900.0, 0.5));
-            sea_haze(&mut scene, 450.0);
+            scene.water.push(sea(Vec2::new(4.0, -4.5), 0.5));
+            sea_haze(&mut scene);
             let s = look.sun_direction;
             let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
             scene.camera = Camera {
                 position: Vec3::new(0.0, 3.0, 0.0),
                 target: Vec3::new(0.0, 3.0, 0.0) + bearing * 60.0 + Vec3::Y * 2.5,
-                far: 3000.0,
+                far: 5000.0,
                 exposure: Exposure::linear(1.4),
                 ..Default::default()
             };
@@ -144,10 +149,13 @@ fn flow_round(size: Vec2, at: Vec2, radius: f32, u: f32, v: f32) -> [u8; 4] {
     [e(f.x), e(f.y), 128, 255]
 }
 
-/// A stream 14 m wide in a sandy bed, flowing away from the camera and
-/// parting round a boulder, its ripples (the lake normal map of
-/// `fork_scenes`) carried by the flow: by the flow map round the boulder
-/// (`mapped`), else straight down the stream at the same speed.
+/// A stream 14 m wide between two banks, flowing away from the camera and
+/// parting round a boulder, its travelling waves carried by the flow: by
+/// the flow map round the boulder (`mapped`; half a metre a second far from
+/// it, a metre beside it, none at its nose), else straight down the stream
+/// at the far field's speed. (A flow map moves the waves by up to a metre
+/// in the two seconds of a cycle, so in a still their fronts bend round the
+/// boulder.)
 pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     let sun = Vec3::new(0.35, 0.75, 0.45).normalize();
     scene.light = og_render::DirectionalLight {
@@ -165,11 +173,29 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     };
     let bed = scene.add_mesh(shapes::plane(80.0, 1.0));
     let sand = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.42, 0.36, 0.26),
+        color: Vec3::new(0.62, 0.52, 0.36),
         roughness: 0.9,
         ..Default::default()
     });
     scene.add_instance(bed, sand, Mat4::IDENTITY);
+    // The banks: grassy slabs 1.5 m high either side of the stream.
+    let slab = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let grass = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.3, 0.42, 0.2),
+        roughness: 0.95,
+        ..Default::default()
+    });
+    for x in [-1.0f32, 1.0] {
+        scene.add_instance(
+            slab,
+            grass,
+            Mat4::from_scale_rotation_translation(
+                Vec3::new(10.0, 1.5, 80.0),
+                glam::Quat::IDENTITY,
+                Vec3::new(x * 12.0, 0.75, -20.0),
+            ),
+        );
+    }
     let rock = scene.add_mesh(shapes::sphere(32, 16));
     let stone = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.32, 0.31, 0.3),
@@ -193,31 +219,28 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
             flow_round(size, at, radius, u, v)
         }))
     });
-    let normal_map = crate::fork_scenes::ripple_map(scene);
     scene.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.9, 0.0)),
         size,
         segments: 32,
         depth_fade: 1.2,
         foam_width: 0.3,
-        wave_strength: 1.0,
-        normal_map: Some(normal_map),
-        normal_scale: 0.5,
-        // Down the stream (-z) at 0.25 uv a second; with the map, the speed
-        // (the map's half-speed stream turned round the boulder: the same
-        // 0.25 away from it).
-        flow: Vec2::new(0.0, if mapped { -0.5 } else { -0.25 }),
+        wave_scale: 1.0,
+        wave_strength: 0.6,
+        // With the map, its half-speed stream times 1 m/s; without, the
+        // same half a metre a second straight down the stream (-z).
+        flow: Vec2::new(0.0, if mapped { -1.0 } else { -0.5 }),
         flow_map,
         ..Default::default()
     });
     scene.camera = Camera {
-        position: Vec3::new(0.0, 6.0, 9.0),
+        position: Vec3::new(0.0, 7.0, 9.0),
         target: Vec3::new(0.0, 0.9, -8.0),
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    // 0.88 s in: the normal map's layers half a cycle along (0.22 of 0.15
-    // uv), the travelling waves 0.22 m.
+    // 0.88 s in: the waves 0.44 m along the flow far out, 0.88 m beside
+    // the boulder.
     scene.tick = 53;
     scene.tick_rate = 60.0;
     scene.fog = None::<Fog>;

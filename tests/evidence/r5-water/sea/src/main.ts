@@ -56,18 +56,18 @@ export default og.game({
     must(world.resource(og.PhysicalSky)).enabled = true;
     const fog = must(world.resource(og.Fog));
     fog.enabled = true;
-    fog.density = 0.005;
+    fog.density = 0.001;
     fog.start = 20;
 
     const sea = must(world.spawn({ name: "sea", position: { x: 0, y: 0, z: 0 } }));
     world.insert(sea, og.Water, {
-      size: { x: 1200, y: 1200 },
+      size: { x: 6000, y: 6000 },
       segments: 256,
       wind: { x: -3, y: -8.5 },
       choppiness: 0.6,
       foamWidth: 0,
       depthFade: 30,
-      waveStrength: 0.2,
+      waveStrength: 0,
     });
 
     const ball = must(og.render.sphereGeometry(world, {}));

@@ -16316,7 +16316,7 @@ export interface Water {
    */
   flowMap: Texture;
   /**
-   * The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. Set size and segments for the waves: a cell under a quarter of a wave's length leaves it to the shading. 0 0: no sea.
+   * The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. A sea's grid is finest at its centre and coarsens outward (a 6 km sea of 256 segments: 3.5 m cells in the middle, 63 m at the edge, its rim under the horizon from a few metres up), so keep the entity under the camera (move it with the camera: the waves stay where they are); a wave under four cells is left to the shading, and the detail waves (waveStrength) fade where a pixel cannot hold them. Whitecaps cover as much of the sea as the wind's speed whitens a real one. 0 0: no sea.
    *
    * @default { x: 0, y: 0 }
    * @unit mps (metres per second)
