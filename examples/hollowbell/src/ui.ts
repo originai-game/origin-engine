@@ -9,7 +9,9 @@
 // widgets), and the results under the dawn look. The title, the wares,
 // pause and the results are the game's own screen documents
 // (assets/ui/*.ogt, ejected with `og ui eject` from the library's
-// main-menu, vendor, pause and results). Screens change
+// main-menu, vendor, pause and results), laid out as the game shipped them
+// on the fixed templates; what a document cannot say (the wares' grid, the
+// purse counting, the stars landing) is built here in its slots. Screens change
 // through an iris (a fade with reduced motion). Every string is a key of
 // assets/strings/*.ogt.
 //
@@ -255,32 +257,27 @@ function talk(world: World, g: GameV, p: PrefsV): void {
 }
 
 /**
- * A talk in the film's frame: a black bar a tenth of the picture top and bottom (run out under a notch, as a
- * film's are), the line in og.ui.dialogue a step above the bottom bar, typed out (a press or Activate shows it
- * whole, the next one goes on), and Skip at the top right, as Back is.
+ * A talk in the film's frame, as it shipped: a black bar a tenth of the screen top and bottom on the style's
+ * panel frame (its edge), the line in og.ui.dialogue straddling the bottom bar 4 % of the screen up, typed out (a
+ * press or Activate shows it whole, the next one goes on), and Skip under the top bar at the right, as Back is.
  */
 function letterboxTalk(world: World, lines: { speaker: string; text: string; portrait: string }[], index: number): { index: number; finished: boolean; skipped: boolean } {
   const out = { index, finished: false, skipped: false };
   og.ui.setNavigation(true);
   const vp = og.ui.frameViewport();
-  const sa = vp.safeArea;
-  const barH = Math.round((vp.height - sa.top - sa.bottom) * 0.1);
-  const black = { color: { r: 0, g: 0, b: 0 } };
-  for (const [name, anchor, y, h] of [["Top", "topLeft", -sa.top, barH + sa.top], ["Bottom", "bottomLeft", sa.bottom, barH + sa.bottom]] as const) {
-    og.ui.anchor(`Talk.${name}`, { anchor, margin: 0, offsetX: -sa.left, offsetY: y, width: px(vp.width), height: px(h) }, () => {
-      og.ui.row("Bar", { width: grow, height: grow, background: black }, () => {});
-    });
+  for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
+    og.ui.anchor(`Talk.${name}`, { anchor, margin: 0, width: grow, height: { kind: "percent", fraction: 0.1 }, background: { color: { r: 0, g: 0, b: 0 } }, frame: "panel" }, () => {});
   }
   const line = lines[index]!;
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
-  og.ui.anchor("Talk.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -Math.max(0, barH + S.md - 16) }, () => {
+  og.ui.anchor("Talk.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -vp.height * 0.04 }, () => {
     const r = og.ui.dialogue("Dialogue", { speaker: line.speaker, text: line.text, portraitIcon: line.portrait });
     if (r.advanced) {
       if (index + 1 >= lines.length) out.finished = true;
       else out.index = index + 1;
     }
   });
-  og.ui.anchor("Talk.skip", { anchor: "topRight", offsetY: barH + S.sm }, () => {
+  og.ui.anchor("Talk.skip", { anchor: "topRight", offsetY: vp.height * 0.1 }, () => {
     if (og.ui.button("Skip", say(world, "talk.skip"), { variant: "quiet", size: "small" }).clicked) out.skipped = true;
   });
   if (og.ui.back()) out.skipped = true;
@@ -290,13 +287,17 @@ function letterboxTalk(world: World, lines: { speaker: string; text: string; por
 function shop(world: World, g: GameV): void {
   if (!g.shopping) return;
   const owned = (id: string) => (id === "wick" && g.wick) || (id === "cloak" && g.cloak);
-  const wares = WARES.map((w) => ({ name: say(world, `shop.${w.id}`), doc: say(world, `shop.${w.id}Doc`), price: w.price, icon: w.icon, owned: owned(w.id) }));
-  const at = Math.min(g.shopSelected, WARES.length - 1);
-  const sel = wares[at]!;
-  // assets/ui/shop.ogt: the wares, the selected one's line, Buy; short of the price its Buy shakes, refused.
-  const asked = screen(world, "shop", true, { glimmers: g.glimmers, wares, selected: at, name: sel.name, doc: sel.doc, price: sel.price, owned: sel.owned, short: g.glimmers < sel.price, unit: say(world, "shop.currency") });
-  if (asked.includes("select")) g.shopSelected = (og.ui.screenVm(world, "shop") as { selected?: number } | null)?.selected ?? at;
-  const r = { bought: asked.includes("buy") ? WARES[at]!.id : null, closed: asked.includes("back") };
+  // assets/ui/shop.ogt: the panel, its title and the purse; the wares and the selected one's column fill Body.
+  const asked = screen(world, "shop", true, { glimmers: g.glimmers });
+  if (og.ui.openSlot("shop/Amount")) {
+    og.ui.counter("Amount", g.glimmers, { font: "mono", step: "base" });
+    og.ui.close();
+  }
+  const r = { bought: null as string | null, closed: asked.includes("back") };
+  if (og.ui.openSlot("shop/Body")) {
+    r.bought = wares(world, g, owned);
+    og.ui.close();
+  }
   if (r.bought !== null) {
     const w = WARES.find((x) => x.id === r.bought);
     if (w !== undefined && g.glimmers >= w.price && !owned(w.id)) {
@@ -314,6 +315,37 @@ function shop(world: World, g: GameV): void {
     }
   }
   if (r.closed) g.shopping = false;
+}
+
+/**
+ * The shop's body as it shipped: the wares in a grid of plain cells (the icon, the name, the price a numeral, Owned
+ * when it is), the style's own selection, and the selected ware's name, line, price and Buy; short of the price Buy
+ * reads Not enough and a press shakes it with the error sound. Answers the ware bought this tick.
+ */
+function wares(world: World, g: GameV, owned: (id: string) => boolean): string | null {
+  let bought: string | null = null;
+  og.ui.row("Body", { width: grow, gap: S.lg }, () => {
+    const grid = og.ui.grid("Items", { count: WARES.length, cellWidth: 112, cellHeight: 124, height: { kind: "fit", min: 0, max: 320 }, width: grow, selected: g.shopSelected }, (i) => {
+      const w = WARES[i]!;
+      og.ui.icon("Picture", w.icon, { size: 36 });
+      og.ui.label("Name", say(world, `shop.${w.id}`), { step: "base", nowrap: true });
+      if (owned(w.id)) og.ui.badge("Owned", say(world, "shop.owned"), "success");
+      else og.ui.label("Price", `${w.price}`, { step: "meta", font: "mono", color: { token: g.glimmers >= w.price ? "highlight" : "inkFaint" }, nowrap: true });
+    });
+    if (grid.clicked !== null) g.shopSelected = grid.clicked;
+    const w = WARES[Math.min(g.shopSelected, WARES.length - 1)]!;
+    og.ui.column("Detail", { width: px(220), gap: S.sm }, () => {
+      og.ui.label("Name", say(world, `shop.${w.id}`), { step: "lg", width: grow });
+      og.ui.label("Description", say(world, `shop.${w.id}Doc`), { step: "meta", color: { token: "inkMuted" }, width: grow });
+      og.ui.keyValue("Price", say(world, "shop.price"), `${w.price} ${say(world, "shop.currency")}`, true);
+      const have = owned(w.id);
+      const short = g.glimmers < w.price;
+      const b = og.ui.button("Buy", say(world, have ? "shop.owned" : short ? "shop.short" : "shop.buy"), { variant: short ? "secondary" : "primary", width: grow, disabled: have });
+      if (b.clicked && !have && short) og.ui.shake({ sound: true });
+      if (b.clicked && !have && !short) bought = w.id;
+    });
+  });
+  return bought;
 }
 
 function naming(world: World, g: GameV, p: PrefsV): void {
@@ -389,16 +421,35 @@ function seconds(s: number): string {
   return `${m}:${r < 10 ? "0" : ""}${r}`;
 }
 
-/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
-const COUNT_FRAMES = 54;
+/** The results' count-up: 0.9 s from their opening, ease-out cubic. */
+const COUNT_SECONDS = 0.9;
+
+/**
+ * The stars as the results shipped: landing one by one, k 0.3 s after k-1 from the opening, each scaling in, an
+ * earned one gold with a burst, the rest in the control ink.
+ */
+function resultStars(earned: number, max: number, since: number): void {
+  const size = 44;
+  og.ui.row("Stars", { gap: S.sm, cross: "center" }, () => {
+    for (let k = 0; k < max; k++) {
+      const shown = og.ui.seconds() - since >= 0.3 * (k + 1);
+      const on = k < earned;
+      og.ui.transition(og.ui.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
+        og.ui.icon("Mark", "star", { size, tint: { token: on ? "gold" : "controlStrong" } });
+        if (on) og.ui.burst({ delayMs: 120 });
+      });
+      if (!shown) og.ui.spacer(og.ui.idi("Gap", k), px(size));
+    }
+  });
+}
 
 function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
   const stars = 1 + (g.hurts <= 3 ? 1 : 0) + (g.kills >= 6 ? 1 : 0);
-  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  // When they opened, in og.ui's seconds: the count-up and the stars run from there (dropped when the results go).
   let since = og.ui.memory("resultsSince", -1);
-  if (since < 0) since = og.ui.tick();
+  if (since < 0) since = og.ui.seconds();
   og.ui.remember("resultsSince", since);
-  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const k = Math.min(1, (og.ui.seconds() - since) / COUNT_SECONDS);
   const asked = screen(world, "results", true, {
     title: say(world, "results.title"),
     score: k >= 1 ? g.score : Math.round(g.score * (1 - (1 - k) ** 3)),
@@ -414,7 +465,7 @@ function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
     ],
   });
   if (og.ui.openSlot("results/Stars")) {
-    og.ui.starRating("Rating", { earned: stars, max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars, max: 3 }) });
+    resultStars(stars, 3, since);
     og.ui.close();
   }
   return asked.includes("again") ? "again" : asked.includes("menu") ? "menu" : null;

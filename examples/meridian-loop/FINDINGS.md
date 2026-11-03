@@ -91,46 +91,46 @@ The fixed templates the game used (`og.ui.mainMenu`, `og.ui.racingHud`,
 `og.ui.pauseMenu`, `og.ui.settingsScreen`, `og.ui.resultsScreen`,
 `og.ui.leaderboardScreen`) are removed from the engine (docs/ui.md §11).
 The title, pause, the settings, the results and the leaderboard are the
-game's own screen documents, ejected with `og ui eject` and edited:
-`assets/ui/main-menu.ogt` (the name, the record or the tagline, Time trial,
-Leaderboard and Settings, the keys in the corner; no entrance),
-`assets/ui/pause.ogt` (Resume and Back, Restart, the ghost on or off,
-Settings, Quit to title), `assets/ui/settings.ogt` (`og.ui.settingsTree` in
-its Tree slot: Sound, Graphics and Language, each change applied at once,
-saved on Done), `assets/ui/results.ogt` (the race's time counted up as its
+game's own screen documents, ejected with `og ui eject` and shaped as the
+game shipped them (every element where the templates put it, the same
+words and surfaces: the style's panel frame on the panelRaised fill, the
+dialog titles at the ramp's xl in the body face): `assets/ui/main-menu.ogt`
+(the name, the record or the tagline, Time trial, Leaderboard and Settings,
+the keys under them in the card), `assets/ui/pause.ogt` (Resume and Back,
+Restart, the ghost on or off, Settings, Quit to title),
+`assets/ui/settings.ogt` (the title, a Page slot with the tabs and the
+rows the game builds: Audio, Graphics, Controls and Language, each change
+applied at once, saved on Done; then Done), `assets/ui/results.ogt` (the
+title, a Body slot with the stars, the race's time counted up as its
 headline, the session's best race before it and the badge, the laps, the
-record and the rank as rows, `og.ui.starRating` in its Stars slot, Again,
-Watch replay, Leaderboard and Title) and `assets/ui/leaderboard.ogt`. The
-HUD is built from the library's components: `og.ui.lapTimer` (the lap, the
-lap's time, the record, the last lap and the delta against the record),
-the three sectors as the game's own rows, `og.ui.minimap`,
-`og.ui.speedometer` and the touch buttons. New keys in both tables: the
-HUD's captions, the settings tree's Apply, Revert and Defaults, the
-leaderboard's and the results' words; the faces' `chars` gained the minus
-sign (U+2212) the deltas use.
+record and the rank as rows; Again, Watch replay, Leaderboard and Title)
+and `assets/ui/leaderboard.ogt` (the title, a Body slot with the scopes
+and the laps). The race's HUD is the racing HUD as it shipped, now the
+game's own code (`src/hud.ts`): the lap top left, the running time and
+Pause top right over the record, the sectors and the minimap, the speed,
+gear and revs on the dash. `tests/screens.og.ts` pins every screen's
+elements (`tests/shipped.ts`).
 
 This closes three findings about the templates:
 
 - #8 (the racing HUD's words fixed in English, a place and a boost meter
-  always drawn, no field for splits, a delta or the last lap):
-  `og.ui.lapTimer` takes every caption as a desc field, draws no place and
-  no boost, and shows the last lap and the delta; the sectors are the
-  game's rows. The locales playtest checks `Runde` and S1 to S3 in German.
-- #9 (the racing HUD took Back under an open dialog): there is no racing
-  HUD; the HUD asks `og.ui.back()` itself for its pause only while nothing
-  is open over it, and pause and the settings take Back as their
-  documents' `back` (the replay playtest's Escape pauses and resumes).
-- #10 (the results' score a whole number): the results document's
-  headline is a string the game formats (m:ss.mmm), counted up in code.
-#18 (the shell's Back button over the racing HUD's top-left corner) is not
-closed by this: `og.ui.lapTimer` anchors at the top left by default, as
-the racing HUD did, so whether its block clears the shell's control is for the published
-page's next run on a GPU to say; it stays open until then.
+  always drawn): the game's HUD takes every word from the tables and
+  draws neither a place nor a boost.
+- #9 (the racing HUD took Back under an open dialog): the HUD is not
+  drawn under pause or the settings, and pause and the settings take Back
+  as their documents' `back` (the replay playtest's Escape pauses and
+  resumes).
+- #10 (the results' score a whole number): the headline is the time the
+  game formats (m:ss.mmm), counted up in code.
+#18 (the shell's Back button over the HUD's top-left corner) is not closed
+by this: the HUD keeps the corner it had, so whether it clears the shell's
+control is for the published page's next run on a GPU to say.
 
 Left open, and not the change's: the autopilot's first lap is 2,047 ticks
 against the 2,048 the lap and ghost playtests name, and its third lap does
 not finish in the scripts' time, so `lap`, `ghost`, `rerun`, `locales` (its
 German results) and `frames` (its results and leaderboard) fail with
 `OG_RENDERER=none`. The same five fail with the old UI taken out
-altogether (a run with every template call stubbed), so it is the car's
-physics or the autopilot, not the screens.
+altogether (a run with every template call stubbed), and the same five
+fail on the last engine with the templates (f39354b18) running the game as
+it was, so it is the car's physics or the autopilot, not the screens.

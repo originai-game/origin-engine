@@ -4,6 +4,7 @@ version 2
 # Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
 name "lantern"
 scheme dark
+screens 1
 atlas "styles/lantern/atlas.png" 384 256
 scale 1
 palette {

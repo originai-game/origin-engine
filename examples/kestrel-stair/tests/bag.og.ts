@@ -1,13 +1,13 @@
-// The bag (assets/ui/bag.ogt, og.ui.inventoryGrid in its Grid slot): Tab
-// opens it over the held world; the letter, the sigils carried and the
-// hillwort sit in its cells; an item dragged to another cell moves there
-// (the game keeps the slots in Game.bag); a selected item shows its name
-// and line; Use eats a hillwort
+// The bag (assets/ui/bag.ogt, its slots and detail in its Body slot, laid
+// out as shipped): Tab opens it over the held world; the letter, the
+// sigils carried and the hillwort sit in its slots; an item
+// dragged to another slot moves there (the game keeps the slots in
+// Game.bag); a selected item shows its name and line; Use eats a hillwort
 // (strength back, its sound, a "+40"), Escape closes it. H eats one from
 // the stair too; with none left it is refused with the error sound. The
 // pause menu opens the bag as well.
 import { playtest } from "@origingame/engine/playtest";
-import { elements, game, press, script, tap, texts, value } from "./lib.ts";
+import { game, press, script, tap, texts, value } from "./lib.ts";
 
 export default playtest({
   name: "the bag opens with Tab, drags an item to another slot, shows its details and eats a hillwort with Use; H eats one; pause opens it",
@@ -20,15 +20,13 @@ export default playtest({
     press("Tab", 0.8),
     "1.2:get:Game:open.json",
     "1.2:dump_ui:open-ui.json",
-    "1.3:touch_move_to:Cells/herb",
+    "1.3:touch_move_to:Slots/Cell#4",
     "1.317:touch_start",
-    // The empty cell 9 (row 2, column 4) has no element of its own: its centre at 1280 x 720, the six 72 px cells a
-    // row from x 284, y 295.
-    "1.4:touch_move:536,403",
-    "1.5:touch_move:536,403",
+    "1.4:touch_move_to:Slots/Cell#9",
+    "1.5:touch_move_to:Slots/Cell#9",
     "1.55:touch_end",
     "1.8:get:Game:moved.json",
-    tap("Cells/herb", 1.9),
+    tap("Slots/Cell#9", 1.9),
     "2.3:dump_ui:detail.json",
     "2.35:screenshot:bag.png",
     tap("Use", 2.5),
@@ -50,8 +48,8 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     const open = game(run, "open.json");
     t.ok(open.bagOpen && open.held, "Tab opened the bag and held the world");
-    const cells = elements(run, "open-ui.json").filter((e) => e.parent === "Cells").map((e) => e.id);
-    t.ok(texts(run, "open-ui.json").includes("Bag") && ["letter", "sigil0", "herb"].every((k) => cells.includes(k)), `the letter, a sigil and the hillwort are in it (${cells.join(", ")})`);
+    const shown = texts(run, "open-ui.json");
+    t.ok(shown.includes("Bag") && shown.includes("map") && shown.includes("gem") && shown.includes("leaf"), "the letter, a sigil and the hillwort are in it");
     const moved = game(run, "moved.json");
     t.equal(JSON.parse(moved.bag)[9], "herb", "the hillwort was dragged to slot 9");
     t.equal(moved.bagMoves, 1, "one move");

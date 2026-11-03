@@ -3,8 +3,8 @@ version 1
 ---
 # Rumpus Isle's title, ejected from the library's main-menu (og ui eject
 # main-menu) and made the game's own: the isle's name and its line in a
-# card in the middle of the frame, Play and Settings, and the records (or
-# the hint about pads) in the bottom-right corner. Every word is a key of
+# card in the middle of the frame, Play and Settings, and under them, in
+# the card, the records (or the hint about pads). Every word is a key of
 # assets/strings/<locale>.ogt.
 #
 # Viewmodel: footer (the records, or the hint). Events to code: play,
@@ -15,7 +15,7 @@ under none
 back none
 focus "Card/Items/play"
 props {
-  footer string "The corner's line: the isle's records, or how to play."
+  footer string "The card's last line: the isle's records, or how to play."
 }
 actions {
   confirm "Select"
@@ -36,6 +36,7 @@ column Title {
     cross center
     background token hud
     radius 10
+    frame panel
     at phone {
       width grow
       padding 16
@@ -84,14 +85,12 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    text bind footer
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      text bind footer
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

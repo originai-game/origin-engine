@@ -16,9 +16,9 @@
 // - the HUD: strength and sigils top left, the hour and the bag and pause
 //   buttons top right, the prompt for what F would use at the bottom (it
 //   shakes when F is refused);
-// - the bag (og.ui.inventoryGrid in its slot: the letter, the sigils, the
-//   hillwort; items dragged between cells, hillwort eaten with Use), the
-//   pause menu, the results (og.ui.starRating in its slot, under the summit
+// - the bag (og.ui.grid in its slot: the letter, the sigils, the
+//   hillwort; items dragged between slots, hillwort eaten with Use), the
+//   pause menu, the results (the stars and the count-up in its slot, under the summit
 //   look after a won climb), toasts; a wipe between screens (a fade with
 //   reduced motion).
 //
@@ -27,7 +27,7 @@
 // (src/save.ts).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { GridItem, Look, SettingEntry, SettingsPage, Sound as SoundHandle, Value, World } from "@origingame/engine";
+import type { Look, SettingEntry, SettingsPage, Sound as SoundHandle, Value, World } from "@origingame/engine";
 import { Ending, Game, Hero, HOURS, MAX_HP, Near, Phase, Prefs, Scene, Sound, Tuning } from "./components.ts";
 import { placeHero } from "./hero.ts";
 import { CHAPTERS, chapterAt, WAYSTONES } from "./layout.ts";
@@ -329,7 +329,11 @@ function promptText(world: World, g: GameV, kind: number): string {
   }
 }
 
-/** The bag: the letter, the sigils carried, the hillwort; drag to move, Use (or a double press) to eat. */
+/**
+ * The bag as the game shipped it: the letter, the sigils carried, the hillwort in twelve slots six a row (og.ui.grid,
+ * the slots sharing the width beside a 200 px detail); a press selects, a drag moves an item to another slot (the
+ * slots kept as text in Game.bag), Use eats a hillwort.
+ */
 function bag(world: World, g: GameV): void {
   let slots: string[];
   try {
@@ -339,57 +343,45 @@ function bag(world: World, g: GameV): void {
   }
   while (slots.length < BAG_SLOTS) slots.push("");
   const carried = (id: string) => id === "letter" || (id.startsWith("sigil") && (g.sigils & (1 << Number(id.slice(5)))) !== 0) || (id === "herb" && g.herbs > 0);
-  const items: GridItem[] = slots
-    .map((id, slot) => ({ id, slot }))
-    .filter(({ id }) => carried(id))
-    .map(({ id, slot }) => ({
-      key: id,
-      name: say(world, `item.${id}`),
-      icon: id === "letter" ? "map" : id === "herb" ? "leaf" : "gem",
-      x: slot % BAG_COLUMNS,
-      y: Math.floor(slot / BAG_COLUMNS),
-      w: 1,
-      h: 1,
-      count: id === "herb" ? g.herbs : 0,
-    }));
-  if (g.bagSelected !== "" && !items.some((i) => i.key === g.bagSelected)) g.bagSelected = "";
-  const sel = g.bagSelected;
-  // assets/ui/bag.ogt: the cells in its Grid slot, the selected item's name, line, count and Use beside them.
-  const asked = screen(world, "bag", true, {
-    chosen: sel !== "",
-    name: sel !== "" ? say(world, `item.${sel}`) : "",
-    about: sel !== "" ? say(world, `item.${sel}.about`) : "",
-    count: sel === "herb" ? g.herbs : 0,
-    usable: sel === "herb",
-  });
-  let used = asked.includes("use") ? sel : null;
-  if (og.ui.openSlot("bag/Grid")) {
+  const icon = (id: string) => (id === "letter" ? "map" : id === "herb" ? "leaf" : "gem");
+  const count = (id: string) => (id === "herb" ? g.herbs : 0);
+  if (g.bagSelected !== "" && !(slots.includes(g.bagSelected) && carried(g.bagSelected))) g.bagSelected = "";
+  // assets/ui/bag.ogt: the dialog panel and its title; the slots and the detail in its Body slot.
+  const asked = screen(world, "bag", true);
+  let used: string | null = null;
+  if (og.ui.openSlot("bag/Body")) {
     const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
-    const r = og.ui.inventoryGrid("Grid", {
-      columns: BAG_COLUMNS,
-      rows: BAG_SLOTS / BAG_COLUMNS,
-      items,
-      cellSize: phone ? 64 : 72,
-      selected: sel,
-      label: say(world, "bag.title"),
-      emptyLabel: say(world, "bag.empty"),
-      rotateLabel: say(world, "bag.rotate"),
-    });
-    og.ui.close();
-    if (r.selected !== null) g.bagSelected = r.selected;
-    if (r.used !== null) used = r.used;
-    const m = r.move;
-    if (m !== null) {
-      const from = slots.indexOf(m.key);
-      const to = m.y * BAG_COLUMNS + m.x;
-      if (from >= 0 && to >= 0 && to < BAG_SLOTS && to !== from) {
-        slots[from] = slots[to] ?? "";
-        slots[to] = m.key;
+    const cell = phone ? 64 : 72;
+    og.ui[phone ? "column" : "row"]("Body", { width: grow, gap: phone ? S.md : S.lg }, () => {
+      const sel = g.bagSelected === "" ? -1 : slots.indexOf(g.bagSelected);
+      const r = og.ui.grid("Slots", { count: BAG_SLOTS, cellWidth: cell, cellHeight: cell, columns: BAG_COLUMNS, height: px(phone ? 300 : 340), width: grow, selected: sel >= 0 ? sel : null }, (i) => {
+        const id = slots[i] ?? "";
+        if (!carried(id)) return;
+        og.ui.icon("Picture", icon(id), { size: cell * 0.5 });
+        if (count(id) > 1) og.ui.label("Count", `${count(id)}`, { step: "xs", font: "mono", color: { token: "inkMuted" }, nowrap: true });
+      });
+      if (r.clicked !== null) g.bagSelected = carried(slots[r.clicked] ?? "") ? slots[r.clicked]! : "";
+      if (r.dropFrom !== null && r.dropTo !== null && carried(slots[r.dropFrom] ?? "") && r.dropTo !== r.dropFrom && r.dropTo < BAG_SLOTS) {
+        const moving = slots[r.dropFrom]!;
+        slots[r.dropFrom] = slots[r.dropTo] ?? "";
+        slots[r.dropTo] = moving;
         g.bag = JSON.stringify(slots);
         g.bagMoves += 1;
+        g.bagSelected = moving;
       }
-      g.bagSelected = m.key;
-    }
+      const it = g.bagSelected;
+      og.ui.column("Detail", { width: phone ? grow : px(200), gap: S.sm }, () => {
+        if (it === "") {
+          og.ui.label("Hint", say(world, "bag.hint"), { step: "meta", color: { token: "inkMuted" }, width: grow });
+          return;
+        }
+        og.ui.label("Name", say(world, `item.${it}`), { step: "lg", width: grow });
+        og.ui.label("Description", say(world, `item.${it}.about`), { step: "meta", color: { token: "inkMuted" }, width: grow });
+        if (count(it) > 1) og.ui.keyValue("Count", say(world, "bag.count"), `${count(it)}`, true);
+        if (og.ui.button("Use", say(world, "bag.use"), { variant: "primary", width: grow }).clicked) used = it;
+      });
+    });
+    og.ui.close();
   }
   if (used === "herb") eatHerb(world, g);
   if (asked.includes("close")) g.bagOpen = false;
@@ -417,25 +409,22 @@ function ending(world: World): { speaker: string; text: string; portrait: string
 }
 
 /**
- * A cutscene in the film's frame: a black bar a tenth of the picture top and bottom (run out under a notch, as a
- * film's are), the line in og.ui.dialogue a step above the bottom bar, typed out (a press or Enter shows it whole,
- * the next one goes on), and Skip at the top right, as Back is.
+ * A cutscene in the film's frame, as the game shipped it: a black bar a tenth of the screen top and bottom (each an
+ * anchor, so it keeps the style's own frame, its panel's edge, round the black), the line in og.ui.dialogue straddling
+ * the bottom bar 4 % of the screen up, typed out (a press or Enter shows it whole, the next one goes on), and Skip at
+ * the top right under the bar, as Back is.
  */
 function letterboxTalk(world: World, lines: { speaker: string; text: string; portrait: string }[], index: number): { index: number; finished: boolean; skipped: boolean } {
   const out = { index, finished: false, skipped: false };
   og.ui.setNavigation(true);
   const vp = og.ui.frameViewport();
-  const sa = vp.safeArea;
-  const barH = Math.round((vp.height - sa.top - sa.bottom) * 0.1);
   const black = { color: { r: 0, g: 0, b: 0 } };
-  for (const [name, anchor, y, h] of [["Top", "topLeft", -sa.top, barH + sa.top], ["Bottom", "bottomLeft", sa.bottom, barH + sa.bottom]] as const) {
-    og.ui.anchor(`Story.${name}`, { anchor, margin: 0, offsetX: -sa.left, offsetY: y, width: px(vp.width), height: px(h) }, () => {
-      og.ui.row("Bar", { width: grow, height: grow, background: black }, () => {});
-    });
+  for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
+    og.ui.anchor(`Story.${name}`, { anchor, margin: 0, width: grow, height: { kind: "percent", fraction: 0.1 }, background: black }, () => {});
   }
   const line = lines[Math.min(index, lines.length - 1)]!;
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
-  og.ui.anchor("Story.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -Math.max(0, barH + S.md - 16) }, () => {
+  og.ui.anchor("Story.box", { anchor: "bottom", width: phone ? grow : px(Math.min(760, vp.width - 64)), offsetY: -vp.height * 0.04 }, () => {
     const r = og.ui.dialogue("Dialogue", { speaker: line.speaker, text: line.text, portraitIcon: line.portrait });
     if (r.advanced) {
       if (index + 1 >= lines.length) out.finished = true;
@@ -445,7 +434,7 @@ function letterboxTalk(world: World, lines: { speaker: string; text: string; por
   // The line takes the focus as it appears, but not while the wipe from the title still moves (the screens are inert
   // then): it is given it once nothing holds it, so Enter, Space and the pad's A walk the lines.
   if (og.ui.focus(0) === "") og.ui.setFocus("Story.box/Dialogue");
-  og.ui.anchor("Story.skip", { anchor: "topRight", offsetY: barH + S.sm }, () => {
+  og.ui.anchor("Story.skip", { anchor: "topRight", offsetY: vp.height * 0.1 }, () => {
     if (og.ui.button("Skip", say(world, "story.skip"), { variant: "quiet", size: "small" }).clicked) out.skipped = true;
   });
   if (og.ui.back()) out.skipped = true;
@@ -505,27 +494,49 @@ function tutorial(world: World, g: GameV): { finished: boolean } {
 }
 
 function chapters(world: World, g: GameV): void {
-  // assets/ui/chapters.ogt: two wide cards a row, each chapter named whole (FINDINGS #15), its stars, the best
-  // ascent on the first; one not yet reached locked and refused; Back (Escape, the pad's B, a tap on the scrim).
-  let earned = 0;
-  const levels = CHAPTERS.map((c, i) => {
-    const name = say(world, `chapter.${c.key}`);
-    const stars = (g.chapterStars >> (i * 2)) & 3;
-    earned += stars;
-    return {
-      name,
-      starsLabel: say(world, "chapters.stars", { stars, max: 3 }),
-      lockedLabel: say(world, "chapters.locked", { name }),
-      stars,
-      locked: (g.chaptersReached & (1 << i)) === 0,
-      best: i === 0 && g.best > 0 ? seconds(g.best) : "",
-    };
-  });
-  const asked = screen(world, "chapters", true, { earned: `${earned} / ${CHAPTERS.length * 3}`, levels, picked: -1 });
-  const picked = (og.ui.screenVm(world, "chapters") as { picked?: number } | null)?.picked ?? -1;
-  if (asked.includes("pick") && picked >= 0 && (g.chaptersReached & (1 << picked)) !== 0) startRun(world, g, picked);
-  else if (asked.includes("back")) g.chaptersOpen = false;
+  // assets/ui/chapters.ogt: the dialog panel and its title; in its Body slot the stars earned of all, the four
+  // chapters as two wide cards a row (og.ui.grid), each named whole (FINDINGS #15) with its stars, one not yet reached
+  // a lock and refused, and Back (Escape, the pad's B and a tap on the scrim close it too), as the game shipped them.
+  const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
+  const levels = CHAPTERS.map((c, i) => ({ name: say(world, `chapter.${c.key}`), stars: (g.chapterStars >> (i * 2)) & 3, locked: (g.chaptersReached & (1 << i)) === 0 }));
+  const earned = levels.reduce((n, l) => n + l.stars, 0);
+  const asked = screen(world, "chapters", true);
+  let back = asked.includes("back");
+  if (og.ui.openSlot("chapters/Body")) {
+    og.ui.row("Total", { gap: S.xs, cross: "center" }, () => {
+      og.ui.icon("Star", "star", { size: 18, tint: { token: "gold" }, label: say(world, "chapters.stars", { stars: earned, max: CHAPTERS.length * 3 }) });
+      og.ui.label("Count", `${earned} / ${CHAPTERS.length * 3}`, { font: "mono", color: { token: "inkMuted" }, nowrap: true });
+    });
+    const cell = phone ? 84 : 104;
+    const r = og.ui.grid("Levels", { count: levels.length, cellWidth: phone ? 136 : 168, cellHeight: cell, columns: 2, height: { kind: "fit", min: 0, max: phone ? 420 : 400 }, width: grow }, (i) => {
+      const l = levels[i]!;
+      if (l.locked) {
+        og.ui.icon("Lock", "lock", { size: 28, tint: { token: "inkFaint" }, label: say(world, "chapters.locked", { name: l.name }) });
+        return;
+      }
+      og.ui.label("Name", l.name, { step: phone ? "body" : "lg", font: "display", align: "center", width: grow, maxLines: 2, ellipsis: true });
+      og.ui.row("Stars", { gap: 2 }, () => {
+        for (let k = 0; k < 3; k++) og.ui.icon(og.ui.idi("Star", k), "star", { size: 14, tint: { token: k < l.stars ? "gold" : "controlStrong" }, label: k === 0 ? say(world, "chapters.stars", { stars: l.stars, max: 3 }) : "" });
+      });
+    });
+    og.ui.row("Footer", { width: grow, align: "end" }, () => {
+      if (og.ui.button("Back", say(world, "chapters.back")).clicked) back = true;
+    });
+    og.ui.close();
+    if (r.clicked !== null && !levels[r.clicked]!.locked) {
+      startRun(world, g, r.clicked);
+      return;
+    }
+  }
+  if (back) g.chaptersOpen = false;
 }
+
+/** The records' medals: ranks 1 to 3 on a metal disc (gold, silver, bronze: its light, its body and its shade). */
+const MEDALS = [
+  [{ r: 1, g: 0.902, b: 0.502 }, { r: 1, g: 0.8, b: 0 }, { r: 0.722, g: 0.525, b: 0.043 }],
+  [{ r: 0.957, g: 0.965, b: 0.973 }, { r: 0.722, g: 0.753, b: 0.8 }, { r: 0.478, g: 0.51, b: 0.557 }],
+  [{ r: 0.953, g: 0.776, b: 0.627 }, { r: 0.788, g: 0.514, b: 0.302 }, { r: 0.541, g: 0.294, b: 0.133 }],
+] as const;
 
 function records(world: World, g: GameV): void {
   let rows: [number, string, number, number][] = [];
@@ -534,17 +545,58 @@ function records(world: World, g: GameV): void {
   } catch {
     rows = [];
   }
-  const shown = rows.map(([rank, name, secs, me]) => ({ rank, name: me ? say(world, "records.you") : name === "" ? say(world, "records.courier", { n: rank }) : name, time: seconds(secs), you: me === 1 }));
-  // assets/ui/leaderboard.ogt: the fastest ascents or the courier's neighbours; loading, error (Try again) and empty.
-  const vm = { scope: g.recordsScope, state: g.recordsState === 1 || g.recordsState === 3 ? g.recordsState : 0, rows: shown };
-  for (const e of screen(world, "leaderboard", true, vm)) {
-    if (e === "scope") {
-      g.recordsScope = (og.ui.screenVm(world, "leaderboard") as { scope?: number } | null)?.scope ?? g.recordsScope;
+  // assets/ui/leaderboard.ogt: the dialog panel and its title; in its Body slot the two scopes as tabs, then the
+  // fastest ascents or the courier's neighbours (the courier's row lit, ranks 1 to 3 on medals), loading (skeleton
+  // rows, never invented times), error (Try again) or empty, as the game shipped them. Back (Escape, B) closes it.
+  const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
+  const sizes = og.ui.frameTheme().sizes;
+  const asked = screen(world, "leaderboard", true);
+  if (og.ui.openSlot("leaderboard/Body")) {
+    const tabs = og.ui.tabs("Scopes", [say(world, "records.fastest"), say(world, "records.around")], g.recordsScope, { fill: true, width: grow });
+    if (tabs.response.changed) {
+      g.recordsScope = tabs.selected;
       readRecords(world, g);
     }
-    if (e === "retry") readRecords(world, g);
-    if (e === "back") g.recordsOpen = false;
+    const height = px(phone ? 380 : 360);
+    if (g.recordsState === 1) {
+      og.ui.column("Loading", { width: grow, gap: S.md, height }, () => {
+        for (let i = 0; i < 6; i++) og.ui.skeleton(og.ui.idi("Row", i), { height: sizes.controlSm });
+      });
+    } else if (g.recordsState === 3) {
+      og.ui.column("Error", { width: grow, gap: S.md, height, align: "center", cross: "center" }, () => {
+        og.ui.label("Message", say(world, "records.error"), { color: { token: "danger" }, align: "center", width: grow });
+        if (og.ui.button("Retry", say(world, "records.retry")).clicked) readRecords(world, g);
+      });
+    } else if (rows.length === 0) {
+      og.ui.column("Empty", { width: grow, height, align: "center", cross: "center" }, () => {
+        og.ui.label("Message", say(world, "records.empty"), { color: { token: "inkMuted" }, align: "center", width: grow });
+      });
+    } else {
+      const player = rows.findIndex((r) => r[3] === 1);
+      og.ui.list("Rows", { count: rows.length, rowHeight: sizes.row, height, width: grow, selected: player >= 0 ? player : null }, (i) => {
+        const [rank, name, secs, me] = rows[i]!;
+        og.ui.row("Rank", { width: px(40), cross: "center" }, () => {
+          if (rank >= 1 && rank <= 3) {
+            const [hi, mid, shade] = MEDALS[rank - 1]!;
+            og.ui.row("Medal", { width: px(26), height: px(26), align: "center", cross: "center" }, () => {
+              og.ui.setDraw({
+                shape: { kind: "ellipse" },
+                fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { color: hi } }, { offset: 0.5, color: { color: mid } }, { offset: 1, color: { color: shade } }] }],
+                effects: [{ kind: "innerShadow", offset: { x: 0, y: 1 }, blur: 0, spread: 0, color: { color: hi, alpha: 0.9 } }],
+              } as Parameters<typeof og.ui.setDraw>[0]);
+              og.ui.richText("Numeral", `[b]${rank}[/b]`, { font: "mono", step: "meta", color: { color: { r: 0.082, g: 0.082, b: 0.102 } }, nowrap: true });
+            });
+          } else {
+            og.ui.label("Numeral", `${rank}`, { font: "mono", color: { token: "inkMuted" }, nowrap: true });
+          }
+        });
+        og.ui.label("Name", me ? say(world, "records.you") : name === "" ? say(world, "records.courier", { n: rank }) : name, { width: grow, nowrap: true });
+        og.ui.label("Score", seconds(secs), { font: "mono", nowrap: true });
+      });
+    }
+    og.ui.close();
   }
+  if (asked.includes("back")) g.recordsOpen = false;
 }
 
 /** The settings tree's pages: what Prefs keeps, every word from the tables. */
@@ -607,37 +659,67 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   }
 }
 
-/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
-const COUNT_FRAMES = 54;
+/** A count as the results show it: 12,840. */
+function grouped(n: number): string {
+  return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
 
+/**
+ * The results as the game shipped them (assets/ui/results.ogt: the dialog panel and how the climb ended; its Body slot
+ * here): the stars landing one by one 0.3 s apart from the opening (an earned one gold, with a burst), the score
+ * counting up over 0.9 s, the best and the New record badge popping in as it lands, the time, the sigils, the foes and
+ * the hillwort eaten, then Again, Records and Title.
+ */
 function results(world: World, g: GameV): "again" | "title" | "records" | null {
   const won = g.ending === Ending.Rung;
   const sigils = [0, 1, 2].filter((b) => (g.sigils & (1 << b)) !== 0).length;
-  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
+  // When they opened, in og.ui's seconds: the count-up and the stars run from there (dropped when the results go).
   let since = og.ui.memory("resultsSince", -1);
-  if (since < 0) since = og.ui.tick();
+  if (since < 0) since = og.ui.seconds();
   og.ui.remember("resultsSince", since);
-  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
-  // assets/ui/results.ogt: how it ended, the stars, the score, the best, the rows, Again, Records and Title.
-  const asked = screen(world, "results", true, {
-    title: say(world, won ? "results.won" : g.ending === Ending.Night ? "results.night" : "results.fallen"),
-    score: k >= 1 ? g.score : Math.round(g.score * (1 - (1 - k) ** 3)),
-    best: say(world, "results.best", { best: String(g.bestScore).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }),
-    newBest: g.newBest,
-    landed: k >= 1,
-    stats: [
-      { label: say(world, "results.time"), value: seconds(g.time) },
-      { label: say(world, "results.sigils"), value: `${sigils}/3` },
-      { label: say(world, "results.foes"), value: `${g.kills}` },
-      { label: say(world, "results.herbs"), value: `${g.herbsUsed}` },
-    ],
-  });
-  if (og.ui.openSlot("results/Stars")) {
-    og.ui.starRating("Rating", { earned: stars(g), max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars(g), max: 3 }) });
+  const age = og.ui.seconds() - since;
+  screen(world, "results", true, { title: say(world, won ? "results.won" : g.ending === Ending.Night ? "results.night" : "results.fallen") });
+  let chosen: "again" | "title" | "records" | null = null;
+  if (og.ui.openSlot("results/Body")) {
+    const earned = stars(g);
+    og.ui.row("StarRow", { width: grow, align: "center" }, () => {
+      og.ui.row("Stars", { gap: S.sm, cross: "center" }, () => {
+        for (let k = 0; k < 3; k++) {
+          const shown = age >= 0.3 * (k + 1);
+          const on = k < earned;
+          og.ui.transition(og.ui.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
+            og.ui.icon("Mark", "star", { size: 44, tint: { token: on ? "gold" : "controlStrong" } });
+            if (on) og.ui.burst({ delayMs: 120 });
+          });
+          if (!shown) og.ui.spacer(og.ui.idi("Gap", k), px(44));
+        }
+      });
+    });
+    og.ui.column("ScoreBlock", { width: grow, cross: "center", gap: 2 }, () => {
+      og.ui.counter("Score", g.score, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow });
+      og.ui.row("BestRow", { gap: S.sm, cross: "center" }, () => {
+        og.ui.label("Best", say(world, "results.best", { best: grouped(Math.max(g.bestScore, g.newBest ? g.score : 0)) }), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
+        if (g.newBest) og.ui.transition("Reveal", age >= 0.9, { kind: "pop" }, () => og.ui.badge("NewBest", say(world, "results.newBest"), "primary"));
+      });
+    });
+    const rows = [
+      [say(world, "results.time"), seconds(g.time)],
+      [say(world, "results.sigils"), `${sigils}/3`],
+      [say(world, "results.foes"), `${g.kills}`],
+      [say(world, "results.herbs"), `${g.herbsUsed}`],
+    ] as const;
+    og.ui.column("Stats", { width: grow, gap: 0 }, () => {
+      rows.forEach(([label, value], i) => og.ui.keyValue(og.ui.idi("Stat", i), label, value, true));
+    });
+    og.ui.row("Actions", { width: grow, gap: S.sm, wrap: phone }, () => {
+      if (og.ui.button("again", say(world, "results.again"), { variant: "primary", width: grow }).clicked) chosen = "again";
+      if (og.ui.button("records", say(world, "results.records"), { width: grow }).clicked) chosen = "records";
+      if (og.ui.button("title", say(world, "results.title"), { width: grow }).clicked) chosen = "title";
+    });
     og.ui.close();
   }
-  const c = asked.find((e) => e === "again" || e === "title" || e === "records");
-  return (c as "again" | "title" | "records" | undefined) ?? null;
+  return chosen;
 }
 
 /** The screens, the run's start, clock and end, the hold, the looks, the platform. */

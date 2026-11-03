@@ -143,7 +143,7 @@ export const Game = defineResource("Game", {
   recordsRequest: u32(0),
   recordsState: u32(0, { doc: "0 idle, 1 loading, 2 loaded, 3 failed." }),
   records: str(1536, "", { doc: "The rows read, as JSON: [[rank, name, seconds, me], ...]." }),
-  bag: str(160, "", { doc: "The bag's slots: item ids by slot, as JSON (the bag's og.ui.inventoryGrid moves them)." }),
+  bag: str(160, "", { doc: "The bag's slots: item ids by slot, as JSON (a drag in the bag's og.ui.grid moves them)." }),
   bagMoves: u32(0),
   bagSelected: str(16, "", { doc: "The bag's selected item (its id: letter, sigil0, herb...); empty: none." }),
   welcomed: u32(0, { doc: "The loads already welcomed with a toast." }),

@@ -4,6 +4,7 @@ version 2
 # Upgraded to version 2 by og style upgrade: its version 1 values kept, the new tokens derived from its palette and scheme (docs/ui.md §12).
 name "kestrel"
 scheme light
+screens 1
 atlas "atlas.png" 384 256
 scale 1
 palette {

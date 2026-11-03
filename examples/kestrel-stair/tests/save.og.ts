@@ -81,7 +81,7 @@ export default playtest({
     t.ok(Math.hypot(c.heroX - 1.8, c.heroZ - 6.2) < 0.5, `by the crypt terrace's waystone (${c.heroX.toFixed(2)}, ${c.heroZ.toFixed(2)})`);
     t.ok(elements(next, "play.json").some((e) => e.text === "Back on the stair, The Crypt Terrace"), "a toast welcomes the courier back");
     const chapters = elements(next, "chapters.json");
-    const cards = chapters.filter((e) => e.parent === "Levels" && e.id.startsWith("Card#"));
+    const cards = chapters.filter((e) => e.parent === "Levels" && e.id.startsWith("Cell#"));
     const unlocked = cards.filter((c) => !chapters.some((l) => l.parent === c.id && l.id === "Lock"));
     t.equal(cards.length, 4, "the Chapters screen has four cards");
     t.ok(unlocked.length >= 2, `chapters I and II are open on it (${unlocked.length} open)`);

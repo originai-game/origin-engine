@@ -72,29 +72,32 @@ events answered in `src/ui.ts`):
 
 - `main-menu.ogt` (from main-menu): the name and its line, Continue with
   the place and the hour while there is a save (primary and focused), New
-  journey, Chapters, Records, Settings, the keys in the corner; no
+  journey, Chapters, Records, Settings, the keys under them in the card; no
   entrance, so the title the game opens on is drawn settled behind the
   web's play gate, which `mainMenu`'s `instant` did.
-- `chapters.ogt` (from saga-map): the four chapters as two wide cards a
-  row, each named whole, its stars, the best ascent on the first, the ones
-  not yet reached locked and refused; Back.
-- `leaderboard.ogt` (from leaderboard): the fastest ascents and the ones
-  round the courier, the courier's row lit, loading, error (Try again) and
-  empty states.
+- `chapters.ogt` (from saga-map): a dialog panel and its title; in its
+  Body slot the stars earned, the four chapters as two wide cards a row
+  (`og.ui.grid`), each named whole with its stars, the ones not yet
+  reached locked and refused; Back.
+- `leaderboard.ogt` (from leaderboard): a dialog panel and its title; in
+  its Body slot the two scopes as tabs, the fastest ascents or the ones
+  round the courier (the courier's row lit, ranks 1 to 3 on medals),
+  loading, error (Try again) and empty states.
 - `settings.ogt` (from settings): `og.ui.settingsTree` in its Tree slot,
   with Sound, Picture, Controls (the camera's speed, the vertical look
   inverted) and Language; each change is applied at once and saved on
   Done.
 - `pause.ogt` (from pause): Resume (and Back), Bag, Settings, Rest and
   quit.
-- `bag.ogt` (from inventory): `og.ui.inventoryGrid` (six cells a row, two
-  rows) in its Grid slot, the selected item's name, line, count and Use
-  beside it; a drag moves an item to another cell, a double press uses it.
+- `bag.ogt` (from inventory): a dialog panel and its title; in its Body
+  slot the twelve slots six a row (`og.ui.grid`), the selected item's
+  name, line, count and Use beside them; a drag moves an item to another
+  slot.
 - `tutorial.ogt` (from tutorial): the step's card (its count, title, text,
   Skip and Next or Done) placed under the HUD part it names, or over it;
   the scrim with that part left clear is `og.ui.spotlight`.
-- `results.ogt` (from results): how the climb ended, `og.ui.starRating` in
-  its Stars slot, the score counting up, the best and the New record badge,
+- `results.ogt` (from results): a dialog panel and how the climb ended; in
+  its Body slot the stars landing one by one, the score counting up, the best and the New record badge,
   the time, the sigils, the foes and the hillwort eaten, Again, Records
   and Title.
 
@@ -116,9 +119,23 @@ of every document is a key of the tables, and `tests/locales.og.ts` still
 asserts none is left in English). #20's contrast numbers were measured on
 the old leaderboard and bag and want measuring again on a GPU.
 
+The coordinator's rule after the migration: a shipped game's screens do
+not change because the templates went away. The documents and their slots
+reproduce the screens as the reference frames show them (the rectangles
+dumped at fa1924a5b, within a pixel; `tests/screens.og.ts` pins them in
+`tests/shipped.ts`): the title's keys inside the card under the items,
+each screen a dialog panel (the style's panel frame, `panelRaised`, the
+panel radius) of the old width with its title in the ramp's xl, the bag's
+and the chapters' slots `og.ui.grid` cells, the records' tabs and medals,
+the results' stars and count-up, and the letterbox's bars as anchors (the
+style's panel frame round the black) with the line straddling the bottom
+bar. The style carries `screens 1`. Keys the shipped screens do not show
+(the bag's Close, empty cell and turn button, the records' loading line
+and Back, the results' stars) stay in the tables, unused.
+
 Met while doing it:
 
 1. **A dialogue box that appears during `og.ui.screenTransition`'s wipe never gets the focus** — annoyance. `og.ui.dialogue` asks for the focus on the frame it first appears, and the screens are inert while the wipe moves, so the intro (which opens with New journey, behind the wipe) kept no focus and Enter never walked it. Workaround: `letterboxTalk` gives the line the focus (`og.ui.setFocus`) once nothing holds it.
 2. **A document button's `autofocus` does not take the focus from a sibling already focused** — nit. Continue appears only when the save slot answers, a few ticks after the title, whose New journey has already taken the focus. Workaround: `og.ui.setFocus` on Continue the first frame it shows.
 3. **`og.ui.spotlight` cannot fill a document slot** — nit. The library's tutorial document has a Highlight slot for "the scrim's hole", but a spotlight is an overlay at the root, drawn over the document's card and taking its taps. Workaround: the spotlight is drawn before the document, which is on its own layer above it; the slot is gone.
-4. **`og.ui.inventoryGrid` has no element for an empty cell, and its icons are not in `dump_ui`'s text** — nit (probe). The probe ids name `<id>/Cells/Cell#<index>`, but only items and the grid's lines are elements, so a playtest drags to an empty cell by coordinates (`touch_move:536,403` in `tests/bag.og.ts`) and checks the items by their keys, not their icons.
+4. **`og.ui.inventoryGrid` has no element for an empty cell, and its icons are not in `dump_ui`'s text** — nit (probe). The probe ids name `<id>/Cells/Cell#<index>`, but only items and the grid's lines are elements, so a playtest drags to an empty cell by coordinates. No longer met: the bag is `og.ui.grid` cells again, as shipped, every cell an element (`Slots/Cell#<index>`).

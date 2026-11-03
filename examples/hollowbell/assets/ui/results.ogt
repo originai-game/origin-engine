@@ -11,8 +11,8 @@ version 1
 #
 # Viewmodel: title, score (counted up this tick), best (the best line;
 # empty: none), newBest, landed (the count-up ended: the badge pops),
-# stats ({ label, value }). Events to code: again, menu. Slots: Stars
-# takes og.ui.starRating.
+# stats ({ label, value }). Events to code: again, menu. Slot Stars takes
+# the stars landing one by one (src/ui.ts `results`).
 name "results"
 layer menu
 under dim
@@ -39,13 +39,13 @@ column Results {
   column Panel {
     width grow 0 420
     padding 24
-    gap 16
+    gap 12
+    background token panelRaised
     frame panel
-    enter slideUp 24 token enter
+    enter slideDown 24 token enter
     label Title {
       text bind title
-      step xl2
-      font display
+      step xl
       heading true
     }
     row StarRow {
@@ -80,6 +80,7 @@ column Results {
           text "New best"
           tone accent
           visible bind "newBest && landed"
+          enter pop
         }
       }
     }
@@ -88,17 +89,19 @@ column Results {
       for s in stats {
         row Stat {
           width grow
-          padding 4
+          height fit 27
           gap 12
+          align spaceBetween
+          cross center
           label Key {
             text bind s.label
             color token inkMuted
             nowrap true
           }
-          spacer
           label Value {
             text bind s.value
             font mono
+            textAlign end
             nowrap true
           }
         }

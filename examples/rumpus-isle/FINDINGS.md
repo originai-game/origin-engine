@@ -118,18 +118,21 @@ behaviour was changed in this recovery.
 The fixed screen templates the game used (`og.ui.mainMenu`, `og.ui.pauseMenu`,
 `og.ui.settingsScreen`) are removed from the engine (docs/ui.md §11). The
 title, pause and the settings are now the game's own screen documents,
-ejected with `og ui eject` and edited: `assets/ui/main-menu.ogt` (the isle's
-name, Play, Settings, the records in the corner), `assets/ui/pause.ogt`
-(Resume and Back, Settings, Back to the lobby, Quit to title) and
-`assets/ui/settings.ogt` (the title and Done over a slot that
-`og.ui.settingsTree` fills with the pages Sound, Graphics, Controls and
-Language, each change applied at once by `src/prefs.ts`). Every word is a
-key of the game's tables, the tree's Apply, Revert and Defaults included
-(new keys `settings.apply`, `settings.revert`, `settings.defaults` in both
-locales). #10's `instant` belonged to `og.ui.mainMenu`: the title document
-has no entrance, so it is built settled on every visit. The playtests tap
-the tree's tabs by their keys (`Row/language`) and read its capitalised
-names without case.
+ejected with `og ui eject` and shaped as the game shipped them (every
+element where the templates put it, the same words and surfaces: the
+style's panel frame on the title card and the dialogs, the dialog titles
+at the ramp's xl in the body face): `assets/ui/main-menu.ogt` (the isle's
+name, Play, Settings, the records under them in the card),
+`assets/ui/pause.ogt` (Resume and Back, Settings, Back to the lobby, Quit
+to title) and `assets/ui/settings.ogt` (the title, a Page slot with the
+tabs and rows the game builds: Sound, Graphics, Controls and Language,
+each change applied at once by `src/prefs.ts`; then Done). Every word is a
+key of the game's tables. #10's `instant` belonged to `og.ui.mainMenu`:
+the title document has no entrance, so it is built settled on every
+visit. The style's art and fonts are kept in the game (the cartoon pack
+of November 2026), so the frames test no longer compares them with the
+pack. `tests/screens.og.ts` pins the three screens' elements
+(`tests/shipped.ts`).
 
 ## What worked well
 

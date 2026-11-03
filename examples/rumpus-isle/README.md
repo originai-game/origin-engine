@@ -9,7 +9,7 @@ knowledge package got wrong or left out, and what the engine did not do,
 is `FINDINGS.md`.
 
 ```sh
-bun tools/make-assets.ts   # every asset (the music, a splash and the copied style's art are not committed)
+bun tools/make-assets.ts   # every asset (the music and a splash are not committed)
 og cook .
 og run .                   # headless with the probe; og dev . reloads on save
 og test .                  # nine playtests, the frames against references/<tier>
@@ -61,7 +61,7 @@ third. New players can sit down between rounds and join from the next.
 | Three glTF models from a script (the island, a tile, a berry, the podium, palms), `og.load.gltf` and `world.instantiate` | `tools/make-assets.ts`, `tools/glb.ts`, `src/arena.ts` | og-game §6 |
 | Juice: hit stop by impact weight, trauma shake, squash on a bump, one-shot emitters (splash, dust, sparkle, crumbs, confetti) restarted by `startTick`, slow motion on the last knock | `src/critters.ts`, `src/feel.ts`, `assets/fx/` | og-feel §3–§6, og-game §10 |
 | Name tags as screen text over each critter, placed by `og.Camera.worldToScreen` | `src/feel.ts` | og-ui §3 |
-| The title, pause and settings as the game's screen documents (`assets/ui/main-menu.ogt`, `pause.ogt`, `settings.ogt`, ejected with `og ui eject`; the settings tree is `og.ui.settingsTree`), a lobby from widgets with a focus ring per pad (`og.ui.setPlayers`), a HUD from widgets, the round's card, the scoreboard and podium, every screen change through an iris (`og.ui.screenTransition`), count-ups and bursts | `src/ui.ts` | og-ui §2–§6 |
+| The title, pause and settings as the game's screen documents (`assets/ui/main-menu.ogt`, `pause.ogt`, `settings.ogt`, ejected with `og ui eject` and shaped as the game shipped them; the settings' tabs and rows the game's own), a lobby from widgets with a focus ring per pad (`og.ui.setPlayers`), a HUD from widgets, the round's card, the scoreboard and podium, every screen change through an iris (`og.ui.screenTransition`), count-ups and bursts | `src/ui.ts` | og-ui §2–§6 |
 | English and French string tables with plurals and selects, the settings' words from them | `assets/strings/`, `src/ui.ts`, `src/prefs.ts` | og-i18n |
 | og sfx presets on voices, a splash from a script, the music streamed in chunks on its bus and ducked under the effects, a limiter on the master | `src/sound.ts`, `assets/audio/`, `assets/music/romp.wav.ogt` | og-audio |
 | og.platform: the settings (read on the first tick, saved when the settings close) and the isle's records written at the revision read, merged on a conflict | `src/save.ts`, `src/prefs.ts` | og-platform-sdk, og-game §17 |
@@ -72,8 +72,8 @@ third. New players can sit down between rounds and join from the next.
 `assets/looks/rumpus-isle.ogt` extends the catalogue's `miniature-diorama`
 (og-taste §12: a tabletop model, tilt-shift focus, a soft sun, a high
 camera), with the depth of field focused on the island from the camera's
-19 m, and the cartoon style recoloured sea and coral (`styles/rumpus`, copied
-by the generator). `create --premise` matched `rubber-hose-animation`, a 2D
+19 m, and the cartoon style recoloured sea and coral (`styles/rumpus`, kept
+in the game, not copied by the generator). `create --premise` matched `rubber-hose-animation`, a 2D
 flipbook style, for the premise (`FINDINGS.md` #1).
 
 ## Playtests

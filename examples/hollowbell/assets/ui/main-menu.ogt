@@ -4,9 +4,9 @@ version 1
 # Hollowbell's title, ejected from the library's main-menu (og ui eject
 # main-menu) and made the game's own: the game's name and its line in a
 # card in the middle of the frame, Continue (primary with a save, disabled
-# without), New game and Settings, and the keys in the bottom-right
-# corner. Every word is a key of
-# assets/strings/<locale>.ogt.
+# without), New game and Settings, and the keys under them in the card,
+# as the title shipped (the card on the style's panel frame in its hud
+# fill). Every word is a key of assets/strings/<locale>.ogt.
 #
 # Viewmodel: canContinue. Events to code: continue, new, settings. src/ui.ts mounts it
 # while the title is the screen. It has no entrance, so the title the game
@@ -37,7 +37,7 @@ column Title {
     gap 24
     cross center
     background token hud
-    radius 10
+    frame panel
     at phone {
       width grow
       padding 16
@@ -118,15 +118,13 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    key "title.footer"
-    text "Arrows run · Space jump · X strike · Down drop · Up talk · Esc pause"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      key "title.footer"
+      text "Arrows run · Space jump · X strike · Down drop · Up talk · Esc pause"
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

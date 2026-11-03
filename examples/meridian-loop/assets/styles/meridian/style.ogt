@@ -4,6 +4,7 @@ version 2
 # Meridian Loop's style: the engine's neon pack (templates/ui-kit), copied and retinted by tools/make-assets.ts.
 name "meridian"
 scheme dark
+screens 1
 atlas "atlas.png" 384 256
 scale 1
 palette {

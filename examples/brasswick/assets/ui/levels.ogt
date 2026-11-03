@@ -2,18 +2,16 @@ type screen
 version 1
 ---
 # Brasswick's level select, ejected from the library's saga-map (og ui
-# eject saga-map, renamed levels) and made the game's own: three levels are
-# cards, not a map. The title and the stars earned of all, a card per
-# level (its number and name, its stars, its best gears and time; a locked
-# one dimmed with a lock, refused), and Back. Every word is a key of
+# eject saga-map, renamed levels) and made the game's own, laid out as it
+# shipped: three levels are cards, not a map. A panel with the title, the
+# stars earned of all, a card per level in a grid (its number and name and
+# its stars; a locked one a lock, refused) and Back. Every word is a key of
 # assets/strings/<locale>.ogt or a line the game says from them.
 #
-# Viewmodel: earned (the stars line), levels ({ name, starsLabel (its
-# stars to a screen reader: the first star's name, so the card reads its
-# level and its stars), lockedLabel (the lock's name), stars, best, locked
-# }), picked. (`name` applies to icons, images and art, not to a card.) Events to code: pick (a
-# card pressed: the click wrote picked), back (Back, a tap on the scrim,
-# Escape, the pad's B).
+# Viewmodel: earned (the stars line), earnedLabel (the stars to a screen
+# reader). Events to code: back (Back, a tap on the scrim, Escape, the
+# pad's B). Slot Levels takes the cards' og.ui.grid (src/ui.ts `levels`:
+# a press on an open card starts it).
 name "levels"
 layer menu
 under dim
@@ -21,14 +19,13 @@ back emit back
 focus "Panel/Levels"
 props {
   earned string "The stars earned of all, as a line."
-  levels list "The levels: { name, starsLabel, lockedLabel, stars, best, locked }."
-  picked number "The card pressed last."
+  earnedLabel string "The stars earned of all, as a screen reader says them."
 }
 actions {
   confirm "Play"
   back "Back"
 }
-fixture default "{\"earned\": \"3 / 9\", \"picked\": -1, \"levels\": [{\"name\": \"1. The Boiler Stair\", \"starsLabel\": \"3 of 3 stars\", \"lockedLabel\": \"\", \"stars\": 3, \"best\": \"6/6 gears · 0:41.2\", \"locked\": false}, {\"name\": \"2. Counterweights\", \"starsLabel\": \"0 of 3 stars\", \"lockedLabel\": \"\", \"stars\": 0, \"best\": \"\", \"locked\": false}, {\"name\": \"3. The Lantern Gate\", \"starsLabel\": \"\", \"lockedLabel\": \"3. The Lantern Gate, locked\", \"stars\": 0, \"best\": \"\", \"locked\": true}]}"
+fixture default "{\"earned\": \"3 / 9\", \"earnedLabel\": \"3 of 9 stars\"}"
 column Screen {
   width grow
   height grow
@@ -38,26 +35,26 @@ column Screen {
   interactive true
   on click emit back
   column Panel {
-    width grow 0 640
+    width grow 0 720
     padding 24
-    gap 16
+    gap 12
+    background token panelRaised
+    radius 4
     frame panel
     interactive true
-    enter slideUp 24 token enter
-    row Header {
-      width grow
-      gap 12
+    enter scale
+    label Title {
+      key "levels.title"
+      text "Levels"
+      step xl
+      heading true
+    }
+    row Total {
+      gap 4
       cross center
-      label Title {
-        key "levels.title"
-        text "Levels"
-        step xl2
-        font display
-        heading true
-        width grow
-      }
       icon Star {
         icon star
+        name bind earnedLabel
         iconSize 18
         color token gold
       }
@@ -68,113 +65,8 @@ column Screen {
         nowrap true
       }
     }
-    row Levels {
+    slot Levels {
       width grow
-      gap 12
-      wrap true
-      focusGroup wrap
-      for l in levels {
-        column Card {
-          width 168
-          height 132
-          padding 12
-          gap 6
-          align center
-          cross center
-          frame card
-          interactive true
-          focusable true
-          on click set picked "$index"
-          on click emit pick
-          if "!l.locked" {
-            label Name {
-              text bind l.name
-              step lg
-              font display
-              textAlign center
-              width grow
-              maxLines 2
-              ellipsis true
-            }
-            row Stars {
-              gap 2
-              icon Gold0 {
-                icon star
-                name bind l.starsLabel
-                iconSize 16
-                color token gold
-                visible bind "l.stars > 0"
-              }
-              icon Empty0 {
-                icon star
-                name bind l.starsLabel
-                iconSize 16
-                color token controlStrong
-                visible bind "l.stars < 1"
-              }
-              icon Gold1 {
-                icon star
-                name ""
-                iconSize 16
-                color token gold
-                visible bind "l.stars > 1"
-              }
-              icon Empty1 {
-                icon star
-                name ""
-                iconSize 16
-                color token controlStrong
-                visible bind "l.stars < 2"
-              }
-              icon Gold2 {
-                icon star
-                name ""
-                iconSize 16
-                color token gold
-                visible bind "l.stars > 2"
-              }
-              icon Empty2 {
-                icon star
-                name ""
-                iconSize 16
-                color token controlStrong
-                visible bind "l.stars < 3"
-              }
-            }
-            label Best {
-              text bind l.best
-              step meta
-              color token inkMuted
-              textAlign center
-              width grow
-              visible bind "l.best != \"\""
-            }
-          }
-          if "l.locked" {
-            icon Lock {
-              icon lock
-              name bind l.lockedLabel
-              iconSize 28
-              color token inkFaint
-            }
-          }
-          state interaction {
-            normal {
-              scale 1
-            }
-            hover {
-              scale 1.03
-            }
-            pressed {
-              scale 0.97
-            }
-            focused {
-              scale 1.03
-            }
-            transition any any token ui
-          }
-        }
-      }
     }
     row Footer {
       width grow

@@ -25,7 +25,7 @@ export default playtest({
     "2.8:dump_ui:hud.json",
     "2.85:give:herbs:2",
     press("Tab", 3.0),
-    tap("Cells/herb", 3.4),
+    tap("Slots/Cell#4", 3.4),
     "3.8:dump_ui:bag.json",
     "3.8:get:Game:a11y-bag.json",
     press("Escape", 4.0),

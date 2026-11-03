@@ -2,12 +2,15 @@
 // pack recoloured; the look applies it): the title over the first level
 // (Continue when the vault slot answered, New game, Levels, Settings), the
 // level select (stars, best gears and time, locks), the HUD (gears and the
-// level, touch controls on a phone), the pause menu, the settings
-// (og.ui.settingsTree, every word from the string tables, English and
-// Spanish) and the results (the score counting up, the stars, the best).
-// The title, the level select, pause, the settings and the results are the
-// game's own screen documents (assets/ui/*.ogt, ejected with `og ui eject`
-// from the library's main-menu, saga-map, pause, settings and results).
+// level, touch controls on a phone), the pause menu, the settings (tabs
+// over their rows, every word from the string tables, English and Spanish)
+// and the results (the score counting up, the stars, the best). The title,
+// the level select, pause, the settings and the results are the game's own
+// screen documents (assets/ui/*.ogt, ejected with `og ui eject` from the
+// library's main-menu, saga-map, pause, settings and results), laid out as
+// the game shipped them on the fixed templates; what a document cannot say
+// (the level cards' grid, the settings' tabs and rows, the stars landing)
+// is built here in its slots.
 // The screens change through an iris (a fade with reduced motion).
 //
 // The Ui system also starts levels, holds the world (time scale 0) while
@@ -15,12 +18,12 @@
 // when the exit's cheer is over (the score, the stars, the progress write).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { SettingEntry, SettingsPage, Value, World } from "@origingame/engine";
+import type { Value, World } from "@origingame/engine";
 import { Game, GEARS, LEVELS, Phase, Prefs, Tuning, Zone } from "./components.ts";
 import { say } from "./feel.ts";
 import { intent } from "./hero.ts";
 import { must } from "./level.ts";
-import { LANGUAGES, takeSettings, type Settings } from "./prefs.ts";
+import { LANGUAGES, settingsOf, takeSettings, type Settings } from "./prefs.ts";
 import { askContinue } from "./save.ts";
 
 type GameV = Value<typeof Game>;
@@ -160,27 +163,31 @@ function title(world: World, g: GameV): void {
 }
 
 function levels(world: World, g: GameV): void {
-  // assets/ui/levels.ogt: a card per level (its stars, best gears and time; locked ones refused), Back; a tap on
-  // the scrim, Escape and the pad's B are Back too (FINDINGS.md #10). A card is named by its level and its stars.
-  let earned = 0;
-  const cards = LEVEL_KEYS.map((key, n) => {
-    const b = bestOf(g, n);
-    const name = say(world, "levels.card", { n: n + 1, name: say(world, key) });
-    const locked = n >= g.unlocked;
-    earned += Math.min(3, b.stars);
-    return {
-      name,
-      starsLabel: say(world, "levels.stars", { stars: b.stars, max: 3 }),
-      lockedLabel: say(world, "levels.locked", { name }),
-      stars: b.stars,
-      locked,
-      best: b.time === 0 ? "" : say(world, "levels.best", { gears: b.gears, of: GEARS[n], time: clock(b.time) }),
-    };
-  });
-  const asked = screen(world, "levels", g.levelsOpen, { earned: `${earned} / ${LEVELS * 3}`, levels: cards, picked: -1 });
+  // assets/ui/levels.ogt: the title, the stars earned of all and Back (a tap on the scrim, Escape and the pad's B are
+  // Back too: FINDINGS.md #10); its Levels slot the cards as they shipped, a grid of three: an open card its number
+  // and name in display type and its stars (the first star named with them for a screen reader), a locked one a lock
+  // named by its level, refused.
+  const earned = LEVEL_KEYS.reduce((sum, _key, n) => sum + Math.min(3, bestOf(g, n).stars), 0);
+  const asked = screen(world, "levels", g.levelsOpen, { earned: `${earned} / ${LEVELS * 3}`, earnedLabel: say(world, "levels.stars", { stars: earned, max: LEVELS * 3 }) });
   if (!g.levelsOpen) return;
-  const picked = (og.ui.screenVm(world, "levels") as { picked?: number } | null)?.picked ?? -1;
-  if (asked.includes("pick") && picked >= 0 && picked < g.unlocked) startLevel(world, g, picked);
+  let picked = -1;
+  if (og.ui.openSlot("levels/Levels")) {
+    const r = og.ui.grid("Levels", { count: LEVELS, cellWidth: 168, cellHeight: 104, columns: 3, height: { kind: "fit", min: 0, max: 400 }, width: { kind: "grow" } }, (n) => {
+      const name = say(world, "levels.card", { n: n + 1, name: say(world, LEVEL_KEYS[n]!) });
+      if (n >= g.unlocked) {
+        og.ui.icon("Lock", "lock", { size: 28, tint: { token: "inkFaint" }, label: say(world, "levels.locked", { name }) });
+        return;
+      }
+      og.ui.label("Name", name, { step: "lg", font: "display", align: "center", width: { kind: "grow" }, maxLines: 2, ellipsis: true });
+      const stars = Math.min(3, bestOf(g, n).stars);
+      og.ui.row("Stars", { gap: 2 }, () => {
+        for (let k = 0; k < 3; k++) og.ui.icon(og.ui.idi("Star", k), "star", { size: 14, tint: { token: k < stars ? "gold" : "controlStrong" }, label: k === 0 ? say(world, "levels.stars", { stars, max: 3 }) : "" });
+      });
+    });
+    og.ui.close();
+    if (r.clicked !== null && r.clicked < g.unlocked) picked = r.clicked;
+  }
+  if (picked >= 0) startLevel(world, g, picked);
   else if (asked.includes("back")) g.levelsOpen = false;
 }
 
@@ -248,53 +255,85 @@ function pause(world: World, g: GameV): void {
   }
 }
 
-/** The settings tree's pages: what Prefs keeps, every word from the tables. */
-function pages(world: World, p: PrefsV): SettingsPage[] {
-  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
-  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
-  return [
-    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
-    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
-    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.languages"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
-  ];
+/** The settings' sections, in their tabs' order (the string key of each one's name). */
+const SECTIONS = ["settings.audio", "settings.graphics", "settings.controls", "settings.language"] as const;
+
+/** A labelled slider row with its value at the end, as the settings shipped it. */
+function sliderRow(id: string, label: string, value: number, step: number, shown: (v: number) => string, phone: boolean): number {
+  let out = value;
+  og.ui.row(id, { width: { kind: "grow" }, gap: S.md, cross: "center" }, () => {
+    og.ui.label("Label", label, { width: { kind: "fixed", px: phone ? 96 : 140 }, nowrap: true });
+    out = og.ui.slider("Slider", value, { step }).value;
+    og.ui.label("Value", shown(out), { width: { kind: "fixed", px: 48 }, align: "end", font: "mono", color: { token: "inkMuted" }, nowrap: true });
+  });
+  return out;
 }
 
-/** The defaults of a page's entries (Defaults). */
-const DEFAULTS: Record<string, Settings> = {
-  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
-  graphics: { reducedMotion: false, highContrast: false },
-  language: { language: "en" },
-};
+/**
+ * The settings as they shipped: Sound (the three volumes and Mute), Display (the quality, the frame rate, reduced
+ * motion and high contrast), Controls (sensitivity, inverted look and vibration) and Language, as tabs over a body of
+ * fixed height (a select on a phone). The quality, the frame rate and the controls are shown at their defaults and
+ * kept by nothing, as they always were: Brasswick has none of them.
+ */
+function settingsPage(world: World, p: PrefsV, at: number): { tab: number; s: Settings } {
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const labels = SECTIONS.map((k) => say(world, k));
+  const section = say(world, "settings.section");
+  const tab = phone
+    ? og.ui.select("Section", labels, at, { width: { kind: "grow" }, label: section }).selected
+    : og.ui.tabs("Section", labels, at, { fill: true, width: { kind: "grow" }, label: section }).selected;
+  const s: Settings = {};
+  const pct = (v: number): string => `${Math.round(v * 100)}%`;
+  og.ui.column("Body", { width: { kind: "grow" }, gap: S.sm, height: { kind: "fixed", px: phone ? 300 : 260 } }, () => {
+    switch (SECTIONS[tab]) {
+      case "settings.audio": {
+        const volume = (id: string, key: string, value: number): number => sliderRow(id, say(world, key), value, 0.05, pct, phone);
+        s.masterVolume = volume("Master", "settings.master", p.master);
+        s.musicVolume = volume("Music", "settings.music", p.music);
+        s.sfxVolume = volume("Effects", "settings.effects", p.effects);
+        s.muted = og.ui.toggle("Mute", p.muted, say(world, "settings.mute")).on;
+        break;
+      }
+      case "settings.graphics": {
+        const quality = say(world, "settings.quality");
+        og.ui.label("QualityLabel", quality, { step: "meta", color: { token: "inkMuted" } });
+        og.ui.radio("Quality", [say(world, "settings.low"), say(world, "settings.medium"), say(world, "settings.high")], 1, { horizontal: !phone, label: quality });
+        og.ui.toggle("Fps", false, say(world, "settings.fps"));
+        s.reducedMotion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
+        s.highContrast = og.ui.toggle("Contrast", p.highContrast, say(world, "settings.contrast")).on;
+        break;
+      }
+      case "settings.controls": {
+        sliderRow("Sensitivity", say(world, "settings.sensitivity"), 1, 0.1, (v) => v.toFixed(1), phone);
+        og.ui.checkbox("Invert", false, say(world, "settings.invert"));
+        og.ui.checkbox("Vibration", true, say(world, "settings.vibration"));
+        break;
+      }
+      default: {
+        const languages = say(world, "settings.languages");
+        const r = og.ui.radio("Languages", LANGUAGES.map((l) => say(world, l.key)), p.language, { label: languages });
+        s.language = LANGUAGES[r.selected]?.code;
+        break;
+      }
+    }
+  });
+  return { tab, s };
+}
 
 function settings(world: World, g: GameV, p: PrefsV): void {
-  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once (src/prefs.ts).
+  // assets/ui/settings.ogt: the title and Done; its Page slot the sections and their rows, every change applied at
+  // once (src/prefs.ts).
   const asked = screen(world, "settings", g.settingsOpen);
+  // The section shown, kept in og.ui's memory between openings (asked every tick, so it is kept).
+  const at = og.ui.memory("settingsTab", 0);
   if (!g.settingsOpen) return;
-  if (og.ui.openSlot("settings/Tree")) {
-    const r = og.ui.settingsTree(world, "Tree", {
-      title: "",
-      pages: pages(world, p),
-      page: g.settingsPage,
-      applyLabel: say(world, "settings.apply"),
-      revertLabel: say(world, "settings.revert"),
-      defaultsLabel: say(world, "settings.defaults"),
-      changedLabel: say(world, "settings.changed"),
-    }, () => {});
+  if (og.ui.openSlot("settings/Page")) {
+    const { tab, s } = settingsPage(world, p, at);
     og.ui.close();
-    if (r.page !== null) g.settingsPage = r.page;
-    const c = r.change;
-    if (c !== null) {
-      const s: Settings = {};
-      if (c.key === "master") s.masterVolume = c.value;
-      else if (c.key === "music") s.musicVolume = c.value;
-      else if (c.key === "effects") s.sfxVolume = c.value;
-      else if (c.key === "muted") s.muted = c.on;
-      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
-      else if (c.key === "highContrast") s.highContrast = c.on;
-      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
-      takeSettings(world, p, s);
-    }
-    if (r.defaults) takeSettings(world, p, DEFAULTS[g.settingsPage || "audio"] ?? {});
+    og.ui.remember("settingsTab", tab);
+    const before = settingsOf(p);
+    if (Object.entries(s).some(([k, v]) => before[k as keyof Settings] !== v)) takeSettings(world, p, s);
   }
   if (asked.includes("done")) {
     g.settingsOpen = false;
@@ -302,17 +341,36 @@ function settings(world: World, g: GameV, p: PrefsV): void {
   }
 }
 
-/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
-const COUNT_FRAMES = 54;
+/** The results' count-up: 0.9 s from their opening, ease-out cubic. */
+const COUNT_SECONDS = 0.9;
+
+/**
+ * The stars as the results shipped: landing one by one, k 0.3 s after k-1 from the opening, each scaling in, an
+ * earned one gold with a burst, the rest in the control ink.
+ */
+function resultStars(earned: number, max: number, since: number): void {
+  const size = 44;
+  og.ui.row("Stars", { gap: S.sm, cross: "center" }, () => {
+    for (let k = 0; k < max; k++) {
+      const shown = og.ui.seconds() - since >= 0.3 * (k + 1);
+      const on = k < earned;
+      og.ui.transition(og.ui.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
+        og.ui.icon("Mark", "star", { size, tint: { token: on ? "gold" : "controlStrong" } });
+        if (on) og.ui.burst({ delayMs: 120 });
+      });
+      if (!shown) og.ui.spacer(og.ui.idi("Gap", k), { kind: "fixed", px: size });
+    }
+  });
+}
 
 function results(world: World, g: GameV): void {
   const n = g.level;
   const b = bestOf(g, n);
-  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  // When they opened, in og.ui's seconds: the count-up and the stars run from there (dropped when the results go).
   let since = og.ui.memory("resultsSince", -1);
-  if (since < 0) since = og.ui.tick();
+  if (since < 0) since = og.ui.seconds();
   og.ui.remember("resultsSince", since);
-  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const k = Math.min(1, (og.ui.seconds() - since) / COUNT_SECONDS);
   const best = Math.max(b.score, g.newBest ? g.score : 0);
   const asked = screen(world, "results", true, {
     title: say(world, n + 1 < LEVELS ? "results.title" : "results.end", { level: n + 1 }),
@@ -329,7 +387,7 @@ function results(world: World, g: GameV): void {
     ],
   });
   if (og.ui.openSlot("results/Stars")) {
-    og.ui.starRating("Rating", { earned: g.stars, max: 3, size: 44, revealAt: since, name: say(world, "levels.stars", { stars: g.stars, max: 3 }) });
+    resultStars(g.stars, 3, since);
     og.ui.close();
   }
   const chosen = asked.find((e) => e === "next" || e === "retry" || e === "menu") ?? null;

@@ -34,7 +34,7 @@ export default playtest({
     "8.1:give:herbs:3",
     "8.15:give:sigils:2",
     press("Tab", 8.3),
-    tap("Cells/herb", 8.8),
+    tap("Slots/Cell#4", 8.8),
     "9.4:screenshot:bag.png",
     press("Escape", 9.6),
     "9.7:set:Tuning.wardenPatrol=1.1",

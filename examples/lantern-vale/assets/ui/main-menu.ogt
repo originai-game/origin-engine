@@ -3,8 +3,8 @@ version 1
 ---
 # Lantern Vale's title, ejected from the library's main-menu (og ui eject
 # main-menu) and made the game's own: the vale's name and its line in a
-# card in the middle of the frame, Set out and Settings, and the keys in the
-# bottom-right corner. Every word is a key of
+# card in the middle of the frame, Set out and Settings, and the keys under
+# them in the card, as the game shipped. Every word is a key of
 # assets/strings/<locale>.ogt.
 #
 # Viewmodel: none. Events to code: play, settings. src/ui.ts mounts it
@@ -33,7 +33,8 @@ column Title {
     gap 24
     cross center
     background token hud
-    radius 10
+    frame panel
+    radius 4
     at phone {
       width grow
       padding 16
@@ -83,15 +84,13 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    key "title.footer"
-    text "WASD move · Shift run · hold E by a lantern to light it · Esc pause"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      key "title.footer"
+      text "WASD move · Shift run · hold E by a lantern to light it · Esc pause"
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

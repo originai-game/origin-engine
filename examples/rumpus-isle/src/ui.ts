@@ -3,15 +3,15 @@
 // records), the lobby (four seats, the colours, Ready and Start, every pad
 // with a focus ring of its own: og.ui.setPlayers), the round's HUD (the
 // round and its clock at the top, a box per player at the bottom), its
-// card and count-in, pause, the settings (og.ui.settingsTree in the game's
-// settings document, every word from the tables, English and French), the
+// card and count-in, pause, the settings (the game's settings document, its
+// tabs and rows the game's own, every word from the tables, English and French), the
 // scoreboard between rounds and the podium. The title, pause and the
 // settings are the game's own screen documents (assets/ui/*.ogt, ejected
 // from the library's main-menu, pause and settings). The screens change through an iris (a fade with reduced
 // motion). What a screen decides it asks Rules to do (Game.ask).
 
 import { og, defineSystem } from "@origingame/engine";
-import type { SettingEntry, SettingsPage, Value, World } from "@origingame/engine";
+import type { Value, World } from "@origingame/engine";
 import { Ask, COLOURS, Game, MAX_PLAYERS, Phase, Prefs, ROUND_KEYS, ROUNDS, Round, Sfx, Sound, Source } from "./components.ts";
 import { sourceKey } from "./input.ts";
 import { freeColour, LAUNCH_TICKS, sit } from "./lobby.ts";
@@ -270,55 +270,85 @@ function podium(world: World, g: GameV): void {
 
 // ------------------------------------------------------------------ settings
 
-/** The settings tree's pages: what Prefs keeps, every word from the tables. */
-function pages(world: World, p: PrefsV): SettingsPage[] {
-  const volume = (key: string, label: string, value: number): SettingEntry => ({ key, kind: "slider", label: say(world, label), value, min: 0, max: 1, step: 0.05, unit: "%" });
-  const toggle = (key: string, label: string, on: boolean): SettingEntry => ({ key, kind: "toggle", label: say(world, label), on });
-  return [
-    { key: "audio", label: say(world, "settings.audio"), entries: [volume("master", "settings.master", p.master), volume("music", "settings.music", p.music), volume("effects", "settings.effects", p.effects), toggle("muted", "settings.mute", p.muted)] },
-    { key: "graphics", label: say(world, "settings.graphics"), entries: [toggle("reducedMotion", "settings.motion", p.reducedMotion), toggle("highContrast", "settings.contrast", p.highContrast)] },
-    { key: "controls", label: say(world, "settings.controls"), entries: [toggle("vibration", "settings.vibration", p.vibration)] },
-    { key: "language", label: say(world, "settings.language"), entries: [{ key: "language", kind: "choice", label: say(world, "settings.language"), options: LANGUAGES.map((l) => say(world, l.key)), index: p.language }] },
-  ];
+/** The settings' pages, in their tabs' order. */
+const PAGES = ["audio", "graphics", "controls", "language"] as const;
+
+/**
+ * A labelled slider row, its value at the end, as the settings shipped it
+ * (the label 140 px wide, 96 on a phone, the value 48 px in the mono face).
+ */
+function sliderRow(id: string, label: string, value: number, desc: { min?: number; max?: number; step?: number }, shown: string, phone: boolean): number {
+  let out = value;
+  og.ui.row(id, { width: { kind: "grow" }, gap: S.md, cross: "center" }, () => {
+    og.ui.label("Label", label, { width: { kind: "fixed", px: phone ? 96 : 140 }, nowrap: true });
+    out = og.ui.slider("Slider", value, desc).value;
+    og.ui.label("Value", shown, { width: { kind: "fixed", px: 48 }, align: "end", font: "mono", color: { token: "inkMuted" }, nowrap: true });
+  });
+  return out;
 }
 
-/** The defaults of a page's entries (Defaults). */
-const DEFAULTS: Record<string, Settings> = {
-  audio: { masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false },
-  graphics: { reducedMotion: false, highContrast: false },
-  controls: { vibration: true },
-  language: { language: "en" },
-};
-
 function settings(world: World, g: GameV, p: PrefsV): void {
-  // assets/ui/settings.ogt, its Tree slot og.ui.settingsTree; every change is applied at once (src/prefs.ts).
+  // assets/ui/settings.ogt, its Page slot the tabs and the page's rows; every change is applied at once (src/prefs.ts).
   const asked = screen(world, "settings", g.settingsOpen);
   if (!g.settingsOpen) return;
-  if (og.ui.openSlot("settings/Tree")) {
-    const r = og.ui.settingsTree(world, "Tree", {
-      title: "",
-      pages: pages(world, p),
-      page: g.settingsPage,
-      applyLabel: say(world, "settings.apply"),
-      revertLabel: say(world, "settings.revert"),
-      defaultsLabel: say(world, "settings.defaults"),
-    }, () => {});
+  if (og.ui.openSlot("settings/Page")) {
+    const vp = og.ui.frameViewport();
+    const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+    const labels = PAGES.map((k) => say(world, `settings.${k}`));
+    let tab = Math.max(0, PAGES.indexOf(g.settingsPage as (typeof PAGES)[number]));
+    // Tabs on a wide surface, a select on a phone.
+    tab = (phone ? og.ui.select("Section", labels, tab, { width: { kind: "grow" }, label: "Section" }) : og.ui.tabs("Section", labels, tab, { fill: true, width: { kind: "grow" }, label: "Section" })).selected;
+    g.settingsPage = PAGES[tab]!;
+    const s: Settings = {};
+    const pct = (v: number): string => `${Math.round(v * 100)}%`;
+    // The body keeps at least 260 px (300 on a phone) where the screen has room and scrolls past it; its right
+    // padding keeps the values clear of the scroll bar.
+    const floor = vp.height >= 600 ? (phone ? 300 : 260) : 0;
+    og.ui.scroll("Body", { width: { kind: "grow" }, height: { kind: "fit", min: floor }, gap: S.sm, padding: { left: 0, top: 0, right: 8, bottom: 0 } }, () => {
+      switch (PAGES[tab]) {
+        case "audio": {
+          const volume = (id: string, key: string, value: number, set: (v: number) => void): void => {
+            const v = sliderRow(id, say(world, key), value, { step: 0.05 }, pct(value), phone);
+            if (v !== value) set(v);
+          };
+          volume("Master", "settings.master", p.master, (v) => (s.masterVolume = v));
+          volume("Music", "settings.music", p.music, (v) => (s.musicVolume = v));
+          volume("Effects", "settings.effects", p.effects, (v) => (s.sfxVolume = v));
+          const muted = og.ui.toggle("Mute", p.muted, say(world, "settings.mute")).on;
+          if (muted !== p.muted) s.muted = muted;
+          break;
+        }
+        case "graphics": {
+          // The quality and the frame rate were the settings' own (the game keeps neither): shown at their defaults.
+          og.ui.label("QualityLabel", say(world, "settings.quality"), { step: "meta", color: { token: "inkMuted" } });
+          og.ui.radio("Quality", [say(world, "settings.low"), say(world, "settings.medium"), say(world, "settings.high")], 1, { horizontal: !phone, label: say(world, "settings.quality") });
+          og.ui.toggle("Fps", false, say(world, "settings.fps"));
+          const motion = og.ui.toggle("Motion", p.reducedMotion, say(world, "settings.motion")).on;
+          if (motion !== p.reducedMotion) s.reducedMotion = motion;
+          const contrast = og.ui.toggle("Contrast", p.highContrast, say(world, "settings.contrast")).on;
+          if (contrast !== p.highContrast) s.highContrast = contrast;
+          break;
+        }
+        case "controls": {
+          // The stick's sensitivity and inversion likewise: the critters steer by the stick's direction alone.
+          sliderRow("Sensitivity", say(world, "settings.sensitivity"), 1, { min: 0.1, max: 3, step: 0.1 }, "1.0", phone);
+          og.ui.checkbox("Invert", false, say(world, "settings.invert"));
+          const vibration = og.ui.checkbox("Vibration", p.vibration, say(world, "settings.vibration")).on;
+          if (vibration !== p.vibration) {
+            s.vibration = vibration;
+            og.ui.setHaptics(vibration ? 1 : 0);
+          }
+          break;
+        }
+        case "language": {
+          const at = og.ui.radio("Languages", LANGUAGES.map((l) => say(world, l.key)), p.language, { label: "Languages" }).selected;
+          if (at !== p.language) s.language = LANGUAGES[at]?.code;
+          break;
+        }
+      }
+    });
     og.ui.close();
-    if (r.page !== null) g.settingsPage = r.page;
-    const c = r.change;
-    if (c !== null) {
-      const s: Settings = {};
-      if (c.key === "master") s.masterVolume = c.value;
-      else if (c.key === "music") s.musicVolume = c.value;
-      else if (c.key === "effects") s.sfxVolume = c.value;
-      else if (c.key === "muted") s.muted = c.on;
-      else if (c.key === "reducedMotion") s.reducedMotion = c.on;
-      else if (c.key === "highContrast") s.highContrast = c.on;
-      else if (c.key === "vibration") s.vibration = c.on;
-      else if (c.key === "language") s.language = LANGUAGES[c.index]?.code;
-      takeSettings(world, p, s);
-    }
-    if (r.defaults) takeSettings(world, p, DEFAULTS[g.settingsPage || "audio"] ?? {});
+    if (Object.keys(s).length > 0) takeSettings(world, p, s);
   }
   if (asked.includes("done")) {
     g.settingsOpen = false;

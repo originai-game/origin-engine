@@ -4,7 +4,7 @@ version 1
 # Meridian Loop's title, ejected from the library's main-menu (og ui eject
 # main-menu) and made the game's own: the name and the record (or the
 # tagline) in a card in the middle, Time trial, Leaderboard and Settings,
-# and the keys in the bottom-right corner. Every word is a key of
+# and the keys under them in the card. Every word is a key of
 # assets/strings/<locale>.ogt.
 #
 # Viewmodel: sub (the record, or the tagline). Events to code: start,
@@ -36,6 +36,7 @@ column Title {
     cross center
     background token hud
     radius 10
+    frame panel
     at phone {
       width grow
       padding 16
@@ -91,15 +92,13 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    key "title.footer"
-    text "W throttle · S brake · A D steer (or the arrows) · R reset · Esc pause · pad: RT LT, left stick"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      key "title.footer"
+      text "W throttle · S brake · A D steer (or the arrows) · R reset · Esc pause · pad: RT LT, left stick"
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

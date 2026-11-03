@@ -5,7 +5,8 @@ version 1
 # eject main-menu) and made the game's own: the game's name and its line
 # in a card in the middle of the frame, Continue (only with a save, naming
 # its place and hour, then primary and focused), New journey, Chapters,
-# Records and Settings, and the keys in the bottom-right corner. Every
+# Records and Settings, and the keys under them in the card, as the
+# game shipped. Every
 # word is a key of assets/strings/<locale>.ogt or a line the game says
 # from them.
 #
@@ -39,7 +40,8 @@ column Title {
     gap 24
     cross center
     background token hud
-    radius 10
+    frame panel
+    radius 6
     at phone {
       width grow
       padding 16
@@ -123,15 +125,13 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    key "title.footer"
-    text "WASD move · Shift run · Space jump · J strike · F use · Tab bag · Q/E turn · Esc pause"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      key "title.footer"
+      text "WASD move · Shift run · Space jump · J strike · F use · Tab bag · Q/E turn · Esc pause"
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

@@ -98,13 +98,19 @@ The fixed templates the game used (`og.ui.mainMenu`, `og.ui.pauseMenu`,
 `og.ui.resultsScreen`) are removed from the engine (docs/ui.md §11). The
 title, pause and the results are the game's own screen documents, ejected
 with `og ui eject` and edited: `assets/ui/main-menu.ogt` (the name, its
-line, Set out and Settings, the keys in the corner; no entrance, so the
+line, Set out and Settings, the keys under them in the card; no entrance, so the
 title the game opens on is built settled, which `mainMenu`'s `instant` did),
 `assets/ui/pause.ogt` (Resume and Back, Settings, Quit to title) and
-`assets/ui/results.ogt` (the ending, `og.ui.starRating` in its Stars slot,
-the score counting up, the best and its badge, the run's rows, Again and
+`assets/ui/results.ogt` (a dialog panel and the ending; in its Body slot
+the stars landing one by one, the score counting up, the best and its badge, the run's rows, Again and
 Title). The stars' accessible name is a new key, `results.stars`, in both
 tables; the Noto Sans SC subset was rebuilt by `tools/subset-font.py` for
 its three new characters, with the marks − × · … ← → (which the tool does
 not add) copied back from the previous subset. The settings dialog was
-already the game's own widgets and is unchanged.
+already the game's own widgets and is unchanged. The documents reproduce
+the screens as the reference frames show them (the coordinator's rule:
+the rectangles dumped at fa1924a5b, within a pixel, pinned by
+`tests/screens.og.ts` in `tests/shipped.ts`): the keys inside the title
+card under its items, the results a dialog panel of the old width with
+its title in the ramp's xl; the style carries `screens 1`. The key
+`results.stars` stays in the tables, unused by the shipped results.

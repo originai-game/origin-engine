@@ -1,16 +1,15 @@
 // French, everywhere the game shows text: the title, the lobby, the round's
 // card and HUD, pause, the settings (every tab), the banner, the scoreboard
 // and the podium, each dumped after `language:fr`. Every text is from
-// fr.ogt, no English word (the old templates' defaults, the settings tree's
-// Apply, Revert and Defaults) is left on screen, the
+// fr.ogt, no English default word is left on screen, the
 // accents and the French spaces before ? and ! draw from the style's faces,
 // the critters' names stay their names, and every focusable control has a
 // name.
 import { playtest } from "@origingame/engine/playtest";
 import { game, press, script, tap, texts } from "./lib.ts";
 
-/** Words in English a localised game must not leave on screen: the old templates' defaults and the settings tree's. */
-const ENGLISH = ["Apply", "Revert", "Defaults", "Settings", "Audio", "Graphics", "Controls", "Language", "Master", "Music", "Effects", "Mute everything", "Done", "Paused", "Resume", "Quit to menu", "Quit to title", "Play", "Back", "Start", "Ready", "Next round", "Quality", "Low", "Medium", "High", "Show frame rate", "Reduce motion", "Reduced motion", "High contrast"];
+/** Words in English a localised game must not leave on screen (the old templates' defaults). */
+const ENGLISH = ["Settings", "Audio", "Graphics", "Controls", "Language", "Master", "Music", "Effects", "Mute everything", "Done", "Paused", "Resume", "Quit to menu", "Quit to title", "Play", "Back", "Start", "Ready", "Next round", "Quality", "Low", "Medium", "High", "Show frame rate", "Reduce motion", "Reduced motion", "High contrast"];
 
 export default playtest({
   name: "the title, lobby, card, HUD, pause, every settings tab, the banner, the scoreboard and the podium in French, with no English word left",
@@ -27,11 +26,11 @@ export default playtest({
     "2.5:dump_ui:pause.json",
     tap("settings", 2.6),
     "3.2:dump_ui:sound.json",
-    tap("Row/graphics", 3.3),
+    tap("Tab#1", 3.3),
     "3.8:dump_ui:display.json",
-    tap("Row/controls", 3.9),
+    tap("Tab#2", 3.9),
     "4.4:dump_ui:controls.json",
-    tap("Row/language", 4.5),
+    tap("Tab#3", 4.5),
     "5.0:dump_ui:language.json",
     tap("Done", 5.1),
     tap("resume", 5.6),
@@ -48,7 +47,7 @@ export default playtest({
     const screens = ["title", "lobby", "card", "pause", "sound", "display", "controls", "language", "over", "scores", "podium"];
     for (const s of screens) {
       const words = texts(run, `${s}.json`);
-      const left = words.filter((w) => ENGLISH.some((e) => e.toLowerCase() === w.toLowerCase()));
+      const left = words.filter((w) => ENGLISH.includes(w));
       t.equal(left.join(", "), "", `${s}: no English word of a template on screen`);
     }
     const title = texts(run, "title.json");
@@ -60,12 +59,11 @@ export default playtest({
     t.ok(card.some((w) => w.startsWith("Poussez les autres dans la mer")), "the card says how in French");
     const pause = texts(run, "pause.json");
     for (const w of ["En pause", "Reprendre", "Réglages", "Retour au salon", "Quitter vers le titre"]) t.ok(pause.includes(w), `pause says "${w}"`);
-    // The settings tree sets its tabs' and rows' names in capitals: compared without case.
-    const has = (file: string, w: string) => texts(run, file).some((x) => x.toLowerCase() === w.toLowerCase());
-    for (const w of ["Réglages", "Son", "Graphismes", "Commandes", "Langue", "Général", "Musique", "Effets", "Tout couper", "Terminé", "Par défaut", "Rétablir", "Appliquer"]) t.ok(has("sound.json", w), `the settings say "${w}"`);
-    t.ok(has("display.json", "Animations réduites"), "the graphics tab is French");
-    t.ok(has("controls.json", "Vibration"), "the controls tab is French");
-    t.ok(has("language.json", "Français"), "the language tab lists Français");
+    const sound = texts(run, "sound.json");
+    for (const w of ["Réglages", "Son", "Graphismes", "Commandes", "Langue", "Général", "Musique", "Effets", "Tout couper", "Terminé"]) t.ok(sound.includes(w), `the settings say "${w}"`);
+    t.ok(texts(run, "display.json").includes("Animations réduites"), "the graphics tab is French");
+    t.ok(texts(run, "controls.json").includes("Vibration"), "the controls tab is French");
+    t.ok(texts(run, "language.json").includes("Français"), "the language tab lists Français");
     const over = texts(run, "over.json");
     t.ok(over.includes("Pip remporte la manche !"), "the banner is French, the critter's name its own");
     t.ok(over.includes("2e"), "Juno's place reads 2e");

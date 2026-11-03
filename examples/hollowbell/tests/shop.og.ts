@@ -27,7 +27,7 @@ export default playtest({
     "3.9:get:Game:refused.json",
     "3.9:get:sfx-256.Sfx:buy0.json",
     "4.0:give:glimmers:20",
-    tap("Ware#2", 4.1),
+    tap("Cell#2", 4.1),
     tap("Buy", 4.4),
     "4.7:get:Game:bought.json",
     "4.7:get:sfx-256.Sfx:buy1.json",

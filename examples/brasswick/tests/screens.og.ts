@@ -1,7 +1,7 @@
-// The title, the level select and the Spanish settings laid out as the
-// game's own screen documents lay them out (U8 moved them off the fixed
-// templates): every element's parent, id, kind, role and text as
-// shipped.ts has them, each within a pixel of its place. An engine update
+// The title, the level select and the Spanish settings laid out by the
+// game's own screen documents (U8 moved them off the fixed templates) as
+// the game shipped them: every element's parent, id, kind, role and text
+// as shipped.ts has them, each within a pixel of its place. An engine update
 // may draw a screen better; it never adds, drops or moves what is on it.
 import { playtest } from "@origingame/engine/playtest";
 import { press, script, tap } from "./lib.ts";

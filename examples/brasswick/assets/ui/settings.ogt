@@ -2,19 +2,18 @@ type screen
 version 1
 ---
 # Brasswick's settings, ejected from the library's settings (og ui eject
-# settings) and made the game's own: a panel over the dimmed screen with
-# the title and Done at its head, and the settings tree under them.
+# settings) and made the game's own, laid out as they shipped: a panel over
+# the dimmed screen with the title, the page and Done in its footer.
 #
-# Slot Tree takes og.ui.settingsTree(world, "Tree", desc, custom) (src/ui.ts
-# `settings`): Sound, Graphics, Controls and Language as its pages, each
-# change applied at once (src/prefs.ts); its words are the game's string
-# keys. Viewmodel: none. Events to code: done (Done and Back: the settings
-# close and are saved).
+# Slot Page takes the sections and their rows (src/ui.ts `settings`): Sound,
+# Display, Controls and Language as tabs (a select on a phone) over a body
+# of fixed height, each change applied at once (src/prefs.ts); every word
+# is the game's string key. Viewmodel: none. Events to code: done (Done and
+# Back: the settings close and are saved).
 name "settings"
 layer menu
 under dim
 back emit done
-focus "Panel/Tree"
 remember true
 actions {
   confirm "Select"
@@ -26,44 +25,36 @@ fixture default "{}"
 column Settings {
   width grow
   height grow
-  padding 24
+  padding 16
   align center
   cross center
-  at phone {
-    padding 8
-  }
   column Panel {
-    width grow 0 720
-    height grow 0 560
+    width grow 0 600
     padding 24
-    gap 16
+    gap 12
+    background token panelRaised
+    radius 4
     frame panel
-    at phone {
-      padding 12
-      gap 8
+    enter scale
+    label Title {
+      key "settings.title"
+      text "Settings"
+      step xl
+      heading true
     }
-    row Header {
+    slot Page {
       width grow
       gap 12
-      cross center
-      label Title {
-        key "settings.title"
-        text "Settings"
-        step xl2
-        font display
-        heading true
-        width grow
-      }
+    }
+    row Footer {
+      width grow
+      align end
       button Done {
         key "settings.done"
         text "Done"
         variant primary
         on click emit done
       }
-    }
-    slot Tree {
-      width grow
-      height grow
     }
   }
 }

@@ -11,13 +11,13 @@ version 1
 #
 # Viewmodel: title, score (counted up this tick), best (the best line;
 # empty: none), newBest, landed (the count-up ended: the badge pops),
-# stats ({ label, value }). hasNext (a level is left). Events to code: next, retry, menu. Slots: Stars
-# takes og.ui.starRating.
+# stats ({ label, value }), hasNext (a level is left: Next level is the
+# primary, else Play again). Events to code: next, retry, menu. Slot Stars
+# takes the stars landing one by one (src/ui.ts `results`).
 name "results"
 layer menu
 under dim
 back none
-focus "Panel/Actions/next"
 props {
   title string "How the run ended."
   score number "The score, as shown this tick (it counts up)."
@@ -40,13 +40,14 @@ column Results {
   column Panel {
     width grow 0 420
     padding 24
-    gap 16
+    gap 12
+    background token panelRaised
+    radius 4
     frame panel
-    enter slideUp 24 token enter
+    enter scale
     label Title {
       text bind title
-      step xl2
-      font display
+      step xl
       heading true
     }
     row StarRow {
@@ -81,6 +82,7 @@ column Results {
           text "New best"
           tone accent
           visible bind "newBest && landed"
+          enter pop
         }
       }
     }
@@ -89,17 +91,19 @@ column Results {
       for s in stats {
         row Stat {
           width grow
-          padding 4
+          height fit 27
           gap 12
+          align spaceBetween
+          cross center
           label Key {
             text bind s.label
             color token inkMuted
             nowrap true
           }
-          spacer
           label Value {
             text bind s.value
             font mono
+            textAlign end
             nowrap true
           }
         }
@@ -116,11 +120,22 @@ column Results {
         visible bind hasNext
         on click emit next
       }
-      button retry {
-        key "results.retry"
-        text "Play again"
-        width grow
-        on click emit retry
+      if "hasNext" {
+        button retry {
+          key "results.retry"
+          text "Play again"
+          width grow
+          on click emit retry
+        }
+      }
+      if "!hasNext" {
+        button retry {
+          key "results.retry"
+          text "Play again"
+          variant primary
+          width grow
+          on click emit retry
+        }
       }
       button menu {
         key "results.menu"

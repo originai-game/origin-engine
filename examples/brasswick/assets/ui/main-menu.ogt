@@ -4,8 +4,9 @@ version 1
 # Brasswick's title, ejected from the library's main-menu (og ui eject
 # main-menu) and made the game's own: the game's name and its line in a
 # card in the middle of the frame, Continue (disabled with no save), New
-# game, Levels and Settings, and the keys in the bottom-right corner. Every word is a key of
-# assets/strings/<locale>.ogt.
+# game, Levels and Settings, and the keys under them in the card, as the
+# title shipped (the card on the style's panel frame). Every word is a key
+# of assets/strings/<locale>.ogt.
 #
 # Viewmodel: canContinue, continueLine (Continue's words, with the saved
 # level). Events to code: continue, new, levels, settings. src/ui.ts
@@ -37,7 +38,8 @@ column Title {
     gap 24
     cross center
     background token hud
-    radius 10
+    radius 4
+    frame panel
     at phone {
       width grow
       padding 16
@@ -100,15 +102,13 @@ column Title {
         on click emit settings
       }
     }
-  }
-  label Footer {
-    key "title.footer"
-    text "Arrows or WASD to move · Space to jump · R back to the lamp"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
+    label Footer {
+      key "title.footer"
+      text "Arrows or WASD to move · Space to jump · R back to the lamp"
+      step meta
+      color token inkFaint
+      textAlign center
+      width grow
+    }
   }
 }

@@ -48,8 +48,6 @@ export const Game = defineResource("Game", {
   levelsOpen: bool(),
   paused: bool(),
   settingsOpen: bool(),
-  /** The settings tree's page shown (its key: audio, graphics, language). */
-  settingsPage: str(16, "audio"),
   /** Seconds in the level (scaled time: a pause stops it). */
   time: f64(0),
   gears: u32(0),

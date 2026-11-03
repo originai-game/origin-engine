@@ -302,38 +302,64 @@ function screen(world: World, name: (typeof SCREENS)[number], on: boolean, vm: R
   return og.ui.screen(name, vm).events.filter((e) => e.kind === "emit" || e.kind === "back").map((e) => e.name);
 }
 
-/** The results' count-up: 0.9 s from their opening (og.ui's frames), ease-out cubic. */
-const COUNT_FRAMES = 54;
-
+/**
+ * The results as the game shipped them (assets/ui/results.ogt: the dialog panel and how the run ended; its Body slot
+ * here): the stars landing one by one 0.3 s apart from the opening (an earned one gold, with a burst), the score
+ * counting up over 0.9 s, the best and the New best badge popping in as it lands, the lamplighter, the lanterns, the
+ * time and the hurts, then Again and Title.
+ */
 function results(world: World, g: GameV, p: PrefsV): "again" | "menu" | null {
   const won = g.ending === Ending.Lit;
   const stars = won ? Math.max(1, 3 - g.hurts) : 0;
   const name = p.name;
-  // When they opened, in og.ui's frames: the count-up and the stars run from there (dropped when the results go).
+  const phone = og.ui.frameViewport().breakpoint.startsWith("phone");
+  // When they opened, in og.ui's seconds: the count-up and the stars run from there (dropped when the results go).
   let since = og.ui.memory("resultsSince", -1);
-  if (since < 0) since = og.ui.tick();
+  if (since < 0) since = og.ui.seconds();
   og.ui.remember("resultsSince", since);
-  const k = Math.min(1, (og.ui.tick() - since) / COUNT_FRAMES);
+  const age = og.ui.seconds() - since;
   const total = score(world, g);
-  const asked = screen(world, "results", true, {
-    title: say(world, won ? "results.won" : g.ending === Ending.Caught ? "results.caught" : "results.night"),
-    score: k >= 1 ? total : Math.round(total * (1 - (1 - k) ** 3)),
-    // The best is set when the run ends (clock), grouped as og.ui's counters group.
-    best: g.best > 0 ? say(world, "results.best", { best: String(g.best).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }) : "",
-    newBest: g.newBest,
-    landed: k >= 1,
-    stats: [
-      { label: say(world, "results.player"), value: name === "" ? say(world, "results.nobody") : name },
-      { label: say(world, "results.lanterns"), value: `${g.lit}/${LANTERN_COUNT}` },
-      { label: say(world, "results.time"), value: seconds(g.time) },
-      { label: say(world, "results.hurts"), value: `${g.hurts}` },
-    ],
-  });
-  if (og.ui.openSlot("results/Stars")) {
-    og.ui.starRating("Rating", { earned: stars, max: 3, size: 44, revealAt: since, name: say(world, "results.stars", { earned: stars, max: 3 }) });
+  screen(world, "results", true, { title: say(world, won ? "results.won" : g.ending === Ending.Caught ? "results.caught" : "results.night") });
+  let chosen: "again" | "menu" | null = null;
+  if (og.ui.openSlot("results/Body")) {
+    og.ui.row("StarRow", { width: grow, align: "center" }, () => {
+      og.ui.row("Stars", { gap: S.sm, cross: "center" }, () => {
+        for (let k = 0; k < 3; k++) {
+          const shown = age >= 0.3 * (k + 1);
+          const on = k < stars;
+          og.ui.transition(og.ui.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
+            og.ui.icon("Mark", "star", { size: 44, tint: { token: on ? "gold" : "controlStrong" } });
+            if (on) og.ui.burst({ delayMs: 120 });
+          });
+          if (!shown) og.ui.spacer(og.ui.idi("Gap", k), px(44));
+        }
+      });
+    });
+    og.ui.column("ScoreBlock", { width: grow, cross: "center", gap: 2 }, () => {
+      og.ui.counter("Score", total, { from: 0, durationMs: 900, step: "displayLg", font: "display", align: "center", width: grow });
+      og.ui.row("BestRow", { gap: S.sm, cross: "center" }, () => {
+        // The best is set when the run ends (clock), grouped as og.ui's counters group.
+        const best = Math.max(g.best, g.newBest ? total : 0);
+        og.ui.label("Best", say(world, "results.best", { best: String(best).replace(/\B(?=(\d{3})+(?!\d))/g, ",") }), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
+        if (g.newBest) og.ui.transition("Reveal", age >= 0.9, { kind: "pop" }, () => og.ui.badge("NewBest", say(world, "results.newBest"), "primary"));
+      });
+    });
+    const rows = [
+      [say(world, "results.player"), name === "" ? say(world, "results.nobody") : name],
+      [say(world, "results.lanterns"), `${g.lit}/${LANTERN_COUNT}`],
+      [say(world, "results.time"), seconds(g.time)],
+      [say(world, "results.hurts"), `${g.hurts}`],
+    ] as const;
+    og.ui.column("Stats", { width: grow, gap: 0 }, () => {
+      rows.forEach(([label, value], i) => og.ui.keyValue(og.ui.idi("Stat", i), label, value, true));
+    });
+    og.ui.row("Actions", { width: grow, gap: S.sm, wrap: phone }, () => {
+      if (og.ui.button("again", say(world, "results.again"), { variant: "primary", width: grow }).clicked) chosen = "again";
+      if (og.ui.button("menu", say(world, "results.menu"), { width: grow }).clicked) chosen = "menu";
+    });
     og.ui.close();
   }
-  return asked.includes("again") ? "again" : asked.includes("menu") ? "menu" : null;
+  return chosen;
 }
 
 /** The screens, the run's start, clock and end, the hold, the looks, the stream, the platform's answers. */
