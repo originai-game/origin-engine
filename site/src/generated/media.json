@@ -1,29 +1,29 @@
 {
- "hero-poster": {
+ "hero-ocean-poster": {
   "kind": "image",
   "width": 1280,
   "height": 720,
   "avif": [
    [
-    "hero-poster-3eeafd58ef-960.avif",
+    "hero-ocean-poster-3eeafd58ef-960.avif",
     960
    ],
    [
-    "hero-poster-3eeafd58ef-1280.avif",
+    "hero-ocean-poster-3eeafd58ef-1280.avif",
     1280
    ]
   ],
   "webp": [
    [
-    "hero-poster-3eeafd58ef-960.webp",
+    "hero-ocean-poster-3eeafd58ef-960.webp",
     960
    ],
    [
-    "hero-poster-3eeafd58ef-1280.webp",
+    "hero-ocean-poster-3eeafd58ef-1280.webp",
     1280
    ]
   ],
-  "jpg": "hero-poster-3eeafd58ef.jpg",
+  "jpg": "hero-ocean-poster-3eeafd58ef.jpg",
   "status": "interim",
   "from": {
    "path": "crates/og-tests/references/metal/water-ocean-sunset.png",
@@ -31,11 +31,39 @@
    "date": "2026-11-03"
   }
  },
- "hero-film": {
+ "hero-ocean-film": {
   "kind": "pending",
   "status": "pending",
   "from": {
-   "pending": "site-hero: Skyreach Meadow loop, 4K and 1080p"
+   "pending": "site-hero feature: site-ocean 90 s loop, 4K and 1080p (studio-win)"
+  }
+ },
+ "hero-skyreach-meadow-poster": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Skyreach Meadow at t=0, 4K"
+  }
+ },
+ "hero-skyreach-meadow-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Skyreach Meadow loop, 4K and 1080p (studio-win)"
+  }
+ },
+ "hero-lantern-shrine-poster": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Lantern Shrine at t=0, 4K"
+  }
+ },
+ "hero-lantern-shrine-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Lantern Shrine loop, 4K and 1080p (studio-win)"
   }
  },
  "loop-first": {

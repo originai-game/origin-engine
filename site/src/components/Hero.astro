@@ -1,29 +1,47 @@
 ---
 // The first screen. In a browser with WebGPU on a large screen, the engine
-// itself runs the hero scene (a publish build of examples/site-hero, or
-// site-ocean while that is in production; src/live.ts) in a same-origin,
-// non-interactive frame, and the page acts as its Player: it
+// itself runs the hero (a publish build of examples/site-hero, or site-ocean
+// while that is in production; src/live.ts) in a same-origin,
+// non-interactive frame, and the page acts as its Player (protocol 2): it
 // answers hello, follows `loading` with the brand's progress motion and
-// shows the frame from `ready`. Elsewhere, or if the engine has not drawn
-// within the time limit, the recording of the same scene plays; with reduced
-// motion, or before either exists, the engine's captured frame stands.
+// shows the frame from `ready`.
+//
+// site-hero holds several scenes in one build, so the wasm loads once. The
+// page rotates through them: it asks the game to preload the next scene
+// (`platform` notice of kind `host`, `hero.preload`), dissolves the live
+// frame into the next scene's poster, asks it to show that scene
+// (`hero.show`) and fades the poster out on `game.custom.hero.ready`. Each
+// scene enters at its own t=0, which is what its poster captured, so the
+// switch is invisible. Without WebGPU the same rotation runs over each
+// scene's recording, or over its poster; with reduced motion the first
+// scene's poster stands still.
 import { mark } from "../lib/brand";
 import { copy, type Lang } from "../i18n";
 import { get, url } from "../lib/media";
-import { live, heroInterim } from "../live";
+import { HERO_DWELL_MS, heroInterim, heroRunning, live } from "../live";
+import bench from "../data/benchmarks.json";
 import Media from "./Media.astro";
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
-const film = get("hero-film");
-const poster = get("hero-poster");
 const h = copy.hero;
+type L = { en: string; zh: string };
+// A scene's perf line appears only once studio-win measured that scene.
+const perf = (id: string) => (bench.engine as { scene?: string; short?: L; pending?: boolean }[]).find((n) => n.scene === id && !n.pending && n.short)?.short?.[lang] ?? "";
+const scenes = heroRunning.map((s) => {
+  const film = get(s.film);
+  return { ...s, film: film.kind === "video" ? url(film.mp4!) : "", perf: perf(s.id), interim: heroInterim || get(s.poster).status !== "final" };
+});
 ---
-<section class="hero" id="top" data-state="poster" data-scene={live.hero.scene} data-live={live.hero.path ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}
+<section class="hero" id="top" data-state="poster" data-scene={live.hero.scene} data-live={live.hero.path ?? ""} data-dwell={HERO_DWELL_MS}
   data-t-live={h.badgeLive[lang]} data-t-video={h.badgeVideo[lang]} data-t-frame={h.badgeFrame[lang]} data-t-loading={h.badgeLoading[lang]}
   data-s-live={h.live[lang]} data-s-video={h.recorded[lang]} data-s-frame={h.captured[lang]}>
   <div class="hero-media" aria-hidden="true">
-    <Media slot="hero-poster" lang={lang} eager sizes="100vw" bare />
+    {scenes.map((s, i) => (
+      <div class="hero-layer" data-id={s.id} data-film={s.film} data-name={s.name[lang]} data-perf={s.perf} data-on={i === 0 ? "" : undefined}>
+        <Media slot={s.poster} lang={lang} eager={i === 0} sizes="100vw" bare />
+      </div>
+    ))}
   </div>
   {heroInterim && <div class="hero-shade"></div>}
   <div class="hero-copy wrap">
@@ -32,23 +50,32 @@ const h = copy.hero;
   </div>
   <div class="hero-foot wrap">
     <a class="scroll-cue" href="#ai"><span></span>{h.scroll[lang]}</a>
-    <span class="badge glass" data-badge>
-      <Fragment set:html={mark("progress", "hero", "hidden")} />
-      <span class="dot"></span><span data-badge-text>{h.badgeFrame[lang]}</span>
-    </span>
+    <div class="hero-right">
+      <p class="hero-caption" aria-live="polite"><span data-scene-name>{scenes[0].name[lang]}</span><span class="perf" data-scene-perf hidden={!scenes[0].perf}>{scenes[0].perf}</span></p>
+      <span class="badge glass" data-badge>
+        <Fragment set:html={mark("progress", "hero", "hidden")} />
+        <span class="dot"></span><span data-badge-text>{h.badgeFrame[lang]}</span>
+      </span>
+    </div>
   </div>
-  {(heroInterim || poster.status !== "final") && <span class="status" data-kind="interim" title={h.interim[lang]}>{h.interim[lang]}</span>}
+  {scenes[0].interim && <span class="status" data-kind="interim" title={h.interim[lang]}>{h.interim[lang]}</span>}
 </section>
 
 <script>
   const hero = document.querySelector<HTMLElement>(".hero")!;
   const media = hero.querySelector<HTMLElement>(".hero-media")!;
+  const layers = [...hero.querySelectorAll<HTMLElement>(".hero-layer")];
   const badge = hero.querySelector<HTMLElement>("[data-badge-text]")!;
   const sub = hero.querySelector<HTMLElement>("[data-sub]")!;
+  const sceneName = hero.querySelector<HTMLElement>("[data-scene-name]")!;
+  const scenePerf = hero.querySelector<HTMLElement>("[data-scene-perf]")!;
   const mark = hero.querySelector<SVGSVGElement>(".og-mark")!;
   const dot = hero.querySelector<HTMLElement>(".dot")!;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const d = hero.dataset;
+  const dwell = Number(d.dwell) || 24_000;
+  const DISSOLVE_MS = 1200;
+  const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
   function show(state: "live" | "video" | "frame" | "loading") {
     hero.dataset.state = state === "frame" ? "poster" : state;
@@ -58,16 +85,63 @@ const h = copy.hero;
     dot.hidden = state === "loading";
   }
 
-  function playFilm(): boolean {
-    if (!d.film || reduce) return false;
-    const v = document.createElement("video");
-    Object.assign(v, { muted: true, loop: true, playsInline: true, autoplay: true, src: d.film });
-    v.setAttribute("aria-hidden", "true");
-    v.addEventListener("playing", () => show("video"), { once: true });
-    media.append(v);
-    return true;
+  function caption(layer: HTMLElement) {
+    sceneName.textContent = layer.dataset.name ?? "";
+    scenePerf.textContent = layer.dataset.perf ?? "";
+    scenePerf.hidden = !layer.dataset.perf;
   }
 
+  // While the hero is off screen nothing advances: no rotation, and the engine is paused.
+  let visible = true;
+  const onVisible: (() => void)[] = [];
+  new IntersectionObserver(([e]) => {
+    visible = e.isIntersecting && document.visibilityState === "visible";
+    if (visible) onVisible.splice(0).forEach((f) => f());
+  }).observe(hero);
+  const whenVisible = () => (visible ? Promise.resolve() : new Promise<void>((r) => onVisible.push(r)));
+  async function hold(ms: number) {
+    for (let left = ms; left > 0; left -= 500) {
+      await whenVisible();
+      await wait(Math.min(500, left));
+    }
+  }
+
+  /** Bring `layer` up over everything (the live frame included) with a dissolve. */
+  async function cover(layer: HTMLElement) {
+    layers.forEach((l) => l.toggleAttribute("data-top", l === layer));
+    layer.toggleAttribute("data-on", true);
+    caption(layer);
+    await wait(DISSOLVE_MS);
+    layers.forEach((l) => l !== layer && l.removeAttribute("data-on"));
+  }
+
+  // ── Without the engine: each scene's recording, else its poster ──────
+  function playFilm(layer: HTMLElement): boolean {
+    if (!layer.dataset.film || reduce) return false;
+    let v = layer.querySelector("video");
+    if (!v) {
+      v = document.createElement("video");
+      Object.assign(v, { muted: true, loop: true, playsInline: true, src: layer.dataset.film });
+      layer.append(v);
+    }
+    void v.play().catch(() => {});
+    return true;
+  }
+  async function rotateMedia() {
+    const anyFilm = playFilm(layers[0]);
+    if (anyFilm) layers[0].querySelector("video")!.addEventListener("playing", () => show("video"), { once: true });
+    else show("frame");
+    if (reduce || layers.length < 2) return;
+    for (let i = 0; ; i = (i + 1) % layers.length) {
+      await hold(dwell);
+      const next = layers[(i + 1) % layers.length];
+      playFilm(next);
+      await cover(next);
+      layers[i].querySelector("video")?.pause();
+    }
+  }
+
+  // ── The engine ──────────────────────────────────────────────────────
   async function canRunLive(): Promise<boolean> {
     if (!d.live || reduce || !("gpu" in navigator)) return false;
     if (matchMedia("(max-width: 899px), (pointer: coarse)").matches) return false;
@@ -80,10 +154,7 @@ const h = copy.hero;
   }
 
   async function start() {
-    if (!(await canRunLive())) {
-      if (!playFilm()) show("frame");
-      return;
-    }
+    if (!(await canRunLive())) return void rotateMedia();
     show("loading");
     const frame = document.createElement("iframe");
     frame.src = d.live!;
@@ -92,30 +163,93 @@ const h = copy.hero;
     frame.setAttribute("aria-hidden", "true");
     frame.allow = "autoplay";
     const wipe = mark.querySelector<SVGElement>("[data-part=wipe]");
-    let done = false;
+    const post = (kind: string, fields: object = {}) => frame.contentWindow?.postMessage({ og: "player", protocol: 2, kind, ...fields }, location.origin);
+    const host = (name: string, scene: string) => post("platform", { notice: { kind: "host", data: { name, scene } } });
+
+    // What the game said about each scene: loaded, ready (since the last show), failed.
+    const loaded = new Set<string>();
+    const failed = new Set<string>();
+    let ready = "";
+    const waiters: (() => void)[] = [];
+    const heard = () => waiters.splice(0).forEach((f) => f());
+    const until = async (ok: () => boolean, ms: number) => {
+      const end = Date.now() + ms;
+      while (!ok() && Date.now() < end) await Promise.race([new Promise<void>((r) => waiters.push(r)), wait(500)]);
+      return ok();
+    };
+
+    let live = false;
+    let gone = false;
     const giveUp = setTimeout(() => fail(), 25_000);
     function fail() {
-      if (done) return;
-      done = true;
+      if (gone || live) return;
+      gone = true;
+      clearTimeout(giveUp);
       frame.remove();
-      if (!playFilm()) show("frame");
+      void rotateMedia();
     }
+
     addEventListener("message", (e) => {
       if (e.source !== frame.contentWindow || e.origin !== location.origin) return;
-      const m = e.data as { og?: string; protocol?: number; kind?: string; value?: number | null };
+      const m = e.data as { og?: string; protocol?: number; kind?: string; value?: number | null; name?: string; attrs?: { scene?: string } };
       if (m?.og !== "player" || m.protocol !== 2) return;
-      const post = (kind: string, fields: object = {}) => frame.contentWindow?.postMessage({ og: "player", protocol: 2, kind, ...fields }, location.origin);
       if (m.kind === "hello") {
-        post("hello", { started: true, paused: false, capabilities: [] });
+        post("hello", { started: true, paused: false, capabilities: ["telemetry"] });
         post("start");
       } else if (m.kind === "loading" && typeof m.value === "number") {
         wipe?.style.setProperty("stroke-dashoffset", String(100 - Math.round(m.value * 100)));
-      } else if (m.kind === "ready" && !done) {
-        done = true;
+      } else if (m.kind === "ready" && !live && !gone) {
+        live = true;
         clearTimeout(giveUp);
+        ready = layers[0].dataset.id!; // the build opens on its first scene
         show("live");
-      } else if (m.kind === "fail" || m.kind === "crash") fail();
+        void rotateLive();
+      } else if (m.kind === "fail" || m.kind === "crash") {
+        fail();
+      } else if (m.kind === "event" && m.name?.startsWith("game.custom.hero.") && m.attrs?.scene) {
+        const what = m.name.slice("game.custom.hero.".length);
+        if (what === "loaded") loaded.add(m.attrs.scene);
+        else if (what === "ready") ready = m.attrs.scene;
+        else if (what === "fail") failed.add(m.attrs.scene);
+        heard();
+      }
     });
+
+    let paused = false;
+    new IntersectionObserver(([e]) => {
+      if (!live || e.isIntersecting === !paused) return;
+      paused = !e.isIntersecting;
+      post(paused ? "pause" : "resume");
+    }).observe(hero);
+
+    async function rotateLive() {
+      if (layers.length < 2) return;
+      layers.forEach((l) => l.removeAttribute("data-on")); // the live frame is on top now
+      let i = 0;
+      for (;;) {
+        const next = layers.slice(i + 1).concat(layers.slice(0, i + 1)).find((l) => !failed.has(l.dataset.id!));
+        if (!next || next === layers[i]) return;
+        const id = next.dataset.id!;
+        host("hero.preload", id);
+        await hold(dwell);
+        // Hold the current scene until the next one is in memory (or give it up).
+        if (!(await until(() => loaded.has(id) || failed.has(id), 15_000)) || failed.has(id)) {
+          failed.add(id);
+          continue;
+        }
+        await cover(next);
+        ready = "";
+        host("hero.show", id);
+        if (await until(() => ready === id || failed.has(id), 10_000)) {
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          next.removeAttribute("data-on"); // dissolve the poster away: the live scene, at the same t=0, is under it
+        } else {
+          failed.add(id); // the poster stays; the rotation carries on from it
+        }
+        i = layers.indexOf(next);
+      }
+    }
+
     media.append(frame);
   }
 

@@ -36,15 +36,37 @@ const STATION_CROP = "1024x576+128+72";
 
 export const media = {
   // ── Hero ──────────────────────────────────────────────────────────────
-  "hero-poster": {
+  // The stand-in: site-ocean, a single scene, until site-hero boots (live.ts).
+  "hero-ocean-poster": {
     source: ref("water-ocean-sunset"),
     status: "interim",
     alt: { en: "The open ocean at sunset", zh: "日落时的开阔海面" },
   },
-  "hero-film": {
-    source: p("site-hero: Skyreach Meadow loop, 4K and 1080p"),
+  "hero-ocean-film": {
+    source: p("site-hero feature: site-ocean 90 s loop, 4K and 1080p (studio-win)"),
     status: "pending",
-    alt: { en: "A traveller on a cliff meadow above a sea of clouds", zh: "云海之上的悬崖草甸，一位旅人" },
+    alt: { en: "The ocean scene from golden hour through a storm to night", zh: "海天场景，从黄昏经风暴到夜晚" },
+  },
+  // site-hero's scenes: each poster is the scene's t=0 frame, its first live frame after a switch.
+  "hero-skyreach-meadow-poster": {
+    source: p("site-hero feature: Skyreach Meadow at t=0, 4K"),
+    status: "pending",
+    alt: { en: "A traveller on a cliff meadow above a sea of clouds and floating islands", zh: "云海与浮岛之上的悬崖草甸，一位旅人" },
+  },
+  "hero-skyreach-meadow-film": {
+    source: p("site-hero feature: Skyreach Meadow loop, 4K and 1080p (studio-win)"),
+    status: "pending",
+    alt: { en: "Skyreach Meadow, live in the engine", zh: "天穹草甸，引擎实时画面" },
+  },
+  "hero-lantern-shrine-poster": {
+    source: p("site-hero feature: Lantern Shrine at t=0, 4K"),
+    status: "pending",
+    alt: { en: "A shrine of lanterns at dusk", zh: "暮色中的灯笼神社" },
+  },
+  "hero-lantern-shrine-film": {
+    source: p("site-hero feature: Lantern Shrine loop, 4K and 1080p (studio-win)"),
+    status: "pending",
+    alt: { en: "Lantern Shrine, live in the engine", zh: "灯笼神社，引擎实时画面" },
   },
 
   // ── AI loop ───────────────────────────────────────────────────────────

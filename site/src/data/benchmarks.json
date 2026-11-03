@@ -131,6 +131,11 @@
    "source": {
     "en": "studio-win, RTX 5060 (D3D12), Chrome 156 and Edge 156, site-ocean publish build, 2026-11-03",
     "zh": "studio-win，RTX 5060（D3D12），Chrome 156 与 Edge 156，site-ocean 发布版，2026-11-03"
+   },
+   "scene": "ocean",
+   "short": {
+    "en": "5.8 ms per frame · 60 fps · RTX 5060, Chrome",
+    "zh": "每帧 5.8 ms · 60 fps · RTX 5060，Chrome"
    }
   },
   {
