@@ -126,7 +126,8 @@ export function rtsCommands(id: string, desc: Api.RtsCommandsDesc): Api.RtsComma
 
   // The targeting prompt over the console: the command's name, Back to cancel, Shift to queue.
   if (targeting) {
-    const c = cmds.find((x) => x.key === targeting);
+    // Its name from whichever page holds it (a building chosen on Build waits while the card is back on its root).
+    const c = cmds.find((x) => x.key === targeting) ?? pages.flatMap((p) => p.commands ?? []).find((x) => x.key === targeting);
     const consoleH = kit.bounds(`${id}Hud`)?.height ?? u(180);
     kit.anchor(`${id}Prompt`, { anchor: "bottom", offsetY: -(consoleH + t.sm), direction: "row", gap: u(14), cross: "center", padding: xy(u(18), u(10)) }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("panel", 0.94) }], strokes: [line(u(1.5), token("highlight", 0.7))], effects: [shadow(u(6), u(18), 0.5)] });

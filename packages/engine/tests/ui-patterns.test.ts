@@ -1871,7 +1871,7 @@ test("rtsCommands: a command naming a page opens it, whose Back returns; a locke
   expect(results.filter((r) => r.command).map((r) => [r.command, r.queued])).toEqual([["attack", true]]);
 });
 
-test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl sets and Shift adds; Back cancels a targeting command", () => {
+test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl sets and Shift adds; the prompt names a command from another page; Back cancels it", () => {
   // Wrong: Ctrl+1 recalling instead of setting, a slow second tap focusing, or Back leaving the targeting order in place.
   const results: Api.RtsCommandsResult[] = [];
   const st = { page: "", targeting: "" };
@@ -1886,9 +1886,9 @@ test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl s
   engine.advance(12);
   const got = (k: keyof Api.RtsCommandsResult) => results.filter((r) => r[k]).map((r) => r[k]);
   expect([got("recall"), got("focus"), got("assign"), got("add")]).toEqual([["g1", "g1"], ["g1"], ["g1"], ["g2"]]);
-  st.targeting = "attack";
+  st.targeting = "barracks";
   engine.advance(4);
-  expect(byPath(engine, "RtsPrompt") !== undefined).toBeTrue();
+  expect(elements(engine).find((e) => e.path.endsWith("RtsPrompt/Text"))?.text).toBe("Barracks: choose a target");
   key(engine, "Escape");
   expect(results.some((r) => r.cancelTarget)).toBeTrue();
 });
