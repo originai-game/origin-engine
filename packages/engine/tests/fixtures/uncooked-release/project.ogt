@@ -1,11 +1,14 @@
 type project
 version 1
 ---
-# The fixture uncooked-release.test.ts runs: at tick 10 it loads a 1024 px
-# image and a 131,072-triangle grid uncooked (og.load.imageData,
-# og.load.gltfData), draws them, and at tick 40 releases both
-# (og.load.release), so dump_memory before, between and after shows what
-# the loads took on the GPU and the heap and that the release gave it back.
+# The fixture uncooked-release.test.ts runs: at tick 1 it loads a 4 px
+# image and an 8-triangle grid uncooked and draws them for good (the
+# warm-up: the renderer's first-use pipelines are made before the first
+# dump); at tick 20 it loads a 1024 px image and a 131,072-triangle grid
+# uncooked (og.load.imageData, og.load.gltfData), draws them, and at tick
+# 50 releases both (og.load.release), so dump_memory before, between and
+# after shows what the loads took on the GPU and the heap and that the
+# release gave it back.
 name "Uncooked release fixture"
 id "uncooked-release-fixture"
 engine "0.7.7"

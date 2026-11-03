@@ -29,8 +29,12 @@ interface Memory {
 test("og.load.release gives back what an uncooked image and model took on the GPU and the heap", () => {
   const out = mkdtempSync(join(tmpdir(), "og-uncooked-release-"));
   try {
-    // Ticks 6 (before the loads at 10), 30 (drawn) and 54 (released at 40).
-    const script = "0.1:dump_memory:base.json;0.5:dump_memory:loaded.json;0.9:dump_memory:released.json;0.9:screenshot:released.png;1:quit";
+    // Ticks 15 (the warm-up drawn, before the loads at 20), 45 (drawn) and
+    // 60 (released at 50). The warm-up (a small image and grid loaded the
+    // same way, drawn from about tick 2 and never released) puts what the
+    // renderer makes on first use, such as the pipelines a sprite and a lit
+    // model draw with, into the base: the dumps then differ by the loads.
+    const script = "0.25:dump_memory:base.json;0.75:dump_memory:loaded.json;1:dump_memory:released.json;1:screenshot:released.png;1.1:quit";
     const r = Bun.spawnSync([ogBin(), "run", "--headless", fixture, "--commands", script, "--out", out, "--json"], { cwd: repo });
     if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${text(r.stderr)}`);
     const run = JSON.parse(text(r.stdout).trim().split("\n").pop()!) as { tier: string; warnings: string[] };
