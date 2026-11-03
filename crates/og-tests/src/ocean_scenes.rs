@@ -117,6 +117,9 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             let (sun, sky) = clouds.light();
             scene.light.intensity *= sun;
             scene.environment.intensity *= sky;
+            if let Some(f) = scene.fog.as_mut() {
+                (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
+            }
             scene.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(7.0, -18.7), 1.0);
             // Grey-green deep water under the overcast.
@@ -167,6 +170,9 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             let (sun, sky) = clouds.light();
             scene.light.intensity *= sun;
             scene.environment.intensity *= sky;
+            if let Some(f) = scene.fog.as_mut() {
+                (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
+            }
             scene.clouds = Some(clouds);
             let mut gale = sea(Vec2::new(5.0, -14.0), 0.85);
             gale.deep = Vec3::new(0.012, 0.035, 0.035);

@@ -194,7 +194,11 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   // cloud base: then it looks down onto the layer (a sea of cloud from a
   // mountain), and the march below stops at the base, before the ground.
   let ground = cloud_sphere(o, d, radius);
-  if (ground.x > 0.0 && viewer <= c[0].z) { return background; }
+  if (ground.x > 0.0 && viewer <= c[0].z) {
+    // Under the horizon (past the sea's or the land's edge) an overcast's dim, flat light, not a clear day's ground.
+    let dk = cloud_deck(d);
+    return mix(background, dk.rgb * 0.8, dk.a);
+  }
   // Under the physical sky the clouds are lit by the sun at their own
   // height: the sun above the air (3 times the look's sunlight colour,
   // the day-night noon) through the sky's own transmittance down to the
@@ -218,6 +222,12 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
   let sky_side = mix(view_side, sun_side, 0.5) * sky_scale;
   var color = background;
+  // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
+  // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
+  // and a little of the sun through it.
+  let dk = cloud_deck(d);
+  let deck_cover = dk.a;
+  let deck = dk.rgb;
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
@@ -252,7 +262,7 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
     end = inner.x;
   }
   let far = 60000.0;
-  if (start >= far) { return color; }
+  if (start >= far) { return mix(color, deck, deck_cover); }
   end = min(end, start + far * 0.5);
   // Up to twice the steps towards the horizon, where the path is longest.
   let steps = u32(c[3].z * (2.0 - abs(d.y)));
@@ -314,9 +324,12 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
     }
     t += dt;
   }
-  // The air between the viewer and the clouds blends them into the sky.
+  // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
+  // mean colour along this ray, the fallback's where the ray found little cloud).
   let fade = exp(-start / (far * 0.45));
-  return mix(color, color * transmittance + scattered, fade);
+  let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
+  let behind = mix(color, mean, deck_cover);
+  return mix(behind, color * transmittance + scattered, fade);
 }
 
 // The procedural sky drawn per pixel with the chosen look (frame.sky_*):

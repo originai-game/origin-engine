@@ -242,6 +242,23 @@ fn lattice_hash(c: vec3<i32>) -> f32 {
   return f32(h >> 8u) / 16777216.0;
 }
 
+// An overcast deck's base seen far off along `d`, as the sky's march lights a base (sky.wgsl clouds_over): its grey
+// ambient from the sky's low light and a little of the sun through it. a: how much of the sky the deck closes
+// (none under a broken sky), the weight the distant sky, what lies under the horizon and a mirror of the sky take it
+// by (none of them can see the clear sky behind an overcast: the irradiance and the reflection maps hold no clouds).
+fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
+  let c = frame.clouds;
+  if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
+  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
+  let sky_scale = frame.params.x / max(c[4].z, 0.05);
+  let to_light = normalize(frame.light_dir.xyz);
+  let sun_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let side = dot(mix(view_side, sun_side, 0.5), luma) * sky_scale;
+  let light = dot(frame.light_color.rgb, luma) / max(c[4].y, 0.05);
+  return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
+}
+
 // How much of the stars a cloud deck leaves (clouds.rs): none through an overcast, all of them under a broken sky,
 // whose gaps the clouds' own march shows them through.
 fn star_veil() -> f32 {

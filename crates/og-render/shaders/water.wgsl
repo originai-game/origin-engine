@@ -423,10 +423,14 @@ fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }
 
-// The sky's light greyed by the frame's cloud cover, as the clouds' own ambient is (sky.wgsl clouds_over).
-fn overcast(c: vec3<f32>) -> vec3<f32> {
+// The sky mirrored along `r` (`c`, from the reflection maps, which hold no clouds) under the frame's cloud cover:
+// greyed as the clouds' own ambient is (sky.wgsl clouds_over), and under an overcast the deck itself, brighter
+// overhead than at the horizon (a clear horizon mirrored at the sea's grazing rim drew a white line under a storm).
+fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
   if (frame.clouds[3].w < 0.5) { return c; }
-  return mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+  let grey = mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
+  let dk = cloud_deck(r);
+  return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
 }
 
 @fragment
@@ -583,7 +587,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
   // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
   let sky_mirror = frame.params.x * water.ao.w * 1.8;
-  var reflected = overcast(reflected_light(r, in.world, mip)) * sky_mirror;
+  var reflected = overcast(reflected_light(r, in.world, mip) * sky_mirror, r);
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -603,7 +607,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   if (sea) {
     // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn. The facets
     // spread the reflection over about two of their slopes' deviations, so it turns down gradually.
-    let up = overcast(reflected_light(vec3<f32>(r.x, abs(r.y), r.z), in.world, mip)) * sky_mirror;
+    let up_r = vec3<f32>(r.x, abs(r.y), r.z);
+    let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
     let w = 2.0 * sigma + 0.05;
     reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
