@@ -4,12 +4,12 @@
 
 use crate::terrain_scenes::{camera_at, island_height, island_view};
 use glam::Vec3;
-use og_render::{DirectionalLight, Grass, GrassDraw, RenderScene, Wind};
+use og_render::{Background, DirectionalLight, Grass, GrassDraw, RenderScene, Wind};
 
 /// The wind of `grass-wind`: along +x and a little +z, gusting.
 pub fn wind() -> Wind {
     Wind {
-        strength: 0.35,
+        strength: 0.6,
         direction: Vec3::new(1.0, 0.0, 0.3),
         speed: 4.0,
         gust: 0.7,
@@ -47,6 +47,14 @@ pub fn grass_scene(view: &str) -> RenderScene {
                 ..scene.light
             };
             scene.environment.sky.sun_direction = sun;
+            // Late afternoon: a warm sun, its disc and glow drawn per pixel.
+            let warm = Vec3::new(1.0, 0.82, 0.58);
+            scene.light.color = warm;
+            scene.environment.sky.sun_color = warm;
+            scene.environment.background = Background::Procedural {
+                sun_direction: sun,
+                sun_color: warm,
+            };
             scene.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 1.2, z),
                 Vec3::new(x - 12.0, ground(x - 12.0, z - 30.0) + 0.6, z - 30.0),

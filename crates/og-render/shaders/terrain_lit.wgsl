@@ -268,20 +268,21 @@ fn grass_layer_share(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, layer: 
 
 // og.Grass's colour on the ground under and past its blades (grass.rs,
 // after bevy_grass's far.wesl): where its layer shows, the ground takes the
-// field's colour from afar from `fade.x` on, whole from `fade.y`, so there
-// is no seam where the blades thin out to nothing; per clump and dry
-// clump as the blades are, paler where a gust presses the grass down.
+// field's average colour from `fade.x` on, whole from `fade.y`, so the
+// gaps between blades and the ground past them read as the same field
+// and there is no seam where the blades thin out to nothing; per clump
+// and dry drift as the blades are, paler where a gust presses it down.
 fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> vec3<f32> {
   let g = terrain.grass;
   if (g.color.w < 0.0) { return albedo; }
   let amount = smoothstep(g.fade.x, g.fade.y, distance(p, frame.view_pos.xyz)) * g.fade.w * grass_layer_share(p, n, c, u32(g.color.w));
   if (amount <= 0.0) { return albedo; }
-  let gust = grass_gust(g.wind, p.xz + frame.origin.xz, false);
-  let sheen = 1.0 + g.fade.z * g.wind.dir.z * (1.4 * gust * gust - 0.35);
+  let at = p.xz + frame.origin.xz;
+  let sheen = grass_gust_sheen(g.wind, at, g.fade.z);
   let clump = grass_clump(local.xz - terrain_min(), g.clump.x, u32(g.clump.w));
   let v = g.clump.y;
   var col = g.color.rgb * mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, clump.x);
-  col = mix(col, g.dry.rgb, step(fract(clump.x * 7.31 + 0.17), g.clump.z) * 0.75);
+  col = mix(col, g.dry.rgb * 0.8, grass_dry(clump.x, at, g.clump.z) * 0.75);
   return mix(albedo, col * sheen, amount);
 }
 

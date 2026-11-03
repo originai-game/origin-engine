@@ -41,7 +41,7 @@ struct GrassGen {
   shape: vec4<f32>,     // x: the tallest blade (m), y: height variation, z: lean, w: clump lean
   clump: vec4<f32>,     // x: clump size (the terrain's space), y: tufts, z: the height range blade roots are stored over (m either side), w: the root width (m)
   shadow: vec4<f32>,    // xyz: where a blade's shadow lands per metre of its height, w: 1 when it casts
-  motion: vec4<f32>,    // x: sway, y: stiffness
+  motion: vec4<f32>,    // x: sway, y: stiffness, z: the plan's share of the table's blades
   counts: vec4<u32>,    // x: slices, y: blades the instance buffer holds, z: rows of LOD 0, w: LOD 1's and 2's (8 bits each)
   wind: GrassWind,
 };
@@ -156,18 +156,24 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let maps = terrain_maps_at(samples, vec2<f32>(0.0), vec2<f32>(0.0));
   let root = terrain_world(vec3<f32>(local.x, terrain_height_at(0u, samples), local.y));
   let normal = normalize(terrain.normal * maps.normal);
-  var falloff = 1.0;
+  // The plan's share (grass.rs Plan::density) on top of the distance
+  // table: a view over the budget thins every chunk, its survivors wider.
+  var falloff = gen.motion.z;
   var d = 0.0;
   if (gen.eye.w < 0.5) {
     d = distance(root, gen.eye.xyz);
-    falloff = grass_falloff(d);
+    falloff *= grass_falloff(d);
   }
   let keep = clamp(gen.field.y * grass_layer_weight(root, normal, maps.control) * falloff / gen.field.x, 0.0, 1.0);
   if (rank >= keep) { return none; }
 
   let seed = grass_hash2(cell_hash, point);
   // Blades of a clump share most of their height.
-  let tall = gen.shape.x * (1.0 - gen.shape.y * mix(grass_unit(grass_hash(seed ^ 0x68u)), clump.y, 0.6));
+  var tall = gen.shape.x * (1.0 - gen.shape.y * mix(grass_unit(grass_hash(seed ^ 0x68u)), clump.y, 0.6));
+  // Over the last fade the survivors also shorten, so the field's edge
+  // sinks into the ground's colour rather than ending on a line.
+  let edge = gen.lod.w * gen.lod_density.w;
+  tall *= 1.0 - 0.6 * clamp((d - edge) / max(gen.lod.w - edge, 1e-4), 0.0, 1.0);
   if (tall < 0.01) { return none; }
   var seen = grass_visible(root + vec3<f32>(0.0, tall * 0.5, 0.0), tall);
   if (!seen && gen.shadow.w > 0.5) {

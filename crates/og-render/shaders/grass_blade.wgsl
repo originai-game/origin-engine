@@ -137,7 +137,7 @@ fn grass_color(b: GrassBlade, t: f32) -> vec3<f32> {
   c *= mix(1.0, mix(0.85, 1.12, patch_noise), v);
   // Dry clumps (a share `dryness` of them) and dry tips.
   let dryness = grass.variation.y;
-  let dry_clump = step(fract(b.clump * 7.31 + 0.17), dryness);
+  let dry_clump = grass_dry(b.clump, b.root.xz + grass.wind.time.zw, dryness);
   let dry_tip = dryness * smoothstep(0.45, 1.0, t) * (0.4 + 1.2 * grass_random(b, 0x7d1u));
   let dry = grass.dry_color.rgb * shade * mix(0.6, 1.0, pow(t, 0.7));
   c = mix(c, dry, clamp(max(dry_clump * 0.75, dry_tip), 0.0, 1.0));

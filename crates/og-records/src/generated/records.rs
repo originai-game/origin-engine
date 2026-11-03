@@ -28008,7 +28008,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The terrain takes the field's colour where its blades thin out and past them."),
+                doc: doc!("The terrain takes the field's average colour under its blades, where they thin out and past them, so the gaps and the far field read as the same grass."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

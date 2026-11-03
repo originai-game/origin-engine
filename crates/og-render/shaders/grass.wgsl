@@ -48,7 +48,7 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   o.clip = frame.view_proj * vec4<f32>(v.world, 1.0);
   o.world = v.world;
   o.normal = v.normal;
-  o.color = grass_color(r.blade, v.t);
+  o.color = grass_color(r.blade, v.t) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
   o.shading = vec3<f32>(grass_occlusion(v.t), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
   o.cur_clip = grass.view_proj * vec4<f32>(v.world, 1.0);
   // Where the blade stood last frame: its last bend and flutter.
@@ -68,6 +68,31 @@ struct GrassFx {
 @group(2) @binding(1) var grass_ssao: texture_2d<f32>;
 @group(2) @binding(3) var grass_fx_sampler: sampler;
 
+// The sunlight that reaches `p` through what the first cascades hold
+// between it and the sun (Jimenez et al., "Real-Time Realistic Skin
+// Translucency", 2010: the thickness from the shadow map's depth to the
+// point's, and Beer-Lambert through it): a backlit blade behind others
+// still glows through them, fading with the canopy it is under. Thin
+// next to a blade (its own face), 0 behind a hill.
+fn grass_transmittance(p: vec3<f32>) -> f32 {
+  let c = cascade_index(p);
+  if (c >= CASCADES) { return 1.0; }
+  let m = frame.cascade_view_proj[c];
+  let sp = m * vec4<f32>(p, 1.0);
+  let uv = vec2<f32>(sp.x * 0.5 + 0.5, 0.5 - sp.y * 0.5);
+  if (sp.z > 1.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return 1.0; }
+  let size = vec2<i32>(textureDimensions(cascade_map));
+  let at = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1);
+  let occluder = textureLoad(cascade_map, at, i32(c), 0).r;
+  // The map's depth per metre along the light.
+  let per_metre = length(vec3<f32>(m[0].z, m[1].z, m[2].z));
+  let thickness = max(sp.z - occluder, 0.0) / max(per_metre, 1e-9);
+  return exp(-thickness * GRASS_EXTINCTION);
+}
+
+// How fast light dims through a canopy of blades (per metre).
+const GRASS_EXTINCTION: f32 = 1.6;
+
 // The toon ramp's three bands (terrain_lit.wgsl terrain_band).
 fn grass_band(t: f32) -> f32 {
   let e = max(fwidth(t), 1e-4);
@@ -83,16 +108,25 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let l = normalize(frame.light_dir.xyz);
   let backlit = dot(n0, l) < 0.0;
   let n = select(n0, -n0, backlit);
-  let sheen = in.shading.y;
+  // Specular anti-aliasing: a blade narrower than a pixel cannot show
+  // its gloss as a highlight (it sparkles); its gloss spreads instead
+  // (rougher, dimmer), as Ghost of Tsushima's grass does far off.
+  let depth = select(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), 1.0, frame.view_pos.w > 0.5);
+  let resolved = clamp(grass.shape.y / max(depth * grass.forward.w, 1e-6), 0.0, 1.0);
+  let sheen = in.shading.y * resolved;
   var s: Surface;
   s.albedo = in.color;
   s.metallic = 0.0;
-  s.roughness = clamp(grass.dry_color.w * (1.0 - 0.45 * sheen), 0.04, 1.0);
-  let reflectance = 0.25 + 0.45 * sheen;
+  s.roughness = mix(0.95, clamp(grass.dry_color.w * (1.0 - 0.45 * sheen), 0.04, 1.0), resolved);
+  let reflectance = (0.25 + 0.45 * sheen) * mix(0.5, 1.0, resolved);
   s.f0 = vec3<f32>(0.16 * reflectance * reflectance);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n, n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) {
+    shadow = cascade_shadow(p, n, n_dot_l);
+    // Lit from behind, the light comes through the blades in the way.
+    if (backlit) { shadow = max(shadow, grass_transmittance(p)); }
+  }
   var direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   var tinted = (1.0 - shadow) * n_dot_l;
   if (frame.outline_style.z > 0.5) {

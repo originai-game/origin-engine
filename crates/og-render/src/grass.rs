@@ -53,7 +53,7 @@
 //! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //! DEALINGS IN THE SOFTWARE.
 
-use crate::terrain::{horizontal_scale, world_sphere};
+use crate::terrain::horizontal_scale;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use std::sync::OnceLock;
 
@@ -68,8 +68,8 @@ pub struct Grass {
     /// How far from the camera blades are drawn (m); they thin out to
     /// nothing there.
     pub distance: f32,
-    /// The terrain takes the field's colour where its blades thin out and
-    /// past them.
+    /// The terrain takes the field's average colour under its blades,
+    /// where they thin out and past them.
     pub far_tint: bool,
     /// The tallest blade (m) and how much shorter blades are, 0..1.
     pub height: f32,
@@ -170,7 +170,9 @@ pub const TILE_POINTS: u32 = 1024;
 pub const SLICE: u32 = 512;
 /// The most slices a field generates in a frame (the farthest are dropped).
 pub const MAX_SLICES: u32 = 8192;
-/// The most blades a field draws in a frame.
+/// The most blades a field draws in a frame: past it, [`plan`] thins the
+/// whole field evenly (its survivors widen) rather than dropping the far
+/// chunks.
 pub const MAX_BLADES: u32 = 1 << 21;
 /// Rows of each level of detail's strip (15, 7 and 3 vertices).
 pub const LOD_ROWS: [u32; 3] = [7, 3, 1];
@@ -179,6 +181,9 @@ const TIME_PERIOD: f64 = 3600.0;
 /// The gust noise's cell (m) and period (cells).
 const GUST_CELL: f64 = 14.0;
 const GUST_PERIOD: f64 = 256.0;
+/// How much a gust brightens the blades it presses down (and the ground
+/// past them): grass_common.wgsl `grass_gust_sheen`.
+const GUST_SHEEN: f32 = 1.0;
 /// The narrowest a blade draws (px).
 const MIN_WIDTH_PX: f32 = 1.0;
 /// How far a blade seen edge-on turns towards the eye.
@@ -253,7 +258,7 @@ impl DistanceLod {
         DistanceLod {
             radius,
             lod_start: [0.2 * radius, 0.5 * radius],
-            fade_start: 0.9,
+            fade_start: 0.8,
             band: 4.0,
             density_at: [0.5, 0.15],
             mid_range: 0.5,
@@ -331,14 +336,25 @@ pub struct PlanView<'a> {
     pub range: (f32, f32),
     pub camera: Vec3,
     pub orthographic: bool,
-    /// Whether a sphere is in the view (or casts into it).
-    pub visible: &'a dyn Fn(Vec3, f32) -> bool,
+    /// Whether a world box (min, max corner) is in the view (or casts into
+    /// it).
+    pub visible: &'a dyn Fn(Vec3, Vec3) -> bool,
 }
 
-/// The slices a field generates this frame: x, y a chunk, z the slice's
-/// first candidate in it, w how many; nearest chunks first, at most
-/// [`MAX_SLICES`].
-pub fn plan(g: &Grass, v: &PlanView) -> Vec<[u32; 4]> {
+/// What a field generates this frame.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Plan {
+    /// x, y a chunk, z the slice's first candidate in it, w how many;
+    /// nearest chunks first, at most [`MAX_SLICES`].
+    pub slices: Vec<[u32; 4]>,
+    /// The share of the distance table's blades kept, 1 unless the view
+    /// would hold more than [`MAX_BLADES`] candidates: then every chunk
+    /// keeps that share, so the field still reaches `distance`.
+    pub density: f32,
+}
+
+/// The slices field `g` generates for view `v`.
+pub fn plan(g: &Grass, v: &PlanView) -> Plan {
     let along = horizontal_scale(v.model);
     let layout = FieldLayout::new(g, along);
     let lod = DistanceLod::for_radius(g.distance);
@@ -351,7 +367,7 @@ pub fn plan(g: &Grass, v: &PlanView) -> Vec<[u32; 4]> {
     let hi = ((eye + reach) / layout.chunk).ceil().min(n).max(Vec2::ZERO);
     let tall = g.height * (1.0 + g.lean.abs() + g.clump_lean.abs());
     let cells = layout.tiles_per_side * layout.tiles_per_side;
-    let mut chunks: Vec<(f32, u32, u32, u32)> = Vec::new();
+    let mut chunks: Vec<(f32, u32, u32, f32)> = Vec::new();
     for cz in lo.y as u32..hi.y as u32 {
         for cx in lo.x as u32..hi.x as u32 {
             let a = Vec2::new(cx as f32, cz as f32) * layout.chunk;
@@ -364,35 +380,50 @@ pub fn plan(g: &Grass, v: &PlanView) -> Vec<[u32; 4]> {
             if !v.orthographic && d >= g.distance {
                 continue;
             }
-            let (c, r) = world_sphere(
+            let (lo, hi) = world_box(
                 v.model,
                 Vec3::new(a.x - half.x, v.range.0, a.y - half.y),
-                Vec3::new(b.x - half.x, v.range.1, b.y - half.y),
+                Vec3::new(b.x - half.x, v.range.1 + tall, b.y - half.y),
             );
-            if !(v.visible)(c, r + tall) {
+            if !(v.visible)(lo, hi) {
                 continue;
             }
             let falloff = if v.orthographic { 1.0 } else { lod.falloff(d) };
             let keep = (layout.density * falloff / layout.candidates).clamp(0.0, 1.0);
-            let needed = (keep * TILE_POINTS as f32).ceil() as u32 * cells;
-            if needed > 0 {
-                chunks.push((d, cx, cz, needed));
+            if keep > 0.0 {
+                chunks.push((d, cx, cz, keep));
             }
         }
     }
     og_core::sort::sort_by(&mut chunks, |a, b| {
         a.0.total_cmp(&b.0).then((a.2, a.1).cmp(&(b.2, b.1)))
     });
-    let mut out = Vec::new();
-    'chunks: for (_, cx, cz, needed) in chunks {
+    let needed = |keep: f32| (keep * TILE_POINTS as f32).ceil() as u32 * cells;
+    let total: u64 = chunks.iter().map(|c| u64::from(needed(c.3))).sum();
+    let density = (MAX_BLADES as f64 / total.max(1) as f64).min(1.0) as f32;
+    let mut slices = Vec::new();
+    'chunks: for (_, cx, cz, keep) in chunks {
+        let needed = needed(keep * density);
         for first in (0..needed).step_by(SLICE as usize) {
-            if out.len() >= MAX_SLICES as usize {
+            if slices.len() >= MAX_SLICES as usize {
                 break 'chunks;
             }
-            out.push([cx, cz, first, SLICE.min(needed - first)]);
+            slices.push([cx, cz, first, SLICE.min(needed - first)]);
         }
     }
-    out
+    Plan { slices, density }
+}
+
+/// The world box (min, max corner) of box `lo`..`hi` placed by `model`.
+fn world_box(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, Vec3) {
+    (0..8).fold((Vec3::MAX, Vec3::MIN), |(a, b), i| {
+        let p = model.transform_point3(Vec3::new(
+            if i & 1 == 0 { lo.x } else { hi.x },
+            if i & 2 == 0 { lo.y } else { hi.y },
+            if i & 4 == 0 { lo.z } else { hi.z },
+        ));
+        (a.min(p), b.max(p))
+    })
 }
 
 // ── the wind ───────────────────────────────────────────────────────────────
@@ -484,11 +515,16 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         .terrains
         .get(terrain)
         .map_or(1.0, |t| horizontal_scale(t.transform));
-    // The field from afar: its blades' colour two thirds up, as their
-    // lit sides and the gaps between them average out.
-    let c = g.base_color.lerp(g.tip_color, 0.66);
+    // The field's average: its blades' colour a little over halfway up
+    // (grass_blade.wgsl grass_color), darkened by their occlusion towards
+    // the roots and the shade between them, so the ground under and past
+    // the blades reads as the same field.
+    let c = g.base_color.lerp(g.tip_color, 0.55) * 0.75;
     gpu.color = c.extend(g.layer as f32).to_array();
-    gpu.fade = [0.3 * g.distance, 0.95 * g.distance, 0.5, 1.0];
+    // Under every blade (gaps show the field's colour, not the layer's),
+    // whole by the start of LOD 1; gusts brighten it as they do the blades.
+    let lod = DistanceLod::for_radius(g.distance);
+    gpu.fade = [0.0, lod.lod_start[0], GUST_SHEEN, 1.0];
     gpu.clump = [
         g.clump_size.max(0.05) / along,
         g.color_variation.clamp(0.0, 1.0),
@@ -1026,15 +1062,12 @@ impl GrassRenderer {
                 self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed));
             }
             let cast = g.cast_shadows && scene.light.cast_shadows && sun_on;
-            let visible = |c: Vec3, r: f32| {
-                frustum.intersects_sphere(c, r)
-                    || (cast
-                        && frustum.intersects_sphere(
-                            c + reach * g.height * 0.5,
-                            r + reach.length() * g.height,
-                        ))
+            // With its shadow: the box swept along the sun's reach.
+            let shadow = reach * g.height * f32::from(u8::from(cast));
+            let visible = |lo: Vec3, hi: Vec3| {
+                frustum.intersects_box(lo.min(lo + shadow), hi.max(hi + shadow))
             };
-            let slices = plan(
+            let Plan { slices, density } = plan(
                 &g,
                 &PlanView {
                     model: t.transform,
@@ -1093,7 +1126,7 @@ impl GrassRenderer {
                     g.width,
                 ],
                 shadow: reach.extend(f32::from(u8::from(cast))).to_array(),
-                motion: [g.sway.max(0.0), g.stiffness.clamp(0.0, 1.0), 0.0, 0.0],
+                motion: [g.sway.max(0.0), g.stiffness.clamp(0.0, 1.0), density, 0.0],
                 counts: [
                     slices.len() as u32,
                     f.blade_cap,
@@ -1257,7 +1290,7 @@ mod tests {
         assert_eq!(l.falloff(10.0), 1.0);
         // Past LOD 1's band, the mid-range share on top of the table.
         assert!((l.falloff(75.0) - 0.5 * 0.5).abs() < 1e-5);
-        assert!((l.falloff(135.0) - 0.15 * 0.5).abs() < 1e-5);
+        assert!((l.falloff(120.0) - 0.15 * 0.5).abs() < 1e-5);
         assert_eq!(l.falloff(150.0), 0.0);
         let mut last = 2.0;
         for d in 0..150 {
@@ -1289,10 +1322,10 @@ mod tests {
         }
     }
 
-    fn view(camera: Vec3, visible: &dyn Fn(Vec3, f32) -> bool) -> PlanView<'_> {
+    fn view(camera: Vec3, visible: &dyn Fn(Vec3, Vec3) -> bool) -> PlanView<'_> {
         PlanView {
             model: Mat4::IDENTITY,
-            size: Vec2::splat(512.0),
+            size: Vec2::splat(1024.0),
             range: (0.0, 10.0),
             camera,
             orthographic: false,
@@ -1306,12 +1339,15 @@ mod tests {
     #[test]
     fn the_plan_is_nearest_first_and_repeatable() {
         let g = Grass::default();
-        let all = |_: Vec3, _: f32| true;
-        let a = plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &all));
-        let b = plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &all));
+        // A quarter of the field round the camera, as a wide view sees.
+        let ahead = |_: Vec3, hi: Vec3| hi.z > -7.0 && hi.x > 3.0;
+        let a = plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &ahead));
+        let b = plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &ahead));
         assert_eq!(a, b);
+        assert_eq!(a.density, 1.0, "a quarter of the field fits the budget");
+        let a = a.slices;
         assert!(!a.is_empty() && a.len() <= MAX_SLICES as usize);
-        let half = 256.0;
+        let half = 512.0;
         let eye = Vec2::new(3.0 + half, -7.0 + half);
         let dist = |s: &[u32; 4]| {
             let lo = Vec2::new(s[0] as f32, s[1] as f32) * CHUNK;
@@ -1331,10 +1367,51 @@ mod tests {
         let cells = layout.tiles_per_side.pow(2);
         let wanted = (g.density / layout.candidates * TILE_POINTS as f32).ceil() as u32 * cells;
         assert_eq!(own, wanted);
-        // Only what is ahead (+z) is kept when the view looks that way.
-        let ahead = |c: Vec3, r: f32| c.z + r > -7.0;
-        let half_plan = plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &ahead));
-        assert!(half_plan.len() < a.len());
+        // Looking all round keeps more.
+        let all = |_: Vec3, _: Vec3| true;
+        assert!(
+            plan(&g, &view(Vec3::new(3.0, 2.0, -7.0), &all))
+                .slices
+                .len()
+                > a.len()
+        );
+    }
+
+    /// A view holding more of the field than [`MAX_BLADES`] (all round,
+    /// dense) thins every chunk evenly instead of dropping the far ones:
+    /// the field still reaches its distance, within the budget.
+    #[test]
+    fn an_over_budget_view_thins_the_field_and_keeps_its_edge() {
+        let g = Grass {
+            density: 600.0,
+            ..Default::default()
+        };
+        let all = |_: Vec3, _: Vec3| true;
+        let p = plan(&g, &view(Vec3::ZERO, &all));
+        assert!(p.density < 1.0, "{}", p.density);
+        let kept: u64 = p.slices.iter().map(|s| u64::from(s[3])).sum();
+        let chunks = p
+            .slices
+            .iter()
+            .map(|s| (s[0], s[1]))
+            .collect::<std::collections::BTreeSet<_>>();
+        assert!(
+            kept <= u64::from(MAX_BLADES) + chunks.len() as u64 * 81,
+            "{kept}"
+        );
+        let eye = Vec2::splat(512.0);
+        let farthest = p
+            .slices
+            .iter()
+            .map(|s| {
+                let lo = Vec2::new(s[0] as f32, s[1] as f32) * CHUNK;
+                (eye.clamp(lo, lo + CHUNK) - eye).length()
+            })
+            .fold(0.0f32, f32::max);
+        assert!(
+            farthest > g.distance - CHUNK * 1.5,
+            "the field ends at {farthest} m"
+        );
     }
 
     /// The wind's clock and gusts are reduced in f64: a tick a day into a

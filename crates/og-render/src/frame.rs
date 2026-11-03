@@ -205,6 +205,15 @@ impl Frustum {
             .all(|p| p.truncate().dot(center) + p.w >= -radius)
     }
 
+    /// Whether a box (min, max corner) touches the volume (conservative:
+    /// each plane against the box's corner farthest inside it).
+    pub fn intersects_box(&self, lo: Vec3, hi: Vec3) -> bool {
+        self.0.iter().all(|p| {
+            let n = p.truncate();
+            n.dot(Vec3::select(n.cmpge(Vec3::ZERO), hi, lo)) + p.w >= 0.0
+        })
+    }
+
     /// The CPU cull's tests: every marked `inside[k]` becomes whether
     /// `spheres[k]` touches the volume; an unmarked one stays false and
     /// its sphere is not read. Each flag is its own sphere's, so the
