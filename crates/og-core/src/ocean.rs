@@ -212,13 +212,37 @@ impl Ocean {
     /// ([`Ocean::displacement_on_grid`]): what a body floating on the drawn
     /// sea rides on, its waves too short for the grid left to the normals.
     pub fn height_on_grid(&self, at: DVec2, seconds: f64, cell: f32) -> f32 {
+        self.surface_on_grid(at, seconds, cell).height
+    }
+
+    /// [`Ocean::height_on_grid`] with the motion of the water at that point
+    /// of the surface: its particle's orbital velocity and acceleration
+    /// (the time derivatives of its displacement). A floating body is
+    /// carried by the one and buoyed by gravity less the other: smooth
+    /// where the height at a fixed point is not (a steep crest sweeps past
+    /// a fixed point at the wave's phase speed, while the water itself
+    /// only turns over in its orbit).
+    pub fn surface_on_grid(&self, at: DVec2, seconds: f64, cell: f32) -> SurfacePoint {
         let phases = self.phases(seconds, at);
         let mut rest = Vec2::ZERO;
         for _ in 0..8 {
             let d = self.displacement_on_grid(rest, &phases, cell);
             rest = -Vec2::new(d.x, d.z);
         }
-        self.displacement_on_grid(rest, &phases, cell).y
+        let mut point = SurfacePoint {
+            height: self.displacement_on_grid(rest, &phases, cell).y,
+            ..SurfacePoint::default()
+        };
+        // The phase falls by ω a second: d/dt of (lean cos θ, A sin θ).
+        for (w, &phase) in self.waves.iter().zip(&phases) {
+            let (s, c) = math::sin_cos(w.k * w.direction.dot(rest) + phase);
+            let keep = grid_keep(w.k, cell);
+            let (wv, wa) = (keep * w.omega, keep * w.omega * w.omega);
+            let lean = Vec3::new(w.direction.x * w.lean, 0.0, w.direction.y * w.lean);
+            point.velocity += lean * (s * wv) - Vec3::Y * (w.amplitude * c * wv);
+            point.acceleration += -lean * (c * wa) - Vec3::Y * (w.amplitude * s * wa);
+        }
+        point
     }
 
     /// The significant wave height the sea was made for (m).
@@ -230,6 +254,15 @@ impl Ocean {
             .sum::<f32>())
         .sqrt()
     }
+}
+
+/// A point of the sea's surface ([`Ocean::surface_on_grid`]): its height
+/// over the rest level and its water's velocity and acceleration.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SurfacePoint {
+    pub height: f32,
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
 }
 
 /// How much of a wave of wavenumber `k` a grid of `cell`-metre cells
@@ -375,6 +408,39 @@ mod tests {
         assert!((c - grid_warp(0.4).1 * 10.0).abs() < 1e-3);
         assert_eq!(grid_segments(256, 6000.0), 256);
         assert_eq!(grid_segments(16, 24000.0), 94);
+    }
+
+    #[test]
+    fn the_surface_velocity_is_its_particles_motion() {
+        // The water at the point moves as its rest point's displacement
+        // does over a short time (a central difference), not as the height
+        // at the fixed point changes.
+        let sea = Ocean::new(Vec2::new(7.0, -18.7), 1.0, 1.0).expect("a sea");
+        let at = DVec2::new(-12.0, -30.0);
+        let (t, h, cell) = (5.0f64, 1e-3f64, 3.6f32);
+        let phases = sea.phases(t, at);
+        let mut rest = Vec2::ZERO;
+        for _ in 0..8 {
+            let d = sea.displacement_on_grid(rest, &phases, cell);
+            rest = -Vec2::new(d.x, d.z);
+        }
+        let moved = |dt: f64| sea.displacement_on_grid(rest, &sea.phases(t + dt, at), cell);
+        let fd = (moved(h) - moved(-h)) / (2.0 * h) as f32;
+        // (A second difference wants a longer step in f32.)
+        let h2 = 0.02f64;
+        let fa = (moved(h2) - moved(0.0) * 2.0 + moved(-h2)) / (h2 * h2) as f32;
+        let p = sea.surface_on_grid(at, t, cell);
+        assert_eq!(p.height, sea.height_on_grid(at, t, cell));
+        let v = p.velocity;
+        assert!(
+            (v - fd).length() < 0.02 * fd.length().max(1.0),
+            "{v} vs {fd}"
+        );
+        let a = p.acceleration;
+        assert!(
+            (a - fa).length() < 0.05 * fa.length().max(1.0),
+            "{a} vs {fa}"
+        );
     }
 
     #[test]

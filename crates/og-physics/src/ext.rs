@@ -1434,21 +1434,27 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
     })
 }
 
-/// The water surface's height (world y) over world point (`x`, `z`): the
-/// highest of the og.WaterSurface squares and og.Water bodies over it (one
-/// entity with both: its rest level and its sea together); `None` over no
-/// water. An og.WaterSurface lifts at its rest level, as its own buoyancy
-/// does: its waves are the bodies' splashes, and a body riding its own
-/// wake would pump them.
+/// The water surface over world point (`x`, `z`): its height (world y)
+/// and the water's velocity and acceleration there; the highest of the og.WaterSurface squares
+/// and og.Water bodies over it (one entity with both: its rest level and
+/// its sea together); `None` over no water. An og.WaterSurface lifts at its
+/// rest level, as its own buoyancy does: its waves are the bodies'
+/// splashes, and a body riding its own wake would pump them.
 fn water_level(
     scene: &Scene,
     waters: &[crate::WaterBody],
     x: f32,
     z: f32,
     seconds: f64,
-) -> Option<f32> {
-    let mut level: Option<f32> = None;
-    let mut take = |y: f32| level = Some(level.map_or(y, |l| l.max(y)));
+) -> Option<og_core::ocean::SurfacePoint> {
+    use og_core::ocean::SurfacePoint;
+    let mut level: Option<SurfacePoint> = None;
+    let mut take = |y: f32, p: SurfacePoint| {
+        if level.is_none_or(|l| y > l.height) {
+            level = Some(SurfacePoint { height: y, ..p });
+        }
+    };
+    let (x64, z64) = (f64::from(x), f64::from(z));
     for (e, position, surface) in &scene.surfaces {
         let half = surface.size * 0.5;
         if (x - position.x).abs() > half || (z - position.z).abs() > half {
@@ -1458,16 +1464,16 @@ fn water_level(
         let sea = waters
             .iter()
             .find(|w| w.entity == key)
-            .and_then(|w| w.height(f64::from(x), f64::from(z), seconds))
-            .unwrap_or(0.0);
-        take(position.y + sea);
+            .and_then(|w| w.surface(x64, z64, seconds))
+            .unwrap_or_default();
+        take(position.y + sea.height, sea);
     }
     for w in waters {
         if scene.surfaces.iter().any(|s| s.0.to_bits() == w.entity) {
             continue;
         }
-        if let Some(h) = w.height(f64::from(x), f64::from(z), seconds) {
-            take(w.position.y + h);
+        if let Some(p) = w.surface(x64, z64, seconds) {
+            take(w.position.y + p.height, p);
         }
     }
     level
@@ -1518,10 +1524,13 @@ pub(crate) fn buoyancy(
         };
         let middle =
             (hull.lo + hull.cell * Vec3::splat(b.samples.clamp(1, 12) as f32) * 0.5)[column];
-        // Each column's level and how fast it rises (the sea's heave over
-        // the last tick): a hull is slowed against the water, not against
-        // still water, so it rides a wave rather than lagging under it.
-        let mut levels: BTreeMap<[u32; 2], Option<(f32, f32)>> = BTreeMap::new();
+        // Each column's level and the water's velocity there (its
+        // particles' orbit): a hull is slowed against the moving water, not
+        // still water, so it is carried round with it as a float is and
+        // rides through a crest. (Against the level's rise at a fixed point,
+        // the wave's phase speed times its slope, steep crests flung hulls
+        // clear of the water.)
+        let mut levels: BTreeMap<[u32; 2], Option<og_core::ocean::SurfacePoint>> = BTreeMap::new();
         let mass = rb.mass();
         let share = 1.0 / hull.points.len() as f32;
         let mut under = 0.0;
@@ -1537,15 +1546,12 @@ pub(crate) fn buoyancy(
                 let mut q = *p;
                 q[column] = middle;
                 let c = unv(at.transform_point(v(q)));
-                let now = water_level(scene, waters, c.x, c.z, scene.seconds)?;
-                let before =
-                    water_level(scene, waters, c.x, c.z, scene.seconds - scene.tick_seconds)
-                        .unwrap_or(now);
-                Some((now, (now - before) / scene.tick_seconds.max(1e-6) as f32))
+                water_level(scene, waters, c.x, c.z, scene.seconds)
             });
-            let Some((level, rise)) = level else {
+            let Some(water) = level else {
                 continue;
             };
+            let level = water.height;
             let fraction = if half > 1e-6 {
                 ((level - (w.y - half)) / (2.0 * half)).clamp(0.0, 1.0)
             } else if w.y < level {
@@ -1557,14 +1563,22 @@ pub(crate) fn buoyancy(
                 continue;
             }
             under += fraction * share;
-            pushes.push((w, fraction, rise));
+            pushes.push((w, fraction, water));
         }
         let rb = &mut sim.world.bodies[h];
-        for (w, fraction, rise) in pushes {
-            let lift = Vec3::Y * (b.water_density * g * hull.each * fraction * dt);
+        for (w, fraction, water) in pushes {
+            // Archimedes in moving water (Froude–Krylov): the pressure that
+            // buoys a cell pushes it as hard as it accelerates the water it
+            // displaces against gravity, ρV(g + a), so where a crest falls
+            // away the lift falls with it and a floater sinks with the water
+            // at its draft instead of being flung clear.
+            let held = Vec3::Y * g + water.acceleration;
+            let held = Vec3::new(held.x, held.y.max(0.0), held.z);
+            let lift = held * (b.water_density * hull.each * fraction * dt);
+            let flow = water.velocity;
             // The drag: its share of the mass losing `drag` of its speed
             // through the water a second, never more than all of it.
-            let speed = unv(rb.velocity_at_point(v(w))) - Vec3::Y * rise;
+            let speed = unv(rb.velocity_at_point(v(w))) - flow;
             let slow = (b.drag * dt).min(1.0) * mass * share * fraction;
             rb.apply_impulse_at_point(v(flat(lift - speed * slow)), v(w), true);
         }

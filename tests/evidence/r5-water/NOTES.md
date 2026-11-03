@@ -51,10 +51,19 @@ drawn cabin aft of the middle; one red, two white) and four orange
 buoys (spheres of radius 0.6, density 0.8) carry og.Buoyancy and nothing
 else moves them: the og.physics step lifts each hull's cells under the
 sea it computes in the tick (og_core::ocean, the waves the grid draws),
-so they ride, pitch and roll. Each starts set down on the water at tick
-0 (`og.physics.waterHeight`).
+so they ride, pitch and roll. The lift is the displaced water's weight
+plus the water's own acceleration (Froude–Krylov) and the drag acts
+against the water particles' velocity, so a floater moves with the
+water it sits in: heave up to about 5 m/s on these crests is the sea's
+own (its particles' orbital speed), and the hull stays wet through
+them. Each starts set down on the water at tick 0
+(`og.physics.waterHeight`).
 
-Without a renderer it runs to `tick 396 hash b346de0709ba562a entities
+Dumped every 0.5 s to 6.5 s (`og.Buoyancy.submerged`): the boats keep
+0.11 to 0.24 at least, mean 0.30 (their rest value); the buoys 0.25 to
+0.39 at least, mean 0.40.
+
+Without a renderer it runs to `tick 396 hash 703f695dab0d1ae5 entities
 11` with the commands below (OG_RENDERER=none on the orb, a fresh
 og-host-node in OG_NATIVE_ADDON).
 
@@ -76,4 +85,5 @@ og run tests/evidence/r5-water/boats --headless --size 1280x720 --out /tmp/r5 \
   water around each.
 
 `boats-later` (1.5 s on): every boat and buoy at a new height and tilt,
-still on the surface; the boats have barely drifted sideways.
+still in the water (none lifted clear on a crest); the boats have barely
+drifted sideways.

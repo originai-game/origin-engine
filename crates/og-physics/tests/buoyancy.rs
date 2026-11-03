@@ -268,3 +268,80 @@ fn a_world_that_never_names_it_does_not_register_it() {
     run(&mut w, 30);
     assert!(w.id_by_name(Buoyancy::NAME).is_err());
 }
+
+#[test]
+fn floaters_stay_in_the_water_through_the_gales_crests() {
+    // The boats sample (tests/evidence/r5-water/boats): three box boats and
+    // four buoys set down on the storm frame's gale. Through six seconds of
+    // its swell each stays wet, near its resting depth, and is never flung
+    // clear of a crest.
+    let (mut w, p) = world(8);
+    let water = sea(DVec3::ZERO);
+    p.set_waters(vec![water.clone()]);
+    let level = |x: f32, z: f32| water.height(f64::from(x), f64::from(z), 0.0).unwrap();
+    let mut floats = Vec::new();
+    for (x, z, heading) in [
+        (-12.0, -30.0, 0.4f32),
+        (6.0, -45.0, -0.9),
+        (-2.0, -70.0, 1.6),
+    ] {
+        let t = rotated(at(x, level(x, z) + 0.2, z), Quat::from_rotation_y(heading));
+        let b = Buoyancy {
+            samples: 6,
+            ..Buoyancy::default()
+        };
+        floats.push(floater(&mut w, t, Vec3::new(2.4, 1.0, 6.0), 0.6, b));
+    }
+    for (x, z) in [
+        (10.0, -20.0),
+        (-6.0, -38.0),
+        (18.0, -55.0),
+        (-20.0, -52.0f32),
+    ] {
+        let collider = Collider {
+            density: 0.8,
+            ..Collider::sphere(0.6)
+        };
+        let e = spawn_body(
+            &mut w,
+            at(x, level(x, z) + 0.1, z),
+            RigidBody::dynamic(),
+            collider,
+        );
+        let b = Buoyancy {
+            samples: 5,
+            ..Buoyancy::default()
+        };
+        w.insert(e, b).unwrap();
+        floats.push(e);
+    }
+    // Each floater's least and mean submerged fraction after a second.
+    let mut each = vec![(1.0f32, 0.0f32); floats.len()];
+    for tick in 0..600 {
+        w.step().unwrap();
+        if tick < 60 {
+            continue;
+        }
+        for (i, &e) in floats.iter().enumerate() {
+            let sub = w.get::<Buoyancy>(e).unwrap().submerged;
+            each[i] = (each[i].0.min(sub), each[i].1 + sub / 540.0);
+        }
+    }
+    // Afloat at their drafts on average (0.3 for the boats, 0.4 for the
+    // buoys), and wet through every crest: a long hull over a short crest
+    // lifts its ends out, a third of its draft at the least, never clear.
+    // (Lifted by gravity alone, not the water's own acceleration, and
+    // dragged towards the level's rise at a fixed point, every one was
+    // flung to 0.01 or less.)
+    for (i, &(least, mean)) in each.iter().enumerate() {
+        let rest = if i < 3 { 0.3 } else { 0.4 };
+        assert!(
+            (mean - rest).abs() < 0.03,
+            "floater {i} rides at {mean}, not {rest}"
+        );
+        assert!(
+            least > 0.3 * rest,
+            "floater {i} all but left the water: {least}"
+        );
+    }
+}

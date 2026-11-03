@@ -31,7 +31,7 @@ function waters(world: World): void {
   world.insert(sea, og.Water, { size: { x: 6000, y: 6000 }, segments: 256, wind: { x: 7, y: -18.7 }, choppiness: 1 });
   const pond = must(world.spawn({ name: "pond", position: { x: 4000, y: 1, z: 0 } }));
   world.insert(pond, og.Water, { size: { x: 20, y: 20 } });
-  body(world, "hull", { x: 0, y: -1, z: -30 }, { x: 2, y: 0.8, z: 5 }, 0.5);
+  body(world, "hull", { x: 0, y: -4, z: -30 }, { x: 2, y: 0.8, z: 5 }, 0.5);
   body(world, "crate", { x: 4000, y: 2, z: 0 }, { x: 2, y: 0.5, z: 2 }, 0.6);
 }
 
@@ -59,11 +59,13 @@ test("a hull rides the gale's sea, the same on every run and through a restore",
     const engine = start();
     const heights: number[] = [];
     const above: number[] = [];
+    const wet: number[] = [];
     for (let i = 0; i < 6; i++) {
       expect(engine.advance(50).ok).toBeTrue();
       const w = engine.world;
       const at = must(w.get(w.find("hull")!, og.Transform)).position;
       heights.push(at.y);
+      wet.push(must(w.get(w.find("hull")!, og.Buoyancy)).submerged);
       above.push(at.y - must(og.physics.waterHeight(w, w.find("sea")!, at.x, at.z)));
     }
     const snap = engine.probe.snapshot() as { id: string; hash: string };
@@ -74,14 +76,16 @@ test("a hull rides the gale's sea, the same on every run and through a restore",
     expect(engine.hash()).toBe(at);
     expect(engine.advance(120).ok).toBeTrue();
     expect(engine.hash()).toBe(end);
-    return { heights, above, end };
+    return { heights, above, wet, end };
   };
   const a = run();
   // It rides the waves, lifted and dropped metres by them, its centre
-  // always within a metre of the surface under it (never sunk nor left
-  // behind in the air).
+  // always within half a metre of the surface under it and its hull wet
+  // through every crest (never sunk, never flung clear: density 0.5 in
+  // water of 2 rests a quarter under).
   expect(Math.max(...a.heights) - Math.min(...a.heights)).toBeGreaterThan(1);
-  for (const h of a.above) expect(Math.abs(h)).toBeLessThan(1);
+  for (const h of a.above) expect(Math.abs(h)).toBeLessThan(0.5);
+  for (const s of a.wet) expect(s).toBeGreaterThan(0.1);
   const b = run();
   expect(b.heights).toEqual(a.heights);
   expect(b.end).toBe(a.end);

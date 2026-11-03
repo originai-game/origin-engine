@@ -397,6 +397,14 @@ impl WaterBody {
     /// at `seconds` of the world's clock (its tick over its rate); `None`
     /// outside the square.
     pub fn height(&self, x: f64, z: f64, seconds: f64) -> Option<f32> {
+        self.surface(x, z, seconds).map(|s| s.height)
+    }
+
+    /// [`Self::height`] with the water's velocity and acceleration there
+    /// (its particles' orbital motion,
+    /// [`og_core::ocean::Ocean::surface_on_grid`]; still water without a
+    /// sea).
+    pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_core::ocean::SurfacePoint> {
         let half = self.size * 0.5;
         let local = og_core::glam::Vec2::new(
             (x - f64::from(self.position.x)) as f32,
@@ -406,12 +414,12 @@ impl WaterBody {
             return None;
         }
         let Some(sea) = &self.sea else {
-            return Some(0.0);
+            return Some(og_core::ocean::SurfacePoint::default());
         };
         let extent = self.size.max_element();
         let segments = og_core::ocean::grid_segments(self.segments.max(1), extent);
         let cell = og_core::ocean::grid_cell(local, half, extent / segments as f32);
-        Some(sea.height_on_grid(
+        Some(sea.surface_on_grid(
             og_core::glam::DVec2::new(x + self.zero.x, z + self.zero.z),
             seconds,
             cell,
@@ -1631,7 +1639,6 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
         let time = ctx.time();
         let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
         scene.seconds = time.tick as f64 / f64::from(rate);
-        scene.tick_seconds = 1.0 / f64::from(rate);
     }
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;

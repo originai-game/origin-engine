@@ -410,10 +410,8 @@ pub(crate) struct Scene {
     /// The floating bodies (og.Buoyancy, lazy), by entity (ascending).
     pub floats: Vec<(Entity, Buoyancy)>,
     /// The world's clock in seconds (its tick over its rate) for the sea
-    /// the floating bodies ride, and a tick's length in it; set only with
-    /// some.
+    /// the floating bodies ride; set only with some.
     pub seconds: f64,
-    pub tick_seconds: f64,
 }
 
 /// The most og.VehicleWheel children a vehicle takes.
