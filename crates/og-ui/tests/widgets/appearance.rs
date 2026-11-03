@@ -717,3 +717,19 @@ fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
     let scrim = at(&rig, "Pause");
     assert_eq!((scrim.x, scrim.width), (0.0, 5120.0), "{scrim:?}");
 }
+
+#[test]
+fn an_action_buttons_label_widens_it_when_its_icon_is_not_in_the_atlas() {
+    // Wrong: an icon name the atlas lacks draws the label instead, but the
+    // button keeps its square size, so a long or translated label is cut.
+    let mut ui = ui_with_font(test_font_metrics());
+    let desc = ActionButtonDesc {
+        icon: "no-such-icon".into(),
+        ..ActionButtonDesc::default()
+    };
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.action_button("Steer", "Accelerate hard now", &desc);
+    ui.end();
+    let e = ui.frame().element("Steer").expect("the button").clone();
+    assert!(e.width > e.height + 1.0, "widened to its label: {e:?}");
+}

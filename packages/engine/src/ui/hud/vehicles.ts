@@ -268,12 +268,16 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
     const left = c - rowW / 2;
     text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(digitsW), align: "end" },
       fixed({ start: left, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
-    text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true, width: px(digitsW), align: "center" },
-      fixed({ start: left, top: speedTop + sp.line }));
+    // The unit fits its text (a translation may be longer than "km/h"), centred under the digits.
+    box("UnitLine", { width: px(size), cross: "center", align: "center" }, undefined, () =>
+      text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true }, { transform: { x: left + digitsW / 2 - c } }),
+    fixed({ start: 0, top: speedTop + sp.line }));
     if (desc.gear) {
       const g = desc.gear;
       const neutral = g === "N" || g === "R";
-      box("Gear", { width: px(gearSide), height: px(gearSide), align: "center", cross: "center", part: sel("Speedometer", "gear", neutral ? "neutral" : null) }, {
+      // A square for one character; a longer gear (a translation's) widens it to the right, never over the speed.
+      const gearPad = Math.max(3, Math.round((gearSide - stepSize(gearStep).size * 0.62) / 2));
+      box("Gear", { height: px(gearSide), padding: { left: gearPad, right: gearPad, top: 0, bottom: 0 }, align: "center", cross: "center", part: sel("Speedometer", "gear", neutral ? "neutral" : null) }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
         fills: [solid(token("shadow", 0.7))],
         strokes: [stroke(1.5, neutral ? lit(role("warn")) : token("lineStrong"))],

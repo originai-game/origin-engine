@@ -10,7 +10,7 @@
 // lap block share one width (raceWidth) so they stack as one column.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, luminance, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
+import { BLACK, WHITE, luminance, textScale, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
 
 /** The fastest lap's and a new best's purple, as F1 timing marks them. */
 const PURPLE: Rgba = { r: 0.68, g: 0.42, b: 1, a: 1 };
@@ -40,7 +40,11 @@ function readableOn(c: Rgba): Rgba {
 /** The width the lap block and the tower share, so stacked they read as one column. */
 function raceWidth(): number {
   const f = frame();
-  return Math.min(hudRoom(), f.phone ? ut(220) : Math.max(u(220), Math.min(ut(290), hudRoom() * 0.3)));
+  // On a tablet a large text size takes a larger share of the screen (up to 45 % at 200 %), so names and labels are
+  // not cut; a desktop's 30 % already holds them.
+  const tablet = f.viewport.breakpoint === "tablet";
+  const share = 0.3 + (tablet ? 0.15 * Math.min(1, Math.max(0, textScale() - 1)) : 0);
+  return Math.min(hudRoom(), f.phone ? ut(220) : Math.max(u(220), Math.min(ut(290), hudRoom() * share)));
 }
 
 /** The racing panels' ground: the HUD chip denser, over a blurred scene, so rows sit on an even ground. */

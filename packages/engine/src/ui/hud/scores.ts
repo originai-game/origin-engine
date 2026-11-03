@@ -250,8 +250,9 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
   const t = now();
   let comboProps: Props = {};
   hudPlace(id, anchorOf(desc, "right"), () => {
-    // Room above the count for its pop and its growth with the count, so a scaled count never reaches the piece stacked above.
-    box(id, { direction: "column", gap: 0, cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.12), bottom: 0 } }, undefined, () => {
+    // The count grows up from its baseline (its pop and its growth with the count), never down onto its label: room
+    // above it for the growth, and a gap under it for its tilt.
+    box(id, { direction: "column", gap: Math.ceil(stepSize(ts(48, true)).line * 0.1), cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.35), bottom: 0 } }, undefined, () => {
       const e = edge("count", count);
       // A break: the last count shakes and falls off.
       const brokeAt = kit.memory("brokeAt", -1e9);
@@ -279,7 +280,7 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
         // Late in the fall the whole group drops and fades together.
         const fall = broken ? { transform: { y: reduced() ? 0 : Math.max(0, bx - 0.5) * 2 * u(24) }, opacity: Math.min(1, 2 - 2 * bx) } : {};
         text("Count", String(shown), { step: ts(48, true), font: "display", color: lit(ink), nowrap: true, outline: 1.6 }, {
-          transform: broken ? { x: reduced() ? 0 : Math.sin(bx * 40) * u(6) * (1 - bx), y: reduced() ? 0 : bx * bx * u(40), rotate: reduced() ? 0 : bx * 0.3 } : { scaleX: s, scaleY: s, rotate: reduced() ? 0 : -0.06 },
+          transform: broken ? { x: reduced() ? 0 : Math.sin(bx * 40) * u(6) * (1 - bx), y: reduced() ? 0 : bx * bx * u(40), rotate: reduced() ? 0 : bx * 0.3 } : { scaleX: s, scaleY: s, rotate: reduced() ? 0 : -0.06, pivotY: 1 },
           opacity: broken ? 1 - bx * bx : 1,
         });
         box("Under", { direction: "row", gap: u(6), cross: "center" }, undefined, () => {
@@ -390,7 +391,7 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
           if (cap !== null) open("Count", { direction: "row", gap: 0, cross: "end" });
           text("Amount", cap !== null ? formatNumber(Math.round(shown), fmt) : formatNumber(Math.abs(amount - shown) < 0.5 ? amount : Math.round(shown), fmt), {
             step: ts(15), font: "mono", color: ink, nowrap: true, outline: 1,
-          }, { transform: { scaleX: s, scaleY: s }, ...(capped ? { opacity: 0.6 + 0.4 * pulse(1.5) } : {}) });
+          }, { transform: { scaleX: s, scaleY: s, pivotY: 1 }, ...(capped ? { opacity: 0.6 + 0.4 * pulse(1.5) } : {}) });
           // A cap reads as amount / cap with the cap a step quieter, unless the cap is near or reached (folded, without the spaces).
           if (cap !== null) text("Cap", `${fit > 0 ? "/" : " / "}${formatNumber(cap, fmt)}`, { step: ts(15), font: "mono", color: capped || near ? ink : token("inkMuted"), nowrap: true, outline: 1 });
           if (cap !== null) close();

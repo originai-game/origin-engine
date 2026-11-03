@@ -370,9 +370,16 @@ impl Ui {
         let t = self.theme;
         let p = t.palette;
         let size = if desc.size > 0.0 { desc.size } else { 64.0 }.max(self.min_target());
-        // A label wider than the button (a longer locale, 200 % text)
-        // widens it rather than being cut: the button stays its size tall.
-        let width = if desc.icon.is_empty() && !text.is_empty() {
+        // An icon the atlas has draws in place of the label; else the label
+        // is drawn, and one wider than the button (a longer locale, 200 %
+        // text) widens it rather than being cut: the button stays its size
+        // tall.
+        let s = size * 0.45;
+        let has_icon = !desc.icon.is_empty()
+            && self
+                .icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), t.palette.ink)
+                .is_some();
+        let width = if !has_icon && !text.is_empty() {
             let step = t.type_ramp.sm;
             let m = &self.fonts.for_text(FontRole::Body, text).metrics;
             let w = m.measure_tracked(text, step.size, crate::layout::step_tracking(&step, text));
@@ -419,11 +426,10 @@ impl Ui {
                 p.ink,
             )
         };
-        let icon = if desc.icon.is_empty() {
-            None
-        } else {
-            let s = size * 0.45;
+        let icon = if has_icon {
             self.icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), ink)
+        } else {
+            None
         };
         let n = &mut self.nodes[i];
         n.el.background = Some(bg);

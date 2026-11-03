@@ -102,7 +102,9 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
   // The north badge straddles the bezel's top edge, a tenth of the map across.
   // It grows with the text: at least the caption step's cap height and its padding, so the letter never shrinks to a dot.
   // And its letter (drawn at most 0.62 of the badge) never under the smallest text the checks allow (§15.2).
-  const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8), Math.ceil(minText() / 0.62));
+  // The letter is a ramp step, so it grows with the player's text size, and the badge with it.
+  const nStep = ts(12);
+  const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8), Math.ceil(Math.max(minText(), stepSize(nStep).size) / 0.62));
   hudPlace(id, anchorOf(desc, "topRight"), () => {
     // Bare (a console's zone): no room above it, so the north badge sits inside the map's top edge.
     kit.column(id, { gap: bare ? 0 : u(4), cross: "center", padding: { top: bare ? 0 : Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
@@ -276,7 +278,6 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
       // North on the rim: centred on the bezel's ring, half outside the map, so it covers nothing on the map.
       const nAng = -Math.PI / 2 + turn;
       const ring = bare ? R - nb / 2 - u(3) : R + bezel / 2;
-      const nStep = tsFit(10, u(10));
       // The letter fits the badge at any text size (the badge keeps its share of the map).
       const fitK = Math.min(1, (nb * 0.62) / Math.max(1, stepSize(nStep).size));
       box("North", { width: px(nb), height: px(nb), align: "center", cross: "center", part: sel("Minimap", "north") }, {
@@ -286,7 +287,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         effects: [drop(u(1), u(4), token("shadow", 0.5))],
       }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
         // It straddles the map's rim on purpose (inside the top edge when bare).
-        fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: bezel + R + Math.sin(nAng) * ring - nb / 2 }, { overlaps: [path] }));
+        // Over a caption plate (a turned map's north at the bottom), it stays inside the map's bottom edge instead.
+        fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: Math.min(bezel + R + Math.sin(nAng) * ring - nb / 2, plate ? bezel + size - nb - 1 : Infinity) }, { overlaps: [path] }));
       });
       // A round map's caption: the square map's plate as a pill centred under the ring, so it reads on any ground.
       if (desc.zone && !plate) {
