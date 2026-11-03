@@ -100,7 +100,7 @@ impl Renderer {
                 let lightmap_fx = self.fx_lean_layout.as_ref().unwrap_or(&self.fx_layout);
                 let (groups, module) = match family {
                     Family::Standard | Family::Compact => {
-                        ([&self.material_layout, lightmap_fx], &self.pbr_shader)
+                        ([&self.material_layout, lightmap_fx], self.pbr_shader.get())
                     }
                     Family::Shader(sh) => (
                         [&self.material_layout, lightmap_fx],

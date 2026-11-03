@@ -20,7 +20,7 @@
 //! facing quads in the vertex shader); written here from that design, no
 //! code taken.
 
-use crate::deferred::Sampled;
+use crate::deferred::{Deferred, Sampled};
 use crate::particles::{MAX_CURVE_KEYS, ParticleBlend};
 use crate::ribbons::{
     Beam, MAX_TRAIL_POINTS, Ribbon, RibbonFrame, RibbonRun, StripPoint, Trail, TrailStyle,
@@ -155,7 +155,8 @@ pub(crate) struct GpuTrails {
     count: wgpu::Buffer,
     points: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
-    pipeline: wgpu::ComputePipeline,
+    /// Made on first use (deferred.rs).
+    pub(crate) pipeline: Deferred<wgpu::ComputePipeline>,
     draw_layout: wgpu::BindGroupLayout,
     /// The strip points for `vs_strip` (group 2).
     pub(crate) draw_group: wgpu::BindGroup,
@@ -241,23 +242,28 @@ impl GpuTrails {
                 },
             ],
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("trails"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let pipeline = {
+            let (device, layout) = (device.clone(), layout.clone());
+            Deferred::new(move || {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("trails"),
-                    bind_group_layouts: &[Some(&layout)],
-                    immediate_size: 0,
-                }),
-            ),
-            module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("trails"),
-                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-            }),
-            entry_point: Some("advance"),
-            compilation_options: Default::default(),
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+                    layout: Some(
+                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("trails"),
+                            bind_group_layouts: &[Some(&layout)],
+                            immediate_size: 0,
+                        }),
+                    ),
+                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("trails"),
+                        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+                    }),
+                    entry_point: Some("advance"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
         let points = buffer(device, "strip points", POINT_BYTES * 256, STORAGE);
         let draw_group = Self::group(device, &draw_layout, &points);
         GpuTrails {

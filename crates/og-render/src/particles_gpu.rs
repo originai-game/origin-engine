@@ -1,6 +1,7 @@
 //! The renderer's side of particles: per-system state kept by id, the
 //! compute simulation, the CPU path's uploads, and the draw.
 
+use crate::deferred::Deferred;
 use crate::particles::{
     CpuParticles, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend, ParticleEmitter,
     ParticleRender, ParticleState, ParticleSystem, SheetMode, SimulationSpace, TickStep,
@@ -358,18 +359,19 @@ pub(crate) struct ParticleFrame {
 pub(crate) struct ParticleRenderer {
     /// Sprite-mode systems' instances for the 2D batch (`expand_sprites`).
     sprites_layout: wgpu::BindGroupLayout,
-    sprites_pipeline: wgpu::ComputePipeline,
+    /// Made on first use, as `sim` and `draw_module` (deferred.rs).
+    sprites_pipeline: Deferred<wgpu::ComputePipeline>,
     sprites_params: wgpu::Buffer,
     sim_layout: wgpu::BindGroupLayout,
     /// simulate, clear, shift.
-    sim: (
+    sim: Deferred<(
         wgpu::ComputePipeline,
         wgpu::ComputePipeline,
         wgpu::ComputePipeline,
-    ),
+    )>,
     pub draw_layout: wgpu::BindGroupLayout,
     draw: HashMap<(ParticleBlend, u32, DrawKind), wgpu::RenderPipeline>,
-    draw_module: wgpu::ShaderModule,
+    draw_module: crate::deferred::Module,
     draw_pl: wgpu::PipelineLayout,
     emitter_buffer: wgpu::Buffer,
     pub view_buffer: wgpu::Buffer,
@@ -424,6 +426,12 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
 }
 
 impl ParticleRenderer {
+    /// Makes one compute pipeline not yet made; false when all are
+    /// ([`crate::Renderer::warm`]).
+    pub(crate) fn warm(&self) -> bool {
+        crate::deferred::warm_one(&[&self.sim, &self.sprites_pipeline])
+    }
+
     /// Carries every system across a move of the render origin (`origin.rs`;
     /// `d`, the old origin minus the new, is added to what is in world
     /// space): their last emitter transforms now, their world-space
@@ -461,26 +469,29 @@ impl ParticleRenderer {
             ],
         });
         let sim = {
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("particle sim"),
-                source: wgpu::ShaderSource::Wgsl(sim_source().into()),
-            });
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("particle sim"),
-                bind_group_layouts: &[Some(&sim_layout)],
-                immediate_size: 0,
-            });
-            let pipeline = |entry: &str| {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            let (device, sim_layout) = (device.clone(), sim_layout.clone());
+            Deferred::new(move || {
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("particle sim"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
-            };
-            (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
+                    source: wgpu::ShaderSource::Wgsl(sim_source().into()),
+                });
+                let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("particle sim"),
+                    bind_group_layouts: &[Some(&sim_layout)],
+                    immediate_size: 0,
+                });
+                let pipeline = |entry: &str| {
+                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("particle sim"),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    })
+                };
+                (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
+            })
         };
         let sprites_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle sprites"),
@@ -491,23 +502,28 @@ impl ParticleRenderer {
                 storage_entry(3, false),
             ],
         });
-        let sprites_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("particle sprites"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let sprites_pipeline = {
+            let (device, sprites_layout) = (device.clone(), sprites_layout.clone());
+            Deferred::new(move || {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some("particle sprites"),
-                    bind_group_layouts: &[Some(&sprites_layout)],
-                    immediate_size: 0,
-                }),
-            ),
-            module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("particle sprites"),
-                source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
-            }),
-            entry_point: Some("expand"),
-            compilation_options: Default::default(),
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+                    layout: Some(
+                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("particle sprites"),
+                            bind_group_layouts: &[Some(&sprites_layout)],
+                            immediate_size: 0,
+                        }),
+                    ),
+                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("particle sprites"),
+                        source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
+                    }),
+                    entry_point: Some("expand"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
         let sprites_params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("particle sprites"),
             size: SPRITE_PARAMS_STRIDE * 16,
@@ -523,10 +539,7 @@ impl ParticleRenderer {
                 depth_entry(3, wgpu::ShaderStages::FRAGMENT),
             ],
         });
-        let draw_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("particles"),
-            source: wgpu::ShaderSource::Wgsl(draw_source(frame_wgsl).into()),
-        });
+        let draw_module = crate::deferred::module(device, "particles", draw_source(frame_wgsl));
         let draw_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("particles"),
             bind_group_layouts: &[Some(frame_layout), Some(sprite_layout), Some(&draw_layout)],
@@ -1201,7 +1214,7 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,
     ) {
-        let (simulate, clear, shift) = &self.sim;
+        let (simulate, clear, shift) = &*self.sim;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("particle sim"),
             timestamp_writes: None,

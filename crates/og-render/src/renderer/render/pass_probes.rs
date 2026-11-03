@@ -237,29 +237,10 @@ impl Renderer {
                         .forget_lifetime()
                 };
                 let mut pass = begin(encoder, true);
-                pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
                 pass.set_bind_group(0, &face_groups[k], &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 let list = &probe_lists[k];
-                draw_list(
-                    &mut pass,
-                    list,
-                    true,
-                    &mut Some((
-                        Side::Front,
-                        false,
-                        false,
-                        None,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                    )),
-                    None,
-                    None,
-                    Some(fx_group),
-                );
+                draw_list(&mut pass, list, true, &mut None, None, None, Some(fx_group));
                 stats.draw_calls += list.ranges.len() as u32;
                 stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
                 // Skinned meshes in their pose, terrain and

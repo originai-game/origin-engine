@@ -226,24 +226,13 @@ impl Renderer {
                 .forget_lifetime()
         };
         let mut pass = begin(encoder, true);
-        pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
         pass.set_bind_group(0, frame_bind_group, &[]);
         pass.set_bind_group(2, fx_group, &[]);
         draw_list(
             &mut pass,
             main_list,
             true,
-            &mut Some((
-                Side::Front,
-                false,
-                false,
-                None,
-                false,
-                false,
-                false,
-                false,
-                false,
-            )),
+            &mut None,
             physical_fx,
             probe_binding,
             Some(fx_group),

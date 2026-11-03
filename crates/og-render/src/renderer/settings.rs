@@ -157,21 +157,9 @@ impl Renderer {
     }
 
     /// Forgets the lit pipelines, which batches make again as they need
-    /// them, at the current samples; the plain
-    /// one, which some passes take without a batch, is made now.
+    /// them, at the current samples.
     fn forget_lit_pipelines(&mut self) {
         self.pbr_pipelines.clear();
-        let key = (Side::Front, false, false, false);
-        self.pbr_pipelines.insert(
-            key,
-            pbr_pipeline(
-                &self.device,
-                (&self.pbr_layout, &self.pbr_skinned_layout),
-                &self.pbr_shader,
-                key,
-                self.samples,
-            ),
-        );
         self.lean_pipelines.clear();
         self.cache.hook_pipelines.clear();
         self.cache.physical_hook_pipelines.clear();

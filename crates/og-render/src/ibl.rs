@@ -15,6 +15,7 @@
 
 use crate::HDR_FORMAT;
 use crate::atmosphere::SkyLook;
+use crate::deferred::Deferred;
 use glam::Vec3;
 
 pub const SKY_SIZE: u32 = 256;
@@ -140,7 +141,8 @@ struct Pass {
 
 /// The IBL generator: made once, regenerates for every new sky.
 pub struct IblGenerator {
-    pipelines: Vec<wgpu::RenderPipeline>,
+    /// Made on first use ([`IblGenerator::warm`]).
+    pipelines: Vec<Deferred<wgpu::RenderPipeline>>,
     layout: wgpu::BindGroupLayout,
     /// The sky mips' level count (the downsample passes follow the sky's).
     sky_mips: u32,
@@ -156,6 +158,12 @@ pub struct IblGenerator {
 }
 
 impl IblGenerator {
+    /// Makes one pipeline not yet made; false when all are
+    /// ([`crate::Renderer::warm`]).
+    pub(crate) fn warm(&self) -> bool {
+        self.pipelines.iter().any(crate::deferred::Warm::warm)
+    }
+
     /// GPU bytes of its cubes.
     pub(crate) fn bytes(&self) -> u64 {
         self._textures
@@ -167,10 +175,9 @@ impl IblGenerator {
 
 impl IblGenerator {
     pub fn new(device: &wgpu::Device) -> IblGenerator {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ibl"),
-            source: wgpu::ShaderSource::Wgsl(ibl_source().into()),
-        });
+        // Parsed when its first pipeline is made: each pipeline is made
+        // on first use, so a frame compiles only the passes it runs.
+        let shader = crate::deferred::module(device, "ibl", ibl_source());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ibl sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -243,31 +250,35 @@ impl IblGenerator {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let make_pipeline = |entry: &str| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(entry),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: HDR_FORMAT,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
+        let make_pipeline = |entry: &'static str| {
+            let (device, pipeline_layout, shader) =
+                (device.clone(), pipeline_layout.clone(), shader.clone());
+            Deferred::new(move || {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(entry),
+                    layout: Some(&pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &shader,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: wgpu::PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &shader,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
             })
         };
         const SKY: usize = 0;

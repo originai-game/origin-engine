@@ -16,7 +16,9 @@ impl Renderer {
 
     /// Makes one pipeline no frame has drawn with yet, the likeliest to be
     /// drawn soon first (the sprites and the overlay, the post passes, then
-    /// sky, ribbons, 2D lights, glass, water, terrain, metaballs, fluids);
+    /// sky, the environment's light, the plain lit and shadow pipelines,
+    /// ribbons, particles, 2D lights, glass, water, terrain, metaballs,
+    /// fluids);
     /// false when every pipeline is made. The renderer makes a pipeline when
     /// a pass first sets it (deferred.rs), so a frame compiles only what it
     /// draws; a host with idle time (the web page behind its play gate)
@@ -33,16 +35,14 @@ impl Renderer {
             &self.sprite_glow_pipeline,
         ]) || self.overlay.warm()
             || self.post.warm()
-            || deferred::warm_one(&[
-                &self.sky_pipeline,
-                &self.sky_look_pipeline,
-                &self.ribbon_pipelines[0],
-                &self.ribbon_pipelines[1],
-            ])
-            || self
-                .gpu_trails
-                .as_ref()
-                .is_some_and(|g| deferred::warm_one(&[&g.pipelines[0], &g.pipelines[1]]))
+            || deferred::warm_one(&[&self.sky_pipeline, &self.sky_look_pipeline])
+            || self.ibl.warm()
+            || self.warm_plain_lit()
+            || deferred::warm_one(&[&self.ribbon_pipelines[0], &self.ribbon_pipelines[1]])
+            || self.gpu_trails.as_ref().is_some_and(|g| {
+                deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
+            })
+            || self.particles.warm()
             || self.lights_2d.warm()
             || self.glass.warm()
             || (WORLD_3D && self.water.warm())
@@ -50,6 +50,38 @@ impl Renderer {
             || self.metaballs.warm()
             || (WORLD_3D && self.fluid3d.warm())
             || self.lines.warm()
+    }
+
+    /// The plain material's lit and shadow pipelines (front faces, opaque),
+    /// which batches otherwise make when one first draws; true when this
+    /// call made one.
+    fn warm_plain_lit(&mut self) -> bool {
+        let key = (Side::Front, false, false, false);
+        if !self.pbr_pipelines.contains_key(&key) {
+            let p = pbr_pipeline(
+                &self.device,
+                (&self.pbr_layout, &self.pbr_skinned_layout),
+                &self.pbr_shader,
+                key,
+                self.samples,
+            );
+            self.pbr_pipelines.insert(key, p);
+            return true;
+        }
+        let key = (Side::Front, false, false);
+        if !self.shadow_pipelines.contains_key(&key) {
+            let p = shadow_pipeline(
+                &self.device,
+                &self.shadow_layouts,
+                &self.shadow_shader,
+                key,
+                false,
+                false,
+            );
+            self.shadow_pipelines.insert(key, p);
+            return true;
+        }
+        false
     }
 
     /// Natively: waits for the GPU culling counts of the frame `stats` came

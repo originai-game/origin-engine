@@ -117,7 +117,6 @@ impl Renderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&self.pbr_pipelines[&(Side::Front, false, false, false)]);
         pass.set_bind_group(0, &reflection_frame_group[k], &[]);
         pass.set_bind_group(2, &reflection_fx_group[k], &[]);
         let list = &reflection_list[k];
@@ -125,17 +124,7 @@ impl Renderer {
             &mut pass,
             list,
             true,
-            &mut Some((
-                Side::Front,
-                false,
-                false,
-                None,
-                false,
-                false,
-                false,
-                false,
-                false,
-            )),
+            &mut None,
             None,
             None,
             Some(&reflection_fx_group[k]),

@@ -389,13 +389,15 @@ pub struct Renderer {
     shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
     pbr_skinned_layout: wgpu::PipelineLayout,
-    pbr_shader: wgpu::ShaderModule,
+    /// Parsed when the first lit pipeline is made (deferred.rs).
+    pbr_shader: deferred::Module,
     /// Shadow layouts: plain, with the material (dissolve), skinned.
     shadow_layouts: [wgpu::PipelineLayout; 3],
     /// The shadow pass's slot (group 0 of every caster's pipeline).
     shadow_bind_layout: wgpu::BindGroupLayout,
-    shadow_shader: wgpu::ShaderModule,
-    /// Lit pipelines; front opaque made up front.
+    shadow_shader: deferred::Module,
+    /// Lit pipelines, each made when a batch first needs it (or by
+    /// [`Renderer::warm`]).
     pbr_pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,
     shadow_pipelines: HashMap<ShadowKey, wgpu::RenderPipeline>,
     /// Prepass pipelines by (side, skinned).

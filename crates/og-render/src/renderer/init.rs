@@ -498,21 +498,23 @@ impl Renderer {
         });
 
         // Pipelines.
-        let pbr_shader = shader(
+        // Parsed when the first pipeline that uses them is made
+        // (deferred.rs): a frame compiles only what it draws.
+        let pbr_shader = deferred::module(
             &device,
             "pbr",
             lit_source_with(&hooks::default_hooks(), planar),
         );
-        // Parsed when the first pipeline that uses it is made (deferred.rs).
         let sky_shader = deferred::module(&device, "sky", sky_source());
-        let sprite_shader = shader(
+        let sprite_shader = deferred::module(
             &device,
             "sprite",
             format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
         );
         let ribbon_shader =
             deferred::module(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
-        let shadow_shader = shader(&device, "shadow", shadow_source(&hooks::default_hooks()));
+        let shadow_shader =
+            deferred::module(&device, "shadow", shadow_source(&hooks::default_hooks()));
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -541,24 +543,6 @@ impl Renderer {
                 &[&shadow_bind_layout, &material_layout, &palette_layout],
             ),
         ];
-        let mut pbr_pipelines = HashMap::new();
-        let key = (Side::Front, false, false, false);
-        pbr_pipelines.insert(
-            key,
-            pbr_pipeline(
-                &device,
-                (&pbr_layout, &pbr_skinned_layout),
-                &pbr_shader,
-                key,
-                samples,
-            ),
-        );
-        let mut shadow_pipelines = HashMap::new();
-        let key = (Side::Front, false, false);
-        shadow_pipelines.insert(
-            key,
-            shadow_pipeline(&device, &shadow_layouts, &shadow_shader, key, false, false),
-        );
         // At the far plane, after the opaque batches: only uncovered pixels pass.
         let sky_state = |fs: &'static str| {
             deferred_hdr(
@@ -971,8 +955,8 @@ impl Renderer {
             shadow_layouts,
             shadow_bind_layout,
             shadow_shader,
-            pbr_pipelines,
-            shadow_pipelines,
+            pbr_pipelines: HashMap::new(),
+            shadow_pipelines: HashMap::new(),
             prepass_pipelines: HashMap::new(),
             lean_pipelines: HashMap::new(),
             lean_prepass_pipelines: HashMap::new(),
