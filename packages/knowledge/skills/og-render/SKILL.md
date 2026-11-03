@@ -346,9 +346,10 @@ render sprite 12
   costs GPU time where the scene draws AO, SSR or volumetric fog (about
   twice each). The device caps two fields, which keep the row's value:
   `RenderCapabilities.maxShadowedLights` and `maxMsaaSamples` (1 where
-  the antialiasing resolved to TAA, FXAA or off, so 4 draws one sample). The settings screen applies the
-  player's pick when given the world (`og.ui.settingsScreen(id, { world,
-  settings, ... })`); apply a saved preset yourself at start:
+  the antialiasing resolved to TAA, FXAA or off, so 4 draws one sample). A settings page
+  (`og.ui.settingsTree`) offers the presets and the game applies the
+  player's pick with `og.render.applyQuality`; apply a saved preset
+  yourself at start:
 
   ```ts
   start(world) { og.render.applyQuality(world, save.settings.quality ?? "medium"); }
@@ -396,10 +397,10 @@ render sprite 12
     switch: show it fixed), `fullscreen` and the `powerPreference` the page
     loaded with.
 
-  The player's graphics page is the ui-kit settings screen with
-  `GameSettings.display` set (og-ui): keep `display().settings` in the
-  game's settings (`og.platform.saveSettings`) and pass them back to
-  `setDisplay` at start; they are never in the world.
+  The player's graphics page is a `og.ui.settingsTree` page over
+  `display().settings` (og-ui §2), confirmed by its countdown: keep
+  `display().settings` in the game's settings (`og.platform.saveSettings`)
+  and pass them back to `setDisplay` at start; they are never in the world.
 
   ```ts
   og.render.setDisplay(world, { frameCap: "fps30", autoQuality: false, renderScale: 0.8 });

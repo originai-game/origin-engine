@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# tests/web/a11y.ts's game: a settings dialog (Audio and Graphics tabs, a
+# Master slider, switches, Done) and a pause dialog, opened by `show`.
+name "A11y"
+id "a11y"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1

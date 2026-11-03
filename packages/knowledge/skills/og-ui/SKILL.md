@@ -1,6 +1,6 @@
 ---
 name: og-ui
-description: Game screens and HUDs on Origin Engine with og.ui — which screen template to pick (title, pause, settings, five HUDs, cutscene, shop, inventory, level select, results, leaderboard, tutorial, loading, dialogs, toasts), how to feed it data and read what it answers, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: UI styles (a look's `ui` line, the six built-ins, the game's own) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds, and proving a UI with og ui preview and og ui check. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
+description: Game screens and HUDs on Origin Engine with og.ui — which screen document to eject (title, main menu, pause, settings, results, leaderboard, loading, tutorial …), the HUD components and genre patterns that fill it, dialogs and toasts, how to feed them data and read what they answer, the widget set beneath, focus for keyboard and gamepad, accessibility (the screen-reader mirror), phones, touch gestures and the safe area, text (fields, text areas, selection and the clipboard, input methods, ellipsis, kerning, shaping, font fallback), and the look: UI styles (a look's `ui` line, the six built-ins, the game's own) and how their frames tile, count-ups, bursts, shakes, screen transitions and UI sounds, and proving a UI with og ui preview and og ui check. Use when building or changing menus, HUDs or any UI in a project with a project.ogt.
 ---
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
@@ -11,25 +11,19 @@ reference is `og api show ui`; this skill is how to use it well.
 
 ## What works
 
-Two games written from this package alone (`examples/lantern-vale`,
-`examples/hollowbell`) used the main menu, pause, cutscene, shop and
-results templates (the results with a localised Best and New best) and a
-text field with input-method composition, and none needed wiring beyond
-its desc; a style copied into the game restyled every screen, and
-`og polish` measured taste 99 for both. The Kestrel Stair
-(`examples/kestrel-stair`) used the cutscene, tutorial overlay,
-inventory with drag and drop, level select, leaderboard with its honest
-states, settings, results and pause: each worked from its desc, the paper pack
-restyled them all, and every word they draw came from its string tables.
+Games written from this package alone (`examples/lantern-vale`,
+`examples/hollowbell`, `examples/kestrel-stair`) built title, pause,
+dialogue, shop, inventory, level select, leaderboard, settings and
+results screens, a style copied into the game restyled every one, and
+`og polish` measured taste 99. Every word came from their string tables.
 
 ## 1. The rule of the kit
 
-Every template and widget is **one call per tick, data in, answer out**:
+Every component and widget is **one call per tick, data in, answer out**:
 
 ```ts
-const r = og.ui.shopScreen("Shop", { balance: run.coins, items: SHOP, categories: ["Gear", "Items"] });
-if (r.bought !== null) { /* take the price, grant the item */ }
-if (r.closed) state.screen = "map";
+const r = og.ui.storeFront("Shop", { /* the offers, the wallet */ });
+if (r.chosen !== null) { /* take the price, grant the item */ }
 ```
 
 - Keep game state (open flags, the current line, the settings, slots) in a
@@ -39,52 +33,65 @@ if (r.closed) state.screen = "map";
   character of the widget's `maxChars` (`name: str(64)` for `maxChars: 16`),
   so the text always fits.
 - What only the UI needs between ticks (hover, focus, scroll, a menu being
-  open, the chosen tab of a template, animation progress, toasts) is UI state:
-  snapshots and replays carry it. A template that needs a number of its own
-  uses `og.ui.memory(id, initial)` / `og.ui.remember(id, value)`.
+  open, the chosen tab of a component, animation progress, toasts) is UI
+  state: snapshots and replays carry it. A component of the game's that
+  needs a number of its own uses `og.ui.memory(id, initial)` /
+  `og.ui.remember(id, value)`.
 - Call UI only inside a system, and read and write the state you pass it
-  through the archetype's column views (og-core §4;
-  `templates/ui-kit/src/main.ts` shows the pattern).
+  through the archetype's column views (og-core §4).
 
-## 2. Pick a template
+## 2. Screens: eject a document, fill its slots
 
-Screenshots of every template at desktop (1280×720) and on a phone in portrait
-(390×844 at 3×) are in the engine repository under `templates/ui-kit/screens/`;
-the full-size reference frames are `crates/og-ui/references/metal/kit-*.png`,
-and every style pack's screens on a phone `kit-style-<pack>-phone.png`.
+There is no fixed screen template with a field per word (docs/ui.md §11).
+A screen is a `type screen` document the game owns: copy one of the
+engine's 59 with `og ui eject <screen>` (into `assets/ui/<screen>.ogt`;
+`og ui eject --list` prints them by screen type) and edit it as the
+game's own file. Each says at its top its viewmodel (`props`), the events
+it emits and which og.ui component or pattern fills each slot. Its words
+are string keys with English fallbacks; `ui:push:<screen>:default`
+previews it with no code.
 
-| The game needs | Call | It answers |
+```ts
+og.load.document(world, "ui/pause.ogt");     // once
+og.ui.push(world, "pause", vm);              // onto the layer stack
+const r = og.ui.screen("pause", vm);         // each tick it is up
+for (const e of r.events) if (e.kind === "emit" && e.name === "settings") openSettings();
+if (og.ui.openSlot("pause/Side")) { og.ui.card(/* … */); og.ui.close(); }
+```
+
+| The game needs | Eject | Fill or answer with |
 |---|---|---|
-| A title screen | `og.ui.mainMenu(id, { title, subtitle, items, footer, instant })` (`instant` while it is the screen the game opens on: §6) | `selected`: the item id |
-| Pause | `og.ui.pauseMenu(id, { open, items })` (Resume, Settings, Quit by default) | `selected`; Back answers `resume` |
-| Settings | `og.ui.settingsScreen(id, { open, settings, languages, world, onChange, onSave })` (with `world`, a new graphics preset is applied: `og.render.applyQuality`) | the new `GameSettings`, `changed`, `closed` |
-| A platformer HUD | `og.ui.platformerHud(id, { lives, maxLives, coins, score, level, timeLeft, touch })` (what it is not given it does not draw: `maxLives: 0` no hearts, no `coins` or `score` no box for them; the words `pauseLabel`, `jumpLabel` from the string table, og-i18n §2) | `paused`, `moveX`, `action: "jump"` |
-| A shooter HUD | `og.ui.shooterHud(id, { health, armor, ammo, reserve, abilities, map, touch })` (the words `killsLabel`, `fireLabel`, `pauseLabel`) | `paused`, `action` (ability id, `fire`), stick |
-| A puzzle HUD | `og.ui.puzzleHud(id, { level, score, target, stars, moves, timeLeft })` (the words `movesLabel`, `targetLabel` with `{target}`, `pauseLabel`) | `paused` |
-| An idle or incremental HUD | `og.ui.idleHud(id, { currencies, generators })` (the words `tapLabel`, `levelLabel` with `{level}`, `rateLabel` with `{rate}`, `pauseLabel`) | `action: "tap"` or `"buy:<id>"` |
-| A racing HUD | `og.ui.racingHud(id, { speed, gear, lap, laps, position, racers, time, delta, best, splits, boost, map, touch })` (a time trial: `racers: 0` hides the place, `boostMeter: false` the meter, `delta` and `splits: [{ label, time, delta }]` show its sectors; the words `lapLabel`, `bestLabel`, `pauseLabel`, `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`, `unit` from the string table, og-i18n §2) | `paused`, steering, `held` |
-| Dialogue or a cutscene | `og.ui.cutscene(id, { open, lines, index })` | the next `index`, `finished`, `skipped` |
-| A shop | `og.ui.shopScreen(id, { balance, currency, items, categories })` | `bought`, `refused` (Buy pressed short of the price: it shook with the error sound), `closed` |
-| An inventory | `og.ui.inventoryScreen(id, { slots, items })` | `selected`, `moved` (drag and drop), `used`, `closed` |
-| Level select | `og.ui.levelSelect(id, { levels, backLabel, starsLabel, lockedLabel })` (a card is named for a screen reader by its level and `starsLabel`, "2 of 3 stars", a locked one by `lockedLabel`, "3, locked") | `chosen`; `closed` from its Back button, a tap on the scrim, Escape or B |
-| Results | `og.ui.resultsScreen(id, { open, score, best, newBest, stars, stats, shareText, onShare, scoreLabel, bestLabel, newBestLabel })` (the labels from the string table, og-i18n §2); a time trial passes `format: "time"` with the score and best in seconds: the headline counts up as m:ss.mmm (1:36.233) and the lower time is the best | `selected` (`retry`, `next`, `menu`, `share`) |
-| A leaderboard | `og.ui.leaderboardScreen(id, { scopes, entries, loading, error })` | `scope`, `changed`, `retry`, `closed` |
-| Onboarding | `og.ui.tutorialOverlay(id, { open, steps, index })` (each step names an element id) | the next `index`, `finished`, `skipped` |
-| Loading | `og.ui.loadingScreen(id, { title, progress, tips })` | nothing |
-| A yes/no question | `og.ui.confirmDialog(id, { open, title, message, confirmLabel, danger })` | `confirmed`, `cancelled` |
-| A notice | `og.ui.alertDialog(id, { open, title, message })` | true when dismissed |
-| A short message | `og.ui.toast(world, text, { tone })` (anywhere: systems, commands) | its id |
+| Splash, title, main menu, mode select | `splash`, `title`, `main-menu`, `mode-select` | its events (`continue`, `newGame`, `settings`, `quit` …) |
+| Pause | `pause` | its events (`resume`, also Back; `settings`, `quitToMenu`, `quit`, asked with `og.ui.confirm`) |
+| Settings | `settings` | `og.ui.settingsTree(world, id, { pages, page, pending }, custom)`: pages of typed entries, Apply, Revert, the display countdown; the game applies a graphics preset with `og.render.applyQuality` or `og.render.setDisplay` |
+| Results, game over | `results`, `game-over` | its events (`continue`, `again`, `revive`, `retry` …); `og.ui.chart`, `og.ui.scoreboard`, `og.ui.numberCounter` in its slots |
+| A leaderboard | `leaderboard` | `og.ui.table` with its loading, empty and error states |
+| Loading | `loading` | its viewmodel's real progress (a spinner when unknown); `nextTip`, `continue` |
+| Onboarding | `tutorial` | `next`, `skip`; its Highlight slot (`og.ui.shapeBox`, `og.ui.effectLayer`) or `og.ui.spotlight` around the target |
+| Dialogue, a cutscene | `dialogue`, `backlog` | `og.ui.conversation`, `og.ui.backlog` |
+| A shop, an inventory | `store`, `vendor`, `inventory`, `stash` | `og.ui.storeFront`, `og.ui.inventoryGrid` (drag and drop, multi-cell items) |
+| Level select | `saga-map` | `og.ui.sagaMap` (`picked`, `refused` for a locked level) |
+| A yes/no question, a notice | none | `og.ui.confirm(id, open, { title, message, confirmLabel, danger })`, `og.ui.dialog(id, open, { title, message, actions }, build)` |
+| A short message | none | `og.ui.toast(world, text, { tone })` (anywhere: systems, commands) |
 
-Compose them: a HUD with `pauseMenu` over it, `settingsScreen` opened from
-pause, `confirmDialog` over settings. Dialogs stack and the topmost owns focus.
+A HUD is the HUD components in `og.ui.anchor` groups (or their own
+`anchor`): `statBar` (hearts as pips, health, boost), `ammoCounter`,
+`abilityBar`, `hudTimer`, `comboCounter`, `resourceBar` (currencies and
+rates), `scorebug`, `speedometer`, `lapTimer`, `standingsTower`,
+`minimapView`, `compass`, `objectiveTracker`, `killfeed` (`og api find
+hud` lists them); an idle game adds `og.ui.idleGenerator`, a puzzle
+`og.ui.starBar` and `og.ui.goalChips`. Every pattern is in
+`og api show ui` beside its screen document.
 
-Honest data: `loadingScreen` shows a spinner when progress is unknown, never a
-bar that runs ahead; `leaderboardScreen` shows skeletons while loading, the
-error with Retry, and its empty text; never invent scores or counts.
+Compose them: a HUD with the pause screen pushed over it, settings pushed
+from pause, a confirm over settings. Layers stack and the topmost owns
+focus. Honest data: a spinner when progress is unknown, never a bar that
+runs ahead; skeletons while a board loads, the error with Retry, its
+empty text; never invent scores or counts.
 
 ### Components: containers, navigation and data
 
-Between the templates and the raw widgets sit the components (one call
+Between the screen documents and the raw widgets sit the components (one call
 per tick, data in, what happened out; keep what they answer and pass it
 back). Each takes pointer, touch, keys and pads, mirrors under a
 right-to-left locale, says its role to a screen reader and plays the
@@ -150,7 +157,7 @@ is adjustable (mirrored right to left), and a style dresses the parts
 `fields` and `bindings` screens (`demo:keyboard:<letters|kana|numeric|none>`,
 `demo:device:<keyboardMouse|xbox|playstation|switch>` pick a state).
 
-## 3. Below the templates: the widget set
+## 3. Below the components: the widget set
 
 Layout (`row`, `column`, `panel`, `scroll`, `anchor`), text and controls
 (`label`, `button`, `toggle`, `slider`, `textField`, `textArea`, `checkbox`,
@@ -201,7 +208,7 @@ Mixed styles in one paragraph are `richText(id, markup)`: `[b]`,
 `[color=danger]` (a token, or `#rrggbb`), `[size=lg]`, `[font=mono]`,
 `[icon=coin]`, `[link=shop]…[/link]` and the per-glyph `[wave]`, `[shake]`,
 `[pulse]`. Write the markup in the string table, not in code, so each
-translation places its own emphasis (`confirmDialog` and `alertDialog`
+translation places its own emphasis (`confirm` and `dialog`
 messages are markup). A link is a child element (`Hint/shop`, kind `link`)
 that keys, pads and touch reach like a button; the result's `link` names
 the one clicked. A typo in a tag stays visible as text and warns.
@@ -241,7 +248,7 @@ grid (`icons: { texture, columns, rows, names }`) still works for painted
 icons. Icons sit in `inkMuted` or `inkFaint` (icons stay neutral; colour
 is for state). Sets name their icons differently (iconoir's `coins` and
 `fire-flame`, the style grids' `coin` and `fire`): an unknown name draws an
-empty slot and warns, so a template that may meet either asks
+empty slot and warns, so a component that may meet either asks
 `og.ui.hasIcon(name)` first and draws its fallback, or names an icon twice
 in its set (`icon "coin" "coins"`). A path's `stroke-linejoin` is kept
 (a miter stays sharp); a set whose SVGs leave it out says `join round` (or
@@ -304,14 +311,14 @@ is open `og.ui.back()` answers false even when asked before the dialog is
 built that tick, so a HUD drawn under pause or the settings never takes the
 Back that closes them (a locked dialog, which Back does not close, lets it
 through). A gameplay HUD whose keys
-move the player calls `og.ui.setNavigation(false)` (the HUD templates do);
+move the player calls `og.ui.setNavigation(false)`;
 dialogs turn navigation back on while open. What opens takes the focus:
-a dialog (every modal template: pause, settings, shop, results, confirm)
+a dialog (every modal screen: pause, settings, shop, results, confirm)
 its first control, a dialogue box or cutscene the box, without a Tab first.
 An entering panel is inert until its entrance finishes: Enter, Space, A
 and pointer presses during that motion are ignored, not buffered. Its
 controls answer once the panel arrives, even if their stagger continues.
-Use `instant: true` on a `mainMenu` or `anchor` to skip its entrance when
+Use `instant: true` on an `anchor` or `transition` to skip its entrance when
 immediate input is needed (for example under a screen wipe, §6).
 The UI reads pad 0 from
 `og.Gamepad` itself (d-pad, A, B, the left stick); for a custom binding,
@@ -345,9 +352,9 @@ They also keep out of the host's own control over the canvas: on a
 published page the web shell's round Back to the Portal sits top left
 (about 12, 12 to 52, 52 CSS px) and says where in
 `og.ui.frameViewport().covered`, so a group it would overlap moves along
-its edge past it (the racing HUD's place and lap to its right), or, in a
+its edge past it (a racing HUD's place and lap to its right), or, in a
 corner where that would land it on another group (a shooter's vitals on a
-phone), down past it. Every HUD template and any HUD built from
+phone), down past it. Every HUD built from
 `og.ui.anchor` groups gets this; a corner drawn another way (screen
 sprites, a row placed by hand) reads `covered` itself, so put a game's own
 HUD in anchored groups. Preview it
@@ -361,15 +368,13 @@ centred band no wider than `UiDesc.hudMaxAspect` (21/9 by default;
 `og.ui.configure(world, { hudMaxAspect: 16 / 9 })` for a tighter one, 0
 for the whole screen), so the vitals stay in the player's view; modals and
 world-space UI keep the whole screen, and nothing stretches. The band is
-`og.ui.viewport().hud`; a HUD placed by hand reads it. The settings
-template's Graphics tab is the PC graphics page when
-`GameSettings.display` holds `og.render.display(world).settings`
+`og.ui.viewport().hud`; a HUD placed by hand reads it. A PC graphics
+page is a `settingsTree` page over `og.render.display(world).settings`
 (preset, render scale, frame-rate limit, V-Sync, adaptive quality,
-battery saver, fullscreen, GPU with "Applies after a restart"), and its
-Controls tab sets the mouse's sensitivity on `SettingsDesc.lookAction`
-and Raw mouse input (`GameSettings.rawMouse`).
+battery saver, fullscreen, GPU with "Applies after a restart"), applied
+with `og.render.setDisplay` and confirmed by the tree's countdown.
 `og.ui.frameViewport().breakpoint` is `phonePortrait`, `phoneLandscape`,
-`tablet` or `desktop`; templates rearrange themselves by it (tabs become a
+`tablet` or `desktop`; components rearrange themselves by it (tabs become a
 select, side panels move under, touch controls appear when `touch` is set).
 Preview a phone headless with a game command that calls
 `og.ui.previewViewport(world, { width: 390, height: 844, dpr: 3, safeArea: { top: 47, bottom: 34, left: 0, right: 0 }, coarsePointer: true })`
@@ -641,7 +646,7 @@ controls, hover lift and press squash on springs (the `hoverSpring 1 350` and `p
 style's `motion` block: damping ratio and response in ms; below 1 bounces), eased progress bars, toasts flying in,
 a shake and the error sound on a press of a disabled button. Reduced motion
 keeps every shake still and turns the rest into fades. The screen the game
-opens on is built settled (`instant: true` on its `mainMenu`, `anchor` or
+opens on is built settled (`instant: true` on its `anchor` or
 `transition` while it is that screen): the web draws it behind the play
 gate, where an entrance would stand part-way until the tap (og-platform-sdk
 §3). How long and how
@@ -725,7 +730,7 @@ applies to Latin text only.
 
 ## 8. Proving it
 
-`templates/ui-kit` in the engine repository runs every template; its
+`templates/ui-kit` in the engine repository runs every component; its
 playtests show how to drive UI from a script: `move_to_text:=shop` then
 `touch_start`/`touch_end`, `key_down:Tab`/`key_up:Tab`, a game command that
 calls `og.ui.navigate`, `dump_ui` for bounds and texts, and frame comparison

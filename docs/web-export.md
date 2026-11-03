@@ -624,7 +624,7 @@ earlier build; a build that fails after replacing it removes what it wrote.
   harness's `reload.translatedBehindGate`). The frame is a still of the
   title a few ticks in, so an entrance still moving then stands part-way
   until the tap: a game builds the screen it opens on settled
-  (`og.ui.mainMenu`'s and `og.ui.anchor`'s `instant`, og-platform-sdk §3;
+  (`og.ui.anchor`'s and `og.ui.transition`'s `instant`, og-platform-sdk §3;
   the three dogfood games do). These are the game's own ticks,
   its answers applied as every answer is, host input a replay repeats; the
   gate's tap ends the settling. The first

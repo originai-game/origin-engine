@@ -481,7 +481,7 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
 /// keeps its antialiased edge nearly as light as the ground: the label
 /// then draws half the ink of its light twin (0.49 at `text-xs`) and a
 /// 14 px Play on the default style's primary reads pale grey though its
-/// ink is #111113 (mainMenu at 1280×720).
+/// ink is #111113 (the kit's old main menu at 1280×720).
 #[test]
 fn dark_small_text_on_light_keeps_its_weight() {
     let dark = Srgba::rgb(0x11, 0x11, 0x13);

@@ -1236,20 +1236,15 @@ between ticks; `frameTheme`, `frameViewport`, `breakpoint`, `hasIcon`,
 `seconds`, `tick` read the frame being built. The bindings are in
 `og_runtime::modules` (both hosts call them).
 
-**The UI kit** (`packages/engine/src/ui-kit`, merged into `og.ui`): screen
-templates written in TypeScript over those calls, each one call per tick with
-data in and what happened out, declared in the IDL as `host false`:
-`mainMenu`, `pauseMenu`, `settingsScreen` (Audio, Graphics, Controls,
-Language over `GameSettings`, `onChange`/`onSave` hooks), `platformerHud`,
-`shooterHud`, `puzzleHud`, `idleHud`, `racingHud` (with touch controls on
-phones and tablets), `cutscene`, `shopScreen`, `inventoryScreen` (drag and
-drop), `levelSelect`, `resultsScreen` (stars landing, the score counting up,
-a share hook), `leaderboardScreen` (loading, error and empty states),
-`tutorialOverlay` (spotlight and callout), `loadingScreen` (real progress or
-a spinner, tips), `confirmDialog`, `alertDialog`, and the toast service
-`og.ui.toast`. `templates/ui-kit` shows them all and is the reference source
-of `references/<tier>/kit-*.png`; `packages/knowledge/skills/og-ui` teaches a
-Maker which to pick and how to theme it.
+**The UI kit** (`packages/engine/src/ui-kit`, merged into `og.ui`): the
+small widgets written in TypeScript over those calls and the toast service
+`og.ui.toast`. Whole screens are not templates: a game ejects a screen
+document (`og ui eject <screen>`, `packages/engine/src/ui/screens/`) and fills
+its slots with components and patterns (docs/ui.md §11). `templates/ui-kit`
+shows the components, the patterns and the genre showcases, and is the
+reference source of `references/<tier>/kit-*.png`;
+`packages/knowledge/skills/og-ui` teaches a Maker which to pick and how to
+theme it.
 
 **The component library** (`packages/engine/src/ui/containers` and
 `ui/data`, merged into `og.ui`, docs/ui.md §11): `host false` components

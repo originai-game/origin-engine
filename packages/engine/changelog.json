@@ -40,6 +40,36 @@
           "og_node_attach_offscreen",
           "INFO no renderer"
         ]
+      },
+      {
+        "member": "og.ui.mainMenu, pauseMenu, settingsScreen, platformerHud, shooterHud, puzzleHud, idleHud, racingHud, cutscene, shopScreen, inventoryScreen, levelSelect, resultsScreen, leaderboardScreen, tutorialOverlay, loadingScreen, confirmDialog and alertDialog",
+        "change": "The fixed screen templates with a field per word are removed (docs/ui.md §11, roadmap U8), with the types only they used (MainMenuDesc, PauseMenuDesc, MenuItem, MenuResult, GameSettings, KeyBinding, LanguageOption, SettingsDesc, SettingsResult, the five HUD descs and HudResult, Ability, Currency, Generator, RaceSplit, DialogueLine, CutsceneDesc and CutsceneResult, ShopItem, ShopDesc, ShopResult, InventoryItem, InventoryDesc, SlotMove, InventoryResult, LevelInfo, LevelSelectDesc, LevelSelectResult, StatRow, ScoreFormat, ResultsDesc, Reward, LeaderboardEntry, LeaderboardDesc, LeaderboardResult, TutorialStep, TutorialDesc, TutorialResult, LoadingDesc, ConfirmDesc, AlertDesc, and the UiAction and SettingsChanged callbacks). ConfirmResult stays: og.ui.confirm answers it. A game builds its screens from screen documents it owns and the components that fill their slots. The engine is pre-release, so nothing migrates.",
+        "fix": "Eject the screen document and fill its slots (og ui eject <screen> writes assets/ui/<screen>.ogt; og.load.document, og.ui.push, og.ui.screen, og.ui.openSlot): mainMenu → main-menu (or title); pauseMenu → pause; settingsScreen → settings, whose slot takes og.ui.settingsTree (the game applies a preset with og.render.applyQuality or og.render.setDisplay and keeps its own settings type); resultsScreen → results (or game-over); leaderboardScreen → leaderboard with og.ui.table; tutorialOverlay → tutorial (og.ui.spotlight); loadingScreen → loading; cutscene → dialogue with og.ui.conversation; shopScreen → store or vendor with og.ui.storeFront; inventoryScreen → inventory with og.ui.inventoryGrid; levelSelect → saga-map with og.ui.sagaMap. The HUDs are the HUD components in og.ui.anchor groups or at their own anchor: platformerHud → og.ui.statBar (pips) and og.ui.resourceBar; shooterHud → og.ui.statBar, og.ui.ammoCounter, og.ui.abilityBar, og.ui.minimapView; puzzleHud → og.ui.starBar, og.ui.goalChips, og.ui.hudTimer; idleHud → og.ui.resourceBar and og.ui.idleGenerator; racingHud → og.ui.speedometer, og.ui.lapTimer, og.ui.standingsTower. confirmDialog → og.ui.confirm(id, open, { title, message, confirmLabel, danger }); alertDialog → og.ui.dialog(id, open, { title, message, actions }, build).",
+        "find": [
+          "og.ui.mainMenu(",
+          "og.ui.pauseMenu(",
+          "og.ui.settingsScreen(",
+          "og.ui.platformerHud(",
+          "og.ui.shooterHud(",
+          "og.ui.puzzleHud(",
+          "og.ui.idleHud(",
+          "og.ui.racingHud(",
+          "og.ui.cutscene(",
+          "og.ui.shopScreen(",
+          "og.ui.inventoryScreen(",
+          "og.ui.levelSelect(",
+          "og.ui.resultsScreen(",
+          "og.ui.leaderboardScreen(",
+          "og.ui.tutorialOverlay(",
+          "og.ui.loadingScreen(",
+          "og.ui.confirmDialog(",
+          "og.ui.alertDialog(",
+          "GameSettings",
+          "SettingsDesc",
+          "MainMenuDesc",
+          "HudResult",
+          "ResultsDesc"
+        ]
       }
     ],
     "added": [

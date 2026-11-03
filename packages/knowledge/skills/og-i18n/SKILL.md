@@ -79,43 +79,19 @@ string "results.time" "タイム {time}"
   (`{n, plural, other {コイン#枚}}`): the argument names stay the same in
   every locale, and `og cook` checks they do.
 - Numbers, times and prices go through arguments, not string building.
-- og.ui's templates have words of their own (Retry, Share, "Best 1,200",
-  "New best", Cancel, Settings, Buy, Skip, "1 of 3", a racing HUD's
-  "lap", "Best 1:36.233", Pause and Boost, the other HUDs' Jump, Fire,
-  "kills", "moves left", "Target 1,000", "Lv 3" and "+12/s"): each is a
-  field of
-  the template's desc with the English default, so a localised game passes
-  its table's: `ResultsDesc.bestLabel`, `newBestLabel`, `shareLabel`,
-  `actions`; `ConfirmDesc.confirmLabel`, `cancelLabel`; `SettingsDesc.title`,
-  `audioLabel`, `graphicsLabel`, `controlsLabel`, `languageLabel`,
-  `masterLabel`, `musicLabel`, `effectsLabel`, `muteLabel`, `qualityLabel`,
-  `lowLabel`, `mediumLabel`, `highLabel`, `fpsLabel`, `motionLabel`,
-  `contrastLabel`, `sensitivityLabel`, `invertLabel`, `vibrationLabel`,
-  `doneLabel`; `ShopDesc.title`, `currency`, `priceLabel`, `buyLabel`,
-  `shortLabel` (Buy while the balance is short: "Not enough"),
-  `ownedLabel`, `emptyLabel`; `InventoryDesc.title`, `useLabel`,
-  `hintLabel` (the detail panel with nothing selected), `countLabel`;
-  `LeaderboardDesc.title`, `empty`, `retryLabel` (under `error`, the
-  game's own message); `TutorialDesc.skipLabel`, `nextLabel`, `doneLabel`
-  (Next on the last step), `stepLabel`; `CutsceneDesc.skipLabel`;
-  `LevelSelectDesc.title`; `ResultsDesc.scoreLabel` (over the score:
-  "Total time"); `RacingHudDesc.lapLabel` (under the lap), `bestLabel`
-  ("Best {best}", the best lap as m:ss.mmm), `pauseLabel` (the pause
-  button's name), `boostLabel`, `brakeLabel`, `leftLabel`, `rightLabel`
-  (the touch pedals and arrows) and `unit`, and its `splits`' labels
-  (`S1`) are the game's; `PlatformerHudDesc.pauseLabel`, `jumpLabel`
-  (the touch Jump); `ShooterHudDesc.killsLabel` (after the count),
-  `fireLabel`, `pauseLabel`; `PuzzleHudDesc.movesLabel` (under the moves
-  left), `targetLabel` ("Target {target}"), `pauseLabel`;
-  `IdleHudDesc.tapLabel`, `levelLabel` ("Lv {level}", a generator's
-  badge), `rateLabel` ("+{rate}/s"), `pauseLabel`. Names, levels,
-  weapons, currencies and a map's label are the game's data, from its
-  table too. `bestLabel: og.i18n.t(world, "results.best")`
-  with `"Best {best}"` / `"最佳 {best}"` in the tables (the template fills
-  `{best}`, formatted); `stepLabel` the same with `"{step} of {count}"` /
-  `"第 {step} 步，共 {count} 步"`. templates/ui-kit passes every one of
-  these words from its five tables (`settings.*`, `shop.*`, `inventory.*`,
-  `leaderboard.*`, `tutorial.*`, `cutscene.*`, the HUDs' `hud.*`).
+- og.ui's screens and components have words of their own (Retry, Cancel,
+  Apply, Skip, "1 of 3"). A screen document's words are string keys with
+  an English fallback (`key "screen.inventory.title"`, `text
+  "Inventory"`), so a game's tables translate an ejected screen with no
+  code. A component's words are fields of its desc with the English
+  default, so a localised game passes its table's:
+  `ConfirmationDesc.confirmLabel`, `cancelLabel`;
+  `SettingsTreeDesc.applyLabel`, `revertLabel`, `defaultsLabel`,
+  `keepLabel`, `revertingLabel` ("Reverting in {n} s", the component
+  fills `{n}`) and each entry's name; the HUD components' labels. Names,
+  levels, weapons, currencies and a map's label are the game's data, from
+  its table too: `og.i18n.t(world, "results.best")` with `"Best {best}"` /
+  `"最佳 {best}"` in the tables.
 - Emphasis inside a sentence is rich-text markup in the message itself
   (`"Your progress in slot [b]{slot}[/b] will be lost."`, shown with
   `og.ui.richText`): each translation bolds or colours its own words, in
@@ -126,14 +102,9 @@ string "results.time" "タイム {time}"
 
 - What a screen reader hears is words too, and the same rule holds: a
   group or a picture the kit names for a reader takes its name from the
-  desc, with the English default. `LevelSelectDesc.backLabel` (its Back
-  button), `starsLabel` (`"{stars} of {max} stars"`, a card's stars and
-  the total's: `"{stars} de {max} estrellas"`), `lockedLabel` (`"{name},
-  locked"`, a locked card); `SettingsDesc.sectionLabel` (the tab row, the
-  select on a phone: "Section") and `languagesLabel` (the language list:
-  "Languages"), and `qualityLabel` names the presets as well as heading
-  them. Below the templates, `TabsDesc`, `RadioDesc` and `SelectDesc`
-  take a `label` (else the reader hears the id) and `IconDesc` and
+  desc, with the English default (`SettingsTreeDesc.changedLabel`, said
+  of a changed entry). Below the components, `TabsDesc`, `RadioDesc` and
+  `SelectDesc` take a `label` (else the reader hears the id) and `IconDesc` and
   `ImageDesc` a `label` (else an icon is its atlas name, `star`; `""` is
   decoration): og-ui §4.
 - Latin and Cyrillic: the style's font. Every other script: a subset of a

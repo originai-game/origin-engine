@@ -133,10 +133,9 @@ the ad button or Share only where it is true.
   its controls' stagger (about half a second), a transition, a fade the
   game plays itself. Build the screen the game opens on settled while it
   is that screen, and let every later screen enter as usual:
-  `og.ui.mainMenu("Title", { ..., instant: !g.leftTitle })` with
-  `g.leftTitle` set once the shown screen is another (examples/kestrel-stair
-  `src/ui.ts`); `og.ui.anchor` and `og.ui.transition` take the same
-  `instant`. A game's own intro on the title (a fade from black, a logo)
+  `og.ui.anchor("Title", { ..., instant: !g.leftTitle }, build)` with
+  `g.leftTitle` set once the shown screen is another; `og.ui.transition`
+  takes the same `instant`. A game's own intro on the title (a fade from black, a logo)
   starts complete on the first tick, or plays after the player's first
   press.
 - Settings are a pair: a game that calls `saveSettings` also calls
@@ -166,7 +165,7 @@ if (time.tick === 0) {
   if (answer !== null) {
     d.settingsRequest = 0;
     const saved = answer.ok ? (answer.data as { value?: unknown } | null)?.value : null;
-    if (saved && typeof saved === "object") takeSettings(world, d, saved as Partial<GameSettings>, true);  // volumes, language, contrast, motion
+    if (saved && typeof saved === "object") takeSettings(world, d, saved as Partial<Settings>, true);  // the game's Settings: volumes, language, contrast, motion
   }
 }
 ```

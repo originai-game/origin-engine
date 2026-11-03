@@ -468,7 +468,7 @@ module render {
   }
 
   enum GraphicsQuality {
-    doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three."
+    doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page (og.ui.settingsTree) offers the three."
     variant medium "The full frame: every quality field at its default."
     variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps."
     variant high "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
@@ -2356,7 +2356,7 @@ module render {
   }
 
   fn applyQuality {
-    doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. The settings screen calls it when the player picks a preset (SettingsDesc.world); a game applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
+    doc "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:"
     doc "| Field | low | medium | high |"
     doc "|---|---|---|---|"
     doc "| rectShadows | false | true | true |"
@@ -2393,7 +2393,7 @@ module render {
   }
 
   struct DisplaySettings {
-    doc "The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings, GameSettings.display), and og.render.setDisplay(world, saved) puts it back at the next start."
+    doc "The player's graphics settings, as a settings page shows them and og.render.setDisplay sets them: the graphics preset, the frame cap, battery saver, render scale and automatic quality, fullscreen and the GPU's power preference. Presentation only: none of it is in the world, so the world's hash, snapshots, saves and replays never see it, and a native run (`og run`, `og test`, reference captures) draws every frame at render scale 1 whatever it says (the preset is drawn there too, as RenderSettings' quality is). The game keeps them with the player's settings, not the world: og.render.display(world).settings is the whole object to save (og.platform.saveSettings), and og.render.setDisplay(world, saved) puts it back at the next start."
     doc "What the browser decides, a page reads from DisplayInfo: vsync is always on (a browser presents on the display's refresh and has no switch), fullscreen follows the page (Escape leaves it and turns the setting off), and a power preference applies at the next load (restartNeeded)."
     desc true
     field quality Option.GraphicsQuality "The player's graphics preset: its row of quality fields (og.render.applyQuality's table) is drawn in place of RenderSettings', which keep the game's values. Null draws the game's own RenderSettings quality."

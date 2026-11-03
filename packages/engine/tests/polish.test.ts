@@ -182,8 +182,8 @@ const Screen = defineSystem("Screen", { writes: [Ask] }, (_q, _t, world) => {
   og.ui.anchor("Thumbs", { anchor: "bottomLeft" }, () => og.ui.joystick("Stick", { size: 200 }));
   og.ui.anchor("Fire", { anchor: "bottomRight" }, () => og.ui.actionButton("Shoot", "Fire", { size: 160 }));
   og.ui.anchor("Note", { anchor: "center" }, () => og.ui.label("Faint", "Paused", { step: "body", color: { color: { r: 0.24, g: 0.24, b: 0.26 } } }));
-  if (ask.ok && ask.value.loading) og.ui.loadingScreen("Load", { title: "Loading" });
-  og.ui.confirmDialog("Quit", { open, title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
+  og.ui.modal("Load", ask.ok && ask.value.loading, { title: "Loading", locked: true }, () => og.ui.spinner("Spin", 0));
+  og.ui.confirm("Quit", open, { title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
 });
 export default og.game({
   tick: 60,
@@ -243,7 +243,7 @@ test("og polish reads a toast over a dialog at rest and leaves out one sliding o
     `import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
 const Shown = defineResource("Shown", { saved: u32(0) });
 const Screen = defineSystem("Screen", { writes: [Shown] }, () => {
-  og.ui.confirmDialog("Quit", { open: true, title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
+  og.ui.confirm("Quit", true, { title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
 });
 export default og.game({
   tick: 60,

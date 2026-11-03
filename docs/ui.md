@@ -743,14 +743,13 @@ A game shipped with a version 1 style keeps the screens it shipped with:
 an engine update may draw them better (antialiasing, contrast, a cleaner
 fill) but never changes what is on them or where. Its dialogs' titles take
 the ramp's xl in the body face, its ramp steps no tracking it did not set
-(the prototype ramp's), a grid's selected cell its `primary` underline, a
+(the prototype ramp's), a grid's selected cell its `primary` underline and a
 burst (`ui.burst`, a results screen's earned star) its drawn rays and sparks
-rather than particles, and
-the templates lay their screens out as they did for it (`UiTheme.styleVersion`
-1): no rows, rules, headings, coins or selection glows added since. A
-version 1 file's slider knobs and switches take the control radius; `og
-style upgrade` writes `screens 1`, so the upgraded style keeps all of this
-but draws them round, as games shipped once upgraded. A new style (`og style
+rather than particles (`UiTheme.styleVersion` 1); its screens are its own
+ejected documents (§11), so engine work never re-lays them out. A version 1
+file's slider knobs and switches take the control radius; `og style
+upgrade` writes `screens 1`, so the upgraded style keeps all of this but
+draws them round, as games shipped once upgraded. A new style (`og style
 new`, the packs) draws today's.
 
 ### 12.4 Sound and haptic sets

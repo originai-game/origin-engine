@@ -32,6 +32,21 @@ is one line here, written at the merge that changes
   answer's new `saved`). The probe gains `inspect`, `dump_inspector` and
   `Probe::entity_prefab` (docs/design.md §3.6). A publish build has none
   of it.
+- **Breaking: the fixed screen templates are removed (docs/ui.md §11).**
+  `og.ui.mainMenu`, `pauseMenu`, `settingsScreen`, the five HUDs
+  (`platformerHud`, `shooterHud`, `puzzleHud`, `idleHud`, `racingHud`),
+  `cutscene`, `shopScreen`, `inventoryScreen`, `levelSelect`,
+  `resultsScreen`, `leaderboardScreen`, `tutorialOverlay`,
+  `loadingScreen`, `confirmDialog` and `alertDialog` are gone with the
+  types only they used (`GameSettings`, `SettingsDesc`, `MainMenuDesc` …).
+  A game ejects the screen document (`og ui eject main-menu`, `pause`,
+  `settings`, `results`, `leaderboard`, `tutorial`, `loading`,
+  `dialogue`, `store`, `inventory`, `saga-map`) and fills its slots with
+  the components (`og.ui.settingsTree`, `conversation`, `storeFront`,
+  `inventoryGrid`, `sagaMap`, `table`); a HUD is the HUD components
+  (`statBar`, `ammoCounter`, `hudTimer`, `resourceBar`, `speedometer`,
+  `lapTimer` …); `og.ui.confirm` and `og.ui.dialog` replace the two
+  dialogs. `changelog.json` maps each one.
 - **Breaking: a refused GPU adapter fails the run.** A native `og run`,
   `og test`, `og render`, `og polish` or `og ui check` whose adapter
   request fails exits 2 with "no GPU adapter: <wgpu's error>; set

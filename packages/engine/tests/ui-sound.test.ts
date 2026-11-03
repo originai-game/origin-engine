@@ -1,7 +1,8 @@
 // UI sounds start in the tick of the input that caused them (og-runtime's
-// og.ui.sound runs before og.audio): `og run --audio` on the UI kit renders
-// the mix to a WAV, and each blip's first sample lies inside its input's
-// tick. The WAV holds every tick of the run, tick k (counting from 1) as
+// og.ui.sound runs before og.audio): `og run --audio` on a game of one
+// og.ui.button with hover and press sounds (written here, its blips made
+// here) renders the mix to a WAV, and each blip's first sample lies inside
+// its input's tick. The WAV holds every tick of the run, tick k (counting from 1) as
 // frames (k - 1)·800 .. k·800 at 48 kHz and 60 Hz; a `dump_pulse` beside an
 // input reports the ticks done before it, so the input is read by tick
 // T + 1, frames T·800 .. (T + 1)·800.
@@ -10,7 +11,7 @@
 // og.audio: frame (T + 1)·800, as before phase 2), the UI never queues it,
 // or the blip starts at a frame that depends on anything but the tick.
 import { expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -21,8 +22,61 @@ declare const Bun: {
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
-const kit = join(repo, "templates", "ui-kit");
 const work = join(repo, "target", "evidence", "ui-sound");
+const game = join(work, "game");
+
+const PROJECT = `type project
+version 1
+---
+name "UI sound"
+id "ui-sound"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+`;
+
+const MAIN = `import { og, defineSystem } from "@origingame/engine";
+
+const Menu = defineSystem("Menu", {}, () => {
+  og.ui.button("Play", "Play", { variant: "primary" });
+});
+
+export default og.game({
+  start(world) {
+    const sounds: Record<string, unknown> = {};
+    for (const e of ["hover", "press"]) {
+      const s = og.load.sound(world, \`audio/ui-\${e}.wav\`);
+      if (!s.ok) throw new Error(s.reason);
+      sounds[e] = s.value;
+    }
+    og.ui.configure(world, { sounds: sounds as never });
+  },
+  systems: [Menu],
+});
+`;
+
+/** A 40 ms blip: 16-bit mono PCM at 44.1 kHz, every sample loud. */
+function blip(hz: number): Uint8Array {
+  const n = Math.round(44100 * 0.04);
+  const out = new Uint8Array(44 + 2 * n);
+  const v = new DataView(out.buffer);
+  const tag = (at: number, s: string) => [...s].forEach((c, k) => v.setUint8(at + k, c.charCodeAt(0)));
+  tag(0, "RIFF");
+  v.setUint32(4, 36 + 2 * n, true);
+  tag(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 44100, true);
+  v.setUint32(28, 88200, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  tag(36, "data");
+  v.setUint32(40, 2 * n, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + 2 * i, Math.sin((2 * Math.PI * hz * i) / 44100) >= 0 ? 12000 : -12000, true);
+  return out;
+}
 
 /** The first frame of each sound after at least 400 silent frames. */
 function onsets(wav: Uint8Array): { rate: number; frames: number; at: number[] } {
@@ -40,9 +94,13 @@ function onsets(wav: Uint8Array): { rate: number; frames: number; at: number[] }
 
 test("a UI sound's first sample lies in the tick of its input", () => {
   rmSync(work, { recursive: true, force: true });
-  mkdirSync(work, { recursive: true });
+  mkdirSync(join(game, "src"), { recursive: true });
+  mkdirSync(join(game, "assets", "audio"), { recursive: true });
+  writeFileSync(join(game, "project.ogt"), PROJECT);
+  writeFileSync(join(game, "src", "main.ts"), MAIN);
+  writeFileSync(join(game, "assets", "audio", "ui-hover.wav"), blip(880));
+  writeFileSync(join(game, "assets", "audio", "ui-press.wav"), blip(440));
   const script = [
-    "0.5:show:mainMenu",
     // The pointer reaches Play (hover), then presses it (press).
     "1.5:move_to_text:=Play",
     "1.5:dump_pulse:hover.json",
@@ -52,7 +110,7 @@ test("a UI sound's first sample lies in the tick of its input", () => {
     "3.2:quit",
   ].join(";");
   const wav = join(work, "mix.wav");
-  const r = Bun.spawnSync([ogBin(), "run", kit, "--commands", script, "--audio", wav, "--out", work, "--json"], { cwd: repo, env: { ...process.env, OG_ENGINE_PACKAGE: pkg } });
+  const r = Bun.spawnSync([ogBin(), "run", game, "--no-check", "--commands", script, "--audio", wav, "--out", work, "--json"], { cwd: repo, env: { ...process.env, OG_ENGINE_PACKAGE: pkg } });
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(out + new TextDecoder().decode(r.stderr));
   const summary = JSON.parse(out.trim().split("\n").pop()!) as { ticks: number };

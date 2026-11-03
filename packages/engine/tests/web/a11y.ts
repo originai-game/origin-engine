@@ -1,7 +1,8 @@
 // The accessibility mirror in headless Chrome (src/web/a11y.ts): the dev
-// web export of templates/ui-kit on a 1280×720 canvas, driven one tick and
+// web export of tests/fixtures/a11y (a settings dialog and a pause dialog
+// built from og.ui's controls) on a 1280×720 canvas, driven one tick and
 // one render per `frame` call as reference.ts drives it, on its settings
-// screen. Checked:
+// dialog. Checked:
 //
 // - The DOM mirror is og.ui.a11y()'s tree: one element per node, in tree
 //   order, nested under its parent, each at its node's bounds over the
@@ -51,7 +52,7 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const project = join(repo, "templates", "ui-kit");
+const project = join(pkg, "tests", "fixtures", "a11y");
 const tier = "webgpu";
 const work = join(pkg, "dist", "test-a11y");
 const out = resolve(opt("--out") ?? join(work, "out"));
@@ -68,7 +69,7 @@ function check(ok: boolean, what: string, detail?: unknown) {
 }
 
 cookProject(project, repo);
-const dist = join(work, "ui-kit");
+const dist = join(work, "a11y");
 const built = await webBuild(project, join(project, "src", "main.ts"), dist, false, settingsOf(project));
 if (!built.ok) throw new Error(built.reason);
 const page = await Bun.build({ entrypoints: [join(here, "reference.page.ts")], target: "browser", format: "esm" });
@@ -236,7 +237,7 @@ try {
   // Reduced motion: the pause dialog fades in at its full size.
   const pauseWidth = async (reduce: boolean) => {
     await t.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: reduce ? "reduce" : "no-preference" }] });
-    await commands("0.02:show:mainMenu");
+    await commands("0.02:show:none");
     await frames(30);
     await commands("0.02:show:pause");
     await frames(3);

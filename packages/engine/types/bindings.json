@@ -25256,30 +25256,6 @@
       "returns": "Void"
     },
     {
-      "name": "UiAction",
-      "module": "ui",
-      "params": [
-        {
-          "name": "action",
-          "type": "String",
-          "optional": false
-        }
-      ],
-      "returns": "Void"
-    },
-    {
-      "name": "SettingsChanged",
-      "module": "ui",
-      "params": [
-        {
-          "name": "settings",
-          "type": "GameSettings",
-          "optional": true
-        }
-      ],
-      "returns": "Void"
-    },
-    {
       "name": "CommandHandler",
       "module": "commands",
       "params": [

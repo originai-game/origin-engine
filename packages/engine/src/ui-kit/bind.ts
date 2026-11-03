@@ -1,8 +1,8 @@
 // The game widget set's host calls (IDL module `ui`, crates/og-ui) and the
 // TypeScript sugar over them: anchor, transition, modal, list and grid take
-// a build callback and close what they open even when it throws. The screen
-// templates (./templates) are written against `kit`, which is og.ui with
-// these members added.
+// a build callback and close what they open even when it throws. The
+// components (../ui) are written against `kit`, which is og.ui with these
+// members added.
 
 import type * as Api from "@origingame/engine";
 import { boundHost, ui as base } from "../runtime.ts";

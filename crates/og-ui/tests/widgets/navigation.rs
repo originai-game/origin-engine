@@ -382,8 +382,8 @@ fn nested_dialogs_give_the_focus_back_to_what_opened_each() {
     assert_eq!(rig.ui.focus_path(0), "Open", "and then to the first opener");
 }
 
-/// A HUD under a pause dialog, as og.ui.racingHud draws: it asks
-/// `Ui::back` before the dialog is built this tick.
+/// A HUD under a pause dialog, as a game's HUD with its own pause button
+/// draws: it asks `Ui::back` before the dialog is built this tick.
 #[derive(Default)]
 struct Paused {
     open: bool,
