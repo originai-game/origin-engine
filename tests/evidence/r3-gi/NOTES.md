@@ -440,3 +440,22 @@ mirror, glossy and rough scenes now advance the tick each frame
 (`fx::tick_update`), as a running game does. The probe recaptures at
 ticks 8 to 40 and sees the lit volume. The room scene has no probe and
 is unchanged.
+
+## Art fix-forward: a mirror that is a mirror, contact AO that reads
+
+From the art director's read of the stills at b97666b39:
+1. `light-volume-mirror` showed the room as blobs. The probe was right,
+   but the "mirror" was roughness 0.3: it read the capture's prefiltered
+   level 1.2 of 4, a GGX blur. It is now 0.02 (level 0.08), and its probe
+   captures at 256² instead of 128². The ladder is mirror 0.02, glossy
+   0.4, rough 0.7.
+2. The GTAO didn't read. It darkened only the ambient light, and most of
+   this room's light is the lamp's. It now has radius 0.5, intensity 1,
+   and `direct` 0.3: fully occluded, a pixel keeps about 80 % of its lamp
+   light. Unoccluded walls are untouched.
+
+Frames to move: light-volume-room, -mirror, -glossy, -rough. The mirror
+should show the box's silhouette, the wall-ceiling lines and the near
+sphere crisply. Expect a short darkening at the box's base, under the
+near sphere and in the room's corners, with no grey halo on the open
+floor. The mirror test's two bands should keep red left and green right.

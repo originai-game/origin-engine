@@ -747,7 +747,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // The same with a chrome sphere in the middle, its reflection
         // relit by the probes.
         "light-volume-mirror" => |g, _| {
-            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.3));
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.02));
             g.frames = 48;
             // The clock runs, as in a game: the realtime probe captures
             // every 8 ticks, so it sees the light volume once it is lit

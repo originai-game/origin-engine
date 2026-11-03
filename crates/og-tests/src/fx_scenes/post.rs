@@ -309,6 +309,9 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         let mut probe =
             og_render::ReflectionProbe::new(2, Vec3::new(0.0, 1.9, 0.0), Vec3::new(6.0, 3.8, 6.0));
         probe.mode = og_render::ProbeMode::Realtime;
+        // 256² a face: the sphere, about 200 px across, shows the room
+        // at about its own pixels' sharpness.
+        probe.resolution = 256;
         probe.interval = 8;
         probe.blend_distance = 0.3;
         scene.reflection_probes.push(probe);
@@ -330,13 +333,15 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
     };
-    // Short-range and light: corners and contact darken, the open walls
-    // keep their bounce (the ambient light alone, not the lamp's).
+    // Short-range: corners and contact darken, the open walls (unoccluded)
+    // keep their bounce and their lamp light. Most of this room's light is
+    // the lamp's, so the occlusion reaches a little of it too (at most a
+    // fifth, where fully occluded), or the contact would not read.
     scene.post.ao = Some(AmbientOcclusion {
-        radius: 0.35,
-        intensity: 0.8,
+        radius: 0.5,
+        intensity: 1.0,
         method: AoMethod::Gtao,
-        direct: 0.0,
+        direct: 0.3,
         ..Default::default()
     });
     if realtime {
