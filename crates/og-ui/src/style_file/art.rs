@@ -456,12 +456,16 @@ pub struct Art {
     /// Sound handles by [`UiSound`] (0: silent).
     pub sounds: [u64; 6],
     /// A version 1 style: a game shipped with it keeps the screens it
-    /// drew (docs/ui.md §12.1): its sliders' knobs and switches take the
-    /// control radius, not round ends, its dialogs' titles the ramp's xl
-    /// in the body face, and the templates (`UiTheme.styleVersion`) their
-    /// version 1 layouts. A version 2 style says so with `screens 1` (what
-    /// og style upgrade writes).
+    /// drew (docs/ui.md §12.1): its dialogs' titles the ramp's xl in the
+    /// body face, its ramp untracked, its grid's selection an underline,
+    /// and the templates (`UiTheme.styleVersion`) their version 1 layouts.
+    /// A version 2 style says so with `screens 1` (what og style upgrade
+    /// writes).
     pub legacy: bool,
+    /// A version 1 file itself (not upgraded): its sliders' knobs and
+    /// switches take the control radius, as version 1 drew them. An
+    /// upgraded file's are round, as games shipped them once upgraded.
+    pub v1_controls: bool,
 }
 
 impl Art {

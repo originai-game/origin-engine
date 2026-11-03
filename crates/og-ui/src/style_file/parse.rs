@@ -112,6 +112,19 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         Some(w) => return Err(format!("scheme is dark or light, not '{w}'")),
     };
     let mut theme = Theme::new(scheme);
+    // A version 1 style (or `screens 1`) was made over the prototype ramp,
+    // which set no tracking: a step it leaves untracked draws untracked, as
+    // its game shipped, not with the design language's tightening.
+    let legacy = !v2
+        || body
+            .get("screens")
+            .is_some_and(|e| P { e }.num(0).is_ok_and(|n| n == 1.0));
+    if legacy {
+        for s in theme.type_ramp.steps_mut() {
+            s.tracking_em = 0.0;
+            s.cjk_tracking_em = 0.0;
+        }
+    }
     let mut file = StyleFile {
         name: String::new(),
         version: doc.version,
@@ -771,6 +784,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
     } else {
         theme.tokens = StyleTokens::derive(&theme, &icon_names);
         theme.art.legacy = true;
+        theme.art.v1_controls = true;
         // A version 1 style's sounds are the one-sound sets of its events.
         for u in UiSound::ALL {
             if file.sounds[u as usize].is_some() {

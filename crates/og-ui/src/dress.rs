@@ -803,7 +803,7 @@ impl Resolved {
             // A part round by what it is (a radio's mark, a knob, a switch's
             // track) stays round in every shape language unless dressed.
             if part.has("round")
-                && theme.art.legacy
+                && theme.art.v1_controls
                 && matches!(part.component, "Slider" | "Toggle")
             {
                 // A version 1 style's knobs and switches: the control radius.

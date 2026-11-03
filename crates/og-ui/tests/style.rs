@@ -1298,8 +1298,12 @@ fn og_style_upgrade_writes_version_2_that_draws_as_version_1() {
     let text = upgrade_style(&v1).expect("it upgrades");
     let new = parse_style(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(new.version, 2);
-    // Every value version 1 set, and the tokens derived from them, read back the same.
-    assert_eq!(new.theme, old.theme);
+    // Every value version 1 set, and the tokens derived from them, read back
+    // the same; only its knobs and switches draw round once upgraded.
+    assert!(old.theme.art.v1_controls && !new.theme.art.v1_controls);
+    let mut upgraded = new.theme;
+    upgraded.art.v1_controls = true;
+    assert_eq!(upgraded, old.theme);
     assert_eq!(new.dressings, old.dressings);
     assert_eq!(new.sounds, old.sounds);
     assert_eq!(
@@ -1978,20 +1982,28 @@ fn largest_radius_in(ui: &Ui, area: Rect) -> f32 {
 }
 
 /// A game shipped with a version 1 style keeps the screens it drew: its
-/// switch takes the control radius (not round ends) and its dialog's title
-/// the ramp's xl, and `og style upgrade` keeps both with `screens 1`, where
-/// a version 2 style without it draws today's (round, the heading role).
+/// dialog's title is the ramp's xl in the body face, its ramp untracked
+/// (the prototype ramp's), its grid's selection an underline; a version 1
+/// file's switch takes the control radius, an upgraded one's (`screens 1`,
+/// which og style upgrade writes) round ends, as games shipped them once
+/// upgraded. A version 2 style without `screens 1` draws today's.
 #[test]
-fn a_version_1_style_keeps_its_switches_and_dialog_titles_through_an_upgrade() {
+fn a_version_1_style_keeps_its_switches_titles_and_selection_through_an_upgrade() {
     let upgraded = upgrade_style(STYLE).expect("the test style upgrades");
     assert!(upgraded.contains("\nscreens 1\n"), "{upgraded}");
     let today = upgraded.replace("\nscreens 1\n", "\n");
+    struct Drawn {
+        theme: Theme,
+        switch_radius: f32,
+        title_is_xl: bool,
+        underline: bool,
+    }
     let draw = |text: &str| {
         let file = parse_style(text).expect("the style parses");
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_theme(file.theme(Some(atlas()), [0; 6]));
         let mut on = true;
-        for _ in 0..3 {
+        for _ in 0..30 {
             ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
             ui.modal(
                 "Settings",
@@ -2013,33 +2025,83 @@ fn a_version_1_style_keeps_its_switches_and_dialog_titles_through_an_upgrade() {
                             ..LabelDesc::default()
                         },
                     );
+                    ui.grid(
+                        "Items",
+                        GridDesc {
+                            count: 2,
+                            cell_width: 96.0,
+                            cell_height: 96.0,
+                            ..GridDesc::default()
+                        },
+                        Some(0),
+                        |_, _| {},
+                    );
                 },
             );
             ui.end();
         }
+        let theme = *ui.theme();
         let f = ui.frame();
         let e = f.element("Panel/Motion").expect("the switch is laid out");
         let toggle = Rect::new(e.x, e.y, e.width, e.height);
         let title = f.element("Panel/Title").expect("the title is laid out");
         let xl = f.element("Panel/Xl").expect("the xl label");
-        let same = (title.width, title.height) == (xl.width, xl.height);
-        (
-            file.theme(None, [0; 6]),
-            largest_radius_in(&ui, toggle),
-            same,
-        )
+        let c = f.element("Items/Cell#0").expect("the selected cell");
+        let cell = Rect::new(c.x, c.y, c.width, c.height);
+        // version 1's underline: xxs high, md in from each side, in the cell.
+        let w = cell.width - 2.0 * theme.space.md;
+        let underline = f.items.iter().any(|i| match &i.cmd {
+            DrawCmd::Quad { rect, .. } => {
+                (rect.height - theme.space.xxs).abs() < 0.6
+                    && (rect.width - w).abs() < 0.6
+                    && rect.y > cell.y
+                    && rect.bottom() <= cell.bottom() + 0.5
+            }
+            DrawCmd::Shape { shape, .. } => {
+                (2.0 * shape.half.y - theme.space.xxs).abs() < 0.6
+                    && (2.0 * shape.half.x - w).abs() < 0.6
+                    && shape.center.y > cell.y
+                    && shape.center.y < cell.bottom()
+            }
+            _ => false,
+        });
+        Drawn {
+            theme,
+            switch_radius: largest_radius_in(&ui, toggle),
+            title_is_xl: (title.width, title.height) == (xl.width, xl.height),
+            underline,
+        }
     };
-    for text in [STYLE, upgraded.as_str()] {
-        let (theme, radius, title) = draw(text);
-        assert!(theme.art.legacy);
-        assert_eq!(radius, theme.radius.control, "a version 1 game's switch");
-        assert!(title, "a version 1 game's dialog title is the ramp's xl");
+    for (text, v1) in [(STYLE, true), (upgraded.as_str(), false)] {
+        let d = draw(text);
+        assert!(d.theme.art.legacy);
+        assert!(
+            d.title_is_xl,
+            "a version 1 game's dialog title is the ramp's xl"
+        );
+        assert_eq!(d.theme.type_ramp.xl.tracking_em, 0.0, "its ramp untracked");
+        assert!(
+            d.underline,
+            "a version 1 game's selected cell is underlined"
+        );
+        if v1 {
+            assert_eq!(
+                d.switch_radius, d.theme.radius.control,
+                "a version 1 file's switch"
+            );
+        } else {
+            assert!(
+                d.switch_radius > d.theme.radius.control,
+                "an upgraded file's switch is round"
+            );
+        }
     }
-    let (theme, radius, title) = draw(&today);
-    assert!(!title, "today's dialog title is the heading role");
-    assert!(!theme.art.legacy);
+    let d = draw(&today);
+    assert!(!d.theme.art.legacy);
+    assert!(!d.title_is_xl, "today's dialog title is the heading role");
+    assert!(!d.underline, "today's selection is a lit tile");
     assert!(
-        radius > theme.radius.control,
-        "today's switch has round ends ({radius})"
+        d.switch_radius > d.theme.radius.control,
+        "today's switch has round ends"
     );
 }

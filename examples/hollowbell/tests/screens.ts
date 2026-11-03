@@ -1,6 +1,6 @@
 // Compares `dump_ui:<screen>.json` steps with shipped.ts: the same
 // elements (parent, id, kind, role, text) in the same order, each within a
-// few px of its recorded rectangle (text shaping may move a width by a few).
+// pixel of its recorded rectangle.
 import type { PlaytestRun } from "@origingame/engine/playtest";
 import { SHIPPED } from "./shipped.ts";
 
@@ -18,8 +18,8 @@ export function checkScreens(run: PlaytestRun, t: Checker, screens: readonly str
     const moved = want.flatMap((w, i) => {
       const g = got[i];
       if (!g || name(g) !== name(w)) return [];
-      // Positions and heights within 3 px, widths within 8 (a heading's text shaping).
-      const off = [Math.abs(g[5] - w[5]), Math.abs(g[6] - w[6]), Math.abs(g[7] - w[7]) / 8 * 3, Math.abs(g[8] - w[8])].some((d) => d > 3);
+      // Within a pixel of where it shipped (rounding).
+      const off = [5, 6, 7, 8].some((k) => Math.abs((g[k] as number) - (w[k] as number)) > 1);
       return off ? [`${name(w)} at ${g.slice(5).join(",")}, shipped ${w.slice(5).join(",")}`] : [];
     });
     t.ok(moved.length === 0, `${screen}: every element where it shipped${moved.length ? `: ${moved.join("; ")}` : ""}`);

@@ -742,6 +742,10 @@ pub fn upgrade_style(text: &str) -> Result<String, String> {
     let new =
         parse_style(&text2).map_err(|e| format!("the upgraded style does not read back: {e}"))?;
     let (a, b) = (&old.theme, &new.theme);
+    // Its knobs and switches draw round once upgraded (Art::v1_controls).
+    let mut b = *b;
+    b.art.v1_controls = a.art.v1_controls;
+    let b = &b;
     if (
         a.palette,
         a.space,

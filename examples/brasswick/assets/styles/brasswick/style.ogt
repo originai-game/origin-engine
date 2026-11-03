@@ -1,11 +1,14 @@
 type style
-version 1
+version 2
 ---
-# Brasswick's style: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:
-# LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK
-# fallback line dropped, the game shows Latin-1 only.
+# Brasswick's style: the engine's fantasy style pack of October 2026 (CC0 art, OFL fonts:
+# LICENSES.md), its ground soot and its accent brass; the CJK fallback line dropped, the game
+# shows Latin-1 only. Upgraded to version 2 by og style upgrade (its version 1 values kept,
+# its switches and knobs round, as the game shipped once upgraded); `screens 1` keeps the
+# screens it shipped with (docs/ui.md §12.3).
 name "brasswick"
 scheme dark
+screens 1
 atlas "atlas.png" 384 256
 scale 1
 palette {
@@ -43,11 +46,119 @@ palette {
   xp "#bf5af2"
   gold "#7a520f"
 }
+colors {
+  success icon "check"
+  warn icon "bolt"
+  danger icon "close"
+  info pattern waves
+  common "#7f7f7f" pips 1
+  uncommon "#30923d" pips 2
+  rare "#2e7dec" pips 3
+  epic "#a335ee" pips 4
+  legendary "#c86400" pips 5
+  mythic "#e8364f" pips 6
+  team1 "#3b7af6"
+  team2 "#e94141"
+  team3 "#309148"
+  team4 "#9e7b10"
+  team5 "#a347ff"
+  team6 "#c16918"
+  team7 "#168e8e"
+  team8 "#d44d93"
+  physical "#857f74"
+  fire "#d55924"
+  ice "#4088a8"
+  lightning "#957e22"
+  poison "#538e39"
+  holy "#2a1a0c"
+  shadow "#8a5cf6"
+  arcane "#d642b5"
+  series1 "#4e79a7"
+  series2 "#ba6d21"
+  series3 "#d85355"
+  series4 "#588885"
+  series5 "#4f8e46"
+  series6 "#957e2d"
+  series7 "#a27094"
+  series8 "#b06d74"
+}
+typography {
+  display 42 48 0 700 display {
+    phonePortrait 34 38
+    phoneLandscape 38 43
+  }
+  title 28 34 0 700 display {
+    phonePortrait 25 30
+    phoneLandscape 26 32
+  }
+  heading 22 28 0 600 display
+  body 15 22 0 400 body
+  label 15 22 0 600 body
+  caption 13 18 0 400 body
+  numeric 19 26 0 600 numeric
+}
+space {
+  xxs 2
+  xs 4
+  sm 8
+  md 12
+  lg 16
+  xl 24
+  xxl 32
+  xl3 48
+}
+size {
+  xs 16
+  sm 24
+  md 32
+  lg 48
+  xl 64
+  xxl 96
+  touch 44
+}
 radius {
-  small 4
-  control 4
-  bar 4
-  panel 4
+  xs 4
+  sm 4
+  md 4
+  lg 6
+  xl 8
+  pill 9999
+}
+stroke {
+  hairline 1
+  thin 1.5
+  regular 2
+  thick 3
+  focus 2
+}
+elevation {
+  raised {
+    shadow 0 4 8 0 "#00000066"
+  }
+  floating {
+    shadow 0 3 6 0 "#00000080"
+  }
+  overlay {
+    shadow 0 10 18 2 "#000000b3"
+  }
+  top {
+    shadow 0 15 27 2 "#000000b3"
+  }
+}
+shape {
+  panel round 4
+  dialog round 4
+  card round 4
+  tooltip round 4
+  button round 4
+  field round 4
+  chip round 4
+  badge round 4
+  tab round 4
+  slot round 4
+  bar round 4
+  hud round 4
+  avatar round 4
 }
 ramp {
   body 15 22
@@ -62,11 +173,6 @@ ramp {
   displayMd 34 40
   displayLg 42 48
 }
-durations {
-  fast 200
-  base 300
-  slow 480
-}
 fonts {
   body "Newsreader-Medium.ttf"
   display "Cinzel-Bold.ttf"
@@ -75,35 +181,106 @@ fonts {
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
-slice panel 4 4 96 96 16 authored
-slice card 104 4 64 64 10 authored
-slice button 172 4 48 48 10 tint
-slice buttonHover 224 4 48 48 10 tint
-slice buttonPressed 276 4 48 48 10 tint
-slice buttonDisabled 328 4 48 48 10 tint
-slice field 4 104 48 48 8 tint
-slice slot 56 104 48 48 10 tint
-slice tooltip 108 104 32 32 8 tint
-slice hud 144 104 32 32 12 tint
-slice track 180 104 32 16 6 tint
-slice fill 216 104 32 16 6 tint
 soft 252 104 64 64 24
 corner 320 104 32 32 28 28 authored 6
-corners panel
 divider 4 172 128 24 112 20 authored
 flourish 136 172 64 24 48 18 authored 0
-tile 204 172 64 64 64 64 0.5 6 panel card
-shadow panel 0 10 18 2 "#000000b3"
-shadow card 0 4 8 0 "#00000066"
-shadow button 0 3 4 0 "#00000073"
-shadow hud 0 3 6 0 "#00000080"
-press 0.98 0.96 1
-hover 0 1.0
+tile 204 172 64 64 64 64 0.5 6
 motion {
   enter scale
-  stagger 35
   toast slideDown
   progress 420
   shake 5
   pop 0.1
+  spring ui 200 0
+  spring panel 300 0
+  spring emphasis 480 0.15
+  spring playful 520 0.3
+  ease standard 0.2 0 0 1
+  ease enter 0.23 1 0.32 1
+  ease exit 0.4 0 1 1
+  ease emphasis 0.34 1.4 0.64 1
+  duration instant 120
+  duration fast 200
+  duration base 300
+  duration slow 480
+  duration spring 520
+  duration bounce 640
+  stagger 35
+  staggerCap 300
+  overshoot 0.05
+}
+sounds {
+  hover none haptic none
+  press none haptic tick
+  focus none haptic none
+  select none haptic tick
+  confirm none haptic tap
+  cancel none haptic tick
+  back none haptic tick
+  open none haptic none
+  close none haptic none
+  tab none haptic tick
+  toggleOn none haptic tick
+  toggleOff none haptic tick
+  sliderTick none haptic tick
+  scrollTick none haptic none
+  typewriter none haptic none
+  counterTick none haptic none
+  notification none haptic tap
+  warning none haptic warning
+  error none haptic error
+  success none haptic success
+  reward none haptic double
+  revealCommon none haptic none
+  revealUncommon none haptic tick
+  revealRare none haptic tap
+  revealEpic none haptic double
+  revealLegendary none haptic thud
+  revealMythic none haptic buzz
+}
+dress "Panel.frame" {
+  slice 4 4 96 96 16 authored
+  shadow 0 10 18 2 "#000000b3"
+  corners
+  tile
+}
+dress "Card.frame" {
+  slice 104 4 64 64 10 authored
+  shadow 0 4 8 0 "#00000066"
+  tile
+}
+dress "Button.base" {
+  slice 172 4 48 48 10 tint
+  shadow 0 3 4 0 "#00000073"
+  press 0.98 0.96 1
+  hover 0 1.0
+}
+dress "Button.base[hover]" {
+  slice 224 4 48 48 10 tint
+}
+dress "Button.base[pressed]" {
+  slice 276 4 48 48 10 tint
+}
+dress "Button.base[disabled]" {
+  slice 328 4 48 48 10 tint
+}
+dress "Field.frame" {
+  slice 4 104 48 48 8 tint
+}
+dress "Slot.frame" {
+  slice 56 104 48 48 10 tint
+}
+dress "Tooltip.frame" {
+  slice 108 104 32 32 8 tint
+}
+dress "Hud.frame" {
+  slice 144 104 32 32 12 tint
+  shadow 0 3 6 0 "#00000080"
+}
+dress "Meter.track" {
+  slice 180 104 32 16 6 tint
+}
+dress "Meter.fill" {
+  slice 216 104 32 16 6 tint
 }

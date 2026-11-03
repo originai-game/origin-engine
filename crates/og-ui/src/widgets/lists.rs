@@ -377,7 +377,7 @@ impl Ui {
                 radius: t.radius.small,
                 part: Some(
                     crate::dress::PartRef::new("Slot", "frame", crate::tokens::ElementClass::Slot)
-                        .flag_if(selected, "selected"),
+                        .flag_if(selected && !t.art.legacy, "selected"),
                 ),
                 ..Element::default()
             },
@@ -393,13 +393,41 @@ impl Ui {
         // A selected tile is lifted a step above a raised one: told apart
         // by tone and lift, not only by its rim (docs/ui.md §15.5).
         let lifted = |k: f32| crate::ui::mix_srgba(p.control_strong, p.ink, k);
-        self.option_states(
-            i,
-            selected,
-            [p.control, lifted(0.12)],
-            [hover, lifted(0.18)],
-            [p.control_strong, p.control_strong],
-        );
+        if t.art.legacy {
+            // A version 1 style's grammar, as its game shipped: the selected
+            // cell on `controlStrong` with a `primary` underline.
+            self.option_states(
+                i,
+                selected,
+                [p.control, p.control_strong],
+                [hover, p.control_strong],
+                [p.control_strong, p.control_strong],
+            );
+            if selected {
+                let w = t.space.xxs;
+                self.nodes[i].shapes.push(Shape::Rect {
+                    frame: Frame {
+                        fw: 1.0,
+                        h: w,
+                        fy: 1.0,
+                        y: -w - t.space.xs,
+                        x: t.space.md,
+                        w: -2.0 * t.space.md,
+                        ..Frame::default()
+                    },
+                    radius: w,
+                    color: p.primary,
+                });
+            }
+        } else {
+            self.option_states(
+                i,
+                selected,
+                [p.control, lifted(0.12)],
+                [hover, lifted(0.18)],
+                [p.control_strong, p.control_strong],
+            );
+        }
         if let Some(part) = self.nodes[i].el.part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")
