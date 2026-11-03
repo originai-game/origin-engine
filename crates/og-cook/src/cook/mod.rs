@@ -342,6 +342,24 @@ fn stamp(parts: &[&[u8]]) -> u64 {
     h.finish()
 }
 
+/// A bundle-relative path with its `.` and `..` segments resolved
+/// (`garden/cells/../textures/a.png` is `garden/textures/a.png`): how a
+/// model's relative file names the asset it is (s59). A `..` past the
+/// assets root is kept.
+fn normalise_rel(path: &str) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    for seg in path.split('/') {
+        match seg {
+            "" | "." => {}
+            ".." if out.last().is_some_and(|l| *l != "..") => {
+                out.pop();
+            }
+            s => out.push(s),
+        }
+    }
+    out.join("/")
+}
+
 fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {
@@ -493,7 +511,9 @@ pub fn cook_project_with_texture_cache(
                         .rsplit_once('/')
                         .map_or(String::new(), |(d, _)| format!("{d}/"));
                     for (p, _) in &g.external {
-                        consumed.insert(format!("{base}{p}"));
+                        // As the asset it names: `cells/../textures/a.png` is
+                        // `textures/a.png` (s59).
+                        consumed.insert(normalise_rel(&format!("{base}{p}")));
                     }
                     s.gltf = Some(g);
                 }
@@ -551,6 +571,21 @@ pub fn cook_project_with_texture_cache(
                 &assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
+        }
+    }
+    // A file a model references stays an asset of its own as well when it
+    // has import settings of its own (which only a texture cooked on its own
+    // reads) or a terrain names it as a layer (by asset id), s59.
+    for s in &sources {
+        if s.kind == Kind::Texture && s.settings.is_some() {
+            consumed.remove(&s.rel);
+        }
+        if s.kind == Kind::Terrain {
+            for layer in
+                terrain::layer_files(&s.rel, &assets_dir, &String::from_utf8_lossy(&s.bytes))
+            {
+                consumed.remove(&layer);
+            }
         }
     }
     // Files a .gltf references are part of that model, not assets of their own.
