@@ -34,9 +34,14 @@ fn bloom_spreads_light_beyond_the_emitters() {
 
 /// The first downsample's Karis average (bloom_chain.wgsl
 /// `downsample13_karis`): one pixel far brighter than its neighbours (a
-/// firefly) blooms much less than a 4x4 patch with the same light spread
-/// over it. Without the average the chain is linear, so both halos carry
-/// the same energy and the firefly spreads into a block.
+/// firefly) blooms far less than the same light spread evenly over a
+/// broad patch. The control is 40x40 pixels at luma 1, so its boxes are
+/// alike and the average's weights cancel; the chain is otherwise linear
+/// here (no threshold, a negligible knee), so without the average both
+/// halos carry the same light and the firefly spreads into a block. (A
+/// small patch would not do: at the prefilter's half resolution a 4x4
+/// patch is 2x2 texels, as bright against its dark surround as the lone
+/// pixel, and the average weighs it down nearly as much.)
 #[test]
 fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
     // An orthographic camera 7.2 m tall over 720 rows: 1 cm a pixel, the
@@ -66,8 +71,8 @@ fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
             ..Default::default()
         };
         scene.post.bloom = Some(og_render::Bloom {
-            threshold: 1.0,
-            knee: 0.5,
+            threshold: 0.0,
+            knee: 1e-3,
             intensity: 0.8,
         });
         scene
@@ -76,14 +81,16 @@ fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
         antialias: Antialias::Off,
         ..scenes::base_desc()
     };
-    // The halo: light between 8 and 64 pixels from the emitter.
-    let halo = |img: &RgbaImage| {
+    // The halo: light 8 to 48 pixels out from the emitter's edge (`half`
+    // its half side in pixels, about the frame's middle).
+    let halo = |img: &RgbaImage, half: f32| {
         let (cx, cy) = (img.width as f32 / 2.0, img.height as f32 / 2.0);
         let mut sum = 0.0f64;
         for y in 0..img.height {
             for x in 0..img.width {
-                let d = (x as f32 + 0.5 - cx).hypot(y as f32 + 0.5 - cy);
-                if (8.0..64.0).contains(&d) {
+                let dx = ((x as f32 + 0.5 - cx).abs() - half).max(0.0);
+                let dy = ((y as f32 + 0.5 - cy).abs() - half).max(0.0);
+                if (8.0..48.0).contains(&dx.hypot(dy)) {
                     let i = ((y * img.width + x) * 4) as usize;
                     sum += luma(img.pixels[i..i + 4].try_into().expect("rgba")) as f64;
                 }
@@ -92,12 +99,12 @@ fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
         sum
     };
     let (firefly, _) = frame(&desc, &scene(0.01, 1600.0), 1);
-    let (patch, _) = frame(&desc, &scene(0.04, 100.0), 1);
-    let (f, p) = (halo(&firefly), halo(&patch));
-    println!("bloom halo: lone pixel {f:.0}, the same light over 4x4 {p:.0}");
+    let (patch, _) = frame(&desc, &scene(0.4, 1.0), 1);
+    let (f, p) = (halo(&firefly, 1.0), halo(&patch, 20.0));
+    println!("bloom halo: lone pixel {f:.0}, the same light over 40x40 {p:.0}");
     assert!(p > 1000.0, "the patch blooms: {p:.0}");
     assert!(
-        f < 0.5 * p,
+        f < 0.25 * p,
         "the lone pixel blooms less: {f:.0} against {p:.0}"
     );
 }
