@@ -84,21 +84,52 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
 // and, as w, how far the crests of the waves that whiten bunch there
 // (Σ k lean sin over them: the surface's area lost, whitecaps past
 // water.ocean.z), each wave faded where it is shorter than four of the
-// pixel's `footprint` (m).
-fn ocean_normal(p: vec2<f32>, footprint: f32) -> vec4<f32> {
+// pixel's `footprint` (m), and the mean square slope the pixel holds
+// unresolved: the faded waves' (their (k a)² / 2), and the short waves'
+// that the facets carry (see SHORT_SLOPE). A pixel of sea is a rough
+// mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
+struct SeaNormal {
+  n: vec3<f32>,
+  bunch: f32,
+  mss: f32,
+};
+
+// How much of a short wave's slope (one that never whitens) the normal
+// draws; the rest of its slope variance, 1 - SHORT_SLOPE², is the facets'
+// roughness. The waves carry the whole of Cox and Munk's mean square slope,
+// but in waves no shorter than a metre or three: drawn whole, every near
+// slope was a smooth mirror of the sky.
+const SHORT_SLOPE: f32 = 0.7;
+
+fn ocean_normal(p: vec2<f32>, footprint: f32) -> SeaNormal {
   var n = vec3<f32>(0.0, 1.0, 0.0);
   var bunch = 0.0;
+  var mss = 0.0;
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
-    let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
+    let fade = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
+    let keep = fade * mix(SHORT_SLOPE, 1.0, b.w);
     let th = dot(a.xy, p) + a.w;
     let c = cos(th) * a.z * keep;
     let s = b.z * sin(th) * keep;
     n -= vec3<f32>(a.x * c, s, a.y * c);
     bunch += s * b.w;
+    let ka = length(a.xy) * a.z;
+    mss += ka * ka * 0.5 * (1.0 - keep * keep);
   }
-  return vec4<f32>(normalize(n), bunch);
+  var o: SeaNormal;
+  o.n = normalize(n);
+  o.bunch = bunch;
+  o.mss = mss;
+  return o;
+}
+
+// Bruneton et al. 2010's mean Fresnel over a rough sea's facets: the
+// grazing mirror dims as the slopes it averages spread (sigma: their
+// deviation along the view).
+fn sea_fresnel(cos_v: f32, sigma: f32) -> f32 {
+  return pow(1.0 - cos_v, 5.0 * exp(-2.69 * sigma)) / (1.0 + 22.7 * pow(sigma, 1.5));
 }
 
 // How many metres of the surface a pixel spans at `world` along the view's slant: the distance over the projection's
@@ -384,15 +415,17 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sea's own normal under the detail (a level surface: its waves are the world's), and its whitecaps.
   var base = in.normal;
   var whitecap = 0.0;
+  var sea_mss = 0.0;
   if (water.ocean.x > 0.5) {
     var footprint = sea_footprint(in.world);
     if (frame.view_pos.w > 0.5) { footprint = max(length(dpdx(in.rest)), length(dpdy(in.rest))); }
     let sea = ocean_normal(in.rest, footprint);
-    base = sea.xyz;
+    base = sea.n;
+    sea_mss = sea.mss;
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
     if (water.ocean.w > 0.0) {
       let streaks = foam_noise(in.rest * 0.35) * 0.6 + foam_noise(in.rest * 1.7) * 0.4;
-      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.w) * smoothstep(0.2, 0.5, streaks);
+      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
@@ -464,9 +497,17 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Reflection with Schlick's Fresnel.
   let r = reflect(-v, n);
   let f0 = water.extra.z;
-  let fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
+  var fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
+  // A sea's facets: their slopes' deviation per axis, its Beckmann roughness and the mip it blurs the sky by.
+  let sea = water.ocean.x > 0.5;
+  let sigma = sqrt(max(sea_mss, 1e-6) * 0.5);
+  var mip = 0.5;
+  if (sea) {
+    fresnel = (f0 + (1.0 - f0) * sea_fresnel(max(dot(n, v), 0.0), sigma)) * water.look.x;
+    mip = max(sqrt(sqrt(sea_mss)) * frame.params.y, 0.5);
+  }
   // The environment, or the reflection probe holding the surface (probes.rs).
-  var reflected = reflected_light(r, in.world, 0.5) * frame.params.x * 1.8;
+  var reflected = reflected_light(r, in.world, mip) * frame.params.x * 1.8;
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -483,9 +524,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
   }
-  if (water.ocean.x > 0.5) {
-    // A ray reflected downwards meets the next wave, not the sky: the sea's own dark body.
-    reflected = mix(deep, reflected, smoothstep(-0.05, 0.0, r.y));
+  if (sea) {
+    // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn. The facets
+    // spread the reflection over about two of their slopes' deviations, so it turns down gradually.
+    let up = reflected_light(vec3<f32>(r.x, abs(r.y), r.z), in.world, mip) * frame.params.x * 1.8;
+    let w = 2.0 * sigma + 0.05;
+    reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
   let mirrored = reflected;
   reflected = water.extra.w + (1.0 - water.extra.w) * reflected;
@@ -511,6 +555,17 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // Unshadowed, as there (its shadow mask is on the body alone).
     let g = pow(max(dot(v, reflect(-l, n)), 0.0), 100.0) * water.under.w;
     color += mirrored * frame.light_color.rgb * g * clamp(fresnel, 0.0, 1.0);
+  } else if (sea) {
+    // The sun on the facets: Beckmann's distribution of their slopes (Cox and Munk's glitter), Schlick's Fresnel at the
+    // half vector (none in shadow).
+    let h = normalize(l + v);
+    let nh = max(dot(n, h), 1e-3);
+    let m2 = max(sea_mss, 2e-3);
+    let t2 = (1.0 - nh * nh) / (nh * nh);
+    let d = exp(-t2 / m2) / (3.14159265 * m2 * nh * nh * nh * nh);
+    let fh = f0 + (1.0 - f0) * pow(1.0 - max(dot(h, v), 0.0), 5.0);
+    let spec = d * fh / (4.0 * max(dot(n, v), 0.1)) * step(0.0, dot(n, l));
+    color += frame.light_color.rgb * spec * water.look.x * sun;
   } else if (!water2) {
     // (Water2 has no highlight of its own: the sun shows only in what it reflects.)
     // The sun's highlight (none in shadow).
