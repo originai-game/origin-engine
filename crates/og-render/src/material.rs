@@ -927,7 +927,8 @@ pub(crate) struct MaterialUniform {
     pub coat: [f32; 4],
     /// Each slot's uv transform ([`StandardMaterial::uv_transforms`]'s
     /// order) as two rows: `[a, b, c, d]` (`u' = a u + b v`, `v' = c u +
-    /// d v`) and `[tx, ty, 0, 0]`.
+    /// d v`) and `[tx, ty, 0, 0]`. Array materials use the base-map
+    /// translation row's spare zw for their base/normal array layers.
     pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
@@ -1206,7 +1207,7 @@ pub(crate) fn array_shadow_source(standard: &str) -> String {
 }
 
 /// The uniform `u` of an array-map material `m`: its normal map is the
-/// array's (`two_channel`: a BC5/EAC array), and `coat.zw` hold `mapLayer`
+/// array's (`two_channel`: a BC5/EAC array), and `uv[1].zw` hold `mapLayer`
 /// and `normalMapLayer` (`array_layers` in pbr_array.wgsl).
 pub(crate) fn array_uniform(u: &mut MaterialUniform, m: &StandardMaterial, two_channel: bool) {
     let has_normal = m.normalMapArray != 0;
@@ -1219,8 +1220,8 @@ pub(crate) fn array_uniform(u: &mut MaterialUniform, m: &StandardMaterial, two_c
         (true, true) => 2.0,
     };
     // Exact as f32 up to 2^24 layers.
-    u.coat[2] = m.mapLayer.min(1 << 24) as f32;
-    u.coat[3] = m.normalMapLayer.min(1 << 24) as f32;
+    u.uv[1][2] = m.mapLayer.min(1 << 24) as f32;
+    u.uv[1][3] = m.normalMapLayer.min(1 << 24) as f32;
 }
 
 /// What an instance of an array-map material carries beside its transform
@@ -1392,6 +1393,8 @@ mod tests {
             normalMapArray: 4,
             normalMapLayer: 2,
             normalScale: Vec2::new(0.5, 2.0),
+            mapOffset: Vec2::new(0.25, -0.75),
+            foliage: Vec2::new(0.3, 0.8),
             ..Default::default()
         };
         assert!(m.draws_array_maps());
@@ -1401,12 +1404,22 @@ mod tests {
         array_uniform(&mut u, &m, true);
         assert_eq!(u.flags[0], 2.0);
         assert_eq!(
-            [u.mr[2], u.mr[3], u.coat[2], u.coat[3]],
+            [u.mr[2], u.mr[3], u.uv[1][2], u.uv[1][3]],
             [0.5, 2.0, 5.0, 2.0]
         );
-        // A material without arrays keeps coat.zw at 0: its uniform is unchanged.
+        assert_eq!(u.uv[1][..2], [0.25, -0.75]);
+        assert_eq!(u.coat[2..], [0.3, 0.8]);
+        // Array layers must not turn ordinary surfaces into translucent leaves.
+        let plain = StandardMaterial {
+            foliage: Vec2::ZERO,
+            ..m
+        };
+        let mut plain_uniform = uniform(&plain, false);
+        array_uniform(&mut plain_uniform, &plain, true);
+        assert_eq!(plain_uniform.coat[2..], [0.0, 0.0]);
+        // A material without arrays keeps the spare UV lanes at zero.
         assert_eq!(
-            uniform(&StandardMaterial::default(), false).coat[2..],
+            uniform(&StandardMaterial::default(), false).uv[1][2..],
             [0.0, 0.0]
         );
         // Physical materials keep their own path.

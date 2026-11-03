@@ -15,11 +15,12 @@ var<private> map_layer: i32;
 var<private> normal_layer: i32;
 
 // The layers a fragment samples: the instance's for both maps, or the
-// material's mapLayer and normalMapLayer (MaterialFactors.coat.zw).
+// material's mapLayer and normalMapLayer (MaterialFactors.uv[1].zw,
+// the unused lanes beside the base-map UV translation).
 fn array_layers(instance_layer: u32) {
   let own = instance_layer > 0u;
-  map_layer = select(i32(material.coat.z), i32(instance_layer) - 1, own);
-  normal_layer = select(i32(material.coat.w), i32(instance_layer) - 1, own);
+  map_layer = select(i32(material.uv[1].z), i32(instance_layer) - 1, own);
+  normal_layer = select(i32(material.uv[1].w), i32(instance_layer) - 1, own);
 }
 
 // The instance's layer plus one (0: the material's).

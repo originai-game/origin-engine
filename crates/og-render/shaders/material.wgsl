@@ -12,8 +12,8 @@ struct MaterialFactors {
   flash: vec4<f32>,       // rgb: flash colour, w: dissolve edge width
   dissolve: vec4<f32>,    // rgb: dissolve edge colour, w: noise scale (<0: dissolve map)
   outline: vec4<f32>,     // rgb: outline colour, w: outline width (px)
-  coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness
-  uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on) its uv transform: [a, b, c, d], [tx, ty]
+  coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness, zw: leaf translucency/dome normals
+  uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on): [a, b, c, d], [tx, ty, 0, 0]; uv[1].zw holds base/normal array layers
   custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
   previous_custom: array<vec4<f32>, 8>,  // the last drawn frame, not the last simulation tick
 };
