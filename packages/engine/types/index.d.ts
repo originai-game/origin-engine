@@ -5751,6 +5751,28 @@ export interface RenderOptions {
 }
 
 /**
+ * Leaf lighting. Zero keeps ordinary opaque-surface lighting; this does not enable glass transmission or change alpha coverage.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FoliageDesc {
+  /**
+   * Thin-leaf backlighting tinted by the base colour and attenuated by the light's shadow.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly translucency?: number;
+  /**
+   * Blend leaf normals towards the canopy dome, before normal mapping. Requires cooked foliage anchors.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly domeNormals?: number;
+}
+
+/**
  * A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.
  * It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.
  * The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.
@@ -5761,6 +5783,12 @@ export interface RenderOptions {
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface StandardMaterialDesc {
+  /**
+   * Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y.
+   *
+   * @default {}
+   */
+  readonly foliage?: FoliageDesc;
   /**
    * The base colour.
    *

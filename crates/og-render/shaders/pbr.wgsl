@@ -438,7 +438,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
     atten *= t * t;
   }
   if (atten <= 0.0) { return vec3<f32>(0.0); }
-  if (dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
+  if (dot(n, l) <= 0.0 && s.translucency <= 0.0) { return vec3<f32>(0.0); }
   var shadow = 1.0;
   if (receives) { shadow = local_shadow(light, p, n); }
   // Its cookie (area.wgsl; white without).

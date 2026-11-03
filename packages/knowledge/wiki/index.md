@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2382 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2383 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -555,6 +555,7 @@ Field units the docs and Tune use.
 | [`FloatSide`](ui.md#type-FloatSide) | enum | ui | — |
 | [`FlowDesc`](nav.md#type-FlowDesc) | desc struct | nav | — |
 | [`FocusGroup`](ui.md#type-FocusGroup) | desc struct | ui | — |
+| [`FoliageDesc`](render.md#type-FoliageDesc) | desc struct | render | — |
 | [`Font`](load.md#type-Font) | handle | load | — |
 | [`Font()`](load.md#column-Font) | column kind | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |

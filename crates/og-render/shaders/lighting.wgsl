@@ -253,7 +253,18 @@ struct Surface {
   coat: f32,
   coat_roughness: f32,
   coat_normal: vec3<f32>,
+  translucency: f32,
 };
+
+// SeedThree leaf-cards.js, Copyright (c) 2026 SkyeShark, MIT
+// (third_party/vegetation/SeedThree.LICENSE): distorted back-light lobe.
+// This is direct light, not emission: the caller applies its shadow/cookie.
+fn leaf_transmission(s: Surface, n: vec3f, v: vec3f, l: vec3f) -> vec3f {
+  if (s.translucency <= 0.0) { return vec3f(0.0); }
+  let back = max(-dot(n, l), 0.0);
+  let through = pow(max(dot(v, -normalize(l + n * 0.3)), 0.0), 6.0);
+  return s.albedo * (1.0 - s.metallic) * s.translucency * back * (3.0 * through + 0.16);
+}
 
 fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let h = normalize(v + l);
@@ -267,7 +278,7 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let f = f_schlick(h_dot_v, s.f0);
   let spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
-  let base = (kd * s.albedo / PI + spec) * n_dot_l;
+  let base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
   if (s.coat <= 0.0) { return base; }
   // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
   // Kelemen's visibility; what it reflects never reaches the base.

@@ -11,6 +11,20 @@ struct FoliageWind {
   origin: vec4f,       // xyz current render origin, w wavenumber
 };
 
+// SeedThree's canopy dome, blended before the inverse-transpose and normal
+// mapping. The centre comes from all leaf anchors, not the trunk's bounds.
+fn foliage_normal(n: vec3f, anchor: vec3f, center: vec3f, strength: f32) -> vec3f {
+  if (strength <= 0.0) { return n; }
+  let radial = anchor - center;
+  var dome = vec3f(0.0, 1.0, 0.0);
+  if (dot(radial, radial) > 1e-12) {
+    dome = normalize(normalize(radial) + vec3f(0.0, 0.45, 0.0));
+  }
+  let blended = mix(n, dome, clamp(strength, 0.0, 1.0));
+  if (dot(blended, blended) <= 1e-12) { return dome; }
+  return normalize(blended);
+}
+
 fn foliage_rotate(p: vec3f, axis: vec3f, angle: f32) -> vec3f {
   let c = cos(angle);
   return p * c + cross(axis, p) * sin(angle) + axis * dot(axis, p) * (1.0 - c);

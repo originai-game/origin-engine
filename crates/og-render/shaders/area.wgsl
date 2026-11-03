@@ -127,6 +127,10 @@ fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3
   let radiance = light.color_kind.rgb * window * window;
   o.specular = radiance * fresnel * ltc_evaluate(n, v, p, m_inv, rect);
   o.diffuse = radiance * s.albedo * (1.0 - s.metallic) * ltc_evaluate(n, v, p, identity, rect);
+  if (s.translucency > 0.0) {
+    // Integrate the thin leaf's rear diffuse hemisphere over the rectangle.
+    o.diffuse += radiance * s.albedo * (1.0 - s.metallic) * s.translucency * ltc_evaluate(-n, -v, p, identity, rect);
+  }
   return o;
 }
 
@@ -294,7 +298,7 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
     let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
     atten *= t * t;
   }
-  if (atten <= 0.0 || dot(n, l) <= 0.0) { return vec3<f32>(0.0); }
+  if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return vec3<f32>(0.0); }
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
   return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, n);
 }

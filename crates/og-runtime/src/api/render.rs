@@ -72,6 +72,12 @@ pub(crate) fn material(
     set!(flatShading, flag("flatShading"));
     set!(wireframe, flag("wireframe"));
     set!(alphaToCoverage, flag("alphaToCoverage"));
+    if let Some(v) = desc["foliage"]["translucency"].as_f64() {
+        m.foliage.x = v as f32;
+    }
+    if let Some(v) = desc["foliage"]["domeNormals"].as_f64() {
+        m.foliage.y = v as f32;
+    }
     set!(envMapIntensity, num("envMapIntensity"));
     let vec2 = |k: &str, fallback: glam::Vec2| {
         let v = &desc[k];

@@ -205,7 +205,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
     spec = (d * g * f) / (4.0 * n_dot_v * n_dot_l + 1e-4);
   }
   var o: Shade;
-  o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * n_dot_l;
+  o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * n_dot_l + leaf_transmission(s, n, v, l);
   o.specular = spec * n_dot_l;
   if (any(k.sheen_color > vec3<f32>(0.0))) {
     // The sheen layer takes its albedo from what it covers.
@@ -252,7 +252,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
     atten *= t * t;
   }
-  if (atten <= 0.0 || dot(n, l) <= 0.0) { return o; }
+  if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return o; }
   var radiance = light.color_kind.rgb * light_cookie(light, -l) * atten;
   if (receives) { radiance *= local_shadow(light, p, n); }
   let b = physical_brdf(s, k, n, v, l);
@@ -388,6 +388,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   s.coat = material.coat.x * coat_maps.r;
   s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
   s.coat_normal = n_vertex * face;
+  s.translucency = material.coat.z;
   if (physical.coat.z > 0.5 && framed) {
     var map = film_maps.xyz * 2.0 - 1.0;
     map = vec3<f32>(map.xy * physical.coat.xy, map.z);
@@ -433,7 +434,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   let receives = look_receives(in.look);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0 && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), n_dot_l); }
+  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), abs(dot(n, l))); }
   let sun = physical_brdf(s, k, n, v, l);
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;

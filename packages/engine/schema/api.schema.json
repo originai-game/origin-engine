@@ -4338,6 +4338,7 @@
         "TaaHistory",
         "DebugView",
         "RenderOptions",
+        "FoliageDesc",
         "StandardMaterialDesc",
         "Mesh",
         "DirectionalLight",
@@ -26062,12 +26063,40 @@
       },
       "additionalProperties": false
     },
+    "FoliageDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "render",
+      "description": "Leaf lighting. Zero keeps ordinary opaque-surface lighting; this does not enable glass transmission or change alpha coverage.",
+      "type": "object",
+      "properties": {
+        "translucency": {
+          "type": "number",
+          "description": "Thin-leaf backlighting tinted by the base colour and attenuated by the light's shadow.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "domeNormals": {
+          "type": "number",
+          "description": "Blend leaf normals towards the canopy dome, before normal mapping. Requires cooked foliage anchors.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
     "StandardMaterialDesc": {
       "x-og-kind": "desc",
       "x-og-module": "render",
       "description": "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names.\nIt is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front.\nThe stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false.\nThe MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them.\nA transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it.\nnormalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly.",
       "type": "object",
       "properties": {
+        "foliage": {
+          "$ref": "#/$defs/FoliageDesc",
+          "description": "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y.",
+          "default": {}
+        },
         "color": {
           "$ref": "#/$defs/Color",
           "description": "The base colour.",

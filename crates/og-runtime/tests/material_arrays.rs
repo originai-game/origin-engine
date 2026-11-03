@@ -164,7 +164,8 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
     let normals = value(og_load_texture_array(engine, "tex/tiles-n.ogt".into()))["array"]
         .as_f64()
         .unwrap();
-    let desc = json!({ "mapArray": tiles, "mapLayer": 1, "normalMapArray": normals });
+    let desc = json!({ "mapArray": tiles, "mapLayer": 1, "normalMapArray": normals,
+        "foliage": { "translucency": 0.7, "domeNormals": 0.35 } });
     let material = value(og_render_standard_material(engine, Some(desc.to_string())));
     let geometry = value(og_render_box_geometry(engine, Some("{}".into())));
     for layer in [0, -1, 1] {
@@ -187,11 +188,13 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
         let m = &s.instances[0].1;
         assert!(m.mapArray != 0 && m.normalMapArray != 0 && m.mapArray != m.normalMapArray);
         assert_eq!((m.mapLayer, m.normalMapLayer), (1, 0));
+        assert_eq!(m.foliage, glam::Vec2::new(0.7, 0.35));
         assert!(m.draws_array_maps());
         assert!(s.instances.iter().all(|i| i.1 == *m), "one material");
     }
     // null clears an array; an unknown handle is refused by name.
-    let cleared = json!({ "normalMapArray": null, "normalMapLayer": 1 });
+    let cleared = json!({ "normalMapArray": null, "normalMapLayer": 1,
+        "foliage": { "translucency": 0.0 } });
     value(og_render_update_material(
         engine,
         material.as_f64().unwrap(),
@@ -200,6 +203,11 @@ fn a_material_samples_arrays_and_each_mesh_picks_its_layer() {
     frame(engine);
     let m = seen.borrow().instances[0].1;
     assert_eq!((m.normalMapArray, m.normalMapLayer), (0, 1));
+    assert_eq!(
+        m.foliage,
+        glam::Vec2::new(0.0, 0.35),
+        "partial foliage update preserves the dome blend"
+    );
     let bad = json!({ "mapArray": 77.0 });
     let refused: Value =
         serde_json::from_str(&og_render_standard_material(engine, Some(bad.to_string()))).unwrap();
