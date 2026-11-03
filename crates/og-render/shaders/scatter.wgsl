@@ -161,12 +161,24 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let r = reflect(-v, n);
   let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  let dbg_direct = color;  // the direct light, for the debug views below (fork s68)
   var ibl_scale = material.flags.z * ssao_scale;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * ibl_scale;
   color += emissive * ao_all;
+  if (frame.light_color.w > 2.5) {
+    // Debug (DebugView::lit_code, as pbr_fs.wgsl): 3 albedo, 4 diffuse image-based light, 5 specular image-based
+    // light (what the split sum above added), 6 direct light; the copies showed their whole lit colour in these views
+    // (fork s68).
+    let m = u32(frame.light_color.w + 0.5);
+    let dbg_diffuse = kd_ibl * irradiance * s.albedo * ibl_scale;
+    if (m == 3u) { return vec4<f32>(s.albedo, out_a); }
+    if (m == 4u) { return vec4<f32>(dbg_diffuse, out_a); }
+    if (m == 5u) { return vec4<f32>(color - dbg_direct - dbg_diffuse - emissive * ao_all, out_a); }
+    return vec4<f32>(dbg_direct, out_a);
+  }
   return vec4<f32>(apply_fog(color, in.world), out_a);
 }
 
