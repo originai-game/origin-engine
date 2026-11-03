@@ -13,7 +13,7 @@ import { STYLE_SETTLE } from "./script.ts";
 import { sheetCheck, SURFACES, unsettled, withSettleDumps } from "./styles.ts";
 
 /** The light and dark packs a family is checked in besides its own. */
-const LIGHT = (s: Showcase): string => (s.pack === "storybook" ? "kawaii" : "storybook");
+const LIGHT = (s: Showcase): string => s.light ?? (s.pack === "storybook" ? "kawaii" : "storybook");
 const DARK = (s: Showcase): string => (s.pack === "dread" ? "fantasy" : "dread");
 
 /** The frames of a family, in its sheet's order: [style, screen, file]. */

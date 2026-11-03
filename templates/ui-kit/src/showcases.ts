@@ -30,6 +30,8 @@ export interface ShowcasePage {
 export interface Showcase {
   readonly key: string;
   readonly pack: string;
+  /** The light pack its first page is checked in, when not the default (tests/showcases.ts). */
+  readonly light?: string;
   readonly pages: readonly ShowcasePage[];
 }
 
@@ -40,8 +42,10 @@ const page = (screen: string, name: string): ShowcasePage => ({ screen, name: `s
  * order). Each family's name and line are `sc.<key>` and `sc.<key>.blurb`;
  * its pack is the seed style it is shown in first. The matrix has no row for
  * MOBA, fighting or open world: MOBA takes fantasy (its heroes' look), fighting
- * the party games' cartoon, open world storybook's painted land; survival
- * takes craft, wasteland's secondary, as the kit carries no wasteland pack.
+ * cyber (high contrast, bold numerals, hard angles; cartoon its light check),
+ * open world storybook's painted land (kawaii its light check); survival takes
+ * craft, wasteland's secondary, until the wasteland pack lands (the art
+ * director, 2026-11-03).
  */
 export const SHOWCASES: readonly Showcase[] = [
   { key: "action", pack: "pixel", pages: [page("actionTitle", "title"), page("actionHud", "hud"), page("actionPause", "pause"), page("actionTutorial", "tutorial"), page("actionLoading", "loading"), page("actionResults", "results")] },
@@ -56,7 +60,7 @@ export const SHOWCASES: readonly Showcase[] = [
   { key: "strategy", pack: "scifi", pages: [page("rts", "rts"), page("tdHud", "td"), page("shipStatus", "shipStatus"), page("turnOrder", "turnOrder"), page("abilityCards", "abilityCards"), page("sectorMap", "sectorMap"), page("hangar", "hangar")] },
   { key: "gacha", pack: "kawaii", pages: [page("gacha", "gacha"), page("pass", "pass")] },
   { key: "rhythm", pack: "cyber", pages: [page("rhythmHud", "hud"), page("songs", "songs")] },
-  { key: "fighting", pack: "cartoon", pages: [page("fightHud", "hud"), page("select", "select"), page("versus", "versus")] },
+  { key: "fighting", pack: "cyber", light: "cartoon", pages: [page("fightHud", "hud"), page("select", "select"), page("versus", "versus")] },
   { key: "narrative", pack: "kawaii", pages: [page("vn", "vn"), page("routes", "routes"), page("cgGallery", "cgGallery")] },
   { key: "survival", pack: "craft", pages: [page("survivalHud", "hud")] },
   { key: "horror", pack: "dread", pages: [page("horrorHud", "hud")] },
