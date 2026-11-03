@@ -55,8 +55,21 @@ fn diff(a: &RgbaImage, b: &RgbaImage) -> Comparison {
 /// the grid through the render origin (the sun's shadow edges move by up
 /// to a texel, one pixel in 600).
 fn same(d: &Comparison) -> Result<(), String> {
+    within(d, SHADOWED)
+}
+
+/// The rmse `same` allows: the shadow edges' rounding (the crypt measured
+/// 0.0116 on metal).
+const SHADOWED: f64 = 0.02;
+/// The rmse a scene without the sun's shadow edges allows: the GPU's
+/// rounding alone (metal measured 0.00046 for the fog, 0.00063 for the
+/// decals; drawn 1000 km out in the world's coordinates they break up
+/// to 0.0168 and 0.074).
+const UNSHADOWED: f64 = 0.005;
+
+fn within(d: &Comparison, rmse: f64) -> Result<(), String> {
     d.check(&Tolerance {
-        rmse: 0.02,
+        rmse,
         ..Tolerance::default()
     })
 }
@@ -74,12 +87,14 @@ const FAR: Vec3 = Vec3::new(999_424.0, 0.0, 598_016.0);
 
 #[test]
 fn a_scene_a_thousand_kilometres_out_draws_as_at_the_world_zero() {
-    let builds: [(&str, Build); 3] = [
-        ("crypt", shadow_scenes::crypt_scene),
-        ("decals", fx_scenes::decals_scene),
-        ("fog", atmo_scenes::fog_scene),
+    // Each with the rmse its frame may differ by: the crypt's sun shadows
+    // round, the others' frames only by the GPU's arithmetic.
+    let builds: [(&str, Build, f64); 3] = [
+        ("crypt", shadow_scenes::crypt_scene, SHADOWED),
+        ("decals", fx_scenes::decals_scene, UNSHADOWED),
+        ("fog", atmo_scenes::fog_scene, UNSHADOWED),
     ];
-    for (name, build) in builds {
+    for (name, build, rmse) in builds {
         // The scene with its positions on the f32 spacing 1000 km out (each
         // moved there and back: at most 3 cm), so placing it there is exact.
         let on_grid = || {
@@ -101,11 +116,11 @@ fn a_scene_a_thousand_kilometres_out_draws_as_at_the_world_zero() {
         let from_origin = draw(&mut r, &far);
         let before = diff(&as_before, &home);
         let now = diff(&from_origin, &home);
-        if let Err(e) = same(&now) {
+        if let Err(e) = within(&now, rmse) {
             panic!("{name}: drawn from the render origin, the frame is the one at zero: {e}");
         }
         assert!(
-            same(&before).is_err(),
+            within(&before, rmse).is_err(),
             "{name}: drawn in the world's coordinates 1000 km out it breaks up \
              (rmse {:.5}), which is what this test guards",
             before.rmse
