@@ -206,13 +206,11 @@ impl Renderer {
             || fluids_3d
             // UI occluders and mass elements the scene hides (§14).
             || ui_depth
-            // TAA's motion vectors of what moved besides the camera.
-            // (Instances only where they are culled on the CPU: GPU culling
-            // draws them without their previous transforms.)
+            // TAA's motion vectors of what moved besides the camera (GPU
+            // culling and the meshlet path carry the previous transforms
+            // too: cull_gpu.rs `previous`).
             || (taa_on
-                && (skinned_motion == Some(true)
-                    || skinned.baked_moved
-                    || (!self.gpu_culls(transforms.len() as u32) && objects_moved(scene))));
+                && (skinned_motion == Some(true) || skinned.baked_moved || objects_moved(scene)));
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -616,10 +614,9 @@ impl Renderer {
         // GPU-driven culling (cull_gpu.rs): each pass's list is indirect
         // draws the compute fills; the CPU sorts the transparent instances
         // and culls the skinned ones as before.
-        // Per-object motion for motion blur, and for TAA's motion vectors
-        // where the instances are culled on the CPU (GPU culling compacts
-        // them without their previous transforms, so TAA there reprojects
-        // the camera's motion alone).
+        // Per-object motion for motion blur and TAA's motion vectors: the
+        // previous transforms at the same slots as the instances (GPU
+        // culling compacts its camera pass's beside its own).
         let previous_valid = !scene.previous_transforms.is_empty()
             && scene.previous_transforms.len() == scene.instances.len();
         let blur_motion = motion_blur.is_some() && previous_valid;
@@ -738,9 +735,7 @@ impl Renderer {
         if !gpu_cull {
             meshlet_taken.clear();
         }
-        // Under GPU culling (the meshlet path's batches included) TAA
-        // reprojects the camera's motion alone.
-        let object_motion = previous_valid && (blur_motion || (taa && !gpu_cull));
+        let object_motion = previous_valid && (blur_motion || taa);
         // The shadow casters among them: every shadow pass takes each one
         // (on any layer) through its own view of the dispatch.
         let meshlet_casters: Vec<u32> = meshlet_taken
@@ -1366,10 +1361,30 @@ impl Renderer {
             }
             let lagged = gc.poll_counts();
             debug_assert!(cull_passes.len() <= max_passes);
+            // The sorted instances' previous transforms (as the CPU path's
+            // below), compacted with the camera pass's.
+            let previous_sorted: Option<Vec<instances::GpuTransform>> = object_motion.then(|| {
+                let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+                origins[..sorted as usize]
+                    .iter()
+                    .map(|&i| {
+                        let i = i as usize;
+                        let (inst, p) = (&scene.instances[i], scene.previous_transforms[i]);
+                        let d = Self::dequant(
+                            meshes,
+                            materials,
+                            inst.mesh.index(),
+                            inst.material.index(),
+                        );
+                        instances::gpu_transform(&d.map_or(p, |d| p * d))
+                    })
+                    .collect()
+            });
             let (commands, occluder_draws) = gc.encode(
                 &self.device,
                 &self.queue,
                 &transforms[..sorted as usize],
+                previous_sorted.as_deref(),
                 &batches,
                 &self.cache.meshes,
                 &self.cache.materials,
@@ -1406,16 +1421,10 @@ impl Renderer {
             // reads the camera pass's survivors and the pyramid).
             if let Some(m) = self.meshlet.as_mut() {
                 let gc = self.gpu_cull.as_ref().expect("made above");
-                // Last frame's transforms at the same slots: with object
-                // motion, the previous-transform buffer (the regular
-                // prepass's rule), once it can be bound as storage.
-                let previous = if object_motion
-                    && self
-                        .prev_instance_buffer
-                        .usage()
-                        .contains(wgpu::BufferUsages::STORAGE)
-                {
-                    &self.prev_instance_buffer
+                // Last frame's transforms at the same (sorted) slots: with
+                // object motion, region 0 of GPU culling's `previous`.
+                let previous = if object_motion {
+                    &gc.previous
                 } else {
                     &gc.instances
                 };
@@ -1524,9 +1533,11 @@ impl Renderer {
             // As the instances' own: with a compact run's dequantisation,
             // for the records a draw reads.
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-            let mut prev = vec![instances::GpuTransform::default(); origins.len()];
+            // Under GPU culling these records start after the sorted ones.
+            let offset = if gpu_cull { sorted as usize } else { 0 };
+            let mut prev = vec![instances::GpuTransform::default(); cpu_instances.len()];
             for k in drawn.iter().flat_map(|r| r.clone()) {
-                let i = origins[k] as usize;
+                let i = origins[offset + k] as usize;
                 let (inst, p) = (&scene.instances[i], scene.previous_transforms[i]);
                 let d = Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
                 prev[k] = instances::gpu_transform(&d.map_or(p, |d| p * d));

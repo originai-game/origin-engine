@@ -117,3 +117,16 @@ setup now records analytic uv and position gradients and the resolve
 samples with them (`pbr_fs.wgsl` `ANALYTIC`). New:
 `template::cooked_models_draw_the_same_through_the_visibility_buffer`
 (the gltf-reference scene with the buffer on and off, default tolerance).
+
+## Per-object TAA motion under GPU culling
+
+GPU culling uploads the sorted instances' previous transforms (cull.wgsl
+binding 6, laid out as `instances`) when TAA has object motion; the
+camera pass's scatter copies them beside its survivors. The regular
+prepass binds that buffer under GPU culling, the meshlet prepass and the
+visibility buffer's setup read region 0 at the sorted slot. The prepass
+now runs for moving instances whatever the culling path, and
+`object_motion = previous_valid && (blur_motion || taa)` (agreed with
+R2+R8). Test: `a_moving_instance_takes_its_history_along_on_every_culling_path`
+(CPU, GPU and meshlet culling, each nearer a fresh history's frame with
+its motion vectors than with the camera's alone; no reference frame).

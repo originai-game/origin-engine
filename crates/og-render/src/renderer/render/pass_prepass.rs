@@ -114,10 +114,12 @@ impl Renderer {
             (Some(_), Some(gc)) => &gc.instances,
             _ => &self.instance_buffer,
         };
-        let prev = if object_motion {
-            &self.prev_instance_buffer
-        } else {
-            instances
+        // Last frame's transforms laid out as `instances`: GPU culling's
+        // own (its camera pass compacts them), or the CPU path's.
+        let prev = match (object_motion, main_list.indirect, culled_gpu) {
+            (false, ..) => instances,
+            (true, Some(_), Some(gc)) => &gc.previous,
+            (true, ..) => &self.prev_instance_buffer,
         };
         let mut current = None;
         for &(b, first, count) in &main_list.ranges {

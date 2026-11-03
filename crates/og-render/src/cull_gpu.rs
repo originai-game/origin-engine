@@ -103,6 +103,7 @@ struct PassGpu {
 struct Params {
     counts: [u32; 4],
     sizes: [u32; 4],
+    motion: [u32; 4],
     view_proj: [[f32; 4]; 4],
     passes: [PassGpu; MAX_PASSES],
 }
@@ -232,6 +233,12 @@ pub(crate) struct GpuCulling {
     pub instances: wgpu::Buffer,
     /// What the input region of `instances` holds, written by changes only.
     upload: crate::upload::DirtyUpload,
+    /// The previous transforms, laid out as `instances` (region 0 at the
+    /// sorted slots, the camera pass's visible ones in its region): TAA's
+    /// object motion for GPU-culled batches (the prepass and the meshlet
+    /// path read them). A placeholder while no frame had object motion.
+    pub previous: wgpu::Buffer,
+    previous_upload: crate::upload::DirtyUpload,
     /// Bytes of transforms the last `encode` wrote.
     pub uploaded: u64,
     batches: wgpu::Buffer,
@@ -355,6 +362,7 @@ impl GpuCulling {
                     wgpu::TextureSampleType::Float { filterable: false },
                     false,
                 ),
+                storage(6, false),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -465,6 +473,13 @@ impl GpuCulling {
             params,
             instances: buffer(device, "culled instances", 0, Self::instance_usage()),
             upload: Default::default(),
+            previous: buffer(
+                device,
+                "culled previous instances",
+                0,
+                Self::instance_usage(),
+            ),
+            previous_upload: Default::default(),
             uploaded: 0,
             batches: buffer(device, "cull batches", 0, Self::storage_usage()),
             scan: buffer(device, "cull scan", 0, Self::storage_usage()),
@@ -886,14 +901,18 @@ impl GpuCulling {
     /// occluders' depth and the pyramid are skipped and the camera pass is
     /// tested against its frustum alone. With `copy_counts` the counts
     /// are copied to a free readback (`stats_given`: those the frame's
-    /// stats carry in their place). Returns the commands to submit before
-    /// the frame's own and the occluder depth pass's draws.
+    /// stats carry in their place). With `previous` (the sorted
+    /// instances' previous transforms, TAA's object motion) the camera
+    /// pass compacts them into [`Self::previous`] beside its own. Returns
+    /// the commands to submit before the frame's own and the occluder
+    /// depth pass's draws.
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         transforms: &[crate::instances::GpuTransform],
+        previous: Option<&[crate::instances::GpuTransform]>,
         batches: &[Batch],
         meshes: &[GpuMesh],
         materials: &[GpuMaterial],
@@ -941,6 +960,31 @@ impl GpuCulling {
             self.max_binding,
             Self::instance_usage(),
         );
+        let previous_uploaded = if let Some(prev) = previous {
+            debug_assert_eq!(prev.len(), transforms.len());
+            if Self::grow(
+                device,
+                &mut self.previous,
+                &mut self.groups,
+                "culled previous instances",
+                (p as u64 + 1) * n as u64 * INSTANCE_STRIDE,
+                self.max_binding,
+                Self::instance_usage(),
+            ) {
+                self.previous_upload.invalidate();
+            }
+            let bytes: &[u8] = bytemuck::cast_slice(prev);
+            self.previous_upload.write(
+                queue,
+                &self.previous,
+                bytes,
+                std::slice::from_ref(&(0..bytes.len())),
+            )
+        } else {
+            // Not written this frame: what it holds is not known next time.
+            self.previous_upload.invalidate();
+            0
+        };
         Self::grow(
             device,
             &mut self.batches,
@@ -1000,12 +1044,13 @@ impl GpuCulling {
         }
         // The compute reads every one.
         let bytes: &[u8] = bytemuck::cast_slice(transforms);
-        self.uploaded = self.upload.write(
-            queue,
-            &self.instances,
-            bytes,
-            std::slice::from_ref(&(0..bytes.len())),
-        );
+        self.uploaded = previous_uploaded
+            + self.upload.write(
+                queue,
+                &self.instances,
+                bytes,
+                std::slice::from_ref(&(0..bytes.len())),
+            );
         let table: Vec<BatchGpu> = batches
             .iter()
             .map(|x| {
@@ -1044,6 +1089,7 @@ impl GpuCulling {
             let mut params = Params {
                 counts: [n, b, which.len() as u32, p as u32],
                 sizes: [blocks, levels, width, height],
+                motion: [previous.is_some() as u32, 0, 0, 0],
                 view_proj: view_proj.to_cols_array_2d(),
                 passes: [bytemuck::Zeroable::zeroed(); MAX_PASSES],
             };
@@ -1104,6 +1150,10 @@ impl GpuCulling {
                             resource: wgpu::BindingResource::TextureView(
                                 self.pyramid.as_ref().map_or(&self.no_pyramid, |x| &x.full),
                             ),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 6,
+                            resource: self.previous.as_entire_binding(),
                         },
                     ],
                 })

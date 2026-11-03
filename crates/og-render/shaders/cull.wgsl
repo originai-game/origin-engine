@@ -9,7 +9,8 @@
 //   visibility  writes 0/1 per instance and each workgroup's sum
 //   scan_blocks scans the workgroup sums (one workgroup per pass)
 //   prefix      turns the 0/1 into the exclusive prefix (N + 1 entries)
-//   scatter     copies the visible transforms and writes the draws
+//   scatter     copies the visible transforms and writes the draws (the
+//               camera pass's previous transforms too, with object motion)
 
 const WG: u32 = 256u;
 const MAX_PLANES: u32 = 12u;
@@ -39,6 +40,9 @@ struct Params {
   counts: vec4<u32>,
   // x: workgroups per pass (blocks), y: pyramid levels, zw: screen size
   sizes: vec4<u32>,
+  // x: 1 when `previous` holds the sorted instances' previous transforms
+  // (TAA's object motion): the camera pass copies them beside its own.
+  motion: vec4<u32>,
   view_proj: mat4x4<f32>,
   passes: array<PassGpu, 18>,
 };
@@ -70,6 +74,9 @@ struct BatchGpu {
 // the occluders hid (statistics).
 @group(0) @binding(4) var<storage, read_write> args: array<atomic<u32>>;
 @group(0) @binding(5) var pyramid: texture_2d<f32>;
+// Laid out as `instances`: region 0 the sorted instances' previous
+// transforms, region g + 1 those of the camera pass's visible ones.
+@group(0) @binding(6) var<storage, read_write> previous: array<f32>;
 
 var<workgroup> shared_sum: array<u32, 256>;
 var<workgroup> shared_inside: atomic<u32>;
@@ -323,6 +330,9 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
+    if (params.motion.x != 0u && params.passes[wid.y].info.x == MAIN) {
+      for (var j = 0u; j < 16u; j++) { previous[to + j] = previous[k * 16u + j]; }
+    }
   }
   if (k == b.first) {
     let draw = (g * params.counts.y + bi) * 5u;
