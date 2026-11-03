@@ -81,7 +81,15 @@ fn cs_project(@builtin(local_invocation_index) t: u32) {
   }
   if (t == 0u) {
     for (var c = 0u; c < 3u; c++) {
-      probes[grid.at + c] = partial[0][c] * max(grid.intensity, 0.0);
+      // Deringed: the first band no longer than the constant one, so the
+      // irradiance c0 + c1 · n is nowhere negative. Unclamped, a probe by
+      // one bright wall (|c1| up to 2 c0) went to zero, and so black, a
+      // channel at a time on the faces turned away: hard terminators and
+      // hue shifts (a green stain where red and blue clamped first).
+      let sh = partial[0][c];
+      let band = length(sh.xyz);
+      let keep = select(1.0, max(sh.w, 0.0) / band, band > max(sh.w, 0.0));
+      probes[grid.at + c] = vec4<f32>(sh.xyz * keep, max(sh.w, 0.0)) * max(grid.intensity, 0.0);
     }
   }
 }

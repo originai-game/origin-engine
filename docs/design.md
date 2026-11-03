@@ -1002,11 +1002,13 @@ S6).
   over the environment by the same edge weight; lightmapped surfaces keep
   their lightmaps. The realtime probes relight reflections as well
   (`volume_reflected`, wrapping `reflected_light` in pbr_fs and
-  physical): the reflection is the probes' L1 radiance along the
-  reflected ray (the first band 3/2 of the irradiance's, towards 1 as
-  roughness rises); inside a reflection probe's box, smooth surfaces keep
-  its capture scaled per channel by the probes' irradiance over the
-  environment's. Baked volumes leave reflections as they were. A
+  physical): the reflection is the probes' L1 irradiance along the
+  reflected ray, a soft image of the room; inside a reflection probe's
+  box, smooth surfaces keep its capture (drawn with the probes' light),
+  blurring into the probes' as roughness rises. The projection derings
+  each channel (|c1| ≤ c0), so the irradiance is nowhere negative and no
+  channel clips alone into a hue shift or a hard terminator. Baked
+  volumes leave reflections as they were. A
   realtime volume is whole up to its faces and fades out over a spacing
   beyond them (a baked one fades in over its outer spacing), so the room
   surfaces just outside its probes take them. The low preset's GI switch reaches a world that names

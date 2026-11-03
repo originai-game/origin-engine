@@ -239,19 +239,20 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 // Realtime light volumes.
 // ---------------------------------------------------------------------------
 
-/// A closed room lit by one lamp under its ceiling, near the red wall: the
+/// A closed room lit by one lamp under the middle of its ceiling: the
 /// left wall red, the right green, the rest white, a white block and a
-/// sphere on the floor, and almost no environment light (a black
-/// background, intensity 0.05), so whatever lights the shade is the lamp's
-/// bounce. With `realtime` a realtime light volume fills the room (5 × 3 ×
-/// 5 probes) and is relit 8 probes a frame: the shade takes the lamp's
-/// light off the walls, reddish on the left, greenish on the right, and
-/// the lamp's `colour`. With `mirror` a chrome sphere stands in the middle
-/// of the frame: lit by the lamp's highlight alone and reflecting the dark
-/// environment, unless the realtime probes relight its reflection with the
-/// room (red on its left, green on its right). The probes' box ends 0.3
-/// short of the walls, floor and ceiling, which take its light from just
-/// outside it.
+/// sphere on the floor, almost no environment light (a black background,
+/// intensity 0.05), so whatever lights the shade is the lamp's bounce, and
+/// ambient occlusion in its corners and under the block and sphere. With
+/// `realtime` a realtime light volume fills the room (5 × 3 × 5 probes)
+/// and is relit 8 probes a frame: the shade takes the lamp's light off the
+/// walls, pink on the left, mint on the right, and the lamp's `colour`.
+/// The probes' box ends 0.3 short of the walls, floor and ceiling, which
+/// take its light from just outside it. With `mirror` a chrome sphere
+/// stands in the middle of the frame under a realtime reflection probe
+/// over the room: it reflects the room as the probe captures it, lit by
+/// the probes when they are there (red on its left, green on its right),
+/// by the lamp alone when not.
 pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
@@ -302,6 +303,14 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderS
             Mat4::from_translation(Vec3::new(0.0, 1.215, 0.39))
                 * Mat4::from_scale(Vec3::splat(0.8)),
         );
+        // Over the room, its capture point above the sphere (the box's
+        // ceiling 0.8 above the room's: a little parallax upwards).
+        let mut probe =
+            og_render::ReflectionProbe::new(2, Vec3::new(0.0, 1.9, 0.0), Vec3::new(6.0, 3.8, 6.0));
+        probe.mode = og_render::ProbeMode::Realtime;
+        probe.interval = 8;
+        probe.blend_distance = 0.3;
+        scene.reflection_probes.push(probe);
     }
     scene.light = DirectionalLight {
         intensity: 0.0,
@@ -309,7 +318,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderS
     };
     scene.lights.push(Light {
         kind: LightKind::Point,
-        position: Vec3::new(-1.8, 2.6, -0.6),
+        position: Vec3::new(0.0, 2.7, -0.4),
         color: colour,
         intensity: 14.0,
         range: 9.0,
@@ -320,6 +329,11 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderS
         background: Background::Color(Vec3::ZERO),
         ..Default::default()
     };
+    scene.post.ao = Some(AmbientOcclusion {
+        radius: 0.6,
+        method: AoMethod::Gtao,
+        ..Default::default()
+    });
     if realtime {
         scene.light_volumes.push(og_render::RealtimeLightVolume {
             id: 1,

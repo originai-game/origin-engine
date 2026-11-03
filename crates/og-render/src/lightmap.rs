@@ -174,33 +174,27 @@ fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
 }
 
 // What `ambient_irradiance` leaves for `volume_reflected`: the realtime
-// volumes' harmonics at the fragment, how much of them it took and the
-// environment's irradiance they stood in for.
+// volumes' harmonics at the fragment and how much of them it took.
 var<private> live_sh: array<vec4<f32>, 3>;
 var<private> live_weight: f32;
-var<private> live_env: vec3<f32>;
 
 // The realtime light volumes' reflection at `p` along `r` for
 // `roughness`, given `prefiltered` (the reflected environment, or a
 // ReflectionProbe's capture, in its units before its intensity): the
-// radiance the probes' harmonics give along `r` (the L1 radiance, its
-// first band 3/2 of the irradiance's), which shows the room around the
-// fragment, red off a red wall, dark where it is dark. Where a reflection
-// probe covers `p` its sharper capture is kept for smooth surfaces,
-// scaled by the probes' light over the environment's. Outside every
-// realtime volume (and on lightmapped fragments) `prefiltered` as it came.
-fn volume_reflected(prefiltered: vec3<f32>, p: vec3<f32>, n: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
+// light the probes' harmonics give along `r`, a soft image of the room
+// (red off a red wall, light from a lit ceiling, dark below), which a
+// sky's reflection would not be. Where a ReflectionProbe covers `p` its
+// sharp capture (drawn with the probes' light) is kept for smooth
+// surfaces, blurring into the probes' light as the roughness rises: a
+// mirror in a room wants a probe. Outside every realtime volume (and on
+// lightmapped fragments) `prefiltered` as it came.
+fn volume_reflected(prefiltered: vec3<f32>, p: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
   if (live_weight <= 0.0) { return prefiltered; }
   let scale = 1.0 / max(frame.params.x, 1e-4);
-  let irr_n = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, n), live_sh[1].w + dot(live_sh[1].xyz, n), live_sh[2].w + dot(live_sh[2].xyz, n)), vec3<f32>(0.0)) * scale;
-  // Rough surfaces blur towards the irradiance along `r`.
-  let band = mix(1.5, 1.0, roughness);
-  let rad_r = max(vec3<f32>(live_sh[0].w + band * dot(live_sh[0].xyz, r), live_sh[1].w + band * dot(live_sh[1].xyz, r), live_sh[2].w + band * dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
-  let norm = clamp(irr_n / max(live_env, vec3<f32>(1e-3)), vec3<f32>(0.0), vec3<f32>(16.0));
+  let along = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, r), live_sh[1].w + dot(live_sh[1].xyz, r), live_sh[2].w + dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
   let probe = select(0.0, probe_weight(p), frame.probe_min.w > 0.5);
   let sharp = probe * (1.0 - smoothstep(0.4, 1.0, roughness));
-  let relit = mix(rad_r, prefiltered * norm, sharp);
-  return mix(prefiltered, relit, live_weight);
+  return mix(prefiltered, mix(along, prefiltered, sharp), live_weight);
 }
 
 // The diffuse ambient light of a lit fragment, in the environment
@@ -212,7 +206,6 @@ fn ambient_irradiance(env: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   if (baked_lightmap.a > 0.5) { return baked_lightmap.rgb * scale; }
   let v = light_volumes(p, n);
   live_weight = v.live.w;
-  live_env = env;
   let baked = mix(env, v.baked.rgb * scale, v.baked.w);
   return mix(baked, v.live.rgb * scale, v.live.w);
 }

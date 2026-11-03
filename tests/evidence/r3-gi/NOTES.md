@@ -249,3 +249,74 @@ asserts that difference has red down and blue up by more than one level
 a pixel. On macrunner's numbers it is [−11999148, −8675637, +3833270]
 over 921600 pixels: red −13 and blue +4.2 levels a pixel. No renderer
 change, so no frame moves from 529a2a6fb.
+
+## Art round 1 (the art director's notes on main 6c0bd7490)
+
+Branch r3-art, from main 0ad53d395. Notes 1, 2, 3 and the ball's hard
+band are R3's and are fixed here. Notes 4 and 5 (stepped shadows, the
+lit line under the boxes' bases) are the shadow maps' bias and
+filtering, which R2+R8 own; they have been passed on. Note 6 (blotches
+on the Cornell box's walls) is most likely the box's baked lightmap,
+not the probes; see below.
+
+- **Mirror (note 1).** L1 harmonics can only give a soft image, and the
+  green stain came from per-channel clipping (below). The reflection
+  outside a ReflectionProbe is now the probes' irradiance along `r`: red
+  on the left, green on the right, a light ceiling above and a darker
+  floor below. A mirror needs a probe. The `light-volume-mirror` scene
+  now has a realtime ReflectionProbe over the room (interval 8), and
+  smooth surfaces in a probe box reflect its capture as is (no irradiance
+  ratio any more). That capture is drawn with the probes' light. The API
+  doc says so.
+- **Hard band on the Cornell ball, green stain on the mirror, part of
+  the olive (note 3).** A probe beside one bright wall had |c1| up to
+  2 c0. So c0 + c1·n went negative on faces turned away, and was clipped
+  to 0 one channel at a time. That gave hard terminators and hue shifts
+  (red and blue clipped first: green, olive). `cs_project` now derings
+  each channel (|c1| ≤ c0), so the irradiance is never negative. Baked
+  volumes are untouched.
+- **Olive (note 3), the rest.** The lamp hung 1.2 m from the red wall,
+  so the red wall's bounce outweighed the green wall's across the whole
+  room. Red plus a little green on a white wall reads khaki. The lamp now
+  hangs under the middle of the ceiling (0, 2.7, -0.4), so each wall
+  bleeds onto its own side.
+- **Occlusion (note 2).** Probes 1.35 m apart can't darken a corner or
+  ground an object. The scenes now turn on GTAO (radius 0.6), which
+  darkens the probes' ambient light in the corners and under the block
+  and sphere, and the API doc says to pair the volume with AO or
+  GlobalIllumination. The gap between the box's shadow and its base is
+  shadow bias (note 5, R2+R8).
+- **Blotches on the Cornell walls (note 6).** Those walls are a static
+  model with a lightmap, and a lightmap takes precedence over the probes
+  in `ambient_irradiance`, so realtime:on can't change their diffuse
+  light. The smudges and the blue patch are probably the bake's
+  (`og bake lightmaps` sample noise). To check: compare `realtime-warm`
+  with `baked` from the same run; they should match on the walls.
+
+Frames to draw (all four move; record `light-volume-room` and
+`light-volume-mirror` from this head):
+- `light-volume-room`:
+  - the lamp is centred now;
+  - pink bleed on the left and pale mint on the right (the back wall's
+    right half, the floor by the green wall, the near sphere's right);
+  - corners, wall-floor joins and the bases of the block and sphere are
+    darker;
+  - no hard terminator on the sphere.
+- `light-volume-mirror`:
+  - the chrome sphere shows the room sharply: the red wall on its left,
+    the green on its right, the ceiling and the lamp's light above, the
+    floor and block below;
+  - no stain.
+- `realtime-warm`, `realtime-blue` (fx-showcase, same command):
+  - the ball's shading is smooth, with no hard band at its equator;
+  - the walls are as in `baked`.
+- 2× crops of the block's base and of the mirror sphere, as the art
+  director asked.
+
+Tests: the lamp-colour and mirror tests are unchanged and should still
+pass: the lamp's change still carries its sign, and the mirror's
+reflection is still brighter with the volume, red on its left and green
+on its right.
+
+Orb checks: naga shaders, og-render lib, wasm32 check, clippy, fmt, og
+api check.
