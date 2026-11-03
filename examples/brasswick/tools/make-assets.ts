@@ -23,18 +23,18 @@
 // - music/vault.wav: "The Vault Turns", 24 bars at 100 bpm (about 58 s,
 //   44.1 kHz stereo), cooked in chunks and streamed (music/vault.wav.ogt).
 //   About 10 MB, so it is not committed (.gitignore).
-// - styles/brasswick/: the engine's fantasy style pack copied from
-//   templates/ui-kit (its atlas, icons and fonts are not committed:
-//   .gitignore) with the game's style.ogt, recoloured brass and soot.
+// styles/brasswick/ is not made here: the game's style (the engine's
+// fantasy pack of October 2026 recoloured brass and soot, its atlas, icons
+// and fonts) is committed, so the engine's pack moving on never changes how
+// Brasswick looks.
 
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { deflateSync } from "node:zlib";
 import { LEVELS, solid, type Level } from "./levels.ts";
 
 const ROOT = resolve(import.meta.dir ?? ".", "..");
 const ASSETS = join(ROOT, "assets");
-const ENGINE = resolve(ROOT, "..", "..");
 
 function write(rel: string, data: Uint8Array | string): void {
   const p = join(ASSETS, rel);
@@ -1274,36 +1274,6 @@ function music(): Uint8Array {
   return wav(RATE, 2, inter);
 }
 
-// -------------------------------------------------------------------- style
-
-/**
- * The fantasy style pack (the UI style the catalogue pairs with detailed-pixel) copied
- * from the engine's templates/ui-kit as og-taste §1 says, recoloured: a
- * parchment pack under a brass accent and soot ground. Its CJK `fallback`
- * line is dropped (the game shows only Latin-1: English and Spanish).
- */
-function style(): void {
-  const from = join(ENGINE, "templates", "styles", "fantasy");
-  const to = join(ASSETS, "styles", "brasswick");
-  mkdirSync(to, { recursive: true });
-  for (const f of ["atlas.png", "atlas.png.ogt", "icons.png", "icons.png.ogt", "Cinzel-Bold.ttf", "Cinzel-Bold.ttf.ogt", "Newsreader-Medium.ttf", "Newsreader-Medium.ttf.ogt", "OFL.txt", "LICENSES.md"]) copyFileSync(join(from, f), join(to, f));
-  let text = readFileSync(join(from, "style.ogt"), "utf8");
-  const colours: Record<string, string> = {
-    backdrop: "#14110d",
-    well: "#1d1812",
-    primary: "#7a4f12",
-    primaryHover: "#6e470f",
-    primaryActive: "#5f3d0c",
-    highlight: "#6a440e",
-    focus: "#1f6a5c",
-  };
-  for (const [k, v] of Object.entries(colours)) text = text.replace(new RegExp(`^(  ${k}) "#[0-9a-fA-F]+"`, "m"), `$1 "${v}"`);
-  text = text.replace(/^name "fantasy"$/m, 'name "brasswick"');
-  text = text.replace(/^# The fantasy style pack.*$/m, "# Brasswick's style: the engine's fantasy style pack (templates/ui-kit, CC0 art, OFL fonts:\n# LICENSES.md), copied by tools/make-assets.ts, its ground soot and its accent brass; the CJK\n# fallback line dropped, the game shows Latin-1 only.");
-  text = text.replace(/^  fallback .*\n/m, "");
-  writeFileSync(join(to, "style.ogt"), text);
-}
-
 // -------------------------------------------------------------------- main
 
 tileset();
@@ -1311,7 +1281,6 @@ maps();
 sprites();
 fx();
 sfx();
-style();
 write("music/vault.wav.ogt", "type import\nversion 1\n---\n# The music (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n");
 if (!process.argv.includes("--no-music")) write("music/vault.wav", music());
 console.log(`made Brasswick's assets under ${ASSETS}`);
