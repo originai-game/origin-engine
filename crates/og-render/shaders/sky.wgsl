@@ -215,6 +215,12 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
   let sky_side = mix(view_side, sun_side, 0.5) * sky_scale;
   var color = background;
+  // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
+  // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
+  // and a little of the sun through it.
+  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
+  let deck_cover = smoothstep(0.6, 0.95, c[0].x) * step(1e-6, c[0].w) * step(1e-6, c[0].y);
+  let deck = vec3<f32>(dot(sky_side, luma) * 0.6 * 0.35 + dot(light, luma) * 0.02) * c[2].rgb * 2.0;
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
@@ -249,7 +255,7 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
     end = inner.x;
   }
   let far = 60000.0;
-  if (start >= far) { return color; }
+  if (start >= far) { return mix(color, deck, deck_cover); }
   end = min(end, start + far * 0.5);
   // Up to twice the steps towards the horizon, where the path is longest.
   let steps = u32(c[3].z * (2.0 - abs(d.y)));
@@ -311,9 +317,12 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
     }
     t += dt;
   }
-  // The air between the viewer and the clouds blends them into the sky.
+  // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
+  // mean colour along this ray, the fallback's where the ray found little cloud).
   let fade = exp(-start / (far * 0.45));
-  return mix(color, color * transmittance + scattered, fade);
+  let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
+  let behind = mix(color, mean, deck_cover);
+  return mix(behind, color * transmittance + scattered, fade);
 }
 
 // The procedural sky drawn per pixel with the chosen look (frame.sky_*):

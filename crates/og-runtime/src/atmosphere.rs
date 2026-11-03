@@ -418,6 +418,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 fog.sun_color = sun;
             }
         }
+        if let Some(c) = &scene.clouds {
+            (fog.color, fog.sun_color) = c.fog_under(fog.color, fog.sun_color);
+        }
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
         // which replaces the plain fog where the renderer draws it.
         if on(&v, "volumetric", false) {

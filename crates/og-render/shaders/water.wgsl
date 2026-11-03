@@ -131,6 +131,43 @@ fn ocean_normal(p: vec2<f32>, footprint: f32) -> SeaNormal {
   return o;
 }
 
+struct SeaChop {
+  slope: vec2<f32>,
+  mss: f32,
+};
+
+// The wind's chop: the short gravity and capillary waves (wavelengths 0.2 to 2.4 m) the swell's 32 waves stop short
+// of, eight trains within 50 degrees of the wind, their mean square slope rising with it (0.003 a metre per second
+// over 4 m/s, Cox and Munk's slick-free share left to the short sea) and patchy (cat's paws, a few tens of metres
+// across). Each fades where a pixel spans it, its slope going to the facets' roughness instead (else it aliases).
+// Without it the near sea was satin smooth, liquid metal (the art director, 35f11678d).
+fn sea_chop(p: vec2<f32>, footprint: f32, t: f32) -> SeaChop {
+  var o: SeaChop;
+  o.slope = vec2<f32>(0.0);
+  o.mss = 0.0;
+  let u = water.sea_wind.z;
+  if (u <= 0.5) { return o; }
+  let wd = water.sea_wind.xy;
+  let total = clamp(0.003 * (u - 4.0), 0.0, 0.05);
+  let paws = 0.55 + 0.9 * foam_noise(p * 0.04 + vec2<f32>(17.0, 5.0));
+  // Eight equal trains: each a slope amplitude A, A² / 2 its share of the mean square slope (8 A² / 2 in all).
+  let amp = sqrt(total / 4.0) * paws;
+  for (var i = 0u; i < 8u; i++) {
+    let fi = f32(i);
+    let lambda = 2.4 * pow(0.7, fi);
+    let k = 6.2831853 / lambda;
+    // Directions spread about the wind, irregularly (no two trains line up into a lattice).
+    let ang = (fract(fi * 0.618034 + 0.31) - 0.5) * 1.75;
+    let d = vec2<f32>(wd.x * cos(ang) - wd.y * sin(ang), wd.x * sin(ang) + wd.y * cos(ang));
+    let omega = sqrt(9.81 * k + 0.074 / 1000.0 * k * k * k);
+    let keep = 1.0 - smoothstep(0.785, 1.571, k * footprint);
+    let th = k * dot(d, p) - omega * t + fi * 2.39;
+    o.slope += d * (amp * cos(th) * keep);
+    o.mss += amp * amp * 0.5 * (1.0 - keep * keep);
+  }
+  return o;
+}
+
 // Bruneton et al. 2010's mean Fresnel over a rough sea's facets: the
 // grazing mirror dims as the slopes it averages spread (sigma: their
 // deviation along the view).
@@ -451,8 +488,9 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     var footprint = sea_footprint(in.world);
     if (frame.view_pos.w > 0.5) { footprint = max(length(dpdx(in.rest)), length(dpdy(in.rest))); }
     let sea = ocean_normal(in.rest, footprint);
-    base = sea.n;
-    sea_mss = sea.mss;
+    let chop = sea_chop(in.rest, footprint, t);
+    base = normalize(sea.n - vec3<f32>(chop.slope.x, 0.0, chop.slope.y) * sea.n.y);
+    sea_mss = sea.mss + chop.mss;
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
     if (water.ocean.w > 0.0) {
       // Coordinates along the wind (x) and across it (y): foam is drawn out downwind.
@@ -460,27 +498,22 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
       let q = vec2<f32>(dot(in.rest, wd), dot(in.rest, vec2<f32>(-wd.y, wd.x)));
       let streaks = foam_noise(q * vec2<f32>(0.12, 0.45)) * 0.6 + foam_noise(q * vec2<f32>(0.6, 2.1)) * 0.4;
       let core = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
-      // White water is lace, never a sheet or a cut-out: ridged noise (threads where the noise crosses its middle)
-      // of warped coordinates, so its cells are a network of uneven threads, not the round islands and round holes
-      // of value noise cut at a level. Its finer octaves erode the edges and fade to their mean where a pixel spans
-      // them. Coverage is a soft threshold the crest's core lowers; only the breaking crest line (the core near 1)
-      // is opaque white, the older foam down its back thinner (see foam_tint below).
+      // White water is a matte layer (the art director, 35f11678d: ridged threads read as marbled chrome). Its
+      // coverage is soft-thresholded noise of warped coordinates, eroded at the edges by finer octaves into lace;
+      // dense on the breaking crest's leading face (the downwind slope, where it spills), thinning behind it. The
+      // octaves a pixel spans fade to their mean.
       let warp = vec2<f32>(foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(3.1, 7.7)),
         foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(11.3, 1.9))) - vec2<f32>(0.5);
       let qw = q + warp * 3.5;
-      let coarse = 1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(0.7, 1.6)) - 1.0);
-      // (Ridged value noise sits near 0.68, its spread about 0.13: the octaves a pixel spans fade to that mean.)
-      let mid = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(2.1, 4.6)) - 1.0), 0.68, smoothstep(0.15, 0.35, footprint));
-      let fine = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(5.5, 12.0)) - 1.0), 0.68, smoothstep(0.05, 0.12, footprint));
-      let lace = coarse * 0.5 + mid * 0.3 + fine * 0.2;
-      // The cut stays above the lace's mean even on a breaking crest (some 40 % of it white there, 5 % at the patch's
-      // fringe), so a whitecap is threads with the sea between them, never a filled sheet (a cut under the mean
-      // covered nearly all of the crest). The threshold is soft, 0.15 wide.
-      let cut = 0.97 - 0.25 * core;
-      let cover = smoothstep(cut - 0.075, cut + 0.075, lace);
-      // Opaque white only at the threads' hearts on the breaking crest itself.
-      crest_line = smoothstep(0.85, 1.0, core) * smoothstep(cut + 0.05, cut + 0.18, lace);
-      whitecap = cover * mix(0.45, 1.0, crest_line) * smoothstep(0.0, 0.3, core);
+      let mid = mix(foam_noise(qw * vec2<f32>(1.7, 3.4)), 0.5, smoothstep(0.15, 0.35, footprint));
+      let fine = mix(foam_noise(qw * vec2<f32>(5.0, 9.0)), 0.5, smoothstep(0.05, 0.12, footprint));
+      let froth = foam_noise(qw * vec2<f32>(0.6, 1.2)) * 0.5 + mid * 0.3 + fine * 0.2;
+      let leading = mix(0.55, 1.0, smoothstep(-0.05, 0.12, dot(sea.n.xz, wd)));
+      let dense = core * leading;
+      let cut = 0.8 - 0.42 * dense;
+      whitecap = smoothstep(cut - 0.08, cut + 0.08, froth) * smoothstep(0.0, 0.3, core);
+      // Where the foam is thick (the crest's spill), its full off-white; thin foam is blue-grey.
+      crest_line = smoothstep(0.5, 0.9, dense) * smoothstep(cut, cut + 0.15, froth);
       // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
       // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
       // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
@@ -675,10 +708,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   // A sea's whitecaps, whatever the shore foam's width: white water lit by the sun and the whole sky above it.
   let sky_lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + ambient_light_level(in.normal, in.world) * frame.params.x;
-  // Foam off the crest line is a thin film that takes the water's tint; the breaking crest is white.
+  // Foam is diffuse: it covers the mirror and the sun's glint (none of them shows through it), lit by the sun and the
+  // sky alone. Thin foam is blue-grey (the water under its bubbles), the spilling crest off-white.
   let white = water.foam.rgb * sky_lit;
-  let foam_tint = mix(mix(color, white, 0.7), white, crest_line);
-  color = mix(color, foam_tint, whitecap);
+  let foam_albedo = mix(water.foam.rgb * vec3<f32>(0.72, 0.8, 0.84), water.foam.rgb * 0.92, crest_line);
+  color = mix(color, foam_albedo * sky_lit, whitecap);
   // The old foam is thinner still: greyer than a whitecap, the water showing through it.
   color = mix(color, mix(color, white * 0.6, 0.7), old);
   return vec4<f32>(apply_fog(color, in.world), 1.0);

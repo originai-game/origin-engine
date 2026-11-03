@@ -134,6 +134,23 @@ impl Clouds {
         let k = (self.coverage.clamp(0.0, 1.0).powi(3) * thick.min(1.0)).clamp(0.0, 1.0);
         (1.0 - 0.8 * k, 1.0 - 0.45 * k)
     }
+
+    /// A fog's colour and its colour looking into the sun under this cover:
+    /// the air under an overcast is lit by the deck, grey and as dim as the
+    /// sky light [`Clouds::light`] leaves, with no glow towards the hidden
+    /// sun (a clear sky's bright horizon haze under a storm read as a clear
+    /// band at the horizon).
+    pub fn fog_under(&self, color: Vec3, sun_color: Vec3) -> (Vec3, Vec3) {
+        let (sun, sky) = self.light();
+        let k = (1.0 - sky) / 0.45;
+        let grey = |c: Vec3| {
+            c.lerp(
+                Vec3::splat(c.dot(Vec3::new(0.2126, 0.7152, 0.0722))),
+                (1.1 * k).min(1.0),
+            )
+        };
+        (grey(color) * sky, grey(sun_color) * sky * sun)
+    }
 }
 
 /// The noise volume and its sampler, bound by the sky pass (its group's
@@ -271,6 +288,34 @@ pub(crate) const NOISE_WGSL: &str = wgsl!("clouds_noise.wgsl");
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Under an overcast the fog is the deck's dim grey with no sun glow;
+    /// under a few clouds it keeps a clear sky's blue.
+    #[test]
+    fn fog_under_an_overcast_is_dim_grey() {
+        let blue = Vec3::new(0.5, 0.65, 0.9);
+        let sun = Vec3::new(1.0, 0.8, 0.5);
+        let fair = Clouds {
+            coverage: 0.3,
+            ..Clouds::default()
+        };
+        let (c, s) = fair.fog_under(blue, sun);
+        assert!((c - blue).length() < 0.05 && (s - sun).length() < 0.06);
+        let storm = Clouds {
+            coverage: 0.97,
+            density: 0.09,
+            ..Clouds::default()
+        };
+        let (c, s) = storm.fog_under(blue, sun);
+        assert!(
+            c.max_element() - c.min_element() < 0.1 * c.max_element(),
+            "grey: {c}"
+        );
+        assert!(
+            c.max_element() < 0.6 * blue.max_element() && s.max_element() < 0.2,
+            "dim: {c} {s}"
+        );
+    }
 
     /// The block: the wind's offset follows the clock and wraps at four
     /// tiles (same offset a period later), the steps are clamped, and the
