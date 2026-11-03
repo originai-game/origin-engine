@@ -100,7 +100,8 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
     });
     // The art, edge to edge inside the frame's line.
     const artSide = size - line * 2;
-    artTile("Icon", desc.image, desc.icon ?? "", artSide, hueOf(desc.icon || desc.name || id), absolute({ start: line, top: line }), sel("AbilitySlot", "icon"));
+    // The art is the slot's ground: the seconds, the charges, the cost and the percent sit on it by design.
+    artTile("Icon", desc.image, desc.icon ?? "", artSide, hueOf(desc.icon || desc.name || id), absolute({ start: line, top: line }, { overlaps: [path] }), sel("AbilitySlot", "icon"));
     const full = (insetBy = line) => absolute({ start: insetBy, top: insetBy });
     const cover = { width: px(artSide), height: px(artSide) };
     // What the state does to the art: dark when locked, washed out and slashed when disabled,
@@ -184,10 +185,30 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
         leaf("Bar", { width: px(b), height: px(b) }, { shape: { kind: "path", points: [{ x: b - q, y: q }, { x: q, y: b - q }], width: bt, cap: "butt" }, fills: [solid(lit(role("danger")))] }, absolute({ start: 0, top: 0 }));
       }, absolute({ end: line + u(2), top: line + u(2) }));
     }
-    // One centred numeral: the seconds left while cooling.
+    // A command card's key, printed in the cell's top-left corner (below): a small cap at any text size, about a
+    // fifth of the cell. The largest step within a fifth of the cell; at 200 % even the ramp's smallest step is larger
+    // than that, so it is drawn down to the fifth, but never under the smallest text the checks allow (§15.2).
+    const corner0 = keyCorner ? desc.hotkey || (desc.action ? kit.frameGlyph(desc.action)?.text ?? "" : "") : "";
+    const kStep = tsFit(10, size * 0.2, true);
+    const kSize = stepSize(kStep).size;
+    const kk = Math.min(1, Math.max(minText(), size * 0.2) / kSize);
+    const kTop = line + Math.max(1, u(2));
+    // Where the key's line ends: the seconds stay below it.
+    const keyBottom = corner0 ? kTop + stepSize(kStep).line * kk : 0;
+    // One centred numeral: the seconds left while cooling; under a corner key, centred in the room below it, so at
+    // 200 % text in a small cell the two never meet.
     if (cooling && !locked) {
-      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 20 : 17, size * 0.4, true), font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
-        absolute({ centerX: true, centerY: true }));
+      const room = size - line - keyBottom;
+      const tStep = tsFit(size >= 52 ? 20 : 17, corner0 ? Math.min(size * 0.4, room * 0.85) : size * 0.4, true);
+      const { size: tSize, line: tLine } = stepSize(tStep);
+      if ((size - tLine) / 2 >= keyBottom) {
+        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), nowrap: true, outline: 2.4 }, absolute({ centerX: true, centerY: true }));
+      } else {
+        // Drawn down to the room's line, never under the smallest text the checks allow (as the key is).
+        const tk = Math.min(1, Math.max(minText() / tSize, room / tLine));
+        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
+          absolute({ centerX: true, top: keyBottom + Math.max(0, (room - tLine * tk) / 2) }, tk < 1 ? { transform: { scaleX: tk, scaleY: tk, pivotX: 0.5, pivotY: 0 } } : {}));
+      }
     }
     // The ultimate's charge: a gold ring filling clockwise round the art, inside the frame so it never
     // crosses into the gap or a neighbour, and its percent small at the bottom on a dark pill.
@@ -213,7 +234,8 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       // With none left the slot is cooling and its seconds say so: a "0" beside them would be a second numeral.
       if (charges > 0) {
         const badgeStep = tsFit(9, size * 0.2, true);
-        const badge = Math.round(Math.max(16, size * 0.28));
+        // Large enough that its numeral is never under the smallest text the checks allow (§15.2).
+        const badge = Math.round(Math.max(16, size * 0.28, Math.ceil(minText() / 0.66)));
         const fit = shrunk(badgeStep, badge * 0.66, stepSize(badgeStep).line);
         box("ChargeBadge", { width: px(badge), height: px(badge), part: sel("AbilitySlot", "charges") }, {
           shape: { kind: "ellipse" },
@@ -225,19 +247,9 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       }
     }
     // A command card's key: printed in the cell's top-left corner, small, over a soft shadow (StarCraft II's grid keys).
-    if (keyCorner) {
-      const k = desc.hotkey || (desc.action ? kit.frameGlyph(desc.action)?.text ?? "" : "");
-      if (k) {
-        // A small cap at any text size (about a fifth of the cell), so it never meets the cooldown's centred numeral.
-        // The largest step within a fifth of the cell; at 200 % even the ramp's smallest step is larger than that, so
-        // it is drawn down to the fifth, but never under the smallest text the checks allow (§15.2): the key stays a
-        // corner cap while the rest of the HUD's text grows.
-        const kStep = tsFit(10, size * 0.2, true);
-        const kSize = stepSize(kStep).size;
-        const kk = Math.min(1, Math.max(minText(), size * 0.2) / kSize);
-        text("Key", k, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), nowrap: true, soft: true },
-          absolute({ start: line + Math.max(2, u(3)), top: line + Math.max(1, u(2)) }, kk < 1 ? { transform: { scaleX: kk, scaleY: kk, pivotX: 0, pivotY: 0 } } : {}));
-      }
+    if (corner0) {
+      text("Key", corner0, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), nowrap: true, soft: true },
+        absolute({ start: line + Math.max(2, u(3)), top: kTop }, kk < 1 ? { transform: { scaleX: kk, scaleY: kk, pivotX: 0, pivotY: 0 } } : {}));
     }
     // Active or an ultimate ready: a thin accent edge inside the frame, over the art.
     if (accent) {

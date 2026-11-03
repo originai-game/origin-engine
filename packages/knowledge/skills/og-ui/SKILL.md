@@ -791,7 +791,7 @@ What `og ui check` reports (docs/ui.md §16.5), each with the fix:
 | `touch-target` | an interactive element under 44×44 CSS px on a coarse pointer | its size, or hit slop |
 | `contrast` | text under 4.5:1 on the pixels (7:1 in high contrast) | the style's palette, never per call |
 | `text-size` | text under 12 CSS px on touch, under 18 px at 1080p on desktop | a larger step of the ramp |
-| `focus-reach`, `focus-trap` | a control the d-pad cannot reach from the default focus (two in one place, not focusable), or cannot leave | line controls up in rows and columns; make it focusable |
+| `focus-reach`, `focus-trap` | a control the d-pad cannot reach from the default focus (two in one place, not focusable), or cannot leave | line controls up in rows and columns; make it focusable. Not checked on a screen that calls `og.ui.setNavigation(false)` (its pad drives the game) |
 | `a11y-name`, `a11y-locale` | a control with no name; a name or text the same in another locale as in the game's own | its text (or its desc's `label`, where the widget has one); og.i18n.t |
 | `primary-actions` | more than one primary button in a layer | all but one `secondary` |
 | `feedback` | a styled game without hover and press sounds; a custom interactive container without visual states | the style's sounds; a `press` state group |

@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop, minText } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -94,7 +94,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
   const capStep = ts(11);
   // The north badge straddles the bezel's top edge, a tenth of the map across.
   // It grows with the text: at least the caption step's cap height and its padding, so the letter never shrinks to a dot.
-  const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8));
+  // And its letter (drawn at most 0.62 of the badge) never under the smallest text the checks allow (§15.2).
+  const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8), Math.ceil(minText() / 0.62));
   hudPlace(id, anchorOf(desc, "topRight"), () => {
     // Bare (a console's zone): no room above it, so the north badge sits inside the map's top edge.
     kit.column(id, { gap: bare ? 0 : u(4), cross: "center", padding: { top: bare ? 0 : Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
@@ -247,7 +248,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         strokes: [stroke(1, lit(WHITE, 0.18))],
         effects: [drop(u(1), u(4), token("shadow", 0.5))],
       }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
-        fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: bezel + R + Math.sin(nAng) * ring - nb / 2 }));
+        // It straddles the map's rim on purpose (inside the top edge when bare).
+        fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: bezel + R + Math.sin(nAng) * ring - nb / 2 }, { overlaps: [path] }));
       });
       // A round map's caption: the square map's plate as a pill centred under the ring, so it reads on any ground.
       if (desc.zone && !plate) {

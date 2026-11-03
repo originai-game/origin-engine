@@ -86,7 +86,8 @@ export interface UiFrameSnapshot {
   grounds?: Rect4[];
   /** The style's dimmed inks (inkMuted, inkFaint), linear RGBA: text in one is dimmed on purpose. */
   dimInks?: number[][];
-  a11y: { focused: string; focusOrder: string[]; nodes: Array<{ path: string; parent: string; role: string; name: string; states: string[]; rect: Rect4 }> };
+  /** navigation: false when the screen took the pad itself (og.ui.setNavigation(false)); absent in older dumps: on. */
+  a11y: { navigation?: boolean; focused: string; focusOrder: string[]; nodes: Array<{ path: string; parent: string; role: string; name: string; states: string[]; rect: Rect4 }> };
   /** Elements that declare visual states, with each group's current state. */
   motion: Array<{ path: string; states: Array<[string, string]> }>;
   warnings: string[];
@@ -557,8 +558,11 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   }
 
   // Focus: from the default focus, by pad, every control keys reach; and back.
+  // A screen that took the pad itself (og.ui.setNavigation(false): a HUD whose pad drives the game) has no
+  // focus to walk: its controls answer the actions bound to the pad, so neither reach rule applies.
+  const walked = f.a11y.navigation !== false;
   const order = f.a11y.focusOrder;
-  const nodes = order.map((p) => f.a11y.nodes.find((n) => n.path === p)).filter((n): n is NonNullable<typeof n> => !!n && !n.states.includes("offscreen"));
+  const nodes = !walked ? [] : order.map((p) => f.a11y.nodes.find((n) => n.path === p)).filter((n): n is NonNullable<typeof n> => !!n && !n.states.includes("offscreen"));
   if (nodes.length > 0) {
     const start = Math.max(0, nodes.findIndex((n) => n.path === f.a11y.focused));
     for (const p of padFindings(padGraph(nodes.map((n) => n.rect)), start)) {
@@ -586,7 +590,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   // inventory's grid): its options are reached through it.
   const composites = f.a11y.nodes.filter((n) => COMPOSITES.has(n.role) && reach.has(n.path)).map((n) => n.path);
   for (const n of f.a11y.nodes) {
-    if (!INTERACTIVE.has(n.role) || n.states.includes("disabled") || n.states.includes("offscreen") || reach.has(n.path)) continue;
+    if (!walked || !INTERACTIVE.has(n.role) || n.states.includes("disabled") || n.states.includes("offscreen") || reach.has(n.path)) continue;
     if (topModal && !within(n.path, topModal)) continue;
     if (composites.some((c) => c !== n.path && within(n.path, c))) continue;
     const i = byPath.get(n.path);

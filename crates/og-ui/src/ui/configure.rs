@@ -167,6 +167,13 @@ impl Ui {
 
     /// The last frame's accessibility tree: each element with a role, its
     /// name, value, states and bounds, and the focus order (`crate::a11y`).
+    /// Whether keys and pads move the focus on the last frame's screen: off
+    /// after [`Ui::set_navigation`]`(false)`, unless a dialog is open (a
+    /// dialog's controls are always walked).
+    pub fn navigation(&self) -> bool {
+        !self.state.nav_off || self.state.scope != 0
+    }
+
     pub fn a11y(&self) -> &crate::a11y::A11yTree {
         &self.frame.a11y
     }

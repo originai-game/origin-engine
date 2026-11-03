@@ -135,6 +135,8 @@ fn frame(engine: u32) -> Value {
         "fills": fills,
         "grounds": grounds,
         "a11y": {
+            // Off: the screen took the pad itself (og.ui.setNavigation(false)).
+            "navigation": ui.navigation(),
             "focused": a11y.focused,
             "focusOrder": a11y.focus_order,
             "nodes": a11y.nodes.iter().map(|n| json!({

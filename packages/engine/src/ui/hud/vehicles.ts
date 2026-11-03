@@ -73,6 +73,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
         const speedStep = tsFit(size >= 150 ? 30 : 22, size * 0.15, true);
         const unitStep = tsFit(10, size * 0.065);
         const readoutHalf = Math.max(String(Math.round(max)).length * stepSize(speedStep).size * 0.62, unit.length * stepSize(unitStep).size * 0.62 + size * 0.16) / 2 + size * 0.02;
+        const readoutTop = c + size * (big ? 0.07 : 0.05);
         const step = niceStep(max);
         const n = Math.floor(max / step + 1e-6);
         // Numerals placed so far: one that would touch its neighbour (the dial's top at a large text size) is left out.
@@ -95,8 +96,11 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           const ny = c + Math.sin(a) * rt - size * 0.035;
           // A numeral that would reach the readout under the hub (large text, the dial's lowest marks) is left out.
           const numW = String(Math.round(v)).length * stepSize(numStep).size * 0.62;
-          const hitsReadout = ny + stepSize(numStep).line > c + size * (big ? 0.0 : 0.06) && Math.abs(nx - c) - numW / 2 < readoutHalf;
-          const nb: [number, number, number, number] = [nx - numW / 2 - 2, nx + numW / 2 + 2, ny, ny + stepSize(numStep).line];
+          // Against the readout's own top and the numeral's laid-out box, as the overlap check measures them.
+          const hitsReadout = ny + stepSize(numStep).line > readoutTop && Math.abs(nx - c) - Math.max(numW, lw) / 2 < readoutHalf;
+          // The box it is laid out in (lw), so two placed numerals never overlap as the check measures them.
+          const half = Math.max(numW / 2 + 2, lw / 2);
+          const nb: [number, number, number, number] = [nx - half, nx + half, ny, ny + stepSize(numStep).line];
           const crowded = placedNums.some((q) => nb[0] < q[1] && nb[1] > q[0] && nb[2] < q[3] && nb[3] > q[2]);
           if (major && size >= 120 && !hitsReadout && !crowded) {
             placedNums.push(nb);
@@ -137,7 +141,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
               }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }));
             }
           });
-        }, fixed({ start: 0, top: c + size * (big ? 0.07 : 0.05) }));
+        }, fixed({ start: 0, top: readoutTop }));
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {
             shape: ellipseShape(),

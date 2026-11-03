@@ -188,6 +188,10 @@ test("pad reach: a control stacked on another is unreachable from the default fo
   expect(rules(lined)).not.toContain("focus-reach");
   const unfocusable = frame({ a11y: { focused: "", focusOrder: [], nodes: [{ path: "Card", parent: "", role: "button", name: "Card", states: [], rect: [40, 100, 80, 44] }] } });
   expect(rules(unfocusable)).toContain("focus-reach");
+  // A screen that took the pad (og.ui.setNavigation(false)) is not walked: neither reach rule; the same frame walked still is.
+  const off = (navigation: boolean) => frame({ a11y: { navigation, focused: "A", focusOrder: ["A", "C"], nodes: [node("A", [40, 60, 40, 40]), node("C", [40, 60, 40, 40]), { path: "Card", parent: "", role: "button", name: "Card", states: [], rect: [40, 100, 80, 44] }] } });
+  expect(rules(off(false))).not.toContain("focus-reach");
+  expect(checkFrame(off(true), cell).filter((x) => x.rule === "focus-reach").map((x) => x.paths[0]).sort()).toEqual(["C", "Card"]);
 });
 
 test("pad reach: options inside a focusable listbox are reached through it; outside one they are not", () => {

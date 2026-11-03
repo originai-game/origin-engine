@@ -28,7 +28,8 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 import type { DrawDesc, KillfeedEntry, World } from "@origingame/engine";
 import { kit as uiKit } from "../src/ui-kit/bind.ts";
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
+import { checkFrame, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 import { at, drawsDuring, dump, engineFor, type El } from "./support/ui.ts";
@@ -931,4 +932,43 @@ test("og.ui.killfeed: lines stamped late in a run are laid out on screen, inside
   }
   expect(b.y).toBeLessThan(a.y);
   expect(at(els, "FeedHud/Feed/b/Killer")?.text).toBe("Wraith");
+});
+
+test("og.ui.commandCard at 200 % text: a cooling cell's seconds stay clear of its key corner; a charge badge's numeral never under the smallest text", () => {
+  // Wrong: the seconds centred in a 40 px cell, over the corner key once the text grows; a 16 px badge's 10.6 px digit.
+  const PHONE = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
+  const e = engineFor("HudCard200", (world) => {
+    og.ui.configure(world, { textScale: 2 });
+    og.ui.commandCard("Card", { columns: 3, size: 40, commands: [{ key: "q", name: "Stim", hotkey: "Q", cooldown: 12, cooldownMax: 20 }] });
+    og.ui.abilityBar("Bar", { size: 56, slots: [{ key: "w", name: "Blink", hotkey: "W", maxCharges: 3, charges: 2 }] });
+  }, PHONE);
+  e.advance(3);
+  const els = dump(e);
+  const key = els.find((x) => x.path.endsWith("/q/Slot/Key"))!;
+  const time = els.find((x) => x.path.endsWith("/q/Slot/Time"))!;
+  expect([key?.text, time?.text]).toEqual(["Q", "12"]);
+  const meet = Math.min(key.x + key.width, time.x + time.width) > Math.max(key.x, time.x) && Math.min(key.y + key.height, time.y + time.height) > Math.max(key.y, time.y);
+  expect(meet).toBe(false);
+  const slot = els.find((x) => x.path.endsWith("/q/Slot"))!;
+  expect(time.y + time.height).toBeLessThanOrEqual(slot.y + slot.height);
+  // 12 px on a coarse pointer: the badge holds its numeral at two thirds of its side.
+  expect(els.find((x) => x.path.endsWith("/w/Slot/ChargeBadge"))!.width * 0.66).toBeGreaterThanOrEqual(12);
+});
+
+test("og.ui.minimapView and og.ui.speedometer on a phone: north's badge holds a 12 px letter and sits on the rim on purpose; no dial numeral meets the readout", () => {
+  // Wrong: a 10.5 px north letter reported over the map, or the dial's lowest numeral 2 px into the speed (a readout
+  // top the check measured at 6 % under the hub while the readout sat at 5 %).
+  const PHONE = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
+  const e = engineFor("HudPhoneNav", () => {
+    og.ui.minimapView("Map", { size: 168, zoom: 1, anchor: "topRight", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5 }] });
+    og.ui.speedometer("Speedo", { size: 210, speed: 64, maxSpeed: 240, anchor: "bottomLeft" });
+  }, PHONE);
+  e.advance(3);
+  const els = dump(e);
+  expect(els.find((x) => x.path.endsWith("/North"))!.width * 0.62).toBeGreaterThanOrEqual(12);
+  const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
+  const overlaps = checkFrame(f, { screen: "hud", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false })
+    .filter((x) => x.rule === "overlap" && x.paths.some((p) => /\/(North|Num#\d+)(\/|$)/.test(p)))
+    .map((x) => x.paths.join(" × "));
+  expect(overlaps.join("; ")).toBe("");
 });
