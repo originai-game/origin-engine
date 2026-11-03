@@ -2105,3 +2105,50 @@ fn a_version_1_style_keeps_its_switches_titles_and_selection_through_an_upgrade(
         "today's switch has round ends"
     );
 }
+
+/// A version 1 game's burst (a results screen's earned star) is the one it
+/// shipped with: rays shrinking to dots and round sparks drawn on the
+/// element, not today's particle streaks, which a version 2 style throws.
+#[test]
+fn a_version_1_styles_burst_is_drawn_rays_and_sparks_not_particles() {
+    let upgraded = upgrade_style(STYLE).expect("the test style upgrades");
+    let today = upgraded.replace("\nscreens 1\n", "\n");
+    // (draw items with the burst, without it, particle batches) after 10 ticks.
+    let run = |text: &str| {
+        let file = parse_style(text).expect("the style parses");
+        let mut counts = [0usize; 2];
+        let mut mass = 0;
+        for (n, burst) in [true, false].into_iter().enumerate() {
+            let mut ui = ui_with_font(test_font_metrics());
+            ui.set_theme(file.theme(Some(atlas()), [0; 6]));
+            for _ in 0..10 {
+                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+                ui.button("Star", "★", ButtonDesc::default());
+                if burst {
+                    ui.burst(BurstDesc::default());
+                }
+                ui.end();
+            }
+            let f = ui.frame();
+            counts[n] = f.items.len();
+            if burst {
+                mass = f
+                    .items
+                    .iter()
+                    .filter(|i| matches!(&i.cmd, DrawCmd::World(_)))
+                    .count();
+            }
+        }
+        (counts[0] - counts[1], mass)
+    };
+    for text in [STYLE, upgraded.as_str()] {
+        let (drawn, mass) = run(text);
+        assert_eq!(mass, 0, "a version 1 game's burst throws no particles");
+        assert!(
+            drawn >= 8,
+            "its rays and sparks drawn on the element: {drawn}"
+        );
+    }
+    let (_, mass) = run(&today);
+    assert!(mass > 0, "a version 2 style's burst is particles");
+}

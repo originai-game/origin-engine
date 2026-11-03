@@ -5,8 +5,8 @@
 
 use crate::draw::DrawCmd;
 use crate::id::{Id, child_key};
-use crate::layout::{Content, FontRole, NONE, Rect, Size, TextAlign};
-use crate::motion::Fx;
+use crate::layout::{Content, FontRole, Frame, NONE, Rect, Shape, Size, TextAlign};
+use crate::motion::{Fx, ease_out};
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Anim, Ui};
 use og_render::TextureHandle;
@@ -281,9 +281,65 @@ impl Ui {
             return;
         }
         let since = self.since(child_key(self.nodes[anchor].key, "burst"));
+        if self.theme.art.legacy {
+            self.burst_shapes(anchor, &desc, since);
+            return;
+        }
         // A preset of the element's particles (docs/ui.md §5.5): it fires
         // once, `delay` after the element first appears.
         self.burst_particles(anchor, &desc, since);
+    }
+
+    /// A version 1 style's burst, as its game shipped (docs/ui.md §12.1):
+    /// eight rays shrinking to dots and a round spark beyond each, drawn on
+    /// the element from `delay` after `since`, none under reduced motion.
+    fn burst_shapes(&mut self, i: usize, desc: &BurstDesc, since: u64) {
+        let t = self.theme;
+        if t.reduced_motion {
+            return;
+        }
+        let delay = desc.delay_ms * self.ticks_per_second as f32 / 1000.0;
+        let ms = if desc.duration_ms > 0.0 {
+            desc.duration_ms
+        } else {
+            t.durations_ms.slow + t.durations_ms.base
+        };
+        let k = (self.state.tick.saturating_sub(since) as f32 - delay) / self.ticks_for(ms) as f32;
+        if !(0.0..1.0).contains(&k) {
+            return;
+        }
+        let size = match self.nodes[i].el.width {
+            Size::Fixed(w) => w,
+            _ => 32.0,
+        };
+        let color = desc.color.unwrap_or(t.palette.primary);
+        let radius = if desc.radius > 0.0 {
+            desc.radius
+        } else {
+            1.4 * size
+        };
+        let count = if desc.count == 0 { 8 } else { desc.count };
+        let e = ease_out(k);
+        let fade = 1.0 - k * k;
+        for r in 0..count {
+            let a = (r as f32 + 0.5 * (r % 2) as f32) * std::f32::consts::TAU / count as f32;
+            let (c, s) = (a.cos(), a.sin());
+            let dist = radius * (0.35 + 0.65 * e) * if r % 2 == 0 { 1.0 } else { 0.7 };
+            let len = (size * 0.45 * (1.0 - e)).max(2.0);
+            let w = (size * 0.08).max(2.0);
+            self.nodes[i].shapes.push(Shape::Bar {
+                frame: Frame::centered(c * dist, s * dist, len, w),
+                angle: a,
+                color: color.fade(fade),
+            });
+            let spark = (size * 0.12 * (1.0 - k)).max(1.5);
+            let d2 = dist * 1.15;
+            self.nodes[i].shapes.push(Shape::Rect {
+                frame: Frame::centered(c * d2 + s * 3.0, s * d2 - c * 3.0, spark, spark),
+                radius: spark,
+                color: color.fade(fade * 0.8),
+            });
+        }
     }
 
     /// Shakes the element built just before from this tick on: it swings
