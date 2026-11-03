@@ -9100,6 +9100,7 @@ module ui {
     field color Option.Paint "Its colour; null is the kind's."
     field rarity Rarity "Loot's tier."
     field label String "What a screen reader says of it."
+    field ringed bool "A ring round it in its colour: the rivals just ahead of and behind the player."
   }
 
   enum MapShape {
@@ -9124,7 +9125,7 @@ module ui {
       default 0.3
       unit ratio
     }
-    field rotate bool "The map turns with heading so up is ahead; else north is up and the player's arrow turns."
+    field rotate Option.bool "The map turns with heading so up is ahead (player-up); false keeps north up and turns the player's arrow. Null is player-up for a racing track (track given) and north-up otherwise."
     field heading f32 "The player's heading, clockwise from north." {
       unit rad
     }
@@ -9137,6 +9138,9 @@ module ui {
     field zone String "A label under it (the zone's name); empty is none."
     field track List.Vector2 "A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more."
     field trackOpen bool "The track does not close on itself (a point-to-point stage)."
+    field sectors List.f32 "Sector lines across the track, each a fraction of the way along it (by its points) from the start, which is drawn as a checker line." {
+      unit ratio
+    }
     field pitch bool "A sports radar: a pitch drawn under the markers in place of the grid (with no texture), as hairlines at about 20 % white: the touchlines, the halfway line, the centre circle and both penalty boxes, the field running left to right over the map's coordinates 0.04 to 0.96 (give zoom 1 and the centre 0.5, 0.5 to show it whole)."
     field north String "The north letter." {
       default "N"
@@ -9153,7 +9157,7 @@ module ui {
 
   fn minimapView {
     doc "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds)."
-    doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.pitch, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round)."
+    doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.pitch, Minimap.track, Minimap.start, Minimap.sector, Minimap.marker[<kind>][clamped], Minimap.ring, Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round)."
     host false
     param id String "Its id."
     param desc MinimapViewDesc "The map and its markers."

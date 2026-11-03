@@ -41867,6 +41867,12 @@ export interface MapMarkerItem {
    * @default ""
    */
   readonly label?: string;
+  /**
+   * A ring round it in its colour: the rivals just ahead of and behind the player.
+   *
+   * @default false
+   */
+  readonly ringed?: boolean;
 }
 
 /**
@@ -41910,11 +41916,11 @@ export interface MinimapViewDesc {
    */
   readonly zoom?: number;
   /**
-   * The map turns with heading so up is ahead; else north is up and the player's arrow turns.
+   * The map turns with heading so up is ahead (player-up); false keeps north up and turns the player's arrow. Null is player-up for a racing track (track given) and north-up otherwise.
    *
-   * @default false
+   * @default null
    */
-  readonly rotate?: boolean;
+  readonly rotate?: boolean | null;
   /**
    * The player's heading, clockwise from north.
    *
@@ -41960,6 +41966,13 @@ export interface MinimapViewDesc {
    * @default false
    */
   readonly trackOpen?: boolean;
+  /**
+   * Sector lines across the track, each a fraction of the way along it (by its points) from the start, which is drawn as a checker line.
+   *
+   * @default []
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sectors?: readonly number[];
   /**
    * A sports radar: a pitch drawn under the markers in place of the grid (with no texture), as hairlines at about 20 % white: the touchlines, the halfway line, the centre circle and both penalty boxes, the field running left to right over the map's coordinates 0.04 to 0.96 (give zoom 1 and the centre 0.5, 0.5 to show it whole).
    *
@@ -56398,7 +56411,7 @@ export declare namespace og {
     function ammoCounter(id: string, desc?: AmmoDesc): void;
     /**
      * A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).
-     * Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.pitch, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round).
+     * Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.pitch, Minimap.track, Minimap.start, Minimap.sector, Minimap.marker[<kind>][clamped], Minimap.ring, Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round).
      *
      * @param id Its id.
      * @param desc The map and its markers.

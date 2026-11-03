@@ -1253,3 +1253,35 @@ test("the racing HUD's arcade look: whole nitro segments that flare when full, a
     .map((x) => x.paths.join(" × "));
   expect(overlaps.join("; ")).toBe("");
 });
+
+test("og.ui.minimapView for racing: player-up by default on a track, north-up when asked, a checker start, sector ticks, rivals ringed, smaller on a sideways phone", () => {
+  // Wrong: a track map left north-up, a rival east of a player heading east drawn to the right of it, rotate: false
+  // ignored, a sector missing, or a sideways phone's map past 30 % of its height.
+  let rotate: boolean | undefined;
+  const track = [{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.5 }, { x: 0.5, y: 0.8 }];
+  const build = () => og.ui.minimapView("Map", {
+    track, sectors: [0.33, 0.66], zoom: 1, heading: Math.PI / 2, ...(rotate === undefined ? {} : { rotate }), anchor: "topRight",
+    markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5 }, { key: "rival", kind: "enemy", x: 0.7, y: 0.5, ringed: true }],
+  } as never);
+  const e = engineFor("HudRaceMap", build);
+  e.advance(3);
+  const centre = (els: El[], p: string) => { const x = at(els, p)!; return { x: x.x + x.width / 2, y: x.y + x.height / 2 }; };
+  let els = dump(e);
+  const me = centre(els, "MapHud/Map/Bezel/Map/me");
+  let rival = centre(els, "MapHud/Map/Bezel/Map/rival");
+  // Heading east, player-up: the rival east of the player is ahead, above it.
+  expect(rival.y).toBeLessThan(me.y - 10);
+  expect(Math.abs(rival.x - me.x)).toBeLessThan(3);
+  expect(at(els, "MapHud/Map/Bezel/Map/rivalRing")).toBeDefined();
+  expect(els.filter((x) => /\/Sector#\d+$/.test(x.path)).length).toBe(2);
+  expect(els.filter((x) => /\/Start(#\d+)?$/.test(x.path)).length).toBe(4);
+  rotate = false;
+  e.advance(2);
+  els = dump(e);
+  rival = centre(els, "MapHud/Map/Bezel/Map/rival");
+  expect(rival.x).toBeGreaterThan(me.x + 10);
+  const PHONE = { width: 844, height: 390, dpr: 3, safeArea: { left: 47, top: 0, right: 34, bottom: 0 }, coarsePointer: true, breakpoint: "phoneLandscape" };
+  const p = engineFor("HudRaceMapPhone", build, PHONE);
+  p.advance(3);
+  expect(at(dump(p), "MapHud/Map/Bezel/Map")!.width).toBeLessThanOrEqual(Math.round(390 * 0.3));
+});

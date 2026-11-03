@@ -77,13 +77,18 @@ function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: n
 
 /** `bare`: a zone of a panel that frames it (rtsConsole): no bezel of its own. */
 export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = false): Api.MinimapResult {
-  const size = u(desc.size || (bp().phone ? 144 : 200));
+  const vp0 = frame().viewport;
+  // A phone held sideways keeps the map within 30 % of its height, so at a large text size it shrinks before it meets
+  // the instrument in the other corner.
+  const size = Math.min(u(desc.size || (bp().phone ? 144 : 200)), !bare && vp0.breakpoint === "phoneLandscape" ? Math.round(vp0.height * 0.3) : Infinity);
   const shape: Api.MapShape = desc.shape ?? "circle";
   const zoom = Math.max(0.01, desc.zoom ?? 0.3);
   const cx = desc.centerX ?? 0.5;
   const cy = desc.centerY ?? 0.5;
   const heading = desc.heading ?? 0;
-  const turn = desc.rotate ? -heading : 0;
+  // Player-up for a racing track unless the game says otherwise; north-up for every other map.
+  const rotate = desc.rotate ?? (desc.track ?? []).length >= 3;
+  const turn = rotate ? -heading : 0;
   const R = size / 2;
   const rim = Math.max(3, Math.round(size / 40));
   let result: Api.MinimapResult = { clicked: false };
@@ -117,7 +122,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         clip: "shape",
       });
       // The map: a square larger than the frame, so it covers the corners as it turns.
-      const cover = size * (desc.rotate ? Math.SQRT2 : 1);
+      const cover = size * (rotate ? Math.SQRT2 : 1);
       const span = zoom * (cover / size);
       if (desc.texture) {
         kit.image("Texture", { texture: desc.texture, uv: [cx - span / 2, cy - span / 2, cx + span / 2, cy + span / 2], width: px(cover), height: px(cover), label: "" });
@@ -187,14 +192,36 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         const lw = Math.max(2.5, size / 60);
         leaf("TrackBed", { width: px(size), height: px(size) }, { shape: { kind: "path", points: curve, curves: true, width: lw * 2.6, cap: "round", join: "round" }, fills: [solid(lit({ r: 0, g: 0, b: 0, a: 1 }, 0.55))] }, fixed({ start: 0, top: 0 }));
         leaf("Track", { width: px(size), height: px(size), part: sel("Minimap", "track") }, { shape: { kind: "path", points: curve, curves: true, width: lw, cap: "round", join: "round" }, fills: [solid(lit(WHITE, 0.88))] }, fixed({ start: 0, top: 0 }));
-        const a = at(-1), b = at(1), p = pts[0]!;
-        const tl = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        const nx = -(b.y - a.y) / tl, ny = (b.x - a.x) / tl;
+        // Lines across the track: the start a checker of black and white cells, each sector a light tick.
+        const across = (k: number): { p: Api.Vector2; nx: number; ny: number } => {
+          const a = at(k - 1), b = at(k + 1), p = at(k);
+          const tl = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+          return { p, nx: -(b.y - a.y) / tl, ny: (b.x - a.x) / tl };
+        };
         const half = lw * 2.2;
-        leaf("Start", { width: px(size), height: px(size), part: sel("Minimap", "start") }, {
-          shape: { kind: "path", points: [{ x: p.x - nx * half, y: p.y - ny * half }, { x: p.x + nx * half, y: p.y + ny * half }], width: Math.max(2, lw * 0.9), cap: "butt" },
-          fills: [solid(lit(role("danger")))],
-        }, fixed({ start: 0, top: 0 }));
+        const s0 = across(0);
+        const cellsN = 4;
+        for (let c = 0; c < cellsN; c++) {
+          const t0 = -half + (2 * half * c) / cellsN;
+          const t1 = t0 + (2 * half) / cellsN;
+          const cw = Math.max(2, lw * 1.1);
+          leaf(c === 0 ? "Start" : kit.idi("Start", c), { width: px(size), height: px(size), part: sel("Minimap", "start") }, {
+            shape: { kind: "path", points: [{ x: s0.p.x + s0.nx * t0, y: s0.p.y + s0.ny * t0 }, { x: s0.p.x + s0.nx * t1, y: s0.p.y + s0.ny * t1 }], width: cw, cap: "butt" },
+            fills: [solid(lit(c % 2 === 0 ? WHITE : { r: 0, g: 0, b: 0, a: 1 }))],
+          }, fixed({ start: 0, top: 0 }));
+        }
+        (desc.sectors ?? []).forEach((frac, k) => {
+          const f = clamp01(frac) * (closed ? n : n - 1);
+          const i0 = Math.floor(f);
+          const q = across(i0), q1 = across(i0 + 1);
+          const t = f - i0;
+          const p = { x: q.p.x + (q1.p.x - q.p.x) * t, y: q.p.y + (q1.p.y - q.p.y) * t };
+          const sh = half * 0.8;
+          leaf(kit.idi("Sector", k), { width: px(size), height: px(size), part: sel("Minimap", "sector") }, {
+            shape: { kind: "path", points: [{ x: p.x - q.nx * sh, y: p.y - q.ny * sh }, { x: p.x + q.nx * sh, y: p.y + q.ny * sh }], width: Math.max(1.5, lw * 0.6), cap: "round" },
+            fills: [solid(lit(role("gold")))],
+          }, fixed({ start: 0, top: 0 }));
+        });
       }
       // Markers: in range at their place; objectives and pings held on the rim.
       const ms = Math.max(10, Math.round(size / 16));
@@ -225,6 +252,14 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
             shape: arc(1, 2),
             fills: [solid(lit(ink, 1 - p))],
           }, fixed({ start: R + dx - pr, top: R + dy - pr }));
+        }
+        if (m.ringed) {
+          // A rival just ahead or behind: a ring in its colour round it.
+          const rr = Math.round(s * 0.95);
+          leaf(`${k}Ring`, { width: px(rr * 2), height: px(rr * 2), part: sel("Minimap", "ring") }, {
+            shape: ellipseShape(),
+            strokes: [stroke(Math.max(1.5, s / 7), lit(ink)), stroke(1, token("shadow", 0.7), "outside")],
+          }, fixed({ start: R + dx - rr, top: R + dy - rr }, { overlaps: [`${path}/${k}`] }));
         }
         mark(k, kind, ink, s, hd, m.icon ?? "", sel("Minimap", "marker", kind, clamped ? "clamped" : null), m.label ?? "",
           fixed({ start: R + dx - s / 2, top: R + dy - s / 2 }, clamped ? { opacity: 0.75 + 0.25 * pulse(1.2) } : {}));
