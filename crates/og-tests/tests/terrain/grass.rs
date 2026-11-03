@@ -79,11 +79,26 @@ fn the_far_field_reads_as_grass() {
     let (b, _) = render(&without);
     keep("grass-far", &a);
     keep("grass-far-bare", &b);
-    let green = |c: [f32; 3]| c[1] / (c[0] + c[2]).max(1.0);
-    // The band above the frame's middle: the meadow beyond 100 m.
+    // The band above the frame's middle: the meadow beyond 100 m, where
+    // the ground takes the field's average colour. That olive is darker
+    // and less saturated than the island's grass layer by design (the art
+    // review of 2026-11-03), so the band is not greener than the bare
+    // ground; it must differ from it (the tint reaches past the blades)
+    // and still read as grass (green over red and blue).
     let (y0, y1) = (a.height * 2 / 5, a.height / 2);
-    let (ga, gb) = (green(mean(&a, y0, y1)), green(mean(&b, y0, y1)));
-    assert!(ga > gb, "far meadow: {ga} with the field, {gb} without");
+    let mut diff = 0.0;
+    for y in y0..y1 {
+        for x in 0..a.width {
+            let (p, q) = (px(&a, x, y), px(&b, x, y));
+            diff += (0..3).map(|k| (p[k] - q[k]).abs()).fold(0.0, f32::max);
+        }
+    }
+    diff /= ((y1 - y0) * a.width) as f32;
+    let c = mean(&a, y0, y1);
+    assert!(
+        diff > 4.0 && c[1] > c[0] && c[1] > c[2],
+        "far meadow: {c:?} with the field, {diff} from the bare ground"
+    );
 }
 
 #[test]
