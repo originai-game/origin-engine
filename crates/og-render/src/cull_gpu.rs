@@ -84,6 +84,10 @@ pub(crate) struct CullPass {
     /// The three.js layer mask it draws: a batch whose mask shares no bit
     /// with it draws nothing and counts as neither inside nor culled.
     pub layers: u32,
+    /// The batches its draws are counted for in the frame's stats (a
+    /// shadow layer drawn over its static shadow cache draws only some of
+    /// what it culls: `shadow_cache.rs`); `None`: every batch.
+    pub counted: Option<Vec<u32>>,
 }
 
 /// `struct PassGpu` in cull.wgsl.
@@ -145,6 +149,8 @@ struct CountLayout {
     frame: u64,
     batches: u32,
     kinds: Vec<PassKind>,
+    /// Per pass, the batches it counts ([`CullPass::counted`]).
+    counted: Vec<Option<Vec<u32>>>,
     /// Triangles per instance, per batch.
     triangles: Vec<u64>,
     opaque: u32,
@@ -170,7 +176,13 @@ impl CountLayout {
         for (g, kind) in self.kinds.iter().enumerate() {
             match kind {
                 PassKind::Shadow => {
-                    c.shadow_casters += draws(g).map(|(_, n)| n).sum::<u32>();
+                    c.shadow_casters += match &self.counted[g] {
+                        Some(only) => only
+                            .iter()
+                            .map(|&i| words[(g * b + i as usize) * 5 + 1])
+                            .sum(),
+                        None => draws(g).map(|(_, n)| n).sum::<u32>(),
+                    };
                 }
                 PassKind::Main => {
                     let drawn: u32 = draws(g).map(|(_, n)| n).sum();
@@ -1284,6 +1296,7 @@ impl GpuCulling {
             frame,
             batches: b,
             kinds: passes.iter().map(|x| x.kind).collect(),
+            counted: passes.iter().map(|x| x.counted.clone()).collect(),
             triangles: batches
                 .iter()
                 .map(|x| (meshes[x.mesh].index_count / 3) as u64)

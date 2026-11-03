@@ -640,6 +640,47 @@ impl Renderer {
             && scene.previous_transforms.len() == scene.instances.len();
         let blur_motion = motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
+        // The static shadow cache's split (shadow_cache.rs): which batches
+        // stood still long enough to stay in the cached shadow layers.
+        let shadow_split = {
+            let wind = |w: Option<&crate::scatter::Wind>| w.is_some_and(|w| w.strength != 0.0);
+            let swaying =
+                wind(scene.wind.as_ref()) || wind(self.previous_wind.as_ref().map(|w| &w.0));
+            let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+            let hashes: Vec<u64> = transforms
+                .iter()
+                .zip(&submission)
+                .map(|(t, &i)| {
+                    let inst = &scene.instances[i as usize];
+                    let (mesh, material) = (inst.mesh.index(), inst.material.index());
+                    let revisions = [meshes[mesh].revision, materials[material].revision];
+                    shadow_cache::hash_words(
+                        bytemuck::cast_slice::<_, u32>(std::slice::from_ref(t))
+                            .iter()
+                            .copied()
+                            .chain([inst.sway.to_bits(), mesh as u32, material as u32])
+                            .chain(bytemuck::cast_slice::<_, u32>(&revisions).iter().copied()),
+                    )
+                })
+                .collect();
+            let info: Vec<shadow_cache::BatchInfo> = batches
+                .iter()
+                .map(|b| shadow_cache::BatchInfo {
+                    first: b.first,
+                    count: b.count,
+                    cast: b.cast,
+                    // A material shader may move its vertices with the clock.
+                    always_dynamic: (b.foliage && swaying) || b.shader.is_some(),
+                })
+                .collect();
+            self.shadow_cache.split(
+                scene.instances.len(),
+                &info,
+                &submission[..sorted as usize],
+                &hashes,
+                &spheres,
+            )
+        };
         // The weather occlusion map (weather.rs `shelter_view`), in the
         // cascade array's last layer (`fit_shelter_layer` gave it one):
         // drawn again only when what it was drawn from changes.
@@ -794,8 +835,9 @@ impl Renderer {
                 .collect()
         };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
-        let mut gpu_pass = |kind, frustum: &Frustum| {
+        let mut gpu_pass = |kind, frustum: &Frustum, counted: Option<Vec<u32>>| {
             cull_passes.push(cull_gpu::CullPass {
+                counted,
                 kind,
                 planes: frustum.planes().to_vec(),
                 // Shadow maps take every caster; the camera's passes its
@@ -821,9 +863,9 @@ impl Renderer {
         // The main camera's layers (views.rs).
         let mask = scene.camera_layers;
         let (main_list, mut culled) = if gpu_cull {
-            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum);
+            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None);
             if occlusion {
-                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
+                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None);
             }
             let mut list = indirect_list(&batches, sorted, g, |b| {
                 !b.transparent && b.layers & mask != 0
@@ -910,7 +952,7 @@ impl Renderer {
             let include =
                 |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
             reflection_list.push(if gpu_cull && k == 0 {
-                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
+                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None);
                 indirect_list(&batches, sorted, g, include)
             } else {
                 self.cull(
@@ -1207,34 +1249,129 @@ impl Renderer {
         // local layer; its clustered casters leave the pass's list.
         let mut cascade_views: Vec<u32> = Vec::new();
         let mut local_views = [0u32; LOCAL_SHADOW_LAYERS];
-        let caster_list = |g: u32, view: u32| {
-            let mut list = indirect_list(&batches, sorted, g, |b| b.cast);
+        let caster_list = |g: u32, view: u32, keep: &dyn Fn(&Batch) -> bool| {
+            let mut list = indirect_list(&batches, sorted, g, |b| b.cast && keep(b));
             if view > 0 {
                 list.ranges
                     .retain(|r| meshlet_casters.binary_search(&r.0).is_err());
             }
             list
         };
-        let cascade_lists: Vec<DrawList> = cascades
+        // The static shadow cache (shadow_cache.rs): what each cascade and
+        // local face draws this frame. A layer needs its dynamic casters
+        // drawn over the cached static ones when one reaches it, or when it
+        // draws casters every frame whatever they do: the skinned ones and
+        // scattered copies (unculled), the clustered ones (their level
+        // follows the camera), terrain levels in its volume (the clipmap
+        // follows the camera) and grass (the first cascade).
+        let dynamic_firsts: Vec<u32> = {
+            let mut f: Vec<u32> = batches
+                .iter()
+                .zip(&shadow_split.dynamic)
+                .filter(|(b, d)| **d && b.count > 0)
+                .map(|(b, _)| b.first)
+                .collect();
+            f.sort_unstable();
+            f
+        };
+        let is_dynamic = |b: &Batch| b.count > 0 && dynamic_firsts.binary_search(&b.first).is_ok();
+        let unculled_overlay = skinned_batches.iter().any(|b| b.cast && !b.transparent)
+            || !scatter_batches.scatters.is_empty()
+            || !scatter_batches.impostors.is_empty()
+            || !meshlet_casters.is_empty();
+        let grass_casts = grass_frame.casts();
+        let overlay_in = |slot: usize, f: &Frustum| {
+            unculled_overlay
+                || (slot == 0 && grass_casts)
+                || (terrain_casters
+                    && terrain_draws
+                        .iter()
+                        .filter(|d| d.cast_shadows)
+                        .flat_map(|d| &d.levels)
+                        .any(|l| f.intersects_sphere(l.center, l.radius)))
+                || crate::shadow_cache::ShadowCache::moving_in(&shadow_split, f)
+        };
+        let cascade_plans: Vec<crate::shadow_cache::Plan> = cascades
             .iter()
-            .map(|c| {
+            .enumerate()
+            .map(|(i, c)| {
+                let key = crate::shadow_cache::view_key(
+                    &c.view_proj.to_cols_array_2d(),
+                    [0.0; 4],
+                    [0.0; 4],
+                    scene.origin,
+                    shadow_size,
+                );
+                self.shadow_cache.plan(
+                    i,
+                    key,
+                    &c.frustum,
+                    overlay_in(i, &c.frustum),
+                    shadow_split.any_static,
+                )
+            })
+            .collect();
+        // A layer's two lists: its static casters (every caster when it is
+        // drawn in one pass) and the dynamic ones drawn over them.
+        let static_keep = |plan: &crate::shadow_cache::Plan, b: &Batch| {
+            plan.draw_static && (plan.single() || !is_dynamic(b))
+        };
+        let dynamic_keep = |plan: &crate::shadow_cache::Plan, b: &Batch| {
+            plan.overlay && !plan.single() && is_dynamic(b)
+        };
+        // What a layer's GPU pass counts (`CullPass::counted`): what its
+        // two lists draw, every caster when it is drawn in one pass.
+        let counted = |plan: &crate::shadow_cache::Plan| -> Option<Vec<u32>> {
+            (!plan.single()).then(|| {
+                batches
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.cast && (static_keep(plan, b) || dynamic_keep(plan, b)))
+                    .map(|(i, _)| i as u32)
+                    .collect()
+            })
+        };
+        let cascade_lists: Vec<[DrawList; 2]> = cascades
+            .iter()
+            .zip(&cascade_plans)
+            .map(|(c, plan)| {
+                if !plan.draw_static && !plan.overlay {
+                    cascade_views.push(0);
+                    return Default::default();
+                }
                 if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum);
-                    let view = shadow_view(&mut meshlet_view, &c.frustum);
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum, counted(plan));
+                    let view = if plan.overlay {
+                        shadow_view(&mut meshlet_view, &c.frustum)
+                    } else {
+                        0
+                    };
                     cascade_views.push(view);
-                    caster_list(g, view)
+                    [
+                        caster_list(g, view, &|b| static_keep(plan, b)),
+                        caster_list(g, view, &|b| dynamic_keep(plan, b)),
+                    ]
                 } else {
-                    self.cull(
-                        &batches,
-                        &spheres,
-                        &mut transforms,
-                        &mut origins,
-                        &mut cull_inside,
-                        &c.frustum,
-                        true,
-                        |b| b.cast,
-                    )
-                    .0
+                    let mut cull = |keep: &dyn Fn(&Batch) -> bool, wanted: bool| {
+                        if !wanted {
+                            return DrawList::default();
+                        }
+                        self.cull(
+                            &batches,
+                            &spheres,
+                            &mut transforms,
+                            &mut origins,
+                            &mut cull_inside,
+                            &c.frustum,
+                            true,
+                            |b| b.cast && keep(b),
+                        )
+                        .0
+                    };
+                    [
+                        cull(&|b| static_keep(plan, b), plan.draw_static),
+                        cull(&|b| dynamic_keep(plan, b), plan.overlay && !plan.single()),
+                    ]
                 }
             })
             .collect();
@@ -1244,11 +1381,11 @@ impl Renderer {
         // as a cascade's (its own planes, no cone or occlusion, the
         // camera's level per model), and its meshlet view (0: none).
         let mut shelter_view = 0;
-        let shelter_list: Option<DrawList> = shelter.as_ref().filter(|s| s.3).map(|s| {
-            if gpu_cull {
-                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1);
+        let shelter_list: Option<[DrawList; 2]> = shelter.as_ref().filter(|s| s.3).map(|s| {
+            let list = if gpu_cull {
+                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None);
                 shelter_view = shadow_view(&mut meshlet_view, &s.1);
-                caster_list(g, shelter_view)
+                caster_list(g, shelter_view, &|_| true)
             } else {
                 self.cull(
                     &batches,
@@ -1261,7 +1398,8 @@ impl Renderer {
                     |b| b.cast,
                 )
                 .0
-            }
+            };
+            [list, DrawList::default()]
         });
 
         // Local lights: the clusters they reach, their records, their shadow faces.
@@ -1363,35 +1501,95 @@ impl Renderer {
                 );
             }
         }
-        let mut local_lists: Vec<Option<DrawList>> =
+        let mut local_lists: Vec<Option<[DrawList; 2]>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
         let mut local_frustums: Vec<Option<Frustum>> =
             (0..LOCAL_SHADOW_LAYERS).map(|_| None).collect();
+        let mut local_plans = [crate::shadow_cache::Plan::default(); LOCAL_SHADOW_LAYERS];
         for ls in &local_shadows {
-            for (face, (_, f)) in ls.faces.iter().enumerate() {
-                local_frustums[ls.layer + face] = Some(f.clone());
-                let list = if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
-                    let view = shadow_view(&mut meshlet_view, f);
-                    local_views[ls.layer + face] = view;
-                    caster_list(g, view)
+            for (face, (vp, f)) in ls.faces.iter().enumerate() {
+                let layer = ls.layer + face;
+                local_frustums[layer] = Some(f.clone());
+                let key = crate::shadow_cache::view_key(
+                    &vp.to_cols_array_2d(),
+                    ls.position.extend(ls.range).to_array(),
+                    local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
+                    scene.origin,
+                    self.local_shadow_size,
+                );
+                let plan = self.shadow_cache.plan(
+                    CASCADES + layer,
+                    key,
+                    f,
+                    overlay_in(CASCADES + layer, f),
+                    shadow_split.any_static,
+                );
+                local_plans[layer] = plan;
+                let list = if !plan.draw_static && !plan.overlay {
+                    Default::default()
+                } else if gpu_cull {
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f, counted(&plan));
+                    let view = if plan.overlay {
+                        shadow_view(&mut meshlet_view, f)
+                    } else {
+                        0
+                    };
+                    local_views[layer] = view;
+                    [
+                        caster_list(g, view, &|b| static_keep(&plan, b)),
+                        caster_list(g, view, &|b| dynamic_keep(&plan, b)),
+                    ]
                 } else {
-                    self.cull(
-                        &batches,
-                        &spheres,
-                        &mut transforms,
-                        &mut origins,
-                        &mut cull_inside,
-                        f,
-                        true,
-                        |b| b.cast,
-                    )
-                    .0
+                    let mut cull = |keep: &dyn Fn(&Batch) -> bool, wanted: bool| {
+                        if !wanted {
+                            return DrawList::default();
+                        }
+                        self.cull(
+                            &batches,
+                            &spheres,
+                            &mut transforms,
+                            &mut origins,
+                            &mut cull_inside,
+                            f,
+                            true,
+                            |b| b.cast && keep(b),
+                        )
+                        .0
+                    };
+                    [
+                        cull(&|b| static_keep(&plan, b), plan.draw_static),
+                        cull(&|b| dynamic_keep(&plan, b), plan.overlay && !plan.single()),
+                    ]
                 };
-                local_lists[ls.layer + face] = Some(list);
+                local_lists[layer] = Some(list);
             }
         }
         self.cull_inside = cull_inside;
+        // The cache textures this frame's plans copy through, made at their
+        // layer's side on first need.
+        let local_side = self.local_shadow_size;
+        let copied = cascade_plans
+            .iter()
+            .enumerate()
+            .map(|(i, p)| (i, p, shadow_size))
+            .chain(
+                local_plans
+                    .iter()
+                    .enumerate()
+                    .map(|(l, p)| (CASCADES + l, p, local_side)),
+            )
+            .filter(|(_, p, _)| p.save || p.restore);
+        for (slot, _, side) in copied {
+            if self.shadow_cache_maps.len() <= slot {
+                self.shadow_cache_maps.resize_with(slot + 1, || None);
+            }
+            if self.shadow_cache_maps[slot]
+                .as_ref()
+                .is_none_or(|c| c.size != side)
+            {
+                self.shadow_cache_maps[slot] = Some(CachedShadow::new(&self.device, side));
+            }
+        }
 
         // Upload instances, previous transforms, skinned data, strips and
         // sprites. With GPU culling the sorted instances go to its buffer and
@@ -1835,17 +2033,7 @@ impl Renderer {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
                     time: shadow_time,
-                    // Hemisphere 0 below the light, 1 above (frame.rs).
-                    paraboloid: if ls.paraboloid {
-                        [
-                            1.0,
-                            if face == 0 { 1.0 } else { -1.0 },
-                            self.local_shadow_size as f32,
-                            shadows::PARABOLOID_SCALE,
-                        ]
-                    } else {
-                        [0.0; 4]
-                    },
+                    paraboloid: local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
                     foliage_wind: uniform.foliage_wind[0],
                     pad: [0.0; 8],
                 };
@@ -3273,12 +3461,18 @@ impl Renderer {
             }
             draws
         };
-        // One shadow pass: a cascade or a local light's face.
+        // One shadow layer: a cascade or a local light's face, as its plan
+        // (shadow_cache.rs) says: its static casters, the copy into or out
+        // of its cache texture, its dynamic casters over them.
         let shadow_pass = |encoder: &mut crate::Encoder,
                            color: &wgpu::TextureView,
                            depth: &wgpu::TextureView,
+                           // The live array, the layer's index in it and the
+                           // depth buffer, which the cache copies.
+                           target: (&wgpu::Texture, u32, &wgpu::Texture),
                            slot: usize,
-                           list: &DrawList,
+                           lists: &[DrawList; 2],
+                           plan: crate::shadow_cache::Plan,
                            frustum: &Frustum,
                            view: u32,
                            stats: &mut FrameStats,
@@ -3287,56 +3481,25 @@ impl Renderer {
                            // skinned casters, no scattered copies (grass must
                            // not keep the ground under it dry).
                            all_casters: bool| {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("shadow"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: color,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        // Depth 1 and distance / range 1: nothing nearer.
-                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: depth,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            // No pipeline first: the draw list sets each batch's own, as do
-            // the meshlet, skinned, terrain and scatter casters below.
-            pass.set_bind_group(
-                0,
-                &self.shadow_bind_group,
-                &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
-            );
-            draw_list(&mut pass, list, false, &mut None, None, None, None);
-            stats.draw_calls += list.ranges.len() as u32;
-            stats.shadow_casters += list.instances;
             stats.shadow_passes += 1;
-            // The clustered casters (meshlet_gpu.rs), each one draw of the
-            // clusters the pass's view kept.
-            if view > 0
-                && let Some(m) = self.meshlet.as_ref()
-            {
-                stats.draw_calls += m.draw_shadow(&mut pass, &batches, view, |b| {
-                    &self.cache.materials[b.material].bind_group
-                });
-            }
-            if !all_casters {
+            stats.shadow_cached += plan.cached() as u32;
+            // What every pass of every caster draws besides the instances.
+            let draw_rest = |pass: &mut wgpu::RenderPass, stats: &mut FrameStats| {
+                // The clustered casters (meshlet_gpu.rs), each one draw of
+                // the clusters the pass's view kept.
+                if view > 0
+                    && let Some(m) = self.meshlet.as_ref()
+                {
+                    stats.draw_calls += m.draw_shadow(pass, &batches, view, |b| {
+                        &self.cache.materials[b.material].bind_group
+                    });
+                }
+                // Terrain levels that reach into the pass's volume.
                 if let Some(indices) = terrain_indices
                     && terrain_casters
                 {
                     let (n, _) = terrain::draw_levels(
-                        &mut pass,
+                        pass,
                         &terrain_draws,
                         indices,
                         terrain::TerrainPass::Shadow,
@@ -3346,58 +3509,109 @@ impl Renderer {
                     stats.draw_calls += n;
                     stats.terrain_shadow_draws += n;
                 }
-                return;
-            }
-            // Skinned casters, unculled.
-            let n = draw_skinned(
-                &mut pass,
-                &skinned_batches,
-                false,
-                1,
-                2,
-                &shadow_skinned,
-                None,
-                None,
-            );
-            stats.draw_calls += n;
-            stats.shadow_casters += skinned_batches
-                .iter()
-                .filter(|b| !b.transparent && b.cast)
-                .map(|b| b.count)
-                .sum::<u32>();
-            // Terrain levels that reach into the pass's volume.
-            if let Some(indices) = terrain_indices
-                && terrain_casters
-            {
-                let shadow = terrain::TerrainPass::Shadow;
-                let (n, _) = terrain::draw_levels(
-                    &mut pass,
-                    &terrain_draws,
-                    indices,
-                    shadow,
-                    |c, r| frustum.intersects_sphere(c, r),
+                if !all_casters {
+                    return;
+                }
+                // Skinned casters, unculled.
+                let n = draw_skinned(
+                    pass,
+                    &skinned_batches,
+                    false,
+                    1,
+                    2,
+                    &shadow_skinned,
+                    None,
                     None,
                 );
                 stats.draw_calls += n;
-                stats.terrain_shadow_draws += n;
+                stats.shadow_casters += skinned_batches
+                    .iter()
+                    .filter(|b| !b.transparent && b.cast)
+                    .map(|b| b.count)
+                    .sum::<u32>();
+                let (n, _) = self.scatter.draw(
+                    pass,
+                    scatter::ScatterPass::Shadow,
+                    &scatter_batches,
+                    scatter_material,
+                    scatter_mesh,
+                    |c, r| frustum.intersects_sphere(c, r),
+                    None,
+                    None,
+                );
+                stats.draw_calls += n; // Grass casts into the first cascade only (grass.rs).
+                if slot == 0 {
+                    stats.draw_calls +=
+                        self.grass
+                            .draw(pass, grass::GrassPass::Shadow, &grass_frame, None);
+                }
+            };
+            let draw = |encoder: &mut crate::Encoder,
+                        list: &DrawList,
+                        rest: bool,
+                        load: bool,
+                        keep_depth: bool,
+                        stats: &mut FrameStats| {
+                let mut pass = shadow_target(encoder, color, depth, load, keep_depth);
+                // No pipeline first: the draw list sets each batch's own, as
+                // do the meshlet, skinned, terrain and scatter casters.
+                pass.set_bind_group(
+                    0,
+                    &self.shadow_bind_group,
+                    &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
+                );
+                draw_list(&mut pass, list, false, &mut None, None, None, None);
+                stats.draw_calls += list.ranges.len() as u32;
+                stats.shadow_casters += list.instances;
+                if rest {
+                    draw_rest(&mut pass, stats);
+                }
+            };
+            // The layer and its cache texture (and both depths), one way.
+            let copy = |encoder: &mut crate::Encoder, into_cache: bool| {
+                let cache = self.shadow_cache_maps[slot]
+                    .as_ref()
+                    .expect("made for its plan");
+                let (array, layer, depth_texture) = target;
+                let at = |texture, z| wgpu::TexelCopyTextureInfo {
+                    texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x: 0, y: 0, z },
+                    aspect: wgpu::TextureAspect::All,
+                };
+                let size = wgpu::Extent3d {
+                    width: cache.size,
+                    height: cache.size,
+                    depth_or_array_layers: 1,
+                };
+                let pairs = [
+                    (at(array, layer), at(&cache.color, 0)),
+                    (at(depth_texture, 0), at(&cache.depth, 0)),
+                ];
+                for (live, kept) in pairs {
+                    if into_cache {
+                        encoder.copy_texture_to_texture(live, kept, size);
+                    } else {
+                        encoder.copy_texture_to_texture(kept, live, size);
+                    }
+                }
+            };
+            if plan.draw_static {
+                // Every caster when it is one pass; the depth kept for the
+                // dynamic casters when they follow.
+                draw(encoder, &lists[0], plan.single(), false, plan.save, stats);
             }
-            let (n, _) = self.scatter.draw(
-                &mut pass,
-                scatter::ScatterPass::Shadow,
-                &scatter_batches,
-                scatter_material,
-                scatter_mesh,
-                |c, r| frustum.intersects_sphere(c, r),
-                None,
-                None,
-            );
-            stats.draw_calls += n; // Grass casts into the first cascade only (grass.rs).
-            if slot == 0 {
-                stats.draw_calls +=
-                    self.grass
-                        .draw(&mut pass, grass::GrassPass::Shadow, &grass_frame, None);
+            if plan.save {
+                copy(encoder, true);
+            }
+            if plan.restore {
+                copy(encoder, false);
+            }
+            if plan.overlay && !plan.single() {
+                draw(encoder, &lists[1], true, true, false, stats);
             }
         };
+
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
         // and GPU time where the device has timestamps (`timing.rs`): each
         // graph pass owns the queries of the render and compute passes it
@@ -3413,8 +3627,14 @@ impl Renderer {
                     &mut encoder,
                     &self.cascade_map.layers[i as usize],
                     &self.cascade_map.depth,
+                    (
+                        &self.cascade_map.texture,
+                        i,
+                        &self.cascade_map.depth_texture,
+                    ),
                     i as usize,
                     &cascade_lists[i as usize],
+                    cascade_plans[i as usize],
                     &cascades[i as usize].frustum,
                     cascade_views.get(i as usize).copied().unwrap_or(0),
                     &mut stats,
@@ -3426,8 +3646,14 @@ impl Renderer {
                         &mut encoder,
                         self.cascade_map.layers.last().expect("fit_shelter_layer"),
                         &self.cascade_map.depth,
+                        (
+                            &self.cascade_map.texture,
+                            self.cascade_map.layers.len() as u32 - 1,
+                            &self.cascade_map.depth_texture,
+                        ),
                         SHELTER_SLOT,
                         shelter_list.as_ref().expect("a list when redrawn"),
+                        crate::shadow_cache::Plan::ALL,
                         &s.1,
                         shelter_view,
                         &mut stats,
@@ -3438,10 +3664,16 @@ impl Renderer {
                     &mut encoder,
                     &self.local_map.layers[layer as usize],
                     &self.local_map.depth,
+                    (
+                        &self.local_map.texture,
+                        layer,
+                        &self.local_map.depth_texture,
+                    ),
                     CASCADES + layer as usize,
                     local_lists[layer as usize]
                         .as_ref()
                         .expect("a list per shadowed face"),
+                    local_plans[layer as usize],
                     local_frustums[layer as usize]
                         .as_ref()
                         .expect("a frustum per shadowed face"),
@@ -3937,6 +4169,7 @@ impl Renderer {
         }
         self.queue
             .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
+        self.shadow_cache.submitted();
         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }
@@ -4019,6 +4252,71 @@ impl Timings {
         if encoder.timed() {
             self.pass_queries.push((name.into(), at.q0..encoder.used()));
         }
+    }
+}
+
+/// A shadow pass into one layer: cleared (depth 1, and distance / range 1:
+/// nothing nearer) or loaded over what the layer holds, its depth kept
+/// for a later pass or not.
+fn shadow_target<'e>(
+    encoder: &'e mut wgpu::CommandEncoder,
+    color: &wgpu::TextureView,
+    depth: &wgpu::TextureView,
+    load: bool,
+    keep_depth: bool,
+) -> wgpu::RenderPass<'e> {
+    let store = |keep| {
+        if keep {
+            wgpu::StoreOp::Store
+        } else {
+            wgpu::StoreOp::Discard
+        }
+    };
+    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("shadow"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: color,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: if load {
+                    wgpu::LoadOp::Load
+                } else {
+                    wgpu::LoadOp::Clear(wgpu::Color::WHITE)
+                },
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+            view: depth,
+            depth_ops: Some(wgpu::Operations {
+                load: if load {
+                    wgpu::LoadOp::Load
+                } else {
+                    wgpu::LoadOp::Clear(1.0)
+                },
+                store: store(keep_depth),
+            }),
+            stencil_ops: None,
+        }),
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    })
+}
+
+/// A local shadow face's projection words (`ShadowPassUniform::paraboloid`):
+/// for a paraboloid hemisphere, 0 below the light and 1 above (frame.rs).
+fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
+    if paraboloid {
+        [
+            1.0,
+            if face == 0 { 1.0 } else { -1.0 },
+            side as f32,
+            shadows::PARABOLOID_SCALE,
+        ]
+    } else {
+        [0.0; 4]
     }
 }
 

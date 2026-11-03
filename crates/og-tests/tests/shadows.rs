@@ -7,8 +7,8 @@
 //! with the caster's height, and FXAA and TAA's sharpening work on edges.
 
 use og_render::{
-    Antialias, FrameStats, Material, PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer,
-    RgbaImage, TaaHistory,
+    Antialias, Culling, FrameStats, Material, PointShadows, RenderDesc, RenderScene, RenderTarget,
+    Renderer, RgbaImage, TaaHistory,
 };
 use og_tests::compare::{Tolerance, compare};
 use og_tests::{gfx, scenes, shadow_scenes};
@@ -676,4 +676,107 @@ fn shadows_cascades_4_matches_its_reference() {
     let near = sum / n as f64;
     println!("four cascades against three, the foreground: {near:.2}");
     assert!(near > 0.05, "the near cascade is finer: {near:.2}");
+}
+
+/// The static shadow cache (og-render's shadow_cache.rs): a sphere rolls
+/// for four frames among the pillars, under the sun's cascades, a spot and
+/// a point light's cube faces, then stands still. While it rolls, the
+/// layers it does not reach keep their static casters and the ones it
+/// reaches draw it over theirs; once it has stood still long enough every
+/// layer is kept and nothing is drawn. The last frame is the one a
+/// renderer that saw only the final scene draws, on the CPU and the GPU
+/// culling paths.
+#[test]
+fn cached_shadow_layers_draw_what_fresh_ones_do() {
+    for culling in [Culling::Cpu, Culling::Gpu] {
+        let desc = RenderDesc {
+            culling,
+            ..scenes::base_desc()
+        };
+        let mut scene = scenes::point_spot_lights();
+        scene.light.cast_shadows = true;
+        // The sphere at (0.2, 0.5, -2.0), the last instance.
+        let mover = scene.instances.len() - 1;
+        let start = scene.instances[mover].transform;
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut stats = Vec::new();
+        for f in 0..16 {
+            let x = 0.25 * f.min(4) as f32;
+            scene.instances[mover].transform =
+                glam::Mat4::from_translation(glam::Vec3::new(x, 0.0, 0.0)) * start;
+            stats.push(
+                renderer
+                    .render(&scene, &RenderTarget::Offscreen)
+                    .expect("render"),
+            );
+        }
+        let cached = renderer.read_offscreen().expect("capture");
+        let still = frame(&desc, &scene, 16).0;
+        let fresh = frame(&desc, &scene, 1).0;
+        for (i, s) in stats.iter().enumerate() {
+            println!(
+                "{culling:?} frame {i}: {} shadow passes, {} cached, {} casters drawn",
+                s.shadow_passes, s.shadow_cached, s.shadow_casters
+            );
+        }
+        let passes = stats[0].shadow_passes;
+        assert!(passes >= 8, "the cascades and seven local faces: {passes}");
+        assert_eq!(
+            stats[0].shadow_cached, 0,
+            "the first frame draws every layer"
+        );
+        // The first frame it moves, the layers its old sphere reaches draw
+        // their static casters again (and save them); the others are kept.
+        let first = &stats[0];
+        let moved = &stats[1];
+        assert!(
+            moved.shadow_cached > 0 && moved.shadow_cached < passes,
+            "{culling:?}: {moved:?}"
+        );
+        // Rolling on (frames 2 to 11, dynamic until 8 still frames): every
+        // layer comes from the cache, and only the mover and the casters
+        // drawn every frame are drawn over them: far fewer than all.
+        // GPU culling counts its casters on the GPU and reads none back
+        // here (`counts_lag` unset): the CPU path checks the counts, both
+        // check which layers are kept and the frames.
+        let counts = culling == Culling::Cpu;
+        for s in &stats[2..=11] {
+            assert_eq!(s.shadow_cached, passes, "{culling:?}: {s:?}");
+            assert!(
+                !counts || (s.shadow_casters > 0 && 2 * s.shadow_casters < first.shadow_casters),
+                "{culling:?}: {s:?} against {first:?}"
+            );
+        }
+        // Static again at frame 12: the layers its sphere reaches redraw.
+        assert!(
+            stats[12].shadow_cached < passes,
+            "{culling:?}: {:?}",
+            stats[12]
+        );
+        // Nothing drawn from frame 13 on.
+        let last = stats.last().expect("frames");
+        assert_eq!(last.shadow_passes, passes);
+        assert_eq!(last.shadow_cached, passes, "{culling:?}: every layer kept");
+        if counts {
+            assert_eq!(last.shadow_casters, 0, "{culling:?}: nothing drawn");
+        }
+        let exact = Tolerance {
+            channel: 1,
+            max_outlier_fraction: 0.0,
+            rmse: 0.001,
+        };
+        for (name, other) in [("still", &still), ("fresh", &fresh)] {
+            let diff = compare(
+                &cached.pixels,
+                &other.pixels,
+                cached.width,
+                cached.height,
+                &exact,
+            )
+            .expect("same size");
+            println!("{culling:?} cached against {name}: {diff:?}");
+            diff.check(&exact)
+                .unwrap_or_else(|e| panic!("{culling:?}: cached against {name}: {e}"));
+        }
+    }
 }

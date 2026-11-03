@@ -449,6 +449,10 @@ pub struct FrameStats {
     pub shadow_casters: u32,
     /// Shadow passes (cascades plus local light faces).
     pub shadow_passes: u32,
+    /// Of those, the layers whose static casters came from the static
+    /// shadow cache instead of being drawn again (only the dynamic
+    /// casters, if any, were drawn over them).
+    pub shadow_cached: u32,
     /// Point and spot lights drawn with shadows, and those in view whose
     /// shadows were left out past [`RenderInfo::shadowed_lights`] (the
     /// least radiant at the camera).

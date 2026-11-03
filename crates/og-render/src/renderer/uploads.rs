@@ -622,6 +622,7 @@ impl Renderer {
         self.cascade_map =
             ShadowMap::new(&self.device, "cascades", self.info.shadow_map_size, wanted);
         self.shelter_key = None;
+        self.shadow_cache.forget_layers();
         self.environment = None;
     }
 
@@ -673,6 +674,7 @@ impl Renderer {
             self.local_shadow_size,
             needed as u32,
         );
+        self.shadow_cache.forget_layers();
         self.environment = None;
     }
 

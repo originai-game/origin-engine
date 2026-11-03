@@ -275,6 +275,26 @@ paraboloid hemispheres. The array starts at twelve layers and grows once,
 to its capacity (48 layers with cube faces), the first frame whose
 scene could need more.
 
+**Static shadow caching** (`src/shadow_cache.rs`, after Unreal's
+virtual shadow maps' separate static cache and HDRP's mixed cached
+shadows). Each cascade and local face keeps what its static casters drew
+while its view stands still: a caster is static once it has stood still
+for eight frames (its drawn transform, sway, mesh and material and their
+revisions unchanged), and a batch (mesh and material) is dynamic while one
+of its instances moves, while foliage sways in a wind and always with a
+material shader (its clock). A layer with nothing dynamic in it is not
+drawn at all; a layer with dynamic casters copies its static casters
+(shadow value and depth) back from a texture of its own and draws only
+the dynamic ones over them, the skinned casters, scattered copies, grass,
+terrain levels and clustered casters among them (they follow the camera
+or move every frame). A static caster that appears, goes, starts or stops
+moving draws again only the layers its old and new spheres reach; a layer
+whose view changed (a cascade following the camera, a light that moved)
+draws every caster in one pass, as without a cache, and caches from the
+first frame its view stays. `FrameStats::shadow_cached` counts the layers
+whose static casters came from the cache (`shadow_passes` still counts
+every layer). Nothing feeds back into the simulation.
+
 **Point shadows** (`RenderDesc::point_shadows`, the IDL's
 `RenderOptions.pointShadows`): `Cube` draws six 90° faces, `Paraboloid` the
 hemisphere below the light and the one above, each in one pass (the
@@ -2371,8 +2391,8 @@ weather, so the array otherwise keeps its size; its index comes from
 and terrain (no skinned or scattered copies; clustered casters through a
 shadow view of the meshlet dispatch, as a cascade's), and is drawn again only
 when `shelter_key` changes: the camera crosses an eighth of the square,
-the fall turns, or a caster inside moves, appears or goes (a static
-shadow cache, when the shadows have one, is where that test belongs).
+the fall turns, or a caster inside moves, appears or goes (the static
+shadow cache, `src/shadow_cache.rs`, could later carry that test).
 The tick's wetness, puddles and snow depth are the open ground's; the
 map is drawn only. A strike (`add_lightning`) is a
 double flash of the sky's light, a light over the strike and a bolt by

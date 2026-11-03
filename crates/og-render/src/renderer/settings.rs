@@ -87,6 +87,7 @@ impl Renderer {
                 self.cascade_map.layers.len() as u32,
             );
             self.shelter_key = None;
+            self.shadow_cache.forget_layers();
             self.local_map = ShadowMap::new(
                 &self.device,
                 "local shadows",

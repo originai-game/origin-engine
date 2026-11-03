@@ -144,6 +144,7 @@ mod scene;
 mod shaders;
 pub use shaders::{ShaderSource, shader_sources};
 pub mod ocean_fft;
+mod shadow_cache;
 mod shadows;
 pub mod shapes;
 mod skin;
@@ -481,6 +482,11 @@ pub struct Renderer {
     /// Each instance's sway at the last drawn frame, by instance index
     /// ([`Instance::sway`]): a swaying vertex's motion vector starts there.
     previous_sway: Vec<f32>,
+    /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
+    /// and per shadow slot the texture a layer's static casters are kept
+    /// in while dynamic ones are drawn over it.
+    shadow_cache: shadow_cache::ShadowCache,
+    shadow_cache_maps: Vec<Option<CachedShadow>>,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

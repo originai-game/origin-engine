@@ -525,6 +525,41 @@ pub(crate) struct ShadowMap {
     pub(crate) array_view: wgpu::TextureView,
     pub(crate) layers: Vec<wgpu::TextureView>,
     pub(crate) depth: wgpu::TextureView,
+    /// The depth buffer itself (the static shadow cache copies it).
+    pub(crate) depth_texture: wgpu::Texture,
+}
+
+/// One shadow layer's static casters, kept while dynamic casters are drawn
+/// over the live layer (`shadow_cache.rs`): its shadow value and depth.
+pub(crate) struct CachedShadow {
+    pub(crate) size: u32,
+    pub(crate) color: wgpu::Texture,
+    pub(crate) depth: wgpu::Texture,
+}
+
+impl CachedShadow {
+    pub(crate) fn new(device: &wgpu::Device, size: u32) -> CachedShadow {
+        let usage = wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST;
+        CachedShadow {
+            size,
+            color: target_texture(
+                device,
+                "cached shadow",
+                size,
+                size,
+                wgpu::TextureFormat::R32Float,
+                usage,
+            ),
+            depth: target_texture(
+                device,
+                "cached shadow depth",
+                size,
+                size,
+                DEPTH_FORMAT,
+                usage,
+            ),
+        }
+    }
 }
 
 impl ShadowMap {
@@ -540,9 +575,22 @@ impl ShadowMap {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::R32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
+        let depth_texture = target_texture(
+            device,
+            label,
+            size,
+            size,
+            DEPTH_FORMAT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
+        );
         ShadowMap {
             array_view: texture.create_view(&wgpu::TextureViewDescriptor {
                 label: Some(label),
@@ -560,15 +608,8 @@ impl ShadowMap {
                     })
                 })
                 .collect(),
-            depth: target_texture(
-                device,
-                label,
-                size,
-                size,
-                DEPTH_FORMAT,
-                wgpu::TextureUsages::RENDER_ATTACHMENT,
-            )
-            .create_view(&Default::default()),
+            depth: depth_texture.create_view(&Default::default()),
+            depth_texture,
             texture,
         }
     }

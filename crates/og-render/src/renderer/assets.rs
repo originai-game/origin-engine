@@ -184,6 +184,7 @@ impl Renderer {
             self.previous_time = None;
             self.previous_wind = None;
             self.previous_sway.clear();
+            self.shadow_cache = Default::default();
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
             let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());

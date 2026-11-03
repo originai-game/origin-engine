@@ -644,6 +644,13 @@ pub(crate) struct GrassFrame {
     fields: Vec<GrassField>,
 }
 
+impl GrassFrame {
+    /// Whether a field of the frame casts shadows.
+    pub(crate) fn casts(&self) -> bool {
+        self.fields.iter().any(|f| f.cast)
+    }
+}
+
 /// Which pass grass draws into.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum GrassPass {
