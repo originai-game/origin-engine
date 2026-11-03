@@ -128,6 +128,41 @@ pub(crate) fn text_features(step: &TypeStep, font: FontRole) -> crate::shape::Fe
     }
 }
 
+/// Text in a pixel font set on its grid (the typography audit, fix 5): its
+/// size at a whole multiple of the grid and its tracking in whole pixels,
+/// so each of the font's pixels is a whole number of CSS pixels and lands
+/// on the device-pixel grid the pen is snapped to. A step's line height is
+/// kept. Text in an outline font is unchanged.
+pub(crate) fn snap_pixel_text(nodes: &mut [Node], fonts: &dyn Metrics) {
+    let snap = |s: &mut TypeStep, m: &FontMetrics| {
+        s.size = m.pixel_size(s.size);
+        s.tracking_em = m.pixel_tracking(s.tracking_em);
+        s.cjk_tracking_em = m.pixel_tracking(s.cjk_tracking_em);
+    };
+    for n in nodes {
+        match &mut n.content {
+            Content::Text(t) => {
+                let m = t.metrics(fonts);
+                if m.pixel_grid() > 0 {
+                    snap(&mut t.step, m);
+                    for s in &mut t.fit {
+                        snap(s, m);
+                    }
+                }
+            }
+            Content::Rich(r) => {
+                for s in r.spans.iter_mut().filter(|s| s.atom.is_none()) {
+                    let m = fonts.metrics_styled(s.font, s.weight, s.italic, &s.text);
+                    if m.pixel_grid() > 0 {
+                        snap(&mut s.step, m);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 impl TextContent {
     /// The metrics of the face it is drawn in: its role's nearest its
     /// step's weight ([`crate::Fonts::for_styled`]).

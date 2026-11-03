@@ -912,6 +912,10 @@ impl Bundle {
             kerning,
             pages,
             ttf: blob.raw("ttf").ok().map(<[u8]>::to_vec),
+            pixel: blob
+                .raw_opt("pixel")
+                .and_then(|b| std::str::from_utf8(b).ok()?.parse().ok())
+                .unwrap_or(0),
             names: blob
                 .raw("names")
                 .ok()

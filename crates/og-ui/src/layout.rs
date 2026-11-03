@@ -32,8 +32,8 @@ use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use node::FontRole;
 use node::truncate_lines;
 pub(crate) use node::{
-    Content, EditView, NONE, Node, Shape, Stagger, TextContent, Widget, ellipsis_of, step_tracking,
-    text_features,
+    Content, EditView, NONE, Node, Shape, Stagger, TextContent, Widget, ellipsis_of,
+    snap_pixel_text, step_tracking, text_features,
 };
 
 use crate::FontMetrics;

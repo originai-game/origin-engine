@@ -22,6 +22,9 @@ pub(crate) struct RuntimeFont {
     pub file: Arc<FontFile>,
     pub em_px: f32,
     pub px_range: f32,
+    /// A pixel font's grid (0: an outline font): its glyphs are rendered
+    /// as their cells, as the cook renders them.
+    pub pixel: u32,
     /// Characters handled (rendered, or not in the font either).
     done: BTreeSet<char>,
     /// The page being filled.
@@ -38,11 +41,12 @@ struct Page {
 }
 
 impl RuntimeFont {
-    pub fn new(file: Arc<FontFile>, em_px: f32, px_range: f32) -> RuntimeFont {
+    pub fn new(file: Arc<FontFile>, em_px: f32, px_range: f32, pixel: u32) -> RuntimeFont {
         RuntimeFont {
             file,
             em_px,
             px_range,
+            pixel,
             done: BTreeSet::new(),
             page: None,
         }
@@ -80,7 +84,8 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
         let mut touched: BTreeSet<u32> = BTreeSet::new();
         for c in want {
             rf.done.insert(c);
-            let Some(img) = og_ui::glyphs::render_glyph(rf.file.bytes(), c, rf.em_px, rf.px_range)
+            let Some(img) =
+                og_ui::glyphs::render_glyph_on(rf.file.bytes(), c, rf.em_px, rf.px_range, rf.pixel)
             else {
                 continue;
             };
@@ -428,7 +433,7 @@ mod tests {
         });
         rs.fonts.push(FontPages { pages: vec![first] });
         rs.runtime_fonts
-            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0));
+            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0));
         let wanted: Vec<char> = "偏向スクリーンターン終了修理ドローン"
             .chars()
             .chain((0x4e00..0x4e60).filter_map(char::from_u32))

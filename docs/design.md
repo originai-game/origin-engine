@@ -647,7 +647,12 @@ tests in orbs and CI, and the probe's CPU description of a frame.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs;
   CJK coverage through the platform's subset fonts, and characters outside
   a cooked charset rendered at run time from the font's outlines (`font {
-  runtime true }`); bidi (UAX #9) and shaping (Arabic, Indic) through
+  runtime true }`). A pixel font (`font { pixel 12 }`, its pixels to
+  the em) is cooked as its cells on that grid, sampled at the cells'
+  centres and traced into square contours before the field, its advances
+  and kerning in whole cells, and og-ui sets it at whole multiples of the
+  grid only, so each font pixel is whole CSS pixels on the snapped pen
+  (run-time glyphs take the same cells). Bidi (UAX #9) and shaping (Arabic, Indic) through
   rustybuzz, behind og-ui's `shaping` feature. World text faces the camera
   as a billboard does when asked (`TextDesc.facing`), turned as one panel
   about its aligned point and sorted among the transparent meshes.

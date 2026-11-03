@@ -517,8 +517,9 @@ impl Ui {
                     }
                     let m = &f.metrics;
                     let r = frame.resolve(&n.rect);
-                    let size = step.size * n.scale;
-                    let tracking = crate::layout::step_tracking(step, text);
+                    // A pixel font on its grid (crate::layout::snap_pixel_text).
+                    let size = m.pixel_size(step.size * n.scale);
+                    let tracking = m.pixel_tracking(crate::layout::step_tracking(step, text));
                     let features = crate::layout::text_features(step, *font);
                     let w = m.measure_with(text, size, tracking, features);
                     let lh = step.line_height * n.scale;

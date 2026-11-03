@@ -263,7 +263,10 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
         face.glyph_index(char::from_u32(cp)?)?
     };
     let upem = face.units_per_em() as f64;
-    let advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 / upem as f32;
+    let mut advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 / upem as f32;
+    if s.pixel > 0 {
+        advance = og_ui::glyphs::snap_to_grid(advance, s.pixel);
+    }
     let empty = Glyph {
         codepoint: cp,
         advance,
@@ -272,24 +275,38 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
         height: 0,
         pixels: Vec::new(),
     };
-    let Some(bbox) = face.glyph_bounding_box(gid) else {
-        return Some(empty);
+    let (bbox, mut shape) = if s.pixel > 0 {
+        // A pixel font: the field is of the glyph's cells on its grid
+        // (og-ui's `pixel_cells`, which run-time glyphs share), square
+        // corners and straight runs, never overlapping.
+        let cells = og_ui::glyphs::pixel_cells(face, gid, s.pixel);
+        let cell = upem / f64::from(s.pixel);
+        let Some(b) = cells.bounds() else {
+            return Some(empty);
+        };
+        (b.map(|v| f64::from(v) * cell), pixel_shape(&cells, cell))
+    } else {
+        let Some(bbox) = face.glyph_bounding_box(gid) else {
+            return Some(empty);
+        };
+        let Some(shape) = fdsm_ttf_parser::load_shape_from_face(face, gid) else {
+            return Some(empty);
+        };
+        // Overlapping contours (the OVERLAP flag) would leave their inner
+        // edges as seams in the field: the field is of the outline's union.
+        let b = [bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max].map(f64::from);
+        (b, overlap::remove_overlaps(shape))
     };
-    let Some(mut shape) = fdsm_ttf_parser::load_shape_from_face(face, gid) else {
-        return Some(empty);
-    };
-    if shape.contours.is_empty() || bbox.width() <= 0 || bbox.height() <= 0 {
+    // The glyph's box in font units: left, bottom, right, top.
+    if shape.contours.is_empty() || bbox[2] <= bbox[0] || bbox[3] <= bbox[1] {
         return Some(empty);
     }
-    // Overlapping contours (the OVERLAP flag) would leave their inner edges
-    // as seams in the field: the field is of the outline's union.
-    shape = overlap::remove_overlaps(shape);
     let scale = s.em_px as f64 / upem;
     let pad = (s.px_range as f64 / 2.0).ceil() + 1.0;
-    let width = ((bbox.width() as f64) * scale + 2.0 * pad).ceil() as u32;
-    let height = ((bbox.height() as f64) * scale + 2.0 * pad).ceil() as u32;
-    let tx = pad - bbox.x_min as f64 * scale;
-    let ty = pad - bbox.y_min as f64 * scale;
+    let width = ((bbox[2] - bbox[0]) * scale + 2.0 * pad).ceil() as u32;
+    let height = ((bbox[3] - bbox[1]) * scale + 2.0 * pad).ceil() as u32;
+    let tx = pad - bbox[0] * scale;
+    let ty = pad - bbox[1] * scale;
     let transform = nalgebra::convert::<_, nalgebra::Affine2<f64>>(nalgebra::Similarity2::new(
         nalgebra::Vector2::new(tx, ty),
         0.0,
@@ -320,8 +337,8 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     }
     // Font units are y-up; atlas rows go top to bottom.
     image::imageops::flip_vertical_in_place(&mut img);
-    let left = (bbox.x_min as f64 * scale - pad) / s.em_px as f64;
-    let bottom = (bbox.y_min as f64 * scale - pad) / s.em_px as f64;
+    let left = (bbox[0] * scale - pad) / s.em_px as f64;
+    let bottom = (bbox[1] * scale - pad) / s.em_px as f64;
     Some(Glyph {
         codepoint: cp,
         advance,
@@ -335,6 +352,58 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
         height,
         pixels: img.into_raw(),
     })
+}
+
+/// The outline of a pixel glyph's cells, `cell` font units each.
+fn pixel_shape(
+    cells: &og_ui::glyphs::PixelCells,
+    cell: f64,
+) -> fdsm::shape::Shape<fdsm::shape::Contour> {
+    use fdsm::bezier::{Point, Segment};
+    let mut shape = fdsm::shape::Shape::default();
+    for c in cells.contours() {
+        let p = |(x, y): (i32, i32)| Point::new(f64::from(x) * cell, f64::from(y) * cell);
+        let mut contour = fdsm::shape::Contour::default();
+        for k in 0..c.len() {
+            contour
+                .segments
+                .push(Segment::line(p(c[k]), p(c[(k + 1) % c.len()])));
+        }
+        shape.contours.push(contour);
+    }
+    shape
+}
+
+/// The share of a face's outline points, over the charset's glyphs, that
+/// lie off a `grid`-cell em, and how many points there are: a pixel font
+/// drawn on its grid has none off it.
+fn off_grid(face: &ttf_parser::Face, wanted: &[u32], grid: u32) -> (usize, usize) {
+    struct Points(Vec<(f32, f32)>);
+    impl ttf_parser::OutlineBuilder for Points {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.0.push((x, y));
+        }
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.0.push((x, y));
+        }
+        fn quad_to(&mut self, _: f32, _: f32, x: f32, y: f32) {
+            self.0.push((x, y));
+        }
+        fn curve_to(&mut self, _: f32, _: f32, _: f32, _: f32, x: f32, y: f32) {
+            self.0.push((x, y));
+        }
+        fn close(&mut self) {}
+    }
+    let cell = f32::from(face.units_per_em()) / grid as f32;
+    let mut pts = Points(Vec::new());
+    for &cp in wanted.iter().filter(|&&cp| cp < 0x80) {
+        if let Some(g) = char::from_u32(cp).and_then(|c| face.glyph_index(c)) {
+            face.outline_glyph(g, &mut pts);
+        }
+    }
+    let off = |v: f32| ((v / cell) - (v / cell).round()).abs() > 0.02;
+    let n = pts.0.iter().filter(|&&(x, y)| off(x) || off(y)).count();
+    (n, pts.0.len())
 }
 
 /// The Unicode spaces a cooked font always carries.
@@ -497,8 +566,12 @@ pub fn cook(
         .map(|(left, right, v)| KernRow {
             left,
             right,
-            adjust: v as f32 / upem_f,
+            adjust: match s.pixel {
+                0 => v as f32 / upem_f,
+                g => og_ui::glyphs::snap_to_grid(v as f32 / upem_f, g),
+            },
         })
+        .filter(|k| k.adjust != 0.0)
         .collect();
     // The font file ships with the atlas for run-time shaping and for
     // characters outside the charset (`runtime true`: og-ui renders them
@@ -530,7 +603,12 @@ pub fn cook(
     // Unicode spaces the cooked glyphs lack (CLDR writes en's "3:05 PM" and
     // fr's "1 234" with U+202F, and fonts often leave it out): empty glyphs
     // that advance as the space would, so no space vanishes from a text.
-    let spaces = unicode_spaces(&face, &glyphs);
+    let mut spaces = unicode_spaces(&face, &glyphs);
+    if s.pixel > 0 {
+        for g in &mut spaces {
+            g.advance = og_ui::glyphs::snap_to_grid(g.advance, s.pixel);
+        }
+    }
     if !spaces.is_empty() {
         glyphs.extend(spaces);
         glyphs.sort_by_key(|g| g.codepoint);
@@ -657,6 +735,10 @@ pub fn cook(
     if ship_ttf {
         w.raw("ttf", bytes.to_vec(), 16);
     }
+    if s.pixel > 0 {
+        // The grid, as text: og-ui snaps the font's sizes to its multiples.
+        w.raw("pixel", s.pixel.to_string().into_bytes(), 1);
+    }
     let pages_note = if page_count == 1 {
         format!("1 page of {width}x{height}")
     } else {
@@ -692,6 +774,17 @@ pub fn cook(
         ));
     }
     note.push_str(&figures_note(&face, &wanted, &s.features));
+    if s.pixel > 0 {
+        note.push_str(&format!("; pixel font on a {} px grid", s.pixel));
+        let (off, all) = off_grid(&face, &wanted, s.pixel);
+        if off * 10 > all {
+            note.push_str(&format!(
+                "; warning: {off} of {all} outline points are off the {} px grid \\
+                 (a face drawn on another pitch): its pixels are taken at the cells' centres",
+                s.pixel
+            ));
+        }
+    }
     if !missing.is_empty() {
         let list: String = missing
             .iter()
@@ -882,5 +975,70 @@ mod tests {
         );
         let tnum = note(&["tnum"]);
         assert!(!tnum.contains("proportional figures"), "{tnum}");
+    }
+
+    /// `pixel 12` cooks Fusion Pixel as its 12-pixel cells: every advance
+    /// and plane edge a whole number of cells, the grid in the blob for
+    /// og-ui, and a face drawn off the grid (DotGothic16's dots, on a pitch
+    /// finer than its 16-pixel em) named in the note.
+    #[test]
+    fn a_pixel_font_cooks_on_its_grid() {
+        let read = |p: &str| {
+            std::fs::read(format!(
+                "{}/../../templates/{p}",
+                env!("CARGO_MANIFEST_DIR")
+            ))
+            .expect("the font")
+        };
+        let cook_px = |bytes: &[u8], pixel: u32| {
+            let s = FontSettings {
+                charset: vec!["ascii".into()],
+                em_px: 48.0,
+                px_range: 16.0,
+                pixel,
+                ..FontSettings::default()
+            };
+            let (blob, notes) = cook(bytes, &s, 2, 0).expect("cooks");
+            (blob, notes.note)
+        };
+        let (blob, note) = cook_px(&read("styles/cjk/FusionPixel12-zhHans.ttf"), 12);
+        let b = og_blob::Blob::parse(&blob, "test").unwrap();
+        assert_eq!(b.raw("pixel").unwrap(), b"12");
+        let pad = ((16.0f32 / 2.0).ceil() + 1.0) / 48.0;
+        let whole = |v: f32| (v * 12.0 - (v * 12.0).round()).abs() < 1e-4;
+        let rows = b
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap();
+        assert!(rows.len() > 90);
+        for r in rows.iter() {
+            assert!(
+                whole(r.advance),
+                "{:?} advance {}",
+                char::from_u32(r.codepoint),
+                r.advance
+            );
+            if r.atlas_w > 0 {
+                assert!(
+                    whole(r.plane_left + pad) && whole(r.plane_bottom + pad),
+                    "{:?}: {} {}",
+                    char::from_u32(r.codepoint),
+                    r.plane_left,
+                    r.plane_bottom
+                );
+            }
+        }
+        assert!(
+            note.contains("pixel font") && !note.contains("off the"),
+            "{note}"
+        );
+        let (_, note) = cook_px(&read("styles/pixel/DotGothic16-Regular.ttf"), 16);
+        assert!(note.contains("off the 16 px grid"), "{note}");
+        let (plain, _) = cook_px(&read("styles/cjk/FusionPixel12-zhHans.ttf"), 0);
+        assert!(
+            og_blob::Blob::parse(&plain, "test")
+                .unwrap()
+                .raw("pixel")
+                .is_err()
+        );
     }
 }

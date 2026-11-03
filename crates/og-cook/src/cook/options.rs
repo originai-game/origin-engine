@@ -264,6 +264,11 @@ pub struct FontSettings {
     /// tnum`, og-ui's `Features::TAGS`): the atlas also holds every glyph
     /// they substitute, and the font file ships for run-time shaping.
     pub features: Vec<String>,
+    /// A pixel font's grid, its pixels to the em (`pixel 12`; 0: an
+    /// outline font): each glyph is cooked as its cells on the grid, square
+    /// and sharp, advances and kerning in whole cells, and og-ui draws the
+    /// font at whole multiples of the grid only.
+    pub pixel: u32,
 }
 
 impl Default for FontSettings {
@@ -276,6 +281,7 @@ impl Default for FontSettings {
             page_size: 1024,
             runtime: false,
             features: Vec::new(),
+            pixel: 0,
         }
     }
 }
@@ -469,6 +475,12 @@ pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
                         e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
                             format!("line {}: runtime takes true or false", e.line)
                         })?
+                }
+                "pixel" => {
+                    f.pixel = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32;
+                    if !(4..=64).contains(&f.pixel) {
+                        return Err(format!("line {}: pixel takes a grid of 4 to 64", e.line));
+                    }
                 }
                 "page_size" => {
                     f.page_size = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32

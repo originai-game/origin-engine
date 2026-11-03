@@ -471,12 +471,12 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
 /// the renderer draws the other pages from the same layout.
 pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
     let index = super::assets::index_of(handle).ok_or_else(|| format!("{handle} is not a font"))?;
-    let (render, file) = eng
+    let (render, file, pixel) = eng
         .assets
         .borrow()
         .fonts
         .get(index)
-        .map(|f| (f.render, f.file.clone()))
+        .map(|f| (f.render, f.file.clone(), f.pixel))
         .ok_or_else(|| format!("font {handle} is not alive"))?;
     let mut rs = eng.render.borrow_mut();
     let pages = rs
@@ -492,6 +492,6 @@ pub(crate) fn ui_font(eng: &Engine, handle: f64) -> Result<UiFont, String> {
         .ok_or("the font's first page is missing")?;
     rs.ui_pages.insert(first, pages);
     let mut font = UiFont::new(first, &msdf);
-    font.metrics = font.metrics.with_file(file);
+    font.metrics = font.metrics.with_file(file).with_pixel(pixel);
     Ok(font)
 }

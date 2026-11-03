@@ -50,6 +50,7 @@ impl Ui {
                 self.nodes[i].out = out;
             }
         }
+        crate::layout::snap_pixel_text(&mut self.nodes, &self.fonts);
         self.reuse_check();
         let mut floating: Vec<usize> = self
             .floating

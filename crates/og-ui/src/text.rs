@@ -48,6 +48,10 @@ pub struct FontMetrics {
     /// time, keeps its Chinese over a locale face that cooked the same
     /// characters. 0: the atlas first, as for every other font.
     pub(crate) prefer: usize,
+    /// A pixel font's grid, its pixels to the em (`font { pixel <grid> }`);
+    /// 0 for an outline font. Text in it is set at whole multiples of the
+    /// grid ([`FontMetrics::pixel_size`]).
+    pixel: u32,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -140,6 +144,7 @@ impl FontMetrics {
             runs: None,
             mixed: None,
             prefer: 0,
+            pixel: 0,
         }
     }
 
@@ -156,6 +161,39 @@ impl FontMetrics {
             runs: None,
             mixed: None,
             prefer: 0,
+            pixel: 0,
+        }
+    }
+
+    /// A pixel font on a `grid`-pixel em (0: an outline font): its text
+    /// sizes snap to whole multiples of the grid, and characters measured
+    /// from its file advance whole pixels, as its cooked glyphs do.
+    pub fn with_pixel(mut self, grid: u32) -> FontMetrics {
+        self.pixel = grid;
+        self
+    }
+
+    /// The pixel grid (`font { pixel <grid> }`); 0 for an outline font.
+    pub fn pixel_grid(&self) -> u32 {
+        self.pixel
+    }
+
+    /// The size a text of `size` CSS px is set at in this font: a pixel
+    /// font's nearest whole multiple of its grid, at least one, so each of
+    /// its pixels is a whole number of CSS pixels; `size` for any other.
+    pub fn pixel_size(&self, size: f32) -> f32 {
+        if self.pixel == 0 || size <= 0.0 {
+            return size;
+        }
+        let g = self.pixel as f32;
+        (size / g).round().max(1.0) * g
+    }
+
+    /// Tracking `em` of a text in this font: a pixel font's in whole pixels.
+    pub fn pixel_tracking(&self, em: f32) -> f32 {
+        match self.pixel {
+            0 => em,
+            g => (em * g as f32).round() / g as f32,
         }
     }
 
@@ -203,7 +241,11 @@ impl FontMetrics {
         if let Some(a) = self.atlas_advance(c) {
             return a;
         }
-        self.file.as_ref().and_then(|f| f.advance(c)).unwrap_or(0.0)
+        let a = self.file.as_ref().and_then(|f| f.advance(c)).unwrap_or(0.0);
+        match self.pixel {
+            0 => a,
+            g => crate::glyphs::snap_to_grid(a, g),
+        }
     }
 
     /// Whether the font has a glyph for `c` (fixed metrics have every one;

@@ -203,3 +203,56 @@ fn the_numeric_role_holds_its_width_as_it_counts() {
         "body stays proportional: {one} vs {eight}"
     );
 }
+
+/// A pixel font (`font { pixel 12 }`) is set at whole multiples of its
+/// grid (the typography audit, fix 5): a 14 px body label at 12, a 20 px
+/// one at 24, so each of its pixels is a whole CSS pixel; its tracking is
+/// whole pixels. An outline font keeps the step's size.
+#[test]
+fn a_pixel_font_is_set_at_multiples_of_its_grid() {
+    let width = |metrics: FontMetrics, size: f32, tracking: f32| {
+        let mut ui = Ui::new(UiDesc::default());
+        let f = UiFont {
+            handle: None,
+            metrics,
+        };
+        let mut fonts = Fonts {
+            body: f,
+            ..Fonts::default()
+        };
+        fonts.link();
+        ui.set_fonts(fonts);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "N",
+            "abcd",
+            LabelDesc {
+                nowrap: true,
+                step: Some(TypeStep {
+                    size,
+                    line_height: size * 1.25,
+                    tracking_em: tracking,
+                    cjk_line_height: size * 1.25,
+                    cjk_tracking_em: 0.0,
+                    features: Features::NONE,
+                    ..ui.theme().type_ramp.body
+                }),
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+        ui.frame().element("N").expect("the label").width
+    };
+    let pixel = || FontMetrics::fixed(0.5).with_pixel(12);
+    // Half an em a character: 6 px at 12, 12 px at 24.
+    assert!((width(pixel(), 14.0, 0.0) - 24.0).abs() < 0.01);
+    assert!((width(pixel(), 20.0, 0.0) - 48.0).abs() < 0.01);
+    assert!(
+        (width(pixel(), 4.0, 0.0) - 24.0).abs() < 0.01,
+        "never under one grid"
+    );
+    // 0.02 em is a quarter pixel of a 12-pixel em: none; 0.1 em is one.
+    assert!((width(pixel(), 12.0, 0.02) - 24.0).abs() < 0.01);
+    assert!((width(pixel(), 12.0, 0.1) - 28.0).abs() < 0.01);
+    assert!((width(FontMetrics::fixed(0.5), 14.0, 0.0) - 28.0).abs() < 0.01);
+}

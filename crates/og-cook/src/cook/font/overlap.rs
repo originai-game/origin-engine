@@ -215,15 +215,6 @@ pub(super) fn remove_overlaps(shape: Shape<Contour>) -> Shape<Contour> {
 }
 
 fn resolve(shape: &Shape<Contour>) -> Option<Shape<Contour>> {
-    for (ci, c) in shape.contours.iter().enumerate() {
-        for s in &c.segments {
-            let b = Bez::of(s);
-            let near = |p: Point| (p.x - 855.0).abs() < 200.0 && (p.y - 523.0).abs() < 200.0;
-            if near(b.start()) || near(b.end()) {
-                eprintln!("DBGS {ci} {:?}", &b.p[..b.n]);
-            }
-        }
-    }
     let segs: Vec<Bez> = shape
         .contours
         .iter()

@@ -95,6 +95,8 @@ pub(crate) struct LoadedFont {
     pub file: Option<std::sync::Arc<og_ui::shape::FontFile>>,
     /// An icon set's names (glyph U+E000 + i is icon i); empty for a text font.
     pub icons: Vec<String>,
+    /// A pixel font's grid (`font { pixel <grid> }`); 0 for an outline font.
+    pub pixel: u32,
 }
 
 /// Everything an engine loaded.
@@ -847,7 +849,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         "glyphs": m.glyph_count, "pages": m.page_count, "emPx": m.em_px as u32,
         "pxRange": m.px_range, "ascender": m.ascender, "descender": m.descender,
         "lineHeight": m.ascender - m.descender + m.line_gap,
-        "icons": font.names.len(),
+        "icons": font.names.len(), "pixel": font.pixel,
     });
     let mut rs = eng.render.borrow_mut();
     let pages = add_font(&mut rs.scene, &font);
@@ -860,7 +862,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(f) = &file {
         rs.runtime_fonts.insert(
             render,
-            super::glyphs::RuntimeFont::new(f.clone(), m.em_px, m.px_range),
+            super::glyphs::RuntimeFont::new(f.clone(), m.em_px, m.px_range, font.pixel),
         );
     }
     let mut assets = eng.assets.borrow_mut();
@@ -870,6 +872,7 @@ pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
         render,
         file,
         icons: font.names.clone(),
+        pixel: font.pixel,
     });
     Ok(assets.fonts.len() - 1)
 }
