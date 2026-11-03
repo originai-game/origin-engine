@@ -1991,3 +1991,54 @@ test("loadout: a locked slot is refused, not selected; a tab answers its index; 
   const callout = byPath(engine, "Callouts/optic")!;
   expect(callout.y + callout.height).toBeLessThanOrEqual(art.y + (art.height - dh) / 2 + 1);
 });
+
+// ── deck builder ────────────────────────────────────────────────────────
+
+test("deckBuilder: a card at its copies' limit, one not owned, and any card into a full deck are refused with their reason; a deck row takes a copy out; 7+ holds every dearer card; the search filters by name", () => {
+  // Wrong: a third copy added past the limit of two, an unowned card added, a full deck taking more, or a cost-9 card missing under 7+.
+  const results: Api.DeckBuilderResult[] = [];
+  const st = { counts: { bolt: 2, wall: 0, ghost: 0, titan: 0 } as Record<string, number>, size: 30, cost: -1, search: "" };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.deckBuilder("Deck", {
+        cards: [
+          { key: "bolt", name: "Bolt", cost: 1, kind: "spell", owned: 3, count: st.counts.bolt },
+          { key: "wall", name: "Wall", cost: 2, kind: "unit", owned: 2, count: st.counts.wall },
+          { key: "ghost", name: "Ghost", cost: 3, kind: "unit", owned: 0, count: 0 },
+          { key: "titan", name: "Titan", cost: 9, kind: "unit", owned: 1, count: st.counts.titan },
+        ],
+        deckSize: st.size,
+        copyLimit: 2,
+        costFilter: st.cost,
+        search: st.search,
+      });
+      results.push(r);
+      if (r.add) st.counts[r.add] = (st.counts[r.add] ?? 0) + 1;
+      if (r.remove) st.counts[r.remove] = (st.counts[r.remove] ?? 0) - 1;
+      if (r.costFilter !== null) st.cost = r.costFilter;
+    });
+  });
+  engine.advance(10);
+  const tile = (k: string) => elements(engine).find((e) => /Grid\/Line#\d+\//.test(e.path) && e.path.endsWith(`/${k}`))!;
+  tapOn(engine, tile("bolt"));
+  expect(byPath(engine, "Deck/Refusal/Text")?.text).toBe("No more copies allowed");
+  tapOn(engine, tile("ghost"));
+  expect(byPath(engine, "Deck/Refusal/Text")?.text).toBe("Not owned");
+  tapOn(engine, tile("wall"));
+  expect(st.counts.wall).toBe(1);
+  tapOn(engine, byPath(engine, "Deck/List/bolt")!);
+  expect(st.counts.bolt).toBe(1);
+  st.size = 2;
+  engine.advance(4);
+  tapOn(engine, tile("titan"));
+  expect(byPath(engine, "Deck/Refusal/Text")?.text).toBe("The deck is full");
+  expect(results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["bolt", "ghost", "titan"]);
+  expect(results.filter((r) => r.add).map((r) => r.add)).toEqual(["wall"]);
+  tapOn(engine, byPath(engine, "Filters/Costs/7")!);
+  expect(st.cost).toBe(7);
+  expect(elements(engine).filter((e) => /Grid\/Line#\d+\/[a-z]+$/.test(e.path)).map((e) => e.id)).toEqual(["titan"]);
+  st.cost = -1;
+  st.search = "WA";
+  engine.advance(4);
+  expect(elements(engine).filter((e) => /Grid\/Line#\d+\/[a-z]+$/.test(e.path)).map((e) => e.id)).toEqual(["wall"]);
+});

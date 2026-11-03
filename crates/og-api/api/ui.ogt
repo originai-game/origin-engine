@@ -6664,6 +6664,122 @@ module ui {
     param desc LoadoutDesc "The loadouts, the slots, the selected item and its attachments."
     returns LoadoutResult
   }
+  struct CollectionCard {
+    doc "One card of the collection, as the game holds it: the face og.ui.cardHand draws, the copies owned and in the deck."
+    desc true
+    field key String "Its key: its tile's element id (<id>/Collection/Grid/Line#<n>/<key>) and its deck row's (<id>/Deck/List/<key>)."
+    field name String "Its name, on its banner and its deck row."
+    field cost Option.u32 "Its cost, the gem; null has none. The curve counts it (7 and up in the last bar)."
+    field typeLine String "Its type line on the face (Spell, Unit)."
+    field kind String "Its kind's key, for the kind filter and the deck's counts (unit, spell)."
+    field text String "Its rules (rich text), shown on the large face of the card hovered or focused."
+    field image Option.Texture "Its art (art kind cardArt); null draws the style's placeholder."
+    field rarity Rarity "Its tier: the frame's colour, the rarity filter and the deck row's mark."
+    field owned u32 "Copies owned: the tile's ×N; none dims the tile and it cannot be added."
+    field count u32 "Copies in the deck: its deck row's count."
+    field limit u32 "Copies a deck may hold; 0 is the deck's copyLimit."
+  }
+  struct DeckKind {
+    doc "A card kind: a filter chip and a line of the deck's counts."
+    desc true
+    field key String "Its key, as the cards' kind."
+    field label String "Its word (Units)."
+    field image Option.Texture "Its mark (art kind icon); null shows the word alone."
+  }
+  struct DeckRarity {
+    doc "A tier the rarity filter offers."
+    desc true
+    field rarity Rarity "The tier."
+    field label String "Its word (Rare)."
+  }
+  struct DeckSort {
+    doc "An order the collection can be sorted in: `cost`, `name`, `rarity` and `owned` are known; another key keeps the game's order."
+    desc true
+    field key String "Its key."
+    field label String "Its word."
+  }
+  struct DeckBuilderDesc {
+    doc "A deck builder over the collection: the filters, the collection's grid, the deck's list, its curve and counts, Done."
+    desc true
+    field title String "The screen's title (Collection)."
+    field cards List.CollectionCard "Every card of the collection, in the game's order; the filters and the sort are applied here."
+    field deckName String "The deck's name, at the head of its list."
+    field deckImage Option.Texture "The deck's art behind its name (art kind cardArt); null shows none."
+    field deckSize u32 "The cards a deck holds: the count's whole (30/30), and the limit a card past it is refused at." {
+      default 30
+    }
+    field copyLimit u32 "Copies of one card a deck may hold, unless the card says otherwise." {
+      default 2
+    }
+    field costFilter i32 "The cost shown, the last chip (7) meaning that and up; -1 all." {
+      default -1
+    }
+    field rarityFilter Rarity "The tier shown; none all."
+    field kindFilter String "The kind shown; empty all."
+    field search String "The search's text: names that hold it, whatever the case."
+    field sort String "The sort's key; empty keeps the game's order."
+    field rarities List.DeckRarity "The tiers the rarity filter offers."
+    field kinds List.DeckKind "The kinds: the filter's chips and the deck's counts."
+    field sorts List.DeckSort "The orders the sort offers."
+    field view String "On a phone in portrait, the half shown: `deck` the deck, else the collection."
+    field allLabel String "The filters' all." {
+      default "All"
+    }
+    field searchLabel String "The search's placeholder." {
+      default "Search cards"
+    }
+    field sortLabel String "The sort's name." {
+      default "Sort"
+    }
+    field collectionLabel String "The collection's tab on a phone, and its count's word ({owned} / {total} cards)." {
+      default "Cards"
+    }
+    field deckLabel String "The deck's heading (My deck)." {
+      default "My deck"
+    }
+    field curveLabel String "The curve's heading." {
+      default "Mana curve"
+    }
+    field kindsLabel String "The counts' heading." {
+      default "Types"
+    }
+    field doneLabel String "Done." {
+      default "Done"
+    }
+    field fullLabel String "Said when a card is refused for a full deck." {
+      default "The deck is full"
+    }
+    field limitLabel String "Said when a card is refused at its copies' limit." {
+      default "No more copies allowed"
+    }
+    field unownedLabel String "Said for a card not owned." {
+      default "Not owned"
+    }
+    field emptyLabel String "The grid's word when no card passes the filters." {
+      default "No cards match"
+    }
+  }
+  struct DeckBuilderResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field add Option.String "A collection card was pressed and the deck can take it: add a copy."
+    field remove Option.String "A deck row was pressed: take a copy out."
+    field refused Option.String "A card was pressed that the deck cannot take (full, at its limit, not owned): it shakes and the reason shows."
+    field costFilter Option.i32 "A cost chip was pressed (-1 all)."
+    field rarityFilter Option.Rarity "A tier chip was pressed (none all)."
+    field kindFilter Option.String "A kind chip was pressed (empty all)."
+    field search Option.String "The search's text changed."
+    field sort Option.String "Another order was chosen."
+    field view Option.String "On a phone, the other half's tab was pressed."
+    field done bool "Done was pressed."
+  }
+  fn deckBuilder {
+    doc "A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list."
+    doc "Parts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Filters/Costs/<n> (all is -1), <id>/Filters/Rarities/<rarity>, <id>/Filters/Kinds/<kind>, <id>/Filters/Search, <id>/Collection/Grid/Line#<n>/<key>, <id>/Deck/List/<key>, <id>/Deck/Done."
+    host false
+    param id String "Its id."
+    param desc DeckBuilderDesc "The collection, the deck's counts and the filters' state."
+    returns DeckBuilderResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

@@ -60,7 +60,7 @@ function plain(markup: string): string {
 
 // ── a card's face ───────────────────────────────────────────────────────
 
-interface FaceOpts {
+export interface FaceOpts {
   playable: boolean;
   ready: boolean;
   /** Draw the rules (a card wide enough to read them). */
@@ -87,7 +87,7 @@ function emWidth(s: string): number {
  * colour, the cost gem, the art, the name banner, the type line with its
  * pips, and the rules as rich text. Sizes follow the card's width.
  */
-function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
+export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   const tier = rarityColor(c.rarity);
   const edge = tier ?? role("lineStrong");
   const r = Math.max(6, Math.round(cw * 0.07));

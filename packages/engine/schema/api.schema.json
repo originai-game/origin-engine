@@ -11590,6 +11590,12 @@
         "LoadoutStat",
         "LoadoutDesc",
         "LoadoutResult",
+        "CollectionCard",
+        "DeckKind",
+        "DeckRarity",
+        "DeckSort",
+        "DeckBuilderDesc",
+        "DeckBuilderResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15932,6 +15938,27 @@
             }
           ],
           "returns": "LoadoutResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "deckBuilder",
+          "doc": "A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.\nParts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Filters/Costs/<n> (all is -1), <id>/Filters/Rarities/<rarity>, <id>/Filters/Kinds/<kind>, <id>/Filters/Search, <id>/Collection/Grid/Line#<n>/<key>, <id>/Deck/List/<key>, <id>/Deck/Done.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DeckBuilderDesc",
+              "optional": true,
+              "doc": "The collection, the deck's counts and the filters' state."
+            }
+          ],
+          "returns": "DeckBuilderResult",
           "publish": true,
           "host": false
         },
@@ -64319,6 +64346,456 @@
         "attachment",
         "remove",
         "refused"
+      ],
+      "additionalProperties": false
+    },
+    "CollectionCard": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One card of the collection, as the game holds it: the face og.ui.cardHand draws, the copies owned and in the deck.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tile's element id (<id>/Collection/Grid/Line#<n>/<key>) and its deck row's (<id>/Deck/List/<key>).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, on its banner and its deck row.",
+          "default": ""
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its cost, the gem; null has none. The curve counts it (7 and up in the last bar).",
+          "default": null
+        },
+        "typeLine": {
+          "type": "string",
+          "description": "Its type line on the face (Spell, Unit).",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "Its kind's key, for the kind filter and the deck's counts (unit, spell).",
+          "default": ""
+        },
+        "text": {
+          "type": "string",
+          "description": "Its rules (rich text), shown on the large face of the card hovered or focused.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind cardArt); null draws the style's placeholder.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the frame's colour, the rarity filter and the deck row's mark.",
+          "default": "none"
+        },
+        "owned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Copies owned: the tile's ×N; none dims the tile and it cannot be added.",
+          "default": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Copies in the deck: its deck row's count.",
+          "default": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Copies a deck may hold; 0 is the deck's copyLimit.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeckKind": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A card kind: a filter chip and a line of the deck's counts.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, as the cards' kind.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word (Units).",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its mark (art kind icon); null shows the word alone.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeckRarity": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A tier the rarity filter offers.",
+      "type": "object",
+      "properties": {
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "The tier.",
+          "default": "none"
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word (Rare).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeckSort": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An order the collection can be sorted in: `cost`, `name`, `rarity` and `owned` are known; another key keeps the game's order.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeckBuilderDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A deck builder over the collection: the filters, the collection's grid, the deck's list, its curve and counts, Done.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title (Collection).",
+          "default": ""
+        },
+        "cards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CollectionCard"
+          },
+          "description": "Every card of the collection, in the game's order; the filters and the sort are applied here.",
+          "default": []
+        },
+        "deckName": {
+          "type": "string",
+          "description": "The deck's name, at the head of its list.",
+          "default": ""
+        },
+        "deckImage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The deck's art behind its name (art kind cardArt); null shows none.",
+          "default": null
+        },
+        "deckSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The cards a deck holds: the count's whole (30/30), and the limit a card past it is refused at.",
+          "default": 30
+        },
+        "copyLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Copies of one card a deck may hold, unless the card says otherwise.",
+          "default": 2
+        },
+        "costFilter": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The cost shown, the last chip (7) meaning that and up; -1 all.",
+          "default": -1
+        },
+        "rarityFilter": {
+          "$ref": "#/$defs/Rarity",
+          "description": "The tier shown; none all.",
+          "default": "none"
+        },
+        "kindFilter": {
+          "type": "string",
+          "description": "The kind shown; empty all.",
+          "default": ""
+        },
+        "search": {
+          "type": "string",
+          "description": "The search's text: names that hold it, whatever the case.",
+          "default": ""
+        },
+        "sort": {
+          "type": "string",
+          "description": "The sort's key; empty keeps the game's order.",
+          "default": ""
+        },
+        "rarities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeckRarity"
+          },
+          "description": "The tiers the rarity filter offers.",
+          "default": []
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeckKind"
+          },
+          "description": "The kinds: the filter's chips and the deck's counts.",
+          "default": []
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeckSort"
+          },
+          "description": "The orders the sort offers.",
+          "default": []
+        },
+        "view": {
+          "type": "string",
+          "description": "On a phone in portrait, the half shown: `deck` the deck, else the collection.",
+          "default": ""
+        },
+        "allLabel": {
+          "type": "string",
+          "description": "The filters' all.",
+          "default": "All"
+        },
+        "searchLabel": {
+          "type": "string",
+          "description": "The search's placeholder.",
+          "default": "Search cards"
+        },
+        "sortLabel": {
+          "type": "string",
+          "description": "The sort's name.",
+          "default": "Sort"
+        },
+        "collectionLabel": {
+          "type": "string",
+          "description": "The collection's tab on a phone, and its count's word ({owned} / {total} cards).",
+          "default": "Cards"
+        },
+        "deckLabel": {
+          "type": "string",
+          "description": "The deck's heading (My deck).",
+          "default": "My deck"
+        },
+        "curveLabel": {
+          "type": "string",
+          "description": "The curve's heading.",
+          "default": "Mana curve"
+        },
+        "kindsLabel": {
+          "type": "string",
+          "description": "The counts' heading.",
+          "default": "Types"
+        },
+        "doneLabel": {
+          "type": "string",
+          "description": "Done.",
+          "default": "Done"
+        },
+        "fullLabel": {
+          "type": "string",
+          "description": "Said when a card is refused for a full deck.",
+          "default": "The deck is full"
+        },
+        "limitLabel": {
+          "type": "string",
+          "description": "Said when a card is refused at its copies' limit.",
+          "default": "No more copies allowed"
+        },
+        "unownedLabel": {
+          "type": "string",
+          "description": "Said for a card not owned.",
+          "default": "Not owned"
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "The grid's word when no card passes the filters.",
+          "default": "No cards match"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeckBuilderResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "add": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A collection card was pressed and the deck can take it: add a copy."
+        },
+        "remove": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A deck row was pressed: take a copy out."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A card was pressed that the deck cannot take (full, at its limit, not owned): it shakes and the reason shows."
+        },
+        "costFilter": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A cost chip was pressed (-1 all)."
+        },
+        "rarityFilter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rarity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A tier chip was pressed (none all)."
+        },
+        "kindFilter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A kind chip was pressed (empty all)."
+        },
+        "search": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The search's text changed."
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another order was chosen."
+        },
+        "view": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "On a phone, the other half's tab was pressed."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "Done was pressed."
+        }
+      },
+      "required": [
+        "add",
+        "remove",
+        "refused",
+        "costFilter",
+        "rarityFilter",
+        "kindFilter",
+        "search",
+        "sort",
+        "view",
+        "done"
       ],
       "additionalProperties": false
     },

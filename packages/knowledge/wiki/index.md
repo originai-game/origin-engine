@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2400 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2407 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -370,6 +370,7 @@ Field units the docs and Tune use.
 | [`ClipAsset()`](anim.md#column-ClipAsset) | column kind | anim | — |
 | [`ClipInfo`](anim.md#type-ClipInfo) | struct | anim | — |
 | [`ClipMode`](ui.md#type-ClipMode) | enum | ui | — |
+| [`CollectionCard`](ui.md#type-CollectionCard) | desc struct | ui | — |
 | [`Color`](math.md#type-Color) | struct | math | — |
 | [`color`](math.md#value-color) | value | math | — |
 | [`Color()`](reflect.md#column-Color) | column kind | reflect | — |
@@ -435,6 +436,11 @@ Field units the docs and Tune use.
 | [`DeadzoneDesc`](input.md#type-DeadzoneDesc) | desc struct | input | — |
 | [`DebugDrawDesc`](debug.md#type-DebugDrawDesc) | desc struct | debug | — |
 | [`DebugView`](render.md#type-DebugView) | enum | render | — |
+| [`DeckBuilderDesc`](ui.md#type-DeckBuilderDesc) | desc struct | ui | — |
+| [`DeckBuilderResult`](ui.md#type-DeckBuilderResult) | struct | ui | — |
+| [`DeckKind`](ui.md#type-DeckKind) | desc struct | ui | — |
+| [`DeckRarity`](ui.md#type-DeckRarity) | desc struct | ui | — |
+| [`DeckSort`](ui.md#type-DeckSort) | desc struct | ui | — |
 | [`Declutter`](ui.md#type-Declutter) | enum | ui | — |
 | [`defineComponent`](reflect.md#fn-defineComponent) | function | reflect | `og_reflect_define_component` |
 | [`defineHook`](system.md#fn-defineHook) | function | system | `og_system_define_hook` |
@@ -1492,6 +1498,7 @@ Field units the docs and Tune use.
 | [`og.ui.damageNumbers`](ui.md#fn-damageNumbers) | function | ui | — |
 | [`og.ui.dataGrid`](ui.md#fn-dataGrid) | function | ui | — |
 | [`og.ui.dataList`](ui.md#fn-dataList) | function | ui | — |
+| [`og.ui.deckBuilder`](ui.md#fn-deckBuilder) | function | ui | — |
 | [`og.ui.defineAction`](ui.md#fn-defineAction) | function | ui | `og_ui_define_action` |
 | [`og.ui.defineMass`](ui.md#fn-defineMass) | function | ui | `og_ui_define_mass` |
 | [`og.ui.defineTimeline`](ui.md#fn-defineTimeline) | function | ui | `og_ui_define_timeline` |

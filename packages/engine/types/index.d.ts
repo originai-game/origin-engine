@@ -36512,6 +36512,343 @@ export interface LoadoutResult {
 
 
 /**
+ * One card of the collection, as the game holds it: the face og.ui.cardHand draws, the copies owned and in the deck.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CollectionCard {
+  /**
+   * Its key: its tile's element id (<id>/Collection/Grid/Line#<n>/<key>) and its deck row's (<id>/Deck/List/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, on its banner and its deck row.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its cost, the gem; null has none. The curve counts it (7 and up in the last bar).
+   *
+   * @default null
+   */
+  readonly cost?: number | null;
+  /**
+   * Its type line on the face (Spell, Unit).
+   *
+   * @default ""
+   */
+  readonly typeLine?: string;
+  /**
+   * Its kind's key, for the kind filter and the deck's counts (unit, spell).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Its rules (rich text), shown on the large face of the card hovered or focused.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Its art (art kind cardArt); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tier: the frame's colour, the rarity filter and the deck row's mark.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * Copies owned: the tile's ×N; none dims the tile and it cannot be added.
+   *
+   * @default 0
+   */
+  readonly owned?: number;
+  /**
+   * Copies in the deck: its deck row's count.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Copies a deck may hold; 0 is the deck's copyLimit.
+   *
+   * @default 0
+   */
+  readonly limit?: number;
+}
+
+/**
+ * A card kind: a filter chip and a line of the deck's counts.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DeckKind {
+  /**
+   * Its key, as the cards' kind.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word (Units).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its mark (art kind icon); null shows the word alone.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+}
+
+/**
+ * A tier the rarity filter offers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DeckRarity {
+  /**
+   * The tier.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * Its word (Rare).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * An order the collection can be sorted in: `cost`, `name`, `rarity` and `owned` are known; another key keeps the game's order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DeckSort {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A deck builder over the collection: the filters, the collection's grid, the deck's list, its curve and counts, Done.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DeckBuilderDesc {
+  /**
+   * The screen's title (Collection).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Every card of the collection, in the game's order; the filters and the sort are applied here.
+   *
+   * @default []
+   */
+  readonly cards?: readonly CollectionCard[];
+  /**
+   * The deck's name, at the head of its list.
+   *
+   * @default ""
+   */
+  readonly deckName?: string;
+  /**
+   * The deck's art behind its name (art kind cardArt); null shows none.
+   *
+   * @default null
+   */
+  readonly deckImage?: Texture | null;
+  /**
+   * The cards a deck holds: the count's whole (30/30), and the limit a card past it is refused at.
+   *
+   * @default 30
+   */
+  readonly deckSize?: number;
+  /**
+   * Copies of one card a deck may hold, unless the card says otherwise.
+   *
+   * @default 2
+   */
+  readonly copyLimit?: number;
+  /**
+   * The cost shown, the last chip (7) meaning that and up; -1 all.
+   *
+   * @default -1
+   */
+  readonly costFilter?: number;
+  /**
+   * The tier shown; none all.
+   *
+   * @default "none"
+   */
+  readonly rarityFilter?: Rarity;
+  /**
+   * The kind shown; empty all.
+   *
+   * @default ""
+   */
+  readonly kindFilter?: string;
+  /**
+   * The search's text: names that hold it, whatever the case.
+   *
+   * @default ""
+   */
+  readonly search?: string;
+  /**
+   * The sort's key; empty keeps the game's order.
+   *
+   * @default ""
+   */
+  readonly sort?: string;
+  /**
+   * The tiers the rarity filter offers.
+   *
+   * @default []
+   */
+  readonly rarities?: readonly DeckRarity[];
+  /**
+   * The kinds: the filter's chips and the deck's counts.
+   *
+   * @default []
+   */
+  readonly kinds?: readonly DeckKind[];
+  /**
+   * The orders the sort offers.
+   *
+   * @default []
+   */
+  readonly sorts?: readonly DeckSort[];
+  /**
+   * On a phone in portrait, the half shown: `deck` the deck, else the collection.
+   *
+   * @default ""
+   */
+  readonly view?: string;
+  /**
+   * The filters' all.
+   *
+   * @default "All"
+   */
+  readonly allLabel?: string;
+  /**
+   * The search's placeholder.
+   *
+   * @default "Search cards"
+   */
+  readonly searchLabel?: string;
+  /**
+   * The sort's name.
+   *
+   * @default "Sort"
+   */
+  readonly sortLabel?: string;
+  /**
+   * The collection's tab on a phone, and its count's word ({owned} / {total} cards).
+   *
+   * @default "Cards"
+   */
+  readonly collectionLabel?: string;
+  /**
+   * The deck's heading (My deck).
+   *
+   * @default "My deck"
+   */
+  readonly deckLabel?: string;
+  /**
+   * The curve's heading.
+   *
+   * @default "Mana curve"
+   */
+  readonly curveLabel?: string;
+  /**
+   * The counts' heading.
+   *
+   * @default "Types"
+   */
+  readonly kindsLabel?: string;
+  /**
+   * Done.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
+  /**
+   * Said when a card is refused for a full deck.
+   *
+   * @default "The deck is full"
+   */
+  readonly fullLabel?: string;
+  /**
+   * Said when a card is refused at its copies' limit.
+   *
+   * @default "No more copies allowed"
+   */
+  readonly limitLabel?: string;
+  /**
+   * Said for a card not owned.
+   *
+   * @default "Not owned"
+   */
+  readonly unownedLabel?: string;
+  /**
+   * The grid's word when no card passes the filters.
+   *
+   * @default "No cards match"
+   */
+  readonly emptyLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface DeckBuilderResult {
+  /** A collection card was pressed and the deck can take it: add a copy. */
+  readonly add: string | null;
+  /** A deck row was pressed: take a copy out. */
+  readonly remove: string | null;
+  /**
+   * A card was pressed that the deck cannot take (full, at its limit, not owned): it shakes and the reason shows.
+   */
+  readonly refused: string | null;
+  /** A cost chip was pressed (-1 all). */
+  readonly costFilter: number | null;
+  /** A tier chip was pressed (none all). */
+  readonly rarityFilter: Rarity | null;
+  /** A kind chip was pressed (empty all). */
+  readonly kindFilter: string | null;
+  /** The search's text changed. */
+  readonly search: string | null;
+  /** Another order was chosen. */
+  readonly sort: string | null;
+  /** On a phone, the other half's tab was pressed. */
+  readonly view: string | null;
+  /** Done was pressed. */
+  readonly done: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -56771,6 +57108,14 @@ export declare namespace og {
      * @param desc The loadouts, the slots, the selected item and its attachments.
      */
     function loadout(id: string, desc?: LoadoutDesc): LoadoutResult;
+    /**
+     * A deck builder (Hearthstone, Marvel Snap, Legends of Runeterra): at the top the filters, chips of cost (0 to 7 and up), of tier and of kind, each with All, the search and the sort; under them the collection's grid, each card the face og.ui.cardHand draws (its gem, its art, its name banner), a card not owned dimmed (×0), a card whose copies are all in the deck quieter; the card hovered or focused stands large over the grid with its rules. At the end the deck: its name over its art, its count (30/30, in danger past the whole), then a row per card in it by cost, its cost gem, its tier's mark, its name over a strip of its art fading in, and its copies; the mana curve, a bar per cost with its count over it; the kinds' counts; Done. Under each card stands its own row, the copies owned (×2), and a mark of the copies in the deck rides its top end corner. A press on a collection card adds a copy, a press on a deck row takes one out; a card the deck cannot take shakes and the reason shows under the count. Whole rows of the grid scroll. On a phone in portrait the two halves are tabs, Cards and the deck (with its count), and the curve, counts and Done stand under the deck's list.
+     * Parts: DeckBuilder.chip[selected], DeckBuilder.card[unowned][full], DeckBuilder.count, DeckBuilder.preview, DeckBuilder.deck, DeckBuilder.row, DeckBuilder.curve, DeckBuilder.bar, DeckBuilder.kinds, DeckBuilder.refusal. Slots: each card's art (cardArt), each row's strip (cardArt), the deck's art (cardArt), each kind's mark (icon). Sounds: select on a chip, confirm on an add or a removal, error on a refusal, confirm on Done. Accessibility: the filters radio groups, the grid a grid of buttons named by the card, its cost and copies, the deck a list of buttons, the curve an image named by its counts, the refusal a status. Probe ids: <id>/Filters/Costs/<n> (all is -1), <id>/Filters/Rarities/<rarity>, <id>/Filters/Kinds/<kind>, <id>/Filters/Search, <id>/Collection/Grid/Line#<n>/<key>, <id>/Deck/List/<key>, <id>/Deck/Done.
+     *
+     * @param id Its id.
+     * @param desc The collection, the deck's counts and the filters' state.
+     */
+    function deckBuilder(id: string, desc?: DeckBuilderDesc): DeckBuilderResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

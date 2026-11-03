@@ -24,6 +24,7 @@ import { chat } from "./chat.ts";
 import { rtsCommands } from "./commands.ts";
 import { photoMode } from "./photo.ts";
 import { loadout } from "./loadout.ts";
+import { deckBuilder } from "./deck.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -58,4 +59,5 @@ export const patterns = Object.freeze({
   rtsCommands,
   photoMode,
   loadout,
+  deckBuilder,
 });
