@@ -16,14 +16,53 @@ impl Renderer {
             mesh
         };
         let bytes: &[u8] = bytemuck::cast_slice(&mesh.vertices);
+        self.mesh_buffer(
+            "vertices",
+            if bytes.is_empty() { &[0u8; 16] } else { bytes },
+            // STORAGE: the meshlet path pulls them (meshlet.wgsl).
+            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        )
+    }
+
+    /// Fork s74: a mesh buffer holding `contents`. On the web it is created
+    /// unmapped and written with `queue.writeBuffer` straight from wasm
+    /// memory, instead of `create_buffer_init`'s mapping (a JS ArrayBuffer
+    /// the bytes are copied into, then the staged write): one copy and no
+    /// 1.8 GB of short-lived ArrayBuffers in a 1072-cell web boot. Natively
+    /// it is `create_buffer_init`.
+    fn mesh_buffer(
+        &self,
+        label: &'static str,
+        contents: &[u8],
+        usage: wgpu::BufferUsages,
+    ) -> wgpu::Buffer {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let size = (contents.len() as u64).div_ceil(wgpu::COPY_BUFFER_ALIGNMENT)
+                * wgpu::COPY_BUFFER_ALIGNMENT;
+            let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size: size.max(wgpu::COPY_BUFFER_ALIGNMENT),
+                usage: usage | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let whole = contents.len() / 4 * 4;
+            if whole > 0 {
+                self.queue.write_buffer(&buffer, 0, &contents[..whole]);
+            }
+            if whole < contents.len() {
+                let mut tail = [0u8; 4];
+                tail[..contents.len() - whole].copy_from_slice(&contents[whole..]);
+                self.queue.write_buffer(&buffer, whole as u64, &tail);
+            }
+            buffer
+        }
+        #[cfg(not(target_arch = "wasm32"))]
         self.device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("vertices"),
-                contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
-                // STORAGE: the meshlet path pulls them (meshlet.wgsl).
-                usage: wgpu::BufferUsages::VERTEX
-                    | wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_DST,
+                label: Some(label),
+                contents,
+                usage,
             })
     }
 
@@ -31,24 +70,15 @@ impl Renderer {
     /// f32 vertices wait for a pipeline that reads them.
     pub(crate) fn upload_mesh(&self, mesh: &MeshData, compact: bool) -> GpuMesh {
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
-        let bytes = |b: &[u8]| {
-            if b.is_empty() {
-                vec![0u8; 16]
-            } else {
-                b.to_vec()
-            }
-        };
         let compact = compact
             .then(|| compact::encode(mesh))
             .flatten()
             .map(|(v, dq)| {
-                let buffer = self
-                    .device
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("compact vertices"),
-                        contents: bytemuck::cast_slice(&v),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    });
+                let buffer = self.mesh_buffer(
+                    "compact vertices",
+                    bytemuck::cast_slice(&v),
+                    wgpu::BufferUsages::VERTEX,
+                );
                 (buffer, dq)
             });
         let full = compact.is_none();
@@ -57,13 +87,15 @@ impl Renderer {
         } else {
             self.upload_vertices(&MeshData::default())
         };
-        let indices = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("indices"),
-                contents: &bytes(bytemuck::cast_slice(&mesh.indices)),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-            });
+        let indices = self.mesh_buffer(
+            "indices",
+            if mesh.indices.is_empty() {
+                &[0u8; 16]
+            } else {
+                bytemuck::cast_slice(&mesh.indices)
+            },
+            wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+        );
         let bounds = mesh
             .bounds()
             .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
