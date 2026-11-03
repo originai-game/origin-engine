@@ -191,7 +191,14 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   // colour lasts no longer than that. Where the sample moves on its own
   // motion vectors (objects, skinned meshes) the clamp stays whole: their
   // edges are where a ghost would trail.
-  let relax = select(0.0, 0.9 * (1.0 - near), upscale && !own_motion);
+  // Nor where something moving on its own lies near: the background it
+  // has just uncovered holds its colour in the history, which only the
+  // whole clamp removes at once (eased, it showed through on alternate
+  // jitter phases as a checker in the moving sphere's wake).
+  var relax = select(0.0, 0.9 * (1.0 - near), upscale && !own_motion);
+  if (relax > 0.0 && taa.still.y > 0.5 && moving_nearby(at, size, out_size)) {
+    relax = 0.0;
+  }
   let hist = from_ycocg(mix(clamp(to_ycocg(hist4.rgb), lo, hi), to_ycocg(hist4.rgb), relax));
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
@@ -199,6 +206,42 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
   return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));
+}
+
+// The camera's motion (uv per frame) of scene pixel `q`'s world point,
+// through its depth; none for a still camera.
+fn camera_motion(q: vec2<i32>, size: vec2<i32>) -> vec2<f32> {
+  if (taa.still.x > 0.5) { return vec2<f32>(0.0); }
+  // Scene pixel q shows the jittered frame's clip position at its centre.
+  let uv = (vec2<f32>(q) + 0.5) / vec2<f32>(size);
+  let d = textureSampleLevel(depth, depth_sampler, uv, 0.0).r;
+  let w = taa.inv_view_proj * vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
+  let world = w.xyz / w.w;
+  let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
+  let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
+  return (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
+}
+
+// Whether a sample moving on its own motion vectors (an object, a skinned
+// mesh) lies near scene pixel `at`: within reach of the background it
+// uncovered over the last jitter cycle (eight frames of its motion, and
+// two pixels more), searched in rings of 1, 3, 7 and 15 scene pixels.
+fn moving_nearby(at: vec2<i32>, size: vec2<i32>, out_size: vec2<f32>) -> bool {
+  let dirs = array<vec2<i32>, 8>(
+    vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1),
+    vec2<i32>(1, 1), vec2<i32>(-1, 1), vec2<i32>(1, -1), vec2<i32>(-1, -1));
+  let rings = array<i32, 4>(1, 3, 7, 15);
+  for (var r = 0; r < 4; r++) {
+    for (var k = 0; k < 8; k++) {
+      let q = clamp(at + dirs[k] * rings[r], vec2<i32>(0), size - 1);
+      if (textureLoad(view_depth_tex, q, 0).r >= 1.0e8) { continue; }
+      let own = textureLoad(velocity_tex, q, 0).zw - camera_motion(q, size);
+      let moving = any(abs(own) * out_size > vec2<f32>(0.5));
+      let reach = 2.0 + 8.0 * length(own * vec2<f32>(size));
+      if (moving && f32(rings[r]) <= reach) { return true; }
+    }
+  }
+  return false;
 }
 
 // The sharpening after TAA (`RenderDesc::taa_sharpen`, `current` bound to
