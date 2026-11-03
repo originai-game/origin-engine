@@ -31,7 +31,25 @@ fn project() -> &'static Path {
         let walker = std::fs::read(repo.join("templates/game/assets/models/walker.glb")).unwrap();
         let p = root.join("assets/models/walker.glb");
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
-        std::fs::write(p, walker).unwrap();
+        std::fs::write(p, &walker).unwrap();
+        // A nonidentity bind palette: the mesh stays in authoring space,
+        // while the rig's root scales and translates it when skinned.
+        let n = u32::from_le_bytes(walker[12..16].try_into().unwrap()) as usize;
+        let mut gltf: Value = serde_json::from_slice(&walker[20..20 + n]).unwrap();
+        gltf["nodes"][0]["scale"] = json!([0.6, 0.8, 1.1]);
+        gltf["nodes"][0]["translation"] = json!([0.2, 0.7, -0.3]);
+        let mut text = serde_json::to_vec(&gltf).unwrap();
+        while !text.len().is_multiple_of(4) {
+            text.push(b' ');
+        }
+        let mut scaled = walker[..12].to_vec();
+        scaled.extend_from_slice(&(text.len() as u32).to_le_bytes());
+        scaled.extend_from_slice(b"JSON");
+        scaled.extend_from_slice(&text);
+        scaled.extend_from_slice(&walker[20 + n..]);
+        let len = scaled.len() as u32;
+        scaled[8..12].copy_from_slice(&len.to_le_bytes());
+        std::fs::write(root.join("assets/models/scaled.glb"), scaled).unwrap();
         let options = og_cook::CookOptions {
             threads: 1,
             ..og_cook::CookOptions::default()
@@ -107,7 +125,7 @@ fn value(text: String) -> Value {
 
 /// A walking model with og.Garment on its first mesh; the garment's
 /// points after each of `frames` frames, and what the last frame drew.
-fn run(frames: usize) -> (Vec<Vec<[f64; 3]>>, Seen) {
+fn run(frames: usize, model: &str, garment: Value, animated: bool) -> (Vec<Vec<[f64; 3]>>, Seen) {
     let root = project();
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
@@ -116,18 +134,25 @@ fn run(frames: usize) -> (Vec<Vec<[f64; 3]>>, Seen) {
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
     let seen = Rc::new(RefCell::new(Seen::default()));
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
-    let anim = value(og_load_animation(engine, "models/walker.glb".into()));
+    let anim = value(og_load_animation(engine, model.into()));
     let clip = anim["clips"].as_array().unwrap()[0]["clip"].clone();
-    let asset = value(og_load_gltf(engine, "models/walker.glb".into(), None));
+    let asset = value(og_load_gltf(engine, model.into(), None));
     let e = value(og_world_instantiate(engine, asset.as_f64().unwrap(), None))
         .as_f64()
         .unwrap();
     for (name, v) in [
         ("og.Skeleton", json!({ "asset": anim["skeleton"] })),
-        ("og.AnimationPlayer", json!({ "clip": clip, "loop": true })),
-        ("og.Garment", json!({ "mesh": 0, "maxDistance": 0.1 })),
+        ("og.Garment", garment),
     ] {
         value(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+    }
+    if animated {
+        value(og_world_insert(
+            engine,
+            e,
+            "og.AnimationPlayer".into(),
+            Some(json!({ "clip": clip, "loop": true }).to_string()),
+        ));
     }
     let mut out = Vec::new();
     for _ in 0..frames {
@@ -151,7 +176,8 @@ fn run(frames: usize) -> (Vec<Vec<[f64; 3]>>, Seen) {
 
 #[test]
 fn a_garment_follows_the_skin_and_is_drawn_at_its_points() {
-    let (points, seen) = run(30);
+    let desc = json!({ "mesh": 0, "maxDistance": 0.1 });
+    let (points, seen) = run(30, "models/walker.glb", desc.clone(), true);
     let last = points.last().unwrap();
     assert!(!last.is_empty(), "the garment has points");
     // The walk moves them.
@@ -172,6 +198,31 @@ fn a_garment_follows_the_skin_and_is_drawn_at_its_points() {
         seen.deformed
     );
     // The same inputs, the same points.
-    let (again, _) = run(30);
+    let (again, _) = run(30, "models/walker.glb", desc, true);
     assert_eq!(points, again);
+}
+
+#[test]
+fn a_garment_at_rest_keeps_the_skins_bind_shape() {
+    let desc = |distance| {
+        json!({"mesh":0,"maxDistance":distance,"pinTop":0,
+        "gravityScale":0,"bending":0.3,"iterations":6})
+    };
+    let (pinned, _) = run(30, "models/scaled.glb", desc(0.0), false);
+    let (free, _) = run(30, "models/scaled.glb", desc(0.25), false);
+    assert!(!pinned[0].is_empty());
+    for (tick, (skin, cloth)) in pinned.iter().zip(&free).enumerate() {
+        assert_eq!(skin.len(), cloth.len());
+        for (a, b) in skin.iter().zip(cloth) {
+            let error = a
+                .iter()
+                .zip(b)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0, f64::max);
+            assert!(
+                error < 1e-5,
+                "tick {tick}: bind shape moved {error} without forces"
+            );
+        }
+    }
 }

@@ -15,6 +15,13 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Garment bind-space constraints.** `og.Garment` measures its rest lengths
+  and pin band after the skeleton's rest-pose skin transform, rather than
+  from the raw mesh. Nonidentity bind palettes no longer stretch the cloth
+  on its first tick without forces. Garment simulation hashes change;
+  older saved garments rebuild on the skin at their next posed tick so
+  their old constraint lengths do not survive the fix. Mesh topology and
+  `garmentPoints` ordering are unchanged.
 - **Motion performance: tick-owned looks and authored reactions.**
   `og.motion.lookAt` / `LookAtDesc` add a timed spine, neck and head look
   above locomotion; `og.motion.react` / `ReactionDesc` play a humanoid

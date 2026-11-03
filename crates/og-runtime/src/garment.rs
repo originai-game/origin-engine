@@ -62,7 +62,13 @@ pub(crate) struct Garments {
 fn key_of(id: &str, mesh: u32) -> u64 {
     // FNV-1a: stable across hosts and runs.
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in id.bytes().chain(mesh.to_le_bytes()) {
+    // Rebuild saved authoring-space constraints with bind-space lengths.
+    for b in b"bind-rest:1"
+        .iter()
+        .copied()
+        .chain(id.bytes())
+        .chain(mesh.to_le_bytes())
+    {
         h ^= u64::from(b);
         h = h.wrapping_mul(0x0100_0000_01b3);
     }
@@ -199,7 +205,10 @@ pub(crate) fn schedule(
         .register::<Transform>()
         .and_then(|_| world.register::<Parent>())
         .map_err(|e| e.reason().to_string())?;
-    let mut desc = SystemDesc::new(SYSTEM).read::<Transform>().read::<Parent>();
+    let mut desc = SystemDesc::new(SYSTEM)
+        .read::<Transform>()
+        .read::<Parent>()
+        .read::<og_anim::Skeleton>();
     // og.Model is the game API's record, registered before the modules.
     if world.id_by_name("og.Model").is_ok() {
         desc.reads.push("og.Model".into());
@@ -245,7 +254,16 @@ pub(crate) fn schedule(
                         continue;
                     };
                     if physics.garment_rig_key(e) != Some(w.key) {
-                        physics.set_garment_rig(e, w.key, w.rig.clone())?;
+                        let skeleton = ctx.get::<og_anim::Skeleton>(e)?;
+                        let asset = anim.skeleton(skeleton.asset).expect("posed skeleton");
+                        let mut palette = Vec::new();
+                        asset.palette(skeleton.skin, &asset.rest_pose(), &mut palette);
+                        let mut rig = w.rig.clone();
+                        // Vertex positions precede the bind palette's model
+                        // transform; constraints must measure the skinned rest
+                        // shape, not fight that transform on the first tick.
+                        rig.rest = pose(w, &palette).0;
+                        physics.set_garment_rig(e, w.key, rig)?;
                     }
                     let t = ctx.get::<Transform>(e)?;
                     let (p, r, s) = og_core::math::world_pose(

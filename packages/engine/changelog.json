@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.Garment",
+        "change": "Rest lengths and pinTop use the skeleton's skinned rest shape, including nonidentity bind transforms. Garment simulation hashes change. Older saved garments rebuild on the skin at their next posed tick instead of retaining incorrect authoring-space constraints; topology and garmentPoints ordering are unchanged.",
+        "fix": "Re-record affected garment simulation traces and frames after checking the corrected shape. Existing saves remain readable; an older garment resettles once after restore.",
+        "find": ["og.Garment"]
+      },
+      {
         "member": "og.motion.walkTo",
         "change": "Walk goals now brake near their target (default deceleration 3 m/s²) and optionally finish at arrivalHeading. Driven MotionAgents with CharacterController send movement through the controller before physics instead of moving through collision. Arrival takes longer than the old constant-speed walk.",
         "fix": "Use motion.status completion rather than distance/speed to schedule arrival. Set deceleration to tune braking. Keep a CharacterController and collider on characters that need terrain grounding and collision.",
