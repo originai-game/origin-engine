@@ -1613,6 +1613,7 @@ mod tests {
             derivatives: false,
             compact: false,
             array: false,
+            foliage: false,
             cast: true,
             layers: 1,
             probe: 0,

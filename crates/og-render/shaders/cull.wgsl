@@ -27,6 +27,7 @@ const TRANSPARENT: u32 = 1u;
 const OCCLUDER: u32 = 2u;
 // Draws inside its bounds (no material vertex hook): may be hidden.
 const OCCLUDABLE: u32 = 4u;
+const FOLIAGE: u32 = 8u;
 
 struct PassGpu {
   planes: array<vec4<f32>, 12>,
@@ -74,7 +75,8 @@ struct BatchGpu {
 @group(0) @binding(4) var<storage, read_write> args: array<atomic<u32>>;
 @group(0) @binding(5) var pyramid: texture_2d<f32>;
 // Laid out as `instances`: region 0 the sorted instances' previous
-// transforms, region g + 1 those of the camera pass's visible ones.
+// transforms and sway, region g + 1 those of the visible ones (camera,
+// and every pass for foliage whose current sway shares this stream).
 @group(0) @binding(6) var<storage, read_write> previous: array<f32>;
 // Every pass of the frame (cull_gpu.rs), the other passes' stage first and
 // the camera's after; the stage's row wid.y is passes[pass_at(wid.y)].
@@ -334,7 +336,7 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
-    if (params.motion.x != 0u && passes[pass_at(wid.y)].info.x == MAIN) {
+    if (params.motion.x != 0u && ((b.flags & FOLIAGE) != 0u || passes[pass_at(wid.y)].info.x == MAIN)) {
       for (var j = 0u; j < 16u; j++) { previous[to + j] = previous[k * 16u + j]; }
     }
   }

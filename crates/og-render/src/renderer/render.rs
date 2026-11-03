@@ -59,6 +59,7 @@ impl Renderer {
             return Err(RenderError::InvalidHandle(stale));
         }
         self.sync(scene)?;
+        self.refresh_foliage_bounds(scene);
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
@@ -754,6 +755,15 @@ impl Renderer {
             meshlet_taken.clear();
         }
         let object_motion = previous_valid && (blur_motion || taa);
+        // Foliage's auxiliary record carries current sway as well as history,
+        // including array materials whose current layer word is occupied.
+        let foliage_instances = batches.iter().any(|b| b.foliage);
+        let auxiliary_instances = object_motion || foliage_instances;
+        let previous_sway = if self.previous_sway.len() == scene.instances.len() {
+            self.previous_sway.as_slice()
+        } else {
+            &[]
+        };
         // The shadow casters among them: every shadow pass takes each one
         // (on any layer) through its own view of the dispatch.
         let meshlet_casters: Vec<u32> = meshlet_taken
@@ -1399,35 +1409,38 @@ impl Renderer {
             let lagged = gc.poll_counts();
             debug_assert!(cull_passes.len() <= max_passes);
             // The sorted instances' previous transforms (as the CPU path's
-            // below), compacted with the camera pass's.
-            let previous_sway = if self.previous_sway.len() == scene.instances.len() {
-                self.previous_sway.as_slice()
-            } else {
-                &[]
-            };
-            let previous_sorted: Option<Vec<instances::GpuTransform>> = object_motion.then(|| {
-                let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-                origins[..sorted as usize]
-                    .iter()
-                    .map(|&i| {
-                        let i = i as usize;
-                        let (inst, p) = (&scene.instances[i], scene.previous_transforms[i]);
-                        let d = Self::dequant(
-                            meshes,
-                            materials,
-                            inst.mesh.index(),
-                            inst.material.index(),
-                        );
-                        let mut t = instances::gpu_transform(&d.map_or(p, |d| p * d));
-                        // The meshlet path's foliage sways from the last
-                        // drawn frame's sway (meshlet_sway.wgsl); the
-                        // layer word is not read from these otherwise.
-                        let sway = previous_sway.get(i).copied().unwrap_or(inst.sway);
-                        t.layer = instances::layer_bits(sway.max(0.0), inst.receive_shadows);
-                        t
-                    })
-                    .collect()
-            });
+            // below), compacted with the camera pass's and, for foliage,
+            // every pass that reads its current sway.
+            let previous_sorted: Option<Vec<instances::GpuTransform>> =
+                auxiliary_instances.then(|| {
+                    let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+                    origins[..sorted as usize]
+                        .iter()
+                        .map(|&i| {
+                            let i = i as usize;
+                            let inst = &scene.instances[i];
+                            let p = if previous_valid {
+                                scene.previous_transforms[i]
+                            } else {
+                                inst.transform
+                            };
+                            let d = Self::dequant(
+                                meshes,
+                                materials,
+                                inst.mesh.index(),
+                                inst.material.index(),
+                            );
+                            let mut t = instances::gpu_transform(&d.map_or(p, |d| p * d));
+                            // Previous sway uses the layer's shadow-sign encoding;
+                            // current sway is raw in the spare fx word. Ordinary
+                            // prepass vertices read only the transform columns.
+                            let sway = previous_sway.get(i).copied().unwrap_or(inst.sway);
+                            t.layer = instances::layer_bits(sway.max(0.0), inst.receive_shadows);
+                            t.fx[0] = inst.sway.max(0.0);
+                            t
+                        })
+                        .collect()
+                });
             let (commands, occluder_draws) = gc.encode(
                 &self.device,
                 &self.queue,
@@ -1578,7 +1591,7 @@ impl Renderer {
         if gpu_cull && let Some(gc) = &self.gpu_cull {
             instance_upload_bytes += gc.uploaded;
         }
-        if object_motion {
+        if auxiliary_instances {
             // As the instances' own: with a compact run's dequantisation,
             // for the records a draw reads.
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
@@ -1587,9 +1600,17 @@ impl Renderer {
             let mut prev = vec![instances::GpuTransform::default(); cpu_instances.len()];
             for k in drawn.iter().flat_map(|r| r.clone()) {
                 let i = origins[offset + k] as usize;
-                let (inst, p) = (&scene.instances[i], scene.previous_transforms[i]);
+                let inst = &scene.instances[i];
+                let p = if previous_valid {
+                    scene.previous_transforms[i]
+                } else {
+                    inst.transform
+                };
                 let d = Self::dequant(meshes, materials, inst.mesh.index(), inst.material.index());
                 prev[k] = instances::gpu_transform(&d.map_or(p, |d| p * d));
+                let sway = previous_sway.get(i).copied().unwrap_or(inst.sway);
+                prev[k].layer = instances::layer_bits(sway.max(0.0), inst.receive_shadows);
+                prev[k].fx[0] = inst.sway.max(0.0);
             }
             let bytes: &[u8] = bytemuck::cast_slice(&prev);
             if grow(

@@ -51,6 +51,7 @@ const READBACKS: usize = 3;
 const TRANSPARENT: u32 = 1;
 const OCCLUDER: u32 = 2;
 const OCCLUDABLE: u32 = 4;
+const FOLIAGE: u32 = 8;
 
 /// What a pass draws.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -905,7 +906,8 @@ impl GpuCulling {
     /// are copied to a free readback (`stats_given`: those the frame's
     /// stats carry in their place). With `previous` (the sorted
     /// instances' previous transforms, TAA's object motion) the camera
-    /// pass compacts them into [`Self::previous`] beside its own. Returns
+    /// pass compacts them into [`Self::previous`] beside its own. Foliage
+    /// batches copy them in every pass, carrying their current sway too. Returns
     /// the commands to submit before the frame's own and the occluder
     /// depth pass's draws.
     #[allow(clippy::too_many_arguments)]
@@ -1069,7 +1071,8 @@ impl GpuCulling {
                     index_count: meshes[x.mesh].index_count,
                     flags: (x.transparent as u32 * TRANSPARENT)
                         | (m.occluder as u32 * OCCLUDER)
-                        | (x.shader.is_none() as u32 * OCCLUDABLE),
+                        | (x.shader.is_none() as u32 * OCCLUDABLE)
+                        | (x.foliage as u32 * FOLIAGE),
                     bounds: [c.x, c.y, c.z, r],
                     extent: [e.x, e.y, e.z],
                     layers: x.layers,

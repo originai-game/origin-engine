@@ -44,6 +44,7 @@ impl Renderer {
                     derivatives: m.flat,
                     compact: r.dequant.is_some(),
                     array: r.array,
+                    foliage: scene.mesh_foliage_all()[r.mesh].is_some(),
                     cast: r.cast,
                     layers: r.layers,
                     probe: r.probe,
@@ -62,8 +63,7 @@ impl Renderer {
         mesh: usize,
         material: usize,
     ) -> Option<Mat4> {
-        materials[material]
-            .lean
+        (materials[material].lean && meshes[mesh].foliage.is_none())
             .then(|| meshes[mesh].compact.as_ref().map(|(_, dq)| dq.matrix()))
             .flatten()
     }
@@ -760,6 +760,7 @@ impl Renderer {
                         derivatives: m.flat,
                         compact: false,
                         array: m.array.is_some(),
+                        foliage: false,
                         cast,
                         layers,
                         probe,

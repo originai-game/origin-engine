@@ -79,6 +79,62 @@ impl Renderer {
             },
             bounds,
             revision: 0,
+            foliage: None,
+        }
+    }
+
+    /// Use the same conservative box for CPU sorting and every GPU cull pass.
+    /// A shared mesh takes the largest current/previous sway of its instances;
+    /// this avoids adding a per-instance cull stream just for the margin.
+    pub(crate) fn refresh_foliage_bounds(&mut self, scene: &RenderScene) {
+        let winds = crate::foliage::foliage_winds(scene, self.previous_wind).0;
+        let mut sway = vec![0.0f32; self.cache.meshes.len()];
+        let previous = if self.previous_sway.len() == scene.instances.len() {
+            self.previous_sway.as_slice()
+        } else {
+            &[]
+        };
+        for (i, inst) in scene.instances.iter().enumerate() {
+            if scene.mesh_foliage(inst.mesh).is_some() {
+                sway[inst.mesh.index()] = sway[inst.mesh.index()]
+                    .max(inst.sway)
+                    .max(previous.get(i).copied().unwrap_or(inst.sway));
+            }
+        }
+        for (i, mesh) in self.cache.meshes.iter_mut().enumerate() {
+            let Some(source) = &scene.mesh_foliage_all()[i] else {
+                if mesh.foliage.take().is_some() {
+                    // set_mesh may have changed the geometry as well.
+                    mesh.bounds = scene.meshes()[i]
+                        .bounds()
+                        .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
+                }
+                continue;
+            };
+            if mesh
+                .foliage
+                .as_ref()
+                .is_none_or(|f| !std::sync::Arc::ptr_eq(&f.source, source))
+            {
+                let data = &scene.meshes()[i];
+                mesh.foliage = Some(FoliageMesh {
+                    source: source.clone(),
+                    rest: data
+                        .bounds()
+                        .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5)),
+                    deformation: source
+                        .bounds(data.vertices.iter().map(|v| Vec3::from_array(v.position))),
+                });
+            }
+            let f = mesh.foliage.as_ref().unwrap();
+            let margin = winds
+                .iter()
+                .map(|w| f.deformation.deform_margin(*w))
+                .fold(0.0f32, f32::max)
+                * sway[i].max(1.0);
+            mesh.bounds = f
+                .rest
+                .map(|(center, half)| (center, half + Vec3::splat(margin)));
         }
     }
 

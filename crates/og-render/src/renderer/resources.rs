@@ -170,6 +170,14 @@ pub(crate) struct GpuMesh {
     pub(crate) revision: u64,
     /// Local-space bounds as (center, half extent).
     pub(crate) bounds: Option<(Vec3, Vec3)>,
+    pub(crate) foliage: Option<FoliageMesh>,
+}
+
+/// Attachment bounds cached by the scene's immutable foliage allocation.
+pub(crate) struct FoliageMesh {
+    pub(crate) source: std::sync::Arc<crate::meshlet::MeshFoliage>,
+    pub(crate) rest: Option<(Vec3, Vec3)>,
+    pub(crate) deformation: crate::foliage::FoliageBounds,
 }
 
 impl GpuMesh {
@@ -394,6 +402,9 @@ pub(crate) struct Batch {
     /// Drawn with the array-map pipelines ([`GpuMaterial::array`]): its
     /// instances carry their layer in the transform.
     pub(crate) array: bool,
+    /// Carries cooked foliage attachments; its auxiliary instance stream
+    /// supplies sway even when motion effects are disabled.
+    pub(crate) foliage: bool,
     /// Drawn into the shadow maps ([`Instance::cast_shadows`],
     /// [`SkinnedInstance::cast_shadows`]).
     pub(crate) cast: bool,
