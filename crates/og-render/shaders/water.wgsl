@@ -453,19 +453,25 @@ fn probe_sea(@builtin(global_invocation_id) id: vec3<u32>) {
   probe_out[id.x] = vec4<f32>(water.model[3].y + swell + cascades, swell, cascades, 0.0);
 }
 
-// The height field at local point (x, z) of the surface, bilinear.
-fn height_at(local: vec2<f32>) -> f32 {
-  if (water.size.w < 0.5) { return 0.0; }
+// The height field's texels at local point (x, z) of the surface, bilinear: r the height; with ripples
+// (water_ripples.wgsl) g the ripples alone and b their foam.
+fn field_at(local: vec2<f32>) -> vec4<f32> {
+  if (water.size.w < 0.5) { return vec4<f32>(0.0); }
   let n = i32(water.look.w);
   let cell = water.look.z / f32(n - 1);
   let g = (local + vec2<f32>(water.look.z * 0.5)) / cell;
   let i = clamp(vec2<i32>(floor(g)), vec2<i32>(0), vec2<i32>(n - 2));
   let f = clamp(g - vec2<f32>(i), vec2<f32>(0.0), vec2<f32>(1.0));
-  let a = textureLoad(heights, i, 0, 0).r;
-  let b = textureLoad(heights, i + vec2<i32>(1, 0), 0, 0).r;
-  let c = textureLoad(heights, i + vec2<i32>(0, 1), 0, 0).r;
-  let d = textureLoad(heights, i + vec2<i32>(1, 1), 0, 0).r;
+  let a = textureLoad(heights, i, 0, 0);
+  let b = textureLoad(heights, i + vec2<i32>(1, 0), 0, 0);
+  let c = textureLoad(heights, i + vec2<i32>(0, 1), 0, 0);
+  let d = textureLoad(heights, i + vec2<i32>(1, 1), 0, 0);
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+// The height field at local point (x, z) of the surface, bilinear.
+fn height_at(local: vec2<f32>) -> f32 {
+  return field_at(local).r;
 }
 
 @vertex
@@ -786,15 +792,15 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // stripes towards the horizon).
     slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
   }
-  // With ripples (water_ripples.wgsl) the height field's normal and steepness per pixel: they are finer than the
-  // grid's vertices.
-  var field_slope = in.slope;
+  // With ripples (water_ripples.wgsl): their own slope per pixel bends the grid's normal (finer than its vertices;
+  // zero on open water, so its glare stays the grid's), and their foam.
+  var ripple_foam = 0.0;
   if (water.size.w > 1.5 && water.ocean.x < 0.5) {
     let e = water.look.z / max(water.look.w - 1.0, 1.0);
-    let hx = height_at(in.local + vec2<f32>(e, 0.0)) - height_at(in.local - vec2<f32>(e, 0.0));
-    let hz = height_at(in.local + vec2<f32>(0.0, e)) - height_at(in.local - vec2<f32>(0.0, e));
-    base = normalize((water.model * vec4<f32>(-hx / (2.0 * e), 1.0, -hz / (2.0 * e), 0.0)).xyz);
-    field_slope = length(vec2<f32>(hx, hz)) / (2.0 * e);
+    let rx = field_at(in.local + vec2<f32>(e, 0.0)).g - field_at(in.local - vec2<f32>(e, 0.0)).g;
+    let rz = field_at(in.local + vec2<f32>(0.0, e)).g - field_at(in.local - vec2<f32>(0.0, e)).g;
+    base = normalize(base - tangent_x * (rx / (2.0 * e)) - tangent_z * (rz / (2.0 * e)));
+    ripple_foam = field_at(in.local).b;
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -995,7 +1001,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
-  let crest = clamp((field_slope - 0.35) * 3.0, 0.0, 1.0);
+  let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
   var band = edge * edge * (0.55 + 0.6 * noise);
   let flowing = dot(water.normals.yz, water.normals.yz) >= 1e-12 && water.normals.w < 0.5 && water.ocean.x < 0.5;
   if (flowing) {
@@ -1012,7 +1018,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let d = 1.0 - edge;
     band = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d)) * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
   }
-  let foam = clamp(band + crest * noise, 0.0, 1.0);
+  // The ripples' foam: lumps with gaps between them, its cover growing with how much of it there is (a soft disc of
+  // it read as a glow), drifting slowly.
+  let lumps = foam_noise(in.local * 2.3 + vec2<f32>(t * 0.15, t * 0.1)) * 0.6 + foam_noise(in.local * 7.1 - vec2<f32>(t * 0.2, 0.0)) * 0.4;
+  let amount = clamp(ripple_foam, 0.0, 1.0);
+  let lumpy = smoothstep(1.0 - amount, 1.12 - amount, lumps) * (0.5 + 0.5 * amount);
+  let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   if (sea) {

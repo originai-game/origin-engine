@@ -12,6 +12,9 @@ struct Params {
   wave: vec4<f32>,
   // x: the tick's first cut, y: its cuts, z: 1 / the tick's dt, w: the surface's splash
   force: vec4<f32>,
+  // x: the foam kept per substep, y: the foam a rising crest makes, z: the highest crest (m; troughs half as deep),
+  // w: the fraction of the square over which the ripples fade out at its edge
+  foam: vec4<f32>,
 };
 
 // A body as it cut the surface after the tick before and after this one: its footprint's min and max (xz in the
@@ -24,26 +27,38 @@ struct Cut {
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
+// (height, vertical velocity, foam, 0) a point.
 @group(0) @binding(1) var state_in: texture_2d<f32>;
-@group(0) @binding(2) var state_out: texture_storage_2d<rg32float, write>;
+@group(0) @binding(2) var state_out: texture_storage_2d<rgba32float, write>;
 @group(0) @binding(3) var<storage, read> cuts: array<Cut>;
 @group(0) @binding(4) var coarse: texture_2d<f32>;
+// What the water draws: (the CPU's heights plus the ripples, the ripples alone, their foam, 0).
 @group(0) @binding(5) var heights_out: texture_storage_2d<rgba16float, write>;
 
-// How much of the cell at `p` (m, the surface's frame) a footprint covers: the ellipse inside its box, its edge
-// softened over two cells. An empty box (max < min) covers nothing.
-fn cover(p: vec2<f32>, box_: vec4<f32>) -> f32 {
+// How much of the cell at `p` (m, the surface's frame) a footprint covers: the ellipse inside its box grown by
+// `grow` metres, its edge softened over a cell. An empty box (max < min) covers nothing.
+fn cover(p: vec2<f32>, box_: vec4<f32>, grow: f32) -> f32 {
   let half = (box_.zw - box_.xy) * 0.5;
   if (half.x <= 0.0 || half.y <= 0.0) { return 0.0; }
   let centre = (box_.xy + box_.zw) * 0.5;
-  let d = length((p - centre) / half);
-  let feather = 2.0 * params.size.w / max(min(half.x, half.y), 1e-4);
+  let r = half + vec2<f32>(grow);
+  let d = length((p - centre) / r);
+  let feather = params.size.w / max(min(r.x, r.y), 1e-4);
   return 1.0 - smoothstep(1.0 - feather, 1.0 + feather, d);
 }
 
-fn load(i: vec2<i32>) -> vec2<f32> {
+// 1 inside the square, falling to 0 over the last `params.foam.w` of it at each edge: the ripples die there, so the
+// square's edge never shows.
+fn inside_square(id: vec2<u32>) -> f32 {
+  let n = params.size.x - 1.0;
+  let q = vec2<f32>(id) / max(n, 1.0);
+  let d = min(min(q.x, q.y), min(1.0 - q.x, 1.0 - q.y));
+  return smoothstep(0.0, max(params.foam.w, 1e-3), d);
+}
+
+fn load(i: vec2<i32>) -> vec4<f32> {
   let n = i32(params.size.x);
-  return textureLoad(state_in, clamp(i, vec2<i32>(0), vec2<i32>(n - 1)), 0).xy;
+  return textureLoad(state_in, clamp(i, vec2<i32>(0), vec2<i32>(n - 1)), 0);
 }
 
 @compute @workgroup_size(8, 8)
@@ -52,23 +67,49 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   if (id.x >= n || id.y >= n) { return; }
   let i = vec2<i32>(id.xy);
   let here = load(i);
-  let lap = load(i + vec2<i32>(-1, 0)).x + load(i + vec2<i32>(1, 0)).x + load(i + vec2<i32>(0, -1)).x
-    + load(i + vec2<i32>(0, 1)).x - 4.0 * here.x;
-  // Each body pushes the water it moves into down and lets it back where it leaves (its wake), and pushes it by its
-  // vertical speed while it cuts the surface (its splash), the tick's push spread over its substeps.
+  let l = load(i + vec2<i32>(-1, 0));
+  let r = load(i + vec2<i32>(1, 0));
+  let u = load(i + vec2<i32>(0, -1));
+  let d = load(i + vec2<i32>(0, 1));
+  let lap = l.x + r.x + u.x + d.x - 4.0 * here.x;
+  // A body is solid: the water it fills is held still (no hole under it). The water it displaces rises in a ring
+  // around it: as it sinks in or falls (its splash), ahead of it as it moves (its bow wave), and falls back behind it
+  // (the trough of its wake). The tick's push is spread over its substeps.
   let p = (vec2<f32>(id.xy) * params.size.w) - vec2<f32>(params.size.z * 0.5);
+  let cell = params.size.w;
+  var solid = 0.0;
+  var near = 0.0;
   var push = 0.0;
   let first = u32(params.force.x);
   let count = u32(params.force.y);
   for (var k = 0u; k < count; k++) {
     let c = cuts[first + k];
-    let before = cover(p, c.prev) * min(c.extra.x, 0.5);
-    let now = cover(p, c.cur) * min(c.extra.y, 0.5);
-    push += -(now - before) * params.force.z * 0.2 + c.extra.z * params.force.w * 0.06 * cover(p, c.cur);
+    let half = min(c.cur.z - c.cur.x, c.cur.w - c.cur.y) * 0.5;
+    let ring = max(3.0 * cell, half * 0.6);
+    let body = cover(p, c.cur, 0.0);
+    solid = max(solid, body);
+    near = max(near, cover(p, c.cur, cell * 1.5));
+    let around = cover(p, c.cur, ring) - body;
+    // Sinking in (the depth growing) or falling raises the ring; rising out lets it down.
+    let sink = (min(c.extra.y, 0.5) - min(c.extra.x, 0.5)) * params.force.z + max(-c.extra.z, 0.0) * params.force.w;
+    push += around * sink * 0.15;
+    // Moving across: up where the ring arrives, down where it leaves.
+    let bow = cover(p, c.cur, ring) - cover(p, c.prev, ring);
+    push += bow * min(c.extra.y, 0.5) * params.force.z * 0.15;
   }
-  let v = (here.y + lap * params.wave.x + push / params.wave.w) * params.wave.y;
-  let h = clamp(here.x + v * params.wave.z, -1.0, 1.0);
-  textureStore(state_out, i, vec4<f32>(h, v, 0.0, 0.0));
+  let edge = inside_square(id.xy);
+  let free = 1.0 - smoothstep(0.3, 0.7, solid);
+  var v = (here.y + lap * params.wave.x + push / params.wave.w) * params.wave.y;
+  // The square's edge soaks the waves up instead of throwing them back.
+  v *= mix(0.9, 1.0, edge) * free;
+  let cap = params.foam.z;
+  let h = clamp(here.x + v * params.wave.z, -0.5 * cap, cap) * mix(0.95, 1.0, edge) * free;
+  // Foam: made on the crests as they rise, spread to the neighbours, thinning out; never on the body or right
+  // against it (clear water around it).
+  let spread = (l.z + r.z + u.z + d.z) * 0.25;
+  let made = max(h - 0.15 * cap, 0.0) / cap * max(v, 0.0) * params.foam.y * params.wave.z;
+  let foam = clamp((mix(here.z, spread, 0.2) + made) * params.foam.x, 0.0, 1.0) * (1.0 - near) * edge;
+  textureStore(state_out, i, vec4<f32>(h, v, foam, 0.0));
 }
 
 @compute @workgroup_size(8, 8)
@@ -85,8 +126,10 @@ fn compose(@builtin(global_invocation_id) id: vec3<u32>) {
   let d = textureLoad(coarse, c + vec2<i32>(0, 1), 0).r;
   let e = textureLoad(coarse, c + vec2<i32>(1, 1), 0).r;
   let base = mix(mix(a, b, f.x), mix(d, e, f.x), f.y);
-  let ripple = textureLoad(state_in, vec2<i32>(id.xy), 0).x;
-  textureStore(heights_out, vec2<i32>(id.xy), vec4<f32>(base + ripple, 0.0, 0.0, 1.0));
+  let s = textureLoad(state_in, vec2<i32>(id.xy), 0);
+  let fade = inside_square(id.xy);
+  let ripple = s.x * fade;
+  textureStore(heights_out, vec2<i32>(id.xy), vec4<f32>(base + ripple, ripple, s.z * fade, 0.0));
 }
 
 // Calm water: the state written by this group set to zero.

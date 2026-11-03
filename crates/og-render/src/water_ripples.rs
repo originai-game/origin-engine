@@ -31,6 +31,7 @@ struct Params {
     size: [f32; 4],
     wave: [f32; 4],
     force: [f32; 4],
+    foam: [f32; 4],
 }
 
 #[repr(C)]
@@ -99,7 +100,7 @@ impl RipplePipelines {
                     count: None,
                 },
                 texture(4),
-                storage(5, crate::water::HEIGHT_FORMAT),
+                storage(5, OUT_FORMAT),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -130,8 +131,20 @@ impl RipplePipelines {
     }
 }
 
-/// The ripples' state: (height, vertical velocity) a point.
-const STATE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
+/// The ripples' state: (height, vertical velocity, foam, 0) a point.
+const STATE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+
+/// What the water draws: the CPU's heights plus the ripples, the ripples
+/// alone (their normal is drawn per pixel over the grid's) and their foam,
+/// in the height textures' format (filterable, a core storage format).
+const OUT_FORMAT: wgpu::TextureFormat = crate::water::HEIGHT_FORMAT;
+
+/// The highest crest the ripples raise (m); a trough is half as deep.
+const CREST: f32 = 0.18;
+/// How long their foam takes to thin to half (s).
+const FOAM_HALF_LIFE: f32 = 0.3;
+/// The fraction of the square over which they fade out at its edge.
+const EDGE_FADE: f32 = 0.12;
 
 /// One surface's ripples: its state (two textures, stepped from one into
 /// the other), the heights it draws and the tick it stands at.
@@ -194,7 +207,7 @@ impl Ripples {
             texture("water ripples state", STATE_FORMAT),
             texture("water ripples state", STATE_FORMAT),
         ];
-        let heights = texture("water ripples heights", crate::water::HEIGHT_FORMAT);
+        let heights = texture("water ripples heights", OUT_FORMAT);
         // Written as a 2D storage texture, read by the water pass as a 1-layer array (water binding 1).
         let storage_view = heights.create_view(&Default::default());
         let view = heights.create_view(&wgpu::TextureViewDescriptor {
@@ -299,6 +312,7 @@ impl Ripples {
             size: [side, self.coarse as f32, self.size, cell],
             wave: [c * c * dts / (cell * cell), keep, dts, substeps as f32],
             force: [0.0, 0.0, 1.0 / dt, wakes.splash],
+            foam: [0.5f32.powf(dts / FOAM_HALF_LIFE), 40.0, CREST, EDGE_FADE],
         };
         for (before, now) in &ticks.steps {
             let first = cuts.len();
