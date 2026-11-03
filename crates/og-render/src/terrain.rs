@@ -973,15 +973,16 @@ fn terrain_passes(
 }
 
 pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
-/// What terrain.wgsl's uniform needs declared (its far grass's wind).
+/// What terrain.wgsl's far grass needs declared (after wind_common.wgsl).
 pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
-        "{frame}{tables}{lighting}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}",
+        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}",
         crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
+        crate::wind::WIND_COMMON_WGSL,
         wgsl3d!("terrain_lit.wgsl")
     )
 }
@@ -1051,7 +1052,8 @@ pub(crate) fn terrain_shadow_array_source() -> String {
 /// The terrain's shadow module.
 pub(crate) fn terrain_shadow_source() -> String {
     format!(
-        "{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}{}",
+        "{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}{}",
+        crate::wind::WIND_COMMON_WGSL,
         crate::SHADOW_PASS_WGSL,
         wgsl3d!("terrain_shadow.wgsl")
     )

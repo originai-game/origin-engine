@@ -29,7 +29,7 @@ struct GrassUniform {
   dry_color: vec4<f32>,   // rgb: dry grass, w: roughness
   variation: vec4<f32>,   // x: colour variation, y: dryness, z: patch size (m), w: the field's distance (m)
   rows: vec4<u32>,      // rows of each level of detail
-  wind: GrassWind,
+  wind: WindField,
 };
 
 @group(1) @binding(0) var<uniform> grass: GrassUniform;
@@ -72,7 +72,7 @@ struct GrassVertex {
 
 fn grass_random(b: GrassBlade, salt: u32) -> f32 {
   let bits = u32(round(b.seed * 255.0)) | (u32(b.facing * 256.0) << 8u) | (u32(round(b.clump * 255.0)) << 16u);
-  return grass_unit(grass_hash(bits ^ salt));
+  return wind_unit(wind_hash(bits ^ salt));
 }
 
 fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
@@ -133,7 +133,7 @@ fn grass_color(b: GrassBlade, t: f32) -> vec3<f32> {
   // Patches: the noise, turned so its lattice does not run along the world's axes.
   let at = (b.root.xz + grass.wind.time.zw) / max(grass.variation.z, 0.1);
   let patch_uv = vec2<f32>(at.x * 0.83 - at.y * 0.56, at.x * 0.56 + at.y * 0.83);
-  let patch_noise = grass_noise(patch_uv + vec2<f32>(91.0, 47.0));
+  let patch_noise = wind_noise(patch_uv + vec2<f32>(91.0, 47.0));
   c *= mix(1.0, mix(0.85, 1.12, patch_noise), v);
   // Dry clumps (a share `dryness` of them) and dry tips.
   let dryness = grass.variation.y;

@@ -48,7 +48,7 @@ struct TerrainGrass {
   fade: vec4<f32>,    // x: where the tint starts (m from the camera), y: where it is whole, z: how much gusts brighten it, w: its strength (0..1)
   clump: vec4<f32>,   // x: clump size (the terrain's space), y: colour variation, z: dryness, w: the seed (24 bits)
   dry: vec4<f32>,     // rgb: dry grass (linear)
-  wind: GrassWind,
+  wind: WindField,
 };
 
 // Positions are in grid units of the finest level's spacing from the

@@ -43,7 +43,7 @@ struct GrassGen {
   shadow: vec4<f32>,    // xyz: where a blade's shadow lands per metre of its height, w: 1 when it casts
   motion: vec4<f32>,    // x: sway, y: stiffness, z: the plan's share of the table's blades
   counts: vec4<u32>,    // x: slices, y: blades the instance buffer holds, z: rows of LOD 0, w: LOD 1's and 2's (8 bits each)
-  wind: GrassWind,
+  wind: WindField,
 };
 
 @group(0) @binding(0) var<uniform> gen: GrassGen;
@@ -137,8 +137,8 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let point = index / cells;
   let cell = index % cells;
   let seed_bits = u32(gen.chunk.z);
-  let cell_hash = grass_hash2(grass_hash2(s.x, s.y), grass_hash2(cell, seed_bits));
-  let offset = vec2<f32>(grass_unit(cell_hash), grass_unit(grass_hash(cell_hash)));
+  let cell_hash = wind_hash2(wind_hash2(s.x, s.y), wind_hash2(cell, seed_bits));
+  let offset = vec2<f32>(wind_unit(cell_hash), wind_unit(wind_hash(cell_hash)));
   let pair = tile[point / 2u];
   let tp = select(pair.xy, pair.zw, (point & 1u) == 1u);
   let p = fract(tp + offset);
@@ -167,9 +167,9 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let keep = clamp(gen.field.y * grass_layer_weight(root, normal, maps.control) * falloff / gen.field.x, 0.0, 1.0);
   if (rank >= keep) { return none; }
 
-  let seed = grass_hash2(cell_hash, point);
+  let seed = wind_hash2(cell_hash, point);
   // Blades of a clump share most of their height.
-  var tall = gen.shape.x * (1.0 - gen.shape.y * mix(grass_unit(grass_hash(seed ^ 0x68u)), clump.y, 0.6));
+  var tall = gen.shape.x * (1.0 - gen.shape.y * mix(wind_unit(wind_hash(seed ^ 0x68u)), clump.y, 0.6));
   // Over the last fade the survivors also shorten, so the field's edge
   // sinks into the ground's colour rather than ending on a line.
   let edge = gen.lod.w * gen.lod_density.w;
@@ -185,12 +185,12 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   var b: GrassBlade;
   b.root = root;
   b.lod = 0u;
-  if (gen.eye.w < 0.5) { b.lod = grass_lod(d, grass_unit(grass_hash(seed ^ 0x10du))); }
-  b.facing = grass_unit(grass_hash(seed ^ 0x66u));
+  if (gen.eye.w < 0.5) { b.lod = grass_lod(d, wind_unit(wind_hash(seed ^ 0x10du))); }
+  b.facing = wind_unit(wind_hash(seed ^ 0x66u));
   b.height = tall / max(gen.shape.x, 1e-3);
-  let width = gen.clump.w * (0.75 + 0.5 * grass_unit(grass_hash(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
+  let width = gen.clump.w * (0.75 + 0.5 * wind_unit(wind_hash(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
   b.width = width / (GRASS_WIDTH_RANGE * max(gen.clump.w, 1e-5));
-  b.seed = grass_unit(grass_hash(seed ^ 0x5eu));
+  b.seed = wind_unit(wind_hash(seed ^ 0x5eu));
   b.clump = clump.x;
   // The lean at rest: along the blade's face by a share of `lean`, and
   // out from its clump's centre by `clump lean` (more at its rim).
@@ -199,7 +199,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let out = (terrain.model * vec4<f32>(out_local.x, 0.0, out_local.y, 0.0)).xz;
   let out_len = length(out);
   let away = select(vec2<f32>(0.0), out / max(out_len, 1e-6) * min(out_len, 1.0), out_len > 1e-4);
-  let rest = face * gen.shape.z * (0.3 + 0.7 * grass_unit(grass_hash(seed ^ 0x6cu))) + away * gen.shape.w;
+  let rest = face * gen.shape.z * (0.3 + 0.7 * wind_unit(wind_hash(seed ^ 0x6cu))) + away * gen.shape.w;
   let at = root.xz + gen.wind.time.zw;
   b.bend = clamp(rest + grass_bend(gen.wind, at, b.seed, gen.motion.y, gen.motion.x, false), vec2<f32>(-1.0), vec2<f32>(1.0));
   b.previous_bend = clamp(rest + grass_bend(gen.wind, at, b.seed, gen.motion.y, gen.motion.x, true), vec2<f32>(-1.0), vec2<f32>(1.0));

@@ -167,6 +167,7 @@ mod volumetric;
 mod water;
 mod water_ripples;
 mod weather;
+mod wind;
 
 #[cfg(feature = "gltf")]
 pub mod gltf;

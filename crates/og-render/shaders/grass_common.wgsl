@@ -1,5 +1,5 @@
 // Grass (grass.rs): what the generation pass, the blade draws and the
-// terrain's far tint share. No bindings.
+// terrain's far tint share. No bindings; needs wind_common.wgsl before it.
 //
 // Ported from bevy_grass v0.20.3 (src/shaders/common.wesl, wind.wesl;
 // third_party/bevy-grass). MIT License, Copyright (c) 2026 Gediminas
@@ -20,15 +20,10 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 const GRASS_TAU: f32 = 6.283185307;
-// Seconds after which the wind's clock starts again (grass.rs TIME_PERIOD).
-const GRASS_TIME_PERIOD: f32 = 3600.0;
 // A blade's width is stored up to this many times the field's.
 const GRASS_WIDTH_RANGE: f32 = 4.0;
 // Vertex indices between one level of detail and the next (grass.rs LOD_STRIDE).
 const GRASS_LOD_STRIDE: u32 = 64u;
-// Metres per cell of the gust noise, and its period in cells (grass.rs).
-const GRASS_GUST_CELL: f32 = 14.0;
-const GRASS_GUST_PERIOD: i32 = 256;
 // og.Wind's wave (scatter.rs WIND_WAVELENGTH).
 const GRASS_WAVELENGTH: f32 = 10.0;
 // Steps of last frame's bend per unit of bend.
@@ -36,83 +31,25 @@ const GRASS_BEND_STEPS: f32 = 128.0;
 // How much a gust brightens the blades it presses down (grass.rs GUST_SHEEN).
 const GRASS_GUST_SHEEN: f32 = 1.5;
 
-// One frame of og.Wind for the grass (grass.rs GrassWindGpu).
-struct GrassWind {
-  dir: vec4<f32>,     // xy: where it blows (world x, z), z: its strength (0: still), w: its gust
-  phase: vec4<f32>,   // xy: its wave's two phases (scatter.rs wind_phases), zw: last frame's
-  offset: vec4<f32>,  // xy: how far the gust patches have travelled (cells, within the period), zw: last frame's
-  time: vec4<f32>,    // x: seconds (within GRASS_TIME_PERIOD), y: last frame's, zw: the frame's origin's x and z (origin.rs)
-};
-
-// PCG hash (Jarzynski and Olano, 2020). grass.rs `hash`.
-fn grass_hash(x: u32) -> u32 {
-  let state = x * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
-}
-
-fn grass_hash2(a: u32, b: u32) -> u32 {
-  return grass_hash(a ^ grass_hash(b));
-}
-
-// A hash in [0, 1) with 24 bits.
-fn grass_unit(h: u32) -> f32 {
-  return f32(h >> 8u) / 16777216.0;
-}
-
-// `frequency` (radians per second) rounded to whole cycles per
-// GRASS_TIME_PERIOD, so a sine of the clock does not jump where it wraps.
-fn grass_periodic(frequency: f32) -> f32 {
-  let step = GRASS_TAU / GRASS_TIME_PERIOD;
-  return round(frequency / step) * step;
-}
-
-// Value noise in [0, 1], smooth, repeating every GRASS_GUST_PERIOD cells.
-fn grass_lattice(c: vec2<i32>) -> f32 {
-  let m = GRASS_GUST_PERIOD - 1;
-  return grass_unit(grass_hash2(u32(c.x & m), u32(c.y & m) ^ 0x9e3779b9u));
-}
-
-fn grass_noise(p: vec2<f32>) -> f32 {
-  let i = floor(p);
-  let f = p - i;
-  let u = f * f * (3.0 - 2.0 * f);
-  let c = vec2<i32>(i);
-  let a = grass_lattice(c);
-  let b = grass_lattice(c + vec2<i32>(1, 0));
-  let d = grass_lattice(c + vec2<i32>(0, 1));
-  let e = grass_lattice(c + vec2<i32>(1, 1));
-  return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
-}
-
-// The gust patches at world point `at` (x, z): two octaves of the noise
-// scrolled downwind, in [0, 1]. The second octave's lattice is twice as
-// fine and moves twice as far, so both repeat where the offset wraps.
-fn grass_gust(w: GrassWind, at: vec2<f32>, previous: bool) -> f32 {
-  let offset = select(w.offset.xy, w.offset.zw, previous);
-  let p = at / GRASS_GUST_CELL - offset;
-  return 0.65 * grass_noise(p) + 0.35 * grass_noise(p * 2.0 + vec2<f32>(37.0, 11.0));
-}
-
 // How far og.Wind bends a blade standing at world point `at`: its tip's
 // offset as a share of its height, in world x and z. The lean is og.Wind's
 // (strength times 1 plus gust times its wave), the wave of the scattered
 // copies' sway mixed with the gust patches, so a gust rolls across the
 // field as a band and in patches; each blade also sways on its own (by
 // its seed, in [0, 1)). Softer stems (`stiffness` towards 0) bend further.
-fn grass_bend(w: GrassWind, at: vec2<f32>, seed: f32, stiffness: f32, sway: f32, previous: bool) -> vec2<f32> {
+fn grass_bend(w: WindField, at: vec2<f32>, seed: f32, stiffness: f32, sway: f32, previous: bool) -> vec2<f32> {
   let strength = w.dir.z * sway;
   if (strength <= 0.0) { return vec2<f32>(0.0); }
   let dir = w.dir.xy;
   let phase = select(w.phase.xy, w.phase.zw, previous);
   let x = GRASS_TAU / GRASS_WAVELENGTH * dot(at, dir);
   let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
-  let gust = grass_gust(w, at, previous);
+  let gust = wind_gust(w, at, previous);
   let g = clamp(0.5 * wave + 1.4 * (gust - 0.5), -1.0, 1.0);
   let flex = mix(1.6, 0.4, clamp(stiffness, 0.0, 1.0));
   let push = strength * (1.0 + w.dir.w * g) * flex;
   let time = select(w.time.x, w.time.y, previous);
-  let frequency = grass_periodic(mix(1.1, 2.4, stiffness) * (0.85 + 0.3 * seed));
+  let frequency = wind_periodic(mix(1.1, 2.4, stiffness) * (0.85 + 0.3 * seed));
   let s = sin(time * frequency + seed * GRASS_TAU);
   let across = vec2<f32>(-dir.y, dir.x);
   let wobble = (dir * 0.5 + across * 0.5) * s * (0.03 + 0.3 * strength) * flex;
@@ -121,9 +58,9 @@ fn grass_bend(w: GrassWind, at: vec2<f32>, seed: f32, stiffness: f32, sway: f32,
 
 // The shiver of a full-detail blade's tip, in metres sideways: `t` 0 at
 // the root and 1 at the tip.
-fn grass_flutter(w: GrassWind, amount: f32, seed: f32, t: f32, height: f32, previous: bool) -> f32 {
+fn grass_flutter(w: WindField, amount: f32, seed: f32, t: f32, height: f32, previous: bool) -> f32 {
   let time = select(w.time.x, w.time.y, previous);
-  let shiver = sin(time * grass_periodic(11.0) + seed * 37.0 + t * 4.0);
+  let shiver = sin(time * wind_periodic(11.0) + seed * 37.0 + t * 4.0);
   return shiver * 0.06 * w.dir.z * amount * t * t * height;
 }
 
@@ -140,8 +77,8 @@ fn grass_clump(p: vec2<f32>, size: f32, seed: u32) -> vec4<f32> {
     for (var dx = -1; dx <= 1; dx++) {
       let c = base + vec2<f32>(f32(dx), f32(dz));
       let ci = vec2<i32>(c);
-      let h = grass_hash2(grass_hash2(bitcast<u32>(ci.x), bitcast<u32>(ci.y)), seed);
-      let site = c + vec2<f32>(grass_unit(h), grass_unit(grass_hash(h)));
+      let h = wind_hash2(wind_hash2(bitcast<u32>(ci.x), bitcast<u32>(ci.y)), seed);
+      let site = c + vec2<f32>(wind_unit(h), wind_unit(wind_hash(h)));
       let d = dot(site - q, site - q);
       if (d < best) {
         best = d;
@@ -150,15 +87,15 @@ fn grass_clump(p: vec2<f32>, size: f32, seed: u32) -> vec4<f32> {
       }
     }
   }
-  return vec4<f32>(grass_unit(grass_hash(id ^ 0x5bd1e995u)), grass_unit(grass_hash(id ^ 0x1b873593u)), (q - centre) * size);
+  return vec4<f32>(wind_unit(wind_hash(id ^ 0x5bd1e995u)), wind_unit(wind_hash(id ^ 0x1b873593u)), (q - centre) * size);
 }
 
 // How much brighter grass at world point `at` shows where a gust presses
 // it down (its paler, glossier sides turned up), by `amount` (grass.rs
 // GUST_SHEEN): the same on the blades and on the ground past them, so a
 // gust band rolls across both.
-fn grass_gust_sheen(w: GrassWind, at: vec2<f32>, amount: f32) -> f32 {
-  let g = grass_gust(w, at, false);
+fn grass_gust_sheen(w: WindField, at: vec2<f32>, amount: f32) -> f32 {
+  let g = wind_gust(w, at, false);
   return 1.0 + amount * w.dir.z * (smoothstep(0.4, 0.75, g) - 0.2);
 }
 
@@ -169,7 +106,7 @@ fn grass_gust_sheen(w: GrassWind, at: vec2<f32>, amount: f32) -> f32 {
 fn grass_dry_share(at: vec2<f32>, dryness: f32) -> f32 {
   let q = at / 26.0;
   let r = vec2<f32>(q.x * 0.8 - q.y * 0.6, q.x * 0.6 + q.y * 0.8);
-  let drift = 0.7 * grass_noise(r + vec2<f32>(13.0, 71.0)) + 0.3 * grass_noise(r * 2.7 + vec2<f32>(5.0, 29.0));
+  let drift = 0.7 * wind_noise(r + vec2<f32>(13.0, 71.0)) + 0.3 * wind_noise(r * 2.7 + vec2<f32>(5.0, 29.0));
   return min(dryness * (0.35 + 2.6 * smoothstep(0.36, 0.66, drift)), 1.0);
 }
 

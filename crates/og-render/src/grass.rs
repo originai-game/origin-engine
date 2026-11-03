@@ -54,6 +54,7 @@
 //! DEALINGS IN THE SOFTWARE.
 
 use crate::terrain::horizontal_scale;
+use crate::wind::WindFieldGpu;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use std::sync::OnceLock;
 
@@ -176,11 +177,6 @@ pub const MAX_SLICES: u32 = 8192;
 pub const MAX_BLADES: u32 = 1 << 21;
 /// Rows of each level of detail's strip (15, 7 and 3 vertices).
 pub const LOD_ROWS: [u32; 3] = [7, 3, 1];
-/// Seconds after which the wind's clock starts again (grass_common.wgsl).
-const TIME_PERIOD: f64 = 3600.0;
-/// The gust noise's cell (m) and period (cells).
-const GUST_CELL: f64 = 14.0;
-const GUST_PERIOD: f64 = 256.0;
 /// How much a gust brightens the blades it presses down (and the ground
 /// past them): grass_common.wgsl `grass_gust_sheen`.
 const GUST_SHEEN: f32 = 1.5;
@@ -189,7 +185,7 @@ const MIN_WIDTH_PX: f32 = 1.0;
 /// How far a blade seen edge-on turns towards the eye.
 const TURN_TO_EYE: f32 = 0.4;
 
-/// PCG hash (Jarzynski and Olano, 2020): grass_common.wgsl `grass_hash`.
+/// PCG hash (Jarzynski and Olano, 2020): wind_common.wgsl `wind_hash`.
 pub fn hash(x: u32) -> u32 {
     let state = x.wrapping_mul(747_796_405).wrapping_add(2_891_336_453);
     let word = ((state >> ((state >> 28) + 4)) ^ state).wrapping_mul(277_803_737);
@@ -426,57 +422,6 @@ fn world_box(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, Vec3) {
     })
 }
 
-// ── the wind ───────────────────────────────────────────────────────────────
-
-/// `GrassWind` in grass_common.wgsl.
-#[repr(C)]
-#[derive(Clone, Copy, Default, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct GrassWindGpu {
-    dir: [f32; 4],
-    phase: [f32; 4],
-    offset: [f32; 4],
-    time: [f32; 4],
-}
-
-/// og.Wind at `tick`: its wave's phases, how far the gust patches have
-/// travelled (cells, within their period) and the clock (within its
-/// period), all reduced in f64 so a long session moves as its first minute.
-fn wind_at(w: &crate::Wind, tick: u64, rate: f32) -> ([f32; 2], [f32; 2], f32) {
-    let t = tick as f64 / f64::from(rate.max(1e-3));
-    let dir = Vec2::new(w.direction.x, w.direction.z).normalize_or(Vec2::X);
-    let travel = f64::from(w.speed) * t / GUST_CELL;
-    let off = |d: f32| (f64::from(d) * travel).rem_euclid(GUST_PERIOD) as f32;
-    (
-        crate::wind_phases(w, tick, rate),
-        [off(dir.x), off(dir.y)],
-        t.rem_euclid(TIME_PERIOD) as f32,
-    )
-}
-
-/// The wind the grass bends in at `tick`, and as it was at `previous`.
-pub(crate) fn wind_gpu(
-    wind: Option<crate::Wind>,
-    tick: u64,
-    previous: u64,
-    rate: f32,
-    origin: Vec3,
-) -> GrassWindGpu {
-    let mut gpu = GrassWindGpu {
-        time: [0.0, 0.0, origin.x, origin.z],
-        ..Default::default()
-    };
-    if let Some(w) = wind.filter(|w| w.strength > 0.0) {
-        let dir = Vec2::new(w.direction.x, w.direction.z).normalize_or(Vec2::X);
-        let (p, o, t) = wind_at(&w, tick, rate);
-        let (pp, po, pt) = wind_at(&w, previous, rate);
-        gpu.dir = [dir.x, dir.y, w.strength, w.gust.clamp(0.0, 1.0)];
-        gpu.phase = [p[0], p[1], pp[0], pp[1]];
-        gpu.offset = [o[0], o[1], po[0], po[1]];
-        gpu.time = [t, pt, origin.x, origin.z];
-    }
-    gpu
-}
-
 /// `TerrainGrass` in terrain.wgsl: the far colour of a field.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -485,7 +430,7 @@ pub(crate) struct FarGpu {
     fade: [f32; 4],
     clump: [f32; 4],
     dry: [f32; 4],
-    wind: GrassWindGpu,
+    wind: WindFieldGpu,
 }
 
 /// A field's average colour (grass.wgsl `grass_far_color`): its blades'
@@ -508,7 +453,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         fade: [0.0; 4],
         clump: [1.0, 0.0, 0.0, 0.0],
         dry: [0.0; 4],
-        wind: GrassWindGpu::default(),
+        wind: WindFieldGpu::default(),
     };
     let Some(d) = scene
         .grass
@@ -539,7 +484,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         seed_bits(g.seed),
     ];
     gpu.dry = g.dry_color.extend(0.0).to_array();
-    gpu.wind = wind_gpu(
+    gpu.wind = crate::wind::field_gpu(
         scene.wind,
         scene.tick,
         scene.tick,
@@ -567,7 +512,7 @@ struct GenGpu {
     shadow: [f32; 4],
     motion: [f32; 4],
     counts: [u32; 4],
-    wind: GrassWindGpu,
+    wind: WindFieldGpu,
 }
 
 /// `GrassUniform` in grass_blade.wgsl.
@@ -587,7 +532,7 @@ struct DrawGpu {
     dry_color: [f32; 4],
     variation: [f32; 4],
     rows: [u32; 4],
-    wind: GrassWindGpu,
+    wind: WindFieldGpu,
 }
 
 /// A field's look as `GrassUniform` holds it: `base_color`, `tip_color`,
@@ -615,11 +560,12 @@ const HEIGHT_RANGE: f32 = 512.0;
 /// area lights, then the blades.
 pub(crate) fn lit_source() -> String {
     format!(
-        "{}{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}{}",
         crate::FRAME_WGSL,
         crate::clusters::wgsl(),
         crate::LIGHTING_WGSL,
         crate::AREA_WGSL,
+        crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
         wgsl3d!("grass_blade.wgsl"),
         wgsl3d!("grass.wgsl"),
@@ -629,8 +575,9 @@ pub(crate) fn lit_source() -> String {
 /// The grass shadow module.
 pub(crate) fn shadow_source() -> String {
     format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}",
         crate::SHADOW_PASS_WGSL,
+        crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
         wgsl3d!("grass_blade.wgsl"),
         wgsl3d!("grass_shadow.wgsl"),
@@ -641,7 +588,8 @@ pub(crate) fn shadow_source() -> String {
 /// layer-array variant's).
 pub(crate) fn generate_source(arrayed: bool) -> String {
     let s = format!(
-        "{}{}{}",
+        "{}{}{}{}",
+        crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
         crate::terrain::TERRAIN_WGSL,
         wgsl3d!("grass_generate.wgsl"),
@@ -1052,7 +1000,7 @@ impl GrassRenderer {
         let mut frame = GrassFrame::default();
         let previous = self.last_tick.unwrap_or(scene.tick);
         self.last_tick = (!scene.grass.is_empty()).then_some(scene.tick);
-        let wind = wind_gpu(
+        let wind = crate::wind::field_gpu(
             scene.wind,
             scene.tick,
             previous,
@@ -1487,9 +1435,9 @@ mod tests {
         );
         check(
             &lit_source(),
-            "GrassWind",
-            fields!(GrassWindGpu: dir, phase, offset, time),
-            size_of::<GrassWindGpu>(),
+            "WindField",
+            fields!(WindFieldGpu: dir, phase, offset, time),
+            size_of::<WindFieldGpu>(),
         );
         check(
             &generate_source(false),
@@ -1516,31 +1464,6 @@ mod tests {
             ..g
         });
         assert_eq!(opaque[0][3], 0.0);
-    }
-
-    /// The wind's clock and gusts are reduced in f64: a tick a day into a
-    /// session lands where its clock says, and the same tick is the same.
-    #[test]
-    fn the_wind_is_a_function_of_the_tick() {
-        let w = crate::Wind::default();
-        // A day and ten seconds in.
-        let tick = 5_184_600;
-        let a = wind_gpu(Some(w), tick, tick - 1, 60.0, Vec3::ZERO);
-        let b = wind_gpu(Some(w), tick, tick - 1, 60.0, Vec3::ZERO);
-        assert_eq!(a, b);
-        // A day in, the clock is within its period and one tick moved it by 1/60 s.
-        assert!((a.time[0] - 10.0).abs() < 1e-4, "{}", a.time[0]);
-        assert!((a.time[0] - a.time[1] - 1.0 / 60.0).abs() < 1e-4);
-        // 3 m/s along +x for 86410 s, in cells, within the period.
-        let cells = (3.0 * 86_410.0 / GUST_CELL).rem_euclid(GUST_PERIOD) as f32;
-        assert!(
-            (a.offset[0] - cells).abs() < 1e-3,
-            "{} {cells}",
-            a.offset[0]
-        );
-        assert_eq!(a.offset[1], 0.0);
-        let still = wind_gpu(None, 90, 89, 60.0, Vec3::ZERO);
-        assert_eq!(still.dir[2], 0.0);
     }
 
     /// The level strips: 13, 5 and 1 triangles, every index inside its
