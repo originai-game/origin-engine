@@ -566,3 +566,38 @@ fn a_ui_action_follows_a_gameplay_action_and_its_rebinding() {
     ui.set_device(Device::PlayStation);
     assert_eq!(ui.glyph("inventory").unwrap().icon, "ps.triangle");
 }
+
+#[test]
+fn a_bound_texture_handle_reaches_the_host_whole() {
+    // Wrong: the bound number stored as f32, so a handle ((1 << 32) | index)
+    // rounds to 2³² and every image draws texture 0 (the icon atlas).
+    struct Host(std::cell::RefCell<Vec<f64>>);
+    impl og_ui::bind::Env for Host {
+        fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
+            self.0.borrow_mut().push(handle);
+            None
+        }
+    }
+    const PIC: &str = r#"type component
+version 1
+---
+name "pic"
+props {
+  art number "A texture handle."
+}
+image Pic {
+  texture bind art
+  width 64
+  height 64
+}
+"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/pic.ogt", PIC).expect("pic parses"));
+    let handle = ((1u64 << 32) | 5) as f64;
+    let host = Host(std::cell::RefCell::new(Vec::new()));
+    let mut vm = json!({ "art": handle });
+    ui.begin(InputFrame::default(), viewport());
+    ui.component("Pic", "pic", &mut vm, &host);
+    ui.end();
+    assert_eq!(host.0.borrow().as_slice(), [handle]);
+}

@@ -280,7 +280,7 @@ impl Ui {
                     .last()
                     .map(|(_, s)| s.clone())
                     .expect("pushed");
-                let texture = r.num("texture").and_then(|h| b.env.texture(f64::from(h)));
+                let texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 self.art(
                     id.as_str(),
                     &crate::widgets::ArtDesc {
@@ -294,7 +294,7 @@ impl Ui {
                 );
             }
             "image" => {
-                let texture = r.num("texture").and_then(|h| b.env.texture(f64::from(h)));
+                let texture = r.handle("texture").and_then(|h| b.env.texture(h));
                 let tint = r.color("tint");
                 self.image(
                     id.as_str(),

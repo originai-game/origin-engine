@@ -28,7 +28,10 @@ use std::sync::Arc;
 /// A resolved value of a prop.
 #[derive(Clone, Debug, PartialEq)]
 enum V {
-    Num(f32),
+    /// In f64, as JSON carries it: a bound handle (a texture's, `(1 << 32) |
+    /// index`) needs every one of its 53 bits, which f32 would round to a
+    /// power of two (texture 0). Layout reads it as f32 ([`Resolved::num`]).
+    Num(f64),
     Nums(Vec<f32>),
     Bool(bool),
     Str(String),
@@ -59,8 +62,15 @@ impl Resolved {
     }
     fn num(&self, name: &str) -> Option<f32> {
         match self.get(name)? {
-            V::Num(n) => Some(*n),
+            V::Num(n) => Some(*n as f32),
             V::Bool(b) => Some(f32::from(u8::from(*b))),
+            _ => None,
+        }
+    }
+    /// A handle prop (a texture's) as bound, every bit kept.
+    fn handle(&self, name: &str) -> Option<f64> {
+        match self.get(name)? {
+            V::Num(n) => Some(*n),
             _ => None,
         }
     }
@@ -76,7 +86,7 @@ impl Resolved {
     fn size(&self, name: &str) -> Option<Size> {
         match self.get(name)? {
             V::Size(s) => Some(*s),
-            V::Num(n) => Some(Size::Fixed(*n)),
+            V::Num(n) => Some(Size::Fixed(*n as f32)),
             _ => None,
         }
     }
@@ -104,7 +114,7 @@ fn paint(ui: &Ui, p: &Paint) -> Option<Srgba> {
 /// A bound JSON value as a prop of type `ty`.
 fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
     Some(match ty {
-        Ty::Num => V::Num(number(v)? as f32),
+        Ty::Num => V::Num(number(v)?),
         Ty::Bool => V::Bool(truthy(v)),
         Ty::Text | Ty::Name | Ty::Word(_) => {
             let s = text(v);
@@ -146,7 +156,7 @@ fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
 
 fn lit(ui: &Ui, l: &Lit) -> Option<V> {
     Some(match l {
-        Lit::Num(n) => V::Num(*n),
+        Lit::Num(n) => V::Num(f64::from(*n)),
         Lit::Nums(n) => V::Nums(n.clone()),
         Lit::Bool(b) => V::Bool(*b),
         Lit::Str(s) => V::Str(s.clone()),
