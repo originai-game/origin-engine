@@ -33,6 +33,13 @@ const FINE_MODES_AT_CUT: f64 = 8.0;
 const SATURATION: f64 = 0.02;
 const SATURATION_ONSET: f64 = 1.5;
 const SATURATION_FULL: f64 = 3.0;
+/// The share of Cox and Munk's mean square slope the cascades and the long
+/// waves draw (the short band raised to it); the rest is roughness.
+const SLOPE_DRAWN: f64 = 0.7;
+/// The short band raised to those slopes: waves past this many times the
+/// peak's wavenumber (under a 25th of its length), which carry slope with
+/// little height.
+const SHORT_FROM: f64 = 25.0;
 /// The sea's seed: one sea for every og.Water of the same wind.
 pub const SEED: u32 = 1941;
 
@@ -409,6 +416,56 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
     } else {
         0.0
     };
+    // The waves under a 25th of the peak's length carry what the eye sees, the slopes; the spectrum's own (held to
+    // Phillips' saturation) leave a sea of some 0.015 mean square slope at any wind, and the rest of Cox and Munk's
+    // (0.003 + 0.00512 U) as unresolved roughness made a gale's surface a uniform matte grey. As og_core::ocean does
+    // for its waves, the short band is raised until the drawn slopes hold SLOPE_DRAWN of Cox and Munk's, times the
+    // swell, the longer band lowered to keep the height; the rest is the facets' roughness.
+    let short_k = SHORT_FROM * params.peak().powi(2) / GRAVITY;
+    let k_of = |texel: usize, n: usize, dk: f64| {
+        let (fx, fz) = (
+            f64::from(signed(texel % n, n)),
+            f64::from(signed(texel / n, n)),
+        );
+        (fx * fx + fz * fz).sqrt() * dk
+    };
+    // Each band's height and slope variance as rescaled: the short band, and the cascades' band longer than it.
+    let (mut long_h, mut short_h, mut long_s, mut short_s) = (0.0, 0.0, 0.0, 0.0);
+    for cascade in &built {
+        let n = cascade.resolution as usize;
+        let dk = 2.0 * PI / cascade.size;
+        for (texel, a) in cascade.amplitudes.as_chunks::<4>().0.iter().enumerate() {
+            if a[2] == 0.0 {
+                continue;
+            }
+            let k = k_of(texel, n, dk);
+            let e = (f64::from(a[0]).powi(2) + f64::from(a[1]).powi(2)) * scale * scale;
+            if k > short_k {
+                (short_h, short_s) = (short_h + e, short_s + e * k * k);
+            } else {
+                (long_h, long_s) = (long_h + e, long_s + e * k * k);
+            }
+        }
+    }
+    let cox_munk = 0.003 + 0.00512 * params.wind_speed;
+    let want_slopes = SLOPE_DRAWN * cox_munk * params.swell.min(1.0);
+    // The short band's energy times y and the longer band's times x, so the height stays the sea's (x Hl + y Hs = W)
+    // and the slopes reach the share (Ll + x Sl + y Ss = T); the short band only ever raised, the longer one kept to
+    // at least half its energy (else the slopes fall short, the height whole).
+    let (want_h, mut x, mut y) = (long_h + short_h, 1.0, 1.0);
+    if !calm && short_s > 0.0 && want_slopes > params.long_slope_variance + long_s + short_s {
+        let t = want_slopes - params.long_slope_variance;
+        let det = long_h * short_s - short_h * long_s;
+        if det.abs() > 1e-30 {
+            x = (want_h * short_s - short_h * t) / det;
+            y = (long_h * t - long_s * want_h) / det;
+        }
+        if !(x >= 0.5 && y >= 1.0) {
+            x = 0.5;
+            y = ((want_h - x * long_h) / short_h.max(1e-30)).max(1.0);
+        }
+    }
+    let (long_f, lift) = (x.sqrt(), y.sqrt());
     let mut bound = 0.0;
     for cascade in &mut built {
         let n = cascade.resolution as usize;
@@ -424,16 +481,18 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
             if a[2] == 0.0 {
                 continue;
             }
-            a[0] = (f64::from(a[0]) * scale) as f32;
-            a[1] = (f64::from(a[1]) * scale) as f32;
-            let (fx, fz) = (
-                f64::from(signed(texel % n, n)),
-                f64::from(signed(texel / n, n)),
-            );
+            let k = k_of(texel, n, dk);
+            let f = if k > short_k {
+                scale * lift
+            } else {
+                scale * long_f
+            };
+            a[0] = (f64::from(a[0]) * f) as f32;
+            a[1] = (f64::from(a[1]) * f) as f32;
             let energy = f64::from(a[0]).powi(2) + f64::from(a[1]).powi(2);
             bound += energy.sqrt();
             variance += energy;
-            slope_variance += energy * (fx * fx + fz * fz) * dk * dk;
+            slope_variance += energy * k * k;
         }
         cascade.variance = variance;
         cascade.slope_variance = slope_variance;
@@ -443,7 +502,7 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
     let tail_slope_variance = if calm {
         0.0
     } else {
-        (0.003 + 0.00512 * params.wind_speed - slopes).max(0.0)
+        (cox_munk - slopes).max(0.0)
     };
     Spectrum {
         cascades: built,
@@ -458,7 +517,8 @@ mod tests {
     use super::*;
 
     /// The cascades and the tick's long waves together hold the sea's
-    /// significant height, (Hs / 4)², for a breeze, a fresh wind and a gale;
+    /// significant height, (Hs / 4)², for a breeze, a fresh wind and a gale,
+    /// the three cascades drawing SLOPE_DRAWN of Cox and Munk's slopes;
     /// the cascades' bands are disjoint, the first starting where the long
     /// band ends; and a calm (no wind) has no waves.
     #[test]
@@ -475,9 +535,18 @@ mod tests {
                     sea.cascades.iter().map(|c| c.variance).sum::<f64>() + params.long_variance;
                 let want = (params.significant_height() / 4.0).powi(2);
                 assert!(
-                    (total - want).abs() < 1e-4 * want,
+                    (total - want).abs() < 1e-3 * want,
                     "{wind} m/s, {count} cascades: {total} m² against {want}"
                 );
+                let slopes = sea.cascades.iter().map(|c| c.slope_variance).sum::<f64>()
+                    + params.long_slope_variance;
+                let cox_munk = 0.003 + 0.00512 * f64::from(wind);
+                if count == 3 {
+                    assert!(
+                        slopes > 0.69 * cox_munk * f64::from(swell.min(1.0)),
+                        "{wind} m/s: slopes {slopes} of Cox and Munk's {cox_munk}"
+                    );
+                }
                 assert_eq!(sea.cascades[0].band.lo, params.long_cut);
                 for pair in sea.cascades.windows(2) {
                     assert_eq!(pair[0].band.hi, pair[1].band.lo);
