@@ -1041,6 +1041,29 @@ impl World {
         self.systems.iter().map(|s| s.name.as_str()).collect()
     }
 
+    /// Places an installed system immediately before another. Engine modules
+    /// registered lazily use this to feed the same tick's physics step.
+    pub fn move_system_before(&mut self, name: &str, before: &str) -> Result<()> {
+        let index = |name: &str| {
+            self.systems
+                .iter()
+                .position(|s| s.name == name)
+                .ok_or_else(|| {
+                    Error::new(
+                        ErrorKind::NotFound,
+                        format!("no system named '{name}' is scheduled"),
+                    )
+                })
+        };
+        let (from, to) = (index(name)?, index(before)?);
+        if from != to {
+            let system = self.systems.remove(from);
+            self.systems
+                .insert(if from < to { to - 1 } else { to }, system);
+        }
+        Ok(())
+    }
+
     /// Every system in run order: its name, its declared reads and writes
     /// (type names in id order; `reads` excludes what `writes` lists), its
     /// queries, and how many entities its queries matched when it last ran.

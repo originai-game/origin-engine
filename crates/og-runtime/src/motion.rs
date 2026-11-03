@@ -22,7 +22,9 @@
 //! names it has neither the system nor the state block, so its saves and
 //! hash are what they were before og.motion existed.
 
+mod performance;
 pub(crate) mod present;
+pub use performance::{og_motion_look_at, og_motion_react};
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
@@ -78,6 +80,8 @@ pub(crate) struct Goal {
     pub heading: f32,
     pub duration: f32,
     pub speed: f32,
+    pub arrival_heading: Option<f32>,
+    pub deceleration: f32,
 }
 
 /// The goal being carried out.
@@ -101,6 +105,7 @@ pub(crate) struct Agent {
     /// Bumped whenever the current goal changes (a start, a finish, a clear):
     /// what the presenter watches to follow a new goal.
     pub serial: u32,
+    pub performance: performance::Performance,
 }
 
 /// The `og.motion` state: agents by entity bits (ordered, so saves are).
@@ -159,6 +164,7 @@ fn turn(from: f32, to: f32, step: f32) -> f32 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Settings {
     pub drive: bool,
+    pub controller: bool,
     pub turn_speed: f32,
     pub lookahead: f32,
     pub rig: u64,
@@ -168,6 +174,7 @@ impl Settings {
     pub(crate) fn of(v: &Value) -> Settings {
         Settings {
             drive: v["drive"].as_bool().unwrap_or(false),
+            controller: false,
             turn_speed: v["turnSpeed"].as_f64().unwrap_or(6.0) as f32,
             lookahead: v["lookahead"].as_f64().unwrap_or(0.6) as f32,
             rig: v["rig"].as_f64().map_or(0, |x| x as u64),
@@ -187,6 +194,7 @@ pub(crate) fn advance(
     heading: &mut f32,
     dt: f32,
 ) {
+    agent.performance.advance(dt);
     if agent.current.is_none() {
         let Some(goal) = agent.queue.pop_front() else {
             return;
@@ -232,11 +240,28 @@ pub(crate) fn advance(
             let left = to.length();
             if left > ARRIVED {
                 *heading = turn(*heading, atan2(to.x, to.z), step);
-                let d = (g.speed * dt).min(left);
+                // Solve d = v*dt, v² = 2*a*(left-d): braking cannot
+                // overshoot the stopping distance, even on a long tick.
+                let speed = if g.deceleration > 0.0 {
+                    let adt = g.deceleration * dt;
+                    ((adt * adt + 2.0 * g.deceleration * left).sqrt() - adt).min(g.speed)
+                } else {
+                    g.speed
+                };
+                let d = (speed * dt).min(left);
                 *position += to * (d / left);
             }
             let to = Vec3::new(g.target.x - position.x, 0.0, g.target.z - position.z);
-            to.length() <= ARRIVED
+            if (if s.controller { left } else { to.length() }) <= ARRIVED {
+                if let Some(arrival) = g.arrival_heading {
+                    *heading = turn(*heading, arrival, step);
+                    *heading == arrival
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
         }
     };
     if done {
@@ -271,6 +296,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
     };
     let agent = layout(world, AGENT)?;
     let transform = layout(world, "og.Transform")?;
+    let controller = layout(world, "og.CharacterController")?;
     let sh = shared(engine_id);
     *lock(&sh) = Goals::default();
     let state = sh.clone();
@@ -278,7 +304,10 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
         SystemDesc {
             name: SYSTEM.into(),
             reads: vec![AGENT.to_string()],
-            writes: vec!["og.Transform".to_string()],
+            writes: vec![
+                "og.Transform".to_string(),
+                "og.CharacterController".to_string(),
+            ],
             queries: vec![QueryDesc {
                 read: vec![AGENT.to_string()],
                 write: vec!["og.Transform".to_string()],
@@ -286,8 +315,9 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             }],
             ..Default::default()
         },
-        move |ctx| system(ctx, &state, &agent, &transform),
+        move |ctx| system(ctx, &state, &agent, &transform, &controller),
     )?;
+    world.move_system_before(SYSTEM, "og.physics")?;
     world.add_state_block(SYSTEM, Box::new(Block(sh)))
 }
 
@@ -296,6 +326,7 @@ fn system(
     state: &Mutex<Goals>,
     agent: &(SchemaId, Layout),
     transform: &(SchemaId, Layout),
+    controller: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
     let dt = ctx.scaled_dt();
     let mut rows = Vec::new();
@@ -311,13 +342,31 @@ fn system(
         let Some(a) = goals.agents.get_mut(&e.to_bits()) else {
             continue;
         };
-        let s = Settings::of(&agent.1.decode(&ctx.get_bytes(e, agent.0)?));
+        let mut s = Settings::of(&agent.1.decode(&ctx.get_bytes(e, agent.0)?));
+        let cb = ctx.get_bytes(e, controller.0).ok();
+        s.controller = cb.is_some();
         let tb = ctx.get_bytes(e, transform.0)?;
         let mut t = transform.1.decode(&tb);
         let (mut position, q) = transform_of(&t);
         let mut heading = heading_of(q);
         let (p0, h0) = (position, heading);
         advance(a, &s, &mut position, &mut heading, dt);
+        if s.drive
+            && let Some(cb) = cb
+        {
+            let velocity = if dt > 0.0 {
+                (position - p0) / dt
+            } else {
+                Vec3::ZERO
+            };
+            let mut c = controller.1.decode(&cb);
+            c["move"] = json!({"x": velocity.x, "y": 0.0, "z": velocity.z});
+            let bytes = controller.1.encode(Some(&cb), Some(&c)).map_err(invalid)?;
+            ctx.set_bytes(e, controller.0, &bytes)?;
+            // The controller alone writes translation after collisions,
+            // gravity and ground snapping; goals see that result next tick.
+            position = p0;
+        }
         if s.drive && (position != p0 || heading != h0) {
             t["position"] = json!({ "x": position.x, "y": position.y, "z": position.z });
             let r = rotation_of(heading);
@@ -351,6 +400,7 @@ pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
 struct Block(Arc<Mutex<Goals>>);
 
 fn save(g: &Goals, out: &mut Vec<u8>) {
+    out.extend_from_slice(b"MOTION2\0");
     let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
     let f32_ = |out: &mut Vec<u8>, v: f32| out.extend_from_slice(&v.to_le_bytes());
     let goal = |out: &mut Vec<u8>, g: &Goal| {
@@ -361,6 +411,9 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
         ] {
             f32_(out, v);
         }
+        u32_(out, g.arrival_heading.is_some() as u32);
+        f32_(out, g.arrival_heading.unwrap_or(0.0));
+        f32_(out, g.deceleration);
     };
     u32_(out, g.agents.len() as u32);
     for (e, a) in &g.agents {
@@ -378,11 +431,15 @@ fn save(g: &Goals, out: &mut Vec<u8>) {
                 f32_(out, v);
             }
         }
+        let performance = serde_json::to_vec(&a.performance).expect("finite performance state");
+        u32_(out, performance.len() as u32);
+        out.extend_from_slice(&performance);
     }
 }
 
 fn load(bytes: &[u8]) -> og_core::Result<Goals> {
-    let mut r = Reader(bytes);
+    let modern = bytes.starts_with(b"MOTION2\0");
+    let mut r = Reader(if modern { &bytes[8..] } else { bytes });
     let mut g = Goals::default();
     for _ in 0..r.u32()? {
         let e = r.u64()?;
@@ -393,16 +450,24 @@ fn load(bytes: &[u8]) -> og_core::Result<Goals> {
             ..Agent::default()
         };
         for _ in 0..r.u32()? {
-            a.queue.push_back(r.goal()?);
+            a.queue.push_back(r.goal(modern)?);
         }
         if r.u32()? != 0 {
-            let goal = r.goal()?;
+            let goal = r.goal(modern)?;
             a.current = Some(Current {
                 goal,
                 elapsed: r.f32()?,
                 start: Vec3::new(r.f32()?, r.f32()?, r.f32()?),
                 start_heading: r.f32()?,
             });
+        }
+        if modern {
+            let n = r.u32()? as usize;
+            let data =
+                r.0.get(..n)
+                    .ok_or_else(|| invalid("motion performance state is cut short"))?;
+            a.performance = serde_json::from_slice(data).map_err(|e| invalid(e.to_string()))?;
+            r.0 = &r.0[n..];
         }
         g.agents.insert(e, a);
     }
@@ -432,21 +497,30 @@ impl Reader<'_> {
     fn f32(&mut self) -> og_core::Result<f32> {
         self.take::<4>().map(f32::from_le_bytes)
     }
-    fn goal(&mut self) -> og_core::Result<Goal> {
+    fn goal(&mut self, modern: bool) -> og_core::Result<Goal> {
         let kind =
             Kind::from_u32(self.u32()?).ok_or_else(|| invalid("an unknown og.motion goal"))?;
         let pose = self.u32()?;
         if pose as usize >= POSES.len() {
             return Err(invalid("an og.motion goal's pose is past the library"));
         }
-        Ok(Goal {
+        let mut goal = Goal {
             kind,
             pose,
             target: Vec3::new(self.f32()?, self.f32()?, self.f32()?),
             heading: self.f32()?,
             duration: self.f32()?,
             speed: self.f32()?,
-        })
+            arrival_heading: None,
+            deceleration: 0.0,
+        };
+        if modern {
+            let has_heading = self.u32()? != 0;
+            let heading = self.f32()?;
+            goal.arrival_heading = has_heading.then_some(heading);
+            goal.deceleration = self.f32()?;
+        }
+        Ok(goal)
     }
 }
 
@@ -471,6 +545,7 @@ impl StateBlock for Block {
         for (bits, a) in goals.agents.iter_mut() {
             let d = s.of(*bits);
             let m = |p: &mut Vec3| *p = (p.as_dvec3() + d).as_vec3();
+            a.performance.shift(d);
             for g in &mut a.queue {
                 if matches!(g.kind, Kind::Place | Kind::WalkTo) {
                     m(&mut g.target);
@@ -588,6 +663,8 @@ pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
             heading: 0.0,
             duration: number(d, "duration", 1.5),
             speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
         })
     })
 }
@@ -602,6 +679,8 @@ pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String 
             heading: number(d, "heading", 0.0),
             duration: number(d, "duration", 1.5),
             speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
         })
     })
 }
@@ -616,6 +695,8 @@ pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
             heading: number(d, "heading", 0.0),
             duration: number(d, "duration", 0.8),
             speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
         })
     })
 }
@@ -627,6 +708,14 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
         if !(speed.is_finite() && speed > 0.0) {
             return Err(format!("desc.speed {speed} is not a positive speed"));
         }
+        let arrival_heading = d["arrivalHeading"].as_f64().map(|h| h as f32);
+        let deceleration = number(d, "deceleration", 3.0);
+        if arrival_heading.is_some_and(|h| !h.is_finite())
+            || !deceleration.is_finite()
+            || deceleration < 0.0
+        {
+            return Err("arrivalHeading must be finite and deceleration non-negative".into());
+        }
         Ok(Goal {
             kind: Kind::WalkTo,
             pose: pose_named(d)?,
@@ -634,6 +723,12 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
             heading: 0.0,
             duration: 0.0,
             speed: speed.min(10.0),
+            arrival_heading,
+            deceleration: if deceleration == 0.0 {
+                3.0
+            } else {
+                deceleration
+            },
         })
     })
 }
@@ -665,7 +760,7 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
         let goals = lock(&goals);
         let a = goals.agents.get(&e.to_bits()).cloned().unwrap_or_default();
         let v3 = |p: Vec3| json!({ "x": p.x, "y": p.y, "z": p.z });
-        Ok::<_, String>(match a.current {
+        let mut status = match a.current {
             None => json!({
                 "goal": "none", "pose": "", "target": v3(Vec3::ZERO), "heading": 0.0,
                 "elapsed": 0.0, "queued": a.queue.len(), "completed": a.completed,
@@ -691,7 +786,10 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
                     "completed": a.completed,
                 })
             }
-        })
+        };
+        status["looking"] = json!(a.performance.looking());
+        status["reacting"] = json!(a.performance.reacting());
+        Ok::<_, String>(status)
     })();
     match r {
         Ok(v) => ok(v),

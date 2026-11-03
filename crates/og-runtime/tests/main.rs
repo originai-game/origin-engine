@@ -30,6 +30,7 @@ mod missing_glyphs;
 mod model_clips;
 mod model_reload;
 mod motion_goals;
+mod motion_performance;
 mod nav_profiles;
 mod no_renderer;
 mod prefabs;

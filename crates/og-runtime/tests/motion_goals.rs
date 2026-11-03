@@ -79,7 +79,7 @@ fn hash(w: u32) -> Value {
 }
 
 fn walk(w: u32, e: f64) {
-    // 2.8 m at 1.4 m/s along +X: 2 s, 120 ticks; then a 0.5 s wave.
+    // 2.8 m along +X, braking from 1.4 m/s; then a 0.5 s cheer.
     value(og_motion_walk_to(
         w,
         e,
@@ -115,7 +115,7 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
         .unwrap()
         .to_string();
 
-    frames(w, 70);
+    frames(w, 90);
     let s = value(og_motion_status(w, e));
     assert_eq!(s["goal"], json!("pose"), "the walk ended on arrival: {s}");
     assert_eq!(s["pose"], json!("cheer"));
@@ -136,7 +136,7 @@ fn a_driven_agent_walks_its_goals_and_restores_mid_walk() {
     frames(v, 60);
     value(og_world_restore(v, saved, None));
     assert_eq!(value(og_motion_status(v, f))["goal"], json!("walkTo"));
-    frames(v, 110);
+    frames(v, 130);
     assert_eq!(hash(v), ran, "the restored run diverged");
 }
 
@@ -166,4 +166,77 @@ fn walk_to_needs_drive() {
     ))
     .unwrap();
     assert_eq!(r["ok"], json!(false), "an unknown pose is refused");
+}
+
+#[test]
+fn walk_brakes_and_finishes_at_the_arrival_heading() {
+    let (w, e) = start(true);
+    value(og_motion_walk_to(
+        w,
+        e,
+        Some(
+            json!({
+                "position": {"x": 0, "y": 100, "z": 2},
+                "speed": 2, "deceleration": 1, "arrivalHeading": -1.2
+            })
+            .to_string(),
+        ),
+    ));
+    frames(w, 30);
+    let first = position(w, e).1;
+    frames(w, 30);
+    let second = position(w, e).1 - first;
+    assert!(
+        first > 0.7 && second < first - 0.1,
+        "must brake: {first}, {second}"
+    );
+    frames(w, 150);
+    assert_eq!(value(og_motion_status(w, e))["goal"], "none");
+    let t = value(og_world_get(w, e, "og.Transform".into()));
+    assert_eq!(t["position"], json!({"x":0.0,"y":0.0,"z":2.0}));
+    let y = t["quaternion"]["y"].as_f64().unwrap();
+    let q = t["quaternion"]["w"].as_f64().unwrap();
+    assert!((2.0 * y.atan2(q) + 1.2).abs() < 1e-5, "{t}");
+}
+
+#[test]
+fn controller_owns_ground_and_stops_motion_at_a_wall() {
+    let (w, e) = start(true);
+    for (name, desc) in [
+        ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
+        ("og.Collider", json!({"shape":2,"radius":0.4,"height":1.0})),
+        ("og.CharacterController", json!({})),
+    ] {
+        value(og_world_insert(w, e, name.into(), Some(desc.to_string())));
+    }
+    for (position, size) in [
+        (json!({"x":0,"y":-0.5,"z":0}), json!({"x":20,"y":1,"z":20})),
+        (json!({"x":0,"y":1,"z":2}), json!({"x":10,"y":4,"z":0.2})),
+    ] {
+        let wall = value(og_world_spawn(w, None)).as_f64().unwrap();
+        value(og_world_insert(
+            w,
+            wall,
+            "og.Transform".into(),
+            Some(json!({"position":position}).to_string()),
+        ));
+        value(og_world_insert(
+            w,
+            wall,
+            "og.Collider".into(),
+            Some(json!({"shape":0,"size":size}).to_string()),
+        ));
+    }
+    value(og_motion_walk_to(
+        w,
+        e,
+        Some(json!({"position":{"x":0,"y":99,"z":4}}).to_string()),
+    ));
+    frames(w, 240);
+    let t = value(og_world_get(w, e, "og.Transform".into()));
+    let z = t["position"]["z"].as_f64().unwrap();
+    let y = t["position"]["y"].as_f64().unwrap();
+    assert!(z > 1.0 && z < 1.6, "wall collision: {t}");
+    assert!(y > 0.8 && y < 1.1, "ground height: {t}");
+    assert_eq!(value(og_motion_status(w, e))["goal"], "walkTo");
 }

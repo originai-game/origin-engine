@@ -51906,6 +51906,119 @@ export interface WalkGoalDesc {
    * @default ""
    */
   readonly pose?: string;
+  /**
+   * Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly arrivalHeading?: number;
+  /**
+   * Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height.
+   *
+   * @default 3
+   * @range 0..
+   */
+  readonly deceleration?: number;
+}
+
+/**
+ * A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LookAtDesc {
+  /**
+   * World point to look at; omitted releases the current look.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly target?: Vector3;
+  /**
+   * Seconds held after blending in, before blending out.
+   *
+   * @default 2
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * Seconds to enter and leave; 0 is immediate.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly blend?: number;
+  /**
+   * Maximum yaw from the animated forward.
+   *
+   * @default 1.92
+   * @range 0..3.141593
+   * @unit rad (radians)
+   */
+  readonly maxYaw?: number;
+  /**
+   * Maximum pitch from the animated forward.
+   *
+   * @default 0.6
+   * @range 0..1.570796
+   * @unit rad (radians)
+   */
+  readonly maxPitch?: number;
+  /**
+   * Contribution of the look.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly weight?: number;
+}
+
+/**
+ * An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only.
+ * **Action asset.** An .ogt starts with `type motion-action`, `version 1`, then `---`. Its body has `source "anims/brace.glb"`, `clip "brace"`, optional `rig "rigs/meshy.ogt"`, `holdStart 0.5` and `holdEnd 1.5`, each on its own line. Paths are relative to assets/. The hold must lie inside the clip (0 <= holdStart < holdEnd < clip duration), with matching poses at both ends for looping. Use a stationary root, +Z facing the reaction source, entry before the hold, and recovery after it. A 30 Hz clip is recommended; the cook also accepts other sample rates.
+ * **Hood contact.** Optional `hand right` (or left) and `handTarget x y z` attach that wrist to an offset from the head during the hold. Supply the offset in metres along the source head bone's local axes, independent of the GLB's unit scale. Retargeting adjusts it to the target's proportions; IK follows the final head pose after lookAt. The clip owns the stance step and lean: the engine does not synthesize an untrained action. Keep provenance and licensing beside the source asset.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ReactionDesc {
+  /**
+   * The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly direction?: Vector3;
+  /**
+   * Contribution of the authored reaction; 0 leaves locomotion unchanged.
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly strength?: number;
+  /**
+   * Seconds to hold between the action's holdStart and holdEnd, after its entry; then play its exit.
+   *
+   * @default 1
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * Seconds to blend in and out; 0 is immediate.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly blend?: number;
 }
 
 /**
@@ -51938,6 +52051,10 @@ export interface MotionStatus {
   readonly queued: number;
   /** Goals finished since the agent's first. */
   readonly completed: number;
+  /** A look is active, including its entry or release. */
+  readonly looking: boolean;
+  /** A reaction is active, including its entry or release. */
+  readonly reacting: boolean;
 }
 
 /**
@@ -51957,6 +52074,8 @@ export interface MotionCapabilities {
    */
   readonly modelBytes: number;
 }
+
+
 
 
 
@@ -57970,7 +58089,7 @@ export declare namespace og {
      */
     function face(world: World, entity: Entity, desc?: FaceGoalDesc): Result<void>;
     /**
-     * Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives.
+     * Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
      *
      * @param world The world.
      * @param entity An entity with an og.MotionAgent.
@@ -57986,6 +58105,24 @@ export declare namespace og {
      * @returns Refused for an entity without og.MotionAgent.
      */
     function clear(world: World, entity: Entity): Result<void>;
+    /**
+     * Replace the timed look overlay without interrupting locomotion. Empty desc releases it. State is snapshotted and advances only on ticks; the turn is applied after generated motion or the animation fallback, on both hosts.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent and humanoid og.Skeleton.
+     * @param desc Target, limits and timing.
+     * @returns Refused for a missing agent, skeleton or mapped head/spine, or invalid inputs.
+     */
+    function lookAt(world: World, entity: Entity, desc?: LookAtDesc): Result<void>;
+    /**
+     * Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent and humanoid og.Skeleton.
+     * @param desc Action, direction, strength and timing.
+     * @returns Refused for a missing agent, skeleton, action or required bones, an invalid hold interval, or invalid inputs.
+     */
+    function react(world: World, entity: Entity, desc?: ReactionDesc): Result<void>;
     /**
      * The agent's current goal and queue.
      *

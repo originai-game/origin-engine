@@ -3203,6 +3203,16 @@ pub fn og_motion_clear(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_look_at(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_react(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_motion_status(world: u32, entity: f64) -> String {
     <Host as MotionApi>::og_motion_status(&Host, world, entity)
 }

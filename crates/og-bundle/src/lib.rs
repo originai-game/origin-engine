@@ -28,6 +28,7 @@ pub mod ktx2;
 pub mod lightmap;
 pub mod look;
 pub mod meshopt_codec;
+pub mod motion_action;
 pub mod opus;
 pub mod qoa;
 pub mod runtime;

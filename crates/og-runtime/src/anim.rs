@@ -236,7 +236,7 @@ fn graph(eng: &Engine, desc: &Value) -> Result<Value, String> {
     Ok(json!(h as f64))
 }
 
-fn load_rig(eng: &Engine, path: &str) -> Result<Value, String> {
+pub(crate) fn load_rig(eng: &Engine, path: &str) -> Result<Value, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&h) = eng.state.borrow().anim_assets.rig_ids.get(&id) {
         return Ok(json!(h as f64));
@@ -316,7 +316,7 @@ pub fn og_anim_humanoid(world: u32, desc: Option<String>) -> String {
     }))
 }
 
-fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
+pub(crate) fn retarget(eng: &Engine, desc: &Value) -> Result<Value, String> {
     let sys = system(eng)?;
     let clip_h = handle(desc, "clip");
     let (source_h, target_h) = (handle(desc, "source"), handle(desc, "target"));

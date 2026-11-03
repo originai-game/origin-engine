@@ -3835,6 +3835,18 @@ pub fn og_motion_clear(env: Env, world: u32, entity: f64) -> String {
     <Host as MotionApi>::og_motion_clear(&Host, world, entity)
 }
 
+#[napi(js_name = "og_motion_look_at")]
+pub fn og_motion_look_at(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_look_at(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_motion_react")]
+pub fn og_motion_react(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_react(&Host, world, entity, desc)
+}
+
 #[napi(js_name = "og_motion_status")]
 pub fn og_motion_status(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

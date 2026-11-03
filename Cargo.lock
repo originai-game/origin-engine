@@ -2160,6 +2160,7 @@ dependencies = [
  "og-tween",
  "og-ui",
  "og-video",
+ "serde",
  "serde_json",
  "zmij",
 ]

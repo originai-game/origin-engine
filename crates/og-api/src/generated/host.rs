@@ -1425,6 +1425,10 @@ pub trait MotionApi: Wire {
     fn og_motion_walk_to(&self, world: u32, entity: f64, desc: Option<String>) -> String;
     /// `og.motion.clear`
     fn og_motion_clear(&self, world: u32, entity: f64) -> String;
+    /// `og.motion.lookAt`
+    fn og_motion_look_at(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.motion.react`
+    fn og_motion_react(&self, world: u32, entity: f64, desc: Option<String>) -> String;
     /// `og.motion.status`
     fn og_motion_status(&self, world: u32, entity: f64) -> String;
     /// `og.motion.capabilities`
@@ -2051,6 +2055,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_motion_face",
     "og_motion_walk_to",
     "og_motion_clear",
+    "og_motion_look_at",
+    "og_motion_react",
     "og_motion_status",
     "og_motion_capabilities",
     "og_motion_poses",

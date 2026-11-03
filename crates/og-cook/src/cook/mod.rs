@@ -120,6 +120,7 @@ enum Kind {
     NavMesh,
     Strings,
     Rig,
+    MotionAction,
     Terrain,
     Timeline,
     Lightmap,
@@ -158,6 +159,7 @@ impl Kind {
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
             Kind::Rig => "rig",
+            Kind::MotionAction => "motion-action",
             Kind::Terrain => "terrain",
             Kind::Timeline => "timeline",
             Kind::Lightmap => "lightmap",
@@ -285,6 +287,7 @@ enum Work<'a> {
     NavMesh(&'a Source),
     Strings(&'a Source),
     Rig(&'a Source),
+    MotionAction(&'a Source),
     Terrain(&'a Source),
     Timeline(&'a Source),
     Lightmap(&'a Source),
@@ -1247,6 +1250,15 @@ pub fn cook_project_with_texture_cache(
             Kind::Rig => {
                 let st = stamp(&[b"rig", &hash]);
                 outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
+            }
+            Kind::MotionAction => {
+                let st = stamp(&[b"motion-action", &hash]);
+                outs.push((
+                    s.rel.clone(),
+                    format::MotionAction::NAME,
+                    st,
+                    Work::MotionAction(s),
+                ));
             }
             Kind::Icons => {
                 // The stamp covers every SVG the set names.

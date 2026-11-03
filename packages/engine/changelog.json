@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.motion.walkTo",
+        "change": "Walk goals now brake near their target (default deceleration 3 m/s²) and optionally finish at arrivalHeading. Driven MotionAgents with CharacterController send movement through the controller before physics instead of moving through collision. Arrival takes longer than the old constant-speed walk.",
+        "fix": "Use motion.status completion rather than distance/speed to schedule arrival. Set deceleration to tune braking. Keep a CharacterController and collider on characters that need terrain grounding and collision.",
+        "find": ["og.motion.walkTo("]
+      },
+      {
         "member": "the built-in style minimal",
         "change": "The minimal seed style is removed (the owner, 2026-11-02): no built-in pack @styles/minimal/ ships, og style list no longer names it, and a look with ui \"minimal\" no longer cooks. og style new still starts from its quiet light choices when a look matches no seed family. The engine is pre-release, so nothing migrates.",
         "fix": "Name another built-in style in the look's ui line (og style list), or keep the old pack as the game's own: copy it from an earlier engine with og style eject minimal before upgrading, which writes assets/styles/minimal/, then write ui \"styles/minimal/style.ogt\".",

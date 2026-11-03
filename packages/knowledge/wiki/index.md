@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2377 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2381 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -773,6 +773,7 @@ Field units the docs and Tune use.
 | [`LockstepStatus`](net.md#type-LockstepStatus) | struct | net | — |
 | [`Look`](render.md#type-Look) | handle | render | — |
 | [`Look()`](render.md#column-Look) | column kind | render | — |
+| [`LookAtDesc`](motion.md#type-LookAtDesc) | desc struct | motion | — |
 | [`LookInfo`](render.md#type-LookInfo) | struct | render | — |
 | [`LootLabelDesc`](ui.md#type-LootLabelDesc) | desc struct | ui | — |
 | [`LootLabelResult`](ui.md#type-LootLabelResult) | struct | ui | — |
@@ -1115,9 +1116,11 @@ Field units the docs and Tune use.
 | [`og.motion.capabilities`](motion.md#fn-capabilities) | function | motion | `og_motion_capabilities` |
 | [`og.motion.clear`](motion.md#fn-clear) | function | motion | `og_motion_clear` |
 | [`og.motion.face`](motion.md#fn-face) | function | motion | `og_motion_face` |
+| [`og.motion.lookAt`](motion.md#fn-lookAt) | function | motion | `og_motion_look_at` |
 | [`og.motion.place`](motion.md#fn-place) | function | motion | `og_motion_place` |
 | [`og.motion.pose`](motion.md#fn-pose) | function | motion | `og_motion_pose` |
 | [`og.motion.poses`](motion.md#fn-poses) | function | motion | `og_motion_poses` |
+| [`og.motion.react`](motion.md#fn-react) | function | motion | `og_motion_react` |
 | [`og.motion.status`](motion.md#fn-status) | function | motion | `og_motion_status` |
 | [`og.motion.walkTo`](motion.md#fn-walkTo) | function | motion | `og_motion_walk_to` |
 | [`og.MotionAgent`](motion.md#record-MotionAgent) | component | motion | — |
@@ -1965,6 +1968,7 @@ Field units the docs and Tune use.
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`Reaction`](ui.md#type-Reaction) | enum | ui | — |
+| [`ReactionDesc`](motion.md#type-ReactionDesc) | desc struct | motion | — |
 | [`ReadyCheckView`](ui.md#type-ReadyCheckView) | desc struct | ui | — |
 | [`RearViewDesc`](ui.md#type-RearViewDesc) | desc struct | ui | — |
 | [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |

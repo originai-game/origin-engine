@@ -124,6 +124,12 @@ impl MotionApi for WebHost {
     fn og_motion_clear(&self, world: u32, entity: f64) -> String {
         rt::og_motion_clear(world, entity)
     }
+    fn og_motion_look_at(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_look_at(world, entity, desc)
+    }
+    fn og_motion_react(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_react(world, entity, desc)
+    }
     fn og_motion_status(&self, world: u32, entity: f64) -> String {
         rt::og_motion_status(world, entity)
     }

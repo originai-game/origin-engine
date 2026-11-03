@@ -15,6 +15,18 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Motion performance: tick-owned looks and authored reactions.**
+  `og.motion.lookAt` / `LookAtDesc` add a timed spine, neck and head look
+  above locomotion; `og.motion.react` / `ReactionDesc` play a humanoid
+  `type motion-action` asset with entry, looping hold, exit and optional
+  head-local hand contact. Empty descriptors release either overlay.
+  `MotionStatus.looking` and `.reacting` include their blend intervals.
+- **Breaking: `WalkGoalDesc.deceleration` and `.arrivalHeading`.**
+  Walks brake at 3 m/s² by default and finish after the optional arrival
+  turn. With `og.CharacterController`, physics owns collision and ground
+  height. Schedule arrival from `motion.status`, not distance / speed;
+  existing walks now take longer. Existing saved walks retain their old
+  constant-speed rule; new saves include the performance envelopes.
 - **Added: `og.PlatformNoticeKind.host`, a message from the framing page.**
   A Player sends `platform` `{ notice: { kind: "host", data: { name, ...
   } } }` and the game reads it as og.PlatformNotice at the next tick's

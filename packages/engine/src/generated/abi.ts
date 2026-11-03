@@ -1271,6 +1271,10 @@ export interface HostAbi<A, V> {
   og_motion_walk_to(world: number, entity: number, desc: string | undefined): string;
   /** `og.motion.clear` */
   og_motion_clear(world: number, entity: number): string;
+  /** `og.motion.lookAt` */
+  og_motion_look_at(world: number, entity: number, desc: string | undefined): string;
+  /** `og.motion.react` */
+  og_motion_react(world: number, entity: number, desc: string | undefined): string;
   /** `og.motion.status` */
   og_motion_status(world: number, entity: number): string;
   /** `og.motion.capabilities` */
@@ -1892,6 +1896,8 @@ export const SYMBOLS: readonly string[] = [
   "og_motion_face",
   "og_motion_walk_to",
   "og_motion_clear",
+  "og_motion_look_at",
+  "og_motion_react",
   "og_motion_status",
   "og_motion_capabilities",
   "og_motion_poses",
@@ -2120,6 +2126,14 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_motion_clear(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.motion.clear", "entity", entity);
       return abi.og_motion_clear(world, entity);
+    },
+    og_motion_look_at(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.lookAt", "entity", entity);
+      return abi.og_motion_look_at(world, entity, desc);
+    },
+    og_motion_react(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.react", "entity", entity);
+      return abi.og_motion_react(world, entity, desc);
     },
     og_motion_status(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.motion.status", "entity", entity);

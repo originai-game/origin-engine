@@ -34,13 +34,17 @@ module motion {
 | [`PlaceGoalDesc`](#type-PlaceGoalDesc) | desc struct | A pose of the library at a place (og.motion.place): the character's hips over `position`, facing `heading`. |
 | [`FaceGoalDesc`](#type-FaceGoalDesc) | desc struct | Turn to a heading where the character stands (og.motion.face). |
 | [`WalkGoalDesc`](#type-WalkGoalDesc) | desc struct | Walk or run to a point (og.motion.walkTo); needs og.MotionAgent.drive. |
+| [`LookAtDesc`](#type-LookAtDesc) | desc struct | A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds. |
+| [`ReactionDesc`](#type-ReactionDesc) | desc struct | An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only. |
 | [`MotionStatus`](#type-MotionStatus) | struct | An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here. |
 | [`MotionCapabilities`](#type-MotionCapabilities) | struct | Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it. |
 | [`og.motion.pose`](#fn-pose) | function | Queue a library pose where the character stands, after its other goals. |
 | [`og.motion.place`](#fn-place) | function | Queue a library pose at a place and heading; needs og.MotionAgent.drive (the mover takes the Transform there). |
 | [`og.motion.face`](#fn-face) | function | Queue a turn to a heading where the character stands; needs og.MotionAgent.drive. |
-| [`og.motion.walkTo`](#fn-walkTo) | function | Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives. |
+| [`og.motion.walkTo`](#fn-walkTo) | function | Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied. |
 | [`og.motion.clear`](#fn-clear) | function | Drop the agent's goals, the current one included: the character holds where it is. |
+| [`og.motion.lookAt`](#fn-lookAt) | function | Replace the timed look overlay without interrupting locomotion. Empty desc releases it. State is snapshotted and advances only on ticks; the turn is applied after generated motion or the animation fallback, on both hosts. |
+| [`og.motion.react`](#fn-react) | function | Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood. |
 | [`og.motion.status`](#fn-status) | function | The agent's current goal and queue. |
 | [`og.motion.capabilities`](#fn-capabilities) | function | Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet. |
 | [`og.motion.poses`](#fn-poses) | function | The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. Fixed by the engine's version, known before the weights are resident, so a goal's pose is checked the same everywhere. |
@@ -77,7 +81,7 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 29817</sub>
+<sub>`api.ogt` line 29885</sub>
 
 <a id="fn-place"></a>
 
@@ -109,7 +113,7 @@ fn place {
 }
 ```
 
-<sub>`api.ogt` line 29825</sub>
+<sub>`api.ogt` line 29893</sub>
 
 <a id="fn-face"></a>
 
@@ -141,13 +145,13 @@ fn face {
 }
 ```
 
-<sub>`api.ogt` line 29833</sub>
+<sub>`api.ogt` line 29901</sub>
 
 <a id="fn-walkTo"></a>
 
 ### `og.motion.walkTo`
 
-Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives.
+Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied.
 
 ```ts
 og.motion.walkTo(world: World, entity: Entity, desc?: WalkGoalDesc): Result<void>
@@ -165,7 +169,7 @@ Binding symbol `og_motion_walk_to` · publish builds: kept
 
 ```ogt
 fn walkTo {
-  doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives."
+  doc "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive. The mover travels in a straight line up to speed, brakes at deceleration, and turns at turnSpeed. With a CharacterController it writes the controller's move input before physics; collision and ground height remain the controller's. The goal ends on actual arrival and completion of arrivalHeading, when supplied."
   param world World "The world."
   param entity Entity "An entity with an og.MotionAgent."
   param desc WalkGoalDesc "Where, how fast, and the pose on arrival."
@@ -173,7 +177,7 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 29841</sub>
+<sub>`api.ogt` line 29909</sub>
 
 <a id="fn-clear"></a>
 
@@ -203,7 +207,71 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 29849</sub>
+<sub>`api.ogt` line 29917</sub>
+
+<a id="fn-lookAt"></a>
+
+### `og.motion.lookAt`
+
+Replace the timed look overlay without interrupting locomotion. Empty desc releases it. State is snapshotted and advances only on ticks; the turn is applied after generated motion or the animation fallback, on both hosts.
+
+```ts
+og.motion.lookAt(world: World, entity: Entity, desc?: LookAtDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | An entity with an og.MotionAgent and humanoid og.Skeleton. |
+| `desc` | `LookAtDesc` | yes | Target, limits and timing. |
+
+**Returns** `Result<void>`: Refused for a missing agent, skeleton or mapped head/spine, or invalid inputs.
+
+Binding symbol `og_motion_look_at` · publish builds: kept
+
+```ogt
+fn lookAt {
+  doc "Replace the timed look overlay without interrupting locomotion. Empty desc releases it. State is snapshotted and advances only on ticks; the turn is applied after generated motion or the animation fallback, on both hosts."
+  param world World "The world."
+  param entity Entity "An entity with an og.MotionAgent and humanoid og.Skeleton."
+  param desc LookAtDesc "Target, limits and timing."
+  returns Result.Void "Refused for a missing agent, skeleton or mapped head/spine, or invalid inputs."
+}
+```
+
+<sub>`api.ogt` line 29924</sub>
+
+<a id="fn-react"></a>
+
+### `og.motion.react`
+
+Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood.
+
+```ts
+og.motion.react(world: World, entity: Entity, desc?: ReactionDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | An entity with an og.MotionAgent and humanoid og.Skeleton. |
+| `desc` | `ReactionDesc` | yes | Action, direction, strength and timing. |
+
+**Returns** `Result<void>`: Refused for a missing agent, skeleton, action or required bones, an invalid hold interval, or invalid inputs.
+
+Binding symbol `og_motion_react` · publish builds: kept
+
+```ogt
+fn react {
+  doc "Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood."
+  param world World "The world."
+  param entity Entity "An entity with an og.MotionAgent and humanoid og.Skeleton."
+  param desc ReactionDesc "Action, direction, strength and timing."
+  returns Result.Void "Refused for a missing agent, skeleton, action or required bones, an invalid hold interval, or invalid inputs."
+}
+```
+
+<sub>`api.ogt` line 29932</sub>
 
 <a id="fn-status"></a>
 
@@ -233,7 +301,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 29856</sub>
+<sub>`api.ogt` line 29940</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -261,7 +329,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 29863</sub>
+<sub>`api.ogt` line 29947</sub>
 
 <a id="fn-poses"></a>
 
@@ -284,7 +352,7 @@ fn poses {
 }
 ```
 
-<sub>`api.ogt` line 29869</sub>
+<sub>`api.ogt` line 29953</sub>
 
 ## Components, resources and events
 
@@ -488,6 +556,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where to go (y is ignored). |
 | `speed` | `number` | `1.4` | 0.1 … 10 | `mps` | — | How fast: the motion walks below 2.5 m/s and runs above. |
 | `pose` | `string` | `""` | — | — | — | The pose taken on arrival; empty is `idle`. |
+| `arrivalHeading` | `number` | `0` | — | `rad` | — | Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes. |
+| `deceleration` | `number` | `3` | ≥ 0 | — | — | Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height. |
 
 ```ogt
 struct WalkGoalDesc {
@@ -503,10 +573,121 @@ struct WalkGoalDesc {
     unit mps
   }
   field pose String "The pose taken on arrival; empty is `idle`."
+  field arrivalHeading f32 "Facing after arrival; omitted keeps the travel heading. The goal ends only after this turn completes." {
+    unit rad
+  }
+  field deceleration f32 "Braking near the target; 0 uses 3 m/s². A CharacterController owns ground height and collision when present; otherwise motion keeps the Transform's height." {
+    default 3
+    min 0
+  }
 }
 ```
 
 <sub>`api.ogt` line 29776</sub>
+
+<a id="type-LookAtDesc"></a>
+
+### `LookAtDesc` (desc struct)
+
+A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | World point to look at; omitted releases the current look. |
+| `duration` | `number` | `2` | ≥ 0 | `s` | — | Seconds held after blending in, before blending out. |
+| `blend` | `number` | `0.2` | ≥ 0 | `s` | — | Seconds to enter and leave; 0 is immediate. |
+| `maxYaw` | `number` | `1.92` | 0 … 3.141593 | `rad` | — | Maximum yaw from the animated forward. |
+| `maxPitch` | `number` | `0.6` | 0 … 1.570796 | `rad` | — | Maximum pitch from the animated forward. |
+| `weight` | `number` | `1` | 0 … 1 | — | — | Contribution of the look. |
+
+```ogt
+struct LookAtDesc {
+  doc "A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds."
+  desc true
+  field target Vector3 "World point to look at; omitted releases the current look." {
+    unit m
+  }
+  field duration f32 "Seconds held after blending in, before blending out." {
+    default 2
+    min 0
+    unit s
+  }
+  field blend f32 "Seconds to enter and leave; 0 is immediate." {
+    default 0.2
+    min 0
+    unit s
+  }
+  field maxYaw f32 "Maximum yaw from the animated forward." {
+    default 1.92
+    min 0
+    max 3.141593
+    unit rad
+  }
+  field maxPitch f32 "Maximum pitch from the animated forward." {
+    default 0.6
+    min 0
+    max 1.570796
+    unit rad
+  }
+  field weight f32 "Contribution of the look." {
+    default 1
+    min 0
+    max 1
+  }
+}
+```
+
+<sub>`api.ogt` line 29798</sub>
+
+<a id="type-ReactionDesc"></a>
+
+### `ReactionDesc` (desc struct)
+
+An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only.
+
+**Action asset.** An .ogt starts with `type motion-action`, `version 1`, then `---`. Its body has `source "anims/brace.glb"`, `clip "brace"`, optional `rig "rigs/meshy.ogt"`, `holdStart 0.5` and `holdEnd 1.5`, each on its own line. Paths are relative to assets/. The hold must lie inside the clip (0 <= holdStart < holdEnd < clip duration), with matching poses at both ends for looping. Use a stationary root, +Z facing the reaction source, entry before the hold, and recovery after it. A 30 Hz clip is recommended; the cook also accepts other sample rates.
+
+**Hood contact.** Optional `hand right` (or left) and `handTarget x y z` attach that wrist to an offset from the head during the hold. Supply the offset in metres along the source head bone's local axes, independent of the GLB's unit scale. Retargeting adjusts it to the target's proportions; IK follows the final head pose after lookAt. The clip owns the stance step and lean: the engine does not synthesize an untrained action. Keep provenance and licensing beside the source asset.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `action` | `string` | `""` | — | — | — | The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction. |
+| `direction` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing. |
+| `strength` | `number` | `1` | 0 … 1 | — | — | Contribution of the authored reaction; 0 leaves locomotion unchanged. |
+| `duration` | `number` | `1` | ≥ 0 | `s` | — | Seconds to hold between the action's holdStart and holdEnd, after its entry; then play its exit. |
+| `blend` | `number` | `0.2` | ≥ 0 | `s` | — | Seconds to blend in and out; 0 is immediate. |
+
+```ogt
+struct ReactionDesc {
+  doc "An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only."
+  doc "**Action asset.** An .ogt starts with `type motion-action`, `version 1`, then `---`. Its body has `source \"anims/brace.glb\"`, `clip \"brace\"`, optional `rig \"rigs/meshy.ogt\"`, `holdStart 0.5` and `holdEnd 1.5`, each on its own line. Paths are relative to assets/. The hold must lie inside the clip (0 <= holdStart < holdEnd < clip duration), with matching poses at both ends for looping. Use a stationary root, +Z facing the reaction source, entry before the hold, and recovery after it. A 30 Hz clip is recommended; the cook also accepts other sample rates."
+  doc "**Hood contact.** Optional `hand right` (or left) and `handTarget x y z` attach that wrist to an offset from the head during the hold. Supply the offset in metres along the source head bone's local axes, independent of the GLB's unit scale. Retargeting adjusts it to the target's proportions; IK follows the final head pose after lookAt. The clip owns the stance step and lean: the engine does not synthesize an untrained action. Keep provenance and licensing beside the source asset."
+  desc true
+  field action String "The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction."
+  field direction Vector3 "World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing."
+  field strength f32 "Contribution of the authored reaction; 0 leaves locomotion unchanged." {
+    default 1
+    min 0
+    max 1
+  }
+  field duration f32 "Seconds to hold between the action's holdStart and holdEnd, after its entry; then play its exit." {
+    default 1
+    min 0
+    unit s
+  }
+  field blend f32 "Seconds to blend in and out; 0 is immediate." {
+    default 0.2
+    min 0
+    unit s
+  }
+}
+```
+
+<sub>`api.ogt` line 29833</sub>
 
 <a id="type-MotionStatus"></a>
 
@@ -523,6 +704,8 @@ An agent's goals, as the game set them: the current goal and how many wait. Dete
 | `elapsed` | `number` | `0` | — | `s` | — | How long the current goal has been current. |
 | `queued` | `number` | `0` | — | — | — | Goals waiting after the current one. |
 | `completed` | `number` | `0` | — | — | — | Goals finished since the agent's first. |
+| `looking` | `boolean` | `false` | — | — | — | A look is active, including its entry or release. |
+| `reacting` | `boolean` | `false` | — | — | — | A reaction is active, including its entry or release. |
 
 ```ogt
 struct MotionStatus {
@@ -540,10 +723,12 @@ struct MotionStatus {
   }
   field queued u32 "Goals waiting after the current one."
   field completed u32 "Goals finished since the agent's first."
+  field looking bool "A look is active, including its entry or release."
+  field reacting bool "A reaction is active, including its entry or release."
 }
 ```
 
-<sub>`api.ogt` line 29791</sub>
+<sub>`api.ogt` line 29857</sub>
 
 <a id="type-MotionCapabilities"></a>
 
@@ -568,7 +753,7 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 29808</sub>
+<sub>`api.ogt` line 29876</sub>
 
 ## Column kinds
 

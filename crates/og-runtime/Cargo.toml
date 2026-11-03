@@ -17,6 +17,7 @@ og-probe = { path = "../og-probe", default-features = false }
 og-bundle = { path = "../og-bundle" }
 miniz_oxide = "0.8"
 glam = { workspace = true }
+serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 # Shortest float formatting (serde_json's own): a system call's time payload.
 zmij = "1"

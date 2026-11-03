@@ -150,6 +150,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
+                    Ok(doc) if doc.ty == "motion-action" => Kind::MotionAction,
                     Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
                     Ok(doc) if doc.ty == timeline::TIMELINE_TYPE => Kind::Timeline,
                     Ok(doc) if doc.ty == lightmap::LIGHTMAP_TYPE => Kind::Lightmap,

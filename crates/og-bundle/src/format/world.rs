@@ -247,6 +247,21 @@ impl BlobKind for Rig {
 }
 
 row!(
+    /// The validated motion-action text in `text`.
+    MotionActionMeta, "og.MotionAction", 1 {
+        text_bytes: u32,
+    }
+);
+
+pub struct MotionAction;
+impl BlobKind for MotionAction {
+    const NAME: &'static str = "og.MotionAction";
+    fn schemas() -> Vec<Schema> {
+        vec![MotionActionMeta::schema()]
+    }
+}
+
+row!(
     /// The root of a look blob (an `.ogt` of `type look`).
     LookMeta, "og.Look", 1 {
         /// Bytes of the canonical look text in `text`.

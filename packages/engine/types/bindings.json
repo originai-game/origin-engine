@@ -25381,6 +25381,60 @@
     {
       "id": 611,
       "kind": "fn",
+      "path": "og.motion.lookAt",
+      "symbol": "og_motion_look_at",
+      "module": "motion",
+      "name": "lookAt",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "LookAtDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 612,
+      "kind": "fn",
+      "path": "og.motion.react",
+      "symbol": "og_motion_react",
+      "module": "motion",
+      "name": "react",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ReactionDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 613,
+      "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
       "module": "motion",
@@ -25401,7 +25455,7 @@
       "publish": true
     },
     {
-      "id": 612,
+      "id": 614,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -25418,7 +25472,7 @@
       "publish": true
     },
     {
-      "id": 613,
+      "id": 615,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",

@@ -552,6 +552,9 @@ pub(super) fn run(
         Work::Quest(s) => e6::cook_story(s, p.stamp, true),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
+        Work::MotionAction(s) => {
+            anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
+        }
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),

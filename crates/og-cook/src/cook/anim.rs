@@ -59,6 +59,47 @@ pub fn cook_rig(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, Vec<String>), Cook
     ))
 }
 
+/// Validates an authored humanoid action and stores its text in a typed blob.
+pub fn cook_motion_action(
+    bytes: &[u8],
+    stamp: u64,
+    known: &dyn Fn(&str) -> bool,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let text = std::str::from_utf8(bytes)
+        .map_err(|_| CookError("a motion-action is UTF-8 text".into()))?;
+    let action = og_bundle::motion_action::MotionAction::parse(text).map_err(CookError)?;
+    for path in [&action.source, &action.rig]
+        .into_iter()
+        .filter(|p| !p.is_empty())
+    {
+        if !known(path) {
+            return Err(CookError(format!(
+                "motion-action asset '{path}' does not exist"
+            )));
+        }
+    }
+    let mut w = BlobWriter::new(
+        format::MotionAction::type_hash(),
+        format::MotionAction::schema_version(),
+        stamp,
+    );
+    w.table(
+        "meta",
+        &[format::MotionActionMeta {
+            text_bytes: bytes.len() as u32,
+        }],
+        format::row_hash::<format::MotionActionMeta>(),
+    )
+    .raw("text", bytes.to_vec(), 16);
+    Ok((
+        w.finish(),
+        vec![format!(
+            "motion-action: {} in {}",
+            action.clip, action.source
+        )],
+    ))
+}
+
 /// `animation { … }` import settings of a glTF.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnimSettings {

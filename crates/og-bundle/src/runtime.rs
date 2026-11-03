@@ -1310,6 +1310,22 @@ impl Bundle {
         og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
     }
 
+    /// The authored reaction and its head-local hand contact.
+    pub fn motion_action(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<crate::motion_action::MotionAction, LoadError> {
+        let blob = self.blob::<format::MotionAction>(id, bytes)?;
+        let meta = one::<format::MotionActionMeta>(&blob)?;
+        let text = blob
+            .raw("text")?
+            .get(..meta.text_bytes as usize)
+            .and_then(|t| std::str::from_utf8(t).ok())
+            .ok_or_else(|| invalid(&blob, "the motion-action text is cut short or not UTF-8"))?;
+        crate::motion_action::MotionAction::parse(text).map_err(|e| invalid(&blob, e))
+    }
+
     /// Decodes a lightmap blob (`og.Lightmap`): the lightmap text and its
     /// pages (RGBA f16 bits per page).
     pub fn lightmap(&self, id: &str, bytes: &[u8]) -> Result<CookedLightmap, LoadError> {

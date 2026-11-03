@@ -714,7 +714,14 @@ fn lean_bound(pose: Option<usize>) -> f32 {
     }
 }
 
-fn palette(r: &Ready, a: &Seen, s: &mut Shown, elapsed: f32) -> Option<Vec<Mat4>> {
+fn palette(
+    r: &Ready,
+    a: &Seen,
+    s: &mut Shown,
+    elapsed: f32,
+    goals: &Goals,
+    sys: &og_anim::AnimationSystem,
+) -> Option<Vec<Mat4>> {
     let (target, map) = s.target.as_ref()?;
     let prev = s.prev?;
     let next = s.next.unwrap_or(prev);
@@ -762,6 +769,11 @@ fn palette(r: &Ready, a: &Seen, s: &mut Shown, elapsed: f32) -> Option<Vec<Mat4>
     };
     let root = Trs::new(a.position, a.rotation, Vec3::splat(a.scale));
     s.planter.step(target, &mut pose.nodes, &root, &contacts);
+    if let Some(agent) = goals.agents.get(&a.entity) {
+        agent
+            .performance
+            .apply(sys, target, map, &root, &mut pose.nodes);
+    }
     let model = target.model_space(&pose.nodes);
     s.drawn_lean = map.node("hips").zip(map.node("head")).map(|(hips, head)| {
         lean_of(model[head as usize].translation - model[hips as usize].translation)
@@ -792,9 +804,46 @@ fn palette(r: &Ready, a: &Seen, s: &mut Shown, elapsed: f32) -> Option<Vec<Mat4>
     (!m.is_empty()).then_some(m)
 }
 
-/// Before a frame is drawn: the model loaded, goals given, batches run and
-/// each agent's palette made (`alpha`: the frame between the last two
-/// ticks, as `super::super::interpolate`).
+/// Compose authored performance on the animation pose during model startup.
+fn fallback(
+    eng: &Engine,
+    p: &mut Presenter,
+    agents: &[Seen],
+    goals: &Goals,
+    sys: Option<&og_anim::AnimationSystem>,
+) {
+    let Some(sys) = sys else {
+        return;
+    };
+    for a in agents {
+        if p.palettes.contains_key(&a.entity) {
+            continue;
+        }
+        let Some(agent) = goals.agents.get(&a.entity) else {
+            continue;
+        };
+        if !agent.performance.looking() && !agent.performance.reacting() {
+            continue;
+        }
+        let Ok((asset, map)) =
+            crate::anim::humanoid_of(eng, sys, a.skeleton, a.settings.rig, "agent")
+        else {
+            continue;
+        };
+        let Some(mut nodes) = sys.pose(og_ecs::Entity::from_bits(a.entity)) else {
+            continue;
+        };
+        let root = Trs::new(a.position, a.rotation, Vec3::splat(a.scale));
+        agent
+            .performance
+            .apply(sys, &asset, &map, &root, &mut nodes);
+        let mut palette = Vec::new();
+        asset.palette(a.skin, &nodes, &mut palette);
+        p.palettes.insert(a.entity, palette);
+    }
+}
+
+/// Before a frame is drawn: generated motion, then authored performance.
 pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
     let agents = seen(eng);
     let (tick, dt) = match eng.world() {
@@ -824,6 +873,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
     let elapsed = p.clock.map_or(0.0, |c| (now - c).clamp(0.0, 0.25)) as f32;
     p.clock = Some(now);
     let Model::Ready(r) = &mut p.model else {
+        fallback(eng, p, &agents, &goals, sys.as_ref());
         return;
     };
     let mut stats = (p.batches, p.last_batch);
@@ -980,13 +1030,16 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         if s.next.is_none() || s.phase >= 1.0 {
             s.phase = s.phase.min(1.0);
         }
-        if let Some(m) = palette(r, a, s, elapsed) {
+        if let Some(sys) = sys.as_ref()
+            && let Some(m) = palette(r, a, s, elapsed, &goals, sys)
+        {
             s.shown += 1;
             p.palettes.insert(a.entity, m);
         }
     }
     start_flight(r);
     (p.batches, p.last_batch) = stats;
+    fallback(eng, p, &agents, &goals, sys.as_ref());
 }
 
 /// og.motion.capabilities.
