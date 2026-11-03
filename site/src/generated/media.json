@@ -66,6 +66,34 @@
    "pending": "site-hero feature: Lantern Shrine loop, 4K and 1080p (studio-win)"
   }
  },
+ "hero-frostpeak-pass-poster": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Frostpeak Pass at t=0, 4K"
+  }
+ },
+ "hero-frostpeak-pass-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Frostpeak Pass loop, 4K and 1080p (studio-win)"
+  }
+ },
+ "hero-sunscar-oasis-poster": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Sunscar Oasis at t=0, 4K"
+  }
+ },
+ "hero-sunscar-oasis-film": {
+  "kind": "pending",
+  "status": "pending",
+  "from": {
+   "pending": "site-hero feature: Sunscar Oasis loop, 4K and 1080p (studio-win)"
+  }
+ },
  "loop-first": {
   "kind": "image",
   "width": 1024,

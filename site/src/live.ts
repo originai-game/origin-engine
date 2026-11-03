@@ -36,10 +36,13 @@ export interface HeroScene {
   film: SlotName;
 }
 
-/** site-hero's scenes in the order the hero shows them (the art director picks the third and fourth). */
+/** site-hero's scenes in rotation order, fixed with the art director. */
+const scene = (id: string, en: string, zh: string): HeroScene => ({ id, name: { en, zh }, poster: `hero-${id}-poster` as SlotName, film: `hero-${id}-film` as SlotName });
 export const heroScenes: HeroScene[] = [
-  { id: "skyreach-meadow", name: { en: "Skyreach Meadow", zh: "云端草甸" }, poster: "hero-skyreach-meadow-poster", film: "hero-skyreach-meadow-film" },
-  { id: "lantern-shrine", name: { en: "Lantern Shrine", zh: "灯笼神社" }, poster: "hero-lantern-shrine-poster", film: "hero-lantern-shrine-film" },
+  scene("skyreach-meadow", "Skyreach Meadow", "云端草甸"),
+  scene("lantern-shrine", "Lantern Shrine", "灯笼神社"),
+  scene("frostpeak-pass", "Frostpeak Pass", "霜峰山口"),
+  scene("sunscar-oasis", "Sunscar Oasis", "灼痕绿洲"),
 ];
 
 /** The stand-in, while site-hero is in production. */
@@ -48,5 +51,5 @@ const ocean: HeroScene = { id: "ocean", name: { en: "Open ocean", zh: "开阔海
 /** What the hero actually runs today. */
 export const heroRunning: HeroScene[] = heroInterim ? [ocean] : heroScenes;
 
-/** How long the hero holds each scene before it dissolves to the next. */
-export const HERO_DWELL_MS = 24_000;
+/** How long the hero holds each scene (one or two gust cycles) before the 1.2 s dissolve to the next. */
+export const HERO_DWELL_MS = 20_000;

@@ -69,6 +69,27 @@ export const media = {
     alt: { en: "Lantern Shrine, live in the engine", zh: "灯笼神社，引擎实时画面" },
   },
 
+  "hero-frostpeak-pass-poster": {
+    source: p("site-hero feature: Frostpeak Pass at t=0, 4K"),
+    status: "pending",
+    alt: { en: "A snowbound mountain pass at night under an aurora", zh: "极光下的雪夜山口" },
+  },
+  "hero-frostpeak-pass-film": {
+    source: p("site-hero feature: Frostpeak Pass loop, 4K and 1080p (studio-win)"),
+    status: "pending",
+    alt: { en: "Frostpeak Pass, live in the engine", zh: "霜峰山口，引擎实时画面" },
+  },
+  "hero-sunscar-oasis-poster": {
+    source: p("site-hero feature: Sunscar Oasis at t=0, 4K"),
+    status: "pending",
+    alt: { en: "An oasis in a desert canyon in the late-morning heat", zh: "午前烈日下峡谷中的绿洲" },
+  },
+  "hero-sunscar-oasis-film": {
+    source: p("site-hero feature: Sunscar Oasis loop, 4K and 1080p (studio-win)"),
+    status: "pending",
+    alt: { en: "Sunscar Oasis, live in the engine", zh: "灼痕绿洲，引擎实时画面" },
+  },
+
   // ── AI loop ───────────────────────────────────────────────────────────
   "loop-first": {
     source: r("tests/evidence/depth/probe-depth/first-frame.png"),
