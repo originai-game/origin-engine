@@ -75,7 +75,8 @@ export function rtsCommands(id: string, desc: Api.RtsCommandsDesc): Api.RtsComma
     }
   }
   // Back: cancels a targeting command first, then leaves a sub-page.
-  if (!r.command && kit.action("back")) {
+  // og.ui.back takes the press, so the game's own Back (leaving the screen) does not see it too; asked only with something to take.
+  if (!r.command && (targeting || sub) && kit.back()) {
     if (targeting) {
       out.cancelTarget = true;
       kit.feedback("back", -1);

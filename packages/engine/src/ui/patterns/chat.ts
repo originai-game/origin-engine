@@ -265,7 +265,7 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
         kit.feedback("confirm", -1);
       }
     });
-    if (hud && kit.action("back")) out.closed = true;
+    if (hud && kit.back()) out.closed = true;
   }
   kit.close();
   rememberRoom("ch", id);
