@@ -1,27 +1,37 @@
 type screen
 version 1
 ---
-# Photo mode (docs/ui.md Appendix B). The game frozen with the HUD hidden;
-# the camera's controls, the filters and frames in a side panel that hides
-# with one button, and Take photo; the gallery of shots taken.
+# Photo mode (docs/ui.md Appendix B). The game frozen under it with the
+# HUD hidden, the photo mode's controls over it, and the shots taken this
+# session at the top start.
 #
-# Viewmodel: panel (the panel shows, two-way), fov (two-way), shots (taken
-# this session). Events to code: take, hide (the click toggles panel),
-# reset, gallery, exit. Slots: Frame takes the chosen frame or the rule of
-# thirds over the picture (og.ui.artSlot, og.ui.shapeBox lines).
+# Slot Controls (the whole surface) takes og.ui.photoMode("Mode", desc),
+# over the game's own paused view, which it never draws: the panel with
+# its title, tabs and each tab's sliders (og.ui.valueSlider) or the
+# filters' and frames' tiles with the filter's strength, the shutter
+# between Grid, Hide UI, Reset and Exit, the rule of thirds and the chosen
+# frame's art over the picture, the hint while hidden and the shutter's
+# flash (a sheet at the foot on a phone in portrait). Its PhotoModeDesc:
+# tabs ({ key, label }), tab, controls ({ key, tab, label, value, min,
+# max, step, unit, digits, origin }), filters and frames ({ key, name,
+# image, tint }), filter, strength, frame, frameImage, grid, hidden,
+# flashMs and its words (title, captureLabel, hideLabel, gridLabel,
+# resetLabel, exitLabel, strengthLabel, hiddenHint). Its PhotoModeResult
+# (tab, set, filter, strength, frame, grid, hide, capture, reset, exit)
+# moves the camera and the look; capture takes the shot (og.render's
+# capture) and exit pops this screen.
 #
-# PATTERN PENDING (U6d): the photo mode pattern mounts in the slot Controls
-# (camera, lens, depth of field, filters, poses, stickers and frames by
-# tab). Until it lands, code fills Controls with og.ui.tabBar over
-# og.ui.valueSlider rows.
+# Viewmodel: hidden (the controls are hidden: the Gallery button too),
+# shots. Events to code: gallery (the shots taken), back (the Back action:
+# show the controls when hidden, else leave as Exit does; the layer leaves
+# Back to code).
 name "photo-mode"
 layer modal
 under none
 pause true
-back emit exit
+back emit back
 props {
-  panel bool "The side panel shows (two-way)."
-  fov number "The field of view, degrees (two-way)."
+  hidden bool "The controls are hidden (the pattern's hidden): the Gallery button hides with them."
   shots number "Photos taken this session."
 }
 actions {
@@ -29,12 +39,11 @@ actions {
   back "Exit"
   details "Hide"
 }
-fixture default "{\"panel\": true, \"fov\": 60, \"shots\": 3}"
+fixture default "{\"hidden\": false, \"shots\": 3}"
 stack Photo {
   width grow
   height grow
-  on action details set panel "!panel"
-  slot Frame {
+  slot Controls {
     width grow
     height grow
     position absolute
@@ -43,93 +52,20 @@ stack Photo {
     end 0
     bottom 0
   }
-  column Panel {
+  button Gallery {
+    text "Gallery ({shots})"
     position absolute
-    end 16
-    top 16
-    bottom 16
-    width grow 0 340
-    padding 12
-    gap 10
-    frame panel
-    visible bind panel
-    enter slideLeft 24 token enter
-    exit fade
-    at phonePortrait {
-      top 360
-      end 8
-      bottom 8
+    start 24
+    top 24
+    visible bind "!hidden && shots > 0"
+    on click emit gallery
+    at phone {
+      start 12
+      top 56
     }
-    label Title {
-      key "screen.photo-mode.title"
-      text "Photo mode"
-      step lg
-      heading true
-    }
-    row Fov {
-      width grow
-      gap 8
-      cross center
-      label Label {
-        key "screen.photo-mode.fov"
-        text "Field of view"
-        step caption
-      }
-      slider Value {
-        width grow
-        min 20
-        max 110
-        stepBy 1
-        value bind fov
-      }
-    }
-    scroll Scroll {
-      width grow
-      height grow
-      slot Controls {
-        width grow
-      }
-    }
-    row Actions {
-      width grow
-      gap 8
-      button Reset {
-        key "screen.photo-mode.reset"
-        text "Reset"
-        variant quiet
-        on click emit reset
-      }
-      button Gallery {
-        text "Gallery ({shots})"
-        variant quiet
-        on click emit gallery
-      }
-    }
-  }
-  row Bar {
-    position absolute
-    start 16
-    bottom 16
-    gap 8
-    button Take {
-      key "screen.photo-mode.take"
-      text "Take photo"
-      variant primary
-      size large
-      on click emit take
-      on action confirm emit take
-    }
-    button Hide {
-      key "screen.photo-mode.hide"
-      text "Hide"
-      on click set panel "!panel"
-      on click emit hide
-    }
-    button Exit {
-      key "screen.photo-mode.exit"
-      text "Exit"
-      variant quiet
-      on click emit exit
+    at phoneLandscape {
+      start 52
+      top 12
     }
   }
 }

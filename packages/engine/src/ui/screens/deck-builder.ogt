@@ -1,38 +1,41 @@
 type screen
 version 1
 ---
-# Deck builder and collection (docs/ui.md Appendix B). The collection's
-# cards with search and filters (cost, kind, tier, owned), the deck being
-# built beside it with its count and cost curve, and Save; on a phone the
-# deck is a sheet over the collection.
+# Deck builder and collection (docs/ui.md Appendix B). Back, the title,
+# Rename and Clear at the head; under them the deck builder fills the
+# screen.
 #
-# Viewmodel: deck (its name, two-way), count, size, query, filters,
-# filter, valid. Events to code: search (the field wrote query), filter
-# (the click wrote filter), save, clear (Back pops it). Slots: Curve takes the
-# deck's cost curve (og.ui.chart, bars).
+# Slot Builder takes og.ui.deckBuilder("Builder", desc): the filters
+# (cost, tier and kind chips, the search, the sort), the collection's grid
+# (unowned cards dimmed, the hovered one large), and the deck beside it
+# with its name, art and count, its rows by cost, the mana curve, the
+# kinds' counts and Done (on a phone in portrait the two halves are tabs).
+# Its DeckBuilderDesc: cards ({ key, name, cost, typeLine, kind, text,
+# image, rarity, owned, count, limit }), deckName, deckImage, deckSize,
+# copyLimit, the filters' state (costFilter, rarityFilter, kindFilter,
+# search, sort, view), their lists (rarities, kinds, sorts) and its words
+# (allLabel, searchLabel, sortLabel, collectionLabel, deckLabel,
+# curveLabel, kindsLabel, doneLabel, fullLabel, limitLabel, unownedLabel,
+# emptyLabel); its title is the document's, so pass it empty. Its
+# DeckBuilderResult (add, remove, refused, the filters' changes, view,
+# done) is the game's to apply; done saves the deck and pops this screen.
 #
-# PATTERN PENDING (U6d): the deck builder pattern mounts in the slot
-# Builder (the collection grid, the deck list, drag between them, counts
-# and copies). Until it lands, code fills Builder with og.ui.dataGrid for
-# the collection and og.ui.dataList for the deck.
+# Viewmodel: dirty (unsaved changes). Events to code: rename (code asks
+# for the name: og.ui.dialog over og.ui.inputField), clear, back (the Back
+# button and the Back action: code asks before dropping unsaved changes,
+# og.ui.confirm, then og.ui.pop).
 name "deck-builder"
 layer menu
-focus "Body/Builder"
+back emit back
+focus "Builder"
 props {
-  deck string "The deck's name (two-way)."
-  count number "Cards in the deck."
-  size number "The deck's size (count must reach it)."
-  query string "The search's text (two-way)."
-  filters list "The filters: { name }."
-  filter number "The selected filter's index."
-  valid bool "The deck can be saved."
+  dirty bool "The deck has unsaved changes."
 }
 actions {
   confirm "Add"
   back "Back"
-  details "Inspect"
 }
-fixture default "{\"deck\": \"Ember aggro\", \"count\": 24, \"size\": 30, \"query\": \"\", \"filters\": [{\"name\": \"All\"}, {\"name\": \"Units\"}, {\"name\": \"Spells\"}, {\"name\": \"Owned\"}], \"filter\": 0, \"valid\": false}"
+fixture default "{\"dirty\": true}"
 column Screen {
   width grow
   height grow
@@ -50,88 +53,47 @@ column Screen {
       key "screen.common.back"
       text "Back"
       variant quiet
-      on click pop
+      on click emit back
     }
-    field Name {
-      width grow 160 360
-      input bind deck
-      placeholder "Deck name"
-      maxChars 32
+    label Title {
+      key "screen.deck-builder.title"
+      text "Deck builder"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    badge Unsaved {
+      key "screen.deck-builder.unsaved"
+      text "Unsaved"
+      tone warn
+      visible bind dirty
     }
     spacer
-    label Count {
-      text "{count}/{size}"
-      step lg
-      state full bind "count >= size" {
-        short {
-          ink token warn
-        }
-        full {
-          ink token success
-        }
+    button Rename {
+      key "screen.deck-builder.rename"
+      text "Rename"
+      variant quiet
+      size small
+      at phone {
+        size medium
       }
+      on click emit rename
     }
-  }
-  row Tools {
-    width grow
-    gap 8
-    cross center
-    wrap true
-    field Search {
-      width grow 160 320
-      input bind query
-      placeholder "Search cards"
-      on changed emit search
-    }
-    for f in filters {
-      button Filter {
-        text bind f.name
-        variant ghost
-        size small
-        at phone {
-          size medium
-        }
-        on click set filter "$index"
-        on click emit filter
-        state selection bind "$index == filter" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
-        }
-      }
-    }
-  }
-  column Body {
-    width grow
-    height grow
-    gap 12
-    slot Builder {
-      width grow
-      height grow
-    }
-    slot Curve {
-      width grow
-    }
-  }
-  row Footer {
-    width grow
-    gap 8
-    align end
     button Clear {
       key "screen.deck-builder.clear"
       text "Clear"
       variant quiet
+      size small
+      at phone {
+        size medium
+      }
       on click emit clear
     }
-    button Save {
-      key "screen.common.save"
-      text "Save"
-      variant primary
-      disabled bind "!valid"
-      on click emit save
-    }
+  }
+  slot Builder {
+    width grow
+    height grow
   }
 }

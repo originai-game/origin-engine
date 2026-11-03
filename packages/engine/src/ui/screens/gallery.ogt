@@ -2,201 +2,200 @@ type screen
 version 1
 ---
 # Gallery (docs/ui.md Appendix B: backlog, gallery, route flowchart). The
-# event CGs, music and endings unlocked, by tab, each a thumbnail (locked
-# ones a silhouette with a hint), the count found, and the full view of
-# the selected one.
+# event CGs, the music and the endings unlocked, by tab: the CGs are the
+# CG gallery, the music and endings the document's own grid, each a
+# thumbnail (locked ones dimmed with a hint) and the count found.
 #
-# Viewmodel: tab, items, found, total, viewing (the full view is open).
-# Events to code: tab (the click wrote tab), open (the click wrote
-# selected: code fills Viewer and sets viewing), close (Back pops it).
+# Slot Gallery (the Scenes tab) takes og.ui.cgGallery("Cg", desc): its
+# chapters as tabs (the tab actions step them) with the count seen, the
+# 16:9 tiles in whole rows (locked ones veiled with their hint, New on the
+# fresh), and the viewer over its whole box with the versions' pips,
+# previous, next and Close. Its CgGalleryDesc: chapters ({ key, label }),
+# chapter, entries ({ key, title, chapter, image, variants, locked, hint,
+# fresh }), viewing (the key shown, empty: the grid), variant, and its
+# words (countLabel, lockedLabel, newLabel, closeLabel, prevLabel,
+# nextLabel); its title is the document's, so pass it empty. Its
+# CgGalleryResult (chapter, open, refused, close, step, variant) moves
+# the game's state; set `viewing` here while a picture is open, so the
+# head gives the viewer the screen.
 #
-# PATTERN PENDING (U6d): the gallery pattern mounts in the slot Viewer (the
-# full view with its variants, zoom and the next and previous). Until it
-# lands, code fills Viewer with og.ui.artSlot of the selected CG.
+# Viewmodel: tab, items (the music or endings), found, total, viewing.
+# Events to code: open (a music or ending item; the click wrote selected),
+# back (the Back button and the Back action: close an open picture first,
+# else og.ui.pop; the layer leaves Back to code).
 name "gallery"
 layer menu
-focus "Body/Grid"
+back emit back
+focus "Gallery"
 props {
   tab string "cg, music or endings."
   items list "The tab's items: { name, unlocked (bool), hint, texture }."
   selected number "The selected item's index."
-  found number "Items unlocked in the tab."
-  total number "Items in the tab."
-  viewing bool "The full view is open."
+  found number "Music or endings unlocked (the CG gallery counts its own)."
+  total number "Music or endings in the tab."
+  viewing bool "A CG is open in the gallery's viewer: the head and tabs hide."
 }
 actions {
   confirm "View"
   back "Back"
-  tabNext "Next tab"
-  tabPrev "Previous tab"
+  tabNext "Next chapter"
+  tabPrev "Previous chapter"
 }
 fixture default "{\"tab\": \"cg\", \"items\": [{\"name\": \"First meeting\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"The festival\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"???\", \"unlocked\": false, \"hint\": \"Chapter 4\", \"texture\": 0}], \"selected\": 0, \"found\": 2, \"total\": 24, \"viewing\": false}"
-stack Gallery {
+column Screen {
   width grow
   height grow
-  column Screen {
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
     width grow
-    height grow
-    padding 32
     gap 12
-    at phone {
-      padding 16
+    cross center
+    wrap true
+    visible bind "!viewing"
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click emit back
     }
-    row Header {
-      width grow
-      gap 12
-      cross center
-      wrap true
-      button Back {
-        key "screen.common.back"
-        text "Back"
-        variant quiet
-        on click pop
-      }
-      label Title {
-        key "screen.gallery.title"
-        text "Gallery"
-        step xl2
-        heading true
-        at phone {
-          step xl
-        }
-      }
-      spacer
-      label Found {
-        text "{found}/{total}"
-        color token inkMuted
+    label Title {
+      key "screen.gallery.title"
+      text "Gallery"
+      step xl2
+      heading true
+      at phone {
+        step xl
       }
     }
-    row Tabs {
-      gap 6
-      button Cg {
-        key "screen.gallery.cg"
-        text "Scenes"
-        variant ghost
-        on click set tab "\"cg\""
-        state selection bind "tab == \"cg\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
+    spacer
+    label Found {
+      text "{found}/{total}"
+      color token inkMuted
+      visible bind "tab != \"cg\""
+    }
+  }
+  row Tabs {
+    visible bind "!viewing"
+    gap 6
+    wrap true
+    button Cg {
+      key "screen.gallery.cg"
+      text "Scenes"
+      variant ghost
+      on click set tab "\"cg\""
+      state selection bind "tab == \"cg\"" {
+        off {
+          opacity 0.7
         }
-      }
-      button Music {
-        key "screen.gallery.music"
-        text "Music"
-        variant ghost
-        on click set tab "\"music\""
-        state selection bind "tab == \"music\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
-        }
-      }
-      button Endings {
-        key "screen.gallery.endings"
-        text "Endings"
-        variant ghost
-        on click set tab "\"endings\""
-        state selection bind "tab == \"endings\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
+        on {
+          opacity 1
         }
       }
     }
-    scroll Body {
-      width grow
-      height grow
-      grid Grid {
-        width grow
-        gap 12
-        columns "1fr" "1fr" "1fr" "1fr"
-        focusGroup wrap
-        at tablet {
-          columns "1fr" "1fr" "1fr"
+    button Music {
+      key "screen.gallery.music"
+      text "Music"
+      variant ghost
+      on click set tab "\"music\""
+      state selection bind "tab == \"music\"" {
+        off {
+          opacity 0.7
         }
-        at phonePortrait {
-          columns "1fr" "1fr"
-          gap 8
+        on {
+          opacity 1
         }
-        for it in items {
-          column Item {
-            width grow
-            gap 4
-            interactive true
-            focusable true
-            on click set selected "$index"
-            on click emit open
-            art Thumb {
-              kind eventCg
-              width grow
-              texture bind it.texture
-            }
-            label Name {
-              text bind it.name
-              step caption
-              maxLines 1
-              ellipsis true
-            }
-            label Hint {
-              text bind it.hint
-              step caption
-              color token inkMuted
-              visible bind "!it.unlocked"
-            }
-            state lock bind it.unlocked {
-              locked {
-                opacity 0.45
-              }
-              open {
-                opacity 1
-              }
-            }
-            state interaction {
-              normal {
-                scale 1
-              }
-              hover {
-                scale 1.02
-              }
-              pressed {
-                scale 0.98
-              }
-              focused {
-                scale 1.02
-              }
-              transition any any token ui
-            }
-          }
+      }
+    }
+    button Endings {
+      key "screen.gallery.endings"
+      text "Endings"
+      variant ghost
+      on click set tab "\"endings\""
+      state selection bind "tab == \"endings\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
         }
       }
     }
   }
-  column Full {
+  slot Gallery {
     width grow
     height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
-    background token scrim
-    visible bind viewing
-    interactive true
-    on click set viewing "false"
-    on click emit close
-    slot Viewer {
+    visible bind "tab == \"cg\""
+  }
+  scroll Body {
+    width grow
+    height grow
+    visible bind "tab != \"cg\""
+    grid Grid {
       width grow
-      height grow
+      gap 12
+      columns "1fr" "1fr" "1fr" "1fr"
+      focusGroup wrap
+      at tablet {
+        columns "1fr" "1fr" "1fr"
+      }
+      at phonePortrait {
+        columns "1fr" "1fr"
+        gap 8
+      }
+      for it in items {
+        column Item {
+          width grow
+          gap 4
+          interactive true
+          focusable true
+          on click set selected "$index"
+          on click emit open
+          art Thumb {
+            kind eventCg
+            width grow
+            texture bind it.texture
+          }
+          label Name {
+            text bind it.name
+            step caption
+            maxLines 1
+            ellipsis true
+          }
+          label Hint {
+            text bind it.hint
+            step caption
+            color token inkMuted
+            visible bind "!it.unlocked"
+          }
+          state lock bind it.unlocked {
+            locked {
+              opacity 0.45
+            }
+            open {
+              opacity 1
+            }
+          }
+          state interaction {
+            normal {
+              scale 1
+            }
+            hover {
+              scale 1.02
+            }
+            pressed {
+              scale 0.98
+            }
+            focused {
+              scale 1.02
+            }
+            transition any any token ui
+          }
+        }
+      }
     }
   }
 }

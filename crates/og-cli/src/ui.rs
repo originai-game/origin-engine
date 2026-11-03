@@ -23,8 +23,7 @@
 //! it as its own file. It refuses to overwrite one already there without
 //! `--force`; an unknown name exits 1 with the closest names. `og ui eject
 //! --list [project]` prints every screen with its Appendix B row, read from
-//! the table of that directory's README.md, marking those that leave a slot
-//! for a pattern still to come. The package is the one og run uses
+//! the table of that directory's README.md. The package is the one og run uses
 //! (`OG_ENGINE_PACKAGE`, the project's installed @origingame/engine, or a
 //! checkout's packages/engine).
 //!
@@ -336,17 +335,15 @@ fn slots(args: &[&str]) -> ExitCode {
 /// Where the library's screen documents sit in the engine package.
 const SCREENS_DIR: &str = "src/ui/screens";
 
-/// One library screen: its name (the file's stem), its Appendix B row, and
-/// whether it leaves a slot for a pattern still to come.
+/// One library screen: its name (the file's stem) and its Appendix B row.
 #[derive(Debug, PartialEq)]
 struct LibScreen {
     name: String,
     row: String,
-    pending: bool,
 }
 
 /// The library's screens in the order of the README's table
-/// (`| <Appendix B row> | `a`, `b` | <the pending pattern of `a`> |`).
+/// (`| <Appendix B row> | `a`, `b` |`).
 fn lib_screens(dir: &Path) -> Result<Vec<LibScreen>, String> {
     let readme = dir.join("README.md");
     let text = std::fs::read_to_string(&readme)
@@ -362,17 +359,9 @@ fn lib_screens(dir: &Path) -> Result<Vec<LibScreen>, String> {
         let (Some(row), Some(docs)) = (cells.get(1), cells.get(2)) else {
             continue;
         };
-        let pending: Vec<&str> = cells
-            .get(3)
-            .map_or("", |c| c)
-            .split('`')
-            .skip(1)
-            .step_by(2)
-            .collect();
         for d in docs.split(',') {
             let name = d.trim().trim_matches('`').to_string();
             out.push(LibScreen {
-                pending: pending.contains(&name.as_str()),
                 name,
                 row: (*row).to_string(),
             });
@@ -507,8 +496,7 @@ fn eject(args: &[&str]) -> ExitCode {
         return match lib_screens(&dir) {
             Ok(screens) => {
                 for s in &screens {
-                    let pending = if s.pending { "  (pattern pending)" } else { "" };
-                    println!("{:<20} {}{pending}", s.name, s.row);
+                    println!("{:<20} {}", s.name, s.row);
                 }
                 ExitCode::SUCCESS
             }
@@ -619,14 +607,17 @@ mod tests {
         assert_eq!(names, files);
         let pause = screens.iter().find(|s| s.name == "pause").unwrap();
         assert_eq!(pause.row, "Pause and system menu");
-        assert!(!pause.pending);
-        let garage = screens.iter().find(|s| s.name == "garage").unwrap();
-        assert_eq!(garage.row, "Garage, tuning, livery editor");
-        assert!(garage.pending);
-        let backlog = screens.iter().find(|s| s.name == "backlog").unwrap();
-        assert!(
-            !backlog.pending,
-            "the row's gallery and flowchart are pending, not its backlog"
+        let rows = |row: &str| -> Vec<&str> {
+            screens
+                .iter()
+                .filter(|s| s.row == row)
+                .map(|s| s.name.as_str())
+                .collect()
+        };
+        assert_eq!(rows("Garage, tuning, livery editor"), ["garage"]);
+        assert_eq!(
+            rows("Backlog, gallery, route flowchart"),
+            ["backlog", "gallery", "flowchart"]
         );
     }
 

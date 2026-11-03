@@ -1,19 +1,27 @@
 type screen
 version 1
 ---
-# Character, loadout, paperdoll and stats (docs/ui.md Appendix B). Tabs
-# for Equipment and Loadout over the character's paperdoll and stats,
-# with the hovered item's comparison at the end side.
+# Character, loadout, paperdoll and stats (docs/ui.md Appendix B). The
+# character's name, level and headline stats at the head, Equipment and
+# Loadout tabs under it: the paperdoll with the hovered item's comparison
+# beside it, or the loadout filling the page.
 #
 # Viewmodel: name, level, className, tab, stats. Events to code: tab (the
-# click wrote tab) (Back pops it). Slots: Paperdoll takes og.ui.paperdoll (the
-# figure, the equipment slots and the stats with deltas; its own figure
-# slot takes a sceneViewport turntable); Compare takes og.ui.statCompare
-# or og.ui.tooltipCard for the item under the pointer or the focus.
-#
-# PATTERN PENDING (U6d): the loadout pattern mounts in the slot Loadout
-# (weapon sets, ability and perk slots, saved presets). Until it lands,
-# code fills Loadout from og.ui.abilityBar and og.ui.card.
+# click wrote tab); Back pops it. Slots: Paperdoll takes og.ui.paperdoll
+# (the figure, the equipment slots and the stats with deltas; its own
+# figure slot takes a sceneViewport turntable); Compare takes
+# og.ui.statCompare or og.ui.tooltipCard for the item under the pointer or
+# the focus. Loadout takes og.ui.loadout("Loadout", desc) with its title
+# empty (the head above names the character): its LoadoutDesc is loadouts
+# (the saved sets' names, its tabs), loadout, balance and currencyImage,
+# slots ({ key, label, name, detail, image, rarity, locked }), slot, the
+# selected item (image, aspect, name, subtitle, rarity, rarityWord,
+# description), attachments ({ key, label, name, image, rarity,
+# rarityLabel, x, y }), attachment, capacity, stats ({ key, label, value,
+# delta, max }) and its words
+# (statsLabel, attachmentsLabel, emptyLabel, removeLabel, lockedLabel);
+# its LoadoutResult (loadout, slot, attachment, remove, refused) is the
+# game's to apply.
 name "character"
 layer menu
 focus "Tabs/Equipment"
@@ -119,29 +127,33 @@ column Screen {
       }
     }
   }
-  grid Body {
+  column Body {
     width grow
     height grow
-    gap 24
-    columns "2fr" "1fr"
-    rows "1fr"
-    at phonePortrait {
-      columns "1fr"
-      rows "1fr" auto
-      gap 12
-    }
-    slot Paperdoll {
+    grid Equipment {
       width grow
       height grow
+      gap 24
+      columns "2fr" "1fr"
+      rows "1fr"
       visible bind "tab == \"equipment\""
+      at phonePortrait {
+        columns "1fr"
+        rows "1fr" auto
+        gap 12
+      }
+      slot Paperdoll {
+        width grow
+        height grow
+      }
+      slot Compare {
+        width grow
+      }
     }
     slot Loadout {
       width grow
       height grow
       visible bind "tab == \"loadout\""
-    }
-    slot Compare {
-      width grow
     }
   }
 }

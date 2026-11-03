@@ -67,8 +67,8 @@ fn a_document_off_the_schema_is_refused_with_its_line() {
 /// The library's screen documents (packages/engine/src/ui/screens, docs/ui.md
 /// §11): every one cooks under the name its file gives, its art slots are
 /// specs the art brief takes, and the README's table names one document or
-/// more for every row of docs/ui.md Appendix B, in its order; its third column
-/// names exactly the documents that leave a slot for a pattern to come.
+/// more for every row of docs/ui.md Appendix B, in its order; no document is
+/// left with a slot waiting for a pattern.
 #[test]
 fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -86,8 +86,8 @@ fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
         .collect();
     assert_eq!(appendix.len(), 47, "Appendix B's rows");
     let readme = std::fs::read_to_string(dir.join("README.md")).unwrap();
-    // | row | `doc`, `doc` | the pending pattern of `doc` … |
-    let table: Vec<(String, Vec<String>, Vec<String>)> = readme
+    // | row | `doc`, `doc` |
+    let table: Vec<(String, Vec<String>)> = readme
         .lines()
         .skip_while(|l| !l.starts_with("|---"))
         .skip(1)
@@ -98,16 +98,10 @@ fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
                 .split(',')
                 .map(|d| d.trim().trim_matches('`').to_string())
                 .collect();
-            let pending = cells[3]
-                .split('`')
-                .skip(1)
-                .step_by(2)
-                .map(str::to_string)
-                .collect();
-            (cells[1].to_string(), docs, pending)
+            (cells[1].to_string(), docs)
         })
         .collect();
-    let rows: Vec<&String> = table.iter().map(|(r, _, _)| r).collect();
+    let rows: Vec<&String> = table.iter().map(|(r, _)| r).collect();
     assert_eq!(
         rows,
         appendix.iter().collect::<Vec<_>>(),
@@ -121,7 +115,7 @@ fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
         })
         .collect();
     files.sort();
-    let mut named: Vec<String> = table.iter().flat_map(|(_, d, _)| d.clone()).collect();
+    let mut named: Vec<String> = table.iter().flat_map(|(_, d)| d.clone()).collect();
     named.sort();
     assert_eq!(
         named, files,
@@ -169,11 +163,9 @@ fn the_library_screens_cook_and_cover_every_screen_of_appendix_b() {
             let problems = s.spec.validate();
             assert!(problems.is_empty(), "{id}:{}: {problems:?}", s.line);
         }
-        let pending = table.iter().any(|(_, _, p)| p.iter().any(|d| d == stem));
-        assert_eq!(
-            text.contains("PATTERN PENDING"),
-            pending,
-            "{id}: a document with a PATTERN PENDING slot is the one the table marks pending"
+        assert!(
+            !text.contains("PATTERN PENDING"),
+            "{id}: every slot names the og.ui component or pattern that fills it"
         );
     }
 }
