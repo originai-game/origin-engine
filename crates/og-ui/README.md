@@ -426,7 +426,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `pivot` | x y | all | The transform's origin, fractions of its box. |
 | `opacity` | number | all | 0 to 1, multiplied down the tree. |
 | `z` | number | all | Drawing order among its siblings. |
-| `position` | flow \| absolute \| anchored | all | In the flow, placed by its insets, or against another element. |
+| `position` | flow \| absolute \| screen \| anchored | all | In the flow, placed by its insets in its parent, by its insets on the whole screen (full bleed, under the safe area), or against another element. |
 | `start` | number | all | The inset from its parent's start edge (absolute). |
 | `top` | number | all | The inset from the top. |
 | `end` | number | all | The inset from the end edge. |

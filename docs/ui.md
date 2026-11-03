@@ -306,8 +306,11 @@ backdrop starts a new pass only for its region. Budgets in §15.
 - **Box**: size (`fit`, `grow`, `fixed`, `percent`, `aspect`, min and max),
   padding, margin, gap.
 - **Position**: in flow, or `absolute` with insets relative to the parent
-  (left, top, right, bottom, centre), or anchored (the nine anchors of the
-  safe area, an entity in the world §14, or another element's rectangle).
+  (left, top, right, bottom, centre), or `screen` with insets relative to
+  the whole surface (full bleed: a screen's art or backdrop under the notch
+  and the home bar, while its layer keeps the content in the safe area), or
+  anchored (the nine anchors of the safe area, an entity in the world §14,
+  or another element's rectangle).
 - **Transform**: translate, scale x and y, rotation, skew, and a pivot.
   Transforms apply after layout and are honoured by hit tests, the probe
   and the accessibility tree's bounds.

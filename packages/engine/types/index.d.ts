@@ -39770,9 +39770,10 @@ export type LayoutMode = "flex" | "stack" | "grid";
  * How an element is placed.
  * - `"flow"`: In its parent's flow (the default).
  * - `"absolute"`: Out of the flow, placed by its insets inside its parent's padding box.
+ * - `"screen"`: Out of the flow, placed by its insets in the whole surface rather than its parent's box: under the notch, the status bar and the home bar. A screen document's full-bleed art or backdrop, whose layer keeps its content in the safe area.
  * - `"anchored"`: Out of the flow, its anchorSelf point on the anchorAt point of the element at anchorTo, moved by its start and top insets.
  */
-export type Position = "flow" | "absolute" | "anchored";
+export type Position = "flow" | "absolute" | "screen" | "anchored";
 
 /**
  * Which way auto-placed items fill a grid.

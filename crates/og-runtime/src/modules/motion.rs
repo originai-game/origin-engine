@@ -303,6 +303,7 @@ pub(crate) fn props(d: &Value) -> Props {
         z: d["z"].as_i64().map_or(0, |n| n as i32),
         position: match d["position"].as_str() {
             Some("absolute") => Position::Absolute,
+            Some("screen") => Position::Screen,
             Some("anchored") => Position::Anchored,
             _ => Position::Flow,
         },

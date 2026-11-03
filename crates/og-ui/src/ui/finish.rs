@@ -253,6 +253,31 @@ impl Ui {
                 &mut self.kept,
             );
         }
+        // Elements placed on the screen (Position::Screen): laid out again in
+        // the whole surface, under the safe area their layer keeps clear,
+        // and clipped by nothing but the surface.
+        let mut placed_order = preorder(&self.nodes, 0);
+        for &f in &self.floating {
+            placed_order.extend(preorder(&self.nodes, f));
+        }
+        for i in placed_order {
+            if self.nodes[i].props.position != crate::element::Position::Screen {
+                continue;
+            }
+            let r = crate::layout::on_screen(&self.nodes[i], &screen);
+            self.nodes[i].el.width = Size::Fixed(r.width);
+            self.nodes[i].el.height = Size::Fixed(r.height);
+            layout(
+                &mut self.nodes,
+                i,
+                r,
+                &mut measure,
+                &offset,
+                dpr,
+                screen,
+                &mut self.kept,
+            );
+        }
         self.texts.sweep();
 
         let mut order = preorder(&self.nodes, 0);

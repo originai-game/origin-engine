@@ -219,3 +219,87 @@ fn nested_rows_and_columns_lay_out_as_the_golden() {
         out_dir().join("layout.json").display()
     );
 }
+
+/// A screen document's full-bleed art (Position::Screen) stands on the
+/// whole surface, under the safe area its layer keeps clear; an absolute
+/// sibling stays in its parent's box; a fixed one sits by its end and
+/// bottom insets on the surface's corner.
+#[test]
+fn a_screen_placed_element_bleeds_under_the_safe_area() {
+    let mut ui = Ui::new(UiDesc::default());
+    let viewport = Viewport {
+        width: 390.0,
+        height: 844.0,
+        dpr: 1.0,
+        safe_area: Insets {
+            left: 0.0,
+            top: 47.0,
+            right: 0.0,
+            bottom: 34.0,
+        },
+        ..Viewport::default()
+    };
+    let at = |p: Position, ins: Edges, w: Size, h: Size| {
+        (
+            Element {
+                width: w,
+                height: h,
+                ..Element::default()
+            },
+            Props {
+                position: p,
+                insets: ins,
+                ..Props::default()
+            },
+        )
+    };
+    let all = Edges {
+        start: Some(0.0),
+        top: Some(0.0),
+        end: Some(0.0),
+        bottom: Some(0.0),
+        ..Edges::default()
+    };
+    ui.begin(InputFrame::default(), viewport);
+    ui.column(
+        "Loading",
+        Element {
+            width: Size::grow(),
+            height: Size::grow(),
+            ..Element::default()
+        },
+        |ui| {
+            for (id, (el, props)) in [
+                ("Art", at(Position::Screen, all, Size::grow(), Size::grow())),
+                (
+                    "Scrim",
+                    at(Position::Absolute, all, Size::grow(), Size::grow()),
+                ),
+                (
+                    "Corner",
+                    at(
+                        Position::Screen,
+                        Edges {
+                            end: Some(0.0),
+                            bottom: Some(0.0),
+                            ..Edges::default()
+                        },
+                        Size::Fixed(50.0),
+                        Size::Fixed(20.0),
+                    ),
+                ),
+            ] {
+                ui.open_with(id, el, props);
+                ui.close();
+            }
+        },
+    );
+    ui.end();
+    let r = |p: &str| {
+        let e = ui.frame().element(p).expect(p);
+        (e.x, e.y, e.width, e.height)
+    };
+    assert_eq!(r("Loading/Art"), (0.0, 0.0, 390.0, 844.0));
+    assert_eq!(r("Loading/Scrim"), (0.0, 47.0, 390.0, 763.0));
+    assert_eq!(r("Loading/Corner"), (340.0, 824.0, 50.0, 20.0));
+}

@@ -422,6 +422,7 @@ impl Ui {
         }
         p.position = match r.str("position") {
             Some("absolute") => Position::Absolute,
+            Some("screen") => Position::Screen,
             Some("anchored") => Position::Anchored,
             _ => Position::Flow,
         };

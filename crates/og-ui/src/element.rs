@@ -277,6 +277,10 @@ pub enum Position {
     Flow,
     /// Out of the flow, placed by its [`Edges`] inside its parent's box.
     Absolute,
+    /// Out of the flow, placed by its [`Edges`] in the whole surface, not its
+    /// parent's box: under the notch, the status bar and the home bar
+    /// (a screen's full-bleed art or backdrop inside a safe-area layer).
+    Screen,
     /// Out of the flow, placed against another element's rectangle
     /// ([`Props::anchor_to`]), its own `anchor_self` point on the target's
     /// `anchor_at` point, moved by the start and top insets.

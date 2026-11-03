@@ -749,6 +749,16 @@ pub(super) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
     }
 }
 
+/// Where an out-of-flow element placed on the screen ([`Position::Screen`])
+/// stands: its size and place by its insets in the whole surface `screen`.
+pub(crate) fn on_screen(n: &Node, screen: &Rect) -> Rect {
+    let ins = &n.props.insets;
+    let w = out_size(n.el.width, n.pref_w, screen.width, ins.start, ins.end);
+    let h = out_size(n.el.height, n.pref_h, screen.height, ins.top, ins.bottom);
+    let (x, y) = place_in(screen, w, h, ins, Align::Start, Cross::Start);
+    Rect::new(x, y, w, h)
+}
+
 /// Where a `w`×`h` box sits in `bx`: by its insets where they are set,
 /// else by `align` across and `cross` down.
 fn place_in(bx: &Rect, w: f32, h: f32, ins: &Edges, align: Align, cross: Cross) -> (f32, f32) {

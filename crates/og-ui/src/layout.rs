@@ -25,6 +25,7 @@ pub(crate) use cache::{
     LayoutCache, Measure, Metrics, TextCache, content_layout_eq, draw_eq, el_layout_eq, layout,
     props_layout_eq,
 };
+pub(crate) use flex::on_screen;
 use flex::*;
 pub(crate) use grid::GridLayout;
 use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
