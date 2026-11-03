@@ -427,3 +427,16 @@ Baked probe files from `og bake probes` hold their sky at full radiance;
 re-bake them for scenes with an environment intensity other than 1.
 What's left at the box's face is its 1 m blend distance (the default),
 about 4 rows at that grazing angle. That's the scene's setting.
+
+### Third fix-forward: the mirror scenes run the clock
+
+After c84208366, `a_realtime_light_volume_relights_a_mirror_s_reflection`
+still gained exactly [0, 0, 0]. The light-volume scenes drew 48 frames
+at tick 0. A realtime ReflectionProbe captures every `interval` ticks
+(8), so it captured once, at frame 0, before the light volume's first
+sweep (which runs per frame) had lit anything, and kept that capture.
+With and without the volume, the mirror showed the same capture. The
+mirror, glossy and rough scenes now advance the tick each frame
+(`fx::tick_update`), as a running game does. The probe recaptures at
+ticks 8 to 40 and sees the lit volume. The room scene has no probe and
+is unchanged.

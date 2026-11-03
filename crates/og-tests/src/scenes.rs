@@ -749,6 +749,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "light-volume-mirror" => |g, _| {
             g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.3));
             g.frames = 48;
+            // The clock runs, as in a game: the realtime probe captures
+            // every 8 ticks, so it sees the light volume once it is lit
+            // (at tick 0 alone it keeps its first, unlit capture).
+            g.update = Some(fx::tick_update);
             Ok(())
         },
         // The same sphere rough (0.4 and 0.7): the probe's capture blurred
@@ -757,11 +761,19 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "light-volume-glossy" => |g, _| {
             g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.4));
             g.frames = 48;
+            // The clock runs, as in a game: the realtime probe captures
+            // every 8 ticks, so it sees the light volume once it is lit
+            // (at tick 0 alone it keeps its first, unlit capture).
+            g.update = Some(fx::tick_update);
             Ok(())
         },
         "light-volume-rough" => |g, _| {
             g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), Some(0.7));
             g.frames = 48;
+            // The clock runs, as in a game: the realtime probe captures
+            // every 8 ticks, so it sees the light volume once it is lit
+            // (at tick 0 alone it keeps its first, unlit capture).
+            g.update = Some(fx::tick_update);
             Ok(())
         },
         "dof-low" => |g, _| {
