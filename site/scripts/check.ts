@@ -9,7 +9,7 @@
 // is labelled on the page and carries a basis (data/benchmarks.json).
 import bench from "../src/data/benchmarks.json";
 import index from "../src/generated/media.json";
-import { live } from "../src/live.ts";
+import { HERO_SCENE, heroInterim, live } from "../src/live.ts";
 import { UI_STATUS } from "../src/ui-grid.ts";
 
 const final = process.argv.includes("--final");
@@ -19,7 +19,8 @@ const allowed: string[] = [];
 for (const [slot, r] of Object.entries(index as Record<string, { status: string; from: { pending?: string } }>))
   if (r.status !== "final") block.push(`media ${slot}: ${r.status}${r.from.pending ? ` (${r.from.pending})` : ""}`);
 if (UI_STATUS !== "final") block.push("ui grid: interim (og-ui reference frames until U8's showcases)");
-for (const [name, path] of Object.entries(live)) if (!path) block.push(`live ${name}: not built yet`);
+for (const [name, l] of Object.entries(live)) if (!l.path) block.push(`live ${name}: ${l.scene} not built yet`);
+if (heroInterim) block.push(`live hero: interim (${live.hero.scene} stands in for ${HERO_SCENE})`);
 
 type L = { en: string };
 for (const n of bench.engine as { key: string; value: string | null; pending?: boolean; label: L }[])

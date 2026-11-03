@@ -40,7 +40,7 @@ export const copy = {
     badgeVideo: t("Engine recording", "引擎录像"),
     badgeFrame: t("Captured frame", "引擎截帧"),
     badgeLoading: t("Starting the engine", "引擎启动中"),
-    interim: t("Interim frame: the live ocean scene is in production", "临时画面：实时海天场景制作中"),
+    interim: t("Interim scene · the hero scene is in production", "临时场景 · 首屏场景制作中"),
     scroll: t("Scroll", "向下"),
   },
   loop: {

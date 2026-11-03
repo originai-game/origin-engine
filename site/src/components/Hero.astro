@@ -1,7 +1,8 @@
 ---
 // The first screen. In a browser with WebGPU on a large screen, the engine
-// itself runs the hero scene (a publish build of examples/site-ocean in a
-// same-origin, non-interactive frame) and the page acts as its Player: it
+// itself runs the hero scene (a publish build of examples/site-hero, or
+// site-ocean while that is in production; src/live.ts) in a same-origin,
+// non-interactive frame, and the page acts as its Player: it
 // answers hello, follows `loading` with the brand's progress motion and
 // shows the frame from `ready`. Elsewhere, or if the engine has not drawn
 // within the time limit, the recording of the same scene plays; with reduced
@@ -9,7 +10,7 @@
 import { mark } from "../lib/brand";
 import { copy, type Lang } from "../i18n";
 import { get, url } from "../lib/media";
-import { live } from "../live";
+import { live, heroInterim } from "../live";
 import Media from "./Media.astro";
 
 interface Props { lang: Lang }
@@ -18,13 +19,13 @@ const film = get("hero-film");
 const poster = get("hero-poster");
 const h = copy.hero;
 ---
-<section class="hero" id="top" data-state="poster" data-live={live.ocean ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}
+<section class="hero" id="top" data-state="poster" data-scene={live.hero.scene} data-live={live.hero.path ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}
   data-t-live={h.badgeLive[lang]} data-t-video={h.badgeVideo[lang]} data-t-frame={h.badgeFrame[lang]} data-t-loading={h.badgeLoading[lang]}
   data-s-live={h.live[lang]} data-s-video={h.recorded[lang]} data-s-frame={h.captured[lang]}>
   <div class="hero-media" aria-hidden="true">
     <Media slot="hero-poster" lang={lang} eager sizes="100vw" bare />
   </div>
-  <div class="hero-shade"></div>
+  {heroInterim && <div class="hero-shade"></div>}
   <div class="hero-copy wrap">
     <h1 class="display d-8xl">{h.title[lang]}</h1>
     <p class="lede" data-sub>{h.captured[lang]}</p>
@@ -36,7 +37,7 @@ const h = copy.hero;
       <span class="dot"></span><span data-badge-text>{h.badgeFrame[lang]}</span>
     </span>
   </div>
-  {poster.status !== "final" && <span class="status" data-kind="interim" title={h.interim[lang]}>{h.interim[lang]}</span>}
+  {(heroInterim || poster.status !== "final") && <span class="status" data-kind="interim" title={h.interim[lang]}>{h.interim[lang]}</span>}
 </section>
 
 <script>

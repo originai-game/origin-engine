@@ -15,11 +15,11 @@ const { lang } = Astro.props;
 const c = copy.characters;
 const film = get("motion-film");
 ---
-<div class="motion" data-motion-embed data-live={live.motion ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}>
+<div class="motion" data-motion-embed data-live={live.motion.path ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}>
   <div class="frame r16x9 motion-stage" data-stage>
     <Media slot="motion-poster" lang={lang} sizes="(max-width: 1279px) 100vw, 1280px" bare />
     <div class="motion-cover" data-cover>
-      {live.motion
+      {live.motion.path
         ? <button type="button" class="btn primary" data-take><svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M6 4.5v11l9-5.5z" /></svg>{c.take[lang]}</button>
         : <span class="badge glass">{c.pendingLive[lang]}</span>}
       <ol class="motion-steps" aria-label="og.motion">

@@ -16,7 +16,9 @@ const og = join(pkg, "native", `og.${process.platform}-${process.arch}${process.
 
 /** name → project directory. `make` is the project's asset step, when its assets are not all committed. */
 export const builds: Record<string, { project: string; make?: string }> = {
+  hero: { project: "examples/site-hero" },
   ocean: { project: "examples/site-ocean" },
+  motion: { project: "examples/site-motion" },
   "meridian-loop": { project: "examples/meridian-loop", make: "tools/make-assets.ts" },
   hollowbell: { project: "examples/hollowbell", make: "tools/make-assets.ts" },
   "kestrel-stair": { project: "examples/kestrel-stair", make: "tools/make-assets.ts" },

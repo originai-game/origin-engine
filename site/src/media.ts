@@ -42,9 +42,9 @@ export const media = {
     alt: { en: "The open ocean at sunset", zh: "日落时的开阔海面" },
   },
   "hero-film": {
-    source: p("site-hero: ocean, dawn → noon → dusk → night loop, 4K and 1080p"),
+    source: p("site-hero: Skyreach Meadow loop, 4K and 1080p"),
     status: "pending",
-    alt: { en: "The ocean scene from dawn to night", zh: "海天场景，从黎明到夜晚" },
+    alt: { en: "A traveller on a cliff meadow above a sea of clouds", zh: "云海之上的悬崖草甸，一位旅人" },
   },
 
   // ── AI loop ───────────────────────────────────────────────────────────
