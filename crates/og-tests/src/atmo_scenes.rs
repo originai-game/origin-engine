@@ -121,6 +121,7 @@ pub fn ripples(n: u32, size: f32) -> WaterHeights {
         resolution: n,
         size,
         heights: Arc::from(h),
+        wakes: None,
     }
 }
 

@@ -423,6 +423,11 @@ pub(crate) struct Sim {
     pub(crate) lines: IdMap<u64, crate::water::LineState>,
     pub(crate) ragdolls: IdMap<u64, super::RagdollState>,
     pub(crate) fluids3: IdMap<u64, crate::fluid3d::Fluid3State>,
+    /// Per og.WaterSurface, the bodies that cut it in the last ticks, for
+    /// the renderer's ripples: not world state (never saved, never read by
+    /// the tick).
+    #[serde(skip)]
+    pub(crate) wakes: IdMap<u64, crate::water::Wakes>,
     /// Saved in the block's extension sections, not here.
     #[serde(skip)]
     pub(crate) ext: SimExt,
@@ -840,7 +845,7 @@ fn step_here(
     laps.lap(Phase::Joints);
     super::ragdolls(scene, dt, sim, shared, &mut out)?;
     laps.lap(Phase::Ragdolls);
-    ext::water(scene, settings, dt, sim, &handles, &mut out)?;
+    ext::water(scene, settings, dt, tick, sim, &handles, &mut out)?;
     ext::buoyancy(scene, settings, dt, &shared.waters, sim, &handles, &mut out);
     laps.lap(Phase::Water);
     let sleeping = sleep::before_step(settings, scene, sim, &handles);

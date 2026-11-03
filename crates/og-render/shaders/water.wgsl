@@ -19,7 +19,7 @@
 
 struct WaterUniform {
   model: mat4x4<f32>,
-  size: vec4<f32>,        // xy: extent along local x and z, z: segments, w: 1 with a height field
+  size: vec4<f32>,        // xy: extent along local x and z, z: segments, w: 1 with a height field, 2 with its ripples
   shallow: vec4<f32>,     // rgb, w: depth fade (m)
   deep: vec4<f32>,        // rgb, w: opacity
   foam: vec4<f32>,        // rgb, w: foam width (m)
@@ -501,6 +501,16 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // stripes towards the horizon).
     slope *= 1.0 - smoothstep(0.785, 1.571, water.waves.x * 6.2831853 * 3.9 * footprint);
   }
+  // With ripples (water_ripples.wgsl) the height field's normal and steepness per pixel: they are finer than the
+  // grid's vertices.
+  var field_slope = in.slope;
+  if (water.size.w > 1.5 && water.ocean.x < 0.5) {
+    let e = water.look.z / max(water.look.w - 1.0, 1.0);
+    let hx = height_at(in.local + vec2<f32>(e, 0.0)) - height_at(in.local - vec2<f32>(e, 0.0));
+    let hz = height_at(in.local + vec2<f32>(0.0, e)) - height_at(in.local - vec2<f32>(0.0, e));
+    base = normalize((water.model * vec4<f32>(-hx / (2.0 * e), 1.0, -hz / (2.0 * e), 0.0)).xyz);
+    field_slope = length(vec2<f32>(hx, hz)) / (2.0 * e);
+  }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   // Seen from below: the camera is under the surface.
@@ -658,7 +668,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
-  let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
+  let crest = clamp((field_slope - 0.35) * 3.0, 0.0, 1.0);
   var band = edge * edge * (0.55 + 0.6 * noise);
   let flowing = dot(water.normals.yz, water.normals.yz) >= 1e-12 && water.normals.w < 0.5 && water.ocean.x < 0.5;
   if (flowing) {

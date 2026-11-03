@@ -1295,12 +1295,14 @@ pub(crate) fn water(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
+    tick: u64,
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
     if scene.surfaces.is_empty() && scene.lines.is_empty() {
         sim.surfaces.clear();
+        sim.wakes.clear();
         sim.lines.clear();
         return Ok(());
     }
@@ -1309,6 +1311,7 @@ pub(crate) fn water(
     let mut forces: Vec<WaterForce> = Vec::new();
     let live: BTreeSet<u64> = og_core::sort::set(scene.surfaces.iter().map(|s| s.0.to_bits()));
     sim.surfaces.retain(|e, _| live.contains(e));
+    sim.wakes.retain(|e, _| live.contains(e));
     for (e, position, surface) in &scene.surfaces {
         let key = e.to_bits();
         let rebuild = sim
@@ -1320,6 +1323,11 @@ pub(crate) fn water(
         }
         let state = sim.surfaces.get_mut(&key).expect("inserted");
         let (f, crossings) = state.step(surface, dt, g, *position, &list);
+        let (size, cell) = (state.size, state.cell());
+        sim.wakes
+            .entry(key)
+            .or_default()
+            .record(surface, size, cell, dt, tick, *position, &list);
         forces.extend(f);
         for c in crossings {
             out.splashes.push(Splash {

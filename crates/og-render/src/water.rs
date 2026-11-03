@@ -34,7 +34,47 @@ pub struct WaterHeights {
     pub resolution: u32,
     pub size: f32,
     pub heights: Arc<[f32]>,
+    /// The bodies that cut the surface in its last ticks: the renderer
+    /// draws finer ripples over the heights from them where it has compute
+    /// (`water_ripples.rs`). `None`: the heights alone.
+    pub wakes: Option<Arc<WaterWakes>>,
 }
+
+/// The ticks that stir a height field's ripples (og-physics' `Wakes`, not
+/// world state): the bodies that cut the surface after each of the last
+/// ticks (at most [`WAKE_TICKS`]) and the waves' settings.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct WaterWakes {
+    /// A new world (made, restored or gone back) has a new epoch: the
+    /// ripples start calm again.
+    pub epoch: u64,
+    /// The waves' speed (m/s), the fraction of a wave kept after a second,
+    /// the surface's splash factor and the tick's length (s).
+    pub wave_speed: f32,
+    pub damping: f32,
+    pub splash: f32,
+    pub dt: f32,
+    /// (tick, the bodies cutting the surface after it), oldest first.
+    pub ticks: Vec<(u64, Vec<WaterCut>)>,
+}
+
+/// A body cutting a height field's rest level: its entity, its footprint
+/// (min and max over the surface's xz, relative to its centre), its depth
+/// below the rest level and its vertical speed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WaterCut {
+    pub entity: u64,
+    pub min: Vec2,
+    pub max: Vec2,
+    pub depth: f32,
+    pub speed: f32,
+}
+
+/// The most ticks [`WaterWakes`] carries (og-physics keeps as many).
+pub const WAKE_TICKS: usize = 8;
+
+/// The height textures' format (the CPU's heights and the ripples' output).
+pub(crate) const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
 /// A planar 3D water surface. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]
@@ -357,6 +397,8 @@ struct Slot {
     /// but for the face's size.
     face: WaterGpu,
     heights: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
+    /// The ripples drawn over the heights (`water_ripples.rs`).
+    ripples: Option<crate::water_ripples::Ripples>,
 }
 
 /// Draws [`Water`]: one pipeline, a uniform buffer and height texture per
@@ -373,6 +415,11 @@ pub(crate) struct WaterRenderer {
     sampler: wgpu::Sampler,
     flat: wgpu::TextureView,
     slots: Vec<Slot>,
+    /// The ripples' compute, made with the first surface that ripples;
+    /// `compute` false (an adapter without compute shaders): none, the
+    /// CPU's heights alone.
+    ripple_pipelines: Option<crate::water_ripples::RipplePipelines>,
+    compute: bool,
 }
 
 /// One surface ready to draw.
@@ -397,6 +444,7 @@ impl WaterRenderer {
         frame_wgsl: &str,
         lighting_wgsl: &str,
         samples: u32,
+        compute: bool,
     ) -> WaterRenderer {
         let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
             binding,
@@ -564,6 +612,8 @@ impl WaterRenderer {
             sampler,
             flat,
             slots: Vec::new(),
+            ripple_pipelines: None,
+            compute: compute && crate::WORLD_3D,
         }
     }
 
@@ -602,6 +652,7 @@ impl WaterRenderer {
                 }),
                 face: bytemuck::Zeroable::zeroed(),
                 heights: None,
+                ripples: None,
             });
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
@@ -636,6 +687,22 @@ impl WaterRenderer {
                     },
                 );
             }
+            // The ripples over the heights, stepped to this frame's tick.
+            match field.and_then(|f| Some((f, f.wakes.as_deref()?))) {
+                Some((f, wakes)) if self.compute => {
+                    let pipes = self
+                        .ripple_pipelines
+                        .get_or_insert_with(|| crate::water_ripples::RipplePipelines::new(device));
+                    if slot.ripples.as_ref().is_none_or(|r| !r.fits(f)) {
+                        let (_, _, coarse) = slot.heights.as_ref().expect("made above");
+                        slot.ripples =
+                            Some(crate::water_ripples::Ripples::new(device, pipes, f, coarse));
+                    }
+                    let ripples = slot.ripples.as_mut().expect("made above");
+                    ripples.update(device, queue, pipes, wakes);
+                }
+                _ => slot.ripples = None,
+            }
             let normal_view = water.normal_map.and_then(textures);
             let flow_view = water.flow_map.and_then(textures);
             // With a flow map the flow's length is the speed: three.js'
@@ -652,7 +719,12 @@ impl WaterRenderer {
                     water.size.x.max(0.0),
                     water.size.y.max(0.0),
                     segments as f32,
-                    f32::from(field.is_some()),
+                    // 2: the ripples' heights, read per pixel.
+                    match (field, &slot.ripples) {
+                        (Some(_), Some(_)) => 2.0,
+                        (Some(_), None) => 1.0,
+                        (None, _) => 0.0,
+                    },
                 ],
                 shallow: water.shallow.extend(water.depth_fade.max(1e-3)).to_array(),
                 deep: water.deep.extend(water.opacity.clamp(0.0, 1.0)).to_array(),
@@ -668,7 +740,10 @@ impl WaterRenderer {
                     // The screen-space march on (water.wgsl).
                     1.0,
                     field.map_or(1.0, |f| f.size),
-                    field.map_or(2.0, |f| f.resolution as f32),
+                    field.map_or(2.0, |f| match slot.ripples {
+                        Some(_) => crate::water_ripples::Ripples::side(f.resolution) as f32,
+                        None => f.resolution as f32,
+                    }),
                 ],
                 screen: [w, h, 1.0 / w.max(1.0), 1.0 / h.max(1.0)],
                 extra: [
@@ -708,8 +783,9 @@ impl WaterRenderer {
             // mirroring what the probe sees from its point.
             slot.face = gpu;
             slot.face.extra[1] = 0.0;
-            let heights = match (&slot.heights, field) {
-                (Some((_, _, v)), Some(_)) => v,
+            let heights = match (&slot.ripples, &slot.heights, field) {
+                (Some(r), _, Some(_)) => &r.view,
+                (None, Some((_, _, v)), Some(_)) => v,
                 _ => &self.flat,
             };
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -797,8 +873,9 @@ impl WaterRenderer {
             .iter()
             .zip(&self.slots)
             .map(|(water, slot)| {
-                let heights = match (&slot.heights, height_field(water)) {
-                    (Some((_, _, v)), Some(_)) => v,
+                let heights = match (&slot.ripples, &slot.heights, height_field(water)) {
+                    (Some(r), _, Some(_)) => &r.view,
+                    (None, Some((_, _, v)), Some(_)) => v,
                     _ => &self.flat,
                 };
                 let mut face = slot.face;
@@ -1100,7 +1177,7 @@ fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, wgpu::Textur
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::R32Float,
+        format: HEIGHT_FORMAT,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });

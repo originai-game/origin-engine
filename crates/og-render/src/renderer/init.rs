@@ -570,8 +570,17 @@ impl Renderer {
         let sky_look_pipeline = sky_state("fs_sky_look");
         let ibl = ibl::IblGenerator::new(&device);
         let cloud_noise = clouds::CloudNoise::placeholder(&device, &queue);
-        let water =
-            water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
+        let water = water::WaterRenderer::new(
+            &device,
+            &frame_layout,
+            FRAME_WGSL,
+            LIGHTING_WGSL,
+            samples,
+            adapter
+                .get_downlevel_capabilities()
+                .flags
+                .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
+        );
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let fluid3d =

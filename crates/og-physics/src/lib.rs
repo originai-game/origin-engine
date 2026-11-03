@@ -67,6 +67,7 @@ mod softbody;
 mod stats;
 mod verlet;
 mod water;
+pub use water::{Wakes, WaterCut};
 
 #[cfg(feature = "physics2d")]
 mod dim2;
@@ -1251,6 +1252,12 @@ impl PhysicsSystem {
                 }
             }
         ))
+    }
+
+    /// The bodies that cut the og.WaterSurface on `entity` in the last
+    /// ticks, for the renderer's ripples (not world state).
+    pub fn water_wakes(&self, entity: Entity) -> Option<Wakes> {
+        with_sim!(self.shared, |s| s.wakes.get(&entity.to_bits()).cloned())
     }
 
     /// The spring heights of the og.WaterLine on `entity`, left to right

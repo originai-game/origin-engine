@@ -166,6 +166,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
     add("ibl", crate::ibl::ibl_source());
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
+    add("water ripples", crate::water_ripples::WGSL.to_string());
     add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
     add(
         "lights 2d shadows",

@@ -19,7 +19,7 @@ use og_ecs::{Entity, World};
 use og_render::{
     Background, Fog, MaterialHandle, MeshData, MeshHandle, Metaballs, ParticleSystem,
     ProceduralSky, Projection, Ribbon, RibbonPoint, RibbonUv, SkyLook, Sprite, Vertex, Water,
-    Water2d, WaterHeights,
+    Water2d, WaterCut, WaterHeights, WaterWakes,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -531,6 +531,32 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     for (e, v) in rows(world, layouts.water.as_ref()) {
         let entity = Entity::from_bits(e);
         let field = physics.and_then(|p| p.water_heights(entity));
+        let wakes = physics.and_then(|p| p.water_wakes(entity)).map(|w| {
+            Arc::new(WaterWakes {
+                epoch: w.epoch,
+                wave_speed: w.wave_speed,
+                damping: w.damping,
+                splash: w.splash,
+                dt: w.dt,
+                ticks: w
+                    .ticks
+                    .into_iter()
+                    .map(|(tick, cuts)| {
+                        let cuts = cuts
+                            .into_iter()
+                            .map(|c| WaterCut {
+                                entity: c.entity,
+                                min: c.min,
+                                max: c.max,
+                                depth: c.depth,
+                                speed: c.speed,
+                            })
+                            .collect();
+                        (tick, cuts)
+                    })
+                    .collect(),
+            })
+        });
         let m = h.world_of(e);
         // og.Water.geometry: drawn over that mesh, in the entity's frame (scale included).
         let raw = v["geometry"].as_f64().unwrap_or(0.0) as u64;
@@ -565,6 +591,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 resolution: w.resolution,
                 size: w.size,
                 heights: Arc::from(w.heights),
+                wakes,
             }),
             planar_reflection: f(&v, "planarReflection", 0.0),
             shadows: f(&v, "shadows", 0.0),
