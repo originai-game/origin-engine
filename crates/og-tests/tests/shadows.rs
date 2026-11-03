@@ -575,3 +575,64 @@ fn surfaces_that_receive_no_shadows_are_lit_as_if_unshadowed() {
         assert_eq!(elsewhere, 0, "{light}");
     }
 }
+
+/// The floor just past the box's lit-away face, in pixels of the contact
+/// scene's frame: points 1 to 4 cm out from the face, along its middle.
+fn contact_strip(img: &RgbaImage) -> Vec<(u32, u32)> {
+    let cam = shadow_scenes::local_contact_camera();
+    let (w, h) = (img.width as f32, img.height as f32);
+    let view_proj =
+        glam::camera::rh::proj::directx::perspective(50f32.to_radians(), w / h, 0.1, 100.0)
+            * glam::camera::rh::view::look_at_mat4(cam.position, cam.target, glam::Vec3::Y);
+    let face = shadow_scenes::CONTACT_BOX.x * 0.5;
+    let mut out = Vec::new();
+    for dx in [0.01f32, 0.02, 0.03, 0.04] {
+        for k in -3..=3 {
+            let p = view_proj.project_point3(glam::Vec3::new(face + dx, 0.0, k as f32 * 0.08));
+            out.push((
+                ((p.x * 0.5 + 0.5) * w) as u32,
+                ((0.5 - p.y * 0.5) * h) as u32,
+            ));
+        }
+    }
+    out
+}
+
+/// Local lights' shadows start at the caster's base: the floor right
+/// beside a box standing on it, on the side away from the light, is in
+/// shadow for a spot and a point light (cube and paraboloid), not lit
+/// through a bias gap; and their edges are soft rather than stepped.
+#[test]
+fn local_shadows_touch_their_casters() {
+    check("shadows-local-contact");
+    let desc = scenes::base_desc();
+    for (point, storage) in [
+        (false, PointShadows::Cube),
+        (true, PointShadows::Cube),
+        (true, PointShadows::Paraboloid),
+    ] {
+        let desc = RenderDesc {
+            point_shadows: storage,
+            ..desc
+        };
+        let (shadowed, _) = frame(&desc, &shadow_scenes::local_contact_scene(point, true), 1);
+        let (lit, _) = frame(&desc, &shadow_scenes::local_contact_scene(point, false), 1);
+        let strip = contact_strip(&shadowed);
+        let at = |img: &RgbaImage, (x, y): (u32, u32)| {
+            let i = ((y * img.width + x) * 4) as usize;
+            luma(&img.pixels[i..i + 4])
+        };
+        let ratio: f32 = strip
+            .iter()
+            .map(|&q| at(&shadowed, q) / at(&lit, q).max(1.0))
+            .sum::<f32>()
+            / strip.len() as f32;
+        println!(
+            "point {point} {storage:?}: floor beside the box at {ratio:.2} of its unshadowed light"
+        );
+        assert!(
+            ratio < 0.35,
+            "the floor beside the box is lit through the bias: {ratio:.2}"
+        );
+    }
+}

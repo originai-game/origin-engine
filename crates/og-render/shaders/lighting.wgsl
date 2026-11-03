@@ -45,6 +45,29 @@ fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32) ->
   return mix(mix(lit[0], lit[1], f.x), mix(lit[2], lit[3], f.x), f.y);
 }
 
+// A wider PCF for local lights' shadows: the 3x3 bilinear PCFs one texel
+// apart summed, as one pass over the 4x4 texels around uv with separable
+// tent weights (1 - f, 1, 1, f) / 3 per axis. Edges come out soft over
+// about three texels and straight instead of stepping texel by texel.
+fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32) -> f32 {
+  let size = vec2<i32>(textureDimensions(map));
+  let p = uv * vec2<f32>(size) - 0.5;
+  let base = vec2<i32>(floor(p)) - 1;
+  let f = fract(p);
+  let wx = array<f32, 4>(1.0 - f.x, 1.0, 1.0, f.x);
+  let wy = array<f32, 4>(1.0 - f.y, 1.0, 1.0, f.y);
+  var lit = 0.0;
+  for (var j = 0; j < 4; j++) {
+    var row = 0.0;
+    for (var i = 0; i < 4; i++) {
+      let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
+      row += wx[i] * select(0.0, 1.0, ref_depth <= textureLoad(map, at, i32(layer), 0).r);
+    }
+    lit += wy[j] * row;
+  }
+  return lit / 9.0;
+}
+
 // The cascade whose camera slice holds the point (by view depth, the same
 // slices its casters were culled to); CASCADES beyond the last one.
 fn cascade_index(p: vec3<f32>) -> u32 {
@@ -159,15 +182,28 @@ fn cube_face(d: vec3<f32>) -> u32 {
 // draws them).
 const PARABOLOID_SCALE: f32 = 0.9;
 
-// Local shadows store distance / range; the fragment compares its own.
+// Local shadows store distance / range; the fragment compares its own,
+// filtered with the tent (`local_shadow_lookup`'s `wide`).
 fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
+  return local_shadow_lookup(light, p, n, true);
+}
+
+// Both biases scale with the distance to the light, as its texels widen
+// with it (`cone.z`: the normal offset per metre at a grazing light, `cone.w`:
+// the depth bias as a fraction of the distance), and the normal offset with
+// the light's angle to the surface (a quarter of it facing the light), so
+// a box standing on a floor casts its shadow from its base, not from a
+// little way out. `wide` filters with the tent; the volumetric march takes
+// the 2x2 PCF, as it averages many samples anyway.
+fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool) -> f32 {
   let slot = i32(light.direction_slot.w);
   if (slot < 0) { return 1.0; }
   let range = light.position_range.w;
   let to_frag = p - light.position_range.xyz;
   let dist = length(to_frag);
-  // Normal offset grows with distance (texels widen with it).
-  let offset = p + n * light.cone.z * dist;
+  let n_dot_l = clamp(dot(n, -to_frag / max(dist, 1e-6)), 0.0, 1.0);
+  let sin_l = sqrt(1.0 - n_dot_l * n_dot_l);
+  let offset = p + n * light.cone.z * dist * (0.25 + sin_l);
   var layer = u32(slot);
   if (light.color_kind.w < 0.5 && frame.shadow.y > 0.5) {
     let to = offset - light.position_range.xyz;
@@ -179,7 +215,9 @@ fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
     let q = l / d;
     let ndc = vec2<f32>(-q.x, q.y) * (PARABOLOID_SCALE / (1.0 + q.z));
     let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-    return pcf(local_shadow_map, uv, layer, d / range - light.cone.w);
+    let ref_p = d * (1.0 - light.cone.w) / range;
+    if (wide) { return pcf_tent(local_shadow_map, uv, layer, ref_p); }
+    return pcf(local_shadow_map, uv, layer, ref_p);
   }
   if (light.color_kind.w < 0.5) { layer += cube_face(to_frag); }
   let clip = frame.local_view_proj[layer] * vec4<f32>(offset, 1.0);
@@ -187,8 +225,10 @@ fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let ndc = clip.xy / clip.w;
   let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
   if (light.color_kind.w > 0.5 && (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)))) { return 1.0; }
-  let ref_depth = length(offset - light.position_range.xyz) / range - light.cone.w;
-  return pcf(local_shadow_map, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0)), layer, ref_depth);
+  let ref_depth = length(offset - light.position_range.xyz) * (1.0 - light.cone.w) / range;
+  let at = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
+  if (wide) { return pcf_tent(local_shadow_map, at, layer, ref_depth); }
+  return pcf(local_shadow_map, at, layer, ref_depth);
 }
 
 struct Surface {

@@ -438,3 +438,85 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
         model_no_receive,
     })
 }
+
+/// Where [`local_contact_scene`]'s box stands and how large it is.
+pub const CONTACT_BOX: Vec3 = Vec3::new(0.8, 0.8, 0.8);
+
+/// The camera of [`local_contact_scene`].
+pub fn local_contact_camera() -> Camera {
+    Camera {
+        position: Vec3::new(0.6, 2.6, 4.2),
+        target: Vec3::new(0.5, 0.2, 0.0),
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    }
+}
+
+/// A local light's contact shadows, as in a Cornell box: a 0.8 m box at
+/// the origin and a 0.5 m ball beside it on a plain light-grey floor
+/// before a wall, lit only by one shadowed light up and to the left
+/// (a spot aimed at the box, or a point light with `point`). The box's
+/// shadow falls to its right and should start at its base, with no lit
+/// line under it, and its edges should be soft and straight.
+pub fn local_contact_scene(point: bool, shadows: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let grey = scene.add_material(Material {
+        base_color: [0.75, 0.75, 0.75, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(12.0, 1.0));
+    scene.add_instance(floor, grey, Mat4::IDENTITY);
+    let wall = scene.add_mesh(shapes::plane_xy(12.0, 6.0));
+    scene.add_instance(
+        wall,
+        grey,
+        Mat4::from_translation(Vec3::new(0.0, 3.0, -2.0)),
+    );
+    let block = scene.add_mesh(shapes::cuboid(CONTACT_BOX));
+    let white = scene.add_material(Material {
+        base_color: [0.85, 0.85, 0.85, 1.0],
+        roughness: 0.7,
+        ..Default::default()
+    });
+    scene.add_instance(
+        block,
+        white,
+        Mat4::from_translation(Vec3::new(0.0, CONTACT_BOX.y * 0.5, 0.0)),
+    );
+    let ball = scene.add_mesh(shapes::sphere(48, 32));
+    scene.add_instance(
+        ball,
+        white,
+        Mat4::from_translation(Vec3::new(-1.0, 0.25, 0.9)) * Mat4::from_scale(Vec3::splat(0.5)),
+    );
+    let position = Vec3::new(-1.6, 3.0, 0.4);
+    scene.lights.push(Light {
+        kind: if point {
+            LightKind::Point
+        } else {
+            LightKind::Spot {
+                direction: (Vec3::new(0.4, 0.0, 0.0) - position).normalize(),
+                angle_degrees: 55.0,
+                penumbra: 0.2,
+            }
+        },
+        position,
+        color: Vec3::new(1.0, 0.95, 0.88),
+        intensity: 30.0,
+        range: 12.0,
+        cast_shadows: shadows,
+    });
+    scene.light = DirectionalLight {
+        intensity: 0.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        intensity: 0.05,
+        background: Background::Sky,
+        ..Default::default()
+    };
+    scene.camera = local_contact_camera();
+    scene
+}

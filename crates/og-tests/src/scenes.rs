@@ -92,6 +92,7 @@ pub const SCENES: &[&str] = &[
     "shadows-soft",
     "point-shadows-paraboloid",
     "shadows-local-8",
+    "shadows-local-contact",
     "fxaa",
     "taa-sharp",
     "taau",
@@ -443,6 +444,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (MAX_SHADOWED_LIGHTS, eight).
+        // A box and a ball on a plain floor lit by one shadowed spot: the
+        // box's shadow starts at its base (no lit line), its edges soft
+        // and straight (the tent PCF).
+        "shadows-local-contact" => |g, _| {
+            g.scene = crate::shadow_scenes::local_contact_scene(false, true);
+            Ok(())
+        },
         "shadows-local-8" => |g, _| {
             g.scene = crate::shadow_scenes::many_shadowed_lights(true);
             Ok(())

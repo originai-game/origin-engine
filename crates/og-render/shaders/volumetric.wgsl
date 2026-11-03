@@ -89,7 +89,7 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
         atten *= t * t;
       }
       if (atten > 0.0) {
-        atten *= local_shadow(light, p, l);
+        atten *= local_shadow_lookup(light, p, l, false);
       }
     }
     if (atten <= 0.0) { continue; }

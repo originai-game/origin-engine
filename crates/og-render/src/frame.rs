@@ -697,14 +697,20 @@ pub(crate) fn local_lights(
                 )
             }
         };
-        // Normal offset per metre of distance: ~1.5 texels of a 90° face (a
-        // paraboloid's texels span 4 / (scale × size) radians at its centre,
-        // about 2.2 times a face's); the depth bias in distance / range.
-        let (normal_offset, depth_bias) = if point_paraboloid {
-            (1.5 * 4.0 / (PARABOLOID_SCALE * shadow_size as f32), 0.003)
+        // Per metre of distance, in texels of the map (a 90° face's texel
+        // spans 2 / size radians at its centre, a paraboloid's 4 / (scale ×
+        // size), about 2.2 times as much): the normal offset at a grazing
+        // light, a texel (lighting.wgsl scales it down to a quarter facing
+        // the light), and the depth bias, half a texel, as a fraction of the
+        // distance. Both used to be larger and the depth bias a fixed
+        // fraction of the range, which lifted shadows off their casters'
+        // bases (light under a box standing on the floor).
+        let texel = if point_paraboloid {
+            4.0 / (PARABOLOID_SCALE * shadow_size as f32)
         } else {
-            (3.0 / shadow_size as f32, 0.002)
+            2.0 / shadow_size as f32
         };
+        let (normal_offset, depth_bias) = (texel, 0.5 * texel);
         gpu.push(LightGpu {
             position_range: light.position.extend(range).to_array(),
             color_kind: radiance.extend(kind).to_array(),
