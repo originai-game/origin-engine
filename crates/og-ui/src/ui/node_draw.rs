@@ -352,7 +352,17 @@ impl Ui {
                             let reach = sh.dx.hypot(sh.dy);
                             let most = (size * 0.06).max(1.0 / dpr);
                             let k = if reach > most { most / reach } else { 1.0 };
-                            let (dx, dy, blur) = (sh.dx * k, sh.dy * k, sh.blur * k);
+                            let (mut dx, mut dy, mut blur) = (sh.dx * k, sh.dy * k, sh.blur * k);
+                            // A pixel font's drop: one of its pixels, hard,
+                            // so the cells keep their edges.
+                            if m.pixel_grid() > 0 {
+                                let cell = size / m.pixel_grid() as f32;
+                                (dx, dy, blur) = (
+                                    cell * sh.dx.signum() * f32::from(sh.dx != 0.0),
+                                    cell * sh.dy.signum() * f32::from(sh.dy != 0.0),
+                                    0.0,
+                                );
+                            }
                             text(dx, dy, c, None, cmds);
                             if blur > 0.0 {
                                 text(dx + blur / 2.0, dy + blur / 2.0, c.fade(0.5), None, cmds);

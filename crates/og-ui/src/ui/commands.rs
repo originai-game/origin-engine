@@ -250,7 +250,11 @@ impl Ui {
                     self.nodes[i].clip = screen_clip;
                 }
                 if let Some(d) = &draw {
-                    d.style_text(&theme, &mut local);
+                    let grid = match &self.nodes[i].content {
+                        Content::Text(t) => t.metrics(&self.fonts).pixel_grid(),
+                        _ => 0,
+                    };
+                    d.style_text(&theme, &mut local, grid);
                 }
                 next.insert(self.nodes[i].key, local.clone());
                 cmds.extend(local.into_iter().map(|c| (c, world)));

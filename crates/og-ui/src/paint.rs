@@ -876,11 +876,16 @@ impl ElementDraw {
         out
     }
 
-    /// Its text effects over the line box `bounds`.
+    /// Its text effects over the line box `bounds`. `cell`: a pixel
+    /// font's pixel at the text's size (CSS px; 0 for an outline font),
+    /// which an outline's width and a shadow's offset are whole multiples
+    /// of, at least one, and a shadow is hard: a fractional stroke would
+    /// soften the cells' edges ([`snap_to_cells`]).
     pub(crate) fn text_effects(
         &self,
         theme: &Theme,
         bounds: Rect,
+        cell: f32,
     ) -> Option<og_render::UiTextEffects> {
         let t = self.text.as_ref()?;
         Some(og_render::UiTextEffects {
@@ -889,13 +894,13 @@ impl ElementDraw {
                 .shadows
                 .iter()
                 .map(|s| og_render::UiTextShadow {
-                    offset: Vec2::from(s.offset),
-                    blur: s.blur,
+                    offset: Vec2::from(s.offset.map(|v| snap_to_cells(v, cell))),
+                    blur: if cell > 0.0 { 0.0 } else { s.blur },
                     color: s.color.resolve(theme),
                 })
                 .collect(),
             outline: t.outline.as_ref().map(|o| og_render::UiTextOutline {
-                width: o.width,
+                width: snap_to_cells(o.width, cell),
                 color: o.color.resolve(theme),
                 align: o.align,
             }),
@@ -906,13 +911,15 @@ impl ElementDraw {
     }
 
     /// Wraps the text commands an element pushed in its effects.
-    pub(crate) fn style_text(&self, theme: &Theme, cmds: &mut [DrawCmd]) {
+    /// `grid`: the text's font's pixel grid (0: an outline font).
+    pub(crate) fn style_text(&self, theme: &Theme, cmds: &mut [DrawCmd], grid: u32) {
         if self.text.is_none() {
             return;
         }
         for c in cmds.iter_mut() {
-            if let DrawCmd::Text { bounds, .. } = c {
-                let Some(fx) = self.text_effects(theme, *bounds) else {
+            if let DrawCmd::Text { bounds, size, .. } = c {
+                let cell = if grid > 0 { *size / grid as f32 } else { 0.0 };
+                let Some(fx) = self.text_effects(theme, *bounds, cell) else {
                     return;
                 };
                 let text = std::mem::replace(c, DrawCmd::PopClip);
@@ -923,6 +930,15 @@ impl ElementDraw {
             }
         }
     }
+}
+
+/// A text effect's length (CSS px) in whole cells of `cell` px, at least
+/// one when it is not zero; `v` itself when `cell` is 0 (an outline font).
+pub(crate) fn snap_to_cells(v: f32, cell: f32) -> f32 {
+    if cell <= 0.0 || v == 0.0 {
+        return v;
+    }
+    (v.abs() / cell).round().max(1.0) * cell * v.signum()
 }
 
 #[cfg(test)]

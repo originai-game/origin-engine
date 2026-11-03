@@ -841,3 +841,87 @@ fn a_style_drop_never_prints_a_second_glyph() {
     let own = run(&mut ui, true);
     assert_eq!(own.len(), 1, "its own effects, one glyph: {own:?}");
 }
+
+/// In a pixel font (`pixel 12`) a text's effects sit on its pixels: the
+/// style's drop one font pixel off and hard, an element's own outline and
+/// shadow whole font pixels (at least one), never a fractional stroke that
+/// softens the cells' edges. At 24 px a font pixel is 2 px.
+#[test]
+fn a_pixel_fonts_effects_are_whole_pixels() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    let text = std::fs::read_to_string(dir.join("cartoon").join("style.ogt")).unwrap();
+    let file = parse_style(&text).unwrap();
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut fonts = ui.fonts().clone();
+    for f in [&mut fonts.body].into_iter().chain(fonts.display.as_mut()) {
+        f.metrics = f.metrics.clone().with_pixel(12);
+    }
+    fonts.link();
+    ui.set_fonts(fonts);
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    let step = TypeStep {
+        size: 24.0,
+        line_height: 30.0,
+        ..ui.theme().type_ramp.body
+    };
+    let run = |ui: &mut Ui, own: bool| {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+        ui.label(
+            "Value",
+            "x3",
+            LabelDesc {
+                step: Some(step),
+                font: FontRole::Display,
+                ..LabelDesc::default()
+            },
+        );
+        if own {
+            ui.set_draw(og_ui::paint::ElementDraw {
+                text: Some(og_ui::paint::TextEffects {
+                    shadows: vec![og_ui::paint::TextShadow {
+                        offset: [3.0, 0.7],
+                        blur: 2.0,
+                        color: og_ui::paint::ColorRef::token("shadow"),
+                    }],
+                    outline: Some(og_ui::paint::TextOutline {
+                        width: 1.5,
+                        color: og_ui::paint::ColorRef::token("ink"),
+                        align: Default::default(),
+                    }),
+                    fill: None,
+                }),
+                ..Default::default()
+            });
+        }
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .map(|it| it.cmd.clone())
+            .collect::<Vec<_>>()
+    };
+    let texts: Vec<(f32, f32)> = run(&mut ui, false)
+        .iter()
+        .filter_map(|c| match c {
+            DrawCmd::Text { x, baseline, .. } => Some((*x, *baseline)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(texts.len(), 2, "the drop and the glyph: {texts:?}");
+    let (dx, dy) = (texts[0].0 - texts[1].0, texts[0].1 - texts[1].1);
+    assert!(
+        (dx.abs() == 2.0 || dx == 0.0) && (dy.abs() == 2.0 || dy == 0.0) && dx.hypot(dy) > 0.0,
+        "one font pixel: {dx}, {dy}"
+    );
+    let fx = run(&mut ui, true)
+        .into_iter()
+        .find_map(|c| match c {
+            DrawCmd::StyledText { effects, .. } => Some(*effects),
+            _ => None,
+        })
+        .expect("styled text");
+    assert_eq!(fx.outline.expect("an outline").width, 2.0);
+    assert_eq!(fx.shadows[0].offset, og_core::glam::Vec2::new(4.0, 2.0));
+    assert_eq!(fx.shadows[0].blur, 0.0);
+}
