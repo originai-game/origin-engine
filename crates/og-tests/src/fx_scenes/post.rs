@@ -234,6 +234,90 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 }
 
 // ---------------------------------------------------------------------------
+// Realtime light volumes.
+// ---------------------------------------------------------------------------
+
+/// A closed room lit by one lamp under its ceiling, near the red wall: the
+/// left wall red, the right green, the rest white, a white block and a
+/// sphere on the floor, and almost no environment light (a black
+/// background, intensity 0.05), so whatever lights the shade is the lamp's
+/// bounce. With `realtime` a realtime light volume fills the room (5 × 3 ×
+/// 5 probes) and is relit 8 probes a frame: the shade takes the lamp's
+/// light off the walls, reddish on the left, greenish on the right, and
+/// the lamp's `colour`.
+pub fn light_volume_scene(realtime: bool, colour: Vec3) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let sphere = scene.add_mesh(shapes::sphere(32, 24));
+    let matte = |s: &mut RenderScene, c: [f32; 3]| {
+        s.add_material(Material {
+            base_color: [c[0], c[1], c[2], 1.0],
+            roughness: 0.9,
+            ..Default::default()
+        })
+    };
+    let white = matte(&mut scene, [0.8, 0.8, 0.8]);
+    let red = matte(&mut scene, [0.8, 0.08, 0.06]);
+    let green = matte(&mut scene, [0.08, 0.7, 0.1]);
+    let boxes = [
+        // Floor, ceiling, back, front (behind the camera), left, right.
+        (white, Vec3::new(0.0, -0.1, 0.0), Vec3::new(6.4, 0.2, 6.4)),
+        (white, Vec3::new(0.0, 3.1, 0.0), Vec3::new(6.4, 0.2, 6.4)),
+        (white, Vec3::new(0.0, 1.5, -3.1), Vec3::new(6.4, 3.4, 0.2)),
+        (white, Vec3::new(0.0, 1.5, 3.1), Vec3::new(6.4, 3.4, 0.2)),
+        (red, Vec3::new(-3.1, 1.5, 0.0), Vec3::new(0.2, 3.4, 6.4)),
+        (green, Vec3::new(3.1, 1.5, 0.0), Vec3::new(0.2, 3.4, 6.4)),
+        (white, Vec3::new(-0.6, 0.6, -0.9), Vec3::new(1.0, 1.2, 1.0)),
+    ];
+    for (mat, p, size) in boxes {
+        scene.add_instance(
+            cube,
+            mat,
+            Mat4::from_translation(p) * Mat4::from_scale(size),
+        );
+    }
+    scene.add_instance(
+        sphere,
+        white,
+        Mat4::from_translation(Vec3::new(1.2, 0.5, 0.3)),
+    );
+    scene.light = DirectionalLight {
+        intensity: 0.0,
+        ..Default::default()
+    };
+    scene.lights.push(Light {
+        kind: LightKind::Point,
+        position: Vec3::new(-1.8, 2.6, -0.6),
+        color: colour,
+        intensity: 14.0,
+        range: 9.0,
+        cast_shadows: true,
+    });
+    scene.environment = Environment {
+        intensity: 0.05,
+        background: Background::Color(Vec3::ZERO),
+        ..Default::default()
+    };
+    if realtime {
+        scene.light_volumes.push(og_render::RealtimeLightVolume {
+            id: 1,
+            min: Vec3::new(-2.7, 0.15, -2.7),
+            max: Vec3::new(2.7, 2.75, 2.7),
+            spacing: 1.35,
+            updates_per_frame: 8,
+            intensity: 1.0,
+        });
+    }
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.6, 2.7),
+        target: Vec3::new(0.0, 0.9, -1.5),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+// ---------------------------------------------------------------------------
 // Depth of field.
 // ---------------------------------------------------------------------------
 

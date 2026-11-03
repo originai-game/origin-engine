@@ -93,12 +93,14 @@ pub mod lod;
 pub mod meshlet;
 mod meshlet_gpu;
 mod probe_content;
+mod probe_grid;
 mod probe_select;
 mod probes;
 mod quality;
 mod ssgi;
 mod ssr;
 pub use probe_content::{ProbeContent, ProbeRoom};
+pub use probe_grid::{MAX_GRID_CAPTURES, RealtimeLightVolume};
 pub use probes::{
     MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeCapture, ProbeMode,
     ReflectionProbe,

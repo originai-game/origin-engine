@@ -967,6 +967,26 @@ S6).
   The bounce adds to the diffuse ambient light times the albedo; the
   rays that hit take their share of the ambient light, or with
   `PostEffects.ao` its term does. Scattered copies keep the AO alone.
+- **Realtime light volumes (R3).** The lazy component
+  `og.RealtimeLightVolume` (`updatesPerFrame`, `intensity`) beside an
+  `og.LightVolume` relights that box's probes while the game runs
+  (`probe_grid.rs`, `probe_grid.wgsl`). A probe is relit by a 16² cube
+  capture drawn through the reflection probes' capture path (every
+  light with its shadows, the sky, emissive and lightmapped surfaces),
+  then projected onto L1 harmonics by a compute pass straight into the
+  light volumes' storage buffer (frame binding 10), after the baked
+  volumes; its header entry carries bit 21 of the packed counts. No lit
+  binding is added. Up to eight probes a frame over every volume, in a
+  stride order that spreads them over the box; the captures sample the
+  probes, so each sweep adds a bounce. A volume is sampled once swept
+  (its first sweep at eight a frame); until then, and while the quality's
+  GI switch is off, its box takes the baked probes or the environment.
+  `ambient_irradiance` blends the realtime volumes over the baked ones
+  over the environment by the same edge weight; lightmapped surfaces keep
+  their lightmaps. The low preset's GI switch reaches a world that names
+  `og.GlobalIllumination` only after the preset was applied: the preset's
+  switch waits in the presentation state (`FxState::gi_preset`), never
+  the world's.
 
 Render targets, views, layers and custom shaders (depth S8).
 

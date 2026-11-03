@@ -133,6 +133,8 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
             .names_by_id
             .iter()
             .any(|n| n == crate::fx::GLOBAL_ILLUMINATION);
+        // Where it has not, the preset's switch waits in the presentation
+        // state for it (crate::fx::gi_allowed).
         if has_gi {
             super::engine::write_resource_value(
                 eng.id,
@@ -140,6 +142,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
                 &json!({ "allowed": q.global_illumination }),
             )?;
         }
+        eng.render.borrow_mut().fx.gi_preset = (!has_gi).then_some(q.global_illumination);
         Ok(())
     }))
 }

@@ -43,7 +43,7 @@ import { IBL_STATIONS, buildIBL, resetIBL, showIBL, type IBLStation } from "./ib
 import { GEO_STATIONS, GEOShow, buildGEO, resetGEO, showGEO, type GEOStation } from "./geometry.ts";
 import { DEPTH_STATIONS, buildDepth, resetDepth, showDepth, type DepthStation } from "./depth.ts";
 import { VW_STATIONS, buildVW, resetVW, showVW, type VWStation } from "./views.ts";
-import { LIGHT_STATIONS, LightShow, buildLight, resetLight, setBaked, showLight, type LightStation } from "./light.ts";
+import { LIGHT_STATIONS, LightShow, buildLight, resetLight, setBaked, setLamp, setRealtime, showLight, type LightStation } from "./light.ts";
 import { GEN_STATIONS, resetGen, showGen, type GenStation } from "./islands.ts";
 import { MODEL_STATIONS, ModelsProbe, resetModels, showModels, type ModelStation } from "./models.ts";
 import { LOOK_PRESETS, LOOK_STATIONS, applyLookPreset, buildLooks, resetLooks, showLooks, type LookStation } from "./looks.ts";
@@ -513,6 +513,8 @@ export default og.game({
       show(world, STATIONS.includes(name) ? name : STATIONS[Number(name) - 1] ?? "post");
     },
     baked: (world, args) => setBaked(world, args[0] !== "off"),
+    realtime: (world, args) => setRealtime(world, args[0] !== "off"),
+    lamp: (world, args) => setLamp(world, args[0] ?? "warm"),
     look: (world, args) => {
       const slug = args[0] ?? "none";
       applyLookPreset(world, slug);
@@ -521,7 +523,7 @@ export default og.game({
       if (stage !== null) world.set(stage, Stage, { look: LOOK_PRESETS.indexOf(slug as (typeof LOOK_PRESETS)[number]) + 1 });
     },
   },
-  commandHelp: { station: { usage: "<name|1-33>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail), reflections (a reflection probe and SSR on a wet floor), views (a security monitor, a mirror and split-screen, from render targets and secondary cameras), and its light stations (baked: a lightmapped Cornell box; volumetric: sun shafts through a window, a rect light and cookies in volumetric fog), and round 3's islands (a terrain the cook generates, its sea at the terrain's seaLevel) and models (a `type model` of og-geom parts the cook built: a gear, bolts, a vase, a horn, a dice)." }, baked: { usage: "<on|off>", doc: "RenderSettings.bakedLighting: off draws the baked station's Cornell box unbaked." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
+  commandHelp: { station: { usage: "<name|1-33>", doc: "Show a station: post, lens, fx, 2d, stylised, then the E5 round's eight, then phase 2's terrain, the animation and physics round's four, the render round's four (lights, moon, materials, skinned), the 3D fluid station (fluids3d), P4's physical materials (physical) and the image-based lighting station (environment), the looks station (looks), and the depth wave's geometry station (geometry: runtime geometry, lines, points, debug draw), lod (2,000 trees in levels of detail), reflections (a reflection probe and SSR on a wet floor), views (a security monitor, a mirror and split-screen, from render targets and secondary cameras), and its light stations (baked: a lightmapped Cornell box; volumetric: sun shafts through a window, a rect light and cookies in volumetric fog), and round 3's islands (a terrain the cook generates, its sea at the terrain's seaLevel) and models (a `type model` of og-geom parts the cook built: a gear, bolts, a vase, a horn, a dice)." }, baked: { usage: "<on|off>", doc: "RenderSettings.bakedLighting: off draws the baked station's Cornell box unbaked." }, realtime: { usage: "<on|off>", doc: "On the baked station: relight the Cornell box's LightVolume while the game runs (og.RealtimeLightVolume), or keep its baked probes." }, lamp: { usage: "<warm|blue>", doc: "On the baked station: the Cornell box's ceiling spot as baked (warm) or blue; relit probes follow it, baked ones do not." }, look: { usage: "<slug|none>", doc: "On the looks station: apply one of the engine's look presets (templates/looks/<slug>.ogt) to the diorama, or none." } },
   facts: (world) => {
     const e = world.find("stage");
     const s = e === null ? null : world.get(e, Stage);

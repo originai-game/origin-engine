@@ -407,7 +407,18 @@ impl Renderer {
                 stats.draw_calls +=
                     draw_sprites(&mut pass, &face_sprites[k], glow_fx_group, &[], true);
             }
-            self.ibl.record_probe_filter(encoder, &s.filter);
+            // A light volume probe is projected onto its harmonics
+            // (probe_grid.rs); a reflection probe filtered.
+            match probe_frame.grid_capture(d) {
+                Some(_) => self.lightmaps.projector.record(
+                    &self.device,
+                    encoder,
+                    probe_frame.due[d].1 - probe_frame.sampled,
+                    &s.capture,
+                    &self.lightmaps.probe_buffer,
+                ),
+                None => self.ibl.record_probe_filter(encoder, &s.filter),
+            }
         }
     }
 }

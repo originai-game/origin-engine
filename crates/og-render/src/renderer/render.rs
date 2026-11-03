@@ -2527,8 +2527,7 @@ impl Renderer {
                     ],
                 )
             };
-            let probe_groups: Vec<wgpu::BindGroup> = probe_frame
-                .active
+            let probe_groups: Vec<wgpu::BindGroup> = probe_frame.active[..probe_frame.sampled]
                 .iter()
                 .enumerate()
                 .map(|(k, (p, slot))| {

@@ -179,7 +179,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             ssr: on(s, "screenSpaceReflections", full.ssr),
             ambient_occlusion: on(s, "ambientOcclusion", full.ambient_occlusion),
             // On the lazy og.GlobalIllumination's `allowed` (crate::fx).
-            global_illumination: full.global_illumination,
+            global_illumination: crate::fx::gi_allowed(
+                crate::fx::resource(world, layouts.fx.global_illumination.as_ref()).as_deref(),
+                rs.fx.gi_preset,
+            ),
             ao_resolution: [
                 None,
                 Some(og_render::AoResolution::Full),
@@ -191,7 +194,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         };
     } else {
         scene.camera.exposure = og_render::Exposure::linear(exposure);
-        scene.quality = og_render::RenderQuality::default();
+        scene.quality = og_render::RenderQuality {
+            global_illumination: crate::fx::gi_allowed(
+                crate::fx::resource(world, layouts.fx.global_illumination.as_ref()).as_deref(),
+                rs.fx.gi_preset,
+            ),
+            ..og_render::RenderQuality::default()
+        };
     }
 
     // Baked lighting (RenderSettings.bakedLighting, on by default).
@@ -587,6 +596,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.wind.present(&mut rs.scene, wind, tick, rate);
     super::environment::extract(world, rs);
     super::probes::extract(world, rs, &mut h);
+    super::probes::extract_light_volumes(world, rs, &mut h);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
     particle_colliders(world, rs, &mut h);

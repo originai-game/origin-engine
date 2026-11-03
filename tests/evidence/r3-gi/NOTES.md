@@ -66,3 +66,93 @@ og run templates/fx-showcase --headless --size 1280x720 --out /tmp/r3-gi \
 
 `off` and `quality-off` should match. `gi` should show warm and coloured
 bounce in the creases and under objects, and `gi-x2` stronger bounce.
+
+## Batch 2: realtime light volumes
+
+`og.RealtimeLightVolume` (`updatesPerFrame`, default 2, at most 8;
+`intensity`), a lazy component beside an `og.LightVolume`, relights
+that box's probes while the game runs (`og-render/src/probe_grid.rs`,
+`shaders/probe_grid.wgsl`, `docs/design.md` §2.6). It is off unless a
+game adds it, so no existing frame moves, and lazy, so no hash pin moves.
+
+- No binding is added to a lit stage: the realtime probes are written
+  into the light volumes' storage buffer (frame binding 10), after the
+  baked probes. Their header entry has bit 21 of the packed counts set.
+  `ambient_irradiance` blends the realtime volumes over the baked ones
+  over the environment, each by its edge weight. Lightmapped surfaces
+  keep their lightmaps. The visibility-buffer resolve shades through the
+  same `lit_fragment` and `ambient_irradiance`, so it gets the probes too.
+- A probe is relit by a 16² cube capture through the reflection-probe
+  capture path. The captures are appended to the frame's probe list
+  after the sampled reflection probes (`ProbeFrame::sampled`), so they
+  are never reflected or used as boxes. A compute pass (`cs_project`,
+  one 64-thread workgroup per probe) then projects the six faces onto L1
+  SH (irradiance over π, `[c1, c0]` per channel) where the reflection
+  probe filter would run. The captures sample the probes, so each sweep
+  adds a bounce.
+- Up to 8 probes a frame over every volume, in a stride-7919 order that
+  spreads them over the box. Volumes take turns being first. A volume is
+  sampled once every probe has been relit (its first sweep runs at 8 a
+  frame); until then its box takes the baked probes or the environment.
+  `updatesPerFrame: 0` relights once and keeps the probes.
+- The quality's GI switch (`scene.quality.global_illumination`: the low
+  preset, `GlobalIllumination.allowed`, auto quality's low step) stops
+  the relighting, and the box falls back to baked probes.
+- Fix for the gap the coordinator named: a low preset applied before
+  the world names `og.GlobalIllumination` now keeps GI off once the
+  world does name it. The preset's switch waits in `FxState::gi_preset`
+  (presentation state, not the world) until a later preset writes the
+  field.
+
+Checks (orb, no GPU): `cargo test -p og-runtime` (the hash pins, and
+`render_quality`'s two new tests: the low preset before GI is named, and
+a realtime volume reaching the renderer with its LightVolume's box);
+`cargo test -p og-render --lib` (`probe_grid`'s four plan tests,
+lightmap, probes); `cargo test -p og-render --test tests shaders` (naga);
+`cargo check -p og-render` (native and wasm32); clippy `-D warnings` on
+og-render, og-runtime and og-tests; fmt; `og api gen` / `og api check`;
+`og check templates/fx-showcase`.
+
+gfx tests (`crates/og-tests/tests/gfx/overlay_effects.rs`):
+
+- `light-volume-room` (new reference, 48 frames, no TAA): a closed room
+  6.4 m on a side. The left wall is red, the right green, the rest white,
+  with a white block (left) and a sphere (right). One warm point lamp
+  with shadows sits under the ceiling near the red wall, with almost no
+  environment light (a black background, intensity 0.05). A realtime
+  volume fills the room (5 × 3 × 5 probes, 8 a frame, about five
+  sweeps). Expected:
+  - The faces away from the lamp should be lifted from near black: the
+    block's front and right, the sphere's underside, the floor in the
+    block's shadow, the ceiling.
+  - Reddish light should fall on the left side and greenish on the right
+    side (the sphere's right flank, the floor along the green wall).
+  - The light should vary smoothly between probes, with no blocky cells
+    and no black probe.
+  - There should be no light leaking through the walls' outer faces.
+- `a_realtime_light_volume_takes_the_lamp_s_colour`: no reference. With
+  the volume against without it, the frame gains more than one level a
+  channel. With the lamp turned blue, the added light's blue-to-red
+  ratio is more than 1.5 times the warm lamp's.
+
+Commands (a native dev build): the fx-showcase baked station (the
+lightmapped Cornell box, whose LightVolume lights the rolling ball). The
+template gains two commands: `realtime:on|off` adds or removes
+og.RealtimeLightVolume on `cornell-probes`, and `lamp:warm|blue` sets the
+ceiling spot's colour.
+
+```sh
+og run templates/fx-showcase --headless --size 1280x720 --out /tmp/r3-probes \
+  --commands "0.5:station:baked;3:screenshot:baked;3.1:lamp:blue;5:screenshot:baked-blue;5.1:realtime:on;8:screenshot:realtime-blue;8.1:lamp:warm;10:screenshot:realtime-warm;10.1:set:og.GlobalIllumination.allowed=false;12:screenshot:quality-off;13:quit"
+```
+
+- `baked`: the station as before.
+- `baked-blue`: the box's surfaces are lit blue directly, but the ball
+  keeps the bake's warm ambient light (the baked probes are stale).
+- `realtime-blue`: the ball's shaded side turns bluish, still red on its
+  left and green on its right. The box itself does not change, since its
+  lightmap comes first.
+- `realtime-warm`: close to `baked`, the realtime probes standing in for
+  the baked ones.
+- `quality-off`: the realtime volume stops and the box falls back to its
+  baked probes, close to `baked`.

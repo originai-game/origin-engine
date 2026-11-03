@@ -2362,6 +2362,25 @@
     },
     {
       "id": 31,
+      "name": "RealtimeLightVolume",
+      "schema": "og.RealtimeLightVolume",
+      "module": "render",
+      "fields": [
+        {
+          "name": "updatesPerFrame",
+          "column": "u32",
+          "default": 2
+        },
+        {
+          "name": "intensity",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 32,
       "name": "Model",
       "schema": "og.Model",
       "module": "load",
@@ -2441,7 +2460,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "PrefabLink",
       "schema": "og.PrefabLink",
       "module": "load",
@@ -2467,7 +2486,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "RigidBody",
       "schema": "og.RigidBody",
       "module": "physics",
@@ -2534,7 +2553,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "Collider",
       "schema": "og.Collider",
       "module": "physics",
@@ -2626,7 +2645,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "Velocity",
       "schema": "og.Velocity",
       "module": "physics",
@@ -2654,7 +2673,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "ContactHook",
       "schema": "og.ContactHook",
       "module": "physics",
@@ -2699,7 +2718,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "Joint",
       "schema": "og.Joint",
       "module": "physics",
@@ -2845,7 +2864,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "CharacterController",
       "schema": "og.CharacterController",
       "module": "physics",
@@ -2975,7 +2994,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "name": "PlatformerController",
       "schema": "og.PlatformerController",
       "module": "physics",
@@ -3236,7 +3255,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "name": "Vehicle",
       "schema": "og.Vehicle",
       "module": "physics",
@@ -3464,7 +3483,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "name": "VehicleWheel",
       "schema": "og.VehicleWheel",
       "module": "physics",
@@ -3529,7 +3548,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "name": "Rope",
       "schema": "og.Rope",
       "module": "physics",
@@ -3624,7 +3643,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "name": "Cloth",
       "schema": "og.Cloth",
       "module": "physics",
@@ -3720,7 +3739,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "name": "Garment",
       "schema": "og.Garment",
       "module": "physics",
@@ -3814,7 +3833,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "name": "SoftBody",
       "schema": "og.SoftBody",
       "module": "physics",
@@ -3936,7 +3955,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "name": "Fluid2D",
       "schema": "og.Fluid2D",
       "module": "physics",
@@ -4062,7 +4081,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "name": "Fluid3D",
       "schema": "og.Fluid3D",
       "module": "physics",
@@ -4249,7 +4268,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "WaterSurface",
       "schema": "og.WaterSurface",
       "module": "physics",
@@ -4298,7 +4317,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "WaterLine",
       "schema": "og.WaterLine",
       "module": "physics",
@@ -4359,7 +4378,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "Buoyancy",
       "schema": "og.Buoyancy",
       "module": "physics",
@@ -4396,7 +4415,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "Ragdoll",
       "schema": "og.Ragdoll",
       "module": "physics",
@@ -4455,7 +4474,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "name": "Water",
       "schema": "og.Water",
       "module": "atmosphere",
@@ -4660,7 +4679,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "Water2D",
       "schema": "og.Water2D",
       "module": "atmosphere",
@@ -4716,7 +4735,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "Skeleton",
       "schema": "og.Skeleton",
       "module": "anim",
@@ -4750,7 +4769,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "CrowdAnimation",
       "schema": "og.CrowdAnimation",
       "module": "anim",
@@ -4795,7 +4814,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "AnimationPlayer",
       "schema": "og.AnimationPlayer",
       "module": "anim",
@@ -4848,7 +4867,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "AnimationGraph",
       "schema": "og.AnimationGraph",
       "module": "anim",
@@ -4933,7 +4952,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "Blendshapes",
       "schema": "og.Blendshapes",
       "module": "anim",
@@ -5005,7 +5024,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "IkChain",
       "schema": "og.IkChain",
       "module": "anim",
@@ -5084,7 +5103,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "LookAt",
       "schema": "og.LookAt",
       "module": "anim",
@@ -5172,7 +5191,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "JointLimit",
       "schema": "og.JointLimit",
       "module": "anim",
@@ -5217,7 +5236,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "name": "FootLock",
       "schema": "og.FootLock",
       "module": "anim",
@@ -5265,7 +5284,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "name": "SpringBone",
       "schema": "og.SpringBone",
       "module": "anim",
@@ -5349,7 +5368,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "name": "SpringCollider",
       "schema": "og.SpringCollider",
       "module": "anim",
@@ -5401,7 +5420,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -5453,7 +5472,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -5508,7 +5527,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -5557,7 +5576,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -5619,7 +5638,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -5775,7 +5794,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -5800,7 +5819,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -5972,7 +5991,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "AudioBusNode",
       "schema": "og.AudioBusNode",
       "module": "audio",
@@ -5996,7 +6015,7 @@
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "name": "AudioSnapshot",
       "schema": "og.AudioSnapshot",
       "module": "audio",
@@ -6039,7 +6058,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "name": "AudioEvent",
       "schema": "og.AudioEvent",
       "module": "audio",
@@ -6171,7 +6190,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -6229,7 +6248,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -6277,7 +6296,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -6402,7 +6421,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -6518,7 +6537,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "name": "NavFilter",
       "schema": "og.NavFilter",
       "module": "nav",
@@ -6538,7 +6557,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "name": "Crowd",
       "schema": "og.Crowd",
       "module": "nav",
@@ -6570,7 +6589,7 @@
       ]
     },
     {
-      "id": 81,
+      "id": 82,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -6617,7 +6636,7 @@
       ]
     },
     {
-      "id": 82,
+      "id": 83,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -6728,7 +6747,7 @@
       ]
     },
     {
-      "id": 83,
+      "id": 84,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -6746,7 +6765,7 @@
       ]
     },
     {
-      "id": 84,
+      "id": 85,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -6780,7 +6799,7 @@
       ]
     },
     {
-      "id": 85,
+      "id": 86,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -6871,7 +6890,7 @@
       ]
     },
     {
-      "id": 86,
+      "id": 87,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -6924,7 +6943,7 @@
       ]
     },
     {
-      "id": 87,
+      "id": 88,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -6942,7 +6961,7 @@
       ]
     },
     {
-      "id": 88,
+      "id": 89,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -6956,7 +6975,7 @@
       ]
     },
     {
-      "id": 89,
+      "id": 90,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -7008,7 +7027,7 @@
       ]
     },
     {
-      "id": 90,
+      "id": 91,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -7062,7 +7081,7 @@
       ]
     },
     {
-      "id": 91,
+      "id": 92,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -7096,7 +7115,7 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -7140,7 +7159,7 @@
       ]
     },
     {
-      "id": 93,
+      "id": 94,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",

@@ -115,6 +115,26 @@ export function setBaked(world: World, on: boolean): void {
   if (e !== null) world.set(e, LightStage, { baked: on ? 1 : 0 });
 }
 
+/**
+ * `realtime:on|off`: the Cornell box's LightVolume relit while the game
+ * runs (og.RealtimeLightVolume, R3), or its baked probes alone. Relit, the
+ * ball follows the spot's colour (`lamp`); baked, it keeps the bake's.
+ */
+export function setRealtime(world: World, on: boolean): void {
+  const probes = world.find("cornell-probes");
+  if (probes === null) return;
+  if (on) world.insert(probes, og.RealtimeLightVolume, { updatesPerFrame: 4 });
+  else world.remove(probes, og.RealtimeLightVolume);
+}
+
+/** `lamp:warm|blue`: the Cornell box's ceiling spot, as baked or turned blue. */
+export function setLamp(world: World, colour: string): void {
+  const spot = world.find("cornell-light");
+  if (spot === null) return;
+  const color = colour === "blue" ? { r: 0.35, g: 0.55, b: 1 } : { r: 1, g: 0.9, b: 0.78 };
+  world.set(spot, og.SpotLight, { color });
+}
+
 /** Shows a station: builds it the first time, then its camera and light. */
 export function showLight(world: World, station: LightStation): void {
   if (world.find(`light-${station}`) === null) {

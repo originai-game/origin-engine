@@ -331,6 +331,19 @@ pub(crate) struct ProbeFrame {
     pub active: Vec<(ReflectionProbe, Option<usize>)>,
     /// Slots whose capture is drawn this frame, with their active index.
     pub due: Vec<(usize, usize)>,
+    /// How many of `active` are sampled: the rest are the realtime light
+    /// volumes' probes relit this frame (probe_grid.rs), `grid[i - sampled]`
+    /// for active `i`, captured but never reflected.
+    pub sampled: usize,
+    pub grid: Vec<crate::probe_grid::GridCapture>,
+}
+
+impl ProbeFrame {
+    /// The light volume probe a due capture relights, if it is one.
+    pub fn grid_capture(&self, due: usize) -> Option<&crate::probe_grid::GridCapture> {
+        let i = self.due[due].1;
+        i.checked_sub(self.sampled).map(|k| &self.grid[k])
+    }
 }
 
 /// The renderer's probes: a slot per probe that draws its own capture.
@@ -374,7 +387,8 @@ impl Probes {
     /// The frame's probes: slots made for new ones (and remade for a new
     /// face size or sample count), dropped for those gone, and the
     /// captures due at `tick`. `baked` tells whether a baked probe's
-    /// environment map is loaded.
+    /// environment map is loaded. The light volume probes of `grid` are
+    /// captured after them, each in a slot of its own this frame.
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
@@ -385,14 +399,29 @@ impl Probes {
         tick: u64,
         samples: u32,
         baked: impl Fn(EnvironmentMapHandle) -> bool,
+        grid: Vec<crate::probe_grid::GridCapture>,
     ) -> ProbeFrame {
         let mut frame = ProbeFrame::default();
-        let active: Vec<ReflectionProbe> = probes
+        let mut active: Vec<ReflectionProbe> = probes
             .iter()
             .filter(|p| p.size.cmpgt(Vec3::ZERO).all())
             .take(MAX_REFLECTION_PROBES)
             .copied()
             .collect();
+        frame.sampled = active.len();
+        // Each light volume probe a realtime capture due every frame, in
+        // the slot of its place in the frame's list.
+        active.extend(grid.iter().enumerate().map(|(k, c)| ReflectionProbe {
+            resolution: crate::probe_grid::GRID_FACE,
+            mode: ProbeMode::Realtime,
+            interval: 0,
+            ..ReflectionProbe::new(
+                crate::probe_grid::GRID_SLOT_IDS + k as u64,
+                c.position,
+                (c.cell * 2.0).max(Vec3::splat(0.1)),
+            )
+        }));
+        frame.grid = grid;
         let own =
             |p: &ReflectionProbe| !(p.mode == ProbeMode::Baked && p.baked.is_some_and(&baked));
         self.slots.retain(|s| {
@@ -447,7 +476,7 @@ impl Probes {
             self.uniforms = Some((
                 device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("probe frames"),
-                    size: stride * (MAX_REFLECTION_PROBES * 7) as u64,
+                    size: stride * ((MAX_REFLECTION_PROBES + crate::MAX_GRID_CAPTURES) * 7) as u64,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 }),
@@ -717,6 +746,8 @@ mod tests {
         let frame = |due: Vec<(usize, usize)>| ProbeFrame {
             active: vec![(baked, Some(0)), (realtime, Some(1)), (loaded, None)],
             due,
+            sampled: 3,
+            grid: Vec::new(),
         };
         assert_eq!(face_target_sizes(&frame(vec![(0, 0), (1, 1)])), [1024, 256]);
         assert_eq!(face_target_sizes(&frame(vec![])), [256]);

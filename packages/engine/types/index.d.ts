@@ -11483,6 +11483,30 @@ export interface LightVolume {
   spacing: number;
 }
 
+/**
+ * Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the scene around it (six small views drawn with every light, the sky's and the lights' shadows, emissive surfaces and lightmapped models), a few probes a frame in an order spread over the box. The captures see the probes too, so light bounces once more each time the box is swept: a lamp lit in a red room fills it with red light.
+ * Its probes are sampled once every one has been relit (a few frames after it is added, or after its LightVolume is resized); until then, and while the quality turns global illumination off (og.render.applyQuality's low preset, GlobalIllumination.allowed false), the box takes the baked probes of its LightVolume when the scene has a bake (og bake lightmaps), else the sky's. Where both are drawn the realtime probes win; static models keep their lightmaps. Up to eight light volumes are drawn: the baked ones, then the realtime ones nearest the camera. Keep the box's faces a little inside the walls: a probe on a wall sees into it. Read after each tick; it never feeds back into the simulation, and a world that never names it keeps the type table, saves and hash it had without it.
+ *
+ * The value of the `RealtimeLightVolume` component (token `og.RealtimeLightVolume`).
+ */
+export interface RealtimeLightVolume {
+  /**
+   * Probes relit a frame once every one has been (at most 8 a frame over every volume; the first sweep takes 8). 0 relights them once and keeps them: a bake at run time.
+   *
+   * @default 2
+   * @range ..8
+   */
+  updatesPerFrame: number;
+  /**
+   * A multiplier on the light its probes capture; 1 is physical.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+}
+
 /** One instantiated scene's baked lighting, as og.render.bakedLighting reports it. */
 export interface BakedScene {
   /** The scene's asset id, such as `scenes/cornell.ogt`. */
@@ -52238,6 +52262,11 @@ export declare namespace og {
    * The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
    */
   const LightVolume: ComponentType<{ readonly size: FieldSpec<"Vector3">; readonly spacing: FieldSpec<"f32"> }, LightVolume>;
+  /**
+   * Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the scene around it (six small views drawn with every light, the sky's and the lights' shadows, emissive surfaces and lightmapped models), a few probes a frame in an order spread over the box. The captures see the probes too, so light bounces once more each time the box is swept: a lamp lit in a red room fills it with red light.
+   * Its probes are sampled once every one has been relit (a few frames after it is added, or after its LightVolume is resized); until then, and while the quality turns global illumination off (og.render.applyQuality's low preset, GlobalIllumination.allowed false), the box takes the baked probes of its LightVolume when the scene has a bake (og bake lightmaps), else the sky's. Where both are drawn the realtime probes win; static models keep their lightmaps. Up to eight light volumes are drawn: the baked ones, then the realtime ones nearest the camera. Keep the box's faces a little inside the walls: a probe on a wall sees into it. Read after each tick; it never feeds back into the simulation, and a world that never names it keeps the type table, saves and hash it had without it.
+   */
+  const RealtimeLightVolume: ComponentType<{ readonly updatesPerFrame: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32"> }, RealtimeLightVolume>;
   /**
    * What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call.
    */

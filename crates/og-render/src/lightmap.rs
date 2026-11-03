@@ -91,7 +91,7 @@ pub const PROBE_VOLUMES: usize = 8;
 const HEADER: usize = 2 * PROBE_VOLUMES;
 /// The probe buffer's size in vec4: the header and 16384 probes of three
 /// vec4.
-const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
+pub(crate) const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
 
 /// The WGSL of the probe buffer and the ambient-light hook (frame binding
 /// 10), placed after lighting.wgsl in the lit shaders.
@@ -116,17 +116,22 @@ fn probe_irradiance(at: u32, n: vec3<f32>) -> vec3<f32> {
   return max(vec3<f32>(r.w + dot(r.xyz, n), g.w + dot(g.xyz, n), b.w + dot(b.xyz, n)), vec3<f32>(0.0));
 }
 
-// The light volumes' irradiance over π at p for normal n (rgb) and how
-// much of it to take (w: 0 outside every volume, 1 a spacing inside one).
-fn baked_volume(p: vec3<f32>, n: vec3<f32>) -> vec4<f32> {
-  var sum = vec3<f32>(0.0);
-  var weight = 0.0;
+// The light volumes' irradiance over π at p for normal n: the baked ones'
+// (`baked`) and the realtime ones' (`live`, probe_grid.rs), each with how
+// much of it to take (w: 0 outside every volume of its kind, 1 a spacing
+// inside one). A header's packed counts carry bit 21 on a realtime volume.
+struct VolumeLight { baked: vec4<f32>, live: vec4<f32> };
+
+fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
+  var sum = array<vec3<f32>, 2>(vec3<f32>(0.0), vec3<f32>(0.0));
+  var weight = array<f32, 2>(0.0, 0.0);
   for (var i = 0u; i < PROBE_VOLUMES; i++) {
     let h0 = probe_data.v[2u * i];
     let h1 = probe_data.v[2u * i + 1u];
     if (h0.w < 0.0) { break; }
     let packed = u32(h1.w);
-    let c = vec3<u32>(packed & 127u, (packed >> 7u) & 127u, packed >> 14u);
+    let kind = (packed >> 21u) & 1u;
+    let c = vec3<u32>(packed & 127u, (packed >> 7u) & 127u, (packed >> 14u) & 127u);
     let cmax = vec3<f32>(c - vec3<u32>(1u));
     let size = max(h1.xyz - h0.xyz, vec3<f32>(1e-4));
     let d = min(p - h0.xyz, h1.xyz - p) / (size / cmax);
@@ -143,22 +148,25 @@ fn baked_volume(p: vec3<f32>, n: vec3<f32>) -> vec4<f32> {
       let idx = (q.z * c.y + q.y) * c.x + q.x;
       irr += probe_irradiance(u32(h0.w) + idx * 3u, n) * wk;
     }
-    sum += irr * w;
-    weight += w;
+    sum[kind] += irr * w;
+    weight[kind] += w;
   }
-  if (weight <= 0.0) { return vec4<f32>(0.0); }
-  return vec4<f32>(sum / weight, min(weight, 1.0));
+  var out: VolumeLight;
+  out.baked = select(vec4<f32>(0.0), vec4<f32>(sum[0] / weight[0], min(weight[0], 1.0)), weight[0] > 0.0);
+  out.live = select(vec4<f32>(0.0), vec4<f32>(sum[1] / weight[1], min(weight[1], 1.0)), weight[1] > 0.0);
+  return out;
 }
 
 // The diffuse ambient light of a lit fragment, in the environment
 // irradiance's units (the caller scales it by the environment intensity,
-// which baked light does not take): its lightmap texel, else the light
-// volumes around it blended over `env`, else `env`.
+// which baked and captured light do not take): its lightmap texel, else
+// the realtime light volumes around it over the baked ones over `env`.
 fn ambient_irradiance(env: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   let scale = 1.0 / max(frame.params.x, 1e-4);
   if (baked_lightmap.a > 0.5) { return baked_lightmap.rgb * scale; }
-  let b = baked_volume(p, n);
-  return mix(env, b.rgb * scale, b.w);
+  let v = light_volumes(p, n);
+  let baked = mix(env, v.baked.rgb * scale, v.baked.w);
+  return mix(baked, v.live.rgb * scale, v.live.w);
 }
 "#;
 
@@ -188,15 +196,28 @@ pub(crate) fn pack_probes(volumes: &[ProbeVolume], capacity: usize) -> Vec<[f32;
         let Some((counts, probes)) = fit(v, left) else {
             break;
         };
-        let first = out.len();
-        out[2 * i] = v.min.extend(first as f32).to_array();
-        let packed = counts[0] + (counts[1] << 7) + (counts[2] << 14);
-        out[2 * i + 1] = v.max.extend(packed as f32).to_array();
+        [out[2 * i], out[2 * i + 1]] = header(v.min, v.max, out.len(), counts, false);
         for p in probes {
             out.extend(p);
         }
     }
     out
+}
+
+/// A volume's two header rows: its min and first probe (in vec4), its max
+/// and packed counts (7 bits a side, bit 21 on a realtime volume).
+pub(crate) fn header(
+    min: Vec3,
+    max: Vec3,
+    first: usize,
+    counts: [u32; 3],
+    realtime: bool,
+) -> [[f32; 4]; 2] {
+    let packed = counts[0] + (counts[1] << 7) + (counts[2] << 14) + ((realtime as u32) << 21);
+    [
+        min.extend(first as f32).to_array(),
+        max.extend(packed as f32).to_array(),
+    ]
 }
 
 /// A volume's probes within `room` probes: as baked, or trilinearly
@@ -207,17 +228,9 @@ fn fit(v: &ProbeVolume, room: usize) -> Option<([u32; 3], Vec<Probe>)> {
         return None;
     }
     let total = (c[0] * c[1] * c[2]) as usize;
-    if total <= room {
+    let n = fit_counts(c, room)?;
+    if n == c {
         return Some((c, v.probes[..total].to_vec()));
-    }
-    let scale = (room as f32 / total as f32).cbrt();
-    let mut n = c.map(|k| ((k as f32 * scale).floor() as u32).clamp(2, k));
-    while (n[0] * n[1] * n[2]) as usize > room {
-        let k = (0..3).max_by_key(|&k| n[k])?;
-        if n[k] <= 2 {
-            return None;
-        }
-        n[k] -= 1;
     }
     let at = |x: u32, y: u32, z: u32| v.probes[((z * c[1] + y) * c[0] + x) as usize];
     let mut probes = Vec::with_capacity((n[0] * n[1] * n[2]) as usize);
@@ -246,6 +259,26 @@ fn fit(v: &ProbeVolume, room: usize) -> Option<([u32; 3], Vec<Probe>)> {
         }
     }
     Some((n, probes))
+}
+
+/// The largest grid of `c`'s proportions (2 to 64 a side) with at most
+/// `room` probes: `c` itself when it fits; none when two a side do not.
+pub(crate) fn fit_counts(c: [u32; 3], room: usize) -> Option<[u32; 3]> {
+    let c = c.map(|n| n.clamp(2, 64));
+    let total = (c[0] * c[1] * c[2]) as usize;
+    if total <= room {
+        return Some(c);
+    }
+    let scale = (room as f32 / total as f32).cbrt();
+    let mut n = c.map(|k| ((k as f32 * scale).floor() as u32).clamp(2, k));
+    while (n[0] * n[1] * n[2]) as usize > room {
+        let k = (0..3).max_by_key(|&k| n[k])?;
+        if n[k] <= 2 {
+            return None;
+        }
+        n[k] -= 1;
+    }
+    Some(n)
 }
 
 /// An f32 as an IEEE half (round to nearest; overflow to infinity).
@@ -292,9 +325,17 @@ pub(crate) struct Lightmaps {
     /// The lit pipelines of lightmapped batches: their family and (side,
     /// blended, effects).
     pipelines: HashMap<(Family, LitKey), wgpu::RenderPipeline>,
-    /// Frame binding 10, and what was last written to it.
+    /// Frame binding 10, and what was last written to it: the baked
+    /// volumes (their key, header and where their probes end) and the
+    /// header with the realtime volumes swept.
     pub probe_buffer: wgpu::Buffer,
     probes_key: Vec<(Vec3, Vec3, [u32; 3], usize)>,
+    baked_header: Vec<[f32; 4]>,
+    baked_end: usize,
+    header: Vec<[f32; 4]>,
+    /// The realtime volumes (probe_grid.rs) and what relights them.
+    pub grid: crate::probe_grid::ProbeGrid,
+    pub projector: crate::probe_grid::GridProjector,
 }
 
 /// A lightmapped mesh on the GPU.
@@ -397,11 +438,8 @@ impl Lightmaps {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        queue.write_buffer(
-            &probe_buffer,
-            0,
-            bytemuck::cast_slice(&pack_probes(&[], capacity)),
-        );
+        let empty = pack_probes(&[], capacity);
+        queue.write_buffer(&probe_buffer, 0, bytemuck::cast_slice(&empty));
         Lightmaps {
             layout,
             frame_layout: frame_layout.clone(),
@@ -412,6 +450,11 @@ impl Lightmaps {
             pipelines: HashMap::new(),
             probe_buffer,
             probes_key: Vec::new(),
+            baked_end: empty.len(),
+            baked_header: empty.clone(),
+            header: empty,
+            grid: Default::default(),
+            projector: crate::probe_grid::GridProjector::new(device),
         }
     }
 
@@ -479,8 +522,16 @@ impl Lightmaps {
 
     /// Uploads what changed in `baked` since the last frame: the pages of
     /// every scene a lightmapped mesh names (each set once), the meshes'
-    /// uvs; what no mesh names any more is let go.
-    pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, baked: &BakedLighting) {
+    /// uvs; what no mesh names any more is let go. Then lays out the
+    /// `realtime` volumes after the baked ones (probe_grid.rs) and answers
+    /// the probes relit this frame.
+    pub fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        baked: &BakedLighting,
+        realtime: &[crate::RealtimeLightVolume],
+    ) -> Vec<crate::probe_grid::GridCapture> {
         self.uvs.retain(|mesh, m| {
             baked
                 .meshes
@@ -524,7 +575,28 @@ impl Lightmaps {
             let data = pack_probes(&baked.volumes, PROBE_CAPACITY);
             queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&data));
             self.probes_key = probes_key;
+            self.baked_end = data.len();
+            self.baked_header = data[..HEADER].to_vec();
+            self.header = self.baked_header.clone();
         }
+        let baked_volumes = self
+            .baked_header
+            .iter()
+            .step_by(2)
+            .take_while(|h| h[3] >= 0.0)
+            .count();
+        let (rows, captures) = self.grid.plan(realtime, self.baked_end, baked_volumes);
+        let mut header = self.baked_header.clone();
+        for (k, row) in rows.into_iter().enumerate() {
+            let i = baked_volumes + k;
+            [header[2 * i], header[2 * i + 1]] = row;
+        }
+        if header != self.header {
+            queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&header));
+            self.header = header;
+        }
+        self.projector.write(queue, &captures);
+        captures
     }
 
     /// The lightmap uv stream of a mesh drawn with its lightmap.

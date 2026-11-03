@@ -217,6 +217,7 @@ module render {
 | [`VolumetricFog`](#type-VolumetricFog) | enum | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
 | [`og.RectLight`](#record-RectLight) | component | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting color * intensity from its front, or from both faces with twoSided. Shaded with linearly transformed cosines (Heitz et al. 2016, three.js's tables), so its highlight on a glossy floor is the rectangle's shape and its light on a matte wall falls off as a real panel's does. With castShadow it casts a soft shadow in the frame; og bake lightmaps traces its exact soft shadows into the bounce light either way. |
 | [`og.LightVolume`](#record-LightVolume) | component | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side. |
+| [`og.RealtimeLightVolume`](#record-RealtimeLightVolume) | component | Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the scene around it (six small views drawn with every light, the sky's and the lights' shadows, emissive surfaces and lightmapped models), a few probes a frame in an order spread over the box. The captures see the probes too, so light bounces once more each time the box is swept: a lamp lit in a red room fills it with red light. |
 | [`BakedScene`](#type-BakedScene) | struct | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
 | [`og.render.bakedLighting`](#fn-bakedLighting) | function | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. A scene with no static model and no LightVolume is not listed. |
 
@@ -1791,7 +1792,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7332</sub>
+<sub>`api.ogt` line 7346</sub>
 
 ## Components, resources and events
 
@@ -4158,6 +4159,39 @@ component LightVolume {
 ```
 
 <sub>`api.ogt` line 7305</sub>
+
+<a id="record-RealtimeLightVolume"></a>
+
+### `og.RealtimeLightVolume` (component)
+
+Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the scene around it (six small views drawn with every light, the sky's and the lights' shadows, emissive surfaces and lightmapped models), a few probes a frame in an order spread over the box. The captures see the probes too, so light bounces once more each time the box is swept: a lamp lit in a red room fills it with red light.
+
+Its probes are sampled once every one has been relit (a few frames after it is added, or after its LightVolume is resized); until then, and while the quality turns global illumination off (og.render.applyQuality's low preset, GlobalIllumination.allowed false), the box takes the baked probes of its LightVolume when the scene has a bake (og bake lightmaps), else the sky's. Where both are drawn the realtime probes win; static models keep their lightmaps. Up to eight light volumes are drawn: the baked ones, then the realtime ones nearest the camera. Keep the box's faces a little inside the walls: a probe on a wall sees into it. Read after each tick; it never feeds back into the simulation, and a world that never names it keeps the type table, saves and hash it had without it.
+
+Token `og.RealtimeLightVolume`, registered under the schema name `og.RealtimeLightVolume`; its value type is `RealtimeLightVolume`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `updatesPerFrame` | `number` | `2` | ≤ 8 | — | — | Probes relit a frame once every one has been (at most 8 a frame over every volume; the first sweep takes 8). 0 relights them once and keeps them: a bake at run time. |
+| `intensity` | `number` | `1` | ≥ 0 | — | tunable | A multiplier on the light its probes capture; 1 is physical. |
+
+```ogt
+component RealtimeLightVolume {
+  doc "Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the scene around it (six small views drawn with every light, the sky's and the lights' shadows, emissive surfaces and lightmapped models), a few probes a frame in an order spread over the box. The captures see the probes too, so light bounces once more each time the box is swept: a lamp lit in a red room fills it with red light."
+  doc "Its probes are sampled once every one has been relit (a few frames after it is added, or after its LightVolume is resized); until then, and while the quality turns global illumination off (og.render.applyQuality's low preset, GlobalIllumination.allowed false), the box takes the baked probes of its LightVolume when the scene has a bake (og bake lightmaps), else the sky's. Where both are drawn the realtime probes win; static models keep their lightmaps. Up to eight light volumes are drawn: the baked ones, then the realtime ones nearest the camera. Keep the box's faces a little inside the walls: a probe on a wall sees into it. Read after each tick; it never feeds back into the simulation, and a world that never names it keeps the type table, saves and hash it had without it."
+  field updatesPerFrame u32 "Probes relit a frame once every one has been (at most 8 a frame over every volume; the first sweep takes 8). 0 relights them once and keeps them: a bake at run time." {
+    default 2
+    max 8
+  }
+  field intensity f32 "A multiplier on the light its probes capture; 1 is physical." {
+    default 1
+    min 0
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 7320</sub>
 
 ## Types
 
@@ -7348,7 +7382,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7320</sub>
+<sub>`api.ogt` line 7334</sub>
 
 ## Column kinds
 

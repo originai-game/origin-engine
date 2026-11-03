@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2371 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2372 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1251,6 +1251,7 @@ Field units the docs and Tune use.
 | [`og.procgen.wfc`](procgen.md#fn-wfc) | function | procgen | `og_procgen_wfc` |
 | [`og.QuestUpdated`](story.md#record-QuestUpdated) | event | story | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
+| [`og.RealtimeLightVolume`](render.md#record-RealtimeLightVolume) | component | render | — |
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
 | [`og.render.applyLook`](render.md#fn-applyLook) | function | render | `og_render_apply_look` |

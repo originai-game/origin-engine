@@ -519,6 +519,48 @@ fn gi_bleeds_each_walls_colour_towards_its_side() {
 }
 
 #[test]
+fn light_volume_room_matches_its_reference() {
+    check("light-volume-room");
+}
+
+/// A realtime light volume is relit by the lamp as it is: against the
+/// same room without it, it lifts the frame (the bounce in the shade), and
+/// with the lamp turned blue the light it adds is bluer than with the warm
+/// lamp (a baked volume would keep the warm light).
+#[test]
+fn a_realtime_light_volume_takes_the_lamp_s_colour() {
+    let render = |realtime: bool, colour: Vec3| {
+        let mut g = scenes::build("light-volume-room").expect("light-volume-room");
+        g.scene = og_tests::fx_scenes::light_volume_scene(realtime, colour);
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    // The summed (red, green, blue) the volume adds under each lamp.
+    let gain = |colour: Vec3| {
+        let (on, off) = (render(true, colour), render(false, colour));
+        let mut sum = [0i64; 3];
+        for (a, b) in on.pixels.chunks(4).zip(off.pixels.chunks(4)) {
+            for c in 0..3 {
+                sum[c] += a[c] as i64 - b[c] as i64;
+            }
+        }
+        sum
+    };
+    let warm = gain(Vec3::new(1.0, 0.9, 0.78));
+    let blue = gain(Vec3::new(0.35, 0.55, 1.0));
+    println!("(r, g, b) added: warm lamp {warm:?}, blue lamp {blue:?}");
+    let pixels = (render(false, Vec3::ONE).pixels.len() / 4) as i64;
+    assert!(
+        warm.iter().sum::<i64>() > 3 * pixels,
+        "the volume lifts the frame by more than a level a channel: {warm:?}"
+    );
+    let ratio = |s: [i64; 3]| s[2] as f64 / s[0].max(1) as f64;
+    assert!(
+        ratio(blue) > 1.5 * ratio(warm),
+        "the blue lamp's bounce is bluer: {warm:?} {blue:?}"
+    );
+}
+
+#[test]
 fn dof_low_matches_its_reference() {
     check("dof-low");
 }

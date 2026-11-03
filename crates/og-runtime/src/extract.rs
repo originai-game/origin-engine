@@ -658,6 +658,10 @@ pub(crate) struct DrawLayouts {
     pub points: Option<Layout>,
     /// og.ReflectionProbe (`super::probes`).
     pub probe: Option<Layout>,
+    /// og.LightVolume and the lazy og.RealtimeLightVolume beside it
+    /// (`super::probes::extract_light_volumes`).
+    pub light_volume: Option<Layout>,
+    pub realtime_volume: Option<Layout>,
     /// og.Interpolation (`super::interpolate`).
     pub interpolation: Option<Layout>,
     /// og.WorldOrigin (R12): the render origin's grid is in the absolute world.

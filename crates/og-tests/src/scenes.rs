@@ -54,6 +54,7 @@ pub const SCENES: &[&str] = &[
     "ao-ssao",
     "gi-room",
     "gi-room-taa",
+    "light-volume-room",
     "dof-low",
     "dof-high",
     "god-rays",
@@ -676,6 +677,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = fx::gi_scene(true);
             g.desc.antialias = Antialias::Taa;
             g.frames = 32;
+            Ok(())
+        },
+        // A realtime light volume swept about five times (8 of its 75
+        // probes a frame): the lamp's bounce in the shade, light bouncing
+        // once more with each sweep.
+        "light-volume-room" => |g, _| {
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78));
+            g.frames = 48;
             Ok(())
         },
         "dof-low" => |g, _| {

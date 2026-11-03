@@ -46,6 +46,16 @@ impl Renderer {
         &mut self,
         scene: &RenderScene,
     ) -> (probes::ProbeFrame, Vec<ReflectionProbe>, Vec<(Vec3, Vec3)>) {
+        // The light volumes' probes, then the realtime volumes' due
+        // relighting (probe_grid.rs), which the quality's GI switch stops.
+        let realtime: &[crate::RealtimeLightVolume] = if scene.quality.global_illumination {
+            &scene.light_volumes
+        } else {
+            &[]
+        };
+        let grid = self
+            .lightmaps
+            .prepare(&self.device, &self.queue, &scene.baked, realtime);
         let probe_frame = self.probes.prepare(
             &self.device,
             &self.queue,
@@ -59,13 +69,13 @@ impl Renderer {
                     .get(h.index())
                     .is_some_and(Option::is_some)
             },
+            grid,
         );
-        self.lightmaps
-            .prepare(&self.device, &self.queue, &scene.baked);
-        // Reflection probes: the frame's active ones, whose boxes key the
-        // instances' sort (probe_select.rs: a batch samples one probe).
+        // Reflection probes: the frame's active ones, whose sampled ones'
+        // boxes key the instances' sort (probe_select.rs: a batch samples
+        // one probe).
         let active_probes: Vec<ReflectionProbe> = probe_frame.active.iter().map(|a| a.0).collect();
-        let probe_boxes = probe_select::boxes(&active_probes);
+        let probe_boxes = probe_select::boxes(&active_probes[..probe_frame.sampled]);
         self.sorted.set_probes(probe_boxes.clone());
         (probe_frame, active_probes, probe_boxes)
     }

@@ -168,6 +168,11 @@ pub(crate) struct FxState {
     pub skins: BTreeMap<String, SkinnedModel>,
     /// Looks and palettes (`super::look`).
     pub look: super::look::LookState,
+    /// The GI switch of the last quality preset applied while the world
+    /// had no og.GlobalIllumination to write it to (og.render.applyQuality;
+    /// `None` once a preset is written there): presentation state, never
+    /// the world's.
+    pub gi_preset: Option<bool>,
     /// og-anim on this world (its palettes and blendshape weights).
     pub anim: Option<og_anim::AnimationSystem>,
     /// Instance transforms by (entity, part) of the last two ticks, for
@@ -262,6 +267,14 @@ pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32>
         .into_iter()
         .map(|(e, v)| (e, mask(&v, "layers", 1)))
         .collect()
+}
+
+/// Whether the quality lets global illumination draw (screen-space GI and
+/// realtime light volumes): og.GlobalIllumination's `allowed`, where the
+/// presets write it, and the switch of a preset applied before the world
+/// had the resource (`FxState::gi_preset`).
+pub(crate) fn gi_allowed(gi: Option<&Value>, preset: Option<bool>) -> bool {
+    gi.is_none_or(|g| on(g, "allowed", true)) && preset.unwrap_or(true)
 }
 
 pub(crate) fn variant(v: &Value, names: &[&str]) -> usize {
@@ -507,7 +520,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     );
     if let Some(g) = resource(world, layouts.global_illumination.as_ref())
         && on(&g, "enabled", false)
-        && on(&g, "allowed", true)
+        && gi_allowed(Some(&g), fx.gi_preset)
     {
         post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
             intensity: f(&g, "intensity", 1.0),

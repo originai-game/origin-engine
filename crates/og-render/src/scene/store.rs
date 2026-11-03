@@ -111,6 +111,7 @@ impl RenderScene {
             volumetric_fog: None,
             quality: crate::RenderQuality::default(),
             baked: crate::BakedLighting::default(),
+            light_volumes: Vec::new(),
             light_cookies: Vec::new(),
             water: Vec::new(),
             terrains: Vec::new(),

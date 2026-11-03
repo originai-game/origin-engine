@@ -85,6 +85,55 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.reflection_probes = probes;
 }
 
+/// The lazy record that relights a LightVolume at run time: a world that
+/// never names it keeps its type table and hash.
+pub(crate) const REALTIME_LIGHT_VOLUME: &str = "og.RealtimeLightVolume";
+
+/// og.RealtimeLightVolume rows, each with the og.LightVolume of its entity
+/// (its box and spacing), into `rs.scene.light_volumes`: the nearest the
+/// camera first, at most [`og_render::PROBE_VOLUMES`].
+pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+    rs.scene.light_volumes.clear();
+    let (Some(realtime), Some(volume)) = (
+        rs.draw.realtime_volume.clone(),
+        rs.draw.light_volume.clone(),
+    ) else {
+        return;
+    };
+    let live = super::extract::rows(world, &realtime);
+    if live.is_empty() {
+        return;
+    }
+    let boxes: BTreeMap<u64, Value> = super::extract::rows(world, &volume).into_iter().collect();
+    let f = |v: &Value, k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
+    let mut volumes = Vec::new();
+    for (e, v) in live {
+        let Some(b) = boxes.get(&e) else {
+            continue;
+        };
+        let centre = h.world_of(e).transform_point3(glam::Vec3::ZERO);
+        let size = &b["size"];
+        let half =
+            glam::Vec3::new(f(size, "x", 4.0), f(size, "y", 4.0), f(size, "z", 4.0)).abs() * 0.5;
+        volumes.push(og_render::RealtimeLightVolume {
+            id: e,
+            min: centre - half,
+            max: centre + half,
+            spacing: f(b, "spacing", 1.0).max(0.1),
+            updates_per_frame: v["updatesPerFrame"].as_u64().unwrap_or(2) as u32,
+            intensity: f(&v, "intensity", 1.0).max(0.0),
+        });
+    }
+    let eye = rs.scene.camera.position;
+    let distance =
+        |v: &og_render::RealtimeLightVolume| eye.clamp(v.min, v.max).distance_squared(eye);
+    og_core::sort::sort_by(&mut volumes, |a, b| {
+        distance(a).total_cmp(&distance(b)).then(a.id.cmp(&b.id))
+    });
+    volumes.truncate(og_render::PROBE_VOLUMES);
+    rs.scene.light_volumes = volumes;
+}
+
 /// After extraction (the room complete): each baked probe's key, from its
 /// room's content, and its bake, loaded from the bundle the first time the
 /// key is seen (the probe samples it from this frame on; none: it draws its

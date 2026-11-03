@@ -214,6 +214,10 @@ pub struct RenderScene {
     /// Baked lighting: lightmap pages, the lightmap uvs of the meshes drawn
     /// with them, light volumes (`lightmap.rs`). Empty by default.
     pub baked: crate::BakedLighting,
+    /// Light volumes relit while the game runs (`probe_grid.rs`), sampled
+    /// over the baked ones; the first [`crate::PROBE_VOLUMES`] with the
+    /// baked ones fit. Empty by default.
+    pub light_volumes: Vec<crate::RealtimeLightVolume>,
     /// Light cookies of point and spot lights, by index into
     /// [`RenderScene::lights`] (`area.rs`).
     pub light_cookies: Vec<crate::LightCookie>,

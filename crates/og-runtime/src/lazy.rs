@@ -212,6 +212,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::fx::GLOBAL_ILLUMINATION,
         enable: |_, _| Ok(()),
     },
+    // R3: realtime light volumes, read by extraction alone.
+    Lazy {
+        name: crate::probes::REALTIME_LIGHT_VOLUME,
+        enable: |_, _| Ok(()),
+    },
     // R12: the runtime's before-tick hook reads and writes them
     // (crate::origin); no module to grant. Naming either registers both.
     Lazy {

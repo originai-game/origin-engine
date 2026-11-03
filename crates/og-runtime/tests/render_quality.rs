@@ -15,11 +15,11 @@ use og_render::{AoResolution, RenderQuality, RenderScene, RgbaImage};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
     og_engine_probe_commands, og_engine_take_outputs, og_engine_write_resource, og_game_game,
-    og_host_begin_bundle, og_render_apply_quality, og_render_capabilities, set_hooks,
-    set_render_backend,
+    og_host_begin_bundle, og_render_apply_quality, og_render_capabilities, og_world_insert,
+    og_world_spawn, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 struct NoAssets;
@@ -327,4 +327,115 @@ fn set_reaches_lazy_global_illumination_and_low_quality_turns_it_off() {
     assert!(!frame(), "the low preset turns it off");
     answer(og_render_apply_quality(engine, "medium".into()));
     assert!(frame(), "medium turns it on again, enabled kept");
+}
+
+/// A low preset applied before the game first names og.GlobalIllumination
+/// still turns the GI off once it does (the preset's switch waits outside
+/// the world, which keeps its hash), until another preset is applied.
+#[test]
+fn a_low_preset_applied_before_the_gi_is_named_keeps_it_off() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let gi = Rc::new(Cell::new(None));
+    set_render_backend(engine, Some(Box::new(GiRecorder(gi.clone())))).unwrap();
+    let frame = || {
+        let a = answer(og_engine_frame(engine, 1000.0 / 60.0));
+        assert_eq!(a["ok"], json!(true), "{a}");
+        gi.get().expect("the renderer was handed a frame")
+    };
+    answer(og_render_apply_quality(engine, "low".into()));
+    let report = answer(og_engine_probe_commands(
+        engine,
+        "0:set:og.GlobalIllumination.enabled=true".into(),
+    ));
+    assert_eq!(report["scheduled"], json!(1), "{report}");
+    frame();
+    assert!(!frame(), "named after the low preset, still off");
+    answer(og_render_apply_quality(engine, "high".into()));
+    assert!(frame(), "a later preset turns it on");
+    answer(og_render_apply_quality(engine, "low".into()));
+    assert!(!frame(), "and the low one off again");
+}
+
+/// A renderer that keeps the last frame's realtime light volumes and GI switch.
+struct VolumeRecorder(Rc<RefCell<(Vec<og_render::RealtimeLightVolume>, bool)>>);
+
+impl RenderBackend for VolumeRecorder {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = (
+            scene.light_volumes.clone(),
+            scene.quality.global_illumination,
+        );
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+}
+
+/// og.RealtimeLightVolume relights the og.LightVolume of its entity: the
+/// renderer is handed that volume's box (centred on the entity) and
+/// spacing with the realtime one's rate; one without a LightVolume is
+/// nothing. The low preset leaves it in the scene and turns the quality's
+/// GI switch, which stops its relighting, off.
+#[test]
+fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(RefCell::new((Vec::new(), false)));
+    set_render_backend(engine, Some(Box::new(VolumeRecorder(seen.clone())))).unwrap();
+    let spawn = |x: f32| {
+        let desc = json!({ "position": { "x": x, "y": 2, "z": 3 } });
+        answer(og_world_spawn(engine, Some(desc.to_string())))["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let insert = |e: f64, name: &str, v: Value| {
+        let a = answer(og_world_insert(engine, e, name.into(), Some(v.to_string())));
+        assert_eq!(a["ok"], json!(true), "{a}");
+    };
+    let room = spawn(1.0);
+    insert(
+        room,
+        "og.LightVolume",
+        json!({ "size": { "x": 4, "y": 2, "z": 6 }, "spacing": 0.5 }),
+    );
+    insert(
+        room,
+        "og.RealtimeLightVolume",
+        json!({ "updatesPerFrame": 3 }),
+    );
+    let alone = spawn(20.0);
+    insert(alone, "og.RealtimeLightVolume", json!({}));
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    let (volumes, gi) = seen.borrow().clone();
+    assert!(gi, "GI allowed by default");
+    assert_eq!(volumes.len(), 1, "{volumes:?}");
+    let v = volumes[0];
+    assert_eq!(
+        (v.min, v.max),
+        (
+            glam::Vec3::new(-1.0, 1.0, 0.0),
+            glam::Vec3::new(3.0, 3.0, 6.0)
+        )
+    );
+    assert_eq!((v.spacing, v.updates_per_frame, v.intensity), (0.5, 3, 1.0));
+    answer(og_render_apply_quality(engine, "low".into()));
+    answer(og_engine_frame(engine, 1000.0 / 60.0));
+    let (volumes, gi) = seen.borrow().clone();
+    assert_eq!((volumes.len(), gi), (1, false));
 }
