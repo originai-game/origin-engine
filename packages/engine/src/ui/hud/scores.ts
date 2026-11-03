@@ -249,10 +249,19 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
   const count = desc.count ?? 0;
   const t = now();
   let comboProps: Props = {};
+  // The whole counter (its growth room, the count, its label and its decay bar) keeps to about a third of the
+  // screen's short side, as the tach does: at 200 % on a sideways phone the count takes a smaller step.
+  const vp = frame().viewport;
+  const short = Math.min(vp.width, vp.height);
+  const want = stepSize(ts(48, true));
+  const underLine = stepSize(ts(14)).line + (desc.decay !== null && desc.decay !== undefined ? u(4) + u(4) : 0);
+  const countMax = Math.max(stepSize(ts(14)).size, ((short * 0.34 - underLine) / 1.45) * (want.size / want.line));
+  const countStep = tsFit(48, countMax, true);
+  const cl = stepSize(countStep).line;
   hudPlace(id, anchorOf(desc, "right"), () => {
     // The count grows up from its baseline (its pop and its growth with the count), never down onto its label: room
     // above it for the growth, and a gap under it for its tilt.
-    box(id, { direction: "column", gap: Math.ceil(stepSize(ts(48, true)).line * 0.1), cross: "center", padding: { left: 0, right: 0, top: Math.round(stepSize(ts(48, true)).line * 0.35), bottom: 0 } }, undefined, () => {
+    box(id, { direction: "column", gap: Math.ceil(cl * 0.1), cross: "center", padding: { left: 0, right: 0, top: Math.round(cl * 0.35), bottom: 0 } }, undefined, () => {
       const e = edge("count", count);
       // A break: the last count shakes and falls off.
       const brokeAt = kit.memory("brokeAt", -1e9);
@@ -279,7 +288,7 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
         const ink = broken ? role("danger") : mile ? role("gold") : shown >= 50 ? role("danger") : shown >= 25 ? role("warn") : WHITE;
         // Late in the fall the whole group drops and fades together.
         const fall = broken ? { transform: { y: reduced() ? 0 : Math.max(0, bx - 0.5) * 2 * u(24) }, opacity: Math.min(1, 2 - 2 * bx) } : {};
-        text("Count", String(shown), { step: ts(48, true), font: "display", color: lit(ink), nowrap: true, outline: 1.6 }, {
+        text("Count", String(shown), { step: countStep, font: "display", color: lit(ink), nowrap: true, outline: 1.6 }, {
           transform: broken ? { x: reduced() ? 0 : Math.sin(bx * 40) * u(6) * (1 - bx), y: reduced() ? 0 : bx * bx * u(40), rotate: reduced() ? 0 : bx * 0.3 } : { scaleX: s, scaleY: s, rotate: reduced() ? 0 : -0.06, pivotY: 1 },
           opacity: broken ? 1 - bx * bx : 1,
         });

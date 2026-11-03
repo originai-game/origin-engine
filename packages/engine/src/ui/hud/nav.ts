@@ -512,7 +512,9 @@ function step(id: string, st: Api.ObjectiveStep, tk: ReturnType<typeof frame>["t
     }
   });
   apply({
-    a11y: a11y("checkbox", st.text ?? "", { checked: !!st.done, value: (st.target ?? 0) > 0 ? `${st.count ?? 0} of ${st.target}` : "" }),
+    // A list item, not a checkbox: the tracker reports, a tap does nothing, so no role promises a control (a
+    // checkbox is a touch target the checks hold to 44 px). Its state is in its value.
+    a11y: a11y("listitem", st.text ?? "", { value: [st.failed ? "failed" : st.done ? "done" : "", (st.target ?? 0) > 0 ? `${st.count ?? 0} of ${st.target}` : ""].filter(Boolean).join(", ") }),
     ...groups({ step: state }, { step: ["open", "done", "failed"] }),
   });
 }

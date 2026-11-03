@@ -396,7 +396,7 @@ test("og.ui.hudTimer and objectiveTracker: tenths in the last ten seconds, steps
   expect(states(at(els, "THud/T")).time).toBe("normal");
   expect(below(els, "ObjHud/Obj").filter((x) => x.path.split("/").length === 3).map((x) => x.id)).toEqual(["q1", "q2", "q3"]);
   expect(at(els, "ObjHud/Obj/q1/s1/Row/Count")?.text).toBe("2/5");
-  expect([at(els, "ObjHud/Obj/q1/s1")?.role, states(at(els, "ObjHud/Obj/q1/s1")).step]).toEqual(["checkbox", "open"]);
+  expect([at(els, "ObjHud/Obj/q1/s1")?.role, states(at(els, "ObjHud/Obj/q1/s1")).step]).toEqual(["listitem", "open"]);
   secs = 2.46;
   kills = 5;
   e.advance(2);
