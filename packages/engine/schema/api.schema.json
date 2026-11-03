@@ -11585,6 +11585,11 @@
         "PhotoSet",
         "PhotoModeDesc",
         "PhotoModeResult",
+        "LoadoutSlot",
+        "LoadoutAttachment",
+        "LoadoutStat",
+        "LoadoutDesc",
+        "LoadoutResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15906,6 +15911,27 @@
             }
           ],
           "returns": "PhotoModeResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "loadout",
+          "doc": "A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows.\nParts: Loadout.tab[selected], Loadout.slot[selected][locked], Loadout.stage, Loadout.callout[selected], Loadout.leader, Loadout.stat, Loadout.attachment[selected], Loadout.remove. Slots: each slot's art (item), the item's art (item), each attachment's art (item). Sounds: tab on a tab, select on a slot or a point, confirm on remove, error on a refusal. Accessibility: the tabs a tablist, the slots a tablist of tabs, each callout and row a button named by its point and what is on it, each figure a meter. Probe ids: <id>/Head/Tabs/<n>, <id>/Slots/<key>, <id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>, <id>/Side/Attachments/List/<key>/Remove.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LoadoutDesc",
+              "optional": true,
+              "doc": "The loadouts, the slots, the selected item and its attachments."
+            }
+          ],
+          "returns": "LoadoutResult",
           "publish": true,
           "host": false
         },
@@ -63910,6 +63936,389 @@
         "capture",
         "reset",
         "exit"
+      ],
+      "additionalProperties": false
+    },
+    "LoadoutSlot": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its rail entry's element id, so its probe path is <id>/Slots/<key>.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What the slot is, the entry's eyebrow (Primary).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What is in it (AR-7 Raven); empty is an empty slot, its emptyLabel shown.",
+          "default": ""
+        },
+        "detail": {
+          "type": "string",
+          "description": "A line under the name (Lvl 12); empty shows none.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind itemIcon, or a weapon's side view); null draws the style's placeholder.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the art's rim.",
+          "default": "none"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not available yet: dimmed with a lock; pressing it is refused.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoadoutAttachment": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One attachment point of the selected item, and what is on it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its callout's and its row's element id (<id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "The point's name, the callout's eyebrow (Barrel, Optic).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What is on it (Vanguard Suppressor); empty is nothing, the point's emptyLabel shown, and it has no row.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind itemIcon); null draws the style's placeholder.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the row's band and the callout's rim.",
+          "default": "none"
+        },
+        "rarityLabel": {
+          "type": "string",
+          "description": "The tier's word on the row's band (Rare); empty shows none.",
+          "default": ""
+        },
+        "x": {
+          "type": "number",
+          "description": "Where the point is on the item's art, across it, 0 to 1: the leader line's end.",
+          "default": 0.5,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Where the point is, down it, 0 to 1; above the middle its callout stands above the art, else below.",
+          "default": 0.5,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoadoutStat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One of the selected item's figures, with what its attachments change.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name (Damage).",
+          "default": ""
+        },
+        "value": {
+          "type": "number",
+          "description": "Its value with the attachments.",
+          "default": 0
+        },
+        "delta": {
+          "type": "number",
+          "description": "What the attachments add (negative: take away); 0 shows none.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "The bar's whole; 0 is 100.",
+          "default": 0,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoadoutDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title (Loadout).",
+          "default": ""
+        },
+        "loadouts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The loadouts' names, one tab each (Loadout 1); fewer than two shows no tabs.",
+          "default": []
+        },
+        "loadout": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The loadout shown, an index of loadouts.",
+          "default": 0
+        },
+        "balance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The purse at the end of the head; null shows none.",
+          "default": null
+        },
+        "currencyImage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The purse's coin; null draws the style's coin.",
+          "default": null
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LoadoutSlot"
+          },
+          "description": "The slots, top to bottom.",
+          "default": []
+        },
+        "slot": {
+          "type": "string",
+          "description": "The selected slot: its item stands large in the middle.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected item's art, large (art kind item, a side view on transparent ground); null draws the style's placeholder.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "The item's art's width over its height, so the attachment points land on it as drawn (fit inside its box); 0 takes the box's own.",
+          "default": 0
+        },
+        "name": {
+          "type": "string",
+          "description": "The selected item's name, in the display face.",
+          "default": ""
+        },
+        "subtitle": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The words under its name, divided by rules (Assault rifle, Rare, Lvl 12).",
+          "default": []
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the subtitle's tier word takes its colour when rarityWord names the word's index.",
+          "default": "none"
+        },
+        "rarityWord": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Which of subtitle is the tier's word, -1 none.",
+          "default": -1
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under the subtitle; empty shows none.",
+          "default": ""
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LoadoutAttachment"
+          },
+          "description": "The item's attachment points: callouts on leader lines around its art on a desktop, rows at the side.",
+          "default": []
+        },
+        "attachment": {
+          "type": "string",
+          "description": "The attachment point picked (its callout and row lit); empty none.",
+          "default": ""
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The attachment points the item has in all, for the count (5/5); 0 counts the given points.",
+          "default": 0
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LoadoutStat"
+          },
+          "description": "The item's figures.",
+          "default": []
+        },
+        "statsLabel": {
+          "type": "string",
+          "description": "The figures' heading.",
+          "default": "Weapon stats"
+        },
+        "attachmentsLabel": {
+          "type": "string",
+          "description": "The attachments' heading.",
+          "default": "Attachments"
+        },
+        "emptyLabel": {
+          "type": "string",
+          "description": "An empty slot's or point's word.",
+          "default": "Empty"
+        },
+        "removeLabel": {
+          "type": "string",
+          "description": "The remove button's name, before the attachment's.",
+          "default": "Remove"
+        },
+        "lockedLabel": {
+          "type": "string",
+          "description": "A locked slot's word.",
+          "default": "Locked"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoadoutResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "loadout": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another loadout's tab was pressed (or the tab actions stepped)."
+        },
+        "slot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another slot was pressed or reached by keys."
+        },
+        "attachment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An attachment point was pressed (its callout or its row): the game opens its choices."
+        },
+        "remove": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An attachment's remove button was pressed."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked slot was pressed: it shakes."
+        }
+      },
+      "required": [
+        "loadout",
+        "slot",
+        "attachment",
+        "remove",
+        "refused"
       ],
       "additionalProperties": false
     },

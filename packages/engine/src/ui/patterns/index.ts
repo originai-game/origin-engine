@@ -23,6 +23,7 @@ import { ledger, overlayBar } from "./ledger.ts";
 import { chat } from "./chat.ts";
 import { rtsCommands } from "./commands.ts";
 import { photoMode } from "./photo.ts";
+import { loadout } from "./loadout.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -56,4 +57,5 @@ export const patterns = Object.freeze({
   chat,
   rtsCommands,
   photoMode,
+  loadout,
 });

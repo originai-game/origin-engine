@@ -36204,6 +36204,314 @@ export interface PhotoModeResult {
 
 
 /**
+ * One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadoutSlot {
+  /**
+   * Its key: its rail entry's element id, so its probe path is <id>/Slots/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What the slot is, the entry's eyebrow (Primary).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What is in it (AR-7 Raven); empty is an empty slot, its emptyLabel shown.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A line under the name (Lvl 12); empty shows none.
+   *
+   * @default ""
+   */
+  readonly detail?: string;
+  /**
+   * Its art (art kind itemIcon, or a weapon's side view); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tier: the art's rim.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * Not available yet: dimmed with a lock; pressing it is refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/**
+ * One attachment point of the selected item, and what is on it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadoutAttachment {
+  /**
+   * Its key: its callout's and its row's element id (<id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The point's name, the callout's eyebrow (Barrel, Optic).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What is on it (Vanguard Suppressor); empty is nothing, the point's emptyLabel shown, and it has no row.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tier: the row's band and the callout's rim.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * The tier's word on the row's band (Rare); empty shows none.
+   *
+   * @default ""
+   */
+  readonly rarityLabel?: string;
+  /**
+   * Where the point is on the item's art, across it, 0 to 1: the leader line's end.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Where the point is, down it, 0 to 1; above the middle its callout stands above the art, else below.
+   *
+   * @default 0.5
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+}
+
+/**
+ * One of the selected item's figures, with what its attachments change.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadoutStat {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name (Damage).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value with the attachments.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * What the attachments add (negative: take away); 0 shows none.
+   *
+   * @default 0
+   */
+  readonly delta?: number;
+  /**
+   * The bar's whole; 0 is 100.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly max?: number;
+}
+
+/**
+ * A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadoutDesc {
+  /**
+   * The screen's title (Loadout).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The loadouts' names, one tab each (Loadout 1); fewer than two shows no tabs.
+   *
+   * @default []
+   */
+  readonly loadouts?: readonly string[];
+  /**
+   * The loadout shown, an index of loadouts.
+   *
+   * @default 0
+   */
+  readonly loadout?: number;
+  /**
+   * The purse at the end of the head; null shows none.
+   *
+   * @default null
+   */
+  readonly balance?: number | null;
+  /**
+   * The purse's coin; null draws the style's coin.
+   *
+   * @default null
+   */
+  readonly currencyImage?: Texture | null;
+  /**
+   * The slots, top to bottom.
+   *
+   * @default []
+   */
+  readonly slots?: readonly LoadoutSlot[];
+  /**
+   * The selected slot: its item stands large in the middle.
+   *
+   * @default ""
+   */
+  readonly slot?: string;
+  /**
+   * The selected item's art, large (art kind item, a side view on transparent ground); null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * The item's art's width over its height, so the attachment points land on it as drawn (fit inside its box); 0 takes the box's own.
+   *
+   * @default 0
+   */
+  readonly aspect?: number;
+  /**
+   * The selected item's name, in the display face.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The words under its name, divided by rules (Assault rifle, Rare, Lvl 12).
+   *
+   * @default []
+   */
+  readonly subtitle?: readonly string[];
+  /**
+   * Its tier: the subtitle's tier word takes its colour when rarityWord names the word's index.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * Which of subtitle is the tier's word, -1 none.
+   *
+   * @default -1
+   */
+  readonly rarityWord?: number;
+  /**
+   * A line under the subtitle; empty shows none.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * The item's attachment points: callouts on leader lines around its art on a desktop, rows at the side.
+   *
+   * @default []
+   */
+  readonly attachments?: readonly LoadoutAttachment[];
+  /**
+   * The attachment point picked (its callout and row lit); empty none.
+   *
+   * @default ""
+   */
+  readonly attachment?: string;
+  /**
+   * The attachment points the item has in all, for the count (5/5); 0 counts the given points.
+   *
+   * @default 0
+   */
+  readonly capacity?: number;
+  /**
+   * The item's figures.
+   *
+   * @default []
+   */
+  readonly stats?: readonly LoadoutStat[];
+  /**
+   * The figures' heading.
+   *
+   * @default "Weapon stats"
+   */
+  readonly statsLabel?: string;
+  /**
+   * The attachments' heading.
+   *
+   * @default "Attachments"
+   */
+  readonly attachmentsLabel?: string;
+  /**
+   * An empty slot's or point's word.
+   *
+   * @default "Empty"
+   */
+  readonly emptyLabel?: string;
+  /**
+   * The remove button's name, before the attachment's.
+   *
+   * @default "Remove"
+   */
+  readonly removeLabel?: string;
+  /**
+   * A locked slot's word.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface LoadoutResult {
+  /** Another loadout's tab was pressed (or the tab actions stepped). */
+  readonly loadout: number | null;
+  /** Another slot was pressed or reached by keys. */
+  readonly slot: string | null;
+  /** An attachment point was pressed (its callout or its row): the game opens its choices. */
+  readonly attachment: string | null;
+  /** An attachment's remove button was pressed. */
+  readonly remove: string | null;
+  /** A locked slot was pressed: it shakes. */
+  readonly refused: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -56455,6 +56763,14 @@ export declare namespace og {
      * @param desc The tabs, sliders, looks and the state.
      */
     function photoMode(id: string, desc?: PhotoModeDesc): PhotoModeResult;
+    /**
+     * A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows.
+     * Parts: Loadout.tab[selected], Loadout.slot[selected][locked], Loadout.stage, Loadout.callout[selected], Loadout.leader, Loadout.stat, Loadout.attachment[selected], Loadout.remove. Slots: each slot's art (item), the item's art (item), each attachment's art (item). Sounds: tab on a tab, select on a slot or a point, confirm on remove, error on a refusal. Accessibility: the tabs a tablist, the slots a tablist of tabs, each callout and row a button named by its point and what is on it, each figure a meter. Probe ids: <id>/Head/Tabs/<n>, <id>/Slots/<key>, <id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>, <id>/Side/Attachments/List/<key>/Remove.
+     *
+     * @param id Its id.
+     * @param desc The loadouts, the slots, the selected item and its attachments.
+     */
+    function loadout(id: string, desc?: LoadoutDesc): LoadoutResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

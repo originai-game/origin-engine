@@ -6569,6 +6569,101 @@ module ui {
     param desc PhotoModeDesc "The tabs, sliders, looks and the state."
     returns PhotoModeResult
   }
+  struct LoadoutSlot {
+    doc "One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it."
+    desc true
+    field key String "Its key: its rail entry's element id, so its probe path is <id>/Slots/<key>."
+    field label String "What the slot is, the entry's eyebrow (Primary)."
+    field name String "What is in it (AR-7 Raven); empty is an empty slot, its emptyLabel shown."
+    field detail String "A line under the name (Lvl 12); empty shows none."
+    field image Option.Texture "Its art (art kind itemIcon, or a weapon's side view); null draws the style's placeholder."
+    field rarity Rarity "Its tier: the art's rim."
+    field locked bool "Not available yet: dimmed with a lock; pressing it is refused."
+  }
+  struct LoadoutAttachment {
+    doc "One attachment point of the selected item, and what is on it."
+    desc true
+    field key String "Its key: its callout's and its row's element id (<id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>)."
+    field label String "The point's name, the callout's eyebrow (Barrel, Optic)."
+    field name String "What is on it (Vanguard Suppressor); empty is nothing, the point's emptyLabel shown, and it has no row."
+    field image Option.Texture "Its art (art kind itemIcon); null draws the style's placeholder."
+    field rarity Rarity "Its tier: the row's band and the callout's rim."
+    field rarityLabel String "The tier's word on the row's band (Rare); empty shows none."
+    field x f32 "Where the point is on the item's art, across it, 0 to 1: the leader line's end." {
+      default 0.5
+      unit ratio
+    }
+    field y f32 "Where the point is, down it, 0 to 1; above the middle its callout stands above the art, else below." {
+      default 0.5
+      unit ratio
+    }
+  }
+  struct LoadoutStat {
+    doc "One of the selected item's figures, with what its attachments change."
+    desc true
+    field key String "Its key."
+    field label String "Its name (Damage)."
+    field value f32 "Its value with the attachments."
+    field delta f32 "What the attachments add (negative: take away); 0 shows none."
+    field max f32 "The bar's whole; 0 is 100." {
+      min 0
+    }
+  }
+  struct LoadoutDesc {
+    doc "A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments."
+    desc true
+    field title String "The screen's title (Loadout)."
+    field loadouts List.String "The loadouts' names, one tab each (Loadout 1); fewer than two shows no tabs."
+    field loadout u32 "The loadout shown, an index of loadouts."
+    field balance Option.f64 "The purse at the end of the head; null shows none."
+    field currencyImage Option.Texture "The purse's coin; null draws the style's coin."
+    field slots List.LoadoutSlot "The slots, top to bottom."
+    field slot String "The selected slot: its item stands large in the middle."
+    field image Option.Texture "The selected item's art, large (art kind item, a side view on transparent ground); null draws the style's placeholder."
+    field aspect f32 "The item's art's width over its height, so the attachment points land on it as drawn (fit inside its box); 0 takes the box's own."
+    field name String "The selected item's name, in the display face."
+    field subtitle List.String "The words under its name, divided by rules (Assault rifle, Rare, Lvl 12)."
+    field rarity Rarity "Its tier: the subtitle's tier word takes its colour when rarityWord names the word's index."
+    field rarityWord i32 "Which of subtitle is the tier's word, -1 none." {
+      default -1
+    }
+    field description String "A line under the subtitle; empty shows none."
+    field attachments List.LoadoutAttachment "The item's attachment points: callouts on leader lines around its art on a desktop, rows at the side."
+    field attachment String "The attachment point picked (its callout and row lit); empty none."
+    field capacity u32 "The attachment points the item has in all, for the count (5/5); 0 counts the given points."
+    field stats List.LoadoutStat "The item's figures."
+    field statsLabel String "The figures' heading." {
+      default "Weapon stats"
+    }
+    field attachmentsLabel String "The attachments' heading." {
+      default "Attachments"
+    }
+    field emptyLabel String "An empty slot's or point's word." {
+      default "Empty"
+    }
+    field removeLabel String "The remove button's name, before the attachment's." {
+      default "Remove"
+    }
+    field lockedLabel String "A locked slot's word." {
+      default "Locked"
+    }
+  }
+  struct LoadoutResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field loadout Option.u32 "Another loadout's tab was pressed (or the tab actions stepped)."
+    field slot Option.String "Another slot was pressed or reached by keys."
+    field attachment Option.String "An attachment point was pressed (its callout or its row): the game opens its choices."
+    field remove Option.String "An attachment's remove button was pressed."
+    field refused Option.String "A locked slot was pressed: it shakes."
+  }
+  fn loadout {
+    doc "A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows."
+    doc "Parts: Loadout.tab[selected], Loadout.slot[selected][locked], Loadout.stage, Loadout.callout[selected], Loadout.leader, Loadout.stat, Loadout.attachment[selected], Loadout.remove. Slots: each slot's art (item), the item's art (item), each attachment's art (item). Sounds: tab on a tab, select on a slot or a point, confirm on remove, error on a refusal. Accessibility: the tabs a tablist, the slots a tablist of tabs, each callout and row a button named by its point and what is on it, each figure a meter. Probe ids: <id>/Head/Tabs/<n>, <id>/Slots/<key>, <id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>, <id>/Side/Attachments/List/<key>/Remove."
+    host false
+    param id String "Its id."
+    param desc LoadoutDesc "The loadouts, the slots, the selected item and its attachments."
+    returns LoadoutResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

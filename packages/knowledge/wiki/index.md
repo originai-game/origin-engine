@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2394 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2400 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -759,6 +759,11 @@ Field units the docs and Tune use.
 | [`LoadBudget`](load.md#type-LoadBudget) | desc struct | load | — |
 | [`LoadCompletion`](load.md#type-LoadCompletion) | struct | load | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
+| [`LoadoutAttachment`](ui.md#type-LoadoutAttachment) | desc struct | ui | — |
+| [`LoadoutDesc`](ui.md#type-LoadoutDesc) | desc struct | ui | — |
+| [`LoadoutResult`](ui.md#type-LoadoutResult) | struct | ui | — |
+| [`LoadoutSlot`](ui.md#type-LoadoutSlot) | desc struct | ui | — |
+| [`LoadoutStat`](ui.md#type-LoadoutStat) | desc struct | ui | — |
 | [`LoadSlotDesc`](platform.md#type-LoadSlotDesc) | desc struct | platform | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
 | [`LobbyDesc`](ui.md#type-LobbyDesc) | desc struct | ui | — |
@@ -1564,6 +1569,7 @@ Field units the docs and Tune use.
 | [`og.ui.list`](ui.md#fn-list) | function | ui | — |
 | [`og.ui.listItem`](ui.md#fn-listItem) | function | ui | `og_ui_list_item` |
 | [`og.ui.loadingScreen`](ui.md#fn-loadingScreen) | function | ui | — |
+| [`og.ui.loadout`](ui.md#fn-loadout) | function | ui | — |
 | [`og.ui.lobby`](ui.md#fn-lobby) | function | ui | — |
 | [`og.ui.lootLabel`](ui.md#fn-lootLabel) | function | ui | — |
 | [`og.ui.lowHealthVignette`](ui.md#fn-lowHealthVignette) | function | ui | — |
