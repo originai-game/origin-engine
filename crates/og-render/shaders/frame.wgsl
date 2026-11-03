@@ -23,10 +23,10 @@ struct Frame {
   light_color: vec4<f32>,     // rgb: radiance, w: debug view (DebugView::lit_code: 1 cascades, 2 AO, 3 albedo, 4 IBL diffuse, 5 IBL specular, 6 direct)
   params: vec4<f32>,          // x: ibl intensity, y: prefiltered mips - 1, z: local lights drawn, w: 1 / cascade map size
   view_forward: vec4<f32>,    // xyz: camera forward, w: 1 / local shadow map size
-  cascade_view_proj: array<mat4x4<f32>, 3>,
-  cascade_bias: array<vec4<f32>, 3>,    // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: where it fades into the next (view depth; z: no blending)
+  cascade_view_proj: array<mat4x4<f32>, CASCADES>,
+  cascade_bias: array<vec4<f32>, CASCADES>,  // x: normal offset (world), y: depth bias (normalized), z: slice far (view depth), w: where it fades into the next (view depth; z: no blending)
   cluster: vec4<f32>,         // x, y: clusters per pixel across and down, z, w: depth slice scale and bias (of log2 depth in perspective)
-  local_view_proj: array<mat4x4<f32>, 48>,  // per layer: a spot's view or a cube face (paraboloid layers: unused)
+  local_view_proj: array<mat4x4<f32>, LOCAL_SHADOW_LAYERS>,  // per layer: a spot's view or a cube face (paraboloid layers: unused)
   // The atmosphere (`AtmosphereGpu` in atmosphere.rs).
   fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on
   fog_distance: vec4<f32>,    // x: density, y: start, z: end, w: max opacity

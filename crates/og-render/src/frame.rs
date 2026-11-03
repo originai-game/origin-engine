@@ -725,6 +725,26 @@ pub(crate) fn local_lights(
 mod tests {
     use super::*;
 
+    /// frame.wgsl's `Frame` is laid out as [`FrameUniform`]: the same size,
+    /// so a field the Rust side grows (more cascades, more local layers)
+    /// cannot shift every field after it in the shaders.
+    #[test]
+    fn the_wgsl_frame_is_the_rust_frame() {
+        let module = naga::front::wgsl::parse_str(include_str!("../shaders/frame.wgsl"))
+            .expect("frame.wgsl");
+        let mut layouter = naga::proc::Layouter::default();
+        layouter.update(module.to_ctx()).expect("layout");
+        let (handle, _) = module
+            .types
+            .iter()
+            .find(|(_, t)| t.name.as_deref() == Some("Frame"))
+            .expect("struct Frame");
+        assert_eq!(
+            layouter[handle].size as usize,
+            std::mem::size_of::<FrameUniform>()
+        );
+    }
+
     /// Four cascades split the shadow distance in order, the last ending at
     /// it, each one's texels coarser than the one before (finer near
     /// shadows than three over the same distance), and every count from 1
