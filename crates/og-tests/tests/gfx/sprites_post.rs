@@ -33,20 +33,21 @@ fn bloom_spreads_light_beyond_the_emitters() {
 }
 
 /// The first downsample's Karis average (bloom_chain.wgsl
-/// `downsample13_karis`): one pixel far brighter than its neighbours (a
-/// firefly) blooms far less than the same light spread evenly over a
-/// broad patch. The control is 40x40 pixels at luma 1, so its boxes are
-/// alike and the average's weights cancel; the chain is otherwise linear
-/// here (no threshold, a negligible knee), so without the average both
-/// halos carry the same light and the firefly spreads into a block. (A
-/// small patch would not do: at the prefilter's half resolution a 4x4
-/// patch is 2x2 texels, as bright against its dark surround as the lone
-/// pixel, and the average weighs it down nearly as much.)
+/// `downsample13_karis`, Jimenez's partial average over five boxes of
+/// four): one pixel far brighter than its neighbours (a firefly) adds much
+/// less bloom than the same light spread evenly over a broad patch, whose
+/// boxes are alike so the weights cancel. The bloom is measured as light:
+/// no tone curve (the exposed colour clamped and sRGB-encoded, decoded
+/// here), each frame less the same frame without bloom, summed. Without
+/// the average the chain is linear here (no threshold, a negligible knee),
+/// so both add the same bloom. A CPU model of the prefilter (the same taps,
+/// boxes and weights) keeps 0.33 of the firefly's light and 0.997 of the
+/// patch's, so the firefly's bloom must be under 0.6 of the patch's.
 #[test]
 fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
     // An orthographic camera 7.2 m tall over 720 rows: 1 cm a pixel, the
     // squares' edges between pixel centres.
-    let scene = |side: f32, emission: f32| {
+    let scene = |side: f32, emission: f32, bloom: bool| {
         let mut scene = RenderScene::new();
         let quad = scene.add_mesh(shapes::plane_xy(side, side));
         let m = scene.add_material(Material {
@@ -70,10 +71,12 @@ fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
             exposure: Exposure::linear(1.0),
             ..Default::default()
         };
-        scene.post.bloom = Some(og_render::Bloom {
+        scene.post.tonemap = Tonemap::None;
+        // Low enough that the patch and its bloom stay under 1 (unclipped).
+        scene.post.bloom = bloom.then_some(og_render::Bloom {
             threshold: 0.0,
             knee: 1e-3,
-            intensity: 0.8,
+            intensity: 0.2,
         });
         scene
     };
@@ -81,31 +84,36 @@ fn a_lone_bright_pixel_blooms_less_than_its_light_spread_out() {
         antialias: Antialias::Off,
         ..scenes::base_desc()
     };
-    // The halo: light 8 to 48 pixels out from the emitter's edge (`half`
-    // its half side in pixels, about the frame's middle).
-    let halo = |img: &RgbaImage, half: f32| {
-        let (cx, cy) = (img.width as f32 / 2.0, img.height as f32 / 2.0);
-        let mut sum = 0.0f64;
-        for y in 0..img.height {
-            for x in 0..img.width {
-                let dx = ((x as f32 + 0.5 - cx).abs() - half).max(0.0);
-                let dy = ((y as f32 + 0.5 - cy).abs() - half).max(0.0);
-                if (8.0..48.0).contains(&dx.hypot(dy)) {
-                    let i = ((y * img.width + x) * 4) as usize;
-                    sum += luma(img.pixels[i..i + 4].try_into().expect("rgba")) as f64;
-                }
-            }
+    let linear = |v: u8| {
+        let c = v as f64 / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
         }
-        sum
     };
-    let (firefly, _) = frame(&desc, &scene(0.01, 1600.0), 1);
-    let (patch, _) = frame(&desc, &scene(0.4, 1.0), 1);
-    let (f, p) = (halo(&firefly, 1.0), halo(&patch, 20.0));
-    println!("bloom halo: lone pixel {f:.0}, the same light over 40x40 {p:.0}");
-    assert!(p > 1000.0, "the patch blooms: {p:.0}");
+    // The light bloom adds over the frame (RGB, linear).
+    let added = |side: f32, emission: f32| {
+        let (on, _) = frame(&desc, &scene(side, emission, true), 1);
+        let (off, _) = frame(&desc, &scene(side, emission, false), 1);
+        on.pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(off.pixels.as_chunks::<4>().0)
+            .map(|(a, b)| (0..3).map(|c| linear(a[c]) - linear(b[c])).sum::<f64>())
+            .sum::<f64>()
+    };
+    // The same light: one pixel at 400, or 40x40 at 0.25.
+    let (f, p) = (added(0.01, 400.0), added(0.4, 0.25));
+    println!(
+        "bloom added: lone pixel {f:.2}, the same light over 40x40 {p:.2}, ratio {:.3}",
+        f / p
+    );
+    assert!(p > 10.0, "the patch blooms: {p:.2}");
     assert!(
-        f < 0.25 * p,
-        "the lone pixel blooms less: {f:.0} against {p:.0}"
+        f < 0.6 * p,
+        "the lone pixel blooms less: {f:.2} against {p:.2}"
     );
 }
 
