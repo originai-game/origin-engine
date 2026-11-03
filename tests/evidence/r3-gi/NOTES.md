@@ -156,3 +156,45 @@ og run templates/fx-showcase --headless --size 1280x720 --out /tmp/r3-probes \
   the baked ones.
 - `quality-off`: the realtime volume stops and the box falls back to its
   baked probes, close to `baked`.
+
+## Batch 3: reflections from the probes
+
+The realtime light volumes now relight reflections too.
+`volume_reflected` (lightmap.rs's probe WGSL) wraps `reflected_light` in
+the split-sum specular of `pbr_fs.wgsl` and `physical.wgsl`.
+
+- Inside a realtime volume, the prefiltered reflection (the environment's
+  or a ReflectionProbe's) is scaled per channel by the probes' irradiance
+  for the normal over the environment irradiance it replaces (clamped to
+  16). Toward roughness 1 (smoothstep from 0.4) the reflection blends to
+  the probes' harmonics evaluated along the reflected ray. Everything is
+  blended in by the volume's edge weight.
+- `ambient_irradiance` leaves the trilinearly interpolated realtime
+  harmonics, their weight and the environment irradiance in private
+  variables, so the reflection costs no second walk over the volumes.
+- Outside every realtime volume, and on lightmapped fragments, the
+  reflection is unchanged. Baked volumes do not touch reflections, so
+  existing frames do not move.
+- No binding is added. R2+R8 (who own the IBL path) were told before the
+  edit.
+
+Checks (orb, no GPU): naga validates `cargo test -p og-render --test
+tests shaders`; `cargo test -p og-render --lib`; `cargo check -p
+og-render` passes native and wasm32; clippy, fmt, `og api check`.
+
+gfx tests:
+
+- `light-volume-mirror` (new reference, 48 frames): the batch 2 room
+  with a chrome sphere (metallic 1, roughness 0.3) in the middle of the
+  frame. Expected: the sphere reflects the room, with the red wall on its
+  left, the green wall on its right, and the lamp's warm light above. It
+  should not reflect the dark environment, and there should be no seams
+  or blotches between probes.
+- `a_realtime_light_volume_relights_a_mirror_s_reflection`: no
+  reference. The sphere's middle gains brightness with the volume (it
+  has no diffuse light, so the gain is the reflection's). Its left half
+  gains more red than green and its right half more green than red. On
+  batch 2's code the gain is zero.
+- `light-volume-room` moves slightly from batch 2 (its matte surfaces'
+  reflections are now the probes'). If it was recorded on batch 2's
+  head, re-record it.

@@ -55,6 +55,7 @@ pub const SCENES: &[&str] = &[
     "gi-room",
     "gi-room-taa",
     "light-volume-room",
+    "light-volume-mirror",
     "dof-low",
     "dof-high",
     "god-rays",
@@ -683,7 +684,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // probes a frame): the lamp's bounce in the shade, light bouncing
         // once more with each sweep.
         "light-volume-room" => |g, _| {
-            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78));
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), false);
+            g.frames = 48;
+            Ok(())
+        },
+        // The same with a chrome sphere in the middle, its reflection
+        // relit by the probes.
+        "light-volume-mirror" => |g, _| {
+            g.scene = fx::light_volume_scene(true, Vec3::new(1.0, 0.9, 0.78), true);
             g.frames = 48;
             Ok(())
         },

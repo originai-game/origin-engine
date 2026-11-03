@@ -983,7 +983,12 @@ S6).
   GI switch is off, its box takes the baked probes or the environment.
   `ambient_irradiance` blends the realtime volumes over the baked ones
   over the environment by the same edge weight; lightmapped surfaces keep
-  their lightmaps. The low preset's GI switch reaches a world that names
+  their lightmaps. The realtime probes relight reflections as well
+  (`volume_reflected`, wrapping `reflected_light` in pbr_fs and
+  physical): the prefiltered reflection is scaled per channel by the
+  probes' irradiance over the environment's (clamped to 16), and towards
+  roughness 1 replaced by the probes' harmonics along the reflected ray;
+  baked volumes leave reflections as they were. The low preset's GI switch reaches a world that names
   `og.GlobalIllumination` only after the preset was applied: the preset's
   switch waits in the presentation state (`FxState::gi_preset`), never
   the world's.

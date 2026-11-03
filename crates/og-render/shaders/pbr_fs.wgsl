@@ -280,7 +280,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
-  let prefiltered = reflected_light(r, in.world_pos, mip);
+  // Relit by the realtime light volumes where there are (lightmap.rs).
+  let prefiltered = volume_reflected(reflected_light(r, in.world_pos, mip), n, r, s.roughness);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
   let ao_sample = material_sample(ao_tex, UV_AO, uv).r;

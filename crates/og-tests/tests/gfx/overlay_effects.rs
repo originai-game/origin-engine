@@ -531,7 +531,7 @@ fn light_volume_room_matches_its_reference() {
 fn a_realtime_light_volume_takes_the_lamp_s_colour() {
     let render = |realtime: bool, colour: Vec3| {
         let mut g = scenes::build("light-volume-room").expect("light-volume-room");
-        g.scene = og_tests::fx_scenes::light_volume_scene(realtime, colour);
+        g.scene = og_tests::fx_scenes::light_volume_scene(realtime, colour, false);
         gfx::render_built(&mut g).expect("rendered").image
     };
     // The summed (red, green, blue) the volume adds under each lamp.
@@ -558,6 +558,47 @@ fn a_realtime_light_volume_takes_the_lamp_s_colour() {
         ratio(blue) > 1.5 * ratio(warm),
         "the blue lamp's bounce is bluer: {warm:?} {blue:?}"
     );
+}
+
+#[test]
+fn light_volume_mirror_matches_its_reference() {
+    check("light-volume-mirror");
+}
+
+/// The realtime probes relight reflections: a chrome sphere (no diffuse
+/// light of its own) in the middle of the frame is brighter with the
+/// volume than without, its left half gaining more red than green (the red
+/// wall it reflects there) and its right half more green than red.
+#[test]
+fn a_realtime_light_volume_relights_a_mirror_s_reflection() {
+    let render = |realtime: bool| {
+        let mut g = scenes::build("light-volume-mirror").expect("light-volume-mirror");
+        g.scene.light_volumes.retain(|_| realtime);
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    let (on, off) = (render(true), render(false));
+    // A square of the sphere's middle, a twelfth of the frame's height a
+    // side, split into its left and right halves: (r, g, b) gained.
+    let (w, h) = (on.width as i64, on.height as i64);
+    let half = h / 24;
+    let mut gain = [[0i64; 3]; 2];
+    for y in h / 2 - half..h / 2 + half {
+        for x in w / 2 - half..w / 2 + half {
+            let i = ((y * w + x) * 4) as usize;
+            let side = (x >= w / 2) as usize;
+            for (c, g) in gain[side].iter_mut().enumerate() {
+                *g += on.pixels[i + c] as i64 - off.pixels[i + c] as i64;
+            }
+        }
+    }
+    println!("(r, g, b) gained: left {:?}, right {:?}", gain[0], gain[1]);
+    let total: i64 = gain.iter().flatten().sum();
+    assert!(
+        total > 3 * (2 * half) * (2 * half),
+        "the reflection is brighter: {gain:?}"
+    );
+    assert!(gain[0][0] > gain[0][1], "red on the left: {:?}", gain[0]);
+    assert!(gain[1][1] > gain[1][0], "green on the right: {:?}", gain[1]);
 }
 
 #[test]

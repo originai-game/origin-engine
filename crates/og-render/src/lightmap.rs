@@ -123,6 +123,7 @@ fn probe_irradiance(at: u32, n: vec3<f32>) -> vec3<f32> {
 struct VolumeLight { baked: vec4<f32>, live: vec4<f32> };
 
 fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
+  live_sh = array<vec4<f32>, 3>(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   var sum = array<vec3<f32>, 2>(vec3<f32>(0.0), vec3<f32>(0.0));
   var weight = array<f32, 2>(0.0, 0.0);
   for (var i = 0u; i < PROBE_VOLUMES; i++) {
@@ -145,8 +146,15 @@ fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
       let o = vec3<u32>(k & 1u, (k >> 1u) & 1u, k >> 2u);
       let q = g0 + o;
       let wk = select(1.0 - f.x, f.x, o.x == 1u) * select(1.0 - f.y, f.y, o.y == 1u) * select(1.0 - f.z, f.z, o.z == 1u);
-      let idx = (q.z * c.y + q.y) * c.x + q.x;
-      irr += probe_irradiance(u32(h0.w) + idx * 3u, n) * wk;
+      let at = u32(h0.w) + ((q.z * c.y + q.y) * c.x + q.x) * 3u;
+      irr += probe_irradiance(at, n) * wk;
+      if (kind == 1u) {
+        // The realtime probes' harmonics themselves, for their reflections.
+        let ww = wk * w;
+        live_sh[0] += probe_data.v[at] * ww;
+        live_sh[1] += probe_data.v[at + 1u] * ww;
+        live_sh[2] += probe_data.v[at + 2u] * ww;
+      }
     }
     sum[kind] += irr * w;
     weight[kind] += w;
@@ -154,7 +162,34 @@ fn light_volumes(p: vec3<f32>, n: vec3<f32>) -> VolumeLight {
   var out: VolumeLight;
   out.baked = select(vec4<f32>(0.0), vec4<f32>(sum[0] / weight[0], min(weight[0], 1.0)), weight[0] > 0.0);
   out.live = select(vec4<f32>(0.0), vec4<f32>(sum[1] / weight[1], min(weight[1], 1.0)), weight[1] > 0.0);
+  if (weight[1] > 0.0) {
+    let inv = 1.0 / weight[1];
+    live_sh = array<vec4<f32>, 3>(live_sh[0] * inv, live_sh[1] * inv, live_sh[2] * inv);
+  }
   return out;
+}
+
+// What `ambient_irradiance` leaves for `volume_reflected`: the realtime
+// volumes' harmonics at the fragment, how much of them it took and the
+// environment's irradiance they stood in for.
+var<private> live_sh: array<vec4<f32>, 3>;
+var<private> live_weight: f32;
+var<private> live_env: vec3<f32>;
+
+// The realtime light volumes' reflection of `prefiltered` (the reflected
+// environment along `r`, in its units, before its intensity) for normal
+// `n` and `roughness`: scaled by the probes' irradiance over the
+// environment's, so a room lit by a blue lamp reflects blue, a dark one
+// dark; towards rough, the probes' light along `r` itself. Outside every
+// realtime volume (and on lightmapped fragments) `prefiltered` as it came.
+fn volume_reflected(prefiltered: vec3<f32>, n: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
+  if (live_weight <= 0.0) { return prefiltered; }
+  let scale = 1.0 / max(frame.params.x, 1e-4);
+  let irr_n = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, n), live_sh[1].w + dot(live_sh[1].xyz, n), live_sh[2].w + dot(live_sh[2].xyz, n)), vec3<f32>(0.0)) * scale;
+  let irr_r = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, r), live_sh[1].w + dot(live_sh[1].xyz, r), live_sh[2].w + dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
+  let norm = clamp(irr_n / max(live_env, vec3<f32>(1e-3)), vec3<f32>(0.0), vec3<f32>(16.0));
+  let relit = mix(prefiltered * norm, irr_r, smoothstep(0.4, 1.0, roughness));
+  return mix(prefiltered, relit, live_weight);
 }
 
 // The diffuse ambient light of a lit fragment, in the environment
@@ -165,6 +200,8 @@ fn ambient_irradiance(env: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   let scale = 1.0 / max(frame.params.x, 1e-4);
   if (baked_lightmap.a > 0.5) { return baked_lightmap.rgb * scale; }
   let v = light_volumes(p, n);
+  live_weight = v.live.w;
+  live_env = env;
   let baked = mix(env, v.baked.rgb * scale, v.baked.w);
   return mix(baked, v.live.rgb * scale, v.live.w);
 }

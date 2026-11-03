@@ -244,8 +244,11 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 /// bounce. With `realtime` a realtime light volume fills the room (5 × 3 ×
 /// 5 probes) and is relit 8 probes a frame: the shade takes the lamp's
 /// light off the walls, reddish on the left, greenish on the right, and
-/// the lamp's `colour`.
-pub fn light_volume_scene(realtime: bool, colour: Vec3) -> RenderScene {
+/// the lamp's `colour`. With `mirror` a chrome sphere stands in the middle
+/// of the frame: lit by the lamp's highlight alone and reflecting the dark
+/// environment, unless the realtime probes relight its reflection with the
+/// room (red on its left, green on its right).
+pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let sphere = scene.add_mesh(shapes::sphere(32, 24));
@@ -281,6 +284,21 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3) -> RenderScene {
         white,
         Mat4::from_translation(Vec3::new(1.2, 0.5, 0.3)),
     );
+    if mirror {
+        let chrome = scene.add_material(Material {
+            base_color: [0.95, 0.95, 0.95, 1.0],
+            metallic: 1.0,
+            roughness: 0.3,
+            ..Default::default()
+        });
+        // On the camera's axis, clear of the block and the other sphere.
+        scene.add_instance(
+            sphere,
+            chrome,
+            Mat4::from_translation(Vec3::new(0.0, 1.215, 0.39))
+                * Mat4::from_scale(Vec3::splat(0.8)),
+        );
+    }
     scene.light = DirectionalLight {
         intensity: 0.0,
         ..Default::default()
