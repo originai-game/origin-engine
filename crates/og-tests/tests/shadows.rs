@@ -8,7 +8,7 @@
 
 use og_render::{
     Antialias, Culling, FrameStats, Material, PointShadows, RenderDesc, RenderScene, RenderTarget,
-    Renderer, RgbaImage, TaaHistory,
+    Renderer, RgbaImage, TaaHistory, Tonemap,
 };
 use og_tests::compare::{Tolerance, compare};
 use og_tests::{gfx, scenes, shadow_scenes};
@@ -618,6 +618,12 @@ fn contact_strip(img: &RgbaImage) -> Vec<(u32, u32)> {
 /// beside a box standing on it, on the side away from the light, is in
 /// shadow for a spot and a point light (cube and paraboloid), not lit
 /// through a bias gap; and their edges are soft rather than stepped.
+///
+/// Measured as the share of the light's direct light that reaches the
+/// strip, in linear light (no tonemap, sRGB decoded) with the ambient
+/// taken out (a frame with the light off): a ratio of display values
+/// counts the sky's ambient, which sRGB lifts to a third of the lit
+/// floor's value, and moved with every change to the ambient.
 #[test]
 fn local_shadows_touch_their_casters() {
     check("shadows-local-contact");
@@ -631,24 +637,51 @@ fn local_shadows_touch_their_casters() {
             point_shadows: storage,
             ..desc
         };
-        let (shadowed, _) = frame(&desc, &shadow_scenes::local_contact_scene(point, true), 1);
-        let (lit, _) = frame(&desc, &shadow_scenes::local_contact_scene(point, false), 1);
+        let scene = |shadows: bool, on: bool| {
+            let mut s = shadow_scenes::local_contact_scene(point, shadows);
+            s.post.tonemap = Tonemap::None;
+            if !on {
+                s.lights[0].intensity = 0.0;
+            }
+            s
+        };
+        let (shadowed, _) = frame(&desc, &scene(true, true), 1);
+        let (lit, _) = frame(&desc, &scene(false, true), 1);
+        let (dark, _) = frame(&desc, &scene(false, false), 1);
         let strip = contact_strip(&shadowed);
         let at = |img: &RgbaImage, (x, y): (u32, u32)| {
             let i = ((y * img.width + x) * 4) as usize;
-            luma(&img.pixels[i..i + 4])
+            let c = |v: u8| {
+                let v = v as f32 / 255.0;
+                if v <= 0.04045 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            let p = &img.pixels[i..i + 3];
+            0.2126 * c(p[0]) + 0.7152 * c(p[1]) + 0.0722 * c(p[2])
         };
-        let ratio: f32 = strip
-            .iter()
-            .map(|&q| at(&shadowed, q) / at(&lit, q).max(1.0))
-            .sum::<f32>()
-            / strip.len() as f32;
+        let direct = |img: &RgbaImage| -> f32 {
+            strip
+                .iter()
+                .map(|&q| at(img, q) - at(&dark, q))
+                .sum::<f32>()
+                / strip.len() as f32
+        };
+        let (reached, full) = (direct(&shadowed), direct(&lit));
+        assert!(
+            full > 0.05,
+            "the light reaches the strip unshadowed: {full:.3}"
+        );
+        let ratio = reached / full;
         println!(
-            "point {point} {storage:?}: floor beside the box at {ratio:.2} of its unshadowed light"
+            "point {point} {storage:?}: floor beside the box takes {ratio:.3} of its direct light ({reached:.4} of {full:.4}, ambient {:.4})",
+            strip.iter().map(|&q| at(&dark, q)).sum::<f32>() / strip.len() as f32
         );
         assert!(
-            ratio < 0.35,
-            "the floor beside the box is lit through the bias: {ratio:.2}"
+            ratio < 0.1,
+            "the floor beside the box is lit through the bias: {ratio:.3} of its direct light"
         );
     }
 }
