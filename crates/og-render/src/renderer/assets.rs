@@ -468,7 +468,9 @@ impl Renderer {
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
                 transmissive,
-                dissolve: material.dissolves(),
+                // Also alpha-tested materials: they cast through the shadow
+                // pass that reads the material (fs_dissolve), cut by alpha.
+                dissolve: material.dissolves() || material.alphaTest > 0.0,
                 effects: material.toon != 0
                     || material.rimIntensity > 0.0
                     || material.flash > 0.0
