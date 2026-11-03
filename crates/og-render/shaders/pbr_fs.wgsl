@@ -246,9 +246,20 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let keep = shadow_keep(n_dot_l * shadow, mode);
   color *= keep;
   // The material style's shadow tint: shadowed sunlight moves towards a
-  // colour instead of black (the cool or warm shadow of illustration).
+  // colour instead of black (the cool or warm shadow of illustration). A
+  // toon material's tint takes what its ramp lost to the shadow, once, from
+  // the final shadow factor (as the terrain's, terrain_lit.wgsl): inside the
+  // dark band a deeper shadow loses nothing more and gains no more tint, so
+  // overlapping shadows never come out lighter.
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
-    color += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
+    var tinted = (1.0 - shadow) * n_dot_l;
+    var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
+    if (EFFECTS && material.toon.x > 0.5) {
+      tinted = toon_ramp(n_dot_l) - toon_ramp(n_dot_l * shadow);
+      // Never more than the diffuse light the ramp took (1 / π of the albedo): a white tint at 1 fills the shadow, never outshines the lit side.
+      tint = min(tint, vec3<f32>(1.0 / PI));
+    }
+    color += tinted * tint * s.albedo * frame.light_color.rgb;
   }
 
   // Point and spot lights: those of this fragment's cluster, in scene

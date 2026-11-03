@@ -290,7 +290,10 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     tinted = terrain_band(n_dot_l) - band;
   }
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
-    color += tinted * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb;
+    var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
+    // Under toon, never more than the diffuse light the ramp took (as pbr_fs.wgsl).
+    if (frame.outline_style.z > 0.5) { tint = min(tint, vec3<f32>(1.0 / PI)); }
+    color += tinted * tint * s.albedo * frame.light_color.rgb;
   }
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
   // Point, spot and rect lights: this fragment's cluster's, or every light
