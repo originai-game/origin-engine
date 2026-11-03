@@ -283,7 +283,7 @@ fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let sun_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
   let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
   let side = dot(mix(view_side, sun_side, 0.5), luma) * sky_scale;
-  let light = dot(frame.light_color.rgb, luma) / max(c[4].y, 0.05);
+  let light = dot(frame.light_color.rgb, luma) / max(c[4].y, 9.1e-4);
   return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
 }
 

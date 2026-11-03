@@ -279,7 +279,7 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   let physical = scatter_on();
   var to_light = normalize(frame.light_dir.xyz);
   if (physical) { to_light = normalize(frame.sky_sun_dir.xyz); }
-  let light = frame.light_color.rgb / max(c[4].y, 0.05);
+  let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
   let cos_t = dot(d, to_light);
   let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
   // The sky's light from above and from the horizon (the IBL's irradiance).

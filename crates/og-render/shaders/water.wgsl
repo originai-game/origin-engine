@@ -867,13 +867,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
   let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
   let amb_n = ambient_light_level(n, in.world) * frame.params.x;
-  // Under a closed cloud deck (cloud_deck's a) the sun is hidden: the light the deck lets through reaches the sea as
-  // the deck's own radiance, from the whole sky above, not along the sun. The sun's glitter, a crest's light carried
-  // from the sun and the foam's sunlit share go with it, and the foam takes the deck's light instead (a matte foam
-  // under a uniform deck is as bright as the deck times its albedo, never brighter than the sky). Taking the scene's
-  // dimmed directional light as the sun drew the storm's crests' foam cream-white, 1.7 times the brightest sky.
+  // Under a closed cloud deck the light reaches the sea as the deck's own radiance, from the whole sky above (its a:
+  // how much of the sky it closes): the foam and the crests take it (below). The sun itself is hidden by the deck
+  // for every surface at its source (Clouds::light).
   let deck_up = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
-  let sun_e = frame.light_color.rgb * sun * (1.0 - deck_up.a);
+  let sun_e = frame.light_color.rgb * sun;
   if (sea) {
     // web-ocean's body (`ocean.js` fs; the Sea of Thieves talk's subsurface term): light carried through the thin
     // upper part of a backlit crest, strongest looking towards the sun; and under foam the bubbles brighten and tint

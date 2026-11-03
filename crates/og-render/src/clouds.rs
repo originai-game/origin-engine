@@ -123,16 +123,31 @@ impl Clouds {
     }
 }
 
+/// The sun's direct beam through a closed deck of full thickness (an
+/// optical depth of 7): [`Clouds::light`]'s least, never 0, so the clouds'
+/// own lighting can undo the dimming (frame.wgsl, sky.wgsl).
+pub const DECK_BEAM: f32 = 9.1e-4;
+
 impl Clouds {
     /// How much of the sun's light (and, its second value, of the sky's)
-    /// reaches the ground under this cover: a scattered sky keeps the sun,
-    /// an overcast one lets a fifth of it through and a dimmer, flatter
-    /// sky light. Thin clouds (low density) dim less.
+    /// reaches the ground under this cover: a scattered sky keeps the sun
+    /// (the clouds passing over it hide a share, `0.8 k`), and a deck that
+    /// closes the sky, as the sky draws it closing (frame.wgsl `cloud_deck`,
+    /// over 0.6 to 0.95 cover), hides it: its direct beam through a deck
+    /// of full thickness is the e⁻⁷ of an optical depth of some 7, and the
+    /// light under it is the dimmer, flatter sky light. A thin deck (low
+    /// density or thickness) hides it only in part. Every lit surface takes
+    /// it, so under an overcast nothing is sunlit (a fifth of the sun left
+    /// on lit foam and crests drew them 1.7 times the brightest sky).
     pub fn light(&self) -> (f32, f32) {
         let thick =
             (self.density / 0.04).clamp(0.0, 1.5) * (self.thickness / 1800.0).clamp(0.0, 1.5);
-        let k = (self.coverage.clamp(0.0, 1.0).powi(3) * thick.min(1.0)).clamp(0.0, 1.0);
-        (1.0 - 0.8 * k, 1.0 - 0.45 * k)
+        let cover = self.coverage.clamp(0.0, 1.0);
+        let k = (cover.powi(3) * thick.min(1.0)).clamp(0.0, 1.0);
+        let t = ((cover - 0.6) / 0.35).clamp(0.0, 1.0);
+        let closed = t * t * (3.0 - 2.0 * t) * thick.min(1.0);
+        let hidden = (0.8 * k).max(closed).min(1.0 - DECK_BEAM);
+        (1.0 - hidden, 1.0 - 0.45 * k)
     }
 
     /// A fog's colour and its colour looking into the sun under this cover:
@@ -367,8 +382,19 @@ mod tests {
         };
         assert!(at(0.0, 0.04) == (1.0, 1.0));
         assert!(at(0.3, 0.04).0 > 0.95);
+        // A closed deck hides the sun; one thin enough lets most through.
         let (sun, sky) = at(1.0, 0.04);
-        assert!((sun - 0.2).abs() < 1e-5 && sky > sun);
+        assert!((sun - DECK_BEAM).abs() < 1e-6 && sky > 0.5, "{sun} {sky}");
         assert!(at(1.0, 0.01).0 > 0.7);
+        // Broken cover under the deck's closing keeps the old dimming.
+        assert!((at(0.5, 0.04).0 - (1.0 - 0.8 * 0.125)).abs() < 1e-5);
+        // Closing: monotonic, from the broken sky's dimming to the deck's.
+        let mut last = 1.0;
+        for i in 0..=40 {
+            let s = at(i as f32 / 40.0, 0.04).0;
+            assert!(s <= last + 1e-6, "{i}: {s} after {last}");
+            last = s;
+        }
+        assert!(at(0.9, 0.04).0 < 0.1);
     }
 }

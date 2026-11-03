@@ -750,9 +750,9 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
 /// With the weather occlusion map turned off (shelter 0) the snow lies
 /// under it too, so the frame's lower half is brighter; with it the ground
 /// under the canopy is darker than the open snow; and in the rain (its
-/// puddles and ripples and the sun's shadows off in both frames) the
-/// ground under the canopy is lighter with the map than without it: dry,
-/// not soaked.
+/// puddles and ripples and the sun's shadows off) the ground under the
+/// canopy with the map looks as it does with no weather, and without it
+/// unlike it: dry, not soaked.
 #[test]
 fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
     use og_tests::sky_scenes::sky_scene;
@@ -790,28 +790,36 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
     // The ground under the canopy, with and without the map, the puddles
     // and ripples left out of both (mirrors of the sky, brighter than any
     // ground) and the sun's shadows off in both (the weather map is drawn
-    // all the same): in the canopy's shade, dry ground has only the sky's
-    // dim light to show while a wet film reflects the bright horizon at
-    // this grazing angle, so shade would measure the gloss, not the
-    // wetness. Sunlit, dry there is lighter than soaked.
-    let damp = |shelter: bool| {
+    // all the same), against the same ground with no weather at all: with
+    // the map it is dry, as the ground with no weather is, and without it
+    // soaked, far from it. (Which way the wet film moves the ground's
+    // light depends on what lights it: under the overcast deck, which hides
+    // the sun, a film's gloss mirrors the bright horizon at this grazing
+    // angle, where in the sun's light it darkened the ground; dryness is
+    // the ground looking as it does dry.)
+    let damp = |weather: Option<bool>| {
         let mut s = sky_scene("weather-shelter-rain");
         s.light.cast_shadows = false;
-        if let Some(w) = s.surface_weather.as_mut() {
-            w.puddles = 0.0;
-            w.rain = 0.0;
-            if !shelter {
-                w.shelter = 0.0;
+        match weather {
+            None => s.surface_weather = None,
+            Some(shelter) => {
+                if let Some(w) = s.surface_weather.as_mut() {
+                    w.puddles = 0.0;
+                    w.rain = 0.0;
+                    if !shelter {
+                        w.shelter = 0.0;
+                    }
+                }
             }
         }
         frame(&s)
     };
-    let (dry, soaked) = (damp(true), damp(false));
+    let (dry, soaked, bare) = (damp(Some(true)), damp(Some(false)), damp(None));
+    let (dry, soaked, bare) = (under(&dry), under(&soaked), under(&bare));
+    println!("under the canopy: sheltered {dry}, soaked {soaked}, no weather {bare}");
     assert!(
-        under(&dry) > 1.1 * under(&soaked),
-        "the canopy keeps the ground under it dry: {} vs {}",
-        under(&dry),
-        under(&soaked)
+        (soaked - bare).abs() > 0.1 * bare && (dry - bare).abs() < 0.3 * (soaked - bare).abs(),
+        "the canopy keeps the ground under it dry: sheltered {dry}, soaked {soaked}, no weather {bare}"
     );
 }
 
