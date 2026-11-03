@@ -1,5 +1,9 @@
 use super::*;
 
+/// The smallest touch target, CSS px: a control's reach on a touch screen
+/// grows to it on each side it is shorter (Apple's HIG 44 pt).
+pub(crate) const TOUCH_TARGET: f32 = 44.0;
+
 impl Ui {
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
@@ -422,6 +426,12 @@ impl Ui {
         let mut tree_path: IdMap<usize, String> = IdMap::new();
         let mut top_scope = 0u64;
         let mut top_locked = false;
+        // The minimum touch target, in og-ui units (44 CSS px), on a touch screen.
+        let touch_min = if self.viewport.coarse_pointer {
+            TOUCH_TARGET / self.unit.max(0.01)
+        } else {
+            0.0
+        };
         for &i in &order[1..] {
             let n = &self.nodes[i];
             let (role, name, description, value, states) = self.a11y_info(i);
@@ -516,7 +526,25 @@ impl Ui {
             if n.scope {
                 flags |= HIT_SCOPE;
             }
+            // Its reach past its box: its hit slop, and on a touch screen a
+            // control's box grown to the minimum touch target (§15.2).
             let slop = n.props.hit_slop.max(0.0);
+            let control = flags & (HIT_POINTER | HIT_TEXT) != 0 && !n.backdrop;
+            let (sx, sy) = if control && touch_min > 0.0 {
+                (
+                    slop.max((touch_min - n.rect.width) / 2.0),
+                    slop.max((touch_min - n.rect.height) / 2.0),
+                )
+            } else {
+                (slop, slop)
+            };
+            let reach = Rect::new(
+                n.rect.x - sx,
+                n.rect.y - sy,
+                n.rect.width + 2.0 * sx,
+                n.rect.height + 2.0 * sy,
+            );
+            let reaches = sx > 0.0 || sy > 0.0;
             let transformed = !n.world.is_identity();
             let inv = if transformed {
                 n.world.invert().unwrap_or(Affine::IDENTITY)
@@ -524,8 +552,8 @@ impl Ui {
                 Affine::IDENTITY
             };
             let hit = |rect: Rect, flags: u16| {
-                let rect = if slop > 0.0 {
-                    n.world.map_rect(&n.rect.outset(slop)).intersect(&n.clip)
+                let rect = if reaches {
+                    n.world.map_rect(&reach).intersect(&n.clip)
                 } else {
                     rect
                 };
@@ -538,7 +566,7 @@ impl Ui {
                     scroller: scroller_of[i],
                     owner: owner_of[i],
                     inv,
-                    local: n.rect.outset(slop),
+                    local: reach,
                     clip: n.clip,
                     group: group_of[i],
                     gesture: gesture_of[i],
@@ -576,7 +604,7 @@ impl Ui {
             if !role.is_empty() {
                 tree.push((n.key, node(states.clone())));
             }
-            if (!visible.is_empty() || slop > 0.0) && flags != 0 && !n.inert {
+            if (!visible.is_empty() || reaches) && flags != 0 && !n.inert {
                 hits.push(hit(visible, flags));
             }
             let parent = if n.parent == NONE {

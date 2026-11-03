@@ -480,6 +480,15 @@ Input goes to the top layer that accepts it, once per tick. This replaces
 each game's own focus and Back handling, which is where the FINDINGS show
 most UI bugs (brasswick #9, meridian-loop #9).
 
+A pointer takes the topmost element whose box holds it, with two reaches
+past the box. An element's `hitSlop` reaches that far on any pointer; on a
+coarse pointer every control's reach also grows to the 44 CSS px touch
+target on each side it is shorter. A point held only by reaches goes to
+the nearest box among them: a sibling's own box takes it, a box around them
+(a dialog's backdrop, a panel, a scroller) never does. So a phone's packed
+map of 20 px nodes takes taps between them for the nearest one, and a
+gap between two small buttons splits at its middle.
+
 ### 8.2 Actions and glyphs
 
 UI actions are named (`confirm`, `back`, `tabNext`, `tabPrev`, `details`,

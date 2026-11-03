@@ -505,16 +505,9 @@ impl Ui {
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;
         let hot = if input.pointer_inside {
-            self.state
-                .hits
-                .iter()
-                .rev()
-                .find(|h| {
-                    !h.has(HIT_OFFSCREEN)
-                        && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
-                        && h.contains(p.x, p.y)
-                })
-                .map_or(0, |h| h.key)
+            crate::ui::pick_hit(&self.state.hits, p.x, p.y, |h| {
+                !h.has(HIT_OFFSCREEN) && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
+            })
         } else {
             0
         };

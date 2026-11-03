@@ -287,7 +287,9 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           cross: "center",
           radius: n.shape === "square" ? frame().t.control : s / 2,
           semantics: { role: "button", name: n.label ?? n.id ?? "", value: state, selected: desc.selected === n.id },
-          layer: { insets: { start: (rtl() ? W - p.x : p.x) - s / 2, top: p.y - s / 2 }, z: 1 },
+          // A small node reaches half its size past its edge (a phone's sector map packs a dozen 20 px systems in
+          // 350 px); where reaches meet, the nearest node takes the press.
+          layer: { insets: { start: (rtl() ? W - p.x : p.x) - s / 2, top: p.y - s / 2 }, z: 1, hitSlop: Math.round(s / 2) },
         }, () => {
           kit.setDraw({
             shape: n.shape === "hex" ? { kind: "polygon", sides: 6, rounding: 4, rotation: Math.PI / 6 } : n.shape === "diamond" ? { kind: "polygon", sides: 4, rounding: 4 } : n.shape === "triangle" ? { kind: "polygon", sides: 3, rounding: 3 } : { kind: n.shape === "square" ? "rect" : "ellipse" },

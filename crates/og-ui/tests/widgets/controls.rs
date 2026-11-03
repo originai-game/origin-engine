@@ -608,3 +608,64 @@ fn a_grid_out_of_view_builds_only_its_own_rows() {
     // plus one past each edge: at most five rows of four.
     assert!(last - first <= 20, "built cells {first}..{last}");
 }
+
+/// Small controls' reach (docs/ui.md §8.1): on a touch screen a control's
+/// box grows to the 44 px touch target, and where two reaches overlap the
+/// nearest box wins; a box around them (a panel behind) never takes a
+/// press from a reach, a sibling's own box does; `hitSlop` reaches on any
+/// pointer, the touch minimum only on a coarse one.
+#[test]
+fn a_small_controls_reach_grows_to_the_touch_target_and_the_nearest_box_wins() {
+    let build = |ui: &mut Ui, hits: &mut Vec<&'static str>| {
+        let place = |x: f32, y: f32, w: f32, h: f32, slop: f32| {
+            (
+                Element {
+                    width: Size::Fixed(w),
+                    height: Size::Fixed(h),
+                    interactive: true,
+                    ..Element::default()
+                },
+                Props {
+                    position: Position::Absolute,
+                    insets: Edges {
+                        start: Some(x),
+                        top: Some(y),
+                        ..Edges::default()
+                    },
+                    hit_slop: slop,
+                    ..Props::default()
+                },
+            )
+        };
+        for (id, (el, props)) in [
+            ("Panel", place(40.0, 40.0, 400.0, 300.0, 0.0)),
+            ("A", place(100.0, 100.0, 20.0, 20.0, 0.0)),
+            ("B", place(126.0, 100.0, 20.0, 20.0, 0.0)),
+            ("C", place(300.0, 100.0, 20.0, 20.0, 8.0)),
+        ] {
+            ui.open_with(id, el, props);
+            if ui.close().clicked {
+                hits.push(id);
+            }
+        }
+    };
+    let tap = |touch: bool, x: f32, y: f32| {
+        let mut rig = Rig::new(Vec::new());
+        rig.vp.coarse_pointer = touch;
+        rig.idle(2, &mut |ui, s| build(ui, s));
+        let p = Vec2::new(x, y);
+        rig.step(press(p), &mut |ui, s| build(ui, s));
+        rig.step(release(p), &mut |ui, s| build(ui, s));
+        rig.state.first().copied().unwrap_or("")
+    };
+    // Between A (100–120) and B (126–146): the nearer box.
+    assert_eq!(tap(true, 124.0, 110.0), "B");
+    assert_eq!(tap(true, 121.0, 110.0), "A");
+    // 10 px over A: in its 44 px reach on touch (the panel behind does not take it), the panel's with a mouse.
+    assert_eq!(tap(true, 110.0, 90.0), "A");
+    assert_eq!(tap(false, 110.0, 90.0), "Panel");
+    // Past the 44 px reach: the panel.
+    assert_eq!(tap(true, 110.0, 86.0), "Panel");
+    // C's hitSlop reaches with a mouse too.
+    assert_eq!(tap(false, 310.0, 94.0), "C");
+}

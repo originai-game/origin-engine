@@ -160,6 +160,52 @@ impl Hit {
         let (lx, ly) = self.inv.apply(x, y);
         self.local.contains(lx, ly)
     }
+
+    /// How far the point is from its own box (0 inside): a point in its
+    /// reach but outside its box (hit slop, the touch minimum) is this far.
+    pub fn distance(&self, x: f32, y: f32) -> f32 {
+        let r = &self.full;
+        let dx = (r.x - x).max(x - r.right()).max(0.0);
+        let dy = (r.y - y).max(y - r.bottom()).max(0.0);
+        dx.hypot(dy)
+    }
+}
+
+/// The element a pointer at (`x`, `y`) is on among `hits` (drawing order,
+/// topmost last) that `eligible` accepts: the topmost one whose box holds
+/// the point, unless points it holds only by its reach (hit slop, the touch
+/// minimum) lie over it, where the nearest box wins. A box around those
+/// reaches (a dialog's backdrop, a panel, a scroller) never takes the
+/// point from them; a sibling's own box does (docs/ui.md §8.1).
+pub(crate) fn pick_hit(hits: &[Hit], x: f32, y: f32, eligible: impl Fn(&Hit) -> bool) -> u64 {
+    let mut reached: Vec<(&Hit, f32)> = Vec::new();
+    for h in hits
+        .iter()
+        .rev()
+        .filter(|h| eligible(h) && h.contains(x, y))
+    {
+        let d = h.distance(x, y);
+        if d > 0.0 {
+            reached.push((h, d));
+            continue;
+        }
+        let around = |s: &Hit| {
+            let (a, b) = (&h.full, &s.full);
+            a.x <= b.x && a.y <= b.y && a.right() >= b.right() && a.bottom() >= b.bottom()
+        };
+        if reached.is_empty() || !reached.iter().all(|(s, _)| around(s)) {
+            return h.key;
+        }
+        break;
+    }
+    // The nearest box; the topmost of equals.
+    reached
+        .iter()
+        .fold(None::<(&Hit, f32)>, |best, &(h, d)| match best {
+            Some((_, bd)) if bd <= d => best,
+            _ => Some((h, d)),
+        })
+        .map_or(0, |(h, _)| h.key)
 }
 
 /// Per-widget memory between ticks: what each widget's animation or open
