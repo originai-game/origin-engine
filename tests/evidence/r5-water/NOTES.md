@@ -14,7 +14,7 @@ draws, each faded where the grid's cell under the buoy is too coarse for
 it, as the renderer's vertices fade it: a buoy rides the drawn surface,
 never read from the GPU).
 
-Without a renderer it runs to `tick 66 hash 50a99c57712590c6 entities 6`
+Without a renderer it runs to `tick 66 hash 810750fe56f61686 entities 6`
 with `--commands "0.5:float;1.0:float;1.1:quit"` (OG_RENDERER=none on the
 orb).
 
@@ -63,7 +63,7 @@ Dumped every 0.5 s to 6.5 s (`og.Buoyancy.submerged`): the boats keep
 0.11 to 0.24 at least, mean 0.30 (their rest value); the buoys 0.25 to
 0.39 at least, mean 0.40.
 
-Without a renderer it runs to `tick 396 hash 33b74a49443d3643 entities
+Without a renderer it runs to `tick 396 hash 92a810107014edfb entities
 11` with the commands below (OG_RENDERER=none on the orb, a fresh
 og-host-node in OG_NATIVE_ADDON).
 
@@ -97,6 +97,11 @@ to 33b74a49443d3643. Nothing the tick computes moved: `dump_world` of the
 boats at 3.0 s and 6.5 s, with the addon before and after the field, differ
 in the systems' timings and the hash alone (every entity's components,
 og.Buoyancy's submerged share included, are the same).
+
+Main moved both again between e83bd1435 and 15e382fa0, which changed the world
+hash's resources (most likely the environment commits bf94debc7 and 0c524bf5d), with no R5 change: on main
+15e382fa0 the sea runs to 810750fe56f61686 and the boats to
+92a810107014edfb, and the R5 heads on it give the same.
 
 ## Waterline: the floaters against the drawn sea
 

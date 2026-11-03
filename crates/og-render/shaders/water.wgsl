@@ -301,7 +301,11 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
     + textureSample(heights, ripple_sampler, p * 0.71 + water.foam_uv[0].zw, first + 2u).g * 0.22;
   let fw = fwidth(pat) + 0.03;
   let soft = 0.04 + 0.14 * (1.0 - clamp(cover, 0.0, 1.0));
-  let fm = smoothstep(1.0 - cover - fw - soft, 1.0 - cover + fw + soft, pat);
+  var fm = smoothstep(1.0 - cover - fw - soft, 1.0 - cover + fw + soft, pat);
+  // Where a pixel spans the pattern (its change across the pixel near its range), the mask is what the pattern's cut
+  // covers of the pixel on average, the share of the lace over 1 - cover: about the cover itself. The cut softened by
+  // fwidth alone drew distant foam as a grey sheet wherever there was any.
+  fm = mix(fm, clamp(cover, 0.0, 1.0), smoothstep(0.15, 0.4, fw));
   var o: SeaFoam;
   o.cover = cover;
   o.mask = clamp(fm * smoothstep(0.0, 0.5, cover), 0.0, 1.0) * (0.68 + 0.32 * smoothstep(0.3, 0.9, cover));
@@ -309,6 +313,12 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   o.young = fwl.g;
   o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
   return o;
+}
+
+// Bruneton et al. 2010's mean Fresnel over a rough sea's facets: the grazing mirror dims as the slopes it averages
+// spread (sigma: their deviation along the view).
+fn sea_fresnel(cos_v: f32, sigma: f32) -> f32 {
+  return pow(1.0 - cos_v, 5.0 * exp(-2.69 * sigma)) / (1.0 + 22.7 * pow(sigma, 1.5));
 }
 
 // How many metres of the surface a pixel spans at `world` along the view's slant: the distance over the projection's
@@ -880,22 +890,21 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let f0 = water.extra.z;
   var fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
   var mip = 0.5;
+  var sig_v = 0.0;
   if (sea) {
-    // web-ocean's sky reflection (`ocean.js` fs): at a grazing view the facets the eye sees lean towards it
-    // (projected area and masking), so the reflector tilts up and mirrors higher, greyer sky; a ray still reflected
-    // downwards is folded up (it meets the next wave, which mirrors the sky in turn). The Fresnel is a partly smoothed
-    // normal's: the long waves' facet with the grazing statistics of everything finer. The sky is blurred by the
-    // slopes' spread.
+    // web-ocean's tilt of the visible facets (`ocean.js` fs): at a grazing view the facets the eye sees lean towards
+    // it (projected area and masking), so the reflector tilts up and mirrors higher sky. The Fresnel is Bruneton,
+    // Neyret and Holzschuch's mean over a rough sea's facets (2010), which dims the grazing mirror as the slopes along
+    // the view spread: web-ocean's partly smoothed normal kept it near 1 at the horizon, and with downward rays folded
+    // up into the sky the far sea outshone the sky it mirrors (0.47 against 0.27 under the storm's deck). The sky is
+    // blurred by the slopes' spread.
     let vh = normalize(vec3<f32>(v.x, 0.0, v.z) + vec3<f32>(1e-5, 0.0, 0.0));
-    let sig_v = sqrt(max(vh.x * vh.x * sea_cov.x + vh.z * vh.z * sea_cov.y + 2.0 * vh.x * vh.z * sea_cov.z, 1e-6));
+    sig_v = sqrt(max(vh.x * vh.x * sea_cov.x + vh.z * vh.z * sea_cov.y + 2.0 * vh.x * vh.z * sea_cov.z, 1e-6));
     let a_v = max(v.y, 1e-3) / max(sqrt(1.0 - v.y * v.y), 1e-3) / (1.4142 * sig_v);
     let tilt = 0.32 * sig_v * (1.0 - smoothstep(0.0, 2.5, a_v));
     let nv = normalize(n + vh * tilt);
     r = reflect(-v, nv);
-    r.y = abs(r.y) * 0.4 + max(r.y, 0.0) * 0.6;
-    r = normalize(r);
-    let nf = normalize(mix(n, in.normal, 0.45));
-    fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(nf, v), 0.0), 5.0)) * water.look.x;
+    fresnel = (f0 + (1.0 - f0) * sea_fresnel(max(dot(n, v), 0.0), sig_v)) * water.look.x;
     mip = max(sqrt(sqrt(sea_cov.x + sea_cov.y)) * frame.params.y, 0.5);
   }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
@@ -918,6 +927,15 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   } else if (water.look.y > 0.5) {
     let hit = ssr(in.world, r);
     reflected = mix(reflected, hit.rgb, hit.a);
+  }
+  if (sea) {
+    // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn (it never
+    // reaches the sky, nor the ground under the horizon the blurred environment holds there). The facets spread the
+    // reflection over about two of their slopes' deviations, so it turns down gradually.
+    let up_r = vec3<f32>(r.x, abs(r.y), r.z);
+    let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
+    let w = 2.0 * sig_v + 0.05;
+    reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
   }
   let mirrored = reflected;
   reflected = water.extra.w + (1.0 - water.extra.w) * reflected;

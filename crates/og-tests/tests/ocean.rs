@@ -161,6 +161,12 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
 /// the light that reaches it and its reflection mirrors the sky as drawn
 /// (not lifted by the twilight's adaptation, which only the surfaces take).
 /// Before, the sea glowed a daylight teal under a dusk storm and the night.
+/// Under a dim or overcast sky the band of sea just under the horizon is
+/// darker than the band of sky just over it, too: a rough sea mirrors its
+/// sky at a grazing angle dimmed (Bruneton et al. 2010's mean Fresnel), and
+/// a ray it reflects downwards meets the next wave, never the sky. The
+/// whole sea's mean let r5-fft d0a5187fd's far sea through at 0.47 under a
+/// sky of 0.27.
 #[test]
 fn the_sea_darkens_with_the_sky() {
     for name in ["water-ocean-dusk-storm", "water-ocean-night"] {
@@ -170,6 +176,38 @@ fn the_sea_darkens_with_the_sky() {
         let sea = mean(&lumas(&img, 0, 440, 1280, 720));
         assert!(sea < sky, "{name}: the sea ({sea}) under its sky ({sky})");
     }
+    for name in [
+        "water-ocean-dusk-storm",
+        "water-ocean-night",
+        "water-ocean-storm",
+    ] {
+        let scene = ocean_scene(name);
+        let img = frame(&scene);
+        let h = horizon_row(&scene, img.height);
+        let sky = mean(&lumas(&img, 0, h - 24, 1280, h - 4));
+        let sea = mean(&lumas(&img, 0, h + 3, 1280, h + 23));
+        println!("{name}: horizon at row {h}, sky band {sky}, sea band {sea}");
+        assert!(
+            sea < sky,
+            "{name}: the sea just under the horizon ({sea}) outshines the sky just over it ({sky})"
+        );
+    }
+}
+
+/// The image row of the sea's horizon in `scene` (`height` rows): where the
+/// endless sea's far edge (the camera's far plane less 5 %, at the sea's
+/// level) lies straight ahead, through the camera's vertical field of view.
+fn horizon_row(scene: &RenderScene, height: u32) -> u32 {
+    let cam = &scene.camera;
+    let fov = match cam.projection {
+        og_render::Projection::Perspective { fov_y_degrees } => fov_y_degrees.to_radians(),
+        _ => panic!("a perspective camera"),
+    };
+    let ahead = cam.target - cam.position;
+    let pitch = ahead.y.atan2(Vec2::new(ahead.x, ahead.z).length());
+    let edge = (-cam.position.y).atan2(cam.far * 0.95);
+    let y = (edge - pitch).tan() / (fov * 0.5).tan();
+    ((0.5 - 0.5 * y) * height as f32).round() as u32
 }
 
 /// The boats sample's floaters (tests/evidence/r5-water/boats) sit in the
