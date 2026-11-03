@@ -570,6 +570,52 @@ pub(crate) fn mix_srgba(a: Srgba, b: Srgba, t: f32) -> Srgba {
     }
 }
 
+/// A group's place `r` stepped clear of `others` by `gap`: the nearest of
+/// the places just above, below, left or right of one of them that
+/// overlaps none and stays in `bounds`; `r` when it overlaps none, or when
+/// no such place exists.
+fn step_clear(r: Rect, others: &[Rect], gap: f32, bounds: Rect) -> Rect {
+    let hit = |p: &Rect| others.iter().any(|o| !o.is_empty() && p.overlaps(o));
+    if !hit(&r) {
+        return r;
+    }
+    let inside = |p: &Rect| {
+        p.x >= bounds.x - 0.5
+            && p.y >= bounds.y - 0.5
+            && p.right() <= bounds.right() + 0.5
+            && p.bottom() <= bounds.bottom() + 0.5
+    };
+    others
+        .iter()
+        .filter(|o| !o.is_empty())
+        .flat_map(|o| {
+            [
+                Rect {
+                    y: o.y - gap - r.height,
+                    ..r
+                },
+                Rect {
+                    y: o.bottom() + gap,
+                    ..r
+                },
+                Rect {
+                    x: o.x - gap - r.width,
+                    ..r
+                },
+                Rect {
+                    x: o.right() + gap,
+                    ..r
+                },
+            ]
+        })
+        .filter(|p| inside(p) && !hit(p))
+        .min_by(|a, b| {
+            let d = |p: &Rect| (p.x - r.x).abs() + (p.y - r.y).abs();
+            d(a).total_cmp(&d(b))
+        })
+        .unwrap_or(r)
+}
+
 /// An anchored group's place moved out of the host's control `c`: along
 /// the edge it sits on, past `c` by `gap` (a corner or side group sideways,
 /// a top or bottom centred group up or down), or for a corner group past it

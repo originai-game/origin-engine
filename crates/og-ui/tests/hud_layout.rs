@@ -14,7 +14,9 @@
 //! - in the edit mode the element still answers its own press, a drag
 //!   leaves it off the surface or past a locked move, the change is never
 //!   reported, or a snapshot mid-drag continues otherwise;
-//! - Done leaves the edit mode on.
+//! - Done leaves the edit mode on;
+//! - a popup placed at a point (a drift score) covers the map, or moves it
+//!   instead of stepping clear itself.
 
 use og_core::glam::Vec2;
 use og_ui::*;
@@ -430,4 +432,54 @@ fn done_on_the_editor_ends_the_edit_mode() {
     );
     assert!(r.done);
     assert!(!ui.hud_edit().on);
+}
+
+/// A group placed at a point over another (a drift score over the map)
+/// steps to the nearest free place, here just above it; the map stays.
+#[test]
+fn a_popup_at_a_point_steps_clear_of_the_map() {
+    let mut ui = Ui::new(UiDesc::default());
+    let fixed = |w: f32, h: f32| (Size::Fixed(w), Size::Fixed(h));
+    let (mw, mh) = fixed(200.0, 160.0);
+    let (pw, ph) = fixed(120.0, 50.0);
+    ui.begin(InputFrame::default(), vp());
+    ui.anchor(
+        "MapHud",
+        AnchorDesc {
+            anchor: Anchor::BottomLeft,
+            margin: Some(0.0),
+            width: mw,
+            height: mh,
+            ..AnchorDesc::default()
+        },
+        |_| {},
+    );
+    // Over the map's lower half, nearer its top than its right edge.
+    ui.anchor(
+        "DriftHud",
+        AnchorDesc {
+            anchor: Anchor::TopLeft,
+            margin: Some(0.0),
+            offset: (60.0, 480.0),
+            width: pw,
+            height: ph,
+            over: true,
+            avoid: true,
+            ..AnchorDesc::default()
+        },
+        |_| {},
+    );
+    ui.end();
+    let rect = |p: &str| {
+        let e = ui.frame().element(p).expect("laid out");
+        [e.x, e.y, e.width, e.height]
+    };
+    assert_eq!(rect("MapHud"), [0.0, 440.0, 200.0, 160.0], "the map stays");
+    let [x, y, w, h] = rect("DriftHud");
+    assert_eq!([x, w, h], [60.0, 120.0, 50.0], "it moves up, not sideways");
+    let gap = ui.theme().space.xs;
+    assert!(
+        (y - (440.0 - gap - 50.0)).abs() < 0.01,
+        "just above the map: {y}"
+    );
 }

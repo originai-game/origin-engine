@@ -390,6 +390,8 @@ pub(crate) enum Float {
         over: bool,
         /// In the tooltip layer, over every other (a card the player opened).
         tooltip: bool,
+        /// Steps clear of the other anchored groups (a popup at a point).
+        avoid: bool,
     },
     /// A full-surface backdrop over the tree; its child is the dialog.
     Modal,

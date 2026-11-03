@@ -48351,6 +48351,11 @@
           "description": "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard).",
           "default": false
         },
+        "avoid": {
+          "type": "boolean",
+          "description": "Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower.",
+          "default": false
+        },
         "frame": {
           "anyOf": [
             {

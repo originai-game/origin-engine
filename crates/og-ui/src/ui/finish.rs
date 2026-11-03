@@ -133,6 +133,25 @@ impl Ui {
                         spots[k].1 = keep_out(r, anchor, covered, margin.max(gap), hud, &others);
                     }
                 }
+                // A group placed at a point steps clear of the others
+                // (which keep their places) and of the host's control.
+                for k in 0..spots.len() {
+                    let (g, r) = spots[k];
+                    if !matches!(self.nodes[g].float, Float::Anchored { avoid: true, .. }) {
+                        continue;
+                    }
+                    let mut others: Vec<Rect> = spots
+                        .iter()
+                        .filter(|&&(o, _)| {
+                            !matches!(self.nodes[o].float, Float::Anchored { avoid: true, .. })
+                        })
+                        .map(|&(_, o)| o)
+                        .collect();
+                    if !covered.is_empty() {
+                        others.push(covered);
+                    }
+                    spots[k].1 = step_clear(r, &others, gap, safe);
+                }
                 for &(g, placed) in &spots {
                     self.nodes[g].el.width = Size::Fixed(placed.width);
                     self.nodes[g].el.height = Size::Fixed(placed.height);

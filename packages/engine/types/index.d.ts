@@ -24014,6 +24014,12 @@ export interface AnchorDesc {
    */
   readonly tooltip?: boolean;
   /**
+   * Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower.
+   *
+   * @default false
+   */
+  readonly avoid?: boolean;
+  /**
    * The style frame its background takes; null is the panel's.
    *
    * @default null

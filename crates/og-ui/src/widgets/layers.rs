@@ -30,6 +30,7 @@ impl Ui {
                 dy: desc.offset.1,
                 over: desc.over,
                 tooltip: desc.tooltip,
+                avoid: desc.avoid,
             },
             NONE,
         );

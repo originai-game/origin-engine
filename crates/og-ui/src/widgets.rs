@@ -49,6 +49,9 @@ pub struct AnchorDesc {
     /// Draws in the tooltip layer, over every other layer including the
     /// toast stack (a card the player opened).
     pub tooltip: bool,
+    /// Steps clear of the other anchored groups and the host's control
+    /// (a drift score over the car, which must not cover the map).
+    pub avoid: bool,
     /// The frame its background takes (`None`: the panel's).
     pub frame: Option<crate::style_file::StylePart>,
     /// Shown settled the first time it is built: no style entrance or

@@ -154,12 +154,13 @@ export function driftScore(id: string, desc: Api.DriftScoreDesc = {}): void {
     });
   };
   if (desc.at) {
-    // Over a screen point: centred on it by last tick's width, kept on screen.
+    // Over a screen point: centred on it by last tick's width, kept on screen
+    // and stepped clear of the other HUD groups (the map, the tower).
     const vp = f.viewport;
     const w = kit.bounds(`${id}Hud/${id}`)?.width ?? 0;
     const h = kit.bounds(`${id}Hud/${id}`)?.height ?? 0;
     const left = Math.max(vp.safeArea.left, Math.min(vp.width - vp.safeArea.right - w, desc.at.x - w / 2));
     const top = Math.max(vp.safeArea.top, Math.min(vp.height - vp.safeArea.bottom - h, desc.at.y - h));
-    kit.anchor(`${id}Hud`, { anchor: "topLeft", margin: 0, offsetX: left - vp.safeArea.left, offsetY: top - vp.safeArea.top, over: true }, build);
+    kit.anchor(`${id}Hud`, { anchor: "topLeft", margin: 0, offsetX: left - vp.safeArea.left, offsetY: top - vp.safeArea.top, over: true, avoid: true }, build);
   } else hudPlace(id, anchorOf(desc, "top"), build);
 }
