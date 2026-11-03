@@ -218,7 +218,10 @@ export function photoMode(id: string, desc: Api.PhotoModeDesc = {}): Api.PhotoMo
     } as never, () => {
       const ix = lastInteraction(k);
       const th = Math.round(size * 0.72);
-      artSlot("Thumb", "Photo.thumb", { texture: l.image ?? null, kind: "thumbnail", width: px(size), height: px(th), radius: Math.max(4, t.small), label: "" }, () => {
+      // The selection ring and glow are the thumbnail's own: a setDraw after it would replace the draw of the element
+      // added last (its tick's mark, its tint, or the picture itself).
+      const ring = on ? [line(u(2), token("focus"))] : ix.hovered || ix.focused ? [line(u(1.5), token("ink", 0.4))] : [];
+      artSlot("Thumb", "Photo.thumb", { texture: l.image ?? null, kind: "thumbnail", width: px(size), height: px(th), radius: Math.max(4, t.small), label: "", strokes: ring, effects: on ? [glow(u(8), token("focus", 0.4), 0)] : [] }, () => {
         if (l.tint) {
           kit.open("Tint", { width: grow(), height: grow() });
           kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(hex(l.tint)) }] });
@@ -232,7 +235,6 @@ export function photoMode(id: string, desc: Api.PhotoModeDesc = {}): Api.PhotoMo
           over({ insets: { end: u(4), top: u(4) }, inert: true });
         }
       });
-      kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [], strokes: on ? [line(u(2), token("focus"))] : ix.hovered || ix.focused ? [line(u(1.5), token("ink", 0.4))] : [], effects: on ? [glow(u(8), token("focus", 0.4), 0)] : [] } as never);
       text("Name", l.name ?? k, { step: st(phone ? 12 : 13), nowrap: true, ellipsis: true, align: "center", width: grow(), color: on ? "ink" : "inkMuted" });
     });
     if (r.clicked && !on) {
