@@ -222,7 +222,10 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
       const rr = Math.max(8, t.panel);
       kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("panel", 0.55) }, vgrad([[0, token("sheen", 0.05)], [1, token("sheen", 0)]])], strokes: [line(1, token("ink", 0.12))] });
       info(!callouts);
-      if (top.length > 0) kit.spacer("Above", px(band));
+      if (top.length > 0) {
+        kit.open("Above", { width: grow(), height: px(band) });
+        kit.close();
+      }
       kit.column("Room", { width: grow(), height: grow(), align: "center", cross: "center" }, () => {
         // The floor light under the item.
         kit.open("Floor", { width: grow(), height: px(u(phone ? 30 : 60)) });
@@ -234,7 +237,10 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
         artRect = kit.bounds(kit.lastPath());
         if (itemChanged && !still()) kit.props({ enter: { values: [{ prop: "opacity", value: 0.3 }, { prop: "scale", value: 0.97 }], transition: spring("panel") } });
       });
-      if (bottom.length > 0) kit.spacer("Below", px(band));
+      if (bottom.length > 0) {
+        kit.open("Below", { width: grow(), height: px(band) });
+        kit.close();
+      }
 
       // The callouts: each a tile of its art, the point's eyebrow and what is on it, laid along its band without overlap.
       if (shown.length > 0 && SW > 0 && aw > 0) {
@@ -387,22 +393,17 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
   };
 
   // The attachments' card: its heading and count, the rows.
-  const attachments = (inScroll: boolean): void => {
+  const attachments = (): void => {
     const filled = atts.filter((a) => !!a.name);
     const cap = (desc.capacity ?? 0) > 0 ? desc.capacity! : atts.length;
-    kit.column("Attachments", { width: grow(), height: inScroll ? null : grow(), gap: u(8), padding: xy(u(16), u(14)), part: "Loadout.attachments", partClass: "panel" }, () => {
+    kit.column("Attachments", { width: grow(), gap: u(8), padding: xy(u(16), u(14)), part: "Loadout.attachments", partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.9) }], strokes: [line(1, token("ink", 0.1))], effects: [shadow(u(6), u(20), 0.45)] });
       kit.row("Head", { width: grow(), gap: u(8), cross: "center" }, () => {
         eyebrow("Title", desc.attachmentsLabel ?? "Attachments");
         kit.spacer("Gap", grow());
         text("Count", `${filled.length}/${cap}`, { step: st(14), font: "mono", nowrap: true, color: "inkMuted" });
       });
-      if (inScroll) kit.column("List", { width: grow(), gap: u(6) }, () => filled.forEach(attachmentRow));
-      else {
-        kit.openScroll("List", { width: grow(), height: grow(), gap: u(6), padding: xy(0, 0), fade: 24, fadeInto: "shadow" } as never);
-        filled.forEach(attachmentRow);
-        kit.close();
-      }
+      kit.column("List", { width: grow(), gap: u(6) }, () => filled.forEach(attachmentRow));
       kit.semantics({ role: "list", name: desc.attachmentsLabel ?? "Attachments" });
     });
   };
@@ -417,7 +418,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
     kit.openScroll("Body", { width: grow(), height: grow(), gap: u(10), padding: xy(0, 0), fade: 40, fadeInto: "shadow" } as never);
     stage(grow(), px(Math.round(Math.max(W * 0.62, u(200) * Math.min(1.4, ts)))), false);
     stats(true);
-    attachments(true);
+    attachments();
     kit.close();
   } else {
     kit.row("Body", { width: grow(), height: grow(), gap: u(16) }, () => {
@@ -425,11 +426,13 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
       slots.forEach((s) => slotEntry(s, false));
       kit.close();
       kit.semantics({ role: "tablist", name: desc.title || "Loadout" });
-      stage(grow(), grow(), !phone);
-      kit.column("Side", { width: px(Math.round(Math.min(u(380), W * 0.26) * Math.min(1.25, ts))), height: grow(), gap: u(12) }, () => {
-        stats(false);
-        attachments(false);
-      });
+      // The callouts need the room's height: at a large text size the attachments' rows carry them alone.
+      stage(grow(), grow(), !phone && ts <= 1.25);
+      // The side scrolls as one: at a large text size its cards are taller than the room.
+      kit.openScroll("Side", { width: px(Math.round(Math.min(u(380), W * 0.26) * Math.min(1.25, ts))), height: grow(), gap: u(12), padding: xy(0, 0), fade: 32, fadeInto: "shadow" } as never);
+      stats(false);
+      attachments();
+      kit.close();
     });
   }
   if (out.refused) {
