@@ -130,8 +130,13 @@ opt-level = "z"
 opt-level = "z"
 [profile.wasm.package.og-cook]
 opt-level = "z"
+# Fork s73: og-bundle's runtime (og-cook's before the split) decodes every
+# cooked model a game loads (meshopt vertex/index streams, octahedral
+# normals, LOD and BVH rows); at "z" a 1072-cell web boot spent 7-9 s of its
+# worker there (decode_deltas alone 3.3 s). The publish wasm grew 11.25 to
+# 11.33 MB on 0.7.7.
 [profile.wasm.package.og-bundle]
-opt-level = "z"
+opt-level = 3
 [profile.wasm.package.og-blob]
 opt-level = "z"
 [profile.wasm.package.miniz_oxide]
