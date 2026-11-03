@@ -430,6 +430,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sea's own normal under the detail (a level surface: its waves are the world's), and its whitecaps.
   var base = in.normal;
   var whitecap = 0.0;
+  var old = 0.0;
   var sea_mss = 0.0;
   if (water.ocean.x > 0.5) {
     var footprint = sea_footprint(in.world);
@@ -453,11 +454,13 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
       let cut = 1.0 - 0.6 * core;
       let cover = smoothstep(cut - 0.12, cut + 0.1, lace);
       whitecap = cover * mix(0.45, 0.92, core * core) * smoothstep(0.0, 0.2, core);
-      // A gale's old foam: thin streaks drawn out along the wind across the whole sea (from 12 m/s), the wash the
-      // broken crests leave behind them.
-      let trail = foam_noise(q * vec2<f32>(0.04, 0.9)) * 0.65 + mid * 0.2 + fine * 0.15;
-      let old = smoothstep(0.6, 0.78, trail) * 0.35 * smoothstep(12.0, 20.0, water.sea_wind.z);
-      whitecap = max(whitecap, old);
+      // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
+      // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
+      // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
+      let lane = q + vec2<f32>(0.0, (foam_noise(q * vec2<f32>(0.011, 0.05)) - 0.5) * 18.0);
+      let trail = foam_noise(lane * vec2<f32>(0.03, 0.35)) * 0.7 + foam_noise(lane * vec2<f32>(0.11, 1.3)) * 0.3;
+      old = smoothstep(0.58, 0.8, trail) * 0.18 * smoothstep(12.0, 20.0, water.sea_wind.z)
+        * (1.0 - smoothstep(0.4, 1.0, footprint));
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
@@ -628,6 +631,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // A sea's whitecaps, whatever the shore foam's width: white water lit by the sun and the whole sky above it.
   let sky_lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + ambient_light_level(in.normal, in.world) * frame.params.x;
   color = mix(color, water.foam.rgb * sky_lit, whitecap);
+  // The old foam is a thin film: greyer than a whitecap, the water showing through it.
+  color = mix(color, water.foam.rgb * sky_lit * 0.6, old);
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 
