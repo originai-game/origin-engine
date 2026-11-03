@@ -181,6 +181,7 @@ struct Shown {
     velocity: Vec3,
     shown: u64,
     starved: u64,
+    warmup: u64,
     /// The drawn pose's heading in the character's own space (its thighs'
     /// across direction): about 0 when it faces where its Transform does.
     facing: f32,
@@ -192,6 +193,7 @@ struct Shown {
     slide: (f32, u32, f32),
     /// The lean (hips to head) last drawn, rad.
     lean: Option<f32>,
+    drawn_lean: Option<f32>,
     /// The model goals asked for, oldest first, until their frames are
     /// shown: what each frame's tag names.
     issued: VecDeque<Issued>,
@@ -210,6 +212,14 @@ struct Issued {
 impl Shown {
     fn issued(&self, f: &Frame) -> Option<&Issued> {
         self.issued.iter().find(|g| g.id == f.tag)
+    }
+
+    fn count_wait(&mut self) {
+        if self.prev.is_none() {
+            self.warmup += 1;
+        } else if self.next.is_none() || self.phase >= 1.0 {
+            self.starved += 1;
+        }
     }
 }
 
@@ -753,6 +763,9 @@ fn palette(r: &Ready, a: &Seen, s: &mut Shown, elapsed: f32) -> Option<Vec<Mat4>
     let root = Trs::new(a.position, a.rotation, Vec3::splat(a.scale));
     s.planter.step(target, &mut pose.nodes, &root, &contacts);
     let model = target.model_space(&pose.nodes);
+    s.drawn_lean = map.node("hips").zip(map.node("head")).map(|(hips, head)| {
+        lean_of(model[head as usize].translation - model[hips as usize].translation)
+    });
     for (k, (ankle, contact)) in [(map.nodes[16], 0), (map.nodes[20], 2)]
         .into_iter()
         .enumerate()
@@ -840,10 +853,12 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 velocity: Vec3::ZERO,
                 shown: 0,
                 starved: 0,
+                warmup: 0,
                 facing: 0.0,
                 planted: [None; 2],
                 slide: (0.0, 0, 0.0),
                 lean: None,
+                drawn_lean: None,
                 issued: VecDeque::new(),
                 next_id: 0,
             }
@@ -852,7 +867,13 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             s.skeleton = a.skeleton;
             s.rig = a.settings.rig;
             s.target = sys.as_ref().and_then(|sys| {
-                crate::anim::humanoid_of(eng, sys, a.skeleton, a.settings.rig, "agent").ok()
+                match crate::anim::humanoid_of(eng, sys, a.skeleton, a.settings.rig, "agent") {
+                    Ok(target) => Some(target),
+                    Err(error) => {
+                        p.errors.push(format!("agent {}: {error}", a.entity));
+                        None
+                    }
+                }
             });
             let legs = s.target.as_ref().map_or(Vec::new(), |(_, m)| {
                 [(14usize, 0usize), (18, 2)]
@@ -955,9 +976,9 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 s.issued.pop_front();
             }
         }
+        s.count_wait();
         if s.next.is_none() || s.phase >= 1.0 {
             s.phase = s.phase.min(1.0);
-            s.starved += 1;
         }
         if let Some(m) = palette(r, a, s, elapsed) {
             s.shown += 1;
@@ -1009,6 +1030,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                 "modelGoals": ready.map_or(0, |r| r.motion.goals(s.character)),
                 "framesShown": s.shown,
                 "framesStarved": s.starved,
+                "framesWarmup": s.warmup,
                 "facing": s.facing,
                 "plantedSlide": {
                     "frames": s.slide.1,
@@ -1016,8 +1038,11 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                     "maxMm": 1000.0 * s.slide.2,
                 },
                 "rig": s.target.as_ref().map(|(_, m)| m.scheme.clone()),
+                "rigMap": s.rig as f64,
+                "bones": s.target.as_ref().map(|(asset, m)| m.bones(asset)),
                 // The drawn body's lean from upright (hips to head).
-                "leanDeg": s.lean.map(|l| l.to_degrees()),
+                "leanDeg": s.drawn_lean.map(|l| l.to_degrees()),
+                "sourceLeanDeg": s.lean.map(|l| l.to_degrees()),
                 // The drawn frame: the pose its model goal asked for, and
                 // how far behind the frame clock it is (s).
                 "drawnPose": s.next.and_then(|f| s.issued(&f)).map(|g| POSES[g.pose]),
@@ -1039,4 +1064,109 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "errors": p.errors,
         "agents": agents,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shown() -> Shown {
+        Shown {
+            character: 0,
+            prev: None,
+            next: None,
+            phase: 0.0,
+            serial: 0,
+            planter: Planter::new(Vec::new()),
+            skeleton: 1,
+            rig: 42,
+            target: None,
+            last_position: Vec3::ZERO,
+            velocity: Vec3::ZERO,
+            shown: 0,
+            starved: 0,
+            warmup: 0,
+            facing: 0.0,
+            planted: [None; 2],
+            slide: (0.0, 0, 0.0),
+            lean: None,
+            drawn_lean: None,
+            issued: VecDeque::new(),
+            next_id: 0,
+        }
+    }
+
+    #[test]
+    fn warmup_is_not_playback_starvation() {
+        let mut s = shown();
+        for _ in 0..27 {
+            s.count_wait();
+        }
+        assert_eq!((s.warmup, s.starved), (27, 0));
+        let frame = Frame {
+            pose: Pose {
+                positions: [[0.0; 3]; og_motion::contract::JOINTS],
+                rotations: [[[0.0; 3]; 3]; og_motion::contract::JOINTS],
+            },
+            contacts: [0.0; 4],
+            tag: 0,
+            index: 0,
+        };
+        s.prev = Some(frame);
+        s.count_wait();
+        assert_eq!((s.warmup, s.starved), (27, 1));
+        s.next = Some(frame);
+        s.phase = 0.99;
+        s.count_wait();
+        assert_eq!(s.starved, 1);
+        s.phase = 1.0;
+        s.count_wait();
+        assert_eq!(s.starved, 2);
+    }
+
+    #[test]
+    fn dump_distinguishes_the_rig_map_from_its_naming_scheme() {
+        use crate::{og_engine_create, og_game_game, og_host_begin_bundle};
+        use og_anim::{RigAsset, SkeletonNode};
+
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let created: Value = serde_json::from_str(&og_engine_create(game, "{}".into())).unwrap();
+        let eng = crate::engine::engine(created["value"].as_u64().unwrap() as u32).unwrap();
+        let asset = SkeletonAsset {
+            nodes: ["Hips", "Spine02", "Spine01", "Spine", "neck", "Head"]
+                .iter()
+                .enumerate()
+                .map(|(i, name)| SkeletonNode {
+                    name: (*name).into(),
+                    parent: if i == 0 { NONE } else { i as u32 - 1 },
+                    rest: Trs::IDENTITY,
+                    mesh: NONE,
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let rig = RigAsset::parse("type rig\nversion 1\n---\nscheme mixamo\nspine \"Spine02\"\nchest \"Spine01\"\nupperChest \"Spine\"\nneck \"neck\"\n").unwrap();
+        let map = rig.map(&asset).unwrap();
+        let mut s = shown();
+        s.target = Some((Arc::new(asset), map));
+        s.lean = Some(15.0_f32.to_radians());
+        s.drawn_lean = Some(7.0_f32.to_radians());
+        eng.render.borrow_mut().motion.agents.insert(1, s);
+        let result = dump(&eng);
+        let a = &result["agents"][0];
+        assert_eq!(a["rig"], "mixamo");
+        assert_eq!(a["rigMap"], 42.0);
+        let bones = a["bones"].as_array().unwrap();
+        for pair in [
+            ["spine", "Spine02"],
+            ["chest", "Spine01"],
+            ["upperChest", "Spine"],
+            ["neck", "neck"],
+        ] {
+            assert!(bones.contains(&json!(pair)), "{a}");
+        }
+        assert!((a["leanDeg"].as_f64().unwrap() - 7.0).abs() < 1e-4);
+        assert!((a["sourceLeanDeg"].as_f64().unwrap() - 15.0).abs() < 1e-4);
+    }
 }
