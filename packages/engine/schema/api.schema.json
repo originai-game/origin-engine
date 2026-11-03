@@ -11786,6 +11786,8 @@
         "SectorState",
         "LapTimerShow",
         "LapTimerDesc",
+        "ItemSlotDesc",
+        "DriftScoreDesc",
         "RaceEvent",
         "RaceBannerDesc",
         "RearViewDesc",
@@ -17269,6 +17271,48 @@
               "type": "LapTimerDesc",
               "optional": true,
               "doc": "The race state."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "itemSlot",
+          "doc": "An arcade racer's item slot (Mario Kart's): a ring frame holding the current item, a smaller slot beside it for the next one, and a roulette after a pickup that cycles the roulette's items, slowing, then lands with a pop; by the tick from rollingAt, so a still is deterministic. Part of the racing HUD's arcade look.\nParts: ItemSlot.frame[empty|rolling], ItemSlot.item, ItemSlot.queued. Accessibility: image named by its label (Rolling while it spins). Probe ids: <id>, <id>/Ring/Item, <id>/Queued.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ItemSlotDesc",
+              "optional": true,
+              "doc": "The items."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "driftScore",
+          "doc": "An arcade racer's drift chain (Need for Speed's, Forza Horizon's skill chains): the running score in a big slanted numeral near the car or its anchor with its multiplier on a badge that pops as it climbs; banked, it ticks up into the total and leaves; broken, it shakes and fades in danger. By the tick from bankedAt and failedAt. Part of the racing HUD's arcade look.\nParts: DriftScore.score[banked|failed], DriftScore.multiplier, DriftScore.total. State group: chain (idle, running, banked, failed). Accessibility: status named by its label, its value the score and multiplier. Probe ids: <id>, <id>/Label, <id>/Score, <id>/Multiplier, <id>/Total.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DriftScoreDesc",
+              "optional": true,
+              "doc": "The chain."
             }
           ],
           "returns": "Void",
@@ -72651,11 +72695,13 @@
       "enum": [
         "dial",
         "digital",
+        "arcade",
         "tach"
       ],
       "x-og-variants": {
         "dial": "A dial with a needle and the tach round it (the default).",
         "digital": "The speed in large digits over a tach bar.",
+        "arcade": "The arcade racing look (kart and street racers): the speed as a big bouncy numeral under a fat curved nitro tube (boost) cut into boostSegments, which flares when full.",
         "tach": "A 240° tach arc driven by rpm with its numbers outside it, a shift-light row, and the speed as the largest numeral (no needle) with the gear in a badge beside it."
       }
     },
@@ -72703,6 +72749,15 @@
           "description": "The revs between the tach's numbered ticks.",
           "default": 1000,
           "minimum": 0
+        },
+        "boostSegments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "arcade: the nitro tube's segments, each filled whole.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 8
         },
         "shiftAt": {
           "type": "number",
@@ -73789,6 +73844,16 @@
           "description": "Which part it builds: two calls (head at the top left, times at the top centre) anchor them apart.",
           "default": "all"
         },
+        "placeBadge": {
+          "type": "boolean",
+          "description": "The arcade look's place: a huge ordinal (positionText) with a bouncy pop when it changes, over its total, in place of the place's counter.",
+          "default": false
+        },
+        "positionText": {
+          "type": "string",
+          "description": "The place as the game writes it in its language (1st, 1er, 1位) for placeBadge; empty is the number.",
+          "default": ""
+        },
         "anchor": {
           "anyOf": [
             {
@@ -73800,6 +73865,188 @@
           ],
           "description": "Opens its own anchored group there; null builds it in place.",
           "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItemSlotDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An arcade racer's held item.",
+      "type": "object",
+      "properties": {
+        "item": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item held; null is an empty slot.",
+          "default": null
+        },
+        "uv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item's region of its texture, [u0, v0, u1, v1]; null is the whole texture.",
+          "default": null
+        },
+        "queued": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The next item, in the smaller slot; null hides that slot.",
+          "default": null
+        },
+        "queuedUv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The next item's region.",
+          "default": null
+        },
+        "roulette": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Texture"
+          },
+          "description": "What a roulette cycles through after a pickup; empty spins the item itself.",
+          "default": []
+        },
+        "rollingAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() of the pickup: from then it cycles the roulette, slowing, for rollMs, then lands on the item with a pop; 0 is no roulette.",
+          "default": 0
+        },
+        "rollMs": {
+          "type": "number",
+          "description": "How long the roulette spins.",
+          "default": 1500,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "size": {
+          "type": "number",
+          "description": "The main slot's side; 0 is 84 (64 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls the item.",
+          "default": ""
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DriftScoreDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An arcade racer's running drift score.",
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "number",
+          "description": "The chain's score so far; 0 with nothing banked hides it.",
+          "default": 0,
+          "minimum": 0
+        },
+        "multiplier": {
+          "type": "number",
+          "description": "The chain's multiplier (x2, x3 …); 1 or less hides its badge.",
+          "default": 0,
+          "minimum": 0
+        },
+        "bankedAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when the chain was banked: the score ticks up into the total for 0.8 s and leaves, and the chain stays over until bankedAt is 0 again (a new chain); 0 is a running chain.",
+          "default": 0
+        },
+        "failedAt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.ui.tick() when the chain broke (a crash): the score shakes and fades in danger for 0.8 s, and the chain stays over until failedAt is 0 again; 0 is none.",
+          "default": 0
+        },
+        "total": {
+          "type": "number",
+          "description": "The banked total the chain ticks up into.",
+          "default": 0
+        },
+        "at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A screen point (CSS px) it floats over, such as the car's; null builds it at its anchor.",
+          "default": null
+        },
+        "label": {
+          "type": "string",
+          "description": "The chain's caption.",
+          "default": "Drift"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there when at is null.",
+          "default": "top"
         }
       },
       "additionalProperties": false

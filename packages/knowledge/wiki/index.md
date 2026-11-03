@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2367 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2371 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -478,6 +478,7 @@ Field units the docs and Tune use.
 | [`DragSpec`](ui.md#type-DragSpec) | desc struct | ui | — |
 | [`DrawDesc`](ui.md#type-DrawDesc) | desc struct | ui | — |
 | [`DrawShape`](ui.md#type-DrawShape) | desc struct | ui | — |
+| [`DriftScoreDesc`](ui.md#type-DriftScoreDesc) | desc struct | ui | — |
 | [`DRIVE_ALL`](physics.md#const-DRIVE_ALL) | constant | physics | — |
 | [`DRIVE_FRONT`](physics.md#const-DRIVE_FRONT) | constant | physics | — |
 | [`DRIVE_REAR`](physics.md#const-DRIVE_REAR) | constant | physics | — |
@@ -689,6 +690,7 @@ Field units the docs and Tune use.
 | [`InventoryMove`](ui.md#type-InventoryMove) | struct | ui | — |
 | [`InventoryPick`](ui.md#type-InventoryPick) | desc struct | ui | — |
 | [`InviteDesc`](platform.md#type-InviteDesc) | desc struct | platform | — |
+| [`ItemSlotDesc`](ui.md#type-ItemSlotDesc) | desc struct | ui | — |
 | [`JOINT_BALL`](physics.md#const-JOINT_BALL) | constant | physics | — |
 | [`JOINT_FIXED`](physics.md#const-JOINT_FIXED) | constant | physics | — |
 | [`JOINT_PRISMATIC`](physics.md#const-JOINT_PRISMATIC) | constant | physics | — |
@@ -1491,6 +1493,7 @@ Field units the docs and Tune use.
 | [`og.ui.draft`](ui.md#fn-draft) | function | ui | — |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
 | [`og.ui.dragSelect`](ui.md#fn-dragSelect) | function | ui | — |
+| [`og.ui.driftScore`](ui.md#fn-driftScore) | function | ui | — |
 | [`og.ui.dropdown`](ui.md#fn-dropdown) | function | ui | — |
 | [`og.ui.effectLayer`](ui.md#fn-effectLayer) | function | ui | — |
 | [`og.ui.emitter`](ui.md#fn-emitter) | function | ui | — |
@@ -1534,6 +1537,7 @@ Field units the docs and Tune use.
 | [`og.ui.inputField`](ui.md#fn-inputField) | function | ui | — |
 | [`og.ui.interactionPrompt`](ui.md#fn-interactionPrompt) | function | ui | — |
 | [`og.ui.inventoryGrid`](ui.md#fn-inventoryGrid) | function | ui | — |
+| [`og.ui.itemSlot`](ui.md#fn-itemSlot) | function | ui | — |
 | [`og.ui.joystick`](ui.md#fn-joystick) | function | ui | `og_ui_joystick` |
 | [`og.ui.judgement`](ui.md#fn-judgement) | function | ui | — |
 | [`og.ui.keyBindingRow`](ui.md#fn-keyBindingRow) | function | ui | — |

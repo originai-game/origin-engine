@@ -180,6 +180,8 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   const boxless = !!desc.boxless;
   const ol = boxless ? 1.2 : 0;
   const sectors = desc.sectors ?? [];
+  const badge = !!desc.placeBadge;
+  const ep = edge(`${id}~place`, desc.position ?? 0);
   const best = desc.bestMs ?? null;
   const last = desc.lastMs ?? null;
   const newBest = best !== null && last !== null && Math.abs(last - best) < 0.5;
@@ -191,10 +193,17 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
       text("Caption", caption, { step: ts(10), font: "display", color: gold ? lit(role("gold")) : token("inkMuted"), nowrap: true, outline: ol });
       // A number reads left to right in every locale: under a right-to-left layout, which mirrors the row, the total is
       // built first so it still lands after the value.
-      kit.row("Num", { gap: u(2), cross: "end" }, () => {
+      // The badge's slant leans its top over the total: the row keeps that much room.
+      const lean = badge && bid === "Position" ? Math.ceil(stepSize(ts(f.phone ? 48 : 64, true)).line * 0.18) : 0;
+      kit.row("Num", { gap: u(2) + lean, cross: "end" }, () => {
         const total = () => { if (of > 0) text("Total", `/${of}`, { step: ts(f.phone ? 15 : 18), font: "display", color: token("inkMuted"), nowrap: true, outline: ol }); };
         if (rtl()) total();
-        text("Value", String(value), { step: ts(f.phone ? 28 : 34, true), font: "display", color: gold ? lit(role("gold")) : token("ink"), nowrap: true, outline: ol });
+        if (badge && bid === "Position") {
+          // The arcade place: a huge ordinal that pops when it changes.
+          const k = pop(ep.since, 0.3, 420);
+          text("Value", desc.positionText || String(value), { step: ts(f.phone ? 48 : 64, true), font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
+            { transform: { scaleX: k, scaleY: k, skewX: -0.18, pivotX: 0, pivotY: 1 } });
+        } else text("Value", String(value), { step: ts(f.phone ? 28 : 34, true), font: "display", color: gold ? lit(role("gold")) : token("ink"), nowrap: true, outline: ol });
         if (!rtl()) total();
       });
       // The lap's sectors as pips under it: driven ones in their timing colours, the rest gold on the final lap.

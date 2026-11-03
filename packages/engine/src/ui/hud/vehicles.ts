@@ -13,6 +13,7 @@ import {
   reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba, ut, tsFit,
   stepSize, textScale,
 } from "./core.ts";
+import { arcadeSpeedo } from "./arcade.ts";
 
 const START = (3 * Math.PI) / 4;
 const SWEEP = (3 * Math.PI) / 2;
@@ -42,6 +43,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
   }
   hudPlace(id, anchorOf(desc, "bottomRight"), () => {
     if (style === "digital") digital(id, speed, rpm, red, unit, desc, size);
+    else if (style === "arcade") arcadeSpeedo(id, speed, unit, desc, size);
     else if (style === "tach") tach(id, speed, rpm, red, unit, desc, size);
     else {
       box(id, { width: px(size), height: px(size), part: sel("Speedometer", "dial") }, {

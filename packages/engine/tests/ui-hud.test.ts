@@ -1180,3 +1180,76 @@ test("og.ui.lapTimer: sector pips in their timing colours, gold on the final lap
   els = dump(e);
   expect([at(els, "LapHud/Lap/Head"), at(els, "LapHud/Lap/Current/Time")?.text, at(els, "LapHud/Lap/Split/Time")?.text]).toEqual([undefined, "1:01.000", "−0.25"]);
 });
+
+test("the racing HUD's arcade look: whole nitro segments that flare when full, a place badge, an item roulette that lands, a drift chain that banks and breaks", () => {
+  // Wrong: a part-filled segment counted whole, no flare at full, a roulette that never lands or lands early, a banked
+  // chain that stays, or a broken one that does not turn to danger.
+  let boost = 0.5;
+  let place = 3;
+  let drift: Record<string, unknown> = { score: 0 };
+  let rollingAt = 0;
+  let tex: unknown = null;
+  // The UI's tick, read while a frame is built (outside one og.ui.tick reads 0).
+  let tick = 0;
+  const sys = defineSystem("HudArcade", {}, () => {
+    tick = (uiKit as unknown as { tick(): number }).tick();
+    og.ui.speedometer("Speedo", { style: "arcade", speed: 143, boost, boostSegments: 3, anchor: "bottomRight" } as never);
+    og.ui.lapTimer("Lap", { position: place, positionTotal: 8, positionText: `${place}rd`, placeBadge: true, show: "head" } as never);
+    og.ui.itemSlot("Item", { item: tex, roulette: tex ? [tex, tex] : [], rollingAt, rollMs: 1000, label: "Shell" } as never);
+    og.ui.driftScore("Drift", drift as never);
+  });
+  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
+  if (!r.ok) throw new Error(r.reason);
+  const e = r.value;
+  og.ui.previewViewport(e.world, DESKTOP_SAFE as never);
+  const font = og.load.font(e.world, "fonts/NotoSansSC-Regular-subset.ttf");
+  if (!font.ok) throw new Error(font.reason);
+  og.ui.configure(e.world, { font: font.value });
+  const t = og.load.texture(e.world, "textures/backdrop.png");
+  if (!t.ok) throw new Error(t.reason);
+  tex = t.value;
+  const nitro = () => [...drawsDuring(() => e.advance(1))].filter(([p]) => /\/Nitro#\d+$/.test(p)).map(([, d]) => (d.at(-1)?.effects?.length ?? 0) > 0);
+  // Half of three segments: one whole, one charging, no flare.
+  e.advance(2);
+  expect(nitro()).toEqual([false, false]);
+  boost = 1;
+  e.advance(1);
+  expect(nitro()).toEqual([true, true, true]);
+  expect(states(at(dump(e), "SpeedoHud/Speedo")).nitro).toBe("full");
+  expect(at(dump(e), "SpeedoHud/Speedo/Readout/Speed")?.text).toBe("143");
+  // The place badge: the game's ordinal.
+  expect(at(dump(e), "LapHud/Lap/Head/Position/Num/Value")?.text).toBe("3rd");
+  // The roulette spins for a second from the pickup, then lands on the item.
+  rollingAt = tick + 1;
+  e.advance(30);
+  expect(at(dump(e), "ItemHud/Item")?.name).toBe("Rolling");
+  e.advance(40);
+  expect(at(dump(e), "ItemHud/Item")?.name).toBe("Shell");
+  expect(at(dump(e), "ItemHud/Item/Ring/Item")).toBeDefined();
+  // A drift chain: running with its multiplier, then banked into the total (and gone after 0.8 s), then a break.
+  drift = { score: 1840, multiplier: 3 };
+  e.advance(2);
+  let els = dump(e);
+  expect([at(els, "DriftHud/Drift/Chain/Score")?.text, at(els, "DriftHud/Drift/Chain/Multiplier/Value")?.text, states(at(els, "DriftHud/Drift")).chain]).toEqual(["1,840", "×3", "running"]);
+  drift = { score: 1840, multiplier: 3, bankedAt: tick + 1, total: 10000 };
+  e.advance(25);
+  els = dump(e);
+  expect(states(at(els, "DriftHud/Drift")).chain).toBe("banked");
+  const mid = Number((at(els, "DriftHud/Drift/Total")?.text ?? "").replaceAll(",", ""));
+  expect(mid).toBeGreaterThan(8160);
+  expect(mid).toBeLessThan(10000);
+  e.advance(30);
+  expect(at(dump(e), "DriftHud/Drift")?.path).toBe(undefined);
+  drift = { score: 600, multiplier: 2, failedAt: tick + 1 };
+  e.advance(5);
+  expect(states(at(dump(e), "DriftHud/Drift")).chain).toBe("failed");
+  // Their own slants and tubes never reach their neighbours inside the part.
+  drift = { score: 12840, multiplier: 4 };
+  e.advance(2);
+  const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
+  const own = (p: string) => p.split("/")[0];
+  const overlaps = checkFrame(f, { screen: "hud", breakpoint: "desktop", locale: "", style: "", scale: 100, highContrast: false })
+    .filter((x) => x.rule === "overlap" && own(x.paths[0]!) === own(x.paths[1] ?? ""))
+    .map((x) => x.paths.join(" × "));
+  expect(overlaps.join("; ")).toBe("");
+});

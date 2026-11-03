@@ -42952,9 +42952,10 @@ export interface TurnOrderDesc {
  * A speedometer's look.
  * - `"dial"`: A dial with a needle and the tach round it (the default).
  * - `"digital"`: The speed in large digits over a tach bar.
+ * - `"arcade"`: The arcade racing look (kart and street racers): the speed as a big bouncy numeral under a fat curved nitro tube (boost) cut into boostSegments, which flares when full.
  * - `"tach"`: A 240° tach arc driven by rpm with its numbers outside it, a shift-light row, and the speed as the largest numeral (no needle) with the gear in a badge beside it.
  */
-export type SpeedoStyle = "dial" | "digital" | "tach";
+export type SpeedoStyle = "dial" | "digital" | "arcade" | "tach";
 
 /**
  * A speedometer and tachometer.
@@ -43008,6 +43009,13 @@ export interface SpeedometerDesc {
    * @range 0..
    */
   readonly rpmStep?: number;
+  /**
+   * arcade: the nitro tube's segments, each filled whole.
+   *
+   * @default 3
+   * @range 1..8
+   */
+  readonly boostSegments?: number;
   /**
    * Where the shift lights are all lit and flash, 0 to 1 of the tach; 0 is the redline.
    *
@@ -43997,9 +44005,153 @@ export interface LapTimerDesc {
    */
   readonly show?: LapTimerShow;
   /**
+   * The arcade look's place: a huge ordinal (positionText) with a bouncy pop when it changes, over its total, in place of the place's counter.
+   *
+   * @default false
+   */
+  readonly placeBadge?: boolean;
+  /**
+   * The place as the game writes it in its language (1st, 1er, 1位) for placeBadge; empty is the number.
+   *
+   * @default ""
+   */
+  readonly positionText?: string;
+  /**
    * Opens its own anchored group there; null builds it in place.
    *
    * @default "topLeft"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * An arcade racer's held item.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ItemSlotDesc {
+  /**
+   * The item held; null is an empty slot.
+   *
+   * @default null
+   */
+  readonly item?: Texture | null;
+  /**
+   * The item's region of its texture, [u0, v0, u1, v1]; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * The next item, in the smaller slot; null hides that slot.
+   *
+   * @default null
+   */
+  readonly queued?: Texture | null;
+  /**
+   * The next item's region.
+   *
+   * @default null
+   */
+  readonly queuedUv?: [number, number, number, number] | null;
+  /**
+   * What a roulette cycles through after a pickup; empty spins the item itself.
+   *
+   * @default []
+   */
+  readonly roulette?: readonly Texture[];
+  /**
+   * og.ui.tick() of the pickup: from then it cycles the roulette, slowing, for rollMs, then lands on the item with a pop; 0 is no roulette.
+   *
+   * @default 0
+   */
+  readonly rollingAt?: number;
+  /**
+   * How long the roulette spins.
+   *
+   * @default 1500
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly rollMs?: number;
+  /**
+   * The main slot's side; 0 is 84 (64 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * What a screen reader calls the item.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "topLeft"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * An arcade racer's running drift score.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DriftScoreDesc {
+  /**
+   * The chain's score so far; 0 with nothing banked hides it.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly score?: number;
+  /**
+   * The chain's multiplier (x2, x3 …); 1 or less hides its badge.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly multiplier?: number;
+  /**
+   * og.ui.tick() when the chain was banked: the score ticks up into the total for 0.8 s and leaves, and the chain stays over until bankedAt is 0 again (a new chain); 0 is a running chain.
+   *
+   * @default 0
+   */
+  readonly bankedAt?: number;
+  /**
+   * og.ui.tick() when the chain broke (a crash): the score shakes and fades in danger for 0.8 s, and the chain stays over until failedAt is 0 again; 0 is none.
+   *
+   * @default 0
+   */
+  readonly failedAt?: number;
+  /**
+   * The banked total the chain ticks up into.
+   *
+   * @default 0
+   */
+  readonly total?: number;
+  /**
+   * A screen point (CSS px) it floats over, such as the car's; null builds it at its anchor.
+   *
+   * @default null
+   */
+  readonly at?: Vector2 | null;
+  /**
+   * The chain's caption.
+   *
+   * @default "Drift"
+   */
+  readonly label?: string;
+  /**
+   * Opens its own anchored group there when at is null.
+   *
+   * @default "top"
    */
   readonly anchor?: Anchor | null;
 }
@@ -56414,6 +56566,22 @@ export declare namespace og {
      * @param desc The race state.
      */
     function lapTimer(id: string, desc?: LapTimerDesc): void;
+    /**
+     * An arcade racer's item slot (Mario Kart's): a ring frame holding the current item, a smaller slot beside it for the next one, and a roulette after a pickup that cycles the roulette's items, slowing, then lands with a pop; by the tick from rollingAt, so a still is deterministic. Part of the racing HUD's arcade look.
+     * Parts: ItemSlot.frame[empty|rolling], ItemSlot.item, ItemSlot.queued. Accessibility: image named by its label (Rolling while it spins). Probe ids: <id>, <id>/Ring/Item, <id>/Queued.
+     *
+     * @param id Its id.
+     * @param desc The items.
+     */
+    function itemSlot(id: string, desc?: ItemSlotDesc): void;
+    /**
+     * An arcade racer's drift chain (Need for Speed's, Forza Horizon's skill chains): the running score in a big slanted numeral near the car or its anchor with its multiplier on a badge that pops as it climbs; banked, it ticks up into the total and leaves; broken, it shakes and fades in danger. By the tick from bankedAt and failedAt. Part of the racing HUD's arcade look.
+     * Parts: DriftScore.score[banked|failed], DriftScore.multiplier, DriftScore.total. State group: chain (idle, running, banked, failed). Accessibility: status named by its label, its value the score and multiplier. Probe ids: <id>, <id>/Label, <id>/Score, <id>/Multiplier, <id>/Total.
+     *
+     * @param id Its id.
+     * @param desc The chain.
+     */
+    function driftScore(id: string, desc?: DriftScoreDesc): void;
     /**
      * The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time, signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a thin gold band sweeping the top third), the finish (a checker wipe, the place huge with the time under it) and wrong way (danger, a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).
      * Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label.
