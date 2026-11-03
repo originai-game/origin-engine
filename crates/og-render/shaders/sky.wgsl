@@ -190,8 +190,11 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let radius = c[4].x;
   let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
+  // A ray that meets the ground sees no clouds, unless the eye is above the
+  // cloud base: then it looks down onto the layer (a sea of cloud from a
+  // mountain), and the march below stops at the base, before the ground.
   let ground = cloud_sphere(o, d, radius);
-  if (ground.x > 0.0) { return background; }
+  if (ground.x > 0.0 && viewer <= c[0].z) { return background; }
   // Under the physical sky the clouds are lit by the sun at their own
   // height: the sun above the air (3 times the look's sunlight colour,
   // the day-night noon) through the sky's own transmittance down to the
