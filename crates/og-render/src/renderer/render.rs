@@ -371,12 +371,16 @@ impl Renderer {
                 .flatten()
                 .map(|g| g.info.layers)
         };
+        // The ranges the builds below take for the 2D particles simulated
+        // in compute (`expand_sprites` writes them in the particles pass).
+        let mut gpu_sprites = sprites::GpuSprites::default();
         let mut sprite_frame = sprites::build(
             scene,
             font,
             self.cache.textures.len(),
             array_layers,
             &particle_frame.sprites,
+            (&particle_frame.sprite_systems, &mut gpu_sprites),
             lit,
             view,
             &layered,
@@ -426,6 +430,7 @@ impl Renderer {
                 self.cache.textures.len(),
                 array_layers,
                 &particle_frame.sprites,
+                (&particle_frame.sprite_systems, &mut gpu_sprites),
                 lit,
                 None,
                 &view_strips,
@@ -439,7 +444,10 @@ impl Renderer {
             let in_buffer = |r: &sprites::SpriteRun| {
                 !matches!(
                     r.source,
-                    RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                    RunSource::Strip(..)
+                        | RunSource::Mesh(_)
+                        | RunSource::Metaballs(_)
+                        | RunSource::Particles(_)
                 )
             };
             // Its glow instances follow every run's (its glow pass reads them).
@@ -483,6 +491,7 @@ impl Renderer {
                     self.cache.textures.len(),
                     array_layers,
                     &particle_frame.sprites,
+                    (&particle_frame.sprite_systems, &mut gpu_sprites),
                     |_, _| 0.0,
                     None,
                     &[],
@@ -502,7 +511,10 @@ impl Renderer {
                         .map(|mut r| {
                             if !matches!(
                                 r.source,
-                                RunSource::Strip(..) | RunSource::Mesh(_) | RunSource::Metaballs(_)
+                                RunSource::Strip(..)
+                                    | RunSource::Mesh(_)
+                                    | RunSource::Metaballs(_)
+                                    | RunSource::Particles(_)
                             ) {
                                 r.first += base;
                             }
@@ -529,7 +541,12 @@ impl Renderer {
                     .flat_map(|(b, s)| b.iter().map(|b| &b.1).chain(s)),
             )
         {
-            match run.source {
+            // A 2D particle system simulated in compute: as its source.
+            let source = match run.source {
+                RunSource::Particles(k) => gpu_sprites.ranges[k as usize].source,
+                source => source,
+            };
+            match source {
                 RunSource::Sprite(_, t) => {
                     self.sprite_group(t);
                     if let Some(t) = t {
@@ -1566,6 +1583,16 @@ impl Renderer {
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
+        // The 2D particles simulated in compute: room for their ranges,
+        // what each draws with, and the compute's parameters.
+        let particle_sprites = u64::from(gpu_sprites.total) * SPRITE_STRIDE;
+        if particle_sprites > self.particle_sprite_buffer.size() {
+            self.particle_sprite_buffer =
+                buffers::particle_sprite_buffer(&self.device, particle_sprites.next_power_of_two());
+        }
+        self.particle_sprite_sources = gpu_sprites.ranges.iter().map(|r| r.source).collect();
+        self.particles
+            .prepare_sprites(&self.device, &self.queue, &particle_frame, &gpu_sprites);
         let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (&overlay_frame, &scene.overlay) {
             grow_and_write(
@@ -3356,6 +3383,13 @@ impl Renderer {
                         &particle_frame,
                         scene_depth,
                         self.graph.try_view("gbuffer").unwrap_or(&self.post.white),
+                    );
+                    self.particles.expand_sprites(
+                        &self.device,
+                        &mut encoder,
+                        &particle_frame,
+                        &gpu_sprites,
+                        &self.particle_sprite_buffer,
                     );
                 }
                 FramePass::Metaballs => {

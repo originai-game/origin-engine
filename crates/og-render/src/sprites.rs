@@ -158,6 +158,11 @@ pub(crate) const SPRITE_ARRAY_LAYOUT: wgpu::VertexBufferLayout<'static> = SPRITE
 pub(crate) enum RunSource {
     /// A sprite texture (`None`: solid white) and its blend.
     Sprite(SpriteBlend, Option<TextureHandle>),
+    /// A sprite-mode particle system simulated in compute: range `n` of
+    /// [`GpuSprites`], whose instances `particles_sprites.wgsl` writes into
+    /// its own buffer (`first`/`count` index that buffer); drawn as the
+    /// range's source draws.
+    Particles(u32),
     Font(FontHandle),
     /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
     /// buffer; the blend is `ParticleBlend as u8`.
@@ -178,6 +183,54 @@ pub(crate) struct LayeredStrip {
     pub source: RunSource,
     pub first: u32,
     pub count: u32,
+}
+
+/// The instance ranges a frame's builds take for the sprite-mode systems
+/// simulated in compute ([`crate::particles_gpu::SpriteSystem`]): one per
+/// system and light map a build draws it with, shared by the frame, the
+/// views and the probe faces; the compute pass writes each.
+#[derive(Default)]
+pub(crate) struct GpuSprites {
+    pub ranges: Vec<GpuSpriteRange>,
+    /// Instances in all of them.
+    pub total: u32,
+}
+
+/// One range of [`GpuSprites`].
+pub(crate) struct GpuSpriteRange {
+    /// The system's index in the frame's `sprite_systems`.
+    pub system: usize,
+    /// The light map its instances take (`lit` in [`build`]).
+    pub lit: f32,
+    pub first: u32,
+    pub count: u32,
+    /// What its runs draw with: a plain or an array sprite run.
+    pub source: RunSource,
+}
+
+impl GpuSprites {
+    /// The range of `system` lit by `lit`, taken on first use.
+    fn take(&mut self, system: usize, s: &crate::particles_gpu::SpriteSystem, lit: f32) -> u32 {
+        if let Some(k) = self
+            .ranges
+            .iter()
+            .position(|r| r.system == system && r.lit.to_bits() == lit.to_bits())
+        {
+            return k as u32;
+        }
+        self.ranges.push(GpuSpriteRange {
+            system,
+            lit,
+            first: self.total,
+            count: s.max,
+            source: match s.array {
+                Some(a) => RunSource::Array(s.blend, a),
+                None => RunSource::Sprite(s.blend, s.texture),
+            },
+        });
+        self.total += s.max;
+        self.ranges.len() as u32 - 1
+    }
 }
 
 /// Consecutive instances drawn with one bind group and one pipeline.
@@ -578,6 +631,7 @@ pub(crate) fn build<'a>(
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     extra: &[ExtraSprite],
+    gpu: (&[crate::particles_gpu::SpriteSystem], &mut GpuSprites),
     lit: impl Fn(i32, u32) -> f32,
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
@@ -825,6 +879,29 @@ pub(crate) fn build<'a>(
         }
         keyed.push((s.layer, 0.0, run(e.blend), false, inst));
     }
+    // The 2D particles simulated in compute: a run of their range each
+    // (`GpuSprites`), sorted as the CPU's particles are, after the layer's
+    // sprites.
+    let (gpu_systems, gpu_sprites) = gpu;
+    let mut gpu_glow: Vec<u32> = Vec::new();
+    let placeholder = sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
+    let mut gpu_count = 0u32;
+    for (i, g) in gpu_systems.iter().enumerate() {
+        if g.layers & mask == 0 {
+            continue;
+        }
+        let k = gpu_sprites.take(i, g, lit(g.layer, 1));
+        if let RunSource::Array(_, a) = gpu_sprites.ranges[k as usize].source {
+            array_layers(a).ok_or_else(|| {
+                RenderError::InvalidHandle(format!("a 2D particle's texture array {}", a.index()))
+            })?;
+        }
+        keyed.push((g.layer, 0.0, RunSource::Particles(k), false, placeholder));
+        gpu_count += 1;
+        if g.glow > 0.0 {
+            gpu_glow.push(k);
+        }
+    }
     // The sprite meshes, sorted as sprites are; each is a run of its own
     // corners (`mesh_ranges`), not an instance.
     let mesh_ranges = crate::sprite_mesh::ranges(scene, texture_count)?;
@@ -835,7 +912,7 @@ pub(crate) fn build<'a>(
             sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
         keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
     }
-    let sprites = keyed.len() as u32 - shadow_count - mesh_count + sprite_boards;
+    let sprites = keyed.len() as u32 - shadow_count - mesh_count - gpu_count + sprite_boards;
     let after_sprites = keyed.len() as u32;
     let mut missing_glyphs = 0;
     for (i, text) in scene.texts.iter().enumerate() {
@@ -1014,6 +1091,11 @@ pub(crate) fn build<'a>(
             push(&mut runs, source, true, first, count);
             continue;
         }
+        if let RunSource::Particles(k) = source {
+            let r = &gpu_sprites.ranges[k as usize];
+            push(&mut runs, source, true, r.first, r.count);
+            continue;
+        }
         let index = instances.len() as u32;
         instances.push(inst);
         push(&mut runs, source, !untonemapped, index, 1);
@@ -1057,6 +1139,16 @@ pub(crate) fn build<'a>(
             }),
         }
         instances.push(inst);
+    }
+    // The glowing 2D particles simulated in compute: their ranges again.
+    for k in gpu_glow {
+        let r = &gpu_sprites.ranges[k as usize];
+        glow_runs.push(SpriteRun {
+            source: RunSource::Particles(k),
+            first: r.first,
+            count: r.count,
+            tone_mapped: true,
+        });
     }
     let untonemapped = runs.iter().any(|r| !r.tone_mapped);
     Ok(SpriteFrame {
@@ -1136,6 +1228,7 @@ mod tests {
             0,
             |_| None,
             &[],
+            (&[], &mut GpuSprites::default()),
             |_, _| 0.0,
             None,
             &[],
@@ -1176,6 +1269,7 @@ mod tests {
             0,
             |_| None,
             &[],
+            (&[], &mut GpuSprites::default()),
             |_, _| 0.0,
             None,
             &[],
@@ -1225,6 +1319,7 @@ mod tests {
             0,
             |_| None,
             &[],
+            (&[], &mut GpuSprites::default()),
             |_, _| 0.0,
             None,
             &[],
@@ -1273,6 +1368,7 @@ mod tests {
                 0,
                 |_| None,
                 &[],
+                (&[], &mut GpuSprites::default()),
                 |_, _| 0.0,
                 None,
                 &[],
@@ -1479,6 +1575,7 @@ mod tests {
                 0,
                 |_| None,
                 &[],
+                (&[], &mut GpuSprites::default()),
                 |_, _| 0.0,
                 None,
                 &[],
@@ -1494,5 +1591,95 @@ mod tests {
         let g = shadow_ground(Vec3::new(1.0, 0.01, 0.0)).unwrap();
         assert!((g[1].abs() - 5.0).abs() < 0.01, "{g:?}");
         assert_eq!(shadow_ground(Vec3::new(1.0, 0.0, 0.0)), None);
+    }
+
+    #[test]
+    fn particles_simulated_in_compute_draw_their_range_in_layer_order_and_share_it_across_builds() {
+        // particle_sprites.wgsl writes an instance as 31 words.
+        assert_eq!(SPRITE_STRIDE, 31 * 4);
+        let mut scene = RenderScene::new();
+        let sprite = |x: f32, layer: i32| Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            layer,
+            ..Default::default()
+        };
+        scene.sprites = vec![sprite(0.0, 0), sprite(1.0, 2)];
+        let system = |layer: i32, max: u32, glow: f32| crate::particles_gpu::SpriteSystem {
+            id: 1,
+            draw_entry: 0,
+            layer,
+            layers: 1,
+            blend: SpriteBlend::Additive,
+            glow,
+            soft: true,
+            texture: None,
+            array: None,
+            frames: 1,
+            columns: 1,
+            rows: 1,
+            max,
+            z: 0.0,
+        };
+        let systems = [system(1, 100, 0.0), system(2, 40, 1.0)];
+        let mut gpu = GpuSprites::default();
+        let build_once = |gpu: &mut GpuSprites| {
+            build(
+                &scene,
+                |_| None,
+                0,
+                |_| None,
+                &[],
+                (&systems, gpu),
+                |_, _| 0.0,
+                None,
+                &[],
+                1,
+                &NO_EYE,
+            )
+            .expect("a frame")
+        };
+        let f = build_once(&mut gpu);
+        // Layer 0's sprite, layer 1's particles, then layer 2's sprite and particles.
+        let sources: Vec<RunSource> = f.runs.iter().map(|r| r.source).collect();
+        assert_eq!(
+            sources,
+            [
+                RunSource::Sprite(SpriteBlend::Alpha, None),
+                RunSource::Particles(0),
+                RunSource::Sprite(SpriteBlend::Alpha, None),
+                RunSource::Particles(1),
+            ]
+        );
+        assert_eq!((f.runs[1].first, f.runs[1].count), (0, 100));
+        assert_eq!((f.runs[3].first, f.runs[3].count), (100, 40));
+        assert_eq!(f.sprites, 2, "a particle range is not a sprite");
+        // The glowing system glows from its range; the instance buffer holds no particle.
+        assert_eq!(f.glow_runs.len(), 1);
+        assert_eq!(f.glow_runs[0].source, RunSource::Particles(1));
+        assert_eq!(f.instances.len(), 2);
+        // A second build (a view) lit alike shares the ranges; a mask without the system's layer leaves it out.
+        let g = build_once(&mut gpu);
+        assert_eq!(g.runs[1].source, RunSource::Particles(0));
+        assert_eq!((gpu.ranges.len(), gpu.total), (2, 140));
+        let masked = build(
+            &scene,
+            |_| None,
+            0,
+            |_| None,
+            &[],
+            (&systems, &mut gpu),
+            |_, _| 0.0,
+            None,
+            &[],
+            2,
+            &NO_EYE,
+        )
+        .expect("a frame");
+        assert!(
+            !masked
+                .runs
+                .iter()
+                .any(|r| matches!(r.source, RunSource::Particles(_)))
+        );
     }
 }

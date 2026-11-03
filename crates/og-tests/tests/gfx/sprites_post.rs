@@ -525,7 +525,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
         seen[1] > 1000 && seen[0] == 0 && seen[2] == 0,
         "by age: every particle on layer 1: {seen:?}"
     );
-    assert_eq!(stats.sprites, 40);
+    assert_eq!(stats.particles_cpu, 0, "simulated in compute");
     assert_eq!(stats.sprite_draws, 1, "every layer in one draw");
     let (img, _) = run(SheetMode::Random, false, 0.4, false).expect("frame");
     let seen = colours(&img);

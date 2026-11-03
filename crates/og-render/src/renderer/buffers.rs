@@ -93,6 +93,17 @@ pub(crate) fn grow(
     true
 }
 
+/// The sprite-mode particles' instances: written in compute, read as
+/// vertices (`size` bytes).
+pub(crate) fn particle_sprite_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("particle sprites"),
+        size,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    })
+}
+
 /// Writes `bytes` at the start of `buffer`, replacing it with a larger one first if needed.
 pub(crate) fn grow_and_write(
     device: &wgpu::Device,

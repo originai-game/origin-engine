@@ -168,6 +168,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
     add("water ripples", crate::water_ripples::WGSL.to_string());
     add("probe grid", crate::probe_grid::PROBE_GRID_WGSL.to_string());
+    add("particle sprites", crate::particles_gpu::sprites_source());
     add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
     add(
         "lights 2d shadows",

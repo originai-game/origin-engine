@@ -14,7 +14,16 @@ impl Renderer {
         // Plain sprites first (sorted before arrays), then each array's.
         let mut on_array = None;
         for run in runs {
-            let array = matches!(run.source, RunSource::Array(..));
+            // A 2D particle system simulated in compute: its range of its
+            // own buffer, as its source.
+            let (source, instances) = match run.source {
+                RunSource::Particles(k) => (
+                    self.particle_sprite_sources[k as usize],
+                    &self.particle_sprite_buffer,
+                ),
+                source => (source, &self.sprite_buffer),
+            };
+            let array = matches!(source, RunSource::Array(..));
             if on_array != Some(array) {
                 pass.set_pipeline(match array {
                     false => &self.sprite_glow_pipeline,
@@ -28,7 +37,7 @@ impl Renderer {
                 });
                 on_array = Some(array);
             }
-            let group = match run.source {
+            let group = match source {
                 RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made before the pass"),
@@ -44,8 +53,7 @@ impl Renderer {
             let start = run.first as u64 * SPRITE_STRIDE;
             pass.set_vertex_buffer(
                 0,
-                self.sprite_buffer
-                    .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                instances.slice(start..start + run.count as u64 * SPRITE_STRIDE),
             );
             pass.draw(0..6, 0..run.count);
             draws += 1;

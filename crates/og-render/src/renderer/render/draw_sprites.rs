@@ -17,6 +17,15 @@ impl Renderer {
         let mut current: Option<(bool, SpriteBlend, bool)> = None;
         let mut covered = false;
         for run in runs {
+            // A 2D particle system simulated in compute draws its range of
+            // its own buffer as its source draws.
+            let (source, instances) = match run.source {
+                RunSource::Particles(k) => (
+                    self.particle_sprite_sources[k as usize],
+                    &self.particle_sprite_buffer,
+                ),
+                source => (source, &self.sprite_buffer),
+            };
             // A view keeps no HDR alpha: every run is tone mapped there.
             let tone_mapped = run.tone_mapped || view;
             if !tone_mapped && !covered {
@@ -27,7 +36,7 @@ impl Renderer {
                 covered = true;
                 current = None;
             }
-            if let RunSource::Metaballs(i) = run.source
+            if let RunSource::Metaballs(i) = source
                 && let Some(group) = self.metaballs.field_of(i).and_then(|f| fields.get(f))
             {
                 self.metaballs.composite(pass, group, i);
@@ -36,7 +45,7 @@ impl Renderer {
                 current = None;
                 continue;
             }
-            if let RunSource::Strip(blend, texture) = run.source {
+            if let RunSource::Strip(blend, texture) = source {
                 pass.set_pipeline(
                     &self.ribbon_pipelines[usize::from(blend != ParticleBlend::Additive as u8)],
                 );
@@ -64,7 +73,7 @@ impl Renderer {
                 current = None;
                 continue;
             }
-            if let RunSource::Mesh(i) = run.source {
+            if let RunSource::Mesh(i) = source {
                 let mesh = &scene.sprite_meshes[i as usize];
                 if let Some(group) = self.normal_group(scene, mesh.texture) {
                     let normals = self.sprite_normals.as_ref().expect("made with the group");
@@ -102,7 +111,7 @@ impl Renderer {
                 current = None;
                 continue;
             }
-            if let RunSource::Array(blend, a) = run.source {
+            if let RunSource::Array(blend, a) = source {
                 let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
                 pass.set_pipeline(arrays.pipeline(blend, tone_mapped));
                 let (group, _) = self.cache.sprite_array_groups[a.index()]
@@ -112,15 +121,14 @@ impl Renderer {
                 let start = run.first as u64 * SPRITE_STRIDE;
                 pass.set_vertex_buffer(
                     0,
-                    self.sprite_buffer
-                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                    instances.slice(start..start + run.count as u64 * SPRITE_STRIDE),
                 );
                 pass.draw(0..6, 0..run.count);
                 draws += 1;
                 current = None;
                 continue;
             }
-            if let RunSource::Sprite(blend, t) = run.source
+            if let RunSource::Sprite(blend, t) = source
                 && let Some(group) = self.normal_group(scene, t)
             {
                 let normals = self.sprite_normals.as_ref().expect("made with the group");
@@ -129,19 +137,19 @@ impl Renderer {
                 let start = run.first as u64 * SPRITE_STRIDE;
                 pass.set_vertex_buffer(
                     0,
-                    self.sprite_buffer
-                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                    instances.slice(start..start + run.count as u64 * SPRITE_STRIDE),
                 );
                 pass.draw(0..6, 0..run.count);
                 draws += 1;
                 current = None;
                 continue;
             }
-            let (msdf, blend, group) = match run.source {
+            let (msdf, blend, group) = match source {
                 RunSource::Strip(..)
                 | RunSource::Metaballs(_)
                 | RunSource::Mesh(_)
-                | RunSource::Array(..) => {
+                | RunSource::Array(..)
+                | RunSource::Particles(_) => {
                     unreachable!("drawn above")
                 }
                 RunSource::Sprite(blend, None) => (false, blend, &self.white_sprite_group),
@@ -171,8 +179,7 @@ impl Renderer {
             let start = run.first as u64 * SPRITE_STRIDE;
             pass.set_vertex_buffer(
                 0,
-                self.sprite_buffer
-                    .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                instances.slice(start..start + run.count as u64 * SPRITE_STRIDE),
             );
             pass.draw(0..6, 0..run.count);
             draws += 1;

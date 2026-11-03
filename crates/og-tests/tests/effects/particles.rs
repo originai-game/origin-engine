@@ -310,7 +310,9 @@ fn collision_scene(collide: bool) -> RenderScene {
     scene
 }
 
-/// Sprite-mode emitters draw through the sprite batch on their layer.
+/// Sprite-mode emitters draw through the sprite batch on their layer:
+/// simulated in compute where the adapter has it (their range one draw of
+/// the batch), else on the CPU as sprites.
 #[test]
 fn two_d_emitters_draw_as_sprites() {
     let mut scene = RenderScene::new();
@@ -326,8 +328,8 @@ fn two_d_emitters_draw_as_sprites() {
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
     scene.environment.background = Background::Color(Vec3::ZERO);
     let (img, stats, _) = run(&small(), &mut scene, 30, |s, f| fx::tick_all(s, f as u64));
-    assert_eq!(stats.sprites, stats.particles_cpu);
-    assert!(stats.sprites >= 29 && stats.sprite_draws >= 1);
+    assert_eq!(stats.particles_cpu, 0, "simulated in compute");
+    assert!(stats.sprite_draws >= 1);
     assert!(img.pixels.as_chunks::<4>().0.iter().any(|p| p[0] > 100));
 }
 

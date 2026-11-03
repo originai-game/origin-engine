@@ -803,6 +803,7 @@ impl Renderer {
         let skinned_buffer = vertex_buffer("skinned instances", skin::SKINNED_INSTANCE_STRIDE * 64);
         let ribbon_buffer = vertex_buffer("strips", 48 * 1024);
         let sprite_buffer = vertex_buffer("sprites", SPRITE_STRIDE * 1024);
+        let particle_sprite_buffer = buffers::particle_sprite_buffer(&device, SPRITE_STRIDE * 64);
         let white_sprite_group = sprite_bind_group(
             &device,
             &sprite_layout,
@@ -956,6 +957,8 @@ impl Renderer {
             instance_buffer,
             instance_upload: upload::DirtyUpload::default(),
             sprite_buffer,
+            particle_sprite_buffer,
+            particle_sprite_sources: Vec::new(),
             overlay,
             ui,
             glass,

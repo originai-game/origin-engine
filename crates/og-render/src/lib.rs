@@ -480,6 +480,11 @@ pub struct Renderer {
     /// What `instance_buffer` holds, so a frame writes only what changed.
     instance_upload: upload::DirtyUpload,
     sprite_buffer: wgpu::Buffer,
+    /// The instances of the sprite-mode particles simulated in compute
+    /// (`particle_sprites.wgsl` writes them; `RunSource::Particles` runs
+    /// draw them), and what each range of this frame draws with.
+    particle_sprite_buffer: wgpu::Buffer,
+    particle_sprite_sources: Vec<RunSource>,
     overlay: overlay::OverlayRenderer,
     /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
     ui: ui::pass::UiRenderer,

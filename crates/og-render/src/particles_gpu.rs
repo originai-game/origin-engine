@@ -15,6 +15,7 @@ use std::collections::HashMap;
 const COMMON_WGSL: &str = wgsl!("particle_common.wgsl");
 const SIM_WGSL: &str = wgsl!("particles_sim.wgsl");
 const DRAW_WGSL: &str = wgsl!("particles.wgsl");
+const SPRITES_WGSL: &str = wgsl!("particle_sprites.wgsl");
 pub(crate) const NOISE_WGSL: &str = wgsl!("noise.wgsl");
 
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
@@ -205,6 +206,9 @@ pub(crate) enum DrawKind {
     Mesh,
     /// The scene behind, shifted (`fs_distort`).
     Distort,
+    /// Sprite mode simulated in compute: the 2D batch draws it
+    /// ([`ParticleFrame::sprite_systems`]), not this pass.
+    Sprite,
 }
 
 fn draw_kind(e: &ParticleEmitter) -> DrawKind {
@@ -286,12 +290,55 @@ pub(crate) struct FrameSystem {
     mesh: Option<crate::MeshHandle>,
 }
 
+/// A sprite-mode system simulated in compute, as the 2D batch draws it:
+/// what `particle_sprites.wgsl` needs to write its instances.
+pub(crate) struct SpriteSystem {
+    pub id: u64,
+    /// Its draw entry among the frame's emitter uniforms.
+    pub draw_entry: u32,
+    pub layer: i32,
+    pub layers: u32,
+    pub blend: crate::SpriteBlend,
+    pub glow: f32,
+    pub soft: bool,
+    pub texture: Option<crate::TextureHandle>,
+    pub array: Option<crate::TextureArrayHandle>,
+    pub frames: u32,
+    pub columns: u32,
+    pub rows: u32,
+    /// Its ring's slots: the instances of its range.
+    pub max: u32,
+    pub z: f32,
+}
+
+/// `SpriteParams` in particle_sprites.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct SpriteParamsGpu {
+    first: u32,
+    max: u32,
+    frames: u32,
+    columns: u32,
+    rows: u32,
+    array: u32,
+    soft: u32,
+    _pad0: u32,
+    z: f32,
+    glow: f32,
+    lit: f32,
+    _pad1: f32,
+}
+
 /// What the frame's particles need from the rest of the renderer.
 #[derive(Default)]
 pub(crate) struct ParticleFrame {
     pub systems: Vec<FrameSystem>,
-    /// Sprite-mode particles, as the 2D batch draws them.
+    /// Sprite-mode particles simulated on the CPU (a host's, or with
+    /// sub-emitters), as the 2D batch draws them.
     pub sprites: Vec<ExtraSprite>,
+    /// Sprite-mode systems simulated in compute: the 2D batch draws each
+    /// from instances [`ParticleRenderer::expand_sprites`] writes.
+    pub sprite_systems: Vec<SpriteSystem>,
     pub any_gpu: bool,
     pub needs_depth: bool,
     /// A system fades against the depth behind it (soft particles): each
@@ -309,6 +356,10 @@ pub(crate) struct ParticleFrame {
 }
 
 pub(crate) struct ParticleRenderer {
+    /// Sprite-mode systems' instances for the 2D batch (`expand_sprites`).
+    sprites_layout: wgpu::BindGroupLayout,
+    sprites_pipeline: wgpu::ComputePipeline,
+    sprites_params: wgpu::Buffer,
     sim_layout: wgpu::BindGroupLayout,
     /// simulate, clear, shift.
     sim: (
@@ -431,6 +482,38 @@ impl ParticleRenderer {
             };
             (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
         };
+        let sprites_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("particle sprites"),
+            entries: &[
+                uniform_entry(0, wgpu::ShaderStages::COMPUTE, true),
+                storage_entry(1, true),
+                uniform_entry(2, wgpu::ShaderStages::COMPUTE, true),
+                storage_entry(3, false),
+            ],
+        });
+        let sprites_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("particle sprites"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("particle sprites"),
+                    bind_group_layouts: &[Some(&sprites_layout)],
+                    immediate_size: 0,
+                }),
+            ),
+            module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("particle sprites"),
+                source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
+            }),
+            entry_point: Some("expand"),
+            compilation_options: Default::default(),
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        });
+        let sprites_params = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("particle sprites"),
+            size: SPRITE_PARAMS_STRIDE * 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle draw"),
             entries: &[
@@ -462,6 +545,9 @@ impl ParticleRenderer {
             mapped_at_creation: false,
         });
         ParticleRenderer {
+            sprites_layout,
+            sprites_pipeline,
+            sprites_params,
             sim_layout,
             sim,
             draw_layout,
@@ -661,22 +747,35 @@ impl ParticleRenderer {
             if e.collision.is_some() && (sprite_mode || (!gpu && colliders.is_empty())) {
                 out.collision_skipped += 1;
             }
-            if let ParticleRender::Sprite { layer } = e.render {
-                // An array emitter's layers are its frames.
-                let array = match e.array {
-                    Some(a) => {
-                        let layers = scene.texture_array(a).map(|d| d.layers.len() as u32);
-                        let layers = layers.ok_or_else(|| {
-                            RenderError::InvalidHandle(format!(
-                                "emitter {}: texture array {}",
-                                sys.emitter.index(),
-                                a.index()
-                            ))
-                        })?;
-                        Some((a, array_frames(&e.sheet, layers)))
-                    }
-                    None => None,
-                };
+            // Sprite mode: its layer, and an array emitter's array with its
+            // frames (the array's layers).
+            let sprite = match e.render {
+                ParticleRender::Sprite { layer } => Some((
+                    layer,
+                    match e.array {
+                        Some(a) => {
+                            let layers = scene.texture_array(a).map(|d| d.layers.len() as u32);
+                            let layers = layers.ok_or_else(|| {
+                                RenderError::InvalidHandle(format!(
+                                    "emitter {}: texture array {}",
+                                    sys.emitter.index(),
+                                    a.index()
+                                ))
+                            })?;
+                            Some((a, array_frames(&e.sheet, layers)))
+                        }
+                        None => None,
+                    },
+                )),
+                _ => None,
+            };
+            // Sub-emitters' events and a host's own simulation are the CPU
+            // path's; sprite systems without them simulate in compute too
+            // and the 2D batch draws them from there (`sprite_systems`).
+            let gpu = gpu && e.sub_emitters.is_empty() && hosted.is_none();
+            if let Some((layer, array)) = sprite
+                && !gpu
+            {
                 match hosted {
                     Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
                     None => {
@@ -721,24 +820,28 @@ impl ParticleRenderer {
             }
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
             let textured = e.texture.is_some();
-            let collide = gpu && e.collision.is_some() && e.space == SimulationSpace::World;
+            let collide = gpu
+                && e.collision.is_some()
+                && e.space == SimulationSpace::World
+                && sprite.is_none();
             // Soft particles fade against the depth behind them, where the
             // frame's quality lets them (RenderQuality::soft_particles).
-            let soft = if scene.quality.soft_particles {
+            let soft = if scene.quality.soft_particles && sprite.is_none() {
                 e.soft_distance.max(0.0)
             } else {
                 0.0
             };
             out.needs_depth |= soft > 0.0 || collide;
             out.soft |= soft > 0.0;
-            let kind = draw_kind(e);
+            let kind = match sprite {
+                Some(_) => DrawKind::Sprite,
+                None => draw_kind(e),
+            };
             out.distortion |= kind == DrawKind::Distort;
             let mesh = match e.render {
                 ParticleRender::Mesh { mesh } => Some(mesh),
                 _ => None,
             };
-            // Sub-emitters' events and a host's own simulation are the CPU path's.
-            let gpu = gpu && e.sub_emitters.is_empty() && hosted.is_none();
             // The render origin moved: world-space particles on the GPU
             // move with it before this frame's ticks (the CPU's moved above).
             let shift = (gpu && moved != Vec3::ZERO && state.gpu.is_some()).then(|| {
@@ -828,6 +931,27 @@ impl ParticleRenderer {
                     kind,
                     mesh,
                 });
+                if let Some((layer, array)) = sprite {
+                    out.sprite_systems.push(SpriteSystem {
+                        id: sys.id,
+                        draw_entry: first_entry + steps.len() as u32,
+                        layer,
+                        layers,
+                        blend: match e.blend {
+                            ParticleBlend::Additive => crate::SpriteBlend::Additive,
+                            ParticleBlend::Alpha => crate::SpriteBlend::Alpha,
+                        },
+                        glow: e.glow,
+                        soft: e.round || (e.texture.is_none() && array.is_none()),
+                        texture: if array.is_some() { None } else { e.texture },
+                        array: array.map(|(a, _)| a),
+                        frames: array.map_or_else(|| sheet_frames(&e.sheet), |(_, n)| n),
+                        columns: e.sheet.columns.max(1),
+                        rows: e.sheet.rows.max(1),
+                        max: e.max_particles,
+                        z: sys.transform.w_axis.z,
+                    });
+                }
             } else {
                 match hosted {
                     Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
@@ -952,6 +1076,120 @@ impl ParticleRenderer {
             queue.write_buffer(&self.emitter_buffer, 0, &bytes);
         }
         Ok(out)
+    }
+
+    /// Writes the parameters of [`ParticleRenderer::expand_sprites`]'
+    /// ranges (before the frame's encoder runs).
+    pub fn prepare_sprites(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        frame: &ParticleFrame,
+        ranges: &crate::sprites::GpuSprites,
+    ) {
+        if ranges.ranges.is_empty() {
+            return;
+        }
+        let size = SPRITE_PARAMS_STRIDE * ranges.ranges.len() as u64;
+        if size > self.sprites_params.size() {
+            self.sprites_params = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("particle sprites"),
+                size: size.next_power_of_two(),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        let mut bytes = vec![0u8; size as usize];
+        for (k, r) in ranges.ranges.iter().enumerate() {
+            let s = &frame.sprite_systems[r.system];
+            let p = SpriteParamsGpu {
+                first: r.first,
+                max: r.count,
+                frames: s.frames,
+                columns: s.columns,
+                rows: s.rows,
+                array: u32::from(s.array.is_some()),
+                soft: u32::from(s.soft),
+                _pad0: 0,
+                z: s.z,
+                glow: s.glow,
+                lit: r.lit,
+                _pad1: 0.0,
+            };
+            let at = k * SPRITE_PARAMS_STRIDE as usize;
+            bytes[at..at + std::mem::size_of::<SpriteParamsGpu>()]
+                .copy_from_slice(bytemuck::bytes_of(&p));
+        }
+        queue.write_buffer(&self.sprites_params, 0, &bytes);
+    }
+
+    /// Writes the instances of the sprite-mode systems simulated in compute
+    /// into `target`, each range of `ranges` from its system's ring as it
+    /// stands after this frame's ticks (after [`ParticleRenderer::simulate`]
+    /// in the same encoder).
+    pub fn expand_sprites(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut crate::Encoder,
+        frame: &ParticleFrame,
+        ranges: &crate::sprites::GpuSprites,
+        target: &wgpu::Buffer,
+    ) {
+        if ranges.ranges.is_empty() {
+            return;
+        }
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("particle sprites"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.sprites_pipeline);
+        for (k, r) in ranges.ranges.iter().enumerate() {
+            let s = &frame.sprite_systems[r.system];
+            let Some(g) = self.systems.get(&s.id).and_then(|st| st.gpu.as_ref()) else {
+                continue;
+            };
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("particle sprites"),
+                layout: &self.sprites_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &self.emitter_buffer,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(std::mem::size_of::<EmitterGpu>() as u64),
+                        }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: g.buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &self.sprites_params,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(
+                                std::mem::size_of::<SpriteParamsGpu>() as u64
+                            ),
+                        }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: target.as_entire_binding(),
+                    },
+                ],
+            });
+            pass.set_bind_group(
+                0,
+                &group,
+                &[
+                    (u64::from(s.draw_entry) * EMITTER_STRIDE) as u32,
+                    (k as u64 * SPRITE_PARAMS_STRIDE) as u32,
+                ],
+            );
+            pass.dispatch_workgroups(r.count.div_ceil(64), 1, 1);
+        }
     }
 
     /// Records the frame's compute dispatches (one per simulated tick).
@@ -1082,7 +1320,7 @@ impl ParticleRenderer {
 
     /// Makes the draw pipelines the frame needs (by blend and sample count).
     pub fn ensure_pipelines(&mut self, device: &wgpu::Device, frame: &ParticleFrame, samples: u32) {
-        for s in &frame.systems {
+        for s in frame.systems.iter().filter(|s| s.kind != DrawKind::Sprite) {
             let key = (s.blend, samples, s.kind);
             if self.draw.contains_key(&key) {
                 continue;
@@ -1121,6 +1359,7 @@ impl ParticleRenderer {
                         DrawKind::Billboard => "fs",
                         DrawKind::Mesh => "fs_mesh",
                         DrawKind::Distort => "fs_distort",
+                        DrawKind::Sprite => unreachable!("filtered above"),
                     },
                     buffers: &buffers,
                     cull: mesh.then_some(wgpu::Face::Back),
@@ -1153,11 +1392,11 @@ impl ParticleRenderer {
         mesh: impl Fn(crate::MeshHandle) -> Option<(&'b wgpu::Buffer, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
         let mut draws = 0;
-        for s in frame
-            .systems
-            .iter()
-            .filter(|s| s.layers & mask != 0 && (distort || s.kind != DrawKind::Distort))
-        {
+        for s in frame.systems.iter().filter(|s| {
+            s.layers & mask != 0
+                && s.kind != DrawKind::Sprite
+                && (distort || s.kind != DrawKind::Distort)
+        }) {
             let Some(state) = self.systems.get(&s.id) else {
                 continue;
             };
@@ -1329,6 +1568,14 @@ fn push_sprites(
             layers,
         });
     }
+}
+
+/// One [`SpriteParamsGpu`] slot (the dynamic offset's alignment).
+const SPRITE_PARAMS_STRIDE: u64 = 256;
+
+/// The sprite-mode instances' module (compute).
+pub(crate) fn sprites_source() -> String {
+    format!("{COMMON_WGSL}{SPRITES_WGSL}")
 }
 
 /// The particle simulation's module (compute).
