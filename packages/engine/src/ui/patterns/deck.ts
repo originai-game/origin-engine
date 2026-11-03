@@ -55,6 +55,8 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
   const allowed = (c: Api.CollectionCard): number => Math.min(c.owned ?? 0, (c.limit ?? 0) > 0 ? c.limit! : desc.copyLimit ?? 2);
   let why = 0;
   const showDeck = portrait && desc.view === "deck";
+  // The deck's column beside the collection on a desktop.
+  const deckW = Math.round(Math.min(u(360), W * 0.27) * Math.min(1.25, ts));
 
   // The collection through the filters, in the sort's order.
   const q = (desc.search ?? "").trim().toLocaleLowerCase();
@@ -88,6 +90,8 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       gap: u(6),
       align: "center",
       cross: "center",
+      // A whole touch target under a finger.
+      ...(touch ? { width: { kind: "fit", min: 44 } as Api.Size } : {}),
       height: { kind: "fit", min: touch ? 44 : u(30) },
       padding: xy(u(label.length <= 2 ? 8 : 10), u(3)),
       radius: Math.max(4, t.small),
@@ -233,8 +237,8 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
   // The collection's grid: whole rows that scroll, and the count of the cards owned.
   const collection = (w: Api.Size): void => {
     kit.column("Collection", { width: w, height: grow(), gap: u(8) }, () => {
-      // Last tick's width of the grid, for its columns (the room less the deck on the first).
-      const CW = kit.memory(`~db.cw.${id}`, 0) || Math.max(200, (portrait ? W : W - Math.min(u(360), W * 0.27)) - u(24));
+      // The grid's width: the room less the deck beside it (never last tick's grid, which its own rows would hold open).
+      const CW = Math.max(200, portrait ? W : W - deckW - u(16));
       const gap = u(phone ? 8 : 14);
       const want = u(portrait ? 104 : 150) * Math.min(1.3, ts);
       const cols = Math.max(2, Math.floor((CW - u(8) + gap) / (want + gap)));
@@ -246,8 +250,6 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         kit.row(kit.idi("Line", r0 / cols), { gap }, () => shown.slice(r0, r0 + cols).forEach((c) => tile(c, cw, ch)));
       }
       kit.close();
-      const g = kit.bounds(kit.lastPath());
-      if (g && g.width > 0) kit.remember(`~db.cw.${id}`, Math.round(g.width));
       kit.semantics({ role: "grid", name: desc.collectionLabel ?? "Cards" });
       const ownedN = cards.filter((c) => (c.owned ?? 0) > 0).length;
       if (!portrait) text("Count", `${ownedN} / ${cards.length} ${desc.collectionLabel ?? "Cards"}`, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
@@ -306,7 +308,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     const counts = Array.from({ length: COSTS }, () => 0);
     for (const c of cards) if ((c.count ?? 0) > 0 && c.cost != null) counts[Math.min(COSTS - 1, c.cost)]! += c.count!;
     const top = Math.max(1, ...counts);
-    const barH = u(phone ? 44 : 56);
+    const barH = u(phone ? 36 : 40);
     kit.column("Curve", { width: grow(), gap: u(6), padding: xy(u(12), u(10)), part: "DeckBuilder.curve", partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.9) }], strokes: [line(1, token("ink", 0.1))] });
       eyebrow("Title", desc.curveLabel ?? "Mana curve");
@@ -343,6 +345,18 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     });
   };
 
+  // A refusal's reason, for a while after it.
+  const refusal = (): void => {
+    const recent = rt >= 0 && tick - rt < Math.round(2.2 * tps());
+    if (!recent || rwhy <= 0) return;
+    const words = rwhy === 1 ? desc.fullLabel ?? "The deck is full" : rwhy === 2 ? desc.limitLabel ?? "No more copies allowed" : desc.unownedLabel ?? "Not owned";
+    kit.row("Refusal", { width: grow(), gap: u(6), cross: "center", part: "DeckBuilder.refusal", partClass: "badge" }, () => {
+      symbol("Mark", "ban", u(14), role("danger"));
+      text("Text", words, { step: st(13), color: "danger", width: grow() });
+    });
+    kit.semantics({ role: "status", name: words });
+  };
+
   // The deck: its count and a refusal's reason, its name over its art, its rows by cost, the curve, the counts, Done.
   const deck = (w: Api.Size): void => {
     kit.column("Deck", { width: w, height: grow(), gap: u(10), padding: xy(u(12), u(12)), part: "DeckBuilder.deck", partClass: "panel" }, () => {
@@ -353,15 +367,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         text("Count", `${inDeck}/${size}`, { step: st(16), font: "mono", nowrap: true, color: inDeck > size ? "danger" : inDeck === size ? "success" : "ink" });
       });
       kit.semantics({ role: "status", name: `${desc.deckLabel ?? "My deck"} ${inDeck}/${size}` });
-      const recent = rt >= 0 && tick - rt < Math.round(2.2 * tps());
-      if (recent && rwhy > 0) {
-        const words = rwhy === 1 ? desc.fullLabel ?? "The deck is full" : rwhy === 2 ? desc.limitLabel ?? "No more copies allowed" : desc.unownedLabel ?? "Not owned";
-        kit.row("Refusal", { width: grow(), gap: u(6), cross: "center", part: "DeckBuilder.refusal", partClass: "badge" }, () => {
-          symbol("Mark", "ban", u(14), role("danger"));
-          text("Text", words, { step: st(13), color: "danger", width: grow() });
-        });
-        kit.semantics({ role: "status", name: words });
-      }
+      refusal();
       if (desc.deckName) {
         const nh = Math.round(u(52) * Math.min(1.4, ts));
         kit.row("Name", { width: grow(), height: px(nh), cross: "center", padding: xy(u(12), 0), part: "DeckBuilder.name", partClass: "badge" }, () => {
@@ -379,14 +385,23 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         });
       }
       const rows = cards.filter((c) => (c.count ?? 0) > 0).sort(byCost);
+      // At a large text size the curve and the counts scroll under the rows: standing fixed, they leave the list no room.
+      const big = ts > 1.25;
+      const stats = (): void => {
+        if (big) {
+          curve();
+          kindCounts();
+        } else kit.row("Stats", { width: grow(), gap: u(8) }, () => {
+          curve();
+          kindCounts();
+        });
+      };
       kit.openScroll("List", { width: grow(), height: grow(), gap: u(4), padding: xy(0, 0), fade: 24, fadeInto: "shadow" } as never);
       rows.forEach(deckRow);
+      if (big) stats();
       kit.close();
       kit.semantics({ role: "list", name: desc.deckName || desc.deckLabel || "Deck" });
-      kit.row("Stats", { width: grow(), gap: u(8) }, () => {
-        curve();
-        if (!portrait || ts <= 1.25) kindCounts();
-      });
+      if (!big) stats();
       if (btn("Done", desc.doneLabel ?? "Done", { variant: "primary", size: "lg", width: grow(), raised: true }).clicked) {
         out.done = true;
         kit.feedback("confirm", -1);
@@ -427,13 +442,17 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     if (showDeck) deck(grow());
     else {
       filters();
+      refusal();
       collection(grow());
     }
   } else {
-    filters();
+    // The deck stands the whole height beside the filters and the grid, so its list keeps its rows.
     kit.row("Body", { width: grow(), height: grow(), gap: u(16) }, () => {
-      collection(grow());
-      deck(px(Math.round(Math.min(u(360), W * 0.27) * Math.min(1.25, ts))));
+      kit.column("Cards", { width: grow(), height: grow(), gap: u(12) }, () => {
+        filters();
+        collection(grow());
+      });
+      deck(px(deckW));
     });
   }
 
