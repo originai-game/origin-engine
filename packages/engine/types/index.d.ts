@@ -15657,7 +15657,7 @@ export interface Fog {
 }
 
 /**
- * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+ * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as it is drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture, so a drifting cloud, a lightning flash or a fast day moves in the reflections and the ambient light within sixteen frames (about a quarter of a second at 60 fps). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
  *
  * The `Sky` resource (token `og.Sky`).
  */
@@ -15779,7 +15779,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes of game time while its sun moves smoothly, and the image-based light and the reflections' sky follow the sky as it is drawn (clouds, lightning and all), captured a slice a frame. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
  *
  * The `DayNight` resource (token `og.DayNight`).
  */
@@ -15833,7 +15833,7 @@ export interface DayNight {
    */
   tintFog: boolean;
   /**
-   * Game minutes between regenerations of the image-based light.
+   * Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn).
    *
    * @default 10
    * @range 1..120
@@ -53937,11 +53937,11 @@ export declare namespace og {
    */
   const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;
   /**
-   * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
+   * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as it is drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture, so a drifting cloud, a lightning flash or a fast day moves in the reflections and the ambient light within sixteen frames (about a quarter of a second at 60 fps). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes of game time while its sun moves smoothly, and the image-based light and the reflections' sky follow the sky as it is drawn (clouds, lightning and all), captured a slice a frame. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**

@@ -337,3 +337,45 @@ api check.
   owns the baker (it came from the S7 depth wave). R3 takes it, as baked
   lighting sits beside the probes, unless the coordinator assigns it
   elsewhere.
+
+## The live sky: reflections and IBL follow a moving sky
+
+Before this, the image-based light and the reflections' fallback (SSR's
+misses, surfaces outside every probe) came from a cube generated once
+per sky look: a DayNight regenerated it each `step`, and clouds,
+lightning or an aurora never reached it. Now, while the background is
+the per-pixel sky (`Background::Procedural`) and no environment map
+replaces it, `sky_capture.rs` ports Unreal's real-time sky light
+capture:
+- `sky.wgsl`'s `fs_sky_look`, the same shader the background uses (and
+  where the aurora's `aurora_over` goes), draws the sky from the camera
+  into a 128² cube. Stars are off.
+- The reflection probes' filter turns it into mips, irradiance and five
+  GGX-prefiltered levels, in cubes of its own.
+- A copy puts them into the IBL cubes the frame already binds, once
+  they are whole. No binding is added; R4's 1024-byte IBL slots and
+  environment maps are untouched.
+- The work is sliced over eight frames (`live-sky` in the graph, first):
+  faces in two, mips and irradiance in one, prefiltered levels in four,
+  the copy in one. The first frame of a live sky does it all at once, so
+  a one-frame render is already lit by its clouds. A change reaches the
+  light within two captures, 16 frames.
+
+New frame and test: `live-sky`, in
+`the_live_sky_brings_the_clouds_into_reflections` (tests/atmosphere.rs).
+A chrome sphere on a grey ground at 14:00 under the physical sky, with a
+rose-tinted overcast deck. The sphere's upper half reflects the sky over
+and behind the camera, out of frame, so it should read rose-grey from
+the clouds, not clear blue. The test checks that a band of that upper
+half gains red over blue against the same scene at zero coverage, and
+that a renderer switched from clear to clouded matches a fresh clouded
+one after 16 frames.
+
+Frames expected to move: every scene drawn under `Background::Procedural`.
+Their ambient light and sky reflections now include the clouds and the
+full per-pixel sky, without stars. That covers the atmosphere-* frames
+(fog, dusk, night), weather-rain/snow, the moon scenes, sky-physical-*,
+clouds-*, the weather-* surface frames and water-ocean-*. Overcast and
+cloudy frames should move most: their ambient goes greyer and dimmer
+under the deck. Frames with the default `Background::Sky`, a colour or
+an environment map must not move.

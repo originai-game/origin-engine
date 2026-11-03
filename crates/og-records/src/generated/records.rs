@@ -18733,7 +18733,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Game minutes between regenerations of the image-based light."),
+                doc: doc!("Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

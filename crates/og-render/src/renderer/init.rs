@@ -951,6 +951,7 @@ impl Renderer {
             grass,
             metaballs,
             ibl,
+            sky_capture: None,
             sprite_pipeline,
             sprite_additive_pipeline,
             sprite_untonemapped_pipeline,

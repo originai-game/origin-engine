@@ -381,8 +381,10 @@ pub enum Background {
     Color(Vec3),
     /// The procedural sky drawn per pixel with the environment sky's look
     /// (or the built-in colours), its sun at `sun_direction` with
-    /// `sun_color`: the sun of a day-night cycle moves smoothly while the
-    /// image-based light follows in steps. Stars are drawn here only.
+    /// `sun_color`. Without an environment map the image-based light and
+    /// the reflections' fallback follow this sky live, clouds included:
+    /// captured a slice a frame, a full refresh every eight frames
+    /// (`sky_capture.rs`). Stars are drawn here only.
     Procedural {
         sun_direction: Vec3,
         sun_color: Vec3,

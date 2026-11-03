@@ -16,7 +16,8 @@
 //!   brightness, for
 //!   [`crate::ProceduralSky::look`] (the image-based light) and
 //!   [`crate::Background::Procedural`] (the sky drawn per pixel, so a moving
-//!   sun moves smoothly while the lighting is regenerated in steps).
+//!   sun moves smoothly; the lighting follows it through the live sky's
+//!   capture, `sky_capture.rs`).
 
 use glam::Vec3;
 

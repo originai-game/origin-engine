@@ -814,3 +814,52 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
         under(&soaked)
     );
 }
+
+/// The live sky (R3): the image-based light follows the per-pixel sky,
+/// clouds included. live-sky matches its reference; its chrome sphere's
+/// upper half, which reflects the sky out of the frame over the camera,
+/// turns rose under the rose cloud deck (red gains on blue), which before
+/// the live capture it never did (the light was the cloudless sky's). On
+/// one renderer, a sky that changes under it reaches the reflection
+/// within two captures (sixteen frames, a capture being spread over
+/// eight) and then matches a renderer that drew the clouds from the start.
+#[test]
+fn the_live_sky_brings_the_clouds_into_reflections() {
+    use og_tests::sky_scenes::sky_scene;
+    check("live-sky");
+    let (clear, clouded) = (sky_scene("live-sky-clear"), sky_scene("live-sky"));
+    let run = |scenes: &[(&RenderScene, usize)]| {
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        for &(scene, frames) in scenes {
+            for _ in 0..frames {
+                r.render(scene, &RenderTarget::Offscreen).expect("render");
+            }
+        }
+        r.read_offscreen().expect("capture")
+    };
+    // The sphere fills the middle of the frame (its centre the camera's
+    // target, about 340 px across at 1280 × 720): a band of its upper
+    // half, whose normals tilt up and back towards the camera.
+    let band = (610, 210, 670, 270);
+    let warmth = |img: &RgbaImage| {
+        let c = rgb(img, band.0, band.1, band.2, band.3);
+        c[0] - c[2]
+    };
+    let (before, after) = (run(&[(&clear, 1)]), run(&[(&clouded, 1)]));
+    println!(
+        "band (r - b): clear {}, clouded {}",
+        warmth(&before),
+        warmth(&after)
+    );
+    assert!(
+        warmth(&after) > warmth(&before) + 20.0,
+        "the sphere reflects the rose clouds: {} vs {}",
+        warmth(&after),
+        warmth(&before)
+    );
+    let switched = run(&[(&clear, 3), (&clouded, 16)]);
+    let fresh = run(&[(&clouded, 19)]);
+    let d = diff(&switched, &fresh, band.0, band.1, band.2, band.3);
+    println!("switched against fresh: {d}");
+    assert!(d < 4.0, "the clouds reached the reflection: {d}");
+}

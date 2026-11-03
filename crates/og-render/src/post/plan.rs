@@ -29,6 +29,9 @@ pub(crate) enum FramePass {
     Metaballs,
     /// The 3D fluids' depth, thickness and smoothing (fluid3d.rs).
     Fluid3d,
+    /// The live sky's step this frame (`sky_capture.rs`): a slice of its
+    /// capture of the per-pixel sky and its filtering.
+    LiveSky,
     /// The reflection probes' captures due this frame (`probes.rs`).
     Probes,
     /// The scene mirrored in a water surface (its planar reflection): slot 0 the one material shaders read, slot 1 a
@@ -157,6 +160,7 @@ impl FramePass {
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
+            FramePass::LiveSky => "live-sky".into(),
             FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection(k) => reflection_target(k, "").into(),
             FramePass::View(i) => format!("view-{i}"),
@@ -662,6 +666,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
             // Into the probes' own cubes, not graph targets.
             FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
+            // Into its own cubes and the bound IBL ones.
+            FramePass::LiveSky => g.pass(name, &[], &[]),
             FramePass::Reflection(k) => {
                 let mut writes = vec![reflection_target(k, ""), reflection_target(k, "-depth")];
                 if msaa {

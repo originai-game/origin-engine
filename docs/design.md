@@ -984,6 +984,25 @@ S6).
   The bounce adds to the diffuse ambient light times the albedo; the
   rays that hit take their share of the ambient light, or with
   `PostEffects.ao` its term does. Scattered copies keep the AO alone.
+- **The live sky (R3).** While the background is the per-pixel sky
+  (`Background::Procedural`: og.Sky, og.DayNight, og.PhysicalSky,
+  og.Clouds) and no environment map replaces it, the image-based light
+  and the reflections' fallback (surfaces outside every probe, SSR's
+  misses, water's) follow the sky as drawn: Unreal's real-time sky light
+  capture, ported (`sky_capture.rs`). `fs_sky_look` draws the sky from
+  the camera into a 128² cube through the face cameras' frame uniforms
+  (stars off), the reflection probes' filter turns it into the mip
+  chain, the irradiance and the GGX-prefiltered levels in cubes of its
+  own, and a copy puts those into the cubes the frame binds once they
+  are whole: no binding is added and a frame never samples a half-made
+  sky. The work is spread over eight frames (`FramePass::LiveSky`, first
+  in the graph and timed as `live-sky`): two of faces, one of mips and
+  irradiance, four of prefiltered levels, one copy; the first frame of a
+  live sky does all eight, and a change to the sky reaches the light
+  within two captures (sixteen frames). The capture's clouds take the last capture's
+  irradiance as their ambient light. The IBL generator's own sky (the
+  1024-byte parameter slots, the BRDF LUT, environment maps) is
+  unchanged and draws the first frame's lighting.
 - **Realtime light volumes (R3).** The lazy component
   `og.RealtimeLightVolume` (`updatesPerFrame`, `intensity`) beside an
   `og.LightVolume` relights that box's probes while the game runs

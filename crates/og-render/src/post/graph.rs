@@ -715,6 +715,7 @@ impl FrameGraph {
             | FramePass::Metaballs
             | FramePass::Fluid3d
             | FramePass::Probes
+            | FramePass::LiveSky
             | FramePass::Reflection(_)
             | FramePass::View(_)
             | FramePass::Volumetric

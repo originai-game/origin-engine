@@ -98,6 +98,7 @@ mod probe_grid;
 mod probe_select;
 mod probes;
 mod quality;
+mod sky_capture;
 mod ssgi;
 mod ssr;
 pub use probe_content::{ProbeContent, ProbeRoom};
@@ -417,6 +418,9 @@ pub struct Renderer {
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,
+    /// The live sky (`sky_capture.rs`): made while the background is the
+    /// per-pixel sky.
+    sky_capture: Option<sky_capture::SkyCapture>,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).
     probes: probes::Probes,
     sprite_pipeline: Sampled<wgpu::RenderPipeline>,

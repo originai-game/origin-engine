@@ -296,6 +296,7 @@ impl Renderer {
                 .map_or(0, |(t, ..)| texture_bytes(t))
             + self.glass_targets.as_ref().map_or(0, |g| g.bytes())
             + self.probes.bytes()
+            + self.sky_capture.as_ref().map_or(0, |c| c.bytes())
             + self.volumetric.bytes();
         let buffers = [
             &self.frame_buffer,

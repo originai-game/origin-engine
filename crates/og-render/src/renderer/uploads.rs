@@ -662,7 +662,15 @@ impl Renderer {
         let drawn = self.drawn_environment(scene);
         let map = drawn.map(|d| d.0);
         let blend = drawn.and_then(|d| d.1);
+        // The per-pixel sky without an environment map is live: captured
+        // as it is drawn, a slice a frame (sky_capture.rs).
+        let live =
+            map.is_none() && matches!(scene.environment.background, Background::Procedural { .. });
+        if !live {
+            self.sky_capture = None;
+        }
         let key = match map {
+            None if live => EnvironmentKey::Live,
             Some(m) => EnvironmentKey::Map {
                 scene: scene.id(),
                 map: m.map.index(),
@@ -739,6 +747,11 @@ impl Renderer {
                 sky.look.as_ref(),
             ),
         }
+        // The bound cubes are the sky without its clouds again: the live
+        // sky captures it whole the next frame.
+        if let Some(c) = &mut self.sky_capture {
+            c.restart();
+        }
         let ibl = self.ibl.views();
         let entries = [
             self.frame_buffer.as_entire_binding(),
@@ -783,5 +796,13 @@ impl Renderer {
             ],
         );
         self.environment = Some((key, group, sky_group, reflection_group));
+        if live && self.sky_capture.is_none() {
+            self.sky_capture = Some(crate::sky_capture::SkyCapture::new(
+                &self.device,
+                &self.queue,
+                &self.ibl,
+                [&self.frame_layout, &self.sky_layout],
+            ));
+        }
     }
 }

@@ -288,6 +288,10 @@ pub(crate) const PALETTE_BYTES: u64 = MAX_PALETTE_COLORS as u64 * 4;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum EnvironmentKey {
     Sky(ProceduralSky),
+    /// The per-pixel sky's (`Background::Procedural`): made once, then
+    /// kept up to date by the live sky's capture (`sky_capture.rs`), not
+    /// remade when the sky changes.
+    Live,
     Map {
         scene: u64,
         map: usize,

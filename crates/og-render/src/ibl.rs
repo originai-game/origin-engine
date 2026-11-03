@@ -82,7 +82,12 @@ pub(crate) fn cube_texture(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: HDR_FORMAT,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        // Copies: the live sky's filtered cubes into the bound ones
+        // (sky_capture.rs).
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     })
 }
@@ -449,6 +454,12 @@ impl IblGenerator {
         &self.views
     }
 
+    /// The bound irradiance and prefiltered cubes themselves (the live
+    /// sky copies its filtered cubes into them: sky_capture.rs).
+    pub(crate) fn bound(&self) -> (&wgpu::Texture, &wgpu::Texture) {
+        (&self._textures[1], &self._textures[2])
+    }
+
     /// Draws the sky of `sun_dir`, `sun_color` and `look` (`None`: the
     /// built-in sky) and its convolutions into the textures.
     pub fn generate(
@@ -658,24 +669,37 @@ pub(crate) struct ProbeFilter {
     draws: Vec<(wgpu::TextureView, usize, wgpu::BindGroup)>,
 }
 
+impl ProbeFilter {
+    /// Its passes in order: six copies of the capture, six per lower
+    /// radiance level, six of irradiance when it has them, then six per
+    /// prefiltered level.
+    pub(crate) fn len(&self) -> usize {
+        self.draws.len()
+    }
+}
+
 impl IblGenerator {
     /// The filtering of a probe of face size `size` whose six faces are
-    /// drawn into `capture` (one level), into `radiance` (a full chain)
-    /// and `prefiltered` ([`PREFILTER_MIPS`] levels).
+    /// drawn into `capture` (one level), into `radiance` (a full chain),
+    /// `irradiance` (the live sky's: sky_capture.rs) and `prefiltered`
+    /// ([`PREFILTER_MIPS`] levels).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn probe_filter(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         capture: &wgpu::Texture,
         radiance: &wgpu::Texture,
+        irradiance: Option<&wgpu::Texture>,
         prefiltered: &wgpu::Texture,
         size: u32,
     ) -> ProbeFilter {
         const DOWN: usize = 1;
+        const IRRADIANCE: usize = 2;
         const PREFILTER: usize = 3;
         const COPY: usize = 7;
         let mips = radiance.mip_level_count();
-        let count = 6 * (mips as usize + PREFILTER_MIPS as usize);
+        let count = 6 * (mips as usize + irradiance.is_some() as usize + PREFILTER_MIPS as usize);
         let params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("probe filter params"),
             size: SLOT * count as u64,
@@ -754,6 +778,16 @@ impl IblGenerator {
             }
         }
         let full = cube_view(radiance, "probe radiance");
+        if let Some(irradiance) = irradiance {
+            for face in 0..6 {
+                push(
+                    face_view(irradiance, face, 0),
+                    IRRADIANCE,
+                    &full,
+                    Params { face, ..base },
+                );
+            }
+        }
         for mip in 0..PREFILTER_MIPS {
             let roughness = mip as f32 / (PREFILTER_MIPS - 1) as f32;
             for face in 0..6 {
@@ -779,7 +813,18 @@ impl IblGenerator {
 
     /// Records `filter`'s passes (after the capture's).
     pub(crate) fn record_probe_filter(&self, encoder: &mut crate::Encoder, filter: &ProbeFilter) {
-        for (target, pipeline, group) in &filter.draws {
+        self.record_filter_range(encoder, filter, 0..filter.draws.len());
+    }
+
+    /// Records `filter`'s passes in `range` (the live sky spreads them over
+    /// frames: sky_capture.rs).
+    pub(crate) fn record_filter_range(
+        &self,
+        encoder: &mut crate::Encoder,
+        filter: &ProbeFilter,
+        range: std::ops::Range<usize>,
+    ) {
+        for (target, pipeline, group) in &filter.draws[range] {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("probe filter"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {

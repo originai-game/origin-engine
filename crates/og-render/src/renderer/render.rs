@@ -1841,6 +1841,10 @@ impl Renderer {
         }
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+        // The live sky's faces due this frame see the sky as it is drawn.
+        if let Some(c) = &self.sky_capture {
+            c.write(&self.queue, &uniform, &camera);
+        }
         let probe_positions: Vec<Vec3> = probe_frame
             .due
             .iter()
@@ -2056,8 +2060,15 @@ impl Renderer {
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => true,
         };
-        let mut passes: Vec<FramePass> =
-            (0..cascades.len() as u32).map(FramePass::Cascade).collect();
+        // The live sky's step first: what the frame's passes sample is its
+        // last complete capture (sky_capture.rs).
+        let mut passes: Vec<FramePass> = self
+            .sky_capture
+            .as_ref()
+            .map(|_| FramePass::LiveSky)
+            .into_iter()
+            .chain((0..cascades.len() as u32).map(FramePass::Cascade))
+            .collect();
         if shelter_redraw {
             passes.push(FramePass::Shelter);
         }
@@ -3463,6 +3474,32 @@ impl Renderer {
                         ambient,
                     );
                     stats.draw_calls += (lights_2d > 0) as u32;
+                }
+                FramePass::LiveSky => {
+                    let c = self.sky_capture.as_ref().expect("planned with it");
+                    let ibl = self.ibl.views();
+                    let frame = |uniform: wgpu::BindingResource| {
+                        bind_group(
+                            &self.device,
+                            "frame (live sky)",
+                            &self.frame_layout,
+                            &[
+                                uniform,
+                                wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
+                                wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                                wgpu::BindingResource::TextureView(&ibl.irradiance),
+                                wgpu::BindingResource::TextureView(&ibl.prefiltered),
+                                wgpu::BindingResource::TextureView(&ibl.brdf_lut),
+                                wgpu::BindingResource::Sampler(&ibl.sampler),
+                                self.light_buffers[0].as_entire_binding(),
+                                self.light_buffers[1].as_entire_binding(),
+                                self.light_buffers[2].as_entire_binding(),
+                                self.lightmaps.probe_buffer.as_entire_binding(),
+                                self.ltc.as_entire_binding(),
+                            ],
+                        )
+                    };
+                    c.record(&mut encoder, &self.ibl, frame, sky_group);
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
                     meshlet_views: &probe_views,

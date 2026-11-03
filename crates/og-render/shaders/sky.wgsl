@@ -505,6 +505,10 @@ fn aurora_air(d: vec3<f32>, viewer: f32) -> vec3<f32> {
 
 // The procedural sky drawn per pixel with the chosen look (frame.sky_*):
 // its sun is where it is this frame, not where the lighting was baked.
+// The live sky draws its capture's faces with it too (sky_capture.rs),
+// through the face cameras' frame uniforms, whose stars are off (they
+// would only add noise to the light): what moves in it moves in the
+// reflections and the ambient light.
 @fragment
 fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   let dir = view_dir(in.ndc);

@@ -279,7 +279,7 @@ impl ProbeSlot {
                 ..Default::default()
             })
         });
-        let filter = ibl.probe_filter(device, queue, &capture, &radiance, &prefiltered, size);
+        let filter = ibl.probe_filter(device, queue, &capture, &radiance, None, &prefiltered, size);
         let view = prefiltered.create_view(&wgpu::TextureViewDescriptor {
             label: Some("probe"),
             dimension: Some(wgpu::TextureViewDimension::Cube),
@@ -576,17 +576,10 @@ impl Probes {
         }
         for (d, cams) in faces.iter().enumerate() {
             for (face, f) in cams.iter().enumerate() {
-                let mut u = *base;
-                u.view_proj = f.view_proj.to_cols_array_2d();
-                u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
-                u.view_pos = positions[d].extend(0.0).to_array();
-                u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
-                (u.view_right, u.view_up) = f.axes();
-                u.cluster = [0.0; 4];
-                u.caustics = [[0.0; 4]; 4];
-                u.stylise = [0.0; 4];
-                u.probe = [[0.0; 4]; 3];
-                put(frame.active.len() + 6 * d + face, &u);
+                put(
+                    frame.active.len() + 6 * d + face,
+                    &face_uniform(base, f, positions[d]),
+                );
             }
         }
         queue.write_buffer(buffer, 0, &bytes);
@@ -608,6 +601,27 @@ fn face_target_sizes(frame: &ProbeFrame) -> Vec<u32> {
         })
         .map(|(_, (p, _))| p.face_size())
         .collect()
+}
+
+/// The frame uniform of a cube face drawn by camera `f` from `at`: the
+/// frame's own `base` with the face camera's matrices, drawn without
+/// clusters (every light), caustics, stylisation or probe.
+pub(crate) fn face_uniform(
+    base: &FrameUniform,
+    f: &crate::frame::CameraFrame,
+    at: Vec3,
+) -> FrameUniform {
+    let mut u = *base;
+    u.view_proj = f.view_proj.to_cols_array_2d();
+    u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
+    u.view_pos = at.extend(0.0).to_array();
+    u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
+    (u.view_right, u.view_up) = f.axes();
+    u.cluster = [0.0; 4];
+    u.caustics = [[0.0; 4]; 4];
+    u.stylise = [0.0; 4];
+    u.probe = [[0.0; 4]; 3];
+    u
 }
 
 /// The face cameras of a capture at `at` (their matrices, unjittered).

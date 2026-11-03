@@ -9,7 +9,8 @@ use crate::atmo_scenes::{colonnade, colonnade_camera};
 use glam::{Mat4, Vec3};
 use og_render::{
     Aurora, Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog, Material,
-    PhysicalAtmosphere, ProceduralSky, RenderScene, SurfaceWeather, day_night, shapes,
+    PhysicalAtmosphere, ProceduralSky, RenderScene, StandardMaterial, SurfaceWeather, day_night,
+    shapes,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -30,6 +31,7 @@ pub const SKY_SCENES: &[&str] = &[
     "weather-shelter-meshlet",
     "aurora-arcs",
     "aurora-breakup",
+    "live-sky",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -91,6 +93,47 @@ pub fn physical_light(
     });
     scene.post.bloom = Some(Bloom::default());
     look
+}
+
+/// `live-sky`: a chrome sphere on a grey ground at 14:00 under the
+/// physical sky, seen from a little above, under an overcast deck of
+/// rose-tinted cloud (no light dimmed: only the sky changes); without
+/// `clouds` the same deck at no coverage, so the two differ only in the
+/// clouds' uniform. The
+/// sphere's upper half reflects the sky over and behind the camera, out
+/// of the frame, so only the live sky capture can bring the clouds into it.
+pub fn live_sky_scene(clouds: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    physical_light(&mut scene, 14.0, PhysicalAtmosphere::EARTH);
+    scene.fog = None;
+    let ground = scene.add_mesh(shapes::plane(200.0, 1.0));
+    let grey = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.35),
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    let sphere = scene.add_mesh(shapes::sphere(64, 32));
+    let chrome = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.95),
+        metalness: 1.0,
+        roughness: 0.02,
+        ..Default::default()
+    });
+    let at = Vec3::new(0.0, 1.0, 0.0);
+    scene.add_instance(sphere, chrome, Mat4::from_translation(at));
+    scene.camera = colonnade_camera();
+    scene.camera.position = Vec3::new(0.0, 2.2, 4.5);
+    scene.camera.target = at;
+    scene.clouds = Some(Clouds {
+        coverage: if clouds { 0.95 } else { 0.0 },
+        density: 0.06,
+        color: Vec3::new(1.0, 0.45, 0.5),
+        base: 900.0,
+        layer: 0.0,
+        ..Clouds::default()
+    });
+    scene
 }
 
 /// `scene` under `clouds`, the light dimmed by their cover as the runtime
@@ -252,6 +295,10 @@ fn auroral(aurora: Aurora) -> RenderScene {
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
     match name {
+        "live-sky" => live_sky_scene(true),
+        // live-sky with its clouds cleared (no reference; the live-sky
+        // check compares against it).
+        "live-sky-clear" => live_sky_scene(false),
         "weather-wet" => weathered(
             11.0,
             SurfaceWeather {
