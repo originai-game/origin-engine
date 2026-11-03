@@ -469,13 +469,18 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
         foam_noise(q * vec2<f32>(0.3, 0.7) + vec2<f32>(11.3, 1.9))) - vec2<f32>(0.5);
       let qw = q + warp * 3.5;
       let coarse = 1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(0.7, 1.6)) - 1.0);
-      let mid = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(2.1, 4.6)) - 1.0), 0.5, smoothstep(0.15, 0.35, footprint));
-      let fine = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(5.5, 12.0)) - 1.0), 0.5, smoothstep(0.05, 0.12, footprint));
+      // (Ridged value noise sits near 0.68, its spread about 0.13: the octaves a pixel spans fade to that mean.)
+      let mid = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(2.1, 4.6)) - 1.0), 0.68, smoothstep(0.15, 0.35, footprint));
+      let fine = mix(1.0 - abs(2.0 * foam_noise(qw * vec2<f32>(5.5, 12.0)) - 1.0), 0.68, smoothstep(0.05, 0.12, footprint));
       let lace = coarse * 0.5 + mid * 0.3 + fine * 0.2;
-      let cut = 1.05 - 0.7 * core;
-      let cover = smoothstep(cut - 0.15, cut + 0.15, lace);
-      crest_line = smoothstep(0.7, 0.95, core);
-      whitecap = cover * mix(0.5, 1.0, crest_line) * smoothstep(0.0, 0.25, core);
+      // The cut stays above the lace's mean even on a breaking crest (some 40 % of it white there, 5 % at the patch's
+      // fringe), so a whitecap is threads with the sea between them, never a filled sheet (a cut under the mean
+      // covered nearly all of the crest). The threshold is soft, 0.15 wide.
+      let cut = 0.97 - 0.25 * core;
+      let cover = smoothstep(cut - 0.075, cut + 0.075, lace);
+      // Opaque white only at the threads' hearts on the breaking crest itself.
+      crest_line = smoothstep(0.85, 1.0, core) * smoothstep(cut + 0.05, cut + 0.18, lace);
+      whitecap = cover * mix(0.45, 1.0, crest_line) * smoothstep(0.0, 0.3, core);
       // A gale's old foam: faint, thin streaks drawn out along the wind across the sea (from 12 m/s), the wash the
       // broken crests leave behind them. Their lanes wander (a warp across the wind, so the noise's lattice does not
       // line them up into a comb), and they fade to nothing where a pixel spans a lane (else a dotted band).
@@ -544,11 +549,14 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   }
   let thickness = max(scene_at - here, 0.0);
   let absorb = 1.0 - exp(-thickness / max(water.shallow.w, 1e-3));
-  // The body scatters the light that reaches it: its deep colour is authored for daylight (the sun and sky on level
-  // water at least 1 in luminance) and darkens in proportion under less, at dusk, at night or under a storm's deck
+  // The body scatters the light that reaches it: its deep colour is authored for daylight and darkens under less, at dusk, at night or under a storm's deck
   // (else the sea glowed a daylight teal under a dark sky). Shadowed water scatters less light still.
   let light_in = frame.light_color.rgb * max(l.y, 0.0) + ambient_light_level(vec3<f32>(0.0, 1.0, 0.0), in.world) * frame.params.x;
-  let daylight = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)), 1.0);
+  // Full from 1.5 (the sun some 25° up on a clear day), then falling with the square of the light: a moonlit body
+  // (the moon's light is a fair share of the sun's in the day-night look, so land reads at night) sits under the night
+  // sky it lies beneath, as a real sea's does (its water-leaving light is a few percent of the sky's).
+  let daylight_k = min(dot(light_in, vec3<f32>(0.2126, 0.7152, 0.0722)) / 1.5, 1.0);
+  let daylight = daylight_k * daylight_k;
   var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
@@ -656,8 +664,11 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let speed = length(f);
     let drift = f * t;
     // Cut at its middle, so half of a bank has none (a lower cut left a faint foam all along it: a bright line).
-    let patches = smoothstep(0.5, 0.8, foam_noise((in.local - drift) * 0.9) * 0.7 + foam_noise((in.local - drift) * 3.3) * 0.3);
-    band = edge * (0.4 + 0.6 * edge) * (0.25 + 0.7 * noise) * patches * smoothstep(0.05, 0.6, speed);
+    let patches = smoothstep(0.55, 0.75, foam_noise((in.local - drift) * 0.9) * 0.7 + foam_noise((in.local - drift) * 3.3) * 0.3);
+    // Faded by depth: none at the bank's very contact (a band peaked there read as one bright line along the whole
+    // bank), most a third of the band out where the water piles against it.
+    let d = 1.0 - edge;
+    band = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d)) * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
   }
   let foam = clamp(band + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
@@ -666,7 +677,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let sky_lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + ambient_light_level(in.normal, in.world) * frame.params.x;
   // Foam off the crest line is a thin film that takes the water's tint; the breaking crest is white.
   let white = water.foam.rgb * sky_lit;
-  let foam_tint = mix(mix(color, white, 0.6), white, crest_line);
+  let foam_tint = mix(mix(color, white, 0.7), white, crest_line);
   color = mix(color, foam_tint, whitecap);
   // The old foam is thinner still: greyer than a whitecap, the water showing through it.
   color = mix(color, mix(color, white * 0.6, 0.7), old);
