@@ -541,3 +541,56 @@ fn the_edit_state_is_saved_and_restored() {
     assert_eq!(after.selection, before.selection);
     assert!(after.composing);
 }
+
+/// A label mirrored by its transform (scaleX −1: a right arrow drawn as a
+/// mirrored left one) keeps the mirror on its text for the overlay, which
+/// flips the glyphs. Baked into the pen like an upright scale, the mirror
+/// moved the pen to the box's other edge and drew the glyphs unflipped
+/// from there: a left chevron pushed against the right edge.
+#[test]
+fn a_mirrored_label_keeps_its_mirror_for_the_glyphs() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let draw = |ui: &mut Ui, scale_x: f32| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label("Arrow", "<", LabelDesc::default());
+        ui.set_props(Props {
+            transform: Transform {
+                scale_x,
+                ..Transform::IDENTITY
+            },
+            ..Props::default()
+        });
+        ui.end();
+    };
+    let maps = |ui: &Ui| -> Vec<f32> {
+        ui.frame()
+            .items
+            .iter()
+            .filter(|i| {
+                let cmd = match &i.cmd {
+                    DrawCmd::StyledText { text, .. } => &**text,
+                    c => c,
+                };
+                matches!(cmd, DrawCmd::Text { .. })
+            })
+            .map(|i| i.transform.a)
+            .collect()
+    };
+    draw(&mut ui, 1.0);
+    draw(&mut ui, 1.0);
+    let upright = maps(&ui);
+    assert!(!upright.is_empty(), "the label draws its text");
+    assert!(
+        upright.iter().all(|a| *a == 1.0),
+        "upright, baked: {upright:?}"
+    );
+    draw(&mut ui, -1.0);
+    draw(&mut ui, -1.0);
+    let mirrored = maps(&ui);
+    assert!(!mirrored.is_empty(), "the mirrored label draws its text");
+    assert!(
+        mirrored.iter().all(|a| *a == -1.0),
+        "the mirror reaches the overlay with the text: {mirrored:?}"
+    );
+}

@@ -535,13 +535,17 @@ fn glitch_layer(
 
 /// A command with its map applied where the map keeps rectangles upright
 /// (translation and scale): the identity left over. A turn or skew stays
-/// with the command for the overlay, its clip taken onto the screen.
+/// with the command for the overlay, its clip taken onto the screen; so
+/// does a mirror over text, whose glyphs a pen position cannot flip (an
+/// image flips by its uv).
 pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
     if m.is_identity() {
         return (c, m);
     }
     let r = |r: &Rect| m.map_rect(r);
-    if !m.is_axis_aligned() {
+    let mirrored_text =
+        (m.a < 0.0 || m.d < 0.0) && matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. });
+    if !m.is_axis_aligned() || mirrored_text {
         let mut c = c;
         match &mut c {
             DrawCmd::Glass { clip, .. }
