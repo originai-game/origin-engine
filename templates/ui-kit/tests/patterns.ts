@@ -828,3 +828,60 @@ export function genres2Script(phone: boolean): Script {
   b.cmd("demo:text:100");
   return b.end();
 }
+
+/** The last previews (src/genres3.ts) in their states. `phone` keeps to what a finger does. */
+function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
+  // Photo mode: the camera's sliders, zoomed in and rolled; the filters with noir pressed; the frames with the cinema
+  // bars and the grid; the shutter's flash; the controls hidden for a clean shot, and a press bringing them back.
+  const tabs = phone ? "Tabs/Chips" : "Tabs";
+  b.cmd("show:photo");
+  b.cmd("pat:reset");
+  b.shot("photo-idle", 1.0);
+  b.dump("photo");
+  b.cmd("pat:photo:set:fov=35");
+  b.cmd("pat:photo:set:roll=-8");
+  b.shot("photo-camera", 0.5);
+  b.seq((at) => tap(at, `${tabs}/filters`), 0.3);
+  b.seq((at) => tap(at, "Rows/Line#0/noir"), 0.4);
+  b.shot("photo-filter", 0.5);
+  b.dump("photo-filter");
+  b.seq((at) => tap(at, `${tabs}/frames`), 0.3);
+  b.seq((at) => tap(at, "Rows/Line#0/cinema"), 0.3);
+  b.seq((at) => tap(at, "Bar/Grid/Button"), 0.4);
+  b.shot("photo-frame", 0.5);
+  b.dump("photo-frame");
+  b.seq((at) => tap(at, "Bar/Shutter"), 0.05);
+  b.shot("photo-flash", 0.1);
+  b.seq((at) => tap(at, "Bar/Hide/Button"), 0.5);
+  b.shot("photo-hidden", 0.5);
+  b.dump("photo-hidden");
+  b.seq((at) => tap(at, "Photo/Mode/Hint"), 0.5);
+  b.dump("photo-shown");
+  b.cmd("pat:photo:reset");
+}
+
+const GENRE3_SCREENS = ["photo"] as const;
+
+/** The last previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+export function genres3Script(phone: boolean): Script {
+  const b = builder(0.3);
+  if (phone) b.cmd("viewport:phone");
+  genres3(b, phone);
+  for (const loc of ["ar", "ja"]) {
+    b.cmd(`locale:${loc}`);
+    for (const s of GENRE3_SCREENS) {
+      b.cmd(`show:${s}`);
+      b.cmd("pat:reset");
+      b.shot(`${loc === "ar" ? "rtl" : loc}-${s}`, 1.0);
+    }
+  }
+  b.cmd("locale:en");
+  b.cmd("demo:text:200");
+  for (const s of GENRE3_SCREENS) {
+    b.cmd(`show:${s}`);
+    b.cmd("pat:reset");
+    b.shot(`text200-${s}`, 1.0);
+  }
+  b.cmd("demo:text:100");
+  return b.end();
+}
