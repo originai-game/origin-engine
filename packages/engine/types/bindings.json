@@ -6896,6 +6896,174 @@
     },
     {
       "id": 87,
+      "name": "Grass",
+      "schema": "og.Grass",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "data",
+          "column": "TerrainData",
+          "default": 0
+        },
+        {
+          "name": "layer",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 300,
+          "tunable": true
+        },
+        {
+          "name": "distance",
+          "column": "f32",
+          "default": 150,
+          "tunable": true
+        },
+        {
+          "name": "farTint",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 0.45,
+          "tunable": true
+        },
+        {
+          "name": "heightVariation",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "width",
+          "column": "f32",
+          "default": 0.012,
+          "tunable": true
+        },
+        {
+          "name": "curve",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "lean",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "clumpSize",
+          "column": "f32",
+          "default": 1.2,
+          "tunable": true
+        },
+        {
+          "name": "clumpLean",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "tufts",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "baseColor",
+          "column": "Color",
+          "default": {
+            "r": 0.035,
+            "g": 0.09,
+            "b": 0.015
+          }
+        },
+        {
+          "name": "tipColor",
+          "column": "Color",
+          "default": {
+            "r": 0.22,
+            "g": 0.4,
+            "b": 0.07
+          }
+        },
+        {
+          "name": "dryColor",
+          "column": "Color",
+          "default": {
+            "r": 0.45,
+            "g": 0.38,
+            "b": 0.17
+          }
+        },
+        {
+          "name": "colorVariation",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "dryness",
+          "column": "f32",
+          "default": 0.15,
+          "tunable": true
+        },
+        {
+          "name": "translucency",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "sheen",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "roughness",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "sway",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "stiffness",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "flutter",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "castShadows",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "seed",
+          "column": "u32",
+          "default": 1
+        }
+      ]
+    },
+    {
+      "id": 88,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -6948,7 +7116,7 @@
       ]
     },
     {
-      "id": 88,
+      "id": 89,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -6966,7 +7134,7 @@
       ]
     },
     {
-      "id": 89,
+      "id": 90,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -6980,7 +7148,7 @@
       ]
     },
     {
-      "id": 90,
+      "id": 91,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -7032,7 +7200,7 @@
       ]
     },
     {
-      "id": 91,
+      "id": 92,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -7086,7 +7254,7 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -7120,7 +7288,7 @@
       ]
     },
     {
-      "id": 93,
+      "id": 94,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -7164,7 +7332,7 @@
       ]
     },
     {
-      "id": 94,
+      "id": 95,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",

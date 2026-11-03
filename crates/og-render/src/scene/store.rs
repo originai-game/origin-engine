@@ -117,6 +117,7 @@ impl RenderScene {
             water: Vec::new(),
             terrains: Vec::new(),
             scatters: Vec::new(),
+            grass: Vec::new(),
             impostors: Vec::new(),
             wind: None,
             water_2d: Vec::new(),

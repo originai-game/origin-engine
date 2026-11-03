@@ -39,7 +39,8 @@ impl TerrainRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> (wgpu::BindGroupLayout, TerrainPasses) {
-        let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
+        // Compute too: grass generation reads the terrain (grass.rs).
+        let vf = wgpu::ShaderStages::VERTEX_FRAGMENT | wgpu::ShaderStages::COMPUTE;
         let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: vf,
@@ -62,7 +63,7 @@ impl TerrainRenderer {
         };
         let sampler = |binding| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::FRAGMENT,
+            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         };
@@ -165,7 +166,8 @@ impl TerrainRenderer {
         queue: &wgpu::Queue,
         p: TerrainPipelines,
     ) -> TerrainRenderer {
-        let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
+        // Compute too: grass generation reads the terrain (grass.rs).
+        let vf = wgpu::ShaderStages::VERTEX_FRAGMENT | wgpu::ShaderStages::COMPUTE;
         let tex = |binding, filterable, dim| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: vf,
@@ -188,7 +190,7 @@ impl TerrainRenderer {
         };
         let sampler = |binding| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::FRAGMENT,
+            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         };
@@ -864,6 +866,7 @@ impl TerrainRenderer {
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 pyramid,
                 layers,
+                grass: crate::grass::far_gpu(scene, ti),
             };
             let slot = &mut self.slots[ti];
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
@@ -1032,9 +1035,27 @@ impl TerrainRenderer {
                 },
                 levels: out,
                 cast_shadows: t.cast_shadows,
+                terrain: ti,
+                arrayed,
             });
         }
         Ok(draws)
+    }
+
+    /// Its group layout: the standard one, or (`arrayed`, once made) the
+    /// layer-array variant's.
+    pub(crate) fn group_layout(&self, arrayed: bool) -> Option<&wgpu::BindGroupLayout> {
+        if arrayed {
+            self.arrays.as_ref().map(|(l, _)| l)
+        } else {
+            Some(&self.layout)
+        }
+    }
+
+    /// A terrain data's size along x and z and its height range, once uploaded.
+    pub(crate) fn extent_of(&self, data: usize) -> Option<(Vec2, (f32, f32))> {
+        let d = self.datas.get(data)?.as_ref()?;
+        Some((d.layout.size, d.range))
     }
 
     /// The world bounds of the terrains drawn this frame (centre, radius),

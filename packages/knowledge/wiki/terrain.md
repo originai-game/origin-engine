@@ -29,6 +29,7 @@ module terrain {
 | [`TerrainBrushMode`](#type-TerrainBrushMode) | enum | What og.terrain.edit does under its brush. |
 | [`og.Terrain`](#record-Terrain) | component | Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to. |
 | [`og.TerrainScatter`](#record-TerrainScatter) | component | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities. |
+| [`og.Grass`](#record-Grass) | component | A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one). |
 | [`TerrainInfo`](#type-TerrainInfo) | struct | A loaded terrain. |
 | [`TerrainSampleDesc`](#type-TerrainSampleDesc) | desc struct | Where og.terrain.sample looks. |
 | [`TerrainSample`](#type-TerrainSample) | struct | The terrain under a point. |
@@ -73,7 +74,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 28397</sub>
+<sub>`api.ogt` line 28543</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +104,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 28404</sub>
+<sub>`api.ogt` line 28550</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +146,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 28411</sub>
+<sub>`api.ogt` line 28557</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +178,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 28427</sub>
+<sub>`api.ogt` line 28573</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +210,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 28435</sub>
+<sub>`api.ogt` line 28581</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +244,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 28443</sub>
+<sub>`api.ogt` line 28589</sub>
 
 ## Components, resources and events
 
@@ -383,6 +384,193 @@ component TerrainScatter {
 
 <sub>`api.ogt` line 28166</sub>
 
+<a id="record-Grass"></a>
+
+### `og.Grass` (component)
+
+A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
+
+Token `og.Grass`, registered under the schema name `og.Grass`; its value type is `Grass`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
+| `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. |
+| `density` | `number` | `300` | 0 … 4000 | — | tunable | Blades per square metre near the camera where the layer's weight is 1. |
+| `distance` | `number` | `150` | 0 … 1000 | `m` | tunable | How far from the camera blades are drawn; they thin out to nothing there. |
+| `farTint` | `boolean` | `true` | — | — | — | The terrain takes the field's colour where its blades thin out and past them. |
+| `height` | `number` | `0.45` | 0 … 4 | `m` | tunable | The tallest blade. |
+| `heightVariation` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | How much shorter blades are than the tallest: 0 all alike, 1 down to nothing. |
+| `width` | `number` | `0.012` | 0 … 0.5 | `m` | tunable | A blade's width at its root. |
+| `curve` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How far blades droop along their length: 0 straight, 1 arching over. |
+| `lean` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How far blades lean at rest, as a share of their height. |
+| `clumpSize` | `number` | `1.2` | 0.05 … 20 | `m` | tunable | The size of the clumps blades grow in, sharing their tint and height. |
+| `clumpLean` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | How far blades lean out from their clump's centre, as a share of their height. |
+| `tufts` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far blades are pulled in towards their clump's centre: 0 an even lawn, 1 tight tufts. |
+| `baseColor` | `Color` | `{ r: 0.035, g: 0.09, b: 0.015 }` | — | — | — | The roots' colour (linear). |
+| `tipColor` | `Color` | `{ r: 0.22, g: 0.4, b: 0.07 }` | — | — | — | The tips' colour (linear). |
+| `dryColor` | `Color` | `{ r: 0.45, g: 0.38, b: 0.17 }` | — | — | — | Dry grass's colour (linear): dry clumps and drying tips. |
+| `colorVariation` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How much blades vary in brightness by clump, blade and patch. |
+| `dryness` | `number` | `0.15` | 0 … 1 | `ratio` | tunable | The share of clumps that are dry, and how far tips dry. |
+| `translucency` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How much sunlight passes through a blade lit from behind, tinted by it. |
+| `sheen` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | The upper blade's gloss: gusts show as a moving sheen. |
+| `roughness` | `number` | `0.6` | 0.04 … 1 | — | tunable | The blade's roughness. |
+| `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind bends the blades: 1 as it blows, 0 still. |
+| `stiffness` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How stiff the blades are: 0 bends furthest, 1 least, and sways faster. |
+| `flutter` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How much the tips of near blades shiver in the wind. |
+| `castShadows` | `boolean` | `false` | — | — | — | Whether the blades cast the sun's shadows (near the camera, into the first cascade). |
+| `seed` | `number` | `1` | — | — | — | Another seed places the blades elsewhere. |
+
+```ogt
+component Grass {
+  doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
+  field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+  field layer u32 "The terrain layer that places it, 0 to 15." {
+    max 15
+  }
+  field density f32 "Blades per square metre near the camera where the layer's weight is 1." {
+    default 300
+    min 0
+    max 4000
+    tunable true
+  }
+  field distance f32 "How far from the camera blades are drawn; they thin out to nothing there." {
+    default 150
+    min 0
+    max 1000
+    unit m
+    tunable true
+  }
+  field farTint bool "The terrain takes the field's colour where its blades thin out and past them." {
+    default true
+  }
+  field height f32 "The tallest blade." {
+    default 0.45
+    min 0
+    max 4
+    unit m
+    tunable true
+  }
+  field heightVariation f32 "How much shorter blades are than the tallest: 0 all alike, 1 down to nothing." {
+    default 0.4
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field width f32 "A blade's width at its root." {
+    default 0.012
+    min 0
+    max 0.5
+    unit m
+    tunable true
+  }
+  field curve f32 "How far blades droop along their length: 0 straight, 1 arching over." {
+    default 0.5
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field lean f32 "How far blades lean at rest, as a share of their height." {
+    default 0.3
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field clumpSize f32 "The size of the clumps blades grow in, sharing their tint and height." {
+    default 1.2
+    min 0.05
+    max 20
+    unit m
+    tunable true
+  }
+  field clumpLean f32 "How far blades lean out from their clump's centre, as a share of their height." {
+    default 0.4
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field tufts f32 "How far blades are pulled in towards their clump's centre: 0 an even lawn, 1 tight tufts." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field baseColor Color "The roots' colour (linear)." {
+    default 0.035 0.09 0.015
+  }
+  field tipColor Color "The tips' colour (linear)." {
+    default 0.22 0.4 0.07
+  }
+  field dryColor Color "Dry grass's colour (linear): dry clumps and drying tips." {
+    default 0.45 0.38 0.17
+  }
+  field colorVariation f32 "How much blades vary in brightness by clump, blade and patch." {
+    default 0.3
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field dryness f32 "The share of clumps that are dry, and how far tips dry." {
+    default 0.15
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field translucency f32 "How much sunlight passes through a blade lit from behind, tinted by it." {
+    default 0.6
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field sheen f32 "The upper blade's gloss: gusts show as a moving sheen." {
+    default 0.4
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field roughness f32 "The blade's roughness." {
+    default 0.6
+    min 0.04
+    max 1
+    tunable true
+  }
+  field sway f32 "How much og.Wind bends the blades: 1 as it blows, 0 still." {
+    default 1
+    min 0
+    max 2
+    tunable true
+  }
+  field stiffness f32 "How stiff the blades are: 0 bends furthest, 1 least, and sways faster." {
+    default 0.5
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field flutter f32 "How much the tips of near blades shiver in the wind." {
+    default 0.3
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field castShadows bool "Whether the blades cast the sun's shadows (near the camera, into the first cascade)."
+  field seed u32 "Another seed places the blades elsewhere." {
+    default 1
+  }
+}
+```
+
+<sub>`api.ogt` line 28231</sub>
+
 ## Types
 
 <a id="type-TerrainData"></a>
@@ -479,7 +667,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 28231</sub>
+<sub>`api.ogt` line 28377</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -519,7 +707,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 28255</sub>
+<sub>`api.ogt` line 28401</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -550,7 +738,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 28274</sub>
+<sub>`api.ogt` line 28420</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -575,7 +763,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 28287</sub>
+<sub>`api.ogt` line 28433</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -633,7 +821,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 28297</sub>
+<sub>`api.ogt` line 28443</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -660,7 +848,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 28331</sub>
+<sub>`api.ogt` line 28477</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -741,7 +929,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 28342</sub>
+<sub>`api.ogt` line 28488</sub>
 
 ## Column kinds
 

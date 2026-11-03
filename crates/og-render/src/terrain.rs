@@ -526,6 +526,8 @@ struct TerrainGpu {
     prev_view_proj: [[f32; 4]; 4],
     pyramid: [[f32; 4]; MAX_TERRAIN_PYRAMID as usize],
     layers: [LayerGpu; MAX_TERRAIN_LAYERS],
+    /// The far colour of the og.Grass field on it (`grass.rs`).
+    grass: crate::grass::FarGpu,
 }
 
 /// `TerrainLevel` in terrain.wgsl.
@@ -557,6 +559,10 @@ pub(crate) struct TerrainDraw {
     pub passes: TerrainPasses,
     pub levels: Vec<LevelDraw>,
     pub cast_shadows: bool,
+    /// Its index in [`crate::RenderScene::terrains`], and whether its group
+    /// is the layer-array variant's (grass generation binds the group).
+    pub terrain: usize,
+    pub arrayed: bool,
 }
 
 /// The levels of one terrain for a camera, in whole grid units.
@@ -966,12 +972,14 @@ fn terrain_passes(
     }
 }
 
-const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
+pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
+/// What terrain.wgsl's uniform needs declared (its far grass's wind).
+pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
-        "{frame}{tables}{lighting}{}{}{TERRAIN_WGSL}{}",
+        "{frame}{tables}{lighting}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}",
         crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
         wgsl3d!("terrain_lit.wgsl")
@@ -995,7 +1003,7 @@ const LAYER_ARRAYS: &str = "@group(1) @binding(5) var albedo_array: texture_2d_a
 
 /// `source` (a terrain module) with the layer arrays declared in place of
 /// the eight layer textures.
-fn terrain_array_declarations(source: &str) -> String {
+pub(crate) fn terrain_array_declarations(source: &str) -> String {
     assert!(
         source.contains(LAYER_TEXTURES),
         "the layer-array variant cannot find terrain.wgsl's layer textures"
@@ -1043,7 +1051,7 @@ pub(crate) fn terrain_shadow_array_source() -> String {
 /// The terrain's shadow module.
 pub(crate) fn terrain_shadow_source() -> String {
     format!(
-        "{TERRAIN_WGSL}{}{}",
+        "{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{}{}",
         crate::SHADOW_PASS_WGSL,
         wgsl3d!("terrain_shadow.wgsl")
     )

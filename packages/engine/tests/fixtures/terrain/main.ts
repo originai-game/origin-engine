@@ -4,19 +4,24 @@
 // (--no-check: the fixture has no src/ for og check to read)
 //   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
 //     --commands "0.2:screenshot:hill.png;0.3:hole:20:20:4;0.6:screenshot:hole.png;0.7:quit"
+// `grass` grows a default og.Grass over it, and `wind` blows og.Wind (R6's grass):
+//   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
+//     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:0.3;1.0:screenshot:grass-wind.png;1.1:quit"
 import { og, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 
 let terrain = 0;
+let hill = 0;
 
 export default og.game({
   start(world) {
     const info = og.terrain.load(world, "terrain/hill.ogt");
     if (!info.ok) throw new Error(info.reason);
     terrain = info.value.data as unknown as number;
-    const hill = world.spawn({ name: "hill" });
-    if (!hill.ok) throw new Error(hill.reason);
-    world.insert(hill.value, og.Terrain, { data: info.value.data });
-    world.insert(hill.value, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.value.geometry });
+    const spawned = world.spawn({ name: "hill" });
+    if (!spawned.ok) throw new Error(spawned.reason);
+    hill = spawned.value as unknown as number;
+    world.insert(spawned.value, og.Terrain, { data: info.value.data });
+    world.insert(spawned.value, og.Collider, { shape: SHAPE_HEIGHTFIELD, mesh: info.value.geometry });
     const cam = world.resource(og.Camera);
     if (cam.ok) {
       const eye = { x: 20, y: 22, z: 38 };
@@ -42,8 +47,20 @@ export default og.game({
       });
       if (!r.ok) throw new Error(r.reason);
     },
+    /** `grass`: a default og.Grass (a meadow) over the hill's first layer. */
+    grass: (world) => {
+      world.insert(hill as never, og.Grass, { data: terrain as never });
+    },
+    /** `wind:<strength>`: og.Wind along +x. */
+    wind: (world, args) => {
+      const w = world.resource(og.Wind);
+      if (!w.ok) throw new Error(w.reason);
+      w.value.strength = Number(args[0] ?? 0.3);
+    },
   },
   commandHelp: {
     hole: { usage: "<x>:<z>:<radius>", doc: "Cut a round pit into the hill (og.terrain.edit's hole brush)." },
+    grass: { usage: "", doc: "Grow a default og.Grass over the hill." },
+    wind: { usage: "<strength>", doc: "Blow og.Wind along +x." },
   },
 });

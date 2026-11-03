@@ -621,6 +621,8 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             terrain: get("og.Terrain"),
             #[cfg(not(feature = "profile2d"))]
             scatter: get("og.TerrainScatter"),
+            #[cfg(not(feature = "profile2d"))]
+            grass: get("og.Grass"),
             collider: get("og.Collider"),
             lines: get("og.Lines"),
             points: get("og.Points"),

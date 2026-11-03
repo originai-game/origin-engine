@@ -38,6 +38,17 @@ struct TerrainUniform {
   prev_view_proj: mat4x4<f32>,
   pyramid: array<vec4<f32>, 16>,  // per level: x its first tile, y tiles along x, z along z
   layers: array<TerrainLayerGpu, 16>,
+  grass: TerrainGrass,  // the far grass (terrain_lit.wgsl grass_far)
+};
+
+// The colour an og.Grass field gives the ground past and between its
+// blades (grass.rs FarGpu; grass_common.wgsl before this file).
+struct TerrainGrass {
+  color: vec4<f32>,   // rgb: the field's colour from afar (linear), w: its layer (< 0: no field)
+  fade: vec4<f32>,    // x: where the tint starts (m from the camera), y: where it is whole, z: how much gusts brighten it, w: its strength (0..1)
+  clump: vec4<f32>,   // x: clump size (the terrain's space), y: colour variation, z: dryness, w: the seed (24 bits)
+  dry: vec4<f32>,     // rgb: dry grass (linear)
+  wind: GrassWind,
 };
 
 // Positions are in grid units of the finest level's spacing from the

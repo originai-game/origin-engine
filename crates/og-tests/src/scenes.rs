@@ -168,6 +168,11 @@ pub const SCENES: &[&str] = &[
     "impostors",
     "impostor-scatter",
     "wind-models",
+    "grass-near",
+    "grass-mid",
+    "grass-far",
+    "grass-backlit",
+    "grass-wind",
     "post-blur",
     "ui-shapes",
     "ui-paints",
@@ -1291,6 +1296,40 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // shadow leans with it.
         "wind-models" => |g, _| {
             g.scene = crate::wind_scenes::wind_scene(true, 90);
+            Ok(())
+        },
+        // R6's grass: a default og.Grass over the island's meadow, casting
+        // into the first cascade. Near, at eye height: curved blades in
+        // clumps, dark at their roots, bright and some dry at their tips,
+        // the boulders' and the blades' own shadows on them.
+        "grass-near" => |g, _| {
+            g.scene = crate::grass_scenes::grass_scene("near");
+            Ok(())
+        },
+        // 12 m up across 100 m of meadow: thinner, wider blades past 30 m,
+        // the ground between them grass-coloured, no ring where the
+        // levels of detail change.
+        "grass-mid" => |g, _| {
+            g.scene = crate::grass_scenes::grass_scene("mid");
+            Ok(())
+        },
+        // 40 m up towards the mountains: the meadow reads as grass to the
+        // slopes with no seam where its blades end (150 m), only rock and
+        // snow above.
+        "grass-far" => |g, _| {
+            g.scene = crate::grass_scenes::grass_scene("far");
+            Ok(())
+        },
+        // At eye height into a low sun: the blades glow yellow-green where
+        // it shines through them, their edges brightest.
+        "grass-backlit" => |g, _| {
+            g.scene = crate::grass_scenes::grass_scene("backlit");
+            Ok(())
+        },
+        // The near view in a gusting wind (+x, tick 90): every blade bent
+        // downwind, further in the gust patches.
+        "grass-wind" => |g, _| {
+            g.scene = crate::grass_scenes::grass_wind_scene(90);
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and

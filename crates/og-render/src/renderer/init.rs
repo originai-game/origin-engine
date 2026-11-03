@@ -809,6 +809,15 @@ impl Renderer {
                 samples,
             },
         );
+        let grass = grass::GrassRenderer::new(
+            &device,
+            grass::GrassPipelines {
+                frame_layout: &frame_layout,
+                shadow_layout: &shadow_bind_layout,
+                fx_layout: &fx_layout,
+                samples,
+            },
+        );
         let vertex_buffer = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -934,6 +943,7 @@ impl Renderer {
             fluid3d,
             terrain,
             scatter,
+            grass,
             metaballs,
             ibl,
             sprite_pipeline,

@@ -271,6 +271,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Water",
         enable: |_, _| Ok(()),
     },
+    // R6: the grass, read by extraction alone: a world without grass keeps
+    // its type table and hash.
+    Lazy {
+        name: "og.Grass",
+        enable: |_, _| Ok(()),
+    },
     // R4: the weather's simulated state and its strikes; og.weather writes
     // and sends them. Naming either registers both.
     Lazy {

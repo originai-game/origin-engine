@@ -26,6 +26,7 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
     pub(super) scatter_material: &'a F2,
     pub(super) scatter_mesh: &'a F3,
+    pub(super) grass_frame: &'a grass::GrassFrame,
     pub(super) sky_group: &'a wgpu::BindGroup,
     pub(super) fluid_bounds: Option<(Vec3, f32)>,
     pub(super) draw_blended: &'a F4,
@@ -92,6 +93,7 @@ impl Renderer {
             scatter_batches,
             scatter_material,
             scatter_mesh,
+            grass_frame,
             sky_group,
             fluid_bounds,
             draw_blended,
@@ -310,6 +312,12 @@ impl Renderer {
         stats.draw_calls += n;
         stats.scatter_draws += n;
         stats.scatter_copies += copies;
+        stats.draw_calls += self.grass.draw(
+            &mut pass,
+            grass::GrassPass::Lit,
+            grass_frame,
+            Some(fx_group),
+        );
         let sky = match scene.environment.background {
             Background::Sky => Some(&self.sky_pipeline),
             Background::Procedural { .. } => Some(&self.sky_look_pipeline),

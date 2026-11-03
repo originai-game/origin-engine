@@ -19088,6 +19088,7 @@
         "TerrainBrushMode",
         "Terrain",
         "TerrainScatter",
+        "Grass",
         "TerrainInfo",
         "TerrainSampleDesc",
         "TerrainSample",
@@ -37927,7 +37928,7 @@
     "Wind": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
+      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
       "type": "object",
       "properties": {
         "strength": {
@@ -82640,6 +82641,231 @@
           "maximum": 500,
           "x-og-unit": "m",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Grass": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The terrain layer that places it, 0 to 15.",
+          "default": 0,
+          "maximum": 15
+        },
+        "density": {
+          "type": "number",
+          "description": "Blades per square metre near the camera where the layer's weight is 1.",
+          "default": 300,
+          "minimum": 0,
+          "maximum": 4000,
+          "x-og-tunable": true
+        },
+        "distance": {
+          "type": "number",
+          "description": "How far from the camera blades are drawn; they thin out to nothing there.",
+          "default": 150,
+          "minimum": 0,
+          "maximum": 1000,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "farTint": {
+          "type": "boolean",
+          "description": "The terrain takes the field's colour where its blades thin out and past them.",
+          "default": true
+        },
+        "height": {
+          "type": "number",
+          "description": "The tallest blade.",
+          "default": 0.45,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "heightVariation": {
+          "type": "number",
+          "description": "How much shorter blades are than the tallest: 0 all alike, 1 down to nothing.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "width": {
+          "type": "number",
+          "description": "A blade's width at its root.",
+          "default": 0.012,
+          "minimum": 0,
+          "maximum": 0.5,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "curve": {
+          "type": "number",
+          "description": "How far blades droop along their length: 0 straight, 1 arching over.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "lean": {
+          "type": "number",
+          "description": "How far blades lean at rest, as a share of their height.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "clumpSize": {
+          "type": "number",
+          "description": "The size of the clumps blades grow in, sharing their tint and height.",
+          "default": 1.2,
+          "minimum": 0.05,
+          "maximum": 20,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "clumpLean": {
+          "type": "number",
+          "description": "How far blades lean out from their clump's centre, as a share of their height.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "tufts": {
+          "type": "number",
+          "description": "How far blades are pulled in towards their clump's centre: 0 an even lawn, 1 tight tufts.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "baseColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The roots' colour (linear).",
+          "default": {
+            "r": 0.035,
+            "g": 0.09,
+            "b": 0.015
+          }
+        },
+        "tipColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The tips' colour (linear).",
+          "default": {
+            "r": 0.22,
+            "g": 0.4,
+            "b": 0.07
+          }
+        },
+        "dryColor": {
+          "$ref": "#/$defs/Color",
+          "description": "Dry grass's colour (linear): dry clumps and drying tips.",
+          "default": {
+            "r": 0.45,
+            "g": 0.38,
+            "b": 0.17
+          }
+        },
+        "colorVariation": {
+          "type": "number",
+          "description": "How much blades vary in brightness by clump, blade and patch.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "dryness": {
+          "type": "number",
+          "description": "The share of clumps that are dry, and how far tips dry.",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "translucency": {
+          "type": "number",
+          "description": "How much sunlight passes through a blade lit from behind, tinted by it.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "sheen": {
+          "type": "number",
+          "description": "The upper blade's gloss: gusts show as a moving sheen.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "roughness": {
+          "type": "number",
+          "description": "The blade's roughness.",
+          "default": 0.6,
+          "minimum": 0.04,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "sway": {
+          "type": "number",
+          "description": "How much og.Wind bends the blades: 1 as it blows, 0 still.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "stiffness": {
+          "type": "number",
+          "description": "How stiff the blades are: 0 bends furthest, 1 least, and sways faster.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "flutter": {
+          "type": "number",
+          "description": "How much the tips of near blades shiver in the wind.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Whether the blades cast the sun's shadows (near the camera, into the first cascade).",
+          "default": false
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Another seed places the blades elsewhere.",
+          "default": 1
         }
       },
       "additionalProperties": false

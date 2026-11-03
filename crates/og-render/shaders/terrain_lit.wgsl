@@ -247,6 +247,44 @@ fn terrain_band(t: f32) -> f32 {
   return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
 }
 
+// The share of layer `layer` at a point (world `p`, normal `n`, control
+// channels `c`) over every layer's weight, as og.Grass places its blades
+// (grass_generate.wgsl grass_layer_weight).
+fn grass_layer_share(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, layer: u32) -> f32 {
+  let count = min(u32(terrain.origin.w), 16u);
+  let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
+  let altitude = p.y - terrain.origin.y;
+  var sum = 0.0;
+  var mine = 0.0;
+  for (var i = 0u; i < count; i++) {
+    let l = terrain.layers[i];
+    let w = c[i / 4u][i % 4u] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    sum += w;
+    if (i == layer) { mine = w; }
+  }
+  if (sum < 1e-4) { return select(0.0, 1.0, layer == 0u); }
+  return mine / sum;
+}
+
+// og.Grass's colour on the ground under and past its blades (grass.rs,
+// after bevy_grass's far.wesl): where its layer shows, the ground takes the
+// field's colour from afar from `fade.x` on, whole from `fade.y`, so there
+// is no seam where the blades thin out to nothing; per clump and dry
+// clump as the blades are, paler where a gust presses the grass down.
+fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> vec3<f32> {
+  let g = terrain.grass;
+  if (g.color.w < 0.0) { return albedo; }
+  let amount = smoothstep(g.fade.x, g.fade.y, distance(p, frame.view_pos.xyz)) * g.fade.w * grass_layer_share(p, n, c, u32(g.color.w));
+  if (amount <= 0.0) { return albedo; }
+  let gust = grass_gust(g.wind, p.xz + frame.origin.xz, false);
+  let sheen = 1.0 + g.fade.z * g.wind.dir.z * (1.4 * gust * gust - 0.35);
+  let clump = grass_clump(local.xz - terrain_min(), g.clump.x, u32(g.clump.w));
+  let v = g.clump.y;
+  var col = g.color.rgb * mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, clump.x);
+  col = mix(col, g.dry.rgb, step(fract(clump.x * 7.31 + 0.17), g.clump.z) * 0.75);
+  return mix(albedo, col * sheen, amount);
+}
+
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (terrain_hole_at(in.local)) { discard; }
@@ -256,7 +294,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let point = terrain_point(in.local);
   let n_geo = point.normal;
   let look = terrain_look(in, point, dpx, dpy);
-  let albedo = look.albedo;
+  let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let normal = look.normal;
   let roughness = look.roughness;
   var n = normalize(normal);

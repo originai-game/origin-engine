@@ -102,6 +102,13 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::scatter_lit_source(&crate::hooks::default_hooks()),
     );
     add("scatter shadow", crate::scatter_shadow_source());
+    add("grass", crate::grass::lit_source());
+    add("grass shadow", crate::grass::shadow_source());
+    add("grass generate", crate::grass::generate_source(false));
+    add(
+        "grass generate (layer arrays)",
+        crate::grass::generate_source(true),
+    );
     add(
         "terrain",
         crate::terrain::terrain_lit_source(

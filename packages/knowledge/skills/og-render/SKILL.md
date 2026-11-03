@@ -710,7 +710,19 @@ within 60 m is about 36,000 copies. The resource `og.Wind` sways them:
 steady lean, 1 from upright to twice it); set `sway: 0` on a stone
 scatter, and model a copy with its root at the mesh's origin, since each
 vertex moves by its height above it. It is drawn from the tick, so it
-needs no system and costs nothing in the simulation. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
+needs no system and costs nothing in the simulation.
+
+A meadow is one `og.Grass` on the terrain's entity: `world.insert(e,
+og.Grass, { data })` grows blades over layer 0 to 150 m, generated on the
+GPU each frame (no mesh to make, nothing per blade stored), thinning with
+distance and handing over to the ground's own grass colour past them, so
+the field reaches the horizon. Pick the layer with `layer`, the look with
+`height`, `width`, `curve`, `clumpSize`, `baseColor`/`tipColor`/`dryColor`
+and `dryness`, the light with `translucency` (sun through blades lit from
+behind) and `sheen`, the wind's hold with `sway` and `stiffness`;
+`castShadows` adds the blades' shadows near the camera. Lower `density`
+or `distance` to save frame time; prefer it to a hand-made grass
+og.TerrainScatter, which suits flowers, stones and bushes. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
 detail for frame time.
 Its tiles stream: only the tiles the camera needs are on the GPU (16 MiB a

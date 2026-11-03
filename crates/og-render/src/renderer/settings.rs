@@ -145,6 +145,7 @@ impl Renderer {
         self.lines.set_samples(samples);
         self.terrain.set_samples(samples);
         self.scatter.set_samples(samples);
+        self.grass.set_samples(samples);
         if let Some(a) = &self.sprite_arrays {
             a.set_samples(samples);
         }

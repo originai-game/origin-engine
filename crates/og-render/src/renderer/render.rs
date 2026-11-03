@@ -1089,6 +1089,25 @@ impl Renderer {
                 |sh| scene.shaders()[sh].hooks_wgsl(),
             )
         };
+        // Grass: this frame's fields planned over the drawn terrains (grass.rs).
+        let grass_frame = if !WORLD_3D {
+            grass::GrassFrame::default()
+        } else {
+            self.grass.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                &self.terrain,
+                &terrain_draws,
+                grass::GrassView {
+                    camera: camera.position,
+                    frame: &cam,
+                    prev_view_proj,
+                    height: self.height,
+                },
+                &view_frustum,
+            )
+        };
         let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
         let scatter_mesh = |m: usize| {
             self.cache
@@ -2932,6 +2951,9 @@ impl Renderer {
                 }),
             gpu_set,
         );
+        // The grass's blades, generated before every pass that draws them.
+        self.grass
+            .encode(&mut encoder, &grass_frame, &terrain_draws);
         let palette_group = self.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
@@ -3316,7 +3338,12 @@ impl Renderer {
                 None,
                 None,
             );
-            stats.draw_calls += n;
+            stats.draw_calls += n; // Grass casts into the first cascade only (grass.rs).
+            if slot == 0 {
+                stats.draw_calls +=
+                    self.grass
+                        .draw(&mut pass, grass::GrassPass::Shadow, &grass_frame, None);
+            }
         };
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
         // and GPU time where the device has timestamps (`timing.rs`): each
@@ -3389,6 +3416,7 @@ impl Renderer {
                     scatter_batches: &scatter_batches,
                     scatter_material: &scatter_material,
                     scatter_mesh: &scatter_mesh,
+                    grass_frame: &grass_frame,
                 }),
                 FramePass::Particles => {
                     self.particles.simulate(
@@ -3563,6 +3591,7 @@ impl Renderer {
                         scatter_batches: &scatter_batches,
                         scatter_material: &scatter_material,
                         scatter_mesh: &scatter_mesh,
+                        grass_frame: &grass_frame,
                         sky_group,
                         fluid_bounds,
                         draw_blended: &draw_blended,

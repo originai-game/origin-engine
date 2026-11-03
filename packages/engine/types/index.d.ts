@@ -16245,7 +16245,7 @@ export interface Weather {
 }
 
 /**
- * The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+ * The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
  *
  * The `Wind` resource (token `og.Wind`).
  */
@@ -49736,6 +49736,212 @@ export interface TerrainScatter {
   impostorDistance: number;
 }
 
+/**
+ * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
+ *
+ * The value of the `Grass` component (token `og.Grass`).
+ */
+export interface Grass {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /**
+   * The terrain layer that places it, 0 to 15.
+   *
+   * @range ..15
+   */
+  layer: number;
+  /**
+   * Blades per square metre near the camera where the layer's weight is 1.
+   *
+   * @default 300
+   * @range 0..4000
+   * @tunable
+   */
+  density: number;
+  /**
+   * How far from the camera blades are drawn; they thin out to nothing there.
+   *
+   * @default 150
+   * @range 0..1000
+   * @unit m (metres)
+   * @tunable
+   */
+  distance: number;
+  /**
+   * The terrain takes the field's colour where its blades thin out and past them.
+   *
+   * @default true
+   */
+  farTint: boolean;
+  /**
+   * The tallest blade.
+   *
+   * @default 0.45
+   * @range 0..4
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * How much shorter blades are than the tallest: 0 all alike, 1 down to nothing.
+   *
+   * @default 0.4
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  heightVariation: number;
+  /**
+   * A blade's width at its root.
+   *
+   * @default 0.012
+   * @range 0..0.5
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * How far blades droop along their length: 0 straight, 1 arching over.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  curve: number;
+  /**
+   * How far blades lean at rest, as a share of their height.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  lean: number;
+  /**
+   * The size of the clumps blades grow in, sharing their tint and height.
+   *
+   * @default 1.2
+   * @range 0.05..20
+   * @unit m (metres)
+   * @tunable
+   */
+  clumpSize: number;
+  /**
+   * How far blades lean out from their clump's centre, as a share of their height.
+   *
+   * @default 0.4
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  clumpLean: number;
+  /**
+   * How far blades are pulled in towards their clump's centre: 0 an even lawn, 1 tight tufts.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  tufts: number;
+  /**
+   * The roots' colour (linear).
+   *
+   * @default { r: 0.035, g: 0.09, b: 0.015 }
+   */
+  baseColor: Color;
+  /**
+   * The tips' colour (linear).
+   *
+   * @default { r: 0.22, g: 0.4, b: 0.07 }
+   */
+  tipColor: Color;
+  /**
+   * Dry grass's colour (linear): dry clumps and drying tips.
+   *
+   * @default { r: 0.45, g: 0.38, b: 0.17 }
+   */
+  dryColor: Color;
+  /**
+   * How much blades vary in brightness by clump, blade and patch.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  colorVariation: number;
+  /**
+   * The share of clumps that are dry, and how far tips dry.
+   *
+   * @default 0.15
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  dryness: number;
+  /**
+   * How much sunlight passes through a blade lit from behind, tinted by it.
+   *
+   * @default 0.6
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  translucency: number;
+  /**
+   * The upper blade's gloss: gusts show as a moving sheen.
+   *
+   * @default 0.4
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  sheen: number;
+  /**
+   * The blade's roughness.
+   *
+   * @default 0.6
+   * @range 0.04..1
+   * @tunable
+   */
+  roughness: number;
+  /**
+   * How much og.Wind bends the blades: 1 as it blows, 0 still.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  sway: number;
+  /**
+   * How stiff the blades are: 0 bends furthest, 1 least, and sways faster.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * How much the tips of near blades shiver in the wind.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  flutter: number;
+  /** Whether the blades cast the sun's shadows (near the camera, into the first cascade). */
+  castShadows: boolean;
+  /**
+   * Another seed places the blades elsewhere.
+   *
+   * @default 1
+   */
+  seed: number;
+}
+
 /** A loaded terrain. */
 export interface TerrainInfo {
   /** Its handle, for og.Terrain.data and this module's functions. */
@@ -53544,7 +53750,7 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * The wind the renderer sways vegetation with: og.TerrainScatter copies, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+   * The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
    */
   const Wind: ResourceType<{ readonly strength: FieldSpec<"f32">; readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32"> }, Wind>;
   /**
@@ -57243,6 +57449,10 @@ export declare namespace og {
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32"> }, TerrainScatter>;
+  /**
+   * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); past them the terrain takes the field's colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
+   */
+  const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32"> }, Grass>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to sixteen layered materials with slope and altitude rules (each pixel blends its four strongest), their maps separate textures (the first four layers) or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight and the only way past four layers, the control map one image per four layers, and an optional `holes` map whose black or transparent cells are cut out of the surface: a cave mouth, a pit, a tunnel through a hill) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
    * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).

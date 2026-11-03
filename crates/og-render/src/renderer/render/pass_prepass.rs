@@ -22,6 +22,7 @@ pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
     pub(super) scatter_material: &'a F1,
     pub(super) scatter_mesh: &'a F2,
+    pub(super) grass_frame: &'a grass::GrassFrame,
 }
 
 impl Renderer {
@@ -47,6 +48,7 @@ impl Renderer {
             scatter_batches,
             scatter_material,
             scatter_mesh,
+            grass_frame,
         }: PrepassPassInputs<
             '_,
             impl Fn(
@@ -212,6 +214,9 @@ impl Renderer {
             None,
         );
         stats.prepass_draws += n;
+        stats.prepass_draws +=
+            self.grass
+                .draw(&mut p, grass::GrassPass::Prepass, grass_frame, None);
         stats.draw_calls += stats.prepass_draws;
         drop(p);
         if let Some(object) = self.stylise_object.as_ref().filter(|_| object_space) {

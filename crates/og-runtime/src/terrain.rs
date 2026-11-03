@@ -1125,6 +1125,54 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             impostor_distance: f(&v, "impostorDistance", 0.0),
         });
     }
+    // og.Grass: fields over the drawn terrain of the same data, generated
+    // and drawn by the renderer.
+    rs.scene.grass.clear();
+    let layout = rs.draw.grass.clone();
+    for (e, v) in rows(world, layout.as_ref()) {
+        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
+            continue;
+        };
+        let Some(t) = rs.terrain.loaded.get(i) else {
+            rs.notes
+                .push(format!("og.Grass on entity {e} names no loaded terrain"));
+            continue;
+        };
+        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+            continue;
+        };
+        let d = og_render::Grass::default();
+        rs.scene.grass.push(og_render::GrassDraw {
+            terrain,
+            grass: og_render::Grass {
+                layer: u(&v, "layer", d.layer),
+                density: f(&v, "density", d.density),
+                distance: f(&v, "distance", d.distance),
+                far_tint: on(&v, "farTint", d.far_tint),
+                height: f(&v, "height", d.height),
+                height_variation: f(&v, "heightVariation", d.height_variation),
+                width: f(&v, "width", d.width),
+                curve: f(&v, "curve", d.curve),
+                lean: f(&v, "lean", d.lean),
+                clump_size: f(&v, "clumpSize", d.clump_size),
+                clump_lean: f(&v, "clumpLean", d.clump_lean),
+                tufts: f(&v, "tufts", d.tufts),
+                base_color: color(&v["baseColor"], d.base_color),
+                tip_color: color(&v["tipColor"], d.tip_color),
+                dry_color: color(&v["dryColor"], d.dry_color),
+                color_variation: f(&v, "colorVariation", d.color_variation),
+                dryness: f(&v, "dryness", d.dryness),
+                translucency: f(&v, "translucency", d.translucency),
+                sheen: f(&v, "sheen", d.sheen),
+                roughness: f(&v, "roughness", d.roughness),
+                sway: f(&v, "sway", d.sway),
+                stiffness: f(&v, "stiffness", d.stiffness),
+                flutter: f(&v, "flutter", d.flutter),
+                cast_shadows: on(&v, "castShadows", d.cast_shadows),
+                seed: u(&v, "seed", d.seed),
+            },
+        });
+    }
     // The unedited terrains' tiles, as the camera needs them.
     if !streamed.is_empty() {
         let height = match rs.backend.as_ref().map(|b| b.size()) {

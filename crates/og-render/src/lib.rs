@@ -128,6 +128,7 @@ pub use ui::{
 mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
+mod grass;
 mod impostor;
 mod physical;
 mod points;
@@ -189,6 +190,7 @@ pub use environment::{
 };
 pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
+pub use grass::{DistanceLod, Grass, GrassDraw};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
 pub use hooks::{
@@ -407,6 +409,7 @@ pub struct Renderer {
     fluid3d: fluid3d::Fluid3dRenderer,
     terrain: terrain::TerrainRenderer,
     scatter: scatter::ScatterRenderer,
+    grass: grass::GrassRenderer,
     metaballs: metaballs::MetaballRenderer,
     /// The image-based light, regenerated into the same textures for a new sky.
     ibl: ibl::IblGenerator,

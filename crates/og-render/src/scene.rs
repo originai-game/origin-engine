@@ -232,6 +232,9 @@ pub struct RenderScene {
     /// Copies scattered over this frame's terrains, placed and drawn by
     /// the renderer from cached chunks.
     pub scatters: Vec<crate::ScatterDraw>,
+    /// Fields of grass over this frame's terrains, generated and drawn by
+    /// the renderer on the GPU (`grass.rs`).
+    pub grass: Vec<crate::GrassDraw>,
     /// Models drawn as their impostors this frame (`impostor.rs`): each a
     /// camera-facing card, drawn with the scattered copies' passes.
     pub impostors: Vec<crate::ImpostorDraw>,
