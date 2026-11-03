@@ -604,7 +604,9 @@ test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, sig
   expect(at(els, "RelHud/Rel/c0/Gap")?.text).toBe("−0.80");
   expect(at(els, "RelHud/Rel/c2/Gap")?.text).toBe("—");
   expect(at(els, "RelHud/Rel/c3/Gap")?.text).toBe("+0.40");
-  expect(at(els, "LapHud/Lap/Head/Lap/Caption")?.text).toBe("Final lap");
+  // The final lap's words on their own line over the head; the lap keeps its caption.
+  expect(at(els, "LapHud/Lap/Final")?.text).toBe("FINAL LAP");
+  expect(at(els, "LapHud/Lap/Head/Lap/Caption")?.text).toBe("Lap");
   expect(at(els, "LapHud/Lap/Head/Position/Num/Value")?.text).toBe("2");
   expect(at(els, "LapHud/Lap/Current/Time")?.text).toBe("1:12.384");
   expect(at(els, "LapHud/Lap/Best/Time")?.text).toBe("1:41.226");
@@ -1055,9 +1057,11 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
   // split that stays, a minus that is a hyphen, or a moment drawn over a wrong way.
   let desc: Record<string, unknown> = {};
   let start = -1;
+  let times = false;
   const sys = defineSystem("HudBanner", {}, () => {
     const t = (uiKit as unknown as { tick(): number }).tick();
     if (start < 0) start = t;
+    if (times) og.ui.lapTimer("Times", { show: "times", compact: true, currentMs: 61234, bestMs: 60000, lastMs: 61900, deltaMs: -420, anchor: "top" } as never);
     og.ui.raceBanner("Banner", { ...desc, at: start } as never);
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
@@ -1096,6 +1100,20 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
   desc = { event: "checkpoint", index: 2, deltaMs: -680 };
   e.advance(70);
   expect(textOf("/Split/Delta")).toBe(undefined);
+  // Under the lap timer's compact times (the lap large, the split beside it, the best under it, no last lap), clear
+  // of its plate rather than over its split.
+  times = true;
+  start = -1;
+  desc = { event: "checkpoint", index: 2, deltaMs: -420, below: "TimesHud/Times" };
+  e.advance(30);
+  const els = dump(e);
+  expect([at(els, "TimesHud/Times/Lap/Time")?.text, at(els, "TimesHud/Times/Lap/Split")?.text, at(els, "TimesHud/Times/Best/Time")?.text]).toEqual(["1:01.234", "\u22120.42", "1:00.000"]);
+  expect(at(els, "TimesHud/Times/Last/Time")).toBe(undefined);
+  const plate = at(els, "TimesHud/Times")!;
+  const split = els.find((x) => x.path === "Banner/Split")!;
+  expect(split.y).toBeGreaterThanOrEqual(plate.y + plate.height);
+  expect(Math.abs(split.x + split.width / 2 - (plate.x + plate.width / 2))).toBeLessThan(2);
+  times = false;
   // The finish: the place as the game writes it, the time under it.
   start = -1;
   desc = { event: "finish", placeText: "1st", timeMs: 83456 };
@@ -1108,9 +1126,10 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
   expect(overlaps.join("; ")).toBe("");
 });
 
-test("og.ui.standingsTower relative window: only the cars around the player, kept whole at the front, one each side on a phone, the player's row without a place or gap", () => {
+test("og.ui.standingsTower relative window: only the cars around the player, kept whole at the front, one each side on a phone, the player's row with its place and no gap", () => {
   // Wrong: the leaders shown with the window, a window cut short at the front of the field, a phone given two each
-  // side, or the player's place and gap repeated in its row.
+  // side, the player's place dropped from its row (the art director's note: show the rank once, not twice), or a gap
+  // of its own.
   let player = 11;
   const PHONE = { width: 844, height: 390, dpr: 3, safeArea: { left: 47, top: 0, right: 34, bottom: 0 }, coarsePointer: true, breakpoint: "phoneLandscape" };
   const tower = (view?: object) => engineFor("HudWindow", () => {
@@ -1122,7 +1141,7 @@ test("og.ui.standingsTower relative window: only the cars around the player, kep
   e.advance(3);
   expect(ids(e)).toEqual(["c9", "c10", "c11", "c12", "c13"]);
   const els = dump(e);
-  expect(at(els, "TowerHud/Tower/c11/PositionBox/Position")).toBe(undefined);
+  expect(at(els, "TowerHud/Tower/c11/PositionBox/Position")?.text).toBe("12");
   expect(at(els, "TowerHud/Tower/c11/Gap")?.text).toBe("");
   expect(at(els, "TowerHud/Tower/c10/Gap")?.text).toBe("−0.50");
   expect(at(els, "TowerHud/Tower/c9/PositionBox/Position")?.text).toBe("10");
@@ -1216,7 +1235,10 @@ test("the racing HUD's arcade look: whole nitro segments that flare when full, a
   e.advance(1);
   expect(nitro()).toEqual([true, true, true]);
   expect(states(at(dump(e), "SpeedoHud/Speedo")).nitro).toBe("full");
-  expect(at(dump(e), "SpeedoHud/Speedo/Readout/Speed")?.text).toBe("143");
+  expect(at(dump(e), "SpeedoHud/Speedo/Readout/Plate/Speed")?.text).toBe("143");
+  // The speed sits on its own plate under the tube's ends, never on the nitro (the tube's ends reach 0.69 of its radius down).
+  const speedo = at(dump(e), "SpeedoHud/Speedo")!;
+  expect(at(dump(e), "SpeedoHud/Speedo/Readout/Plate")!.y).toBeGreaterThan(speedo.y + (speedo.width / 2) * 0.69);
   // The place badge: the game's ordinal.
   expect(at(dump(e), "LapHud/Lap/Head/Position/Num/Value")?.text).toBe("3rd");
   // The roulette spins for a second from the pickup, then lands on the item.

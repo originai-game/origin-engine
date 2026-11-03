@@ -10,7 +10,7 @@
 // lap block share one width (raceWidth) so they stack as one column.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
+import { BLACK, WHITE, luminance, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
 
 /** The fastest lap's and a new best's purple, as F1 timing marks them. */
 const PURPLE: Rgba = { r: 0.68, g: 0.42, b: 1, a: 1 };
@@ -28,6 +28,13 @@ export function signedSeconds(sec: number, digits = 2): string {
   const v = Math.abs(sec).toFixed(digits);
   if (Number(v) === 0) return (0).toFixed(digits);
   return sec < 0 ? `\u2212${v}` : `+${v}`;
+}
+
+/** Black or white ink, whichever has the higher contrast on `c` (at least 4.5:1 on any colour). */
+function readableOn(c: Rgba): Rgba {
+  const dark: Rgba = { r: 0.06, g: 0.06, b: 0.08, a: 1 };
+  const l = luminance(c) + 0.05;
+  return 1.05 / l >= l / (luminance(dark) + 0.05) ? WHITE : dark;
 }
 
 /** The width the lap block and the tower share, so stacked they read as one column. */
@@ -91,6 +98,9 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
     if (desc.relative) return en.player ? "\u2014" : signedSeconds(en.gap ?? 0);
     return i === 0 ? (desc.leaderLabel ?? "Leader") : signedSeconds(en.gap ?? 0);
   };
+  // The player's row in a window: the accent solid, its text in black or white, whichever reads at 4.5:1 or better.
+  const playerFill = role("primary");
+  const playerInk = readableOn(playerFill);
   hudPlace(id, anchorOf(desc, "left"), () => {
     box(id, { direction: "column", gap, width: px(w), padding: { left: 0, right: 0, top: u(3), bottom: u(3) }, part: sel("StandingsTower", "frame"), partClass: "hud" }, racePanel(), () => {
       shown.forEach((i, r) => {
@@ -113,7 +123,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           part: sel("StandingsTower", "row", en.player ? "player" : null, en.pit ? "pit" : null, en.out ? "out" : null),
         }, {
           // One mark for the player (docs/ui.md §15.5): a solid position cell over a lightly tinted row, no outline.
-          fills: en.player ? [solid(windowed ? token("primary", 0.85) : token("highlight", 0.18))] : [],
+          fills: en.player ? [solid(windowed ? lit(playerFill) : token("highlight", 0.18))] : [],
         }, () => {
           // A hairline between rows, none against the player's lit row.
           const prev = r > 0 ? shown[r - 1] : null;
@@ -121,11 +131,10 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           box("PositionBox", { width: px(posW), height: pct(1), align: "center", cross: "center", part: sel("StandingsTower", "position") }, en.player && !windowed ? {
             fills: [solid(token("highlight", 0.9))],
           } : undefined, () => {
-            // In a window the player's place is the lap block's: its row shows none.
-            if (!(windowed && en.player)) text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true });
+            text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(windowed ? playerInk : BLACK) : token("ink"), nowrap: true });
           });
           leaf("Stripe", { width: px(Math.max(3, u(3))), height: pct(0.62), part: sel("StandingsTower", "stripe") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(ink))] });
-          text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : windowed && en.player ? token("onPrimary") : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+          text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : windowed && en.player ? lit(playerInk) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
           // Names win over marks: where the name would be cut, a rival's change arrow goes first, then the leader's
           // fastest-lap chip moves into the gap column in place of the leader label.
           const ch = en.change ?? 0;
@@ -190,19 +199,27 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   sound("success", (es.changed && delta !== null && delta < 0 && es.prev >= 0) || (eb.changed && newBest && eb.prev >= 0));
   const big = (bid: string, caption: string, value: number, of: number, gold: boolean) => {
     box(bid, { direction: "column", gap: 0, part: sel("LapTimer", bid === "Lap" ? "lap" : "position", gold ? "final" : null) }, undefined, () => {
-      text("Caption", caption, { step: ts(10), font: "display", color: gold ? lit(role("gold")) : token("inkMuted"), nowrap: true, outline: ol });
+      text("Caption", caption, { step: ts(11), font: "display", color: gold ? lit(role("gold")) : token("inkMuted"), nowrap: true, outline: ol });
       // A number reads left to right in every locale: under a right-to-left layout, which mirrors the row, the total is
       // built first so it still lands after the value.
-      // The badge's slant leans its top over the total: the row keeps that much room.
-      const lean = badge && bid === "Position" ? Math.ceil(stepSize(ts(f.phone ? 48 : 64, true)).line * 0.18) : 0;
+      // The place is the second-largest numeral on the screen (after the speed), set italic: its slant leans its top
+      // over the total, so the row keeps that much room.
+      const placed = bid === "Position";
+      const slant = badge ? 0.18 : 0.12;
+      const placeStep = badge ? ts(f.phone ? 48 : 64, true) : ts(f.phone ? 34 : 42, true);
+      const lean = placed ? Math.ceil(stepSize(placeStep).line * slant) : 0;
       kit.row("Num", { gap: u(2) + lean, cross: "end" }, () => {
         const total = () => { if (of > 0) text("Total", `/${of}`, { step: ts(f.phone ? 15 : 18), font: "display", color: token("inkMuted"), nowrap: true, outline: ol }); };
         if (rtl()) total();
-        if (badge && bid === "Position") {
-          // The arcade place: a huge ordinal that pops when it changes.
+        if (badge && placed) {
+          // The arcade place: a huge ordinal that pops when it changes, in one clean dark outline (no halo or drop
+          // under it, which read as a second, muddy stroke).
           const k = pop(ep.since, 0.3, 420);
-          text("Value", desc.positionText || String(value), { step: ts(f.phone ? 48 : 64, true), font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
-            { transform: { scaleX: k, scaleY: k, skewX: -0.18, pivotX: 0, pivotY: 1 } });
+          text("Value", desc.positionText || String(value), { step: placeStep, font: "display", color: token("ink"), nowrap: true });
+          kit.setDraw({ text: { outline: { width: Math.max(2, u(3)), color: token("shadow", 1), align: "outside" } } });
+          apply({ transform: { scaleX: k, scaleY: k, skewX: -slant, pivotX: 0, pivotY: 1 } });
+        } else if (placed) {
+          text("Value", String(value), { step: placeStep, font: "display", color: token("ink"), nowrap: true, outline: ol }, { transform: { skewX: -slant, pivotX: 0, pivotY: 1 } });
         } else text("Value", String(value), { step: ts(f.phone ? 28 : 34, true), font: "display", color: gold ? lit(role("gold")) : token("ink"), nowrap: true, outline: ol });
         if (!rtl()) total();
       });
@@ -247,10 +264,12 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
       part: sel("LapTimer", "frame"), partClass: "hud",
     }, boxless ? undefined : racePanel(), () => {
       if (headed) {
+        // The final lap's words on their own line over the head, clear of the lap's numeral.
+        if (final && lap > 0) text("Final", (desc.finalLabel ?? "Final lap").toUpperCase(), { step: ts(12, true), font: "display", color: lit(role("gold")), nowrap: true, outline: ol });
         kit.row("Head", { gap: tk.md, cross: "end", width: pct(1) }, () => {
           if ((desc.position ?? 0) > 0) big("Position", desc.positionLabel ?? "Position", desc.position ?? 0, desc.positionTotal ?? 0, false);
           if ((desc.position ?? 0) > 0 && lap > 0 && !boxless) leaf("Divider", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
-          if (lap > 0) big("Lap", final ? (desc.finalLabel ?? "Final lap") : (desc.lapLabel ?? "Lap"), lap, total, final);
+          if (lap > 0) big("Lap", desc.lapLabel ?? "Lap", lap, total, final);
           // A phone has no height for a second line: the split joins the head as a third column.
           if (f.phone && delta !== null && show === "all") {
             if (!boxless) leaf("Divider2", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
@@ -259,12 +278,28 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
         });
         if ((!f.phone || delta === null) && timed && !boxless) leaf("Rule", { width: pct(1), height: px(1) }, { fills: [solid(token("line", 0.7))] });
       }
-      if (!f.phone && timed) {
+      if (desc.compact && timed) {
+        // The running lap large with the split beside it, the best under it at caption size.
+        kit.row("Lap", { gap: tk.md, cross: "end", width: pct(1), part: sel("LapTimer", "row", "current") }, () => {
+          text("Time", lapText(desc.currentMs ?? 0), { step: ts(f.phone ? 22 : 28), font: "mono", color: token("ink"), nowrap: true, outline: ol });
+          if (delta !== null) {
+            const sp = pop(es.since, 0.16, 320);
+            text("Split", signedSeconds(delta / 1000), { step: ts(f.phone ? 15 : 18), font: "mono", color: lit(desc.splitBest ? PURPLE : delta < 0 ? role("success") : role("danger")), nowrap: true, outline: ol },
+              { ...(sp !== 1 ? { transform: { scaleX: sp, scaleY: sp, pivotX: 0 } } : {}), ...groups({ split }, { split: ["none", "ahead", "behind", "best"] }) });
+          }
+        });
+        if (best !== null) {
+          kit.row("Best", { gap: tk.sm, cross: "center", part: sel("LapTimer", "row", "best") }, () => {
+            text("Label", desc.bestLabel ?? "Best lap", { step: ts(10), font: "display", color: token("inkMuted"), nowrap: true, outline: ol });
+            text("Time", lapText(best), { step: ts(11), font: "mono", color: newBest && eb.since < 240 ? lit(PURPLE) : token("inkMuted"), nowrap: true, outline: ol });
+          });
+        }
+      } else if (!f.phone && timed) {
         row("Current", desc.currentLabel ?? "Current lap", desc.currentMs ?? 0, token("ink"));
         if (best !== null) row("Best", desc.bestLabel ?? "Best lap", best, newBest && eb.since < 240 ? lit(PURPLE) : token("ink"));
         if (last !== null) row("Last", desc.lastLabel ?? "Last lap", last, newBest ? lit(PURPLE) : token("inkMuted"));
       }
-      if (delta !== null && timed && !(f.phone && headed && show === "all")) splitBox("row");
+      if (delta !== null && timed && !desc.compact && !(f.phone && headed && show === "all")) splitBox("row");
     }, {
       a11y: a11y("status", `Position ${desc.position ?? 0} of ${desc.positionTotal ?? 0}, lap ${lap}${total ? ` of ${total}` : ""}`, { value: [lapText(desc.currentMs ?? 0), best !== null ? `best ${lapText(best)}` : "", delta !== null ? `split ${signedSeconds(delta / 1000)}` : ""].filter(Boolean).join(", ") }),
       ...groups({ lap: final ? "final" : "racing", split, best: newBest ? "new" : "none" }, { lap: ["racing", "final"], split: ["none", "ahead", "behind", "best"], best: ["none", "new"] }),
@@ -312,6 +347,32 @@ const BANNER_MS: Record<Exclude<Api.RaceEvent, "none" | "countdown">, number> = 
 const IN_MS = 280;
 const FADE_MS = 200;
 
+/** The speedometer's speed numeral as a dial of its default size sets it: what the banner's numerals are sized against. */
+function speedPx(): number {
+  return stepSize(ts(40, true)).size;
+}
+
+/**
+ * A numeral larger than the style's ramp goes: its largest step under
+ * `target` px scaled up to it (an MSDF glyph stays sharp), in a box as tall
+ * as the scaled line so it pushes what is under it. `k` is a further
+ * scale (a pop) over that, about the numeral's centre.
+ */
+function hugeText(tid: string, s: string, target: number, desc: Omit<Parameters<typeof text>[2], "step">, k = 1, opacity = 1): void {
+  const step = tsFit(120, target, true);
+  const sz = stepSize(step);
+  const fit = Math.max(1, target / sz.size);
+  box(`${tid}Box`, { direction: "column", cross: "center", align: "center", height: px(Math.round(sz.line * fit)) }, undefined, () => {
+    text(tid, s, { ...desc, step }, { transform: { scaleX: fit * k, scaleY: fit * k }, opacity });
+  });
+}
+
+/** Where a banner sits under `below`'s last-frame bounds: the gap from the top of the screen to just under it. */
+function underOf(below: string | undefined, fallback: number): number {
+  const b = below ? kit.bounds(below) : null;
+  return b ? Math.round(b.y + b.height + u(10)) : fallback;
+}
+
 /**
  * og.ui.raceBanner: the racing HUD's centre-third moments, one at a time,
  * by the tick from `at` (a still at a tick is always the same). Wrong way
@@ -348,7 +409,8 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
     const fade = still ? 1 : Math.min(clamp01(ticksToMs(inSec) / 80), go ? clamp01((1000 - ticksToMs(inSec)) / FADE_MS) : 1);
     const lightsOn = go ? count : count - n + 1;
     const d = Math.max(u(18), Math.round(short * 0.045));
-    const step = tsFit(120, short * 0.3, true);
+    // About twice the speed numeral, never over a third of the short side.
+    const target = Math.min(speedPx() * 2.2, short * 0.33);
     const label = go ? (desc.goLabel ?? "GO!") : String(n);
     kit.anchor(id, { anchor: "center", offsetY: -Math.round(vp.height * 0.12), direction: "column", cross: "center", gap: u(10), over: true }, () => {
       box("Lights", { direction: "row", gap: Math.round(d * 0.6), padding: { left: u(8), right: u(8), top: u(6), bottom: u(6) }, part: sel("RaceBanner", "lights") }, chip(d), () => {
@@ -363,8 +425,7 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
           });
         }
       });
-      text("Count", label, { step, font: "display", color: go ? lit(role("success")) : token("ink"), nowrap: true, outline: 2.4 },
-        { transform: { scaleX: k, scaleY: k }, opacity: fade });
+      hugeText("Count", label, target, { font: "display", color: go ? lit(role("success")) : token("ink"), nowrap: true, outline: 2.4 }, k, fade);
     });
     apply({ ...g, a11y: a11y("status", label), inert: true });
     return;
@@ -376,8 +437,8 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
     const ink = desc.best ? PURPLE : ahead ? role("success") : role("danger");
     const label = (desc.checkpointLabel ?? "Checkpoint {n}").replaceAll("{n}", String(desc.index || 1));
     const value = signedSeconds(delta / 1000);
-    // Centre-top, under the lap time (the top band's first row).
-    kit.anchor(id, { anchor: "top", offsetY: Math.round(vp.height * 0.11), over: true }, () => {
+    // Centre-top, under the lap timer's times (`below`) clear of its plate, else a ninth of the way down.
+    kit.anchor(id, { anchor: "top", margin: 0, offsetY: underOf(desc.below, Math.round(vp.height * 0.11)) - vp.safeArea.top, over: true }, () => {
       box("Split", { direction: "column", cross: "center", gap: 0, padding: { left: u(14), right: u(14), top: u(4), bottom: u(6) }, part: sel("RaceBanner", "checkpoint", desc.best ? "best" : ahead ? "ahead" : "behind") }, chip(), () => {
         text("Label", label, { step: ts(12), color: token("inkMuted"), nowrap: true });
         text("Delta", value, { step: ts(30, true), font: "mono", color: lit(ink), nowrap: true, outline: 1.2 });
@@ -388,15 +449,18 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
   }
 
   if (event === "finalLap") {
-    // A thin gold band sweeping in across the top third, its words on it.
-    const W = vp.width;
-    const x = still ? 0 : -W * (1 - easeOut(ticksToMs(age) / 450));
+    // A gold band sweeping in across the centre, in the gap under the lap timer and between the side panels (the
+    // tower and the map), its words at display size in the ink that reads on gold.
+    const W = Math.round(Math.min(vp.width * 0.42, hudRoom()));
+    const x = still ? 0 : -(vp.width / 2 + W / 2) * (1 - easeOut(ticksToMs(age) / 450));
     const label = desc.finalLapLabel ?? "Final lap";
-    kit.anchor(id, { anchor: "top", width: pct(1), margin: 0, offsetY: Math.round(vp.height * 0.22), over: true }, () => {
-      box("Band", { width: pct(1), height: px(Math.max(u(34), stepSize(ts(20, true)).line + u(8))), align: "center", cross: "center", part: sel("RaceBanner", "band", "final") }, {
-        fills: [vgrad([[0, token("gold", 0)], [0.2, token("gold", 0.85)], [0.8, token("gold", 0.85)], [1, token("gold", 0)]], 90)],
+    const step = ts(36, true);
+    const gold = role("gold");
+    kit.anchor(id, { anchor: "top", margin: 0, offsetY: underOf(desc.below, Math.round(vp.height * 0.2)) - vp.safeArea.top, over: true }, () => {
+      box("Band", { width: px(W), height: px(stepSize(step).line + u(14)), align: "center", cross: "center", part: sel("RaceBanner", "band", "final") }, {
+        fills: [vgrad([[0, lit(gold, 0)], [0.14, lit(gold, 0.95)], [0.86, lit(gold, 0.95)], [1, lit(gold, 0)]], 90)],
       }, () => {
-        text("Label", label.toUpperCase(), { step: ts(20, true), font: "display", color: lit(BLACK), nowrap: true });
+        text("Label", label.toUpperCase(), { step, font: "display", color: lit(readableOn(gold)), nowrap: true });
       }, { opacity: life(BANNER_MS.finalLap), transform: { x } });
     });
     apply({ ...g, a11y: a11y("status", label), inert: true });
@@ -427,7 +491,7 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
       }, { transform: { x: -W * (1 - wipe) } });
       box("Result", { direction: "column", cross: "center", gap: 0 }, undefined, () => {
         text("Label", label, { step: ts(16), color: token("inkMuted"), nowrap: true, outline: 1 });
-        text("Place", placeText, { step: tsFit(120, short * 0.26, true), font: "display", color: token("ink"), nowrap: true, outline: 2.4 });
+        hugeText("Place", placeText, Math.min(speedPx() * 2.6, short * 0.36), { font: "display", color: token("ink"), nowrap: true, outline: 2.4 });
         text("Time", time, { step: ts(22), font: "mono", color: token("ink"), nowrap: true, outline: 1.2 });
       }, { opacity: reveal * life(BANNER_MS.finish), transform: { scaleX: k, scaleY: k } });
     });
@@ -439,23 +503,24 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
   const label = desc.wrongWayLabel ?? "Wrong way";
   const s = Math.max(u(28), Math.round(short * 0.06), Math.round(stepSize(ts(26, true)).line * 0.75));
   const beat = still ? 1 : 0.55 + 0.45 * pulse(1);
-  kit.anchor(id, { anchor: "center", offsetY: -Math.round(vp.height * 0.12), over: true }, () => {
-    box("WrongWay", { direction: "row", gap: u(10), cross: "center", padding: { left: u(16), right: u(18), top: u(8), bottom: u(8) }, part: sel("RaceBanner", "wrongWay") }, {
-      ...chip(),
-      fills: [solid(lit(role("danger"), 0.88))],
-      effects: [glow(16, lit(role("danger"), 0.5))],
+  // A band across the centre in the danger colour, fading at its ends, the arrow and the words in the ink that reads on it.
+  const danger = role("danger");
+  const ink = readableOn(danger);
+  kit.anchor(id, { anchor: "center", width: pct(1), margin: 0, offsetY: -Math.round(vp.height * 0.12), over: true }, () => {
+    box("WrongWay", { direction: "row", gap: u(14), align: "center", cross: "center", width: pct(1), padding: { left: u(16), right: u(18), top: u(10), bottom: u(10) }, part: sel("RaceBanner", "wrongWay") }, {
+      fills: [vgrad([[0, lit(danger, 0)], [0.2, lit(danger, 0.94)], [0.8, lit(danger, 0.94)], [1, lit(danger, 0)]], 90)],
     }, () => {
       box("Arrow", { width: px(s), height: px(s) }, undefined, () => {
         leaf("Turn", { width: px(s), height: px(s) }, {
           shape: { kind: "path", points: [{ x: 0.72 * s, y: 0.92 * s }, { x: 0.72 * s, y: 0.4 * s }, { x: 0.64 * s, y: 0.2 * s }, { x: 0.5 * s, y: 0.13 * s }, { x: 0.36 * s, y: 0.2 * s }, { x: 0.28 * s, y: 0.4 * s }, { x: 0.28 * s, y: 0.62 * s }], width: Math.max(3, s * 0.12), cap: "round", join: "round" },
-          fills: [solid(lit(WHITE))],
+          fills: [solid(lit(ink))],
         }, absolute({ start: 0, top: 0 }));
         leaf("Head", { width: px(s), height: px(s) }, {
           shape: { kind: "path", points: [{ x: 0.1 * s, y: 0.6 * s }, { x: 0.46 * s, y: 0.6 * s }, { x: 0.28 * s, y: 0.92 * s }], closed: true, filled: true, join: "round" },
-          fills: [solid(lit(WHITE))],
+          fills: [solid(lit(ink))],
         }, absolute({ start: 0, top: 0 }));
       });
-      text("Label", label.toUpperCase(), { step: ts(26, true), font: "display", color: lit(WHITE), nowrap: true });
+      text("Label", label.toUpperCase(), { step: ts(32, true), font: "display", color: lit(ink), nowrap: true });
     }, { opacity: beat });
   });
   apply({ ...g, a11y: a11y("status", label), inert: true });

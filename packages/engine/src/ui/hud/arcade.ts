@@ -7,27 +7,31 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  a11y, absolute, box, clamp01, easeOut, edge, ellipseShape, fixed, frame, glow, groups, hudPlace, anchorOf, kit, leaf, lit, msToTicks, now,
+  a11y, absolute, box, chip, clamp01, easeOut, edge, ellipseShape, fixed, frame, glow, groups, hudPlace, anchorOf, kit, leaf, lit, msToTicks, now,
   pop, pulse, px, reduced, role, sel, solid, stroke, text, token, ts, tsFit, u, vgrad, bp, stepSize, apply, ticksToMs,
 } from "./core.ts";
 
 const TUBE_START = Math.PI * 1.1;
 const TUBE_SWEEP = Math.PI * 0.8;
 
-/** The arcade speedometer: a big bouncy speed under a fat curved nitro tube cut into whole segments, flaring when full. */
+/** The arcade speedometer: a fat curved nitro tube cut into whole segments, flaring when full, with a big bouncy speed on its own plate under it. */
 export function arcadeSpeedo(id: string, speed: number, unit: string, desc: Api.SpeedometerDesc, size: number): void {
   const n = Math.max(1, Math.min(8, desc.boostSegments || 3));
   const boost = desc.boost === null || desc.boost === undefined ? null : clamp01(desc.boost);
   const full = boost !== null && boost >= 1 - 1e-6;
-  const h = Math.round(size * 0.72);
   const c = size / 2;
   const thick = Math.max(8, Math.round(size * 0.13));
+  // The readout sits under the tube's ends, on a plate of its own, so the speed never draws on the nitro.
+  const step = tsFit(56, size * 0.34, true);
+  const sp = stepSize(step);
+  const metaLine = stepSize(ts(14, true)).line;
+  const pad = u(4);
+  const readTop = boost === null ? 0 : Math.round(c * (1 - Math.sin(TUBE_START - Math.PI)) + thick + u(2));
+  const h = readTop + sp.line + metaLine + pad * 2;
   // The speed pops each time it crosses ten.
   const e = edge(`${id}~ten`, Math.floor(speed / 10));
   const k = pop(e.since, 0.08, 260);
-  box(id, { width: px(size), height: px(h), part: sel("Speedometer", "dial", "arcade") }, undefined, (path) => {
-    // The tube curves over the readout by design.
-    const readout = `${path}/Readout`;
+  box(id, { width: px(size), height: px(h), part: sel("Speedometer", "dial", "arcade") }, undefined, () => {
     if (boost !== null) {
       const gap = 0.05;
       const seg = (TUBE_SWEEP - gap * (n - 1)) / n;
@@ -40,26 +44,26 @@ export function arcadeSpeedo(id: string, speed: number, unit: string, desc: Api.
           shape: { kind: "arc", start, sweep: seg, thickness: thick, cap: "round" },
           fills: [solid(token("shadow", 0.7))],
           strokes: [stroke(2, token("lineStrong", 0.7), "outside")],
-        }, fixed({ start: 0, top: thick / 2 }, { overlaps: [readout] }));
+        }, fixed({ start: 0, top: thick / 2 }));
         if (filled || charging) {
           leaf(kit.idi("Nitro", i), { width: px(size - 4), height: px(size - 4), part: sel("Speedometer", "boost", filled ? "full" : null) }, {
             shape: { kind: "arc", start, sweep: filled ? seg : seg * (boost * n - i), thickness: thick - 4, cap: "round" },
             fills: [solid(filled ? lit(role("info"), flare) : lit(role("info"), 0.4))],
             effects: filled && full ? [glow(thick, lit(role("info"), 0.7 * flare))] : [],
-          }, fixed({ start: 2, top: thick / 2 + 2 }, { overlaps: [readout] }));
+          }, fixed({ start: 2, top: thick / 2 + 2 }));
         }
       }
     }
-    const step = tsFit(56, size * 0.34, true);
-    const sp = stepSize(step);
     box("Readout", { direction: "column", cross: "center", gap: 0, width: px(size) }, undefined, () => {
+      box("Plate", { direction: "column", cross: "center", gap: 0, padding: { left: u(10), right: u(10), top: pad, bottom: pad }, part: sel("Speedometer", "readout", "arcade") }, chip(), () => {
       text("Speed", String(Math.round(speed)), { step, font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
         { transform: { scaleX: k, scaleY: k, skewX: -0.22, pivotY: 1 } });
       kit.row("Meta", { gap: u(6), cross: "center" }, () => {
         text("Unit", unit, { step: ts(11), font: "display", color: token("inkMuted"), nowrap: true, outline: 1.2 });
         if (desc.gear) text("Gear", desc.gear, { step: ts(14, true), font: "display", color: token("highlight"), nowrap: true, outline: 1.2 });
       });
-    }, fixed({ start: 0, top: Math.round(c * 0.62 - sp.line * 0.15) }));
+      });
+    }, fixed({ start: 0, top: readTop }));
   }, {
     a11y: a11y("meter", "Speed", { value: `${Math.round(speed)} ${unit}${boost !== null ? `, nitro ${Math.round(boost * 100)} %` : ""}`, valueMin: 0, valueMax: desc.maxSpeed ?? 300, valueNow: speed }),
     ...groups({ nitro: full ? "full" : "charging" }, { nitro: ["charging", "full"] }),

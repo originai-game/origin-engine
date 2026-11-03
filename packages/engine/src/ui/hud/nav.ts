@@ -83,8 +83,10 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
   const size = Math.min(u(desc.size || (bp().phone ? 144 : 200)), !bare && vp0.breakpoint === "phoneLandscape" ? Math.round(vp0.height * 0.3) : Infinity);
   const shape: Api.MapShape = desc.shape ?? "circle";
   const zoom = Math.max(0.01, desc.zoom ?? 0.3);
-  const cx = desc.centerX ?? 0.5;
-  const cy = desc.centerY ?? 0.5;
+  // A circuit's map with no centre given follows the player (the window a racing map shows), else the map's middle.
+  const me = (desc.track ?? []).length >= 3 ? (desc.markers ?? []).find((m) => m.kind === "player") : undefined;
+  const cx = desc.centerX ?? me?.x ?? 0.5;
+  const cy = desc.centerY ?? me?.y ?? 0.5;
   const heading = desc.heading ?? 0;
   // Player-up for a racing track unless the game says otherwise; north-up for every other map.
   const rotate = desc.rotate ?? (desc.track ?? []).length >= 3;

@@ -44059,6 +44059,12 @@ export interface LapTimerDesc {
    */
   readonly positionText?: string;
   /**
+   * The times as a racing HUD's top centre shows them: the running lap large with the split beside it and the best lap under it at caption size (no last lap, no table).
+   *
+   * @default false
+   */
+  readonly compact?: boolean;
+  /**
    * Opens its own anchored group there; null builds it in place.
    *
    * @default "topLeft"
@@ -44274,6 +44280,12 @@ export interface RaceBannerDesc {
    * @unit ms (milliseconds)
    */
   readonly timeMs?: number;
+  /**
+   * checkpoint and finalLap: the element (an id or path, as og.ui.bounds takes it) the moment sits under, centred, clear of its last-frame bounds: the lap timer's times. Empty: a checkpoint centre-top at a ninth of the height, the final lap at a fifth.
+   *
+   * @default ""
+   */
+  readonly below?: string;
   /**
    * The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds.
    *
@@ -56607,7 +56619,7 @@ export declare namespace og {
     function standingsTower(id: string, desc?: StandingsTowerDesc): void;
     /**
      * A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone.
-     * Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
+     * Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Final (the final lap's line), <id>/Lap/Time and <id>/Lap/Split and <id>/Best/Time (compact), <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
      *
      * @param id Its id.
      * @param desc The race state.
@@ -56630,7 +56642,7 @@ export declare namespace og {
      */
     function driftScore(id: string, desc?: DriftScoreDesc): void;
     /**
-     * The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time, signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a thin gold band sweeping the top third), the finish (a checker wipe, the place huge with the time under it) and wrong way (danger, a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).
+     * The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time (`below` names it), signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a gold band sweeping the centre between the side panels, its words at display size), the finish (a checker wipe, the place huge with the time under it) and wrong way (a centred danger band with a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).
      * Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label.
      *
      * @param id Its id.
