@@ -425,7 +425,13 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // Whitecaps where the crests bunch past the wind's share (water.rs), broken up along the wind's waves.
     if (water.ocean.w > 0.0) {
       let streaks = foam_noise(in.rest * 0.35) * 0.6 + foam_noise(in.rest * 1.7) * 0.4;
-      whitecap = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
+      let core = smoothstep(water.ocean.z, water.ocean.z + water.ocean.w, sea.bunch) * smoothstep(0.2, 0.5, streaks);
+      // White water is lace, never a sheet: fine noise (its octaves faded to their mean where a pixel spans them)
+      // cut at a level the crest's core lowers, so even the core of a whitecap is broken foam with gaps through it.
+      let fine = mix(foam_noise(in.rest * 9.0), 0.5, smoothstep(0.05, 0.12, footprint));
+      let mid = mix(foam_noise(in.rest * 3.1), 0.5, smoothstep(0.15, 0.35, footprint));
+      let lace = foam_noise(in.rest * 1.1) * 0.45 + mid * 0.33 + fine * 0.22;
+      whitecap = 0.85 * smoothstep(0.0, 0.06, lace - (1.0 - 0.55 * core)) * step(1e-3, core);
     }
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
