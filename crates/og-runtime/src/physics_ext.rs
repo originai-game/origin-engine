@@ -274,29 +274,101 @@ pub fn og_physics_stats(world: u32) -> String {
     })())
 }
 
-/// The entity's world position, as physics places water (its og.Transform
-/// after its parents', #10).
-fn position_of(eng: &Engine, e: Entity) -> Result<Vec3, String> {
-    use og_physics::{Parent, Transform};
-    let w = eng.world()?;
-    let t = w
-        .get::<Transform>(e)
-        .map_err(|_| format!("entity {} has no og.Transform", e.to_bits()))?;
-    let (at, _) = og_physics::world_pose(
-        e,
-        (t.position, t.quaternion),
-        |c| w.get::<Parent>(c).ok().map(|p| Entity::from_bits(p.entity)),
-        |p| w.get::<Transform>(p).ok(),
-    );
-    Ok(at)
+/// What og.physics.waterHeight and og.Buoyancy read of the world: the
+/// world itself (between ticks, and as a tick starts), or, inside a system
+/// (a boat a game floats in its own tick), its context, through the
+/// system's declared reads: og.Water and og.Transform (og.Parent for a
+/// water under a parent; og.WorldOrigin when the world has one).
+pub(crate) enum Reader<'a> {
+    World(&'a World),
+    System(&'a og_ecs::SystemContext<'a>),
+}
+
+impl<'a> Reader<'a> {
+    fn of(eng: &'a Engine, world: u32) -> Result<Reader<'a>, String> {
+        Ok(match running(world) {
+            // SAFETY: the frame is published while its system runs.
+            Some(f) => Reader::System(unsafe { f.ctx() }),
+            None => Reader::World(eng.world()?),
+        })
+    }
+
+    fn get<T: og_core::reflect::Reflect>(&self, e: Entity) -> Option<T> {
+        match self {
+            Reader::World(w) => w.get::<T>(e).ok(),
+            Reader::System(c) => c.get::<T>(e).ok(),
+        }
+    }
+
+    /// Every row of a component, decoded, in entity order (as
+    /// [`super::fx::rows`]); in a system, an error when it is undeclared.
+    fn rows(&self, layout: Option<&super::codec::Layout>) -> Result<Vec<(u64, Value)>, String> {
+        let c = match self {
+            Reader::World(w) => return Ok(rows(w, layout)),
+            Reader::System(c) => c,
+        };
+        let Some(layout) = layout else {
+            return Ok(Vec::new());
+        };
+        let Ok(id) = c.id_by_name(&layout.schema) else {
+            return Ok(Vec::new());
+        };
+        let q = og_ecs::QueryDesc {
+            read: vec![layout.schema.clone()],
+            ..og_ecs::QueryDesc::default()
+        };
+        let all = c.query_with(&q).map_err(|e| e.to_string())?;
+        let mut entities: Vec<Entity> = all.flat_map(|a| a.entities().to_vec()).collect();
+        og_core::sort::sort_by_key(&mut entities, |e| e.index());
+        Ok(entities
+            .into_iter()
+            .filter_map(|e| Some((e.to_bits(), layout.decode(&c.get_bytes(e, id).ok()?))))
+            .collect())
+    }
+
+    /// Where og.WorldOrigin puts the world's zero (zero without one).
+    fn zero(&self, layout: Option<&super::codec::Layout>) -> Result<glam::DVec3, String> {
+        let c = match self {
+            Reader::World(w) => return Ok(crate::origin::zero(w, layout)),
+            Reader::System(c) => c,
+        };
+        let (Some(layout), Ok(id)) = (layout, c.id_by_name(crate::origin::RESOURCE)) else {
+            return Ok(glam::DVec3::ZERO);
+        };
+        if !c.has_resource_id(id).unwrap_or(false) {
+            return Ok(glam::DVec3::ZERO);
+        }
+        let v = layout.decode(&c.resource_bytes(id).map_err(|e| e.to_string())?);
+        let f = |k: &str| v[k].as_f64().unwrap_or(0.0);
+        Ok(glam::DVec3::new(f("x"), f("y"), f("z")))
+    }
+
+    fn time(&self) -> og_core::Time {
+        match self {
+            Reader::World(w) => w.time(),
+            Reader::System(c) => c.time(),
+        }
+    }
+
+    /// An entity's world position: its og.Transform after its parents' (#10).
+    fn position(&self, e: Entity) -> Option<Vec3> {
+        use og_physics::{Parent, Transform};
+        let t = self.get::<Transform>(e)?;
+        let (at, _) = og_physics::world_pose(
+            e,
+            (t.position, t.quaternion),
+            |c| self.get::<Parent>(c).map(|p| Entity::from_bits(p.entity)),
+            |p| self.get::<Transform>(p),
+        );
+        Some(at)
+    }
 }
 
 /// The world's og.Water bodies in entity order (those drawn over a mesh
 /// left out: an arbitrary shape, no square of water): each at its world
 /// position, its sea (og.Water.wind) and og.WorldOrigin's zero. What
 /// og.Buoyancy floats on and og.physics.waterHeight adds.
-pub(crate) fn waters(eng: &Engine, w: &og_ecs::World) -> Vec<og_physics::WaterBody> {
-    use og_physics::{Parent, Transform};
+pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::WaterBody>, String> {
     let (layout, origin) = {
         let st = eng.state.borrow();
         (
@@ -304,22 +376,16 @@ pub(crate) fn waters(eng: &Engine, w: &og_ecs::World) -> Vec<og_physics::WaterBo
             st.layouts.get(crate::origin::RESOURCE).cloned(),
         )
     };
-    let rows = rows(w, layout.as_ref());
+    let rows = r.rows(layout.as_ref())?;
     if rows.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let zero = crate::origin::zero(w, origin.as_ref());
-    rows.into_iter()
+    let zero = r.zero(origin.as_ref())?;
+    Ok(rows
+        .into_iter()
         .filter(|(_, v)| v["geometry"].as_f64().unwrap_or(0.0) as u64 == 0)
         .filter_map(|(id, v)| {
-            let e = Entity::from_bits(id);
-            let t = w.get::<Transform>(e).ok()?;
-            let (position, _) = og_physics::world_pose(
-                e,
-                (t.position, t.quaternion),
-                |c| w.get::<Parent>(c).ok().map(|p| Entity::from_bits(p.entity)),
-                |p| w.get::<Transform>(p).ok(),
-            );
+            let position = r.position(Entity::from_bits(id))?;
             let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
             Some(og_physics::WaterBody {
                 entity: id,
@@ -334,7 +400,7 @@ pub(crate) fn waters(eng: &Engine, w: &og_ecs::World) -> Vec<og_physics::WaterBo
                 zero,
             })
         })
-        .collect()
+        .collect())
 }
 
 /// As each tick starts (after og.WorldOrigin's shift): the og.Water bodies
@@ -345,7 +411,7 @@ pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
         return;
     };
     if world.id_by_name("og.Buoyancy").is_ok() {
-        p.set_waters(waters(eng, world));
+        p.set_waters(waters(eng, &Reader::World(world)).unwrap_or_default());
     }
 }
 
@@ -355,15 +421,23 @@ pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
 /// a wind. The waves are the absolute world's (og.WorldOrigin's zero added),
 /// at the tick over its rate, as the grid the renderer draws them on
 /// ([`og_physics::WaterBody::height`], what og.Buoyancy rides).
-fn sea_height(eng: &Engine, e: Entity, x: f64, z: f64) -> Result<Option<f32>, String> {
-    let w = eng.world()?;
-    let Some(water) = waters(eng, w).into_iter().find(|b| b.entity == e.to_bits()) else {
+fn sea_height(
+    eng: &Engine,
+    r: &Reader<'_>,
+    e: Entity,
+    x: f64,
+    z: f64,
+) -> Result<Option<f32>, String> {
+    let Some(water) = waters(eng, r)?
+        .into_iter()
+        .find(|b| b.entity == e.to_bits())
+    else {
         return Ok(None);
     };
     if water.sea.is_none() {
         return Ok(None);
     }
-    let time = w.time();
+    let time = r.time();
     let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     let seconds = time.tick as f64 / f64::from(rate);
     Ok(Some(water.height(x, z, seconds).unwrap_or(0.0)))
@@ -373,8 +447,14 @@ pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
     answer((|| {
         let eng = engine(world)?;
         let e = entity(e)?;
-        let at = position_of(&eng, e)?;
-        let sea = sea_height(&eng, e, x, z)?;
+        let r = Reader::of(&eng, world)?;
+        let at = r.position(e).ok_or_else(|| {
+            format!(
+                "entity {} has no og.Transform (or the running system does not read it)",
+                e.to_bits()
+            )
+        })?;
+        let sea = sea_height(&eng, &r, e, x, z)?;
         let p = match (physics(&eng), sea) {
             (Ok(p), _) => p,
             (Err(_), Some(h)) => return Ok(json!(at.y + h)),
@@ -399,8 +479,8 @@ pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
         }
         if let Some(line) = p.water_line(e) {
             let layout = eng.state.borrow().layouts.get("og.WaterLine").cloned();
-            let w = eng.world()?;
-            let width = rows(w, layout.as_ref())
+            let width = r
+                .rows(layout.as_ref())?
                 .into_iter()
                 .find(|(id, _)| *id == e.to_bits())
                 .map_or(12.0, |(_, v)| f(&v, "width", 12.0));

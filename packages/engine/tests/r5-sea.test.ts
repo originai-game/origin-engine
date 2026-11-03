@@ -6,7 +6,7 @@
 // game read the same heights (the sea is computed in the tick with the
 // engine's own math, never read back from the GPU).
 import { beforeAll, expect, test } from "bun:test";
-import { og } from "@origingame/engine";
+import { og, defineSystem } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -62,4 +62,22 @@ test("a wind's sea answers waterHeight with its waves, the same on every run", (
   // Water without a wind has no sea: refused as before when it has no
   // simulated surface either.
   expect(og.physics.waterHeight(w, w.find("pond")!, 500, 0).ok).toBeFalse();
+});
+
+test("a system reads the sea's height inside the tick, as between ticks", () => {
+  // A boat's system: og.physics.waterHeight inside a system reads through
+  // its declared reads (og.Transform, og.Water), and answers what the same
+  // call between ticks answers.
+  const seen: number[] = [];
+  const Float = defineSystem("Float", { reads: [og.Transform, og.Water] }, (_q: unknown, _t: unknown, world: World) => {
+    seen.push(must(og.physics.waterHeight(world, world.find("sea")!, 7, -16.5)));
+  });
+  const r = createEngine(og.game({ start: seas, systems: [Float] }) as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  expect(r.value.advance(120).ok).toBeTrue();
+  expect(seen.length).toBe(120);
+  // Tick k's system sees the sea the world between ticks shows after k ticks.
+  const w = run(119).engine.world;
+  expect(seen[119]).toBeCloseTo(must(og.physics.waterHeight(w, w.find("sea")!, 7, -16.5)), 5);
+  expect(Math.max(...seen) - Math.min(...seen)).toBeGreaterThan(0.01);
 });
