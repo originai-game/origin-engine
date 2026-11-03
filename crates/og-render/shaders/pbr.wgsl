@@ -422,7 +422,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   // A rect light (area.wgsl): linearly transformed cosines, no shadow map.
   if (light.color_kind.w < -0.5) {
     let a = area_shade(light, s, p, n, v);
-    return (a.diffuse + a.specular) * select(1.0, rect_shadow(light, p, n), receives);
+    return (a.diffuse + a.specular) * select(1.0, rect_shadow(light, p, leaf_shadow_normal(s, n, light.position_range.xyz - p)), receives);
   }
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
@@ -440,7 +440,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   if (atten <= 0.0) { return vec3<f32>(0.0); }
   if (dot(n, l) <= 0.0 && s.translucency <= 0.0) { return vec3<f32>(0.0); }
   var shadow = 1.0;
-  if (receives) { shadow = local_shadow(light, p, n); }
+  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l)); }
   // Its cookie (area.wgsl; white without).
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
   if (EFFECTS && material.toon.x > 0.5) {

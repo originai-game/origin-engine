@@ -69,6 +69,69 @@ fn materials_matches_its_reference() {
     }
 }
 
+/// Thin-leaf transmission is tinted direct light, including on the back
+/// side, and an intervening caster extinguishes it. Test both lit pipelines.
+#[test]
+fn leaf_backlighting_is_tinted_and_shadowed() {
+    for clearcoat in [0.0, 0.4] {
+        let mut scene = studio();
+        scene.environment.intensity = 0.0;
+        scene.light.direction_to_light = Vec3::new(-0.2, 0.3, -1.0).normalize();
+        scene.light.cast_shadows = true;
+        scene.light.max_shadow_distance = 12.0;
+        let card = scene.add_mesh(shapes::plane_xy(2.0, 2.0));
+        let mut leaf = StandardMaterial {
+            color: Vec3::new(0.04, 0.3, 0.025),
+            roughness: 0.9,
+            side: 2,
+            clearcoat,
+            ..Default::default()
+        };
+        let material = scene.add_standard_material(leaf);
+        scene.add_instance(card, material, Mat4::IDENTITY);
+        let opaque = frame(&scene);
+        leaf.foliage.x = 0.65;
+        scene.set_standard_material(material, leaf);
+        let lit = frame(&scene);
+        let x = lit.width / 2;
+        let y = lit.height / 2;
+        assert!(
+            luma(&lit, x, y) > luma(&opaque, x, y) + 20.0,
+            "backlight never reached the leaf (coat {clearcoat})"
+        );
+        let p = &lit.pixels[((y * lit.width + x) * 4) as usize..][..3];
+        assert!(
+            p[1] > p[0] && p[1] > p[2],
+            "transmission lost the leaf tint: {p:?}"
+        );
+        let blocker = scene.add_mesh(shapes::cuboid(Vec3::new(3.0, 3.0, 0.2)));
+        let black = scene.add_standard_material(StandardMaterial {
+            color: Vec3::ZERO,
+            ..Default::default()
+        });
+        scene.add_instance(
+            blocker,
+            black,
+            Mat4::from_translation(scene.light.direction_to_light),
+        );
+        let shadowed = frame(&scene);
+        assert!(
+            luma(&shadowed, x, y) < luma(&lit, x, y) * 0.4,
+            "shadow failed to attenuate transmission (coat {clearcoat})"
+        );
+        gfx::save_png(
+            &out_dir().join(format!("foliage-backlit-{clearcoat}.png")),
+            &lit,
+        )
+        .unwrap();
+        gfx::save_png(
+            &out_dir().join(format!("foliage-shadowed-{clearcoat}.png")),
+            &shadowed,
+        )
+        .unwrap();
+    }
+}
+
 /// A unit sphere scaled (1.6, 0.6, 1.0) shades as an ellipsoid mesh with
 /// its true normals (x/a², y/b², z/c²) under no transform: normals go
 /// through the inverse transpose, not the model matrix.

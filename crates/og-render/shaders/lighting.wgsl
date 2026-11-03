@@ -266,6 +266,12 @@ fn leaf_transmission(s: Surface, n: vec3f, v: vec3f, l: vec3f) -> vec3f {
   return s.albedo * (1.0 - s.metallic) * s.translucency * back * (3.0 * through + 0.16);
 }
 
+// Bias a thin leaf towards the incident light on either side. Offsetting
+// a backlit card away from the light makes it shadow its own transmission.
+fn leaf_shadow_normal(s: Surface, n: vec3f, to_light: vec3f) -> vec3f {
+  return select(n, -n, s.translucency > 0.0 && dot(n, to_light) < 0.0);
+}
+
 fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   let h = normalize(v + l);
   let n_dot_l = max(dot(n, l), 0.0);

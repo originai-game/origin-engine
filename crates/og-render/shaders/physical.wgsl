@@ -235,7 +235,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   if (light.color_kind.w < -0.5) {
     // A rect light (area.wgsl) on the base lobes.
     let a = area_shade(light, s, p, n, v);
-    let shadow = select(1.0, rect_shadow(light, p, n), receives);
+    let shadow = select(1.0, rect_shadow(light, p, leaf_shadow_normal(s, n, light.position_range.xyz - p)), receives);
     o.diffuse = a.diffuse * shadow;
     o.specular = a.specular * shadow;
     return o;
@@ -254,7 +254,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   }
   if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return o; }
   var radiance = light.color_kind.rgb * light_cookie(light, -l) * atten;
-  if (receives) { radiance *= local_shadow(light, p, n); }
+  if (receives) { radiance *= local_shadow(light, p, leaf_shadow_normal(s, n, l)); }
   let b = physical_brdf(s, k, n, v, l);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
@@ -434,7 +434,9 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   let receives = look_receives(in.look);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), abs(dot(n, l))); }
+  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
+    shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
+  }
   let sun = physical_brdf(s, k, n, v, l);
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
   var specular = sun.specular * frame.light_color.rgb * shadow;

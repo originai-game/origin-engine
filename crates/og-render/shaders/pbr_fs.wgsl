@@ -250,7 +250,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   let receives = look_receives(in.look);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) { shadow = cascade_shadow(in.world_pos, normalize(in.normal), abs(dot(n, l))); }
+  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
+    shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
+  }
   var color: vec3<f32>;
   if (EFFECTS && material.toon.x > 0.5) {
     color = toon_light(s, n, v, l, shadow) * frame.light_color.rgb;

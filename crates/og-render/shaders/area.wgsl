@@ -136,7 +136,7 @@ fn area_shade(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3
 
 fn area_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
   let o = area_shade(light, s, p, n, v);
-  return (o.diffuse + o.specular) * rect_shadow(light, p, n);
+  return (o.diffuse + o.specular) * rect_shadow(light, p, leaf_shadow_normal(s, n, light.position_range.xyz - p));
 }
 
 // tan(RECT_SHADOW_FOV / 2): the half-width of a rect shadow view at a
@@ -300,7 +300,7 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
   }
   if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return vec3<f32>(0.0); }
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
-  return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, n);
+  return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, leaf_shadow_normal(s, n, l));
 }
 
 // Every point, spot and rect light on a surface for those shaders: the
