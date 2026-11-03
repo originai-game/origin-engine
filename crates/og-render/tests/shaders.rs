@@ -96,7 +96,7 @@ fn every_module_validates_and_translates_to_msl_spirv_and_hlsl() {
                        @location(2) f1: vec4f) -> @builtin(position) vec4f {
   let model = mat4x4f(vec4f(1, 0, 0, 0), vec4f(0, 1, 0, 0),
                      vec4f(0, 0, 1, 0), vec4f(0, 0, 0, 1));
-  let field = GrassWind(vec4f(1, 0, 0.3, 0.6), vec4f(1, 2, 1, 2), vec4f(3, 4, 3, 4), vec4f(1, 1, 0, 0));
+  let field = WindField(vec4f(1, 0, 0.3, 0.6), vec4f(1, 2, 1, 2), vec4f(3, 4, 3, 4), vec4f(1, 1, 0, 0));
   let wind = FoliageWind(vec4f(1, 0, 0, 0.3), vec4f(0.6, 10, 1, 2), vec4f(0, 0, 0, 0.628), field);
   let normal = foliage_normal(vec3f(0, 1, 0), f1.xyz, vec3f(0, 5, 0), f1.w);
   return vec4f(p + normal + foliage_offset(p, f0, f1, model, wind), 1);

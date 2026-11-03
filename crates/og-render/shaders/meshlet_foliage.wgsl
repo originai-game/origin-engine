@@ -9,7 +9,7 @@ struct FoliageWind {
   dir_strength: vec4f, // xyz world wind direction, w lean
   gust_top: vec4f,     // gust, model height, two reduced wind_phases
   origin: vec4f,       // xyz current render origin, w wavenumber
-  field: GrassWind,   // this drawn state's shared grass gust field
+  field: WindField,   // this drawn state's shared gust field
 };
 
 // Frame and ShadowPass keep this as vec4s so non-foliage shaders need no
@@ -43,7 +43,7 @@ fn foliage_wave(at: vec3f, wind: FoliageWind) -> f32 {
   let world = at + wind.origin.xyz;
   let x = wind.origin.w * dot(world, wind.dir_strength.xyz);
   let wave = (sin(x - wind.gust_top.z) + 0.5 * sin(2.3 * x + 1.7 - wind.gust_top.w)) / 1.5;
-  let gust = grass_gust(wind.field, world.xz, false);
+  let gust = wind_gust(wind.field, world.xz, false);
   return clamp(0.5 * wave + 1.4 * (gust - 0.5), -1.0, 1.0);
 }
 

@@ -13,7 +13,7 @@ use glam::Vec3;
 /// Binding-free deformation include for meshlet and conventional vertex paths.
 /// Prepend [`WIND_WGSL`] once: the gust sampler is shared with grass.
 pub const WGSL: &str = wgsl!("meshlet_foliage.wgsl");
-pub const WIND_WGSL: &str = wgsl!("grass_common.wgsl");
+pub const WIND_WGSL: &str = wgsl!("wind_common.wgsl");
 
 /// Both drawn states, shared by meshlets and conventional instancing.
 pub(crate) fn foliage_winds(
@@ -67,7 +67,7 @@ pub struct FoliageWind {
     /// xyz: render origin; w: travelling-wave wavenumber.
     pub origin: [f32; 4],
     /// Its own drawn state's gust scroll, not the current wind at an old tick.
-    field: crate::grass::GrassWindGpu,
+    field: crate::wind::WindFieldGpu,
 }
 
 impl FoliageWind {
@@ -80,7 +80,7 @@ impl FoliageWind {
             origin: origin
                 .extend(std::f32::consts::TAU / WIND_WAVELENGTH)
                 .to_array(),
-            field: crate::grass::wind_gpu(Some(wind), tick, tick, tick_rate, origin),
+            field: crate::wind::field_gpu(Some(wind), tick, tick, tick_rate, origin),
         }
     }
 }
