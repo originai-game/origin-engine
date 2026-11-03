@@ -1783,8 +1783,8 @@ once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
 Each off by default on `Water` (every earlier water frame is unchanged):
 
 - **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): the grid is
-  displaced by `og_core::ocean`'s 32 Gerstner waves of a fully developed
-  Pierson–Moskowitz sea for the wind (peak `0.877 g / U`, significant
+  displaced by `og_core::ocean`'s 32 Gerstner waves of a Pierson–Moskowitz
+  sea for the wind with JONSWAP's peak enhancement (γ 3.3) (peak `0.877 g / U`, significant
   height `0.21 U² / g × swell`, one wave placed at random in each of 32
   bands of length from 1.6 to 1/80 of the peak's, so no fixed ratios and no
   lattice; deep-water dispersion; a random spread about the wind, wider the
@@ -1799,10 +1799,13 @@ Each off by default on `Water` (every earlier water frame is unchanged):
   stays put as the origin or the surface moves and long games keep their
   precision. The vertices take the waves at least four grid cells long;
   the fragments take every wave's analytic normal (each faded where it is
-  under four of the pixel's footprint), under the detail ripples (faded
-  the same way), and foam whitecaps where the crests bunch (Gerstner's
+  under four of the pixel's footprint, from the distance and the slant, not
+  screen derivatives, which jump at the grid's triangle edges), under the
+  detail ripples (faded the same way), and foam whitecaps where the crests
+  of the waves at least an eighth of the peak's length bunch (Gerstner's
   `Σ k Q a sin`) past the deviate whose tail is twice Monahan's measured
-  cover for the wind (`3.84e-6 U^3.41`), whatever `foam_width`. The simulation reads the same surface:
+  cover for the wind (`3.84e-6 U^3.41`), lit by the sun and the sky,
+  whatever `foam_width`. The simulation reads the same surface:
   `og.physics.waterHeight` evaluates `og_core::ocean::Ocean::height` (the
   rest point found by fixed-point steps, then its height) at the tick, in
   the absolute world (og.WorldOrigin's zero added), never the GPU. The
@@ -1814,9 +1817,10 @@ Each off by default on `Water` (every earlier water frame is unchanged):
   flow's direction per point over the mesh's uv or the grid from its -x -z
   corner (the image's top at +z), `flow`'s length the speed (zero: 0.03),
   for the normal map's two layers (Water2's look) or, without a normal map,
-  the travelling waves: two copies sliding along the flow, restarting every
-  two seconds half a period apart and cross-faded (without a map, a
-  `flow` alone now carries them too). Binding 9 of the water group.
+  the travelling waves, whose fronts then lie across the flow: two copies
+  sliding along it, restarting every three seconds half a period apart and
+  cross-faded, so the fronts bend where the map turns the flow (without a
+  map, a `flow` alone now carries them too). Binding 9 of the water group.
 
 og.Water is lazy from R5 (`og-runtime/src/lazy.rs`): a world without water
 keeps its type table and hash as the surface grows.

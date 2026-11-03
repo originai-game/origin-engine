@@ -288,20 +288,26 @@ fn ocean_gpu(
         seconds,
         glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)),
     );
+    let whitens = |w: &og_core::ocean::OceanWave| w.k <= WHITECAP_K * sea.waves[0].k;
     for (i, (w, phase)) in sea.waves.iter().zip(phases).enumerate() {
         let k = w.direction * w.k;
         let lean = w.direction * w.lean;
         swell[2 * i] = [k.x, k.y, w.amplitude, phase];
-        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
+        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, f32::from(whitens(w))];
     }
     let cell = water.size.max_element().max(0.0) / segments.max(1) as f32;
     let (start, width) = whitecaps(&sea, water.wind.length());
     ([1.0, cell, start, width], swell)
 }
 
+/// The waves whose crests whiten: no shorter than the longest over this
+/// (an eighth of the peak's length), so whitecaps are patches the size of
+/// the swells' crests, not specks the size of the ripples.
+const WHITECAP_K: f32 = 12.8;
+
 /// Where the sea's whitecaps start and over how much they grow, in the
-/// crests' bunching (`Σ k lean sin`, water.wgsl `ocean_normal`): its
-/// standard deviation σ times the normal deviate whose tail is the whitecap
+/// crests' bunching of the waves that whiten (`Σ k lean sin`, water.wgsl
+/// `ocean_normal`): its standard deviation σ times the normal deviate whose tail is the whitecap
 /// cover Monahan and O'Muircheartaigh measured for the wind (`3.84e-6
 /// U^3.41`: 0.7 % at 9 m/s, 6 % at 17), doubled to read at a distance.
 /// (0, 0) when the crests do not lean (no whitecaps). Rendering only.
@@ -309,6 +315,7 @@ fn whitecaps(sea: &og_core::ocean::Ocean, wind: f32) -> (f32, f32) {
     let sigma = (sea
         .waves
         .iter()
+        .filter(|w| w.k <= WHITECAP_K * sea.waves[0].k)
         .map(|w| (w.k * w.lean).powi(2) * 0.5)
         .sum::<f32>())
     .sqrt();

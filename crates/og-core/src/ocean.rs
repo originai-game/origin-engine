@@ -4,8 +4,8 @@
 //! point (`og.physics.waterHeight`) for boats and spray. Both evaluate the
 //! same waves from the same tick, so what floats matches what is drawn.
 //!
-//! The waves sample a fully developed Pierson–Moskowitz sea for the wind's
-//! speed `U`: its peak angular frequency `0.877 g / U` (at 10 m/s, waves
+//! The waves sample a Pierson–Moskowitz sea for the wind's speed `U`, its
+//! peak enhanced as JONSWAP's (γ 3.3): its peak angular frequency `0.877 g / U` (at 10 m/s, waves
 //! about 80 m long), its significant height `0.21 U² / g` (2.1 m at
 //! 10 m/s) times `swell`, wavelengths from 1.6 times the peak's down to
 //! 1/80 of it, one in each of [`OCEAN_WAVES`] bands even in the logarithm
@@ -102,11 +102,17 @@ impl Ocean {
             let length = length_p * 1.6 * math::pow(1.0 / 128.0, at);
             let k = std::f32::consts::TAU / length;
             let omega = (GRAVITY * k).sqrt();
-            // Pierson–Moskowitz: S(ω) ∝ ω⁻⁵ exp(-1.25 (ω_p/ω)⁴), over bands
-            // whose width grows with ω (the lengths are spaced evenly in
-            // their logarithm), so each wave's share is S(ω) ω.
+            // Pierson–Moskowitz, S(ω) ∝ ω⁻⁵ exp(-1.25 (ω_p/ω)⁴), with
+            // JONSWAP's peak enhancement γ^exp(-(ω - ω_p)² / 2σ²ω_p²) (γ 3.3,
+            // σ 0.07 below the peak, 0.09 above: the height gathered into
+            // swells that read), over bands whose width grows with ω (the
+            // lengths are spaced evenly in their logarithm), so each wave's
+            // share is S(ω) ω.
             let r = omega_p / omega;
-            let s = math::pow(omega, -4.0) * math::exp(-1.25 * r * r * r * r);
+            let sw = if omega <= omega_p { 0.07 } else { 0.09 };
+            let off = (omega - omega_p) / (sw * omega_p);
+            let peak = math::exp(math::exp(-0.5 * off * off) * math::ln(3.3));
+            let s = math::pow(omega, -4.0) * math::exp(-1.25 * r * r * r * r) * peak;
             weight[i] = s;
             total += s;
             // A triangular spread about the wind, ±0.6 rad for the longest

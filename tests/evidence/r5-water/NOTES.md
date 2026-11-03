@@ -12,7 +12,7 @@ command sets each one's y to `og.physics.waterHeight` at its point, the
 sea the tick computes with og_core::ocean (the same waves the renderer
 draws, never read from the GPU).
 
-Without a renderer it runs to `tick 66 hash 5bc76283ccd85d37 entities 6`
+Without a renderer it runs to `tick 66 hash abeb65f401871bdc entities 6`
 with `--commands "0.5:float;1.0:float;1.1:quit"` (OG_RENDERER=none on the
 orb).
 

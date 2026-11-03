@@ -81,7 +81,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         }
         // A gale (17 m/s, waves some 230 m long and 6 m high, crests at
         // full choppiness) under an overcast, whitecaps on the crests,
-        // seen from a deck 9 m up.
+        // seen from a deck 6 m up.
         "water-ocean-storm" => {
             physical_light(&mut scene, 13.0, earth);
             let clouds = Clouds {
@@ -96,11 +96,14 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             scene.light.intensity *= sun;
             scene.environment.intensity *= sky;
             scene.clouds = Some(clouds);
-            scene.water.push(sea(Vec2::new(6.0, -16.0), 1.0));
+            let mut gale = sea(Vec2::new(6.0, -16.0), 1.0);
+            // Grey-green deep water under the overcast.
+            gale.deep = Vec3::new(0.012, 0.035, 0.035);
+            scene.water.push(gale);
             sea_haze(&mut scene);
             scene.camera = Camera {
-                position: Vec3::new(0.0, 9.0, 0.0),
-                target: Vec3::new(-10.0, 2.0, -80.0),
+                position: Vec3::new(0.0, 6.0, 0.0),
+                target: Vec3::new(-10.0, 1.0, -80.0),
                 far: 5000.0,
                 exposure: Exposure::linear(1.0),
                 ..Default::default()
@@ -155,7 +158,7 @@ fn flow_round(size: Vec2, at: Vec2, radius: f32, u: f32, v: f32) -> [u8; 4] {
 /// it, a metre beside it, none at its nose), else straight down the stream
 /// at the far field's speed. (A flow map moves the waves by up to a metre
 /// in the two seconds of a cycle, so in a still their fronts bend round the
-/// boulder.)
+/// boulder, the fronts lying across the stream.)
 pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     let sun = Vec3::new(0.35, 0.75, 0.45).normalize();
     scene.light = og_render::DirectionalLight {
@@ -239,9 +242,10 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    // 0.88 s in: the waves 0.44 m along the flow far out, 0.88 m beside
-    // the boulder.
-    scene.tick = 53;
+    // 1.5 s in, half a period (water.wgsl `flowed_slope`), when one copy
+    // of the waves alone is drawn: moved 0.75 m along the flow far out,
+    // 1.5 m beside the boulder and not at all at its nose.
+    scene.tick = 90;
     scene.tick_rate = 60.0;
     scene.fog = None::<Fog>;
 }

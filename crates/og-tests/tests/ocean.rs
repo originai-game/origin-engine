@@ -52,11 +52,18 @@ fn mean(l: &[f32]) -> f32 {
     l.iter().sum::<f32>() / l.len() as f32
 }
 
-/// The standard deviation of the luma over a rectangle.
-fn contrast(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
-    let l = lumas(img, x0, y0, x1, y1);
-    let m = mean(&l);
-    (l.iter().map(|v| (v - m).powi(2)).sum::<f32>() / l.len() as f32).sqrt()
+/// The mean luma step between neighbouring pixels over a rectangle: the
+/// fine light and dark of waves, which a mirror's smooth reflection of the
+/// sky has little of.
+fn texture(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
+    let mut sum = 0.0;
+    for y in y0..y1 - 1 {
+        for x in x0..x1 - 1 {
+            let l = luma(px(img, x, y));
+            sum += (luma(px(img, x + 1, y)) - l).abs() + (luma(px(img, x, y + 1)) - l).abs();
+        }
+    }
+    sum / ((x1 - x0 - 1) * (y1 - y0 - 1)) as f32
 }
 
 /// The mean absolute difference of two frames, per channel.
@@ -89,13 +96,15 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
     for scene in OCEAN_SCENES {
         check(scene);
     }
-    // The breeze's sea against the same water becalmed (the detail ripples
-    // alone): the swell's lit and shaded faces spread the water's light.
+    // The breeze's sea against the same water becalmed (a mirror of the
+    // sky): the waves' lit and shaded faces break its light up pixel to
+    // pixel. (The spread of the luma alone, 1.42x on Metal, mostly measured
+    // the sky's own gradient in both.)
     let sea = frame(&ocean_scene("water-ocean"));
     let calm = frame(&with_sea("water-ocean", Some(Vec2::ZERO), None));
-    let water = |img: &RgbaImage| contrast(img, 0, 420, 1280, 720);
+    let water = |img: &RgbaImage| texture(img, 0, 420, 1280, 720);
     assert!(
-        water(&sea) > 1.5 * water(&calm),
+        water(&sea) > 3.0 * water(&calm),
         "a wind raises a sea: {} vs {}",
         water(&sea),
         water(&calm)
