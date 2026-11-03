@@ -108,6 +108,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         },
         intensity: 0.35,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene.post.bloom = Some(Bloom::default());
     scene.camera = Camera {
@@ -292,5 +293,6 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
         },
         intensity: 0.55,
         background: Background::Sky,
+        ..Environment::default()
     };
 }

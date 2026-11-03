@@ -15,7 +15,7 @@ struct Params {
   // glow power and sun colour. Unset: the built-in sky below.
   look: array<vec4<f32>, 5>,
   // A cooked environment map (fs_env_*): [0] (cos, sin) of its turn about
-  // +y and the scale of what is copied; [1..8] its 27 irradiance harmonic
+  // +y, the scale of what is copied and the blended map's weight; [1..8] its 27 irradiance harmonic
   // floats (coefficient k's channel c at float 3k + c).
   env: array<vec4<f32>, 8>,
   // The physical sky (sky_scatter.wgsl, appended to this module; [0].w 0: off).
@@ -24,6 +24,9 @@ struct Params {
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var source_cube: texture_cube<f32>;
 @group(0) @binding(2) var cube_sampler: sampler;
+// The map a cooked environment blends towards (env[0].w its weight); the
+// source again for every other pass.
+@group(0) @binding(3) var blend_cube: texture_cube<f32>;
 
 struct VsOut { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 
@@ -247,7 +250,14 @@ fn env_turned(d: vec3<f32>) -> vec3<f32> {
 @fragment
 fn fs_env_copy(in: VsOut) -> @location(0) vec4<f32> {
   let d = env_turned(face_dir(params.face, in.uv));
-  let c = textureSampleLevel(source_cube, cube_sampler, d, params.roughness).rgb;
+  var c = textureSampleLevel(source_cube, cube_sampler, d, params.roughness).rgb;
+  if (params.env[0].w > 0.0) {
+    // A blend of two maps: each level the mix of theirs (the GGX filter is
+    // linear, so the blend of two prefiltered levels is the prefiltered
+    // blend).
+    let b = textureSampleLevel(blend_cube, cube_sampler, d, params.roughness).rgb;
+    c = mix(c, b, params.env[0].w);
+  }
   return vec4<f32>(c * params.env[0].z, 1.0);
 }
 

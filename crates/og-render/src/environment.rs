@@ -88,6 +88,42 @@ pub struct EnvironmentMap {
     /// ([`crate::Background::Sky`]), as three.js `backgroundIntensity`; the
     /// light's strength is [`crate::Environment::intensity`].
     pub background_intensity: f32,
+    /// A second map blended over this one, light and background alike
+    /// (indoor to outdoor): `None` is this map alone.
+    pub blend: Option<EnvironmentBlend>,
+}
+
+/// A blend from [`EnvironmentMap::map`] towards another map.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EnvironmentBlend {
+    /// The map blended towards (turned and scaled as the first).
+    pub to: crate::EnvironmentMapHandle,
+    /// 0 is the first map, 1 the second. The caller drives it from the
+    /// tick, never from a clock, so a replay blends alike.
+    pub weight: f32,
+}
+
+/// The steps a blend's weight is drawn at (each step regenerates the
+/// image-based light once; finer steps are invisible).
+pub const ENVIRONMENT_BLEND_STEPS: f32 = 128.0;
+
+impl EnvironmentBlend {
+    /// The weight drawn: within 0..1 (not finite: 0), in
+    /// [`ENVIRONMENT_BLEND_STEPS`] steps.
+    pub fn drawn_weight(&self) -> f32 {
+        let w = if self.weight.is_finite() {
+            self.weight.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        (w * ENVIRONMENT_BLEND_STEPS).round() / ENVIRONMENT_BLEND_STEPS
+    }
+}
+
+/// `a`'s harmonics moved `w` of the way to `b`'s: the irradiance of the
+/// blend of two radiances is the blend of their irradiances.
+pub(crate) fn mix_irradiance(a: &[[f32; 3]; 9], b: &[[f32; 3]; 9], w: f32) -> [[f32; 3]; 9] {
+    std::array::from_fn(|k| std::array::from_fn(|c| a[k][c] + (b[k][c] - a[k][c]) * w))
 }
 
 impl EnvironmentMap {
@@ -97,6 +133,7 @@ impl EnvironmentMap {
             map,
             rotation: 0.0,
             background_intensity: 1.0,
+            blend: None,
         }
     }
 }
@@ -165,11 +202,16 @@ pub fn sh9(d: glam::Vec3) -> [f32; 9] {
     ]
 }
 
-/// The IBL passes' uniform block for a map: (cos, sin, scale, 0) then the
-/// 27 irradiance floats.
-pub(crate) fn env_params(rotation: f32, scale: f32, irradiance: &[[f32; 3]; 9]) -> [[f32; 4]; 8] {
+/// The IBL passes' uniform block for a map: (cos, sin, scale, the second
+/// map's weight in a blend) then the 27 irradiance floats.
+pub(crate) fn env_params(
+    rotation: f32,
+    scale: f32,
+    blend: f32,
+    irradiance: &[[f32; 3]; 9],
+) -> [[f32; 4]; 8] {
     let mut out = [[0.0; 4]; 8];
-    out[0] = [rotation.cos(), rotation.sin(), scale, 0.0];
+    out[0] = [rotation.cos(), rotation.sin(), scale, blend];
     for (k, v) in irradiance.iter().flatten().enumerate() {
         out[1 + k / 4][k % 4] = *v;
     }
@@ -773,6 +815,59 @@ mod tests {
         );
         // Exactly representable values survive.
         assert_eq!(rgb9e5_decode(rgb9e5([1.0, 0.5, 2.0])), [1.0, 0.5, 2.0]);
+    }
+
+    /// A blend's weight is clamped and drawn in 128 steps, so a weight
+    /// moved a little each tick regenerates the light only when it crosses
+    /// a step, and a broken weight draws the first map.
+    #[test]
+    fn a_blend_weight_is_clamped_and_stepped() {
+        let w = |weight: f32| {
+            EnvironmentBlend {
+                to: crate::EnvironmentMapHandle::from_index(0),
+                weight,
+            }
+            .drawn_weight()
+        };
+        assert_eq!(w(-0.3), 0.0);
+        assert_eq!(w(1.7), 1.0);
+        assert_eq!(w(f32::NAN), 0.0);
+        assert_eq!(w(f32::INFINITY), 0.0);
+        assert_eq!(w(0.5), 0.5);
+        // Within half a step: the same drawn weight (no regeneration).
+        assert_eq!(w(0.3), w(0.3 + 0.05 / ENVIRONMENT_BLEND_STEPS));
+        assert_eq!(w(0.3), 38.0 / 128.0);
+        assert_ne!(w(0.3), w(0.3 + 1.0 / ENVIRONMENT_BLEND_STEPS));
+    }
+
+    /// The blended harmonics are each coefficient's mix: the ends are the
+    /// two maps', and the irradiance at any normal is the mix of theirs.
+    #[test]
+    fn blended_irradiance_mixes_each_coefficient() {
+        let a: [[f32; 3]; 9] = std::array::from_fn(|k| [k as f32, 1.0, -2.0]);
+        let b: [[f32; 3]; 9] = std::array::from_fn(|k| [0.5, 3.0 * k as f32, 4.0]);
+        assert_eq!(mix_irradiance(&a, &b, 0.0), a);
+        assert_eq!(mix_irradiance(&a, &b, 1.0), b);
+        let m = mix_irradiance(&a, &b, 0.25);
+        assert_eq!(
+            m[4],
+            [
+                4.0 * 0.75 + 0.5 * 0.25,
+                0.75 + 12.0 * 0.25,
+                -2.0 * 0.75 + 4.0 * 0.25
+            ]
+        );
+        let n = glam::Vec3::new(0.3, -0.8, 0.5).normalize();
+        let at = |h: &[[f32; 3]; 9]| -> f32 { sh9(n).iter().zip(h).map(|(y, c)| y * c[1]).sum() };
+        assert!((at(&m) - (0.75 * at(&a) + 0.25 * at(&b))).abs() < 1e-4);
+    }
+
+    /// The blend's weight rides in the IBL passes' first vector beside the
+    /// turn and the scale.
+    #[test]
+    fn env_params_carry_the_blend_weight() {
+        let p = env_params(0.0, 2.0, 0.375, &[[0.0; 3]; 9]);
+        assert_eq!(p[0], [1.0, 0.0, 2.0, 0.375]);
     }
 
     #[test]

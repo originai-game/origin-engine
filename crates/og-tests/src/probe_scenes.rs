@@ -112,6 +112,7 @@ fn meadow() -> RenderScene {
         },
         intensity: 0.7,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene
 }

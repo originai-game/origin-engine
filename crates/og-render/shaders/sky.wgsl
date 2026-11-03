@@ -9,6 +9,12 @@
 // detail, a coverage; tiling, sampled with repeat.
 @group(1) @binding(1) var cloud_noise: texture_3d<f32>;
 @group(1) @binding(2) var cloud_sampler: sampler;
+// The background's look (SkyParams in scene/environment.rs).
+struct SkyParams {
+  dome: vec4<f32>,  // xyz: the grounded dome's centre, w: its height above the ground (0: none)
+  look: vec4<f32>,  // x: the dome's radius, y: the blurriness's prefiltered level (0: sharp), z: the prefiltered cube's scale
+};
+@group(1) @binding(3) var<uniform> sky_params: SkyParams;
 
 struct SkyOut { @builtin(position) pos: vec4<f32>, @location(0) ndc: vec2<f32> };
 
@@ -27,8 +33,41 @@ fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
   // The view ray through the pixel: near point to far point (perspective and orthographic).
   let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
   let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
-  let dir = normalize(far.xyz / far.w - near.xyz / near.w);
-  return vec4<f32>(sky_fog(textureSampleLevel(sky_map, ibl_sampler, dir, 0.0).rgb, dir), 1.0);
+  let eye = near.xyz / near.w;
+  let dir = normalize(far.xyz / far.w - eye);
+  return vec4<f32>(sky_fog(sky_background(eye, dir), dir), 1.0);
+}
+
+// Where the sky cube is looked up for the ray from `eye` along `dir`:
+// along it, or with a grounded dome (three.js GroundedSkybox) from the
+// dome's centre towards where the ray leaves the dome or meets its ground.
+fn sky_lookup(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  let h = sky_params.dome.w;
+  if (h <= 0.0) { return dir; }
+  let c = sky_params.dome.xyz;
+  let r = sky_params.look.x;
+  let o = eye - c;
+  let b = dot(o, dir);
+  let disc = b * b - (dot(o, o) - r * r);
+  if (disc < 0.0) { return dir; }
+  // The far root: the camera is inside the dome (or the dome is behind it).
+  var t = -b + sqrt(disc);
+  if (t <= 0.0) { return dir; }
+  if (dir.y < 0.0) {
+    let tg = (-h - o.y) / dir.y;
+    if (tg > 0.0) { t = min(t, tg); }
+  }
+  return normalize(o + dir * t);
+}
+
+// The background along a view ray: the sharp sky cube, or with a
+// blurriness the prefiltered (GGX) level it names, scaled as the sky cube.
+fn sky_background(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  let d = sky_lookup(eye, dir);
+  if (sky_params.look.y > 0.0) {
+    return textureSampleLevel(prefiltered_map, ibl_sampler, d, sky_params.look.y).rgb * sky_params.look.z;
+  }
+  return textureSampleLevel(sky_map, ibl_sampler, d, 0.0).rgb;
 }
 
 fn view_dir(ndc: vec2<f32>) -> vec3<f32> {

@@ -39,6 +39,7 @@ impl Renderer {
         self.grow_local_shadows(scene);
         self.fit_shelter_layer(scene);
         self.ensure_environment(scene);
+        self.write_sky_params(scene);
         (upscale, grid_offset)
     }
 

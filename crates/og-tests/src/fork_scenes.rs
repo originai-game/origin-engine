@@ -34,6 +34,7 @@ fn sky(scene: &mut RenderScene, sun: Vec3, intensity: f32) {
         },
         intensity: 1.0,
         background: Background::Sky,
+        ..Environment::default()
     };
 }
 

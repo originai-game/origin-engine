@@ -421,6 +421,7 @@ pub fn dim_scene(brightness: f32) -> RenderScene {
         },
         intensity: 0.03 * brightness,
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02) * brightness),
+        ..Environment::default()
     };
     scene.camera = Camera {
         position: Vec3::new(0.0, 3.0, 10.0),

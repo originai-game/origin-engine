@@ -78,6 +78,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
         },
+        ..Environment::default()
     };
     if fog {
         scene.fog = Some(Fog {
@@ -192,6 +193,7 @@ pub fn water_scene() -> RenderScene {
         },
         intensity: 0.6,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.0, -6.0)),

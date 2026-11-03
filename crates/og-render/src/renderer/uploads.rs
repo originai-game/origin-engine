@@ -610,6 +610,19 @@ impl Renderer {
 
     /// (Re)generates the image-based lighting when the sky, or the
     /// environment map that replaces it, changed.
+    /// The sky pass's uniform for this frame: the background's blurriness
+    /// and grounded dome (`SkyParams`).
+    pub(crate) fn write_sky_params(&self, scene: &RenderScene) {
+        // The sky cube of a map is its background intensity over the
+        // prefiltered cube (generate_map); the built-in sky's are alike.
+        let scale = scene
+            .environment_map
+            .map_or(1.0, |m| m.background_intensity.max(0.0));
+        let params = SkyParams::new(&scene.environment, crate::ibl::PREFILTER_MIPS, scale);
+        self.queue
+            .write_buffer(&self.sky_params, 0, bytemuck::bytes_of(&params));
+    }
+
     pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {
         let sky = &scene.environment.sky;
         let map = scene.environment_map.filter(|m| {
@@ -618,6 +631,19 @@ impl Renderer {
                 .get(m.map.index())
                 .is_some_and(Option::is_some)
         });
+        // The map blended towards, while it is uploaded and the weight
+        // moves off the first (`EnvironmentBlend::drawn_weight`).
+        let live = |i: usize| {
+            self.cache
+                .environment_maps
+                .get(i)
+                .is_some_and(Option::is_some)
+        };
+        let blend = map
+            .and_then(|m| m.blend)
+            .filter(|b| live(b.to.index()))
+            .map(|b| (b.to.index(), b.drawn_weight()))
+            .filter(|b| b.1 > 0.0);
         let key = match map {
             Some(m) => EnvironmentKey::Map {
                 scene: scene.id(),
@@ -625,6 +651,8 @@ impl Renderer {
                 revision: self.cache.environment_map_revisions[m.map.index()],
                 rotation: m.rotation.to_bits(),
                 background: m.background_intensity.to_bits(),
+                blend: blend
+                    .map(|(i, w)| (i, self.cache.environment_map_revisions[i], w.to_bits())),
             },
             None => EnvironmentKey::Sky(*sky),
         };
@@ -637,18 +665,33 @@ impl Renderer {
         if self.environment.as_ref().is_some_and(|(k, ..)| *k == key) {
             return;
         }
+        let view = |i: usize| {
+            &self.cache.environment_maps[i]
+                .as_ref()
+                .expect("filtered above")
+                .view
+        };
         match map {
-            Some(m) => self.ibl.generate_map(
-                &self.device,
-                &self.queue,
-                &self.cache.environment_maps[m.map.index()]
-                    .as_ref()
-                    .expect("filtered above")
-                    .view,
-                &scene.environment_maps()[m.map.index()].irradiance,
-                m.rotation,
-                m.background_intensity.max(0.0),
-            ),
+            Some(m) => {
+                let first = &scene.environment_maps()[m.map.index()].irradiance;
+                let irradiance = match blend {
+                    Some((i, w)) => environment::mix_irradiance(
+                        first,
+                        &scene.environment_maps()[i].irradiance,
+                        w,
+                    ),
+                    None => *first,
+                };
+                self.ibl.generate_map(
+                    &self.device,
+                    &self.queue,
+                    view(m.map.index()),
+                    blend.map(|(i, w)| (view(i), w)),
+                    &irradiance,
+                    m.rotation,
+                    m.background_intensity.max(0.0),
+                )
+            }
             None => self.ibl.generate(
                 &self.device,
                 &self.queue,
@@ -694,6 +737,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&ibl.sky),
                 wgpu::BindingResource::TextureView(&self.cloud_noise.view),
                 wgpu::BindingResource::Sampler(&self.cloud_noise.sampler),
+                self.sky_params.as_entire_binding(),
             ],
         );
         self.environment = Some((key, group, sky_group, reflection_group));

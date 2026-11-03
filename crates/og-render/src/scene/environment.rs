@@ -389,6 +389,68 @@ pub enum Background {
     },
 }
 
+/// The sky cube drawn on a dome with a flat ground under it instead of at
+/// infinity, as three.js `GroundedSkybox`: an environment photographed
+/// `height` above the ground shows that ground where it lies, so objects
+/// stand on it rather than float over a horizon. The dome's radius is
+/// `radius`; its ground disc is where the dome would pass under the ground.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GroundProjection {
+    /// How far above the ground the map was taken (metres, above 0).
+    pub height: f32,
+    /// The dome's radius (metres, larger than `height`).
+    pub radius: f32,
+    /// The ground point under where the map was taken (the dome's centre
+    /// is `height` above it).
+    pub center: Vec3,
+}
+
+impl Default for GroundProjection {
+    fn default() -> Self {
+        GroundProjection {
+            height: 15.0,
+            radius: 100.0,
+            center: Vec3::ZERO,
+        }
+    }
+}
+
+/// The sky pass's uniform (sky.wgsl `SkyParams`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct SkyParams {
+    /// xyz: the grounded dome's centre (the frame's coordinates), w: its
+    /// height above the ground (0: no dome).
+    pub dome: [f32; 4],
+    /// x: the dome's radius, y: the blurriness's prefiltered level (0:
+    /// the sharp sky cube), z: what the prefiltered cube is scaled by to
+    /// match the sky cube (the background intensity of a map).
+    pub look: [f32; 4],
+}
+
+impl SkyParams {
+    /// `env`'s background as the sky pass draws it: `levels` the
+    /// prefiltered cube's mip count, `scale` the sky cube's scale over it.
+    pub(crate) fn new(env: &Environment, levels: u32, scale: f32) -> SkyParams {
+        let blur = if env.background_blurriness.is_finite() {
+            env.background_blurriness.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let ground = env
+            .ground
+            .filter(|g| g.height > 0.0 && g.radius > g.height && g.radius.is_finite());
+        let (dome, radius) = match ground {
+            Some(g) => ((g.center + Vec3::Y * g.height).extend(g.height), g.radius),
+            None => (glam::Vec4::ZERO, 0.0),
+        };
+        SkyParams {
+            dome: dome.to_array(),
+            look: [radius, blur * levels.saturating_sub(1) as f32, scale, 0.0],
+        }
+    }
+}
+
 /// Environment lighting and background.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Environment {
@@ -396,6 +458,14 @@ pub struct Environment {
     /// Strength of the image-based (ambient) light.
     pub intensity: f32,
     pub background: Background,
+    /// How blurred the sky cube is where it is drawn behind the scene, as
+    /// three.js `scene.backgroundBlurriness`: 0 sharp to 1 the roughest of
+    /// the prefiltered (GGX) levels the light already reads; the light is
+    /// unchanged. For [`Background::Sky`].
+    pub background_blurriness: f32,
+    /// The sky cube drawn on a grounded dome ([`GroundProjection`]); `None`
+    /// at infinity. For [`Background::Sky`].
+    pub ground: Option<GroundProjection>,
 }
 
 impl Default for Environment {
@@ -404,6 +474,8 @@ impl Default for Environment {
             sky: ProceduralSky::default(),
             intensity: 0.55,
             background: Background::Sky,
+            background_blurriness: 0.0,
+            ground: None,
         }
     }
 }
@@ -560,6 +632,57 @@ impl DebugView {
             DebugView::AoDepth => 1.0,
             DebugView::AoRaw => 2.0,
             _ => 0.0,
+        }
+    }
+}
+
+#[cfg(test)]
+mod sky_params_tests {
+    use super::*;
+
+    /// The sky pass's uniform: blurriness 0..1 maps onto the prefiltered
+    /// levels (1 the roughest, out-of-range clamped), and a dome draws
+    /// only with a positive height and a radius past it, its centre
+    /// `height` above the ground point.
+    #[test]
+    fn sky_params_map_blurriness_and_the_dome() {
+        let env = |blur: f32, ground: Option<GroundProjection>| Environment {
+            background_blurriness: blur,
+            ground,
+            ..Environment::default()
+        };
+        let p = SkyParams::new(&env(0.0, None), 5, 1.0);
+        assert_eq!(
+            p,
+            SkyParams {
+                dome: [0.0; 4],
+                look: [0.0, 0.0, 1.0, 0.0]
+            }
+        );
+        assert_eq!(
+            SkyParams::new(&env(1.0, None), 5, 0.5).look[1..3],
+            [4.0, 0.5]
+        );
+        assert_eq!(SkyParams::new(&env(0.5, None), 5, 1.0).look[1], 2.0);
+        assert_eq!(SkyParams::new(&env(3.0, None), 5, 1.0).look[1], 4.0);
+        assert_eq!(SkyParams::new(&env(f32::NAN, None), 5, 1.0).look[1], 0.0);
+        let g = GroundProjection {
+            height: 2.0,
+            radius: 30.0,
+            center: Vec3::new(1.0, -1.0, 3.0),
+        };
+        let p = SkyParams::new(&env(0.0, Some(g)), 5, 1.0);
+        assert_eq!(p.dome, [1.0, 1.0, 3.0, 2.0]);
+        assert_eq!(p.look[0], 30.0);
+        for bad in [
+            GroundProjection { height: 0.0, ..g },
+            GroundProjection { radius: 2.0, ..g },
+            GroundProjection {
+                radius: f32::INFINITY,
+                ..g
+            },
+        ] {
+            assert_eq!(SkyParams::new(&env(0.0, Some(bad)), 5, 1.0).dome, [0.0; 4]);
         }
     }
 }

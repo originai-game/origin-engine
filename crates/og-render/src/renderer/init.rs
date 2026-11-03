@@ -295,6 +295,8 @@ impl Renderer {
                 // The clouds' noise volume and its repeating sampler (clouds.rs).
                 texture_entry(1, true, wgpu::TextureViewDimension::D3),
                 sampler_entry(2, wgpu::SamplerBindingType::Filtering),
+                // The background's blurriness and grounded dome (sky.wgsl SkyParams).
+                uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -570,6 +572,12 @@ impl Renderer {
         let sky_look_pipeline = sky_state("fs_sky_look");
         let ibl = ibl::IblGenerator::new(&device);
         let cloud_noise = clouds::CloudNoise::placeholder(&device, &queue);
+        let sky_params = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("sky params"),
+            size: std::mem::size_of::<SkyParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
@@ -880,6 +888,7 @@ impl Renderer {
             frame_layout,
             sky_layout,
             cloud_noise,
+            sky_params,
             material_layout,
             sprite_layout,
             frame_buffer,

@@ -369,10 +369,12 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// og.Blendshapes version 2 (`influences`), which changes the type table,
 /// and (-> 1368f2941b52b659) R6's og.TerrainScatter impostor fields
 /// and (-> ca6127b0d0a9c62d) og.Model.sway, and (-> ebd3b59c00e9e91f)
-/// R5's lazy og.Water, gone from a world without water.
+/// R5's lazy og.Water, gone from a world without water, and
+/// (-> 2a5725344c75081b) og.Environment's background blurriness, grounded
+/// dome and blend fields (R2's environment maps).
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "ebd3b59c00e9e91f";
+const END_HASH: &str = "2a5725344c75081b";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

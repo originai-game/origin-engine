@@ -235,6 +235,7 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
         },
         intensity: 1.0,
         background: og_render::Background::Sky,
+        ..Default::default()
     };
     let bed = scene.add_mesh(shapes::plane(80.0, 1.0));
     let sand = scene.add_standard_material(StandardMaterial {

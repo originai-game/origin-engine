@@ -457,6 +457,141 @@ fn environment_map_matches_its_reference() {
     assert!(u > 4.0, "the map replaces the sky: {u:.1}");
 }
 
+/// Mean channel difference over the pixels of `a` and `b` that `keep`
+/// selects (x, y).
+fn mean_diff(a: &RgbaImage, b: &RgbaImage, keep: impl Fn(u32, u32) -> bool) -> f32 {
+    let (mut sum, mut n) = (0.0f32, 0u32);
+    for y in 0..a.height {
+        for x in 0..a.width {
+            if keep(x, y) {
+                let i = ((y * a.width + x) * 4) as usize;
+                for c in 0..3 {
+                    sum += a.pixels[i + c].abs_diff(b.pixels[i + c]) as f32;
+                }
+                n += 3;
+            }
+        }
+    }
+    sum / n.max(1) as f32
+}
+
+/// backgroundBlurriness softens only the background: the spheres' light is
+/// the sharp frame's, and the studio behind them loses its edges.
+#[test]
+fn environment_blurry_matches_its_reference() {
+    check("environment-blurry");
+    let sharp = gfx::render_built(&mut built("environment-map"))
+        .expect("sharp")
+        .image;
+    let blurry = gfx::render_built(&mut built("environment-blurry"))
+        .expect("blurry")
+        .image;
+    // The spheres' middles (environment_scene's ten, 0.9 m across, seen
+    // from 8 m: some 80 px in radius) keep their light.
+    let (w, h) = (sharp.width as f32, sharp.height as f32);
+    let view_proj =
+        glam::camera::rh::proj::directx::perspective(50f32.to_radians(), w / h, 0.1, 100.0)
+            * glam::camera::rh::view::look_at_mat4(Vec3::new(0.0, 0.3, 8.0), Vec3::ZERO, Vec3::Y);
+    let centres: Vec<(f32, f32)> = (0..10)
+        .map(|k| {
+            let at = Vec3::new(-4.4 + (k % 5) as f32 * 2.2, 1.1 - (k / 5) as f32 * 2.2, 0.0);
+            let p = view_proj.project_point3(at);
+            ((p.x * 0.5 + 0.5) * w, (0.5 - p.y * 0.5) * h)
+        })
+        .collect();
+    let on_sphere = |x: u32, y: u32| {
+        centres
+            .iter()
+            .any(|&(cx, cy)| (x as f32 - cx).hypot(y as f32 - cy) < 30.0)
+    };
+    let lit = mean_diff(&sharp, &blurry, on_sphere);
+    // The background above the spheres' row: the studio's edges blur.
+    let behind = mean_diff(&sharp, &blurry, |_, y| y < 90);
+    let edges = |img: &RgbaImage| {
+        let mut sum = 0.0;
+        for y in 0..90 {
+            for x in 0..img.width - 1 {
+                let i = ((y * img.width + x) * 4) as usize;
+                sum += img.pixels[i].abs_diff(img.pixels[i + 4]) as f32;
+            }
+        }
+        sum
+    };
+    let (e_sharp, e_blurry) = (edges(&sharp), edges(&blurry));
+    println!(
+        "blurriness: spheres {lit:.2}, background {behind:.2}, background edges {e_sharp:.0} -> {e_blurry:.0}"
+    );
+    assert!(lit < 0.5, "the light is unchanged: {lit:.2}");
+    assert!(
+        e_blurry < 0.7 * e_sharp,
+        "the background's edges soften: {e_sharp:.0} -> {e_blurry:.0}"
+    );
+}
+
+/// A blend of two maps at weight 0.5 lies between them, light and
+/// background, and weight 0 is the first map exactly.
+#[test]
+fn environment_blend_matches_its_reference() {
+    check("environment-blend");
+    let render = |w: f32| {
+        let mut g = built("environment-blend");
+        g.scene
+            .environment_map
+            .as_mut()
+            .expect("a map")
+            .blend
+            .as_mut()
+            .expect("a blend")
+            .weight = w;
+        gfx::render_built(&mut g).expect("render").image
+    };
+    let plain = gfx::render_built(&mut built("environment-map"))
+        .expect("plain")
+        .image;
+    let (a, half, b) = (render(0.0), render(0.5), render(1.0));
+    let all = |_: u32, _: u32| true;
+    let (zero, ends, to_a, to_b) = (
+        mean_diff(&plain, &a, all),
+        mean_diff(&a, &b, all),
+        mean_diff(&a, &half, all),
+        mean_diff(&half, &b, all),
+    );
+    println!("blend: weight 0 vs none {zero:.3}, ends {ends:.1}, half to each {to_a:.1} {to_b:.1}");
+    assert_eq!(zero, 0.0, "weight 0 is the first map");
+    assert!(ends > 8.0, "the two maps differ: {ends:.1}");
+    assert!(
+        to_a > 0.25 * ends && to_b > 0.25 * ends,
+        "half way is between: {to_a:.1} {to_b:.1} of {ends:.1}"
+    );
+    assert!(
+        to_a < 0.75 * ends && to_b < 0.75 * ends,
+        "half way is between: {to_a:.1} {to_b:.1} of {ends:.1}"
+    );
+}
+
+/// The grounded dome lays the map's ground flat under the spheres: the
+/// lower half of the frame changes against the map at infinity, the sky
+/// above the horizon much less.
+#[test]
+fn environment_grounded_matches_its_reference() {
+    check("environment-grounded");
+    let frame = |grounded: bool| {
+        let mut g = built("environment-grounded");
+        g.scene = og_tests::ibl_scenes::grounded_scene(grounded).expect("scene");
+        gfx::render_built(&mut g).expect("render").image
+    };
+    let (dome, infinite) = (frame(true), frame(false));
+    let h = dome.height;
+    let ground = mean_diff(&dome, &infinite, |_, y| y > h * 3 / 4);
+    let sky = mean_diff(&dome, &infinite, |_, y| y < h / 8);
+    println!("grounded: ground {ground:.1}, sky {sky:.1}");
+    assert!(ground > 6.0, "the ground is projected: {ground:.1}");
+    assert!(
+        sky < ground * 0.5,
+        "the sky moves less: {sky:.1} against {ground:.1}"
+    );
+}
+
 #[test]
 fn ao_gtao_matches_its_reference() {
     assert!(check("ao-gtao").stats.prepass_draws > 0);

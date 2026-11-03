@@ -153,6 +153,7 @@ fn light(scene: &mut RenderScene) {
         },
         intensity: 0.8,
         background: Background::Color(Vec3::new(0.55, 0.7, 0.9)),
+        ..Environment::default()
     };
 }
 

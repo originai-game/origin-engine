@@ -83,9 +83,21 @@ pub(crate) fn resolve(eng: &Engine) {
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.scene.environment_map = None;
     rs.scene.hemisphere = ([0.0; 3], [0.0; 3], 0.0);
+    rs.scene.environment.background_blurriness = 0.0;
+    rs.scene.environment.ground = None;
     let Some(v) = super::extract::resource(world, rs.draw.environment.as_ref()) else {
         return;
     };
+    let f = |k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
+    rs.scene.environment.background_blurriness = f("backgroundBlurriness", 0.0).clamp(0.0, 1.0);
+    let height = f("groundHeight", 0.0);
+    if height > 0.0 {
+        rs.scene.environment.ground = Some(og_render::GroundProjection {
+            height,
+            radius: f("groundRadius", 100.0),
+            center: super::fx::vec3(&v["groundCenter"]),
+        });
+    }
     let hi = v["hemiIntensity"]
         .as_f64()
         .map_or(0.0, |x| x as f32)
@@ -101,12 +113,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let Some(map) = map else {
         return;
     };
-    let f = |k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
     rs.scene.environment.intensity = f("intensity", 1.0).max(0.0);
     rs.scene.environment_map = Some(og_render::EnvironmentMap {
         map,
         rotation: f("rotation", 0.0).to_radians(),
         background_intensity: f("backgroundIntensity", 1.0).max(0.0),
+        // Live maps only: a pending one (its group not resident) is no blend.
+        blend: super::fx::handle_index(&v["blendTo"])
+            .and_then(|i| rs.env.maps.get(i))
+            .and_then(|(_, h)| *h)
+            .map(|to| og_render::EnvironmentBlend {
+                to,
+                weight: f("blendWeight", 0.0),
+            }),
     });
     if v["background"].as_bool().unwrap_or(false) {
         rs.scene.environment.background = og_render::Background::Sky;

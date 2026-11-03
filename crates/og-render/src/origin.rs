@@ -136,6 +136,9 @@ impl RenderScene {
             v.min += d;
             v.max += d;
         }
+        if let Some(g) = &mut self.environment.ground {
+            g.center += d;
+        }
         if let Some(f) = &mut self.fog {
             f.height += d.y;
         }

@@ -6893,6 +6893,51 @@ export interface Environment {
    */
   backgroundIntensity: number;
   /**
+   * Blurs the sky where it is drawn behind the scene, as three.js scene.backgroundBlurriness: 0 sharp to 1 the roughest of the prefiltered (GGX) levels the light already reads, so it costs nothing extra; the light is not changed. Applies to the sky background with or without a map.
+   *
+   * @default 0
+   * @range 0..1
+   * @tunable
+   */
+  backgroundBlurriness: number;
+  /**
+   * Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects then stand on the map's ground instead of floating over its horizon. 0 (the default) draws the sky at infinity.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  groundHeight: number;
+  /**
+   * The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance.
+   *
+   * @default 100
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  groundRadius: number;
+  /**
+   * The ground point under where the map was photographed: the dome's centre is groundHeight above it.
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  groundCenter: Vector3;
+  /**
+   * A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity.
+   */
+  blendTo: EnvironmentMap;
+  /**
+   * How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once.
+   *
+   * @default 0
+   * @range 0..1
+   * @tunable
+   */
+  blendWeight: number;
+  /**
    * A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection.
    *
    * @default { r: 1, g: 1, b: 1 }
@@ -52183,7 +52228,7 @@ export declare namespace og {
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
-  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
+  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly backgroundBlurriness: FieldSpec<"f32">; readonly groundHeight: FieldSpec<"f32">; readonly groundRadius: FieldSpec<"f32">; readonly groundCenter: FieldSpec<"Vector3">; readonly blendTo: FieldSpec<"EnvironmentMap">; readonly blendWeight: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping, and lens distortion bends the result; the UI and screen-space sprites (the overlay) come after all of it.

@@ -578,7 +578,12 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   dual-paraboloid hemispheres for up to 8 point/spot lights, the brightest
   at the camera first (cube by default, paraboloid as the cheaper choice;
   `RenderOptions.pointShadows`).
-- IBL from an environment map prefiltered at cook time; sky model with
+- IBL from an environment map prefiltered at cook time, as three.js's
+  scene.environment and background: a blurred background read from the
+  prefiltered levels (`backgroundBlurriness`), a grounded dome
+  (GroundedSkybox, `groundHeight`), and a blend towards a second map
+  (`blendTo`, `blendWeight`, drawn in 128 steps and driven from the tick)
+  that mixes every prefiltered level and the harmonics; sky model with
   exposure; height fog, lit as a medium when volumetric; baked lightmaps
   and light volumes (below).
 - Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading LUT (a photo

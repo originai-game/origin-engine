@@ -203,8 +203,9 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// made the 2D lighting records lazy and again after ui-gaps' UI state
 /// versions 14 and 15, after R9's og.Blendshapes version 2
 /// (`influences`) and after R6's og.TerrainScatter impostor fields and og.Model.sway,
-/// and after R5 made og.Water lazy; R10 leaves it unmoved on either side).
-const PINNED_HASH: &str = "8ecb7b319b3dc965";
+/// after R5 made og.Water lazy, and after og.Environment's blurriness, grounded dome
+/// and blend fields; R10 leaves it unmoved on either side).
+const PINNED_HASH: &str = "dbae7dda9d466a3d";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

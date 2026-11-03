@@ -205,6 +205,18 @@ impl IblGenerator {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                // The map blended towards (`EnvironmentBlend`; the source
+                // again elsewhere).
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::Cube,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -300,6 +312,10 @@ impl IblGenerator {
                     wgpu::BindGroupEntry {
                         binding: 2,
                         resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(source),
                     },
                 ],
             })
@@ -473,15 +489,21 @@ impl IblGenerator {
     /// scaled by `background` (its mips downsampled as for the sky), level
     /// `m` into prefiltered mip `m`, and `irradiance` (the map's harmonics)
     /// into the irradiance cube.
+    /// `blend`: a second map and its weight (0..1), mixed into every
+    /// level as the light and background blend (its harmonics already
+    /// mixed into `irradiance` by the caller).
+    #[allow(clippy::too_many_arguments)]
     pub fn generate_map(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         map: &wgpu::TextureView,
+        blend: Option<(&wgpu::TextureView, f32)>,
         irradiance: &[[f32; 3]; 9],
         rotation: f32,
         background: f32,
     ) {
+        let (to, weight) = blend.unwrap_or((map, 0.0));
         const DOWN: usize = 1;
         const ENV_COPY: usize = 5;
         const ENV_IRRADIANCE: usize = 6;
@@ -504,6 +526,10 @@ impl IblGenerator {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&self.views.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(to),
                 },
             ],
         });
@@ -540,7 +566,7 @@ impl IblGenerator {
                 sun_dir: [0.0; 4],
                 sun_color: [0.0; 4],
                 look: [[0.0; 4]; 5],
-                env: crate::environment::env_params(rotation, scale, irradiance),
+                env: crate::environment::env_params(rotation, scale, weight, irradiance),
                 scatter: [[0.0; 4]; crate::sky_physical::SCATTER_VEC4S],
             };
             let at = i * SLOT as usize;
@@ -635,6 +661,10 @@ impl IblGenerator {
                     wgpu::BindGroupEntry {
                         binding: 2,
                         resource: wgpu::BindingResource::Sampler(&self.views.sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(source),
                     },
                 ],
             })

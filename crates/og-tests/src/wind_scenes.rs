@@ -41,6 +41,7 @@ pub fn wind_scene(blowing: bool, tick: u64) -> RenderScene {
         },
         intensity: 0.8,
         background: Background::Color(Vec3::new(0.55, 0.7, 0.9)),
+        ..Environment::default()
     };
     let floor = scene.add_mesh(shapes::cuboid(Vec3::new(16.0, 0.2, 10.0)));
     let grey = scene.add_standard_material(StandardMaterial {

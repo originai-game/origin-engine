@@ -50,6 +50,9 @@ pub const SCENES: &[&str] = &[
     "post-grade",
     "post-agx",
     "environment-map",
+    "environment-blurry",
+    "environment-blend",
+    "environment-grounded",
     "ao-gtao",
     "ao-ssao",
     "gi-room",
@@ -654,6 +657,25 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // the background too.
         "environment-map" => |g, _| {
             g.scene = crate::ibl_scenes::environment_scene()?;
+            Ok(())
+        },
+        // The environment-map scene with its background blurred half way
+        // (backgroundBlurriness 0.5): the spheres exactly as there, the
+        // studio behind them soft.
+        "environment-blurry" => |g, _| {
+            g.scene = crate::ibl_scenes::blurry_scene()?;
+            Ok(())
+        },
+        // The environment-map scene half way through a blend from the
+        // studio to a sunny outdoor map: light and background both mixed.
+        "environment-blend" => |g, _| {
+            g.scene = crate::ibl_scenes::blend_scene(0.5)?;
+            Ok(())
+        },
+        // Spheres standing on the outdoor map's checked ground, projected
+        // onto a grounded dome (three.js GroundedSkybox).
+        "environment-grounded" => |g, _| {
+            g.scene = crate::ibl_scenes::grounded_scene(true)?;
             Ok(())
         },
         "ao-gtao" => |g, _| {

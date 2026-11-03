@@ -128,6 +128,7 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         },
         intensity: 1.0,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene.post.ao = Some(AmbientOcclusion {
         radius: 0.7,
@@ -222,6 +223,7 @@ pub fn gi_scene(gi: bool) -> RenderScene {
         },
         intensity: 0.25,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene.post.gi = gi.then(og_render::ScreenSpaceGlobalIllumination::default);
     scene.camera = Camera {
@@ -401,6 +403,7 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         },
         intensity: 0.25,
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
+        ..Environment::default()
     };
     scene.post.bloom = Some(Bloom::default());
     scene.post.depth_of_field = Some(DepthOfField {
@@ -462,6 +465,7 @@ pub fn god_rays_scene() -> RenderScene {
         },
         intensity: 0.4,
         background: Background::Sky,
+        ..Environment::default()
     };
     scene.post.god_rays = Some(GodRays {
         intensity: 0.7,

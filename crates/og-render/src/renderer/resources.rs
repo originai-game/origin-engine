@@ -296,6 +296,9 @@ pub(crate) enum EnvironmentKey {
         revision: u64,
         rotation: u32,
         background: u32,
+        /// The map blended towards (its index and revision) and the drawn
+        /// weight's bits.
+        blend: Option<(usize, u64, u32)>,
     },
 }
 

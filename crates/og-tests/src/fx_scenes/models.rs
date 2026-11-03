@@ -144,6 +144,7 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
         },
         intensity: 0.3,
         background: Background::Color(Vec3::new(0.35, 0.55, 0.85)),
+        ..Environment::default()
     };
     scene.post.outline = Some(Outline {
         width: 1.5,

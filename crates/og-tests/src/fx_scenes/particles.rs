@@ -198,6 +198,7 @@ fn night(scene: &mut RenderScene) {
         },
         intensity: 0.06,
         background: Background::Color(Vec3::new(0.008, 0.01, 0.022)),
+        ..Environment::default()
     };
 }
 

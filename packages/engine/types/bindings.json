@@ -8549,6 +8549,44 @@
           "tunable": true
         },
         {
+          "name": "backgroundBlurriness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "groundHeight",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "groundRadius",
+          "column": "f32",
+          "default": 100,
+          "tunable": true
+        },
+        {
+          "name": "groundCenter",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "blendTo",
+          "column": "EnvironmentMap",
+          "default": 0
+        },
+        {
+          "name": "blendWeight",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "hemiSky",
           "column": "Color",
           "default": {
