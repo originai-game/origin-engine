@@ -341,7 +341,10 @@ The current five walks stay, with additions:
 - **Overlap is an error unless declared.** Siblings in flow cannot overlap;
   absolutely positioned and anchored elements that overlap another element
   must say so (`overlaps: "<path>"`), or `og ui check` reports them with
-  both paths (§16.4). This makes the phone-sheet bugs of §1 failures.
+  both paths (§16.4). This makes the phone-sheet bugs of §1 failures. An
+  element is measured where its own and its ancestors' declared transforms
+  draw it (a label scaled down to fit a corner covers its scaled box, not
+  the line it was laid out on); motion is not part of the check.
 
 ### 6.3 Invalidation
 

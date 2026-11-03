@@ -1198,16 +1198,36 @@ impl Ui {
             }
             false
         };
+        // Where a node is drawn by its own and its ancestors' declared
+        // transforms (a key cap scaled down to fit its corner covers its
+        // scaled box, not the line it was laid out on); motion, which
+        // comes later, is not part of the layout checked here.
+        let posed = |i: usize| -> Rect {
+            let mut m = Affine::IDENTITY;
+            let mut j = i;
+            while j != NONE {
+                let n = &self.nodes[j];
+                if !n.props.transform.is_identity() {
+                    m = n.props.transform.matrix(&n.rect).mul(&m);
+                }
+                j = n.parent;
+            }
+            if m.is_identity() {
+                self.nodes[i].rect
+            } else {
+                m.map_rect(&self.nodes[i].rect)
+            }
+        };
         // What of a node a scroll leaves in view: its rectangle cut by every
         // scrolling ancestor's (an element scrolled out of a list overlaps
         // nothing drawn outside it).
         let shown = |i: usize| -> Rect {
-            let mut r = self.nodes[i].rect;
+            let mut r = posed(i);
             let mut j = self.nodes[i].parent;
             while j != NONE {
                 let n = &self.nodes[j];
                 if n.el.scroll || n.el.scroll_x {
-                    r = r.intersect(&n.rect);
+                    r = r.intersect(&posed(j));
                 }
                 j = n.parent;
             }

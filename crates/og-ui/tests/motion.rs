@@ -962,6 +962,70 @@ fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
 }
 
 #[test]
+fn an_overlap_is_measured_where_a_transform_draws_the_element() {
+    // A command cell's key cap laid out on a 32 px line and scaled to half
+    // about its top-left corner, with the seconds placed below the scaled
+    // cap: they meet only on the unscaled line. A badge scaled up past its
+    // box, the other way, is reported where it is drawn.
+    let mut ui = Ui::new(UiDesc::default());
+    let at = |left: f32, top: f32, transform: Transform| Props {
+        position: Position::Absolute,
+        insets: Edges {
+            start: Some(left),
+            top: Some(top),
+            ..Edges::default()
+        },
+        transform,
+        ..Props::default()
+    };
+    let half = Transform {
+        scale_x: 0.5,
+        scale_y: 0.5,
+        pivot_x: 0.0,
+        pivot_y: 0.0,
+        ..Transform::IDENTITY
+    };
+    let double = Transform {
+        scale_x: 2.0,
+        scale_y: 2.0,
+        ..Transform::IDENTITY
+    };
+    ui.begin(InputFrame::default(), vp());
+    ui.open("Cell", fixed(200.0, 200.0));
+    boxed(&mut ui, "Key", 20.0, 32.0, at(0.0, 0.0, half));
+    boxed(
+        &mut ui,
+        "Time",
+        30.0,
+        20.0,
+        at(0.0, 16.0, Transform::IDENTITY),
+    );
+    boxed(&mut ui, "Badge", 20.0, 20.0, at(100.0, 100.0, double));
+    boxed(
+        &mut ui,
+        "Tag",
+        20.0,
+        20.0,
+        at(122.0, 100.0, Transform::IDENTITY),
+    );
+    ui.close();
+    ui.end();
+    let pairs: Vec<_> = ui
+        .frame()
+        .overlaps
+        .iter()
+        .map(|o| (o.path.clone(), o.other.clone()))
+        .collect();
+    let meet = |a: &str, b: &str| {
+        pairs
+            .iter()
+            .any(|(x, y)| (x == a && y == b) || (x == b && y == a))
+    };
+    assert!(!meet("Cell/Key", "Cell/Time"), "{pairs:?}");
+    assert!(meet("Cell/Badge", "Cell/Tag"), "{pairs:?}");
+}
+
+#[test]
 fn an_unchanged_frame_keeps_its_layout_and_commands() {
     let mut ui = Ui::new(UiDesc::default());
     let frame = |ui: &mut Ui, n: usize| {
