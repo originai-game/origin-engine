@@ -312,7 +312,11 @@ export function cgGalleryScreen(): void {
       hint: locked ? L(`vn.hint.${key}`) : "",
       fresh: key === "duel",
     }));
-    const r = og.ui.cgGallery("Cg", {
+    // The gallery seated on the pack's panel, as a game's extras menu is, not straight on the scene.
+    let r!: ReturnType<typeof og.ui.cgGallery>;
+    const t = og.ui.frameTheme();
+    og.ui.column("Seat", { width: grow, height: grow, padding: viewing ? { left: 0, top: 0, right: 0, bottom: 0 } : { left: t.space.md, top: t.space.md, right: t.space.md, bottom: t.space.md }, background: viewing ? undefined : { token: "panel" }, radius: t.radius.panel, frame: viewing ? undefined : "panel" } as never, () => {
+    r = og.ui.cgGallery("Cg", {
       title: L("vn.gallery.title"),
       chapters: [{ key: "", label: L("vn.all") }, ...["one", "two", "three"].map((key) => ({ key, label: L(`vn.chapter.${key}`) }))],
       chapter: vg.chapter,
@@ -325,6 +329,7 @@ export function cgGalleryScreen(): void {
       closeLabel: L("vn.close"),
       prevLabel: L("vn.prev"),
       nextLabel: L("vn.next"),
+    });
     });
     // The game's side: the viewer opens on the picture's first version; another picture or version replaces it.
     if (r.chapter !== null) vg.chapter = r.chapter;

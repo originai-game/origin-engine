@@ -60,6 +60,7 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
   const W = kit.memory(`~cg.w.${id}`, 0) || firstRoom().w;
+  const H = kit.memory(`~cg.h.${id}`, 0) || firstRoom().h;
   const ts = Math.max(1, frame().theme.textScale ?? 1);
   // Read and written outside the pattern's element: a memory key is the open element's.
   const rt = kit.memory(`~cg.rt.${id}`, -1);
@@ -150,14 +151,23 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
         text("Text", fill(desc.countLabel ?? "{n} / {total}", seen, entries.length), { step: st(15), font: "mono", nowrap: true });
       });
     });
+    kit.remember("~cg.head", Math.round(kit.bounds(kit.lastPath())?.height ?? u(44)));
     // The grid: whole rows of 16:9 tiles, each its title in its own row under it.
     const gap = u(phone ? 8 : 16);
-    const want = u(portrait ? 160 : 260) * Math.min(1.3, ts);
+    const want = u(portrait ? 160 : 340) * Math.min(1.3, ts);
     const cols = Math.max(portrait ? 2 : 2, Math.floor((W - u(8) + gap) / (want + gap)));
-    const cw = Math.floor((W - u(8) - gap * (cols - 1)) / cols);
+    // Whole rows in the room when they fit at no less than 0.7 of the width's size (a short gallery fills its box
+    // instead of leaving its last row cut under the fold); a long one keeps the width's size and scrolls.
+    const fullW = Math.floor((W - u(8) - gap * (cols - 1)) / cols);
+    const rows = Math.max(1, Math.ceil(shown.length / cols));
+    const gridH = H - kit.memory("~cg.head", u(44)) - u(phone ? 10 : 16) - u(16);
+    const under = u(6) + Math.ceil(u(phone ? 13 : 15) * 1.6 * ts);
+    const fitW = Math.floor(((gridH - gap * (rows - 1)) / rows - under) * 16 / 9);
+    const cw = fitW < fullW && fitW >= fullW * 0.7 ? fitW : fullW;
+    const side = u(4) + Math.max(0, Math.floor((W - u(8) - cols * cw - gap * (cols - 1)) / 2));
     const chH = Math.round((cw * 9) / 16);
     const short = chH < u(phone ? 56 : 60) + 2 * u(phone ? 12 : 13) * 1.35 * ts;
-    kit.openScroll("Grid", { width: grow(), height: grow(), gap, padding: xy(u(4), u(4)), fade: 32, fadeInto: "shadow" } as never);
+    kit.openScroll("Grid", { width: grow(), height: grow(), gap, padding: xy(side, u(4)), fade: 32, fadeInto: "shadow" } as never);
     for (let r0 = 0; r0 < shown.length; r0 += cols) {
       kit.row(kit.idi("Line", r0 / cols), { gap }, () => {
         for (const e of shown.slice(r0, r0 + cols)) {
