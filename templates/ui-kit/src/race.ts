@@ -182,7 +182,7 @@ export function raceHud(world: World): void {
     map(Math.round((small ? 132 : 196) * k), "topRight", "square", pos);
   }
   if (look === "arcade") {
-    og.ui.anchor("ArcadeMap", arcadeMapPlace(small, portrait, touch, k, m), () => map(Math.round((small ? 120 : 176) * k), null, "circle", pos));
+    og.ui.anchor("Map", arcadeMapPlace(small, portrait, touch, k, m), () => map(Math.round((small ? 120 : 176) * k), null, "circle", pos));
   } else {
     // Bottom end; on a phone in portrait centred over the pads (the camera raises the car clear of it), on a phone on
     // its side beside the pedals (the bottom centre is the car's), from the pedals as laid last tick.
@@ -267,23 +267,11 @@ function pads(k: number, m: number, small: boolean, arcadeLook: boolean): void {
     og.ui.actionButton("Right", L("sc.race.right"), { icon: "back", size: 72 });
     og.ui.props({ transform: { scaleX: -1 } } as never);
   });
-  const ring = (id: string, side: number, value: number, ink: string, build: () => void) => {
-    const d = side + 16;
-    const arc = (_: number, color: Record<string, unknown>) => ({ kind: "solid", color });
-    og.ui.column(id, { width: { kind: "fixed", px: d }, height: { kind: "fixed", px: d }, align: "center", cross: "center" }, () => {
-      og.ui.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2, thickness: 5, cap: "butt" }, fills: [arc(1, { token: "shadow", alpha: 0.55 })] } as never);
-      og.ui.column("Lit", { width: { kind: "fixed", px: d }, height: { kind: "fixed", px: d } }, () => {});
-      og.ui.setDraw({ shape: { kind: "arc", start: -Math.PI / 2, sweep: Math.PI * 2 * Math.max(0.001, value), thickness: 5, cap: "round" }, fills: [arc(1, { token: ink })] } as never);
-      og.ui.props({ position: "absolute", insets: { start: 0, top: 0 }, inert: true } as never);
-      // The pad itself round inside its ring: the button clipped to a circle.
-      og.ui.column("Pad", { width: { kind: "fixed", px: side }, height: { kind: "fixed", px: side }, align: "center", cross: "center" }, build);
-      og.ui.setDraw({ shape: { kind: "ellipse" }, clip: "shape" } as never);
-    });
-  };
-  // On a phone in the bottom end corner (the instrument centred); on a tablet over the instrument in that corner.
+  // The pedals round, each with its charge ring inside its edge (og-ui's actionButton): the brake's pressure, the boost's charge.
+  // On a phone in the bottom end corner (the instrument beside them); on a tablet over the instrument in that corner.
   og.ui.anchor("Pedals", { anchor: "bottomRight", margin: m, direction: "row", gap: t.space.sm, cross: "end", offsetY: small || arcadeLook ? 0 : -Math.round(250 * k) }, () => {
-    ring("BrakeRing", 64, 0.35, "danger", () => og.ui.actionButton("Brake", L("sc.race.brake"), { size: 64 }));
-    ring("BoostRing", 84, 0.7, "info", () => og.ui.actionButton("Boost", L("sc.race.boost"), { primary: true, icon: "bolt", size: 84 }));
+    og.ui.actionButton("Brake", L("sc.race.brake"), { size: 72, round: true, charge: 0.35, chargeTone: "danger" });
+    og.ui.actionButton("Boost", L("sc.race.boost"), { primary: true, icon: "bolt", size: 96, round: true, charge: 0.7, chargeTone: "info" });
   });
 }
 
@@ -316,7 +304,7 @@ function arcade(small: boolean, portrait: boolean, touch: boolean, k: number, m:
   // A drift chain over the car (the screen's centre, a little right and up); left out on a phone at a large text size.
   const vp = og.ui.frameViewport();
   // By the car; in portrait under the round map (as laid last tick), whose column it would otherwise cross.
-  const mapB = portrait ? og.ui.bounds("ArcadeMap") : null;
+  const mapB = portrait ? og.ui.bounds("Map") : null;
   const driftH = og.ui.bounds("DriftHud")?.height ?? 60;
   const driftY = Math.round(Math.max(vp.height * (portrait ? 0.37 : 0.46), mapB ? mapB.y + mapB.height + t.space.sm + driftH : 0));
   if (!(small && t.textScale >= 1.5)) og.ui.driftScore("Drift", { score: 2450, multiplier: 3, total: 18_200, label: L("sc.race.drift"), at: { x: Math.round(vp.width * (portrait ? 0.7 : 0.66)), y: driftY } });
