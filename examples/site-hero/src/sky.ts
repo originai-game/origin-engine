@@ -1,16 +1,10 @@
 // The sky: the authored islands, the ruined arch and the far tower placed in
-// the shot, the hero island's waterfall (a water sheet), and the meadow's
-// grass and flower meshes for og.TerrainScatter.
+// the shot, and the hero island's waterfall (a water sheet).
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { MeshBuilder, must, v3 } from "./mesh.ts";
 import type { Rgb, V3 } from "./mesh.ts";
-
-function hash(n: number): number {
-  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return s - Math.floor(s);
-}
 
 /** Places an authored model (assets/models/*.glb, ~1.9 units tall, centred on its origin) at `at`, scaled and turned. */
 function place(world: World, path: string, name: string, at: V3, scale: number, yaw: number): Entity {
@@ -65,49 +59,3 @@ export function buildSky(world: World, eye: V3): Sky {
   return { falls, lip };
 }
 
-/** A grass clump: seven blades rooted at the origin, dark at the root to sage-gold at the tips. */
-export function grassClump(world: World): ReturnType<MeshBuilder["geometry"]> {
-  const b = new MeshBuilder();
-  const blades = 7;
-  for (let k = 0; k < blades; k++) {
-    const a = (k / blades) * Math.PI * 2 + hash(k) * 0.8;
-    const lean = 0.12 + hash(k + 9) * 0.18;
-    const h = 0.38 + hash(k + 3) * 0.32;
-    const w = 0.035 + hash(k + 5) * 0.02;
-    const base = v3(Math.cos(a) * 0.06, 0, Math.sin(a) * 0.06);
-    const dir = v3(Math.cos(a), 0, Math.sin(a));
-    const side = v3(-Math.sin(a), 0, Math.cos(a));
-    const segs = 3;
-    const first = b.positions.length / 3;
-    for (let s = 0; s <= segs; s++) {
-      const t = s / segs;
-      const c: Rgb = [0.12 + 0.42 * t, 0.2 + 0.4 * t, 0.1 + 0.12 * t];
-      const p = v3(base.x + dir.x * lean * t * t * h * 2, t * h, base.z + dir.z * lean * t * t * h * 2);
-      const half = w * (1 - t * 0.92);
-      b.vertex(v3(p.x - side.x * half, p.y, p.z - side.z * half), c);
-      b.vertex(v3(p.x + side.x * half, p.y, p.z + side.z * half), c);
-    }
-    b.grid(first, segs + 1, 2, false);
-  }
-  return b.geometry(world);
-}
-
-/** A flower: a short stem and a small cross of petals in `petal`. */
-export function flower(world: World, petal: Rgb): ReturnType<MeshBuilder["geometry"]> {
-  const b = new MeshBuilder();
-  const stem: Rgb = [0.18, 0.3, 0.14];
-  b.rod(v3(0, 0, 0), v3(0, 0.3, 0), 0.008, 0.006, stem, 4);
-  const top = v3(0, 0.3, 0);
-  for (let k = 0; k < 5; k++) {
-    const a = (k / 5) * Math.PI * 2;
-    const tip = v3(Math.cos(a) * 0.045, 0.31, Math.sin(a) * 0.045);
-    const l = v3(Math.cos(a + 0.6) * 0.02, 0.305, Math.sin(a + 0.6) * 0.02);
-    const r = v3(Math.cos(a - 0.6) * 0.02, 0.305, Math.sin(a - 0.6) * 0.02);
-    const i = b.vertex(top, [0.95, 0.85, 0.4]);
-    b.vertex(l, petal);
-    b.vertex(tip, petal);
-    b.vertex(r, petal);
-    b.quad(i, i + 1, i + 2, i + 3);
-  }
-  return b.geometry(world);
-}

@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Its octahedral impostor: og.TerrainScatter draws copies past
+# impostorDistance as cards baked from it.
+model {
+  impostor true
+  impostorGrid 8
+  impostorSize 128
+}

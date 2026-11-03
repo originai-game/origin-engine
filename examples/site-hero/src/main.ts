@@ -17,7 +17,7 @@
 import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
 import type { Entity, TerrainData, World } from "@origingame/engine";
 import { must, v3 } from "./mesh.ts";
-import { buildSky, flower, grassClump } from "./sky.ts";
+import { buildSky } from "./sky.ts";
 
 /** The hour and the sun's azimuth that stand it 12° up, behind the traveller's right shoulder. */
 const HOUR = 17.115;
@@ -81,17 +81,35 @@ function start(world: World): void {
   const meadow = must(world.spawn({ name: "meadow" }));
   must(world.insert(meadow, og.Terrain, { data: info.data }));
 
-  // Grass over the meadow layers, flowers on the flower layer.
-  const grassMat = must(og.render.standardMaterial(world, { roughness: 0.9, side: "double" }));
-  for (const layer of [0, 1]) {
-    const e = must(world.spawn({ name: `grass-${layer}` }));
-    must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: grassClump(world), material: grassMat, layer, density: 14, distance: 70, fade: 20, minScale: 0.4, maxScale: 0.85, align: 0.4, seed: 3 + layer, sway: 1 }));
-  }
-  const petals: Array<[number, number, number]> = [[0.95, 0.93, 0.86], [0.72, 0.66, 0.92], [0.98, 0.86, 0.45]];
-  const flowerMat = must(og.render.standardMaterial(world, { roughness: 0.8, side: "double" }));
-  petals.forEach((p, k) => {
-    const e = must(world.spawn({ name: `flowers-${k}` }));
-    must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: flower(world, p), material: flowerMat, layer: 1, density: 3, distance: 40, fade: 12, minScale: 0.8, maxScale: 1.3, align: 0.2, seed: 11 + k, sway: 0.8 }));
+  // The meadow's grass: og.Grass grows blades on the GPU out to 150 m over
+  // the grass layer and the flowered edge, sage at the root to straw-gold
+  // tips, some clumps dried, gusts showing as a moving sheen.
+  const grass = {
+    data: info.data,
+    height: 0.5,
+    heightVariation: 0.55,
+    clumpSize: 1.3,
+    tufts: 0.08,
+    baseColor: { r: 0.045, g: 0.075, b: 0.03 },
+    tipColor: { r: 0.3, g: 0.36, b: 0.12 },
+    dryColor: { r: 0.45, g: 0.36, b: 0.16 },
+    colorVariation: 0.35,
+    dryness: 0.12,
+    translucency: 0.6,
+    sheen: 0.4,
+    castShadows: true,
+  };
+  must(world.insert(meadow, og.Grass, { ...grass, layer: 0, seed: 1 }));
+  const edge = must(world.spawn({ name: "grass-edge" }));
+  must(world.insert(edge, og.Grass, { ...grass, layer: 1, density: 220, height: 0.42, seed: 2 }));
+  // Wildflowers on the flowered edge: the authored daisy, bellflower and
+  // buttercup clumps (assets/models/flowers, SOURCE.md), scattered and
+  // swaying in the wind; past 12 m their octahedral impostors.
+  ["daisy", "bell", "buttercup"].forEach((name, k) => {
+    const model = must(og.load.gltf(world, `models/flowers/${name}.glb`));
+    const gi = must(og.load.gltfInfo(world, model));
+    const e = must(world.spawn({ name: `flowers-${name}` }));
+    must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: gi.geometries[0]!, material: gi.materials[0]!, layer: 1, density: 0.12, distance: 45, fade: 12, minScale: 0.75, maxScale: 1.2, align: 0.25, seed: 11 + k, sway: 0.7, impostor: model, impostorDistance: 12 }));
   });
 
   // The traveller at the edge, looking out (og.motion drives the Meshy rig through rigs/meshy.ogt).

@@ -53,3 +53,21 @@ Results (Meshy GLBs, then gltf-transform optimize: meshopt geometry, WebP textur
 - arch.glb: media d8f3e76dc25c0a58c410125c123964e9, 14.7 MB to 0.94 MB
 - tower.glb: media 47e4acc44f93b6d81903e317f7ee8cf3, 12.3 MB to 0.61 MB
 - islandSmall.glb: media 828ef658f420e7eed8d149417fde1686, 12.8 MB to 0.66 MB
+
+## Wildflowers (`flowers/`): replacing the code-built flowers
+
+Concepts: `generate_image` (gpt-image-2.5-sunburst), "Single isolated 3D game
+asset reference, three-quarter view, plain light grey background. Stylised
+fantasy in the spirit of Zelda Tears of the Kingdom and Genshin Impact,
+hand-painted look, clean readable shapes. A small clump of wild meadow
+flowers about 30 cm tall growing from a tuft of sage-green leaves: ..."
+plus the species. Then Meshy image-to-3D (meshy-6, triangle topology, 4k
+target, remesh, textured, PBR):
+- daisy (white, yellow centre): media 34fefd568cc61f790e30c788ff3e4397, operation skyreach-flower-daisy-img-1, task 01a1a236-6438-7288-99e2-5d34e97c3a66, GLB media bd5994f33dfb539b3acd054b37d25e89
+- bell (nodding lilac bellflowers): media d3654988b65871f3f991f720bd1642a2, operation skyreach-flower-bell-img-1, task 01a1a236-6e43-72f2-9518-5dbb6346ceec, GLB media 6ded276d440a17b80ee9e3187ebcb777
+- buttercup (golden cups): media 46c1a8644d3efd2d0c23f093cced784f, operation skyreach-flower-buttercup-img-1, task 01a1a236-75a2-72b0-873f-9c9bbb905e42, GLB media 245717e59e889385b98ccafa9892af0b
+
+Each GLB (~3.9k triangles) was baked rooted at its base, centred in x and z,
+to its height (daisy 0.34 m, bell 0.36 m, buttercup 0.30 m), for
+og.TerrainScatter's sway, then gltf-transform optimize (meshopt, WebP at
+512): about 250 KB each.
