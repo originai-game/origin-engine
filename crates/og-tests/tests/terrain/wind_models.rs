@@ -87,8 +87,10 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     let crisp = draw(&mut renderer, &scene);
     let different = |a: &RgbaImage, b: &RgbaImage| {
         a.pixels
-            .chunks_exact(4)
-            .zip(b.pixels.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(b.pixels.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(a, b)| a.abs_diff(*b) > 8))
             .count()
     };
