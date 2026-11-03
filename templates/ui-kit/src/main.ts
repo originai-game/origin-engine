@@ -21,7 +21,7 @@ import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 import { dialogueScreen, loadStory, questsScreen, vnScreen } from "./story.ts";
 import { charactersScreen, draftScreen, lobbyScreen, mapScreen, songsScreen, versusScreen } from "./genres.ts";
 import { chatScreen, cityMapScreen, defineGenres2Actions, garageScreen, ledgerScreen, rtsScreen } from "./genres2.ts";
-import { loadoutScreen, photoHidden, photoScreen } from "./genres3.ts";
+import { cgGalleryScreen, cgViewing, deckScreen, defineGenres3Actions, loadoutScreen, photoHidden, photoScreen, routeChartScreen, settingsTreeScreen } from "./genres3.ts";
 import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
@@ -38,7 +38,7 @@ export const SCREENS = [
   "shipStatus", "turnOrder", "abilityCards", "sectorMap", "hangar",
   "lobby", "select", "versus", "draft", "worldMap", "songs",
   "garage", "ledger", "cityMap", "chat", "rts",
-  "photo", "loadout",
+  "photo", "loadout", "deck", "cgGallery", "routes", "settingsTree",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -118,6 +118,10 @@ const BLURBS: Record<Screen, string> = {
   cityMap: "A city's map overlays: the bar of info views, the shown one's legend and its wash over the map",
   chat: "A chat window: channel tabs with unread counts, links and mentions, the input with its channel; the HUD's fading chat",
   rts: "An RTS console: the selection and its control groups, the command card's orders and Build page, hotkeys and targeting",
+  settingsTree: "The settings tree as data: graphics, audio, controls by physical key, accessibility, language and the HUD editor; Apply with a countdown",
+  cgGallery: "A visual novel's CG gallery: the chapters, the pictures with the unseen veiled and their hints, the viewer with versions",
+  routes: "A visual novel's route flowchart: scenes by chapter and route, the choices on the branches, endings, a jump to a scene seen",
+  deck: "A deck builder: the collection's filters and grid with the copies owned, the deck's list, its curve and counts, Done",
   loadout: "A loadout: the loadouts' tabs, the slots, the weapon with its attachments called out, its figures, Remove",
   photo: "Photo mode: the camera's and lens's sliders, filters and frames over the paused shot, the grid, Hide UI and the shutter",
 };
@@ -760,7 +764,7 @@ function materialsScreen(d: DemoState): void {
 }
 
 /** The genre patterns' preview screens (patterns.ts). */
-const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass", "dialogue", "vn", "quests", "lobby", "select", "versus", "draft", "worldMap", "songs", "garage", "ledger", "cityMap", "chat", "rts", "photo", "loadout"]);
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass", "dialogue", "vn", "quests", "lobby", "select", "versus", "draft", "worldMap", "songs", "garage", "ledger", "cityMap", "chat", "rts", "photo", "loadout", "deck", "cgGallery", "routes", "settingsTree"]);
 /** The starship screens (starship.ts): over the style's backdrop, the Gallery button in a pattern screen's corner on a phone. */
 const STARSHIP_SCREENS: ReadonlySet<string> = new Set(["shipStatus", "turnOrder", "abilityCards", "sectorMap", "hangar"]);
 
@@ -791,7 +795,7 @@ function galleryButton(world: World, d: DemoState): void {
   // shooter's to its vitals (the button sat between Health and Armor: a
   // stray label in the HUD at every desktop aspect); its top middle is free.
   const phone = bp === "phonePortrait" || bp === "phoneLandscape";
-  const top = phone || SCREENS[d.screen] === "shooter" || SCREENS[d.screen] === "rts";
+  const top = phone || SCREENS[d.screen] === "shooter" || SCREENS[d.screen] === "rts" || (SCREENS[d.screen] === "cgGallery" && cgViewing());
   // On the RTS console the bottom is the console's and a phone's top end corner its minimap: on a desktop the button
   // stands at the top middle (as on the shooter), on a phone at the start edge above its middle, clear of the map, the
   // targeting prompt and the console.
@@ -1479,6 +1483,24 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       chatScreen();
       back = og.ui.back();
       break;
+    case "settingsTree":
+      // Back reverts a display change first (the countdown takes it).
+      settingsTreeScreen(world);
+      back = og.ui.back();
+      break;
+    case "cgGallery":
+      // Back closes the viewer first (the gallery takes it).
+      cgGalleryScreen();
+      back = og.ui.back();
+      break;
+    case "routes":
+      routeChartScreen();
+      back = og.ui.back();
+      break;
+    case "deck":
+      deckScreen();
+      back = og.ui.back();
+      break;
     case "loadout":
       loadoutScreen();
       back = og.ui.back();
@@ -1600,6 +1622,7 @@ export default og.game({
     loadStarshipArt(world);
     loadStory(world);
     defineGenres2Actions(world);
+    defineGenres3Actions(world);
     for (const [key, path] of Object.entries(ART_PATHS)) {
       const tex = og.load.texture(world, path);
       KIT_ART[key] = tex.ok ? (tex.value as unknown as number) : 0;
@@ -1668,7 +1691,7 @@ export default og.game({
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
     demo: { usage: "<overlay|data|aim|text|device|reset|keyboard|controls>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for, and the key-binding rows': keyboardMouse, xbox, playstation, switch), demo:keyboard:kana (letters, symbols, numeric, kana, none: the on-screen keyboard on the bindings screen), demo:controls:reset (the controls previews' state)." },
-    pat: { usage: "<pick|highlight|select|inspect|turn|energy|draw|picks|rselect|balance|banner|pull|ship|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:energy:1 (energy left), pat:draw:strike (a card drawn), pat:picks:2 (a two-pick reward), pat:rselect:thunder,vigor (rewards selected), pat:balance:100 (the gacha purse), pat:banner:weapon, pat:pull:10 (a pull resolved, its reveal started), pat:lobby:found (the lobby's ready check; ready, search, reset), pat:chars:hover:kael (the select's cursor; lock), pat:vs:progress:0.9, pat:draft:phase:ban (hover, lock), pat:map:select:sela (a place's detail; hide:shop,poi), pat:song:select:phoenix (chart:master, playing:off), pat:garage:category:livery (select:engine.race, layer:base, balance:90000), pat:ledger:tab:year (sort:amount, fund:fire=60, overlay:power), pat:chat:channel:party (draft:hi_@Ri, hud:on, typing:on), pat:rts:page:build (target:patrol, gold:100), pat:photo:tab:filters (set:fov=35, filter:noir, frame:cinema, grid:on, hidden:on), pat:loadout:slot:secondary (tab:2, attachment:optic, remove:muzzle), pat:reset; the starship screens' pat:ship:card:<n> (the card selected, -1 none), pat:ship:class:<n> (the hangar's class), pat:ship:reset." },
+    pat: { usage: "<pick|highlight|select|inspect|turn|energy|draw|picks|rselect|balance|banner|pull|ship|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:energy:1 (energy left), pat:draw:strike (a card drawn), pat:picks:2 (a two-pick reward), pat:rselect:thunder,vigor (rewards selected), pat:balance:100 (the gacha purse), pat:banner:weapon, pat:pull:10 (a pull resolved, its reveal started), pat:lobby:found (the lobby's ready check; ready, search, reset), pat:chars:hover:kael (the select's cursor; lock), pat:vs:progress:0.9, pat:draft:phase:ban (hover, lock), pat:map:select:sela (a place's detail; hide:shop,poi), pat:song:select:phoenix (chart:master, playing:off), pat:garage:category:livery (select:engine.race, layer:base, balance:90000), pat:ledger:tab:year (sort:amount, fund:fire=60, overlay:power), pat:chat:channel:party (draft:hi_@Ri, hud:on, typing:on), pat:rts:page:build (target:patrol, gold:100), pat:photo:tab:filters (set:fov=35, filter:noir, frame:cinema, grid:on, hidden:on), pat:loadout:slot:secondary (tab:2, attachment:optic, remove:muzzle), pat:deck:cost:3 (rarity:rare, kind:unit, search:fire, view:deck, full), pat:vn:view:riverboat (chapter:two, variant:1, route:tower), pat:set:page:controls (pending:scale=0.75, confirm:9), pat:reset; the starship screens' pat:ship:card:<n> (the card selected, -1 none), pat:ship:class:<n> (the hangar's class), pat:ship:reset." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {

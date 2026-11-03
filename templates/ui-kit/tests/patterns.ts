@@ -887,9 +887,86 @@ function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
   b.shot("loadout-refused", 0.2);
   b.dump("loadout-refused");
   b.cmd("pat:loadout:reset");
+  // The deck builder: the collection and the deck (22 of 24); the 0 chip, Anger added and the unowned Wound refused;
+  // a search for Strike, at its limit, refused; a Defend taken out of the deck (on a phone from the deck's tab).
+  b.cmd("show:deck");
+  b.cmd("pat:reset");
+  b.shot("deck-idle", 1.0);
+  b.dump("deck");
+  b.seq((at) => tap(at, "Filters/Costs/0"), 0.4);
+  b.seq((at) => tap(at, "Line#0/anger"), 0.4);
+  b.seq((at) => tap(at, "Line#0/wound"), 0.3);
+  b.shot("deck-unowned", 0.3);
+  b.dump("deck-unowned");
+  b.cmd("pat:deck:cost:-1");
+  b.cmd("pat:deck:search:Strike");
+  b.seq((at) => tap(at, "Line#0/strike"), 0.3);
+  b.shot("deck-limit", 0.3);
+  b.dump("deck-limit");
+  b.cmd("pat:deck:search:");
+  if (phone) b.seq((at) => tap(at, "Views/deck"), 0.4);
+  b.seq((at) => tap(at, "Deck/List/defend"), 0.4);
+  b.shot("deck-removed", 0.5);
+  b.dump("deck-removed");
+  b.cmd("pat:deck:full");
+  b.shot("deck-full", 0.6);
+  b.cmd("pat:deck:reset");
+  // The CG gallery: every chapter, the locked storm ferry refused, the riverboat opened and its night version, next
+  // (skipping nothing locked between), Back to the grid; then chapter 2's tab.
+  b.cmd("show:cgGallery");
+  b.cmd("pat:reset");
+  b.shot("cg-idle", 1.0);
+  b.dump("cg");
+  b.seq((at) => tap(at, phone ? "Line#1/storm" : "Line#0/storm"), 0.2);
+  b.shot("cg-refused", 0.2);
+  b.seq((at) => tap(at, "Line#0/riverboat"), 0.5);
+  b.shot("cg-viewer", 0.5);
+  b.dump("cg-viewer");
+  b.seq((at) => tap(at, "Viewer/Bar/Pips/1"), 0.4);
+  b.shot("cg-variant", 0.4);
+  b.seq((at) => tap(at, "Viewer/Bar/Next"), 0.4);
+  b.dump("cg-next");
+  b.seq((at) => key(at, "Escape"), 0.4);
+  b.seq((at) => tap(at, "Tabs/Row/two"), 0.4);
+  b.shot("cg-chapter", 0.5);
+  b.dump("cg-chapter");
+  b.cmd("pat:vn:reset");
+  // The route chart: opened on the ferry (now), the tower selected with Jump, the locked oath refused.
+  b.cmd("show:routes");
+  b.cmd("pat:reset");
+  b.shot("routes-idle", 1.0);
+  b.dump("routes");
+  b.cmd("pat:vn:route:tower");
+  b.shot("routes-tower", 0.5);
+  b.dump("routes-tower");
+  b.cmd("pat:vn:reset");
+  // The settings tree: the graphics page; fullscreen switched (pending, Apply live) and applied, the countdown's dialog,
+  // Back reverting it; the controls page with its bindings; the HUD page with the HUD layout editor open.
+  b.cmd("show:settingsTree");
+  b.cmd("pat:reset");
+  b.shot("settings-idle", 1.0);
+  b.dump("settings");
+  b.seq((at) => tap(at, "Rows/fullscreen/Control/Switch"), 0.4);
+  b.shot("settings-pending", 0.3);
+  b.dump("settings-pending");
+  b.seq((at) => tap(at, "Foot/Apply"), 0.5);
+  b.shot("settings-confirm", 0.5);
+  b.dump("settings-confirm");
+  if (phone) b.seq((at) => tap(at, "Confirm/Buttons/Revert"), 0.4);
+  else b.seq((at) => key(at, "Escape"), 0.4);
+  b.dump("settings-reverted");
+  b.seq((at) => tap(at, "Tabs/Row/controls"), 0.5);
+  b.shot("settings-controls", 0.5);
+  b.dump("settings-controls");
+  b.cmd("pat:set:page:hud");
+  b.seq((at) => tap(at, "Hud/Edit"), 0.6);
+  b.shot("settings-hud", 0.6);
+  b.dump("settings-hud");
+  b.seq((at) => tap(at, "Hud/Editor/Actions/Done"), 0.4);
+  b.cmd("pat:set:reset");
 }
 
-const GENRE3_SCREENS = ["photo", "loadout"] as const;
+const GENRE3_SCREENS = ["photo", "loadout", "deck", "cgGallery", "routes", "settingsTree"] as const;
 
 /** The last previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
 export function genres3Script(phone: boolean): Script {

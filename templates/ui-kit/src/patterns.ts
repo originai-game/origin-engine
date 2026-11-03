@@ -82,12 +82,14 @@ const ART_FILES = [
   "garage/coupe", "garage/turbo", "garage/wheels", "garage/suspension", "garage/exhaust", "garage/brakes", "garage/wing", "scenes/garage",
   "loadout/raven", "loadout/sidearm", "loadout/frag", "loadout/stim", "loadout/knife", "loadout/drone", "loadout/shield", "loadout/optic",
   "loadout/suppressor", "loadout/grip", "loadout/magazine", "loadout/stock", "loadout/laser",
-  "cg/riverboat", "cg/storm-ferry", "cg/dawn-gate",
+  "cg/riverboat", "cg/storm-ferry", "cg/dawn-gate", "cg/riverboat-night", "cg/lantern", "cg/library", "cg/duel", "cg/duel-dusk",
   "city/residential", "city/commercial", "city/industrial", "city/tourism", "city/police", "city/fire", "city/health", "city/education",
   "city/transit", "city/parks", "city/power", "city/water", "scenes/city",
   "rts/stop", "rts/patrol", "rts/build", "rts/rally", "rts/gather", "rts/repair", "rts/barracks", "rts/tower", "rts/farm", "rts/wall",
   "rts/forge", "rts/keep", "scenes/battlefield",
-  "scenes/tactical", "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
+  "cards/fireball", "cards/bulwark", "cards/rogue", "cards/potion", "cards/storm", "cards/serpent", "cards/ice", "cards/horn", "cards/golem",
+  "cards/owl", "cards/scroll", "cards/egg",
+  "scenes/tactical", "scenes/jade", "scenes/scifi", "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
   "photo/thumb-cinema", "photo/thumb-polaroid", "photo/thumb-film",
 ] as const;
 /** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
@@ -148,6 +150,10 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   ledger: ["scenes/city", { x: 0.5, y: 0.6 }],
   chat: ["scenes/gothic-halls", { x: 0.45, y: 0.5 }],
   loadout: ["scenes/tactical", { x: 0.5, y: 0.5 }],
+  deck: ["scenes/jade", { x: 0.5, y: 0.5 }],
+  cgGallery: ["scenes/golden-valley", { x: 0.5, y: 0.5 }],
+  routes: ["scenes/storybook-vale", { x: 0.5, y: 0.5 }],
+  settingsTree: ["scenes/scifi", { x: 0.5, y: 0.5 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
