@@ -27,13 +27,16 @@ column Pause {
   column Panel {
     width grow 0 340
     padding 24
-    gap 16
+    gap 12
+    background token panelRaised
     frame panel
-    enter slideUp 24 token enter
+    radius 10
+    enter pop
     label Title {
       key "pause.title"
       text "Paused"
-      step xl2
+      step xl
+      font display
       heading true
     }
     column Menu {

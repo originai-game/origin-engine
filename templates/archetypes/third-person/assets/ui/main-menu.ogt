@@ -2,10 +2,11 @@ type screen
 version 1
 ---
 # Ember Vale's title (ejected from the library's main-menu, docs/ui.md
-# §11.1): the game's name and tagline on a card over the orbiting vale,
-# Set out and Settings, and the controls in the corner: the keys', or on a
-# touch screen the touch controls' (under the card on a phone).
-# Its words are the game's string keys (assets/strings/*.ogt).
+# §11.1): the game's name and tagline on a card over the orbiting vale
+# (the style's panel frame in its hud fill), Set out and Settings, and the
+# controls under them in the card, as the title shipped: the keys', or on
+# a touch screen the touch controls' (on a phone the card stands at the
+# bottom). Its words are the game's string keys (assets/strings/*.ogt).
 #
 # Viewmodel: touch. Events to code (src/ui.ts): play, settings.
 name "main-menu"
@@ -29,7 +30,7 @@ stack Title {
     align center
     cross center
     at phone {
-      padding 16 16 16 64
+      padding 16
       align end
     }
     column Card {
@@ -37,7 +38,9 @@ stack Title {
       padding 24
       gap 24
       cross center
-      frame hud
+      background token hud
+      frame panel
+      radius 4
       at phone {
         width grow
         padding 16
@@ -86,36 +89,24 @@ stack Title {
           on click emit settings
         }
       }
-    }
-  }
-  label Footer {
-    key "title.footer"
-    text "WASD to move · Shift runs · Space jumps · hold F to kindle · Q and E turn the view"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
-    visible bind "!touch"
-    at phone {
-      visible false
-    }
-  }
-  label TouchFooter {
-    key "title.footer.touch"
-    text "The stick moves · Jump jumps · hold Kindle by a beacon · the view swings behind you"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
-    visible bind touch
-    at phone {
-      nowrap false
-      start 16
-      textAlign center
+      label Footer {
+        key "title.footer"
+        text "WASD to move · Shift runs · Space jumps · hold F to kindle · Q and E turn the view"
+        step meta
+        color token inkFaint
+        visible bind "!touch"
+        textAlign center
+        width grow
+      }
+      label TouchFooter {
+        key "title.footer.touch"
+        text "The stick moves · Jump jumps · hold Kindle by a beacon · the view swings behind you"
+        step meta
+        color token inkFaint
+        visible bind touch
+        textAlign center
+        width grow
+      }
     }
   }
 }

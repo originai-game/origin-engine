@@ -2,10 +2,11 @@ type screen
 version 1
 ---
 # Spark Orb's title (ejected from the library's main-menu, docs/ui.md
-# §11.1): the game's name and tagline on a card over the orb, Play (or
-# Continue once there is progress) and Settings, and the keys in the
-# corner (not on a phone, where the card stands at the bottom). Its words
-# are the game's string keys (assets/strings/*.ogt).
+# §11.1): the game's name and tagline on a card over the orb (the style's
+# panel frame in its hud fill), Play (or Continue once there is progress)
+# and Settings, and the keys under them in the card, as the title shipped
+# (on a phone the card stands at the bottom). Its words are the game's
+# string keys (assets/strings/*.ogt).
 #
 # Viewmodel: canContinue. Events to code (src/ui.ts): play, settings.
 name "main-menu"
@@ -37,7 +38,9 @@ stack Title {
       padding 24
       gap 24
       cross center
-      frame hud
+      background token hud
+      frame panel
+      radius 10
       at phone {
         width grow
         padding 16
@@ -96,19 +99,14 @@ stack Title {
           on click emit settings
         }
       }
-    }
-  }
-  label Footer {
-    key "title.footer"
-    text "Space taps · 1–4 buy · N for the supernova"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
-    at phone {
-      visible false
+      label Footer {
+        key "title.footer"
+        text "Space taps · 1–4 buy · N for the supernova"
+        step meta
+        color token inkFaint
+        textAlign center
+        width grow
+      }
     }
   }
 }

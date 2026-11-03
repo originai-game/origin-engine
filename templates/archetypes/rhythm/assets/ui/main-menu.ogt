@@ -2,10 +2,11 @@ type screen
 version 1
 ---
 # Three-Lane Beat's title (ejected from the library's main-menu, docs/ui.md
-# §11.1): the game's name and tagline on a card over the highway, Play,
-# Calibrate and Settings, and the keys in the corner (not on a phone,
-# where the card stands at the bottom). Its words are the game's string
-# keys (assets/strings/*.ogt).
+# §11.1): the game's name and tagline on a card over the highway (the
+# style's panel frame in its hud fill), Play, Calibrate and Settings, and
+# the keys under them in the card, as the title shipped (on a phone the
+# card stands at the bottom). Its words are the game's string keys
+# (assets/strings/*.ogt).
 #
 # Events to code (src/ui.ts): play, calibrate, settings.
 name "main-menu"
@@ -33,7 +34,9 @@ stack Title {
       padding 24
       gap 24
       cross center
-      frame hud
+      background token hud
+      frame panel
+      radius 2
       at phone {
         width grow
         padding 16
@@ -89,19 +92,14 @@ stack Title {
           on click emit settings
         }
       }
-    }
-  }
-  label Footer {
-    key "title.footer"
-    text "A S D or the arrows to hit · tap the lanes · Escape pauses"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
-    at phone {
-      visible false
+      label Footer {
+        key "title.footer"
+        text "A S D or the arrows to hit · tap the lanes · Escape pauses"
+        step meta
+        color token inkFaint
+        textAlign center
+        width grow
+      }
     }
   }
 }

@@ -359,13 +359,23 @@ export const Ui = defineSystem("Ui", { reads: [Tuning], writes: [Game, Prefs, og
     if (!g.settingsOpen && e === "play") startRound(world, g, t);
     if (e === "settings") g.settingsOpen = true;
   }
-  for (const e of layer(world, "pause", shown === "play" && g.paused && !g.settingsOpen)) {
+  // Back from its Settings the pause keeps the focus on Settings, as the pause shipped.
+  const fromSettings = og.ui.memory("pause.fromSettings", 0);
+  const pauseUp = shown === "play" && g.paused && !g.settingsOpen;
+  for (const e of layer(world, "pause", pauseUp)) {
     if (e === "resume") g.paused = false;
-    if (e === "settings") g.settingsOpen = true;
+    if (e === "settings") {
+      g.settingsOpen = true;
+      og.ui.remember("pause.fromSettings", 1);
+    }
     if (e === "quit") {
       g.paused = false;
       g.phase = Phase.Title;
     }
+  }
+  if (pauseUp && fromSettings === 1) {
+    og.ui.setFocus("pause/Pause/Panel/Menu/Settings");
+    og.ui.remember("pause.fromSettings", 0);
   }
   if (shown === "title") {
     og.ui.setNavigation(true);

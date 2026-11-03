@@ -2,9 +2,10 @@ type screen
 version 1
 ---
 # Path Guard's title (ejected from the library's main-menu, docs/ui.md
-# §11.1): the game's name and tagline on a card over the garden, Play and
-# Settings, and a line in the corner (not on a phone, where the card
-# stands at the bottom). Its words are the game's string keys
+# §11.1): the game's name and tagline on a card over the garden (the
+# style's panel frame in its hud fill), Play and Settings, and a line
+# under them in the card, as the title shipped (on a phone the card stands
+# at the bottom). Its words are the game's string keys
 # (assets/strings/*.ogt).
 #
 # Events to code (src/ui.ts): play, settings.
@@ -33,7 +34,9 @@ stack Title {
       padding 24
       gap 24
       cross center
-      frame hud
+      background token hud
+      frame panel
+      radius 10
       at phone {
         width grow
         padding 16
@@ -82,19 +85,14 @@ stack Title {
           on click emit settings
         }
       }
-    }
-  }
-  label Footer {
-    key "title.footer"
-    text "Plants on the grass, visitors on the path"
-    step meta
-    color token inkFaint
-    nowrap true
-    position absolute
-    end 16
-    bottom 16
-    at phone {
-      visible false
+      label Footer {
+        key "title.footer"
+        text "Plants on the grass, visitors on the path"
+        step meta
+        color token inkFaint
+        textAlign center
+        width grow
+      }
     }
   }
 }
