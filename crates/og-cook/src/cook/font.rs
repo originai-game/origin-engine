@@ -13,6 +13,8 @@ use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
 
+mod overlap;
+
 /// Where a glyph id is drawn from: U+F0000 + id (Supplementary Private Use Area-A).
 pub const GLYPH_PUA: u32 = 0xF_0000;
 
@@ -279,6 +281,9 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     if shape.contours.is_empty() || bbox.width() <= 0 || bbox.height() <= 0 {
         return Some(empty);
     }
+    // Overlapping contours (the OVERLAP flag) would leave their inner edges
+    // as seams in the field: the field is of the outline's union.
+    shape = overlap::remove_overlaps(shape);
     let scale = s.em_px as f64 / upem;
     let pad = (s.px_range as f64 / 2.0).ceil() + 1.0;
     let width = ((bbox.width() as f64) * scale + 2.0 * pad).ceil() as u32;
@@ -748,5 +753,71 @@ mod tests {
         assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
         let (without, ships) = cooked(&[]);
         assert!(!ships && without.iter().all(|&c| c < GLYPH_PUA));
+    }
+
+    /// The texels of `c`'s field at `em_px` whose centre lies in the
+    /// outline's fill (nonzero winding) a pixel or more from its boundary
+    /// (the centre and a ring of radius 1 px all filled, so an edge of one
+    /// contour inside another's fill is no boundary) and whose
+    /// median(r, g, b) is not above 0.55.
+    fn seam_texels(face: &ttf_parser::Face, c: char, em_px: f32) -> usize {
+        let gid = face.glyph_index(c).expect("in the font");
+        let outline = fdsm_ttf_parser::load_shape_from_face(face, gid)
+            .expect("an outline")
+            .prepare();
+        let filled = |x: f64, y: f64| outline.scanline(y).cursor().sum_intersections(x) != 0;
+        let s = FontSettings {
+            em_px,
+            ..FontSettings::default()
+        };
+        let g = render(face, c as u32, &s).expect("a glyph");
+        let [left, bottom, ..] = g.plane.expect("not empty");
+        let em = f64::from(em_px);
+        let px = f64::from(face.units_per_em()) / em;
+        let mut seam = 0;
+        for row in 0..g.height {
+            // Rows run top to bottom; font units are y-up.
+            let y = (f64::from(bottom) * em + f64::from(g.height - row) - 0.5) * px;
+            for col in 0..g.width {
+                let x = (f64::from(left) * em + f64::from(col) + 0.5) * px;
+                let deep = filled(x, y)
+                    && (0..16).all(|k| {
+                        let a = f64::from(k) * std::f64::consts::TAU / 16.0;
+                        filled(x + a.cos() * px, y + a.sin() * px)
+                    });
+                let i = ((row * g.width + col) * 4) as usize;
+                let mut m = [g.pixels[i], g.pixels[i + 1], g.pixels[i + 2]];
+                m.sort_unstable();
+                if deep && f32::from(m[1]) / 255.0 <= 0.55 {
+                    seam += 1;
+                }
+            }
+        }
+        seam
+    }
+
+    /// Glyphs drawn as overlapping contours (the TrueType OVERLAP flag: the
+    /// self-crossing contour of Inter's "e", the join of its "t", the
+    /// strokes of 商) read as filled everywhere inside: no seam where one
+    /// contour's edge runs through another's fill.
+    #[test]
+    fn overlapping_contours_leave_no_seam_inside() {
+        let fonts = concat!(env!("CARGO_MANIFEST_DIR"), "/../../templates");
+        let mut bad = Vec::new();
+        for (file, c) in [
+            ("ui-kit/assets/fonts/Inter-Display.ttf", 'e'),
+            ("ui-kit/assets/fonts/Inter-Display.ttf", 't'),
+            ("styles/cjk/NotoSansSC-Regular.ttf", '商'),
+        ] {
+            let bytes = std::fs::read(format!("{fonts}/{file}")).expect("the font");
+            let face = ttf_parser::Face::parse(&bytes, 0).expect("parses");
+            for em_px in [32.0, 64.0] {
+                let n = seam_texels(&face, c, em_px);
+                if n > 0 {
+                    bad.push(format!("{c} at {em_px} px/em: {n} texel(s)"));
+                }
+            }
+        }
+        assert!(bad.is_empty(), "seams inside the fill: {bad:?}");
     }
 }
