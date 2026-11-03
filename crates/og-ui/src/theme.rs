@@ -614,7 +614,9 @@ pub const PRESS_SCALE: f32 = 0.96;
 /// tone, the focus ring the only outline. One selection grammar, all
 /// neutral (2026-11-02): a selected tab is a raised chip (lineStrong, a
 /// lit top edge and a short shadow, its label semibold), a selected tile a
-/// light rim with a glow and a lift, a checked control the primary's fill;
+/// light rim with a glow and a lift, a checked control the primary's fill,
+/// a chosen radio card the raised chip's fill with no ring; a switch,
+/// checkbox or radio row draws no outline (art r4, note 4);
 /// a slider's remainder holds 3:1 on the panel. `crate::theme_dressings`
 /// parses them.
 pub const DRESSINGS: &str = r##"
@@ -714,6 +716,21 @@ dress "Slider.track" {
 }
 dress "Toggle.track" {
   effect none
+}
+dress "Toggle.row" {
+  stroke none
+}
+dress "Checkbox.row" {
+  stroke none
+}
+dress "Radio.option" {
+  stroke none
+}
+dress "Radio.card[selected]" {
+  fill lineStrong
+}
+dress "Radio.chosen" {
+  stroke none
 }
 dress "Tabs.tab[selected]" {
   fill lineStrong

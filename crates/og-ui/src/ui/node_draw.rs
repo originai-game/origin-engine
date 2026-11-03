@@ -334,15 +334,20 @@ impl Ui {
                             };
                         if let Some(sh) = t.art.text_shadows[role] {
                             let c = sh.color.fade(tc.color.alpha);
-                            text(sh.dx, sh.dy, c, None, cmds);
-                            if sh.blur > 0.0 {
-                                text(
-                                    sh.dx + sh.blur / 2.0,
-                                    sh.dy + sh.blur / 2.0,
-                                    c.fade(0.5),
-                                    None,
-                                    cmds,
-                                );
+                            // A style's shadow is drawn for its big steps: on
+                            // small text it reaches at most a tenth of the size,
+                            // so a badge's "x3" keeps a tight drop instead of
+                            // a second print beside it (art r4, note 3).
+                            let reach = sh.dx.hypot(sh.dy);
+                            let k = if reach > size * 0.1 {
+                                size * 0.1 / reach
+                            } else {
+                                1.0
+                            };
+                            let (dx, dy, blur) = (sh.dx * k, sh.dy * k, sh.blur * k);
+                            text(dx, dy, c, None, cmds);
+                            if blur > 0.0 {
+                                text(dx + blur / 2.0, dy + blur / 2.0, c.fade(0.5), None, cmds);
                             }
                         }
                         text(0.0, 0.0, tc.color, glow, cmds);

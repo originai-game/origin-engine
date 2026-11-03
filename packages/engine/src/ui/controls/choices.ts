@@ -237,7 +237,7 @@ export function radioGroup(id: string, desc: Api.RadioGroupDesc = {}): Api.Choic
         labelled(o.label ?? "", o.description ?? "", off);
         if (cards) radioRing(on, ix, size);
         // The chosen card is ringed in primary.
-        if (cards && on) ring("Chosen", 2, "primary");
+        if (cards && on) ring("Chosen", 2, "primary", "Radio.chosen");
       });
       if (built.r.focused) focused = i;
       if (built.r.clicked && !off && i !== selected) {

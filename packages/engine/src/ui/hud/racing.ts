@@ -102,9 +102,13 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
     if (desc.relative) return en.player ? "\u2014" : signedSeconds(en.gap ?? 0);
     return i === 0 ? (desc.leaderLabel ?? "Leader") : signedSeconds(en.gap ?? 0);
   };
-  // The player's row in a window: the accent solid, its text in black or white, whichever reads at 4.5:1 or better.
-  const playerFill = role("primary");
-  const playerInk = readableOn(playerFill);
+  // The player's row in a window (art r3, note 5): the accent at low alpha over the panel's ground, a 3 px accent bar
+  // at its start, its text in black or white, whichever reads at 4.5:1 or better on that tint.
+  const accent = role("primary");
+  const ground = role("hud");
+  const TINT = 0.24;
+  const playerTint: Rgba = { r: ground.r + (accent.r - ground.r) * TINT, g: ground.g + (accent.g - ground.g) * TINT, b: ground.b + (accent.b - ground.b) * TINT, a: 1 };
+  const playerInk = readableOn(playerTint);
   hudPlace(id, anchorOf(desc, "left"), () => {
     box(id, { direction: "column", gap, width: px(w), padding: { left: 0, right: 0, top: u(3), bottom: u(3) }, part: sel("StandingsTower", "frame"), partClass: "hud" }, racePanel(), () => {
       shown.forEach((i, r) => {
@@ -127,8 +131,9 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           part: sel("StandingsTower", "row", en.player ? "player" : null, en.pit ? "pit" : null, en.out ? "out" : null),
         }, {
           // One mark for the player (docs/ui.md §15.5): a solid position cell over a lightly tinted row, no outline.
-          fills: en.player ? [solid(windowed ? lit(playerFill) : token("highlight", 0.18))] : [],
+          fills: en.player ? [solid(windowed ? token("primary", TINT) : token("highlight", 0.18))] : [],
         }, () => {
+          if (windowed && en.player) leaf("Bar", { width: px(3), height: pct(1), part: sel("StandingsTower", "playerBar") }, { fills: [solid(lit(accent))] }, absolute({ start: 0, top: 0 }));
           // A hairline between rows, none against the player's lit row.
           const prev = r > 0 ? shown[r - 1] : null;
           if (r > 0 && !en.player && !(prev != null && all[prev]?.player)) leaf("Rule", { width: pct(1), height: px(1), part: sel("StandingsTower", "rule") }, { fills: [solid(lit(WHITE, 0.08))] }, absolute({ start: 0, top: 0 }));

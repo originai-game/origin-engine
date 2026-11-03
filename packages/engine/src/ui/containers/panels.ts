@@ -124,9 +124,12 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
   return r;
 }
 
-/** A ring just inside an element's edge in the focus ink (a selected card or cell), drawn over its content, taking no input. */
-export function ring(id: string, width = 2, ink: Api.ThemeColor = "focus"): void {
-  kit.open(id, { width: grow(), height: grow() });
+/**
+ * A ring just inside an element's edge in the focus ink (a selected card or cell), drawn over its content, taking no
+ * input; with a `part`, a style can dress it (the default style's borderless selection draws none).
+ */
+export function ring(id: string, width = 2, ink: Api.ThemeColor = "focus", part?: string): void {
+  kit.open(id, { width: grow(), height: grow(), ...(part ? { part } : {}) });
   kit.setDraw({ shape: { kind: "rect" }, strokes: [{ width, align: "inside", paint: { kind: "solid", color: token(ink) } }] });
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });

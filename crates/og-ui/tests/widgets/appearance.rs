@@ -733,3 +733,43 @@ fn an_action_buttons_label_widens_it_when_its_icon_is_not_in_the_atlas() {
     let e = ui.frame().element("Steer").expect("the button").clone();
     assert!(e.width > e.height + 1.0, "widened to its label: {e:?}");
 }
+
+#[test]
+fn a_charged_action_button_is_a_disc_ringed_in_its_tone() {
+    // Wrong: a charge ring drawn round a square pad pokes past its corners
+    // (art r4, note 2), or a long label (200 % text) widens the disc into
+    // a capsule the ring no longer fits, or the ring takes the wrong tone.
+    let mut ui = ui_with_font(test_font_metrics());
+    let danger = ui.theme().palette.danger.linear();
+    let draw = |ui: &mut Ui, label: &str, charge: Option<f32>| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.action_button(
+            "Brake",
+            label,
+            &ActionButtonDesc {
+                size: 64.0,
+                charge,
+                charge_tone: Tone::Danger,
+                ..ActionButtonDesc::default()
+            },
+        );
+        ui.end();
+        let e = ui.frame().element("Brake").expect("the pad").clone();
+        let lit = ui
+            .frame()
+            .items
+            .iter()
+            .any(|i| matches!(&i.cmd, DrawCmd::Quad { color, .. } if *color == danger));
+        (e, lit)
+    };
+    let (e, lit) = draw(&mut ui, "B", Some(1.0));
+    assert_eq!((e.width, e.height), (64.0, 64.0), "{e:?}");
+    assert!(lit, "a full charge lights the ring in danger");
+    let (_, lit) = draw(&mut ui, "B", None);
+    assert!(!lit, "no charge, no ring");
+    let (e, _) = draw(&mut ui, "Accelerate hard now", Some(0.4));
+    assert!(
+        e.width > 64.0 && e.width == e.height,
+        "a long label grows the disc: {e:?}"
+    );
+}

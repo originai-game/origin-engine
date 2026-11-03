@@ -37,9 +37,10 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
   const style: Api.SpeedoStyle = desc.style ?? "dial";
   const unit = desc.unit ?? "km/h";
   if (style === "tach") {
-    // A tach never takes more than a third of the screen's short side.
+    // A tach grows with the whole text size (its readout is the text), but never takes more than a third of the
+    // screen's short side; what then no longer fits inside moves under it (art r4, note 1).
     const v = frame().viewport;
-    size = Math.min(size, Math.round(0.34 * Math.min(v.width, v.height)));
+    size = Math.min(Math.round(u(desc.size || (bp().phone ? 132 : 180)) * textScale()), Math.round(0.34 * Math.min(v.width, v.height)));
   }
   hudPlace(id, anchorOf(desc, "bottomRight"), () => {
     if (style === "digital") digital(id, speed, rpm, red, unit, desc, size);
@@ -213,12 +214,35 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       fills: [solid(paint)],
       effects,
     }, fixed({ start: c - r, top: c - r }));
-  box(id, { width: px(size), height: px(size), part: sel("Speedometer", "dial", "tach") }, {
-    shape: ellipseShape(),
-    fills: [vgrad([[0, token("hud", 0.5)], [1, token("hud", 0.88)]])],
-    strokes: [stroke(1, token("shadow", 0.9), "outside")],
-    effects: [{ kind: "dropShadow", offset: { x: 0, y: 3 }, blur: 12, spread: 0, color: token("shadow", 0.5) }],
-  }, () => {
+  // The readout: the speed, the largest numeral, in a fixed box of three
+  // digits (condensed and slanted), its unit under it, the gear beside it.
+  const speedStep = tsFit(40, size * 0.27, true);
+  const sp = stepSize(speedStep);
+  const unitStep = tsFit(10, size * 0.07);
+  const digitsW = Math.ceil(3 * sp.size * 0.62 * 0.88);
+  const gearStep = tsFit(12, sp.size * 0.45, true);
+  const gearSide = Math.ceil(Math.max(stepSize(gearStep).line, (desc.gear ?? "").length * stepSize(gearStep).size * 0.62 + 6));
+  const gap = Math.max(3, Math.round(size * 0.02));
+  // The slant leans the speed's top right by a fifth of its line: the gear sits past that.
+  const lean = Math.ceil(sp.line * 0.2);
+  const unitW = unit.length * stepSize(unitStep).size * 0.62;
+  // Inside the ticks, the room a row of the readout has at the speed's height and at the unit's.
+  const inner = 2 * (Ro - band - Math.max(3, size * 0.03));
+  const besideW = digitsW + (desc.gear ? lean + gap + gearSide : 0);
+  // A large text size on a capped dial: the unit and the gear move under it, off the arc, and the speed takes the
+  // middle alone.
+  const under = stepSize(unitStep).size > size * 0.07 + 0.5 || besideW > inner * 0.84 || unitW > inner * 0.6;
+  const underH = under ? Math.max(stepSize(unitStep).line, desc.gear ? gearSide : 0) : 0;
+  const rowW = under ? digitsW : besideW;
+  const speedTop = under ? c - sp.line * 0.5 : c - sp.line * 0.6;
+  const left = c - rowW / 2;
+  box(id, { width: px(size), height: px(size + (under ? gap * 2 + underH : 0)), part: sel("Speedometer", "dial", "tach") }, undefined, () => {
+    leaf("Face", { width: px(size), height: px(size), part: sel("Speedometer", "face", "tach") }, {
+      shape: ellipseShape(),
+      fills: [vgrad([[0, token("hud", 0.5)], [1, token("hud", 0.88)]])],
+      strokes: [stroke(1, token("shadow", 0.9), "outside")],
+      effects: [{ kind: "dropShadow", offset: { x: 0, y: 3 }, blur: 12, spread: 0, color: token("shadow", 0.5) }],
+    }, fixed({ start: 0, top: 0 }));
     arc("TachTrack", Ro, 0, 1, band, token("shadow", 0.65), sel("Speedometer", "tach"));
     arc("TachRed", Ro, red, 1 - red, band, lit(danger, 0.35), sel("Speedometer", "tach", "red"));
     const shown = reduced() ? rpm : clamp01(springTo("rpm", rpm, 120));
@@ -252,28 +276,10 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       arc("BoostTrack", rb, 0, 1, th, token("shadow", 0.6), sel("Speedometer", "boost"));
       if (desc.boost > 0) arc("Boost", rb, 0, clamp01(desc.boost), th, lit(role("info")), sel("Speedometer", "boost"));
     }
-    // The readout: the speed, the largest numeral, in a fixed box of three
-    // digits (condensed and slanted), its unit under it, the gear beside it.
-    const speedStep = tsFit(40, size * 0.27, true);
-    const sp = stepSize(speedStep);
-    const unitStep = tsFit(10, size * 0.07);
-    const digitsW = Math.ceil(3 * sp.size * 0.62 * 0.88);
-    const gearStep = tsFit(12, sp.size * 0.45, true);
-    const gearSide = Math.ceil(Math.max(stepSize(gearStep).line, (desc.gear ?? "").length * stepSize(gearStep).size * 0.62 + 6));
-    const gap = Math.max(3, Math.round(size * 0.02));
-    // The slant leans the speed's top right by a fifth of its line: the gear sits past that.
-    const lean = Math.ceil(sp.line * 0.2);
-    const rowW = digitsW + (desc.gear ? lean + gap + gearSide : 0);
-    const speedTop = c - sp.line * 0.6;
-    const left = c - rowW / 2;
     text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(digitsW), align: "end" },
       fixed({ start: left, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
-    // The unit fits its text (a translation may be longer than "km/h"), centred under the digits.
-    box("UnitLine", { width: px(size), cross: "center", align: "center" }, undefined, () =>
-      text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true }, { transform: { x: left + digitsW / 2 - c } }),
-    fixed({ start: 0, top: speedTop + sp.line }));
-    if (desc.gear) {
-      const g = desc.gear;
+    const gearBox = (extra?: ReturnType<typeof fixed>) => {
+      const g = desc.gear!;
       const neutral = g === "N" || g === "R";
       // A square for one character; a longer gear (a translation's) widens it to the right, never over the speed.
       const gearPad = Math.max(3, Math.round((gearSide - stepSize(gearStep).size * 0.62) / 2));
@@ -281,8 +287,20 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
         fills: [solid(token("shadow", 0.7))],
         strokes: [stroke(1.5, neutral ? lit(role("warn")) : token("lineStrong"))],
-      }, () => text("Text", g, { step: gearStep, font: "display", color: neutral ? lit(role("warn")) : token("ink"), nowrap: true }),
-      fixed({ start: left + digitsW + lean + gap, top: speedTop + (sp.line - sp.size * 0.72) / 2 }));
+      }, () => text("Text", g, { step: gearStep, font: "display", color: neutral ? lit(role("warn")) : token("ink"), nowrap: true }), extra);
+    };
+    if (under) {
+      // Under the dial, centred: the unit, then the gear.
+      box("Under", { direction: "row", width: px(size), gap: gap * 2, align: "center", cross: "center" }, undefined, () => {
+        text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true, outline: 0.8 });
+        if (desc.gear) gearBox();
+      }, fixed({ start: 0, top: size + gap }));
+    } else {
+      // The unit fits its text (a translation may be longer than "km/h"), centred under the digits.
+      box("UnitLine", { width: px(size), cross: "center", align: "center" }, undefined, () =>
+        text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true }, { transform: { x: left + digitsW / 2 - c } }),
+      fixed({ start: 0, top: speedTop + sp.line }));
+      if (desc.gear) gearBox(fixed({ start: left + digitsW + lean + gap, top: speedTop + (sp.line - sp.size * 0.72) / 2 }));
     }
     // Shift lights over the readout: green, accent, danger, filling to the shift point; all flash there.
     const lights = size >= 150 ? 7 : 5;

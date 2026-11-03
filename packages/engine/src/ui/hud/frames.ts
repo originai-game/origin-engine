@@ -268,9 +268,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         valueText: size === "large" ? `${hpText(health, healthMax)} / ${hpText(healthMax, healthMax)}` : "",
         name: `${name} health`,
         anchor: null,
+        // The frame is the plate.
+        bare: true,
       });
       if (desc.resource !== null && desc.resource !== undefined && !dead) {
-        statBar("Resource", { value: desc.resource, max: desc.resourceMax ?? 100, kind: desc.resourceKind ?? "mana", color: desc.resourceColor ?? null, thickness: Math.max(5, Math.round(m.bar * 0.55)), width: { kind: "grow" }, ghost: false, name: `${name} resource`, anchor: null });
+        statBar("Resource", { value: desc.resource, max: desc.resourceMax ?? 100, kind: desc.resourceKind ?? "mana", color: desc.resourceColor ?? null, thickness: Math.max(5, Math.round(m.bar * 0.55)), width: { kind: "grow" }, ghost: false, name: `${name} resource`, anchor: null, bare: true });
       }
       if (desc.castName && size !== "small") {
         cast("Cast", { name: desc.castName, progress: desc.castProgress ?? 0, width: { kind: "grow" } }, true, size === "large" ? Math.max(u(m.bar), Math.ceil(stepSize(ts(11)).size * 1.3)) : u(m.bar));

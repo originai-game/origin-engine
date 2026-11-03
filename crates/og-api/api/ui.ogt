@@ -1219,6 +1219,9 @@ module ui {
     field primary bool "The primary button (one per screen)."
     field icon String "An icon of the atlas by name, instead of the label; empty is the label."
     field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
+    field round bool "A disc instead of the control's rounded square (a pedal)."
+    field charge Option.f32 "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring."
+    field chargeTone Tone "The lit ring's tone; neutral is the primary's."
   }
 
   struct SkeletonDesc {
@@ -8570,6 +8573,7 @@ module ui {
     field style StatBarStyle "Its shape."
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
     field name String "What a screen reader calls it; empty is the label, else Health."
+    field bare bool "Draw no plate: by default the bar sits on a soft HUD plate, so it reads over a bright sky (the plate is the group's when it already has one)."
   }
 
   fn statBar {

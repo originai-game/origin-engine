@@ -49476,6 +49476,28 @@
           ],
           "description": "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit).",
           "default": null
+        },
+        "round": {
+          "type": "boolean",
+          "description": "A disc instead of the control's rounded square (a pedal).",
+          "default": false
+        },
+        "charge": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring.",
+          "default": null
+        },
+        "chargeTone": {
+          "$ref": "#/$defs/Tone",
+          "description": "The lit ring's tone; neutral is the primary's.",
+          "default": "neutral"
         }
       },
       "additionalProperties": false
@@ -70279,6 +70301,11 @@
           "type": "string",
           "description": "What a screen reader calls it; empty is the label, else Health.",
           "default": ""
+        },
+        "bare": {
+          "type": "boolean",
+          "description": "Draw no plate: by default the bar sits on a soft HUD plate, so it reads over a bright sky (the plate is the group's when it already has one).",
+          "default": false
         }
       },
       "additionalProperties": false

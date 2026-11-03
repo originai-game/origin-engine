@@ -420,6 +420,14 @@ pub struct ActionButtonDesc {
     pub icon: String,
     /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
     pub customize: Option<crate::Customize>,
+    /// A disc instead of the control's rounded square (a pedal).
+    pub round: bool,
+    /// A ring inside its edge lit clockwise from the top to this (0 to 1: a
+    /// boost's charge, a brake's pressure); it follows the pad's outline,
+    /// so a pad with a charge is drawn round. `None`: no ring.
+    pub charge: Option<f32>,
+    /// The lit ring's tone (`Neutral`: the primary's).
+    pub charge_tone: Tone,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

@@ -8,7 +8,8 @@
 // extended stamina, red and slow while exhausted, gone once full.
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE, BLACK } from "./core.ts";
+import { symbol, type SymbolKind } from "../patterns/core.ts";
+import { chip, TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE, BLACK } from "./core.ts";
 
 const GHOST_HOLD_MS = 450;
 const GHOST_DRAIN_MS = 650;
@@ -49,6 +50,9 @@ function riseOnly(id: string, frac: number): number {
   return Math.min(frac, s);
 }
 
+/** The icon names a stat bar draws as solid marks. */
+const FILLED: Record<string, SymbolKind> = { heart: "heart", bolt: "bolt", shield: "shield", star: "star", coin: "coin", gem: "gem" };
+
 export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   const f = frame();
   const tk = f.t;
@@ -72,10 +76,19 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   hudPlace(id, anchor, () => {
     box(id, { direction: "column", gap: u(3), width: desc.width ?? px(u(240)), part: sel("StatBar", "frame", style, level), partClass: "hud" }, undefined, (path) => {
       if ((desc.shieldMax ?? 0) > 0) shieldRow(desc, h, radius, style);
-      kit.row("Main", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
+      // On a soft HUD plate unless bare, so the bar and its mark read over a bright sky (art r4, note 5).
+      const plate = desc.bare ? undefined : { ...chip(), strokes: [] };
+      box("Main", { direction: "row", gap: tk.sm, cross: "center", width: { kind: "grow" }, padding: plate ? { left: u(6), right: u(8), top: u(4), bottom: u(4) } : { left: 0, right: 0, top: 0, bottom: 0 }, part: sel("StatBar", "plate") }, plate, () => {
         // As tall as the line of the text beside it (its own label, or a row label of iconStep outside it) at
         // least: a thin track (a reactor's 8 px) left its mark a speck, and a label's step a speck beside a larger row label.
-        if (desc.icon) icon("Icon", desc.icon, Math.max(Math.round(h * 1.4), Math.round(stepSize(desc.iconStep ?? ts(14)).line)), lit(ink), "");
+        if (desc.icon) {
+          const s = Math.max(Math.round(h * 1.4), Math.round(stepSize(desc.iconStep ?? ts(14)).line));
+          // A heart or a bolt is the solid mark in the bar's colour with a dark rim, not the icon set's thin line.
+          const solidMark = FILLED[desc.icon];
+          if (solidMark) {
+            box("Icon", { width: px(s), height: px(s), align: "center", cross: "center", part: sel("StatBar", "icon") }, { effects: [drop(1, 2, token("shadow", 0.7))] }, () => symbol("Glyph", solidMark, s, ink));
+          } else icon("Icon", desc.icon, s, lit(ink), "");
+        }
         // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
         if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
         if (style === "pips") pips(desc, value, max, ink, h, radius);

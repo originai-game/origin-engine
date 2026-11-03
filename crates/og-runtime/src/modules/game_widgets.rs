@@ -479,6 +479,9 @@ pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> St
                 primary: d["primary"].as_bool().unwrap_or(false),
                 icon: d["icon"].as_str().unwrap_or_default().to_string(),
                 customize: customize(&d["customize"]),
+                round: d["round"].as_bool().unwrap_or(false),
+                charge: d["charge"].as_f64().map(|v| v as f32),
+                charge_tone: tone(&d["chargeTone"]),
             },
         )
     });

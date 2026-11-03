@@ -24819,6 +24819,24 @@ export interface ActionButtonDesc {
    * @default null
    */
   readonly customize?: Customize | null;
+  /**
+   * A disc instead of the control's rounded square (a pedal).
+   *
+   * @default false
+   */
+  readonly round?: boolean;
+  /**
+   * A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring.
+   *
+   * @default null
+   */
+  readonly charge?: number | null;
+  /**
+   * The lit ring's tone; neutral is the primary's.
+   *
+   * @default "neutral"
+   */
+  readonly chargeTone?: Tone;
 }
 
 /**
@@ -40797,6 +40815,12 @@ export interface StatBarDesc {
    * @default ""
    */
   readonly name?: string;
+  /**
+   * Draw no plate: by default the bar sits on a soft HUD plate, so it reads over a bright sky (the plate is the group's when it already has one).
+   *
+   * @default false
+   */
+  readonly bare?: boolean;
 }
 
 

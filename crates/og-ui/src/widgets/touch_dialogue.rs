@@ -359,7 +359,8 @@ impl Ui {
     }
 
     /// A square action button (jump, fire), cornered by the style's
-    /// `radius.control` like every other button: at least the touch
+    /// `radius.control` like every other button, or a disc (`round`, or a
+    /// `charge` ring, which follows the outline): at least the touch
     /// target; `pressed` while held, `clicked` on a tap.
     pub fn action_button(
         &mut self,
@@ -379,14 +380,32 @@ impl Ui {
             && self
                 .icon_shape(&desc.icon, Frame::centered(0.0, 0.0, s, s), t.palette.ink)
                 .is_some();
-        let width = if !has_icon && !text.is_empty() {
+        let charge = desc.charge.map(|c| {
+            if c.is_finite() {
+                c.clamp(0.0, 1.0)
+            } else {
+                0.0
+            }
+        });
+        let round = desc.round || charge.is_some();
+        // The ring's band inside the edge, and the face inside it.
+        let band = if charge.is_some() {
+            t.space.xs.max(size / 16.0).round()
+        } else {
+            0.0
+        };
+        let text_w = if !has_icon && !text.is_empty() {
             let step = t.type_ramp.sm;
             let m = &self.fonts.for_text(FontRole::Body, text).metrics;
             let w = m.measure_tracked(text, step.size, crate::layout::step_tracking(&step, text));
-            size.max((w + 2.0 * t.space.sm).ceil())
+            (w + 2.0 * t.space.sm + 2.0 * band).ceil()
         } else {
-            size
+            0.0
         };
+        // A round pad whose label is wider grows as a disc; a square one
+        // widens and stays its size tall.
+        let size = if round { size.max(text_w) } else { size };
+        let width = size.max(text_w);
         let i = self.leaf(
             "action",
             id.into(),
@@ -394,7 +413,7 @@ impl Ui {
                 width: Size::Fixed(width),
                 height: Size::Fixed(size),
                 interactive: true,
-                radius: t.radius.control,
+                radius: if round { size / 2.0 } else { t.radius.control },
                 ..Element::default()
             },
         );
@@ -431,13 +450,67 @@ impl Ui {
         } else {
             None
         };
+        let ring = charge.map(|done| {
+            // The track a step darker than the pad, the lit part from the top
+            // clockwise as halves of the disc (as a cooldown's), then the
+            // face over the middle.
+            let lit = match desc.charge_tone {
+                Tone::Neutral => p.primary,
+                tone => self.tone_dot(tone),
+            };
+            let behind = self.behind(i);
+            let track = p.well.over(behind);
+            let full = Frame::centered(0.0, 0.0, size, size);
+            let mut shapes = vec![Shape::Rect {
+                frame: full,
+                radius: size,
+                color: track,
+            }];
+            if done >= 1.0 {
+                shapes.push(Shape::Rect {
+                    frame: full,
+                    radius: size,
+                    color: lit,
+                });
+            } else if done > 0.0 {
+                let turn = 2.0 * std::f32::consts::PI * done;
+                shapes.push(Shape::Half {
+                    frame: full,
+                    angle: 0.0,
+                    color: lit,
+                });
+                if done <= 0.5 {
+                    shapes.push(Shape::Half {
+                        frame: Frame::centered(0.0, 0.0, size + 1.0, size + 1.0),
+                        angle: turn,
+                        color: track,
+                    });
+                } else {
+                    shapes.push(Shape::Half {
+                        frame: full,
+                        angle: turn - std::f32::consts::PI,
+                        color: lit,
+                    });
+                }
+            }
+            let face = size - 2.0 * band;
+            shapes.push(Shape::Rect {
+                frame: Frame::centered(0.0, 0.0, face, face),
+                radius: face,
+                // Opaque, so the lit ring never shows through a glassy pad.
+                color: bg.over(behind),
+            });
+            shapes
+        });
         let n = &mut self.nodes[i];
-        n.el.background = Some(bg);
+        // With a ring the face is drawn over it: the element itself is the ring.
+        n.el.background = if ring.is_some() { None } else { Some(bg) };
         n.widget = Widget::Button {
             pressed: r.pressed,
             press: if r.pressed { 1.0 } else { 0.0 },
         };
         n.probe_text = text.to_owned();
+        n.shapes.extend(ring.into_iter().flatten());
         match icon {
             Some(s) => n.shapes.push(s),
             None => n.shapes.push(Shape::Text {

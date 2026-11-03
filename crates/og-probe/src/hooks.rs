@@ -383,6 +383,11 @@ pub fn find_by_id<'a>(elements: &'a [UiElement], path: &str) -> Option<&'a UiEle
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     let (last, ancestors) = segments.split_last()?;
     let asked = segments.join("/");
+    // The element at that whole path wins over a deeper one whose path
+    // ends with it (an anchor `Map` over a component's own `Bezel/Map`).
+    if let Some(e) = elements.iter().rev().find(|e| e.path == asked) {
+        return Some(e);
+    }
     elements.iter().rev().find(|e| {
         if e.id != *last {
             return false;
@@ -492,5 +497,21 @@ mod tests {
         assert_eq!(find_by_id(&elements, "Row/Buy").map(|e| e.x), Some(2.0));
         assert_eq!(find_by_id(&elements, "w/Buy").map(|e| e.x), None);
         assert_eq!(find_by_id(&elements, "C/Row/Buy").map(|e| e.x), None);
+    }
+
+    /// A whole path names its own element even when a later one, drawn on
+    /// top, ends with the same segments (U8's anchor `Map` holding a
+    /// minimap whose texture box is `Track/Bezel/Map`).
+    #[test]
+    fn a_whole_path_wins_over_a_deeper_suffix() {
+        let elements = vec![
+            el("Map", "", "Map", 1.0),
+            el("Track", "Map", "Map/Track", 2.0),
+            el("Bezel", "Track", "Map/Track/Bezel", 3.0),
+            el("Map", "Bezel", "Map/Track/Bezel/Map", 4.0),
+        ];
+        assert_eq!(find_by_id(&elements, "Map").map(|e| e.x), Some(1.0));
+        assert_eq!(find_by_id(&elements, "Map/Track").map(|e| e.x), Some(2.0));
+        assert_eq!(find_by_id(&elements, "Bezel/Map").map(|e| e.x), Some(4.0));
     }
 }
