@@ -120,7 +120,9 @@ deterministic and part of snapshots (`og api show physics`):
   the skinned pose places its points and physics lets them swing and sag
   within `maxDistance` of it, so it never flies off the body. Paint the
   mesh's vertex colour red where it may move (1: free, 0: stuck to the
-  body; a mesh without colours is free everywhere) or let `pinTop` hold
+  body; a mesh without colours is free everywhere), or its alpha over a
+  white colour on a textured garment, which the red would tint (an
+  opaque material does not show the alpha), or let `pinTop` hold
   its top edge; `backstop` stops it sinking into the body behind, and
   `radius` pushes it out of solid colliders. The engine draws it at the
   simulated points; `og.physics.garmentPoints` reads them.

@@ -108,7 +108,9 @@ pub(crate) fn weld(
             let n = Vec3::from(vx.normal);
             let k = *at.entry(bits).or_insert_with(|| {
                 rig.rest.push(Vec3::from(vx.position));
-                rig.freedom.push(vx.color[0]);
+                // Red times alpha: alpha keeps the garment's colours (an
+                // opaque material does not show it).
+                rig.freedom.push(vx.color[0] * vx.color[3]);
                 w.skin.push((stream.joints[v], stream.weights[v]));
                 w.normal.push(n);
                 rig.rest.len() as u32 - 1
@@ -379,12 +381,19 @@ mod tests {
     /// A strip of two quads, split along its middle seam (the seam's
     /// vertices in both primitives), hanging from y = 1, red 0 at the top.
     fn strip() -> (RenderScene, super::super::fx::ModelInfo, SkinnedModel) {
+        masked_strip(|top| [if top { 0.0 } else { 1.0 }, 1.0, 1.0, 1.0])
+    }
+
+    /// The strip with each vertex's colour `color(at the top)`.
+    fn masked_strip(
+        color: impl Fn(bool) -> [f32; 4],
+    ) -> (RenderScene, super::super::fx::ModelInfo, SkinnedModel) {
         let mut scene = RenderScene::new();
         let vx = |x: f32, y: f32| Vertex {
             position: [x, y, 0.0],
             normal: [0.0, 0.0, 1.0],
             uv: [0.0, 0.0],
-            color: [if y >= 1.0 { 0.0 } else { 1.0 }, 1.0, 1.0, 1.0],
+            color: color(y >= 1.0),
             tangent: [1.0, 0.0, 0.0, 1.0],
         };
         let quad = |x0: f32, x1: f32| MeshData {
@@ -441,6 +450,22 @@ mod tests {
             ..SkinnedModel::default()
         };
         assert!(weld(&scene, &info, &unskinned, 3).is_none());
+    }
+
+    /// The freedom painted in the alpha (white colour, so the garment
+    /// keeps its texture's colours) pins as the red does; a white strip
+    /// with alpha 1 is free everywhere.
+    #[test]
+    fn the_alpha_pins_as_the_red_does() {
+        let (scene, info, skin) = masked_strip(|top| [1.0, 1.0, 1.0, if top { 0.0 } else { 0.6 }]);
+        let w = weld(&scene, &info, &skin, 3).expect("welded");
+        for (p, f) in w.rig.rest.iter().zip(&w.rig.freedom) {
+            let want = if p.y >= 1.0 { 0.0 } else { 0.6 };
+            assert!((f - want).abs() < 1e-6, "{p} {f}");
+        }
+        let (scene, info, skin) = masked_strip(|_| [1.0; 4]);
+        let w = weld(&scene, &info, &skin, 3).expect("welded");
+        assert!(w.rig.freedom.iter().all(|&f| f == 1.0));
     }
 
     #[test]

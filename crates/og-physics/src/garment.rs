@@ -23,7 +23,7 @@ use std::collections::BTreeMap;
 /// at rest in the model's space (the bind pose; vertices at the same
 /// position, split along a seam, welded into one), its triangles over
 /// them, and how free each point is, 0 (it stays on the skin) to 1 (it
-/// may stray `maxDistance`): the vertex colour's red.
+/// may stray `maxDistance`): the vertex colour's red times its alpha.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GarmentRig {
     pub rest: Vec<Vec3>,

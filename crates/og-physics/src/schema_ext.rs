@@ -888,8 +888,8 @@ impl Default for SoftBody {
 /// Cloth on a skinned character: glTF mesh `mesh` of the entity's model,
 /// posed by its skeleton each tick and simulated from there. Each point
 /// stays within `maxDistance` of where its skin puts it (scaled by its
-/// vertex colour's red; 0 and points within `pinTop` of the top stay on the
-/// skin), never further than `backstop` behind it, and keeps its edges'
+/// vertex colour's red times its alpha; 0 and points within `pinTop` of the
+/// top stay on the skin), never further than `backstop` behind it, and keeps its edges'
 /// lengths; with `radius` it collides with solids. One-way, as cloth. The
 /// runtime hands the skinned pose to [`crate::PhysicsSystem::set_garment_pose`]
 /// before each step; its points are world state (the og.physics block's

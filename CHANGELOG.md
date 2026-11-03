@@ -46,6 +46,12 @@ is one line here, written at the merge that changes
   toward the horizon. The sky pass gains one texture, made only the
   first frame a scene has an aurora (8 of 16 sampled textures).
   Frames: `aurora-arcs`, `aurora-breakup`.
+- **Changed: og.Garment reads its freedom from the vertex colour's red
+  times its alpha.** A textured garment can paint the mask in the alpha
+  over a white colour, which an opaque material does not show; the red,
+  which multiplies the base colour, tinted the garment where it pinned
+  it. Garments painted in red with alpha 1 (or without colours) behave as
+  before.
 
 - **Added: `og.PlatformNoticeKind.host`, a message from the framing page.**
   A Player sends `platform` `{ notice: { kind: "host", data: { name, ...
