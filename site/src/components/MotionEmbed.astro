@@ -1,0 +1,85 @@
+---
+// The interactive og.motion scene (examples/site-motion, a publish build the
+// scenes thread makes; it draws its own og-ui step log). The page shows its
+// poster until the reader presses "Take control": only then does the frame
+// load and get pointer and keyboard input, so scrolling past never lands in
+// it. Escape, or a press outside it, hands control back. Without WebGPU, on
+// a phone or under reduced motion it shows the recording (or the poster).
+import { copy, type Lang } from "../i18n";
+import { get, url } from "../lib/media";
+import { live } from "../live";
+import Media from "./Media.astro";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = copy.characters;
+const film = get("motion-film");
+---
+<div class="motion" data-motion-embed data-live={live.motion ?? ""} data-film={film.kind === "video" ? url(film.mp4!) : ""}>
+  <div class="frame r16x9 motion-stage" data-stage>
+    <Media slot="motion-poster" lang={lang} sizes="(max-width: 1279px) 100vw, 1280px" bare />
+    <div class="motion-cover" data-cover>
+      {live.motion
+        ? <button type="button" class="btn primary" data-take><svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M6 4.5v11l9-5.5z" /></svg>{c.take[lang]}</button>
+        : <span class="badge glass">{c.pendingLive[lang]}</span>}
+      <ol class="motion-steps" aria-label="og.motion">
+        {c.logs.map((l, i) => <li><span class="mono">{String(i + 1)}</span>{l[lang]}</li>)}
+      </ol>
+    </div>
+    <p class="motion-hint meta" data-hint hidden>{c.release[lang]}</p>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-motion-embed]")) {
+    const stage = root.querySelector<HTMLElement>("[data-stage]")!;
+    const cover = root.querySelector<HTMLElement>("[data-cover]")!;
+    const hint = root.querySelector<HTMLElement>("[data-hint]")!;
+    const take = root.querySelector<HTMLButtonElement>("[data-take]");
+    let frame: HTMLIFrameElement | null = null;
+    const release = () => {
+      if (!frame) return;
+      root.removeAttribute("data-active");
+      frame.style.pointerEvents = "none";
+      frame.blur();
+      hint.hidden = true;
+      take?.focus();
+    };
+    const engage = () => {
+      root.setAttribute("data-active", "");
+      frame!.style.pointerEvents = "auto";
+      frame!.focus();
+      hint.hidden = false;
+    };
+    take?.addEventListener("click", async () => {
+      const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+      const ok = !!gpu && !!(await gpu.requestAdapter().catch(() => null));
+      if (!ok) {
+        if (root.dataset.film) {
+          const v = Object.assign(document.createElement("video"), { muted: true, loop: true, playsInline: true, autoplay: true, src: root.dataset.film });
+          stage.prepend(v);
+          cover.hidden = true;
+        }
+        return;
+      }
+      if (!frame) {
+        frame = document.createElement("iframe");
+        frame.src = root.dataset.live!;
+        frame.title = "og.motion";
+        frame.allow = "autoplay; fullscreen";
+        addEventListener("message", (e) => {
+          if (e.source !== frame!.contentWindow || e.origin !== location.origin) return;
+          const m = e.data as { og?: string; protocol?: number; kind?: string };
+          if (m?.og !== "player" || m.protocol !== 2) return;
+          const post = (kind: string, f: object = {}) => frame!.contentWindow?.postMessage({ og: "player", protocol: 2, kind, ...f }, location.origin);
+          if (m.kind === "hello") { post("hello", { started: true, paused: false, capabilities: [] }); post("start"); }
+          if (m.kind === "ready") { cover.hidden = true; engage(); }
+        });
+        stage.append(frame);
+      } else engage();
+    });
+    // Escape from inside the frame arrives as the page losing focus to it; listen on both.
+    addEventListener("keydown", (e) => e.key === "Escape" && release());
+    document.addEventListener("pointerdown", (e) => { if (frame && !stage.contains(e.target as Node)) release(); });
+  }
+</script>

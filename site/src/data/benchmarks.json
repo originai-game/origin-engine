@@ -1,0 +1,226 @@
+{
+ "_doc": "Every number the comparison and the engine figures show. The benchmark of Origin Engine against three.js, Babylon.js, PlayCanvas, Unity Web and Godot Web overwrites this file. A value with estimate: true is drawn labelled as an estimate with its basis; a value of null with pending: true is a placeholder and blocks check.ts --final.",
+ "perf": {
+  "scene": "r4 bench-complex: 5,261 props of 19 models (3,033,128 triangles at full detail), 131,072-triangle terrain, 48 skinned characters, sun with three 2048 cascades plus 4 shadowed local lights, 20 particle emitters, AO, bloom, ACES, TAA (WebGPU) or MSAA 4x (WebGL2), 1280x720 at DPR 1, slow orbit camera",
+  "machine": "Apple M4 Pro, macOS 27.2, Chrome for Testing 150",
+  "method": "60 warm frames, 600 timed frames per mode, two interleaved rounds; sustained ms per frame",
+  "source": "tests/evidence/r4/bench-complex/NOTES.md, Mac-3 numbers",
+  "versions": {
+   "origin": "Origin Engine 0.4.0",
+   "three": "three.js r180"
+  },
+  "rows": [
+   {
+    "engine": "origin",
+    "mode": {
+     "en": "Origin Engine, WebGPU",
+     "zh": "Origin Engine，WebGPU"
+    },
+    "ms": 5.228,
+    "estimate": false
+   },
+   {
+    "engine": "three",
+    "mode": {
+     "en": "three.js, WebGL2, InstancedMesh per 40 m tile (hand-written)",
+     "zh": "three.js，WebGL2，按 40 m 分块手写 InstancedMesh"
+    },
+    "ms": 9.984,
+    "estimate": false
+   },
+   {
+    "engine": "three",
+    "mode": {
+     "en": "three.js, WebGL2, InstancedMesh per part (hand-written)",
+     "zh": "three.js，WebGL2，按部件手写 InstancedMesh"
+    },
+    "ms": 24.24,
+    "estimate": false
+   },
+   {
+    "engine": "three",
+    "mode": {
+     "en": "three.js, WebGPU, InstancedMesh per 40 m tile (hand-written)",
+     "zh": "three.js，WebGPU，按 40 m 分块手写 InstancedMesh"
+    },
+    "ms": 30.52,
+    "estimate": false
+   },
+   {
+    "engine": "babylon",
+    "mode": {
+     "en": "Babylon.js",
+     "zh": "Babylon.js"
+    },
+    "ms": null,
+    "pending": true,
+    "estimate": false
+   },
+   {
+    "engine": "playcanvas",
+    "mode": {
+     "en": "PlayCanvas",
+     "zh": "PlayCanvas"
+    },
+    "ms": null,
+    "pending": true,
+    "estimate": false
+   }
+  ]
+ },
+ "engine": [
+  {
+   "key": "download",
+   "value": "3.4",
+   "unit": {
+    "en": "MiB",
+    "zh": "MiB"
+   },
+   "label": {
+    "en": "the whole 3D runtime a player downloads: renderer, physics, UI, audio, navigation (brotli)",
+    "zh": "玩家下载的完整 3D 运行时：渲染、物理、UI、音频、导航（brotli）"
+   },
+   "source": {
+    "en": "Size gate, publish 3D wasm, macrunner, 2026-11-02",
+    "zh": "体积门禁，3D 发布版 wasm，macrunner，2026-11-02"
+   }
+  },
+  {
+   "key": "complex",
+   "value": "5.23",
+   "unit": {
+    "en": "ms",
+    "zh": "ms"
+   },
+   "label": {
+    "en": "per frame for 3.0 M triangles, 5,261 props and 48 skinned characters in Chrome on WebGPU",
+    "zh": "Chrome WebGPU 下每帧耗时：300 万三角形、5,261 个物件、48 个蒙皮角色"
+   },
+   "source": {
+    "en": "r4 bench-complex, Apple M4 Pro, Chrome 150, engine 0.4.0",
+    "zh": "r4 bench-complex，Apple M4 Pro，Chrome 150，引擎 0.4.0"
+   }
+  },
+  {
+   "key": "rollback",
+   "value": "0",
+   "unit": {
+    "en": "desyncs",
+    "zh": "次失步"
+   },
+   "label": {
+    "en": "in 600 ticks of a two-peer lockstep duel through a relay at 80 ms latency, 30 ms jitter and 5 % input loss",
+    "zh": "双端锁步对战经中继运行 600 tick（80 ms 延迟、30 ms 抖动、5% 输入丢失）"
+   },
+   "source": {
+    "en": "G2-7 lockstep and rollback runs, 2026-11-02",
+    "zh": "G2-7 锁步与回滚测试，2026-11-02"
+   }
+  },
+  {
+   "key": "hero",
+   "value": null,
+   "pending": true,
+   "unit": {
+    "en": "ms",
+    "zh": "ms"
+   },
+   "label": {
+    "en": "per frame for the hero scene in Chrome, RTX 5060, 1920×1080",
+    "zh": "首屏场景在 Chrome、RTX 5060、1920×1080 下每帧耗时"
+   },
+   "source": {
+    "en": "Being measured on studio-win",
+    "zh": "正在 studio-win 上测量"
+   }
+  },
+  {
+   "key": "first-frame",
+   "value": null,
+   "pending": true,
+   "unit": {
+    "en": "s",
+    "zh": "s"
+   },
+   "label": {
+    "en": "from opening the page to the hero's first live frame",
+    "zh": "从打开页面到首屏第一帧实时画面"
+   },
+   "source": {
+    "en": "Being measured on studio-win",
+    "zh": "正在 studio-win 上测量"
+   }
+  }
+ ],
+ "sizes": [
+  {
+   "engine": "origin",
+   "bytes": 3560723,
+   "estimate": false,
+   "what": {
+    "en": "renderer, physics, UI, audio, navigation (brotli)",
+    "zh": "渲染、物理、UI、音频、导航（brotli）"
+   },
+   "basis": {
+    "en": "Size gate, publish 3D wasm, macrunner, 2026-11-02",
+    "zh": "体积门禁，3D 发布版 wasm，macrunner，2026-11-02"
+   }
+  },
+  {
+   "engine": "three",
+   "bytes": 185679,
+   "estimate": true,
+   "what": {
+    "en": "renderer only (gzip)",
+    "zh": "仅渲染器（gzip）"
+   },
+   "basis": {
+    "en": "bundlephobia, three 0.187.0, minified + gzip; physics and UI not included",
+    "zh": "bundlephobia，three 0.187.0，压缩 + gzip；不含物理与 UI"
+   },
+   "source": "https://bundlephobia.com/package/three@0.187.0"
+  },
+  {
+   "engine": "playcanvas",
+   "bytes": 637206,
+   "estimate": true,
+   "what": {
+    "en": "engine, physics separate (gzip)",
+    "zh": "引擎，物理另计（gzip）"
+   },
+   "basis": {
+    "en": "bundlephobia, playcanvas 2.23.3, minified + gzip; ammo.js physics not included",
+    "zh": "bundlephobia，playcanvas 2.23.3，压缩 + gzip；不含 ammo.js 物理"
+   },
+   "source": "https://bundlephobia.com/package/playcanvas@2.23.3"
+  },
+  {
+   "engine": "babylon",
+   "bytes": 1835328,
+   "estimate": true,
+   "what": {
+    "en": "whole core package (gzip); tree-shaking cuts it",
+    "zh": "完整 core 包（gzip）；tree-shaking 可减小"
+   },
+   "basis": {
+    "en": "bundlephobia, @babylonjs/core 9.33.2, minified + gzip of the whole package; an app imports a subset; Havok physics not included",
+    "zh": "bundlephobia，@babylonjs/core 9.33.2，整包压缩 + gzip；实际应用只引入其中一部分；不含 Havok 物理"
+   },
+   "source": "https://bundlephobia.com/package/@babylonjs/core@9.33.2"
+  },
+  {
+   "engine": "godot",
+   "bytes": 7833128,
+   "estimate": true,
+   "what": {
+    "en": "empty project, official template (brotli)",
+    "zh": "空项目，官方模板（brotli）"
+   },
+   "basis": {
+    "en": "Third-party measurement of a Godot 4.7 empty web export: 7.47 MiB brotli; a custom template can reach about 3 MiB",
+    "zh": "第三方实测 Godot 4.7 空项目 Web 导出：7.47 MiB（brotli）；自定义模板可降至约 3 MiB"
+   },
+   "source": "https://ranma.hashnode.dev/godot-4-7-web-export-from-46-2-mb-to-3-0-mb"
+  }
+ ]
+}

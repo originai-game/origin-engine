@@ -130,12 +130,7 @@ export const media = {
     posterAt: 1.5,
     alt: { en: "A knight auto-rigged from one layered drawing, playing its ten clips", zh: "从一张分层原画自动绑骨的骑士，播放十段动作" },
   },
-  "char-autorig-mage": {
-    source: s("G3-1/e0274e276163"),
-    status: "interim",
-    posterAt: 1.5,
-    alt: { en: "The auto-rigged mage's ten clips", zh: "自动绑骨法师的十段动作" },
-  },
+
   "char-motion-course": {
     source: s("og.motion/8f9c1f54284d"),
     status: "interim",
@@ -147,11 +142,17 @@ export const media = {
     crop: STATION_CROP,
     alt: { en: "A cloth banner draped over a pole", zh: "搭在杆上的布料" },
   },
-  "char-motion": {
-    source: p("site-characters: og.motion characters, cloth and crowd, 4K"),
-    status: "pending",
-    alt: { en: "Characters animated by og.motion", zh: "由 og.motion 驱动的角色" },
+  "motion-poster": {
+    source: s("og.motion/8f9c1f54284d"),
+    status: "interim",
+    alt: { en: "Agents driven by og.motion on the motion course", zh: "动作训练场上由 og.motion 驱动的角色" },
   },
+  "motion-film": {
+    source: p("site-motion: a visitor steering the og.motion character with the step log, 15–20 s, 4K"),
+    status: "pending",
+    alt: { en: "Steering a character driven by og.motion", zh: "操控由 og.motion 驱动的角色" },
+  },
+
 
   // ── Worlds ────────────────────────────────────────────────────────────
   "world-terrain": {
@@ -174,26 +175,6 @@ export const media = {
   },
   "world-far": { source: ref("terrain-far"), status: "interim", alt: { en: "An island terrain seen from far above", zh: "高空俯瞰的岛屿地形" } },
   "world-grass": { source: ref("terrain-grass-wind"), status: "interim", alt: { en: "Wind through terrain grass under mountains", zh: "山下随风摆动的草地" } },
-  "world-stream": {
-    source: p("site-forest: streaming cells seen from above, 4K"),
-    status: "pending",
-    alt: { en: "World cells streaming in around the camera", zh: "镜头周围的世界分块流式加载" },
-  },
-
-  // ── UI ────────────────────────────────────────────────────────────────
-  "ui-grid": {
-    source: p("U8: the 17 genre showcases × style packs × locales"),
-    status: "pending",
-    alt: { en: "Seventeen genre HUDs", zh: "十七类游戏 HUD" },
-  },
-
-  // ── Play ──────────────────────────────────────────────────────────────
-  "play-meridian": { source: r("examples/meridian-loop/references/metal/race.png"), status: "interim", alt: { en: "Meridian Loop, a neon racer", zh: "Meridian Loop，霓虹赛车" } },
-  "play-hollowbell": { source: r("examples/hollowbell/references/metal/play.png"), status: "interim", alt: { en: "Hollowbell", zh: "Hollowbell" } },
-  "play-brasswick": { source: r("examples/brasswick/references/metal/title.png"), status: "interim", alt: { en: "Brasswick", zh: "Brasswick" } },
-  "play-kestrel": { source: r("examples/kestrel-stair/references/metal/explore.png"), status: "interim", alt: { en: "Kestrel Stair", zh: "Kestrel Stair" } },
-  "play-lantern": { source: r("examples/lantern-vale/references/metal/far.png"), status: "interim", alt: { en: "Lantern Vale", zh: "Lantern Vale" } },
-  "play-rumpus": { source: r("examples/rumpus-isle/references/metal/lobby.png"), status: "interim", alt: { en: "Rumpus Isle", zh: "Rumpus Isle" } },
 } satisfies Record<string, Slot>;
 
 export type SlotName = keyof typeof media;

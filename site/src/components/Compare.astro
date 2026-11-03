@@ -1,0 +1,97 @@
+---
+// The comparison: the feature table (src/compare.ts), the same-scene frame
+// times and the download sizes (src/data/benchmarks.json, which the
+// benchmark overwrites). Measured values carry their source; estimates are
+// labelled as estimates with their basis; pending values are placeholders.
+import bench from "../data/benchmarks.json";
+import { engineNames, engines, features, versions, type Support } from "../compare";
+import { copy, type Lang } from "../i18n";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const k = copy.compare;
+type L = { en: string; zh: string };
+type Row = { engine: string; mode: L; ms: number | null; estimate?: boolean; pending?: boolean; basis?: L };
+const perf = bench.perf.rows as Row[];
+const shownPerf = perf.filter((r) => r.ms != null);
+const pendingPerf = perf.filter((r) => r.ms == null);
+const maxMs = Math.max(...shownPerf.map((r) => r.ms!));
+type Size = { engine: string; bytes: number | null; what: L; estimate: boolean; basis: L; source?: string };
+const sizes = (bench.sizes as Size[]).filter((s) => s.bytes != null).sort((a, b) => a.bytes! - b.bytes!);
+const maxB = Math.max(1, ...sizes.map((s) => s.bytes!));
+const mb = (b: number) => (b / 2 ** 20 >= 1 ? `${(b / 2 ** 20).toFixed(1)} MiB` : `${Math.round(b / 1024)} KiB`);
+const mark: Record<Support, string> = { yes: "●", plugin: "◐", partial: "◔", no: "—" };
+const name = (e: string) => (engineNames as Record<string, string>)[e] ?? e;
+---
+<div class="cmp reveal">
+  <div class="cmp-scroll" tabindex="0" role="region" aria-label={k.feature[lang]}>
+    <table class="cmp-table">
+      <thead>
+        <tr><th scope="col">{k.feature[lang]}</th>{engines.map((e) => <th scope="col" class={e === "origin" ? "us" : ""}>{name(e)}<span class="meta">{versions[e]}</span></th>)}</tr>
+      </thead>
+      <tbody>
+        {features.map((f) => (
+          <tr>
+            <th scope="row">{f.label[lang]}</th>
+            {engines.map((e) => {
+              const c = f.cells[e];
+              return <td class={`${c.v} ${e === "origin" ? "us" : ""}`} title={c.note?.[lang]}><span aria-hidden="true">{mark[c.v]}</span><span class="v">{k[c.v][lang]}</span>{c.note && <span class="note">{c.note[lang]}</span>}</td>;
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="legend meta">{(["yes", "plugin", "partial", "no"] as const).map((v) => <span>{mark[v]} {k[v][lang]}</span>)}</p>
+</div>
+
+<div class="cmp-charts">
+  <div class="chart reveal">
+    <h3 class="display d-sm">{k.perfTitle[lang]}</h3>
+    <p class="lede">{k.perfBody[lang]}</p>
+    <p class="meta" style="margin-top:12px">{k.perfUnit[lang]}</p>
+    <ul class="bars">
+      {shownPerf.map((r) => (
+        <li class={r.engine === "origin" ? "us" : ""} style={`--w:${(r.ms! / maxMs) * 100}%`}>
+          <span class="label">{r.mode[lang]}</span>
+          <span class="bar"><i></i></span>
+          <span class="val num">{r.ms!.toFixed(2)}</span>
+          {r.estimate && <span class="chip est">{copy.placeholder.estimate[lang]}</span>}
+        </li>
+      ))}
+      {pendingPerf.map((r) => (
+        <li class="pending-row"><span class="label">{r.mode[lang]}</span><span class="bar"></span><span class="chip" data-kind="pending">{k.pending[lang]}</span></li>
+      ))}
+    </ul>
+    <div class="prov"><span class="chip measured">{k.measured[lang]}</span><span>{bench.perf.machine} · {bench.perf.versions.origin} · {bench.perf.versions.three}</span><span class="mono">{bench.perf.source}</span></div>
+  </div>
+
+  <div class="chart reveal">
+    <h3 class="display d-sm">{k.sizeTitle[lang]}</h3>
+    <p class="lede">{k.sizeBody[lang]}</p>
+    <ul class="bars sizes">
+      {sizes.map((s) => (
+        <li class={s.engine === "origin" ? "us" : ""} style={`--w:${(s.bytes! / maxB) * 100}%`}>
+          <span class="label">{name(s.engine)}<span class="meta">{s.what[lang]}</span></span>
+          <span class="bar"><i></i></span>
+          <span class="val num">{mb(s.bytes!)}</span>
+          {s.estimate ? <span class="chip est" title={`${k.basis[lang]}: ${s.basis[lang]}`}>{copy.placeholder.estimate[lang]}</span> : <span class="chip measured">{k.measured[lang]}</span>}
+        </li>
+      ))}
+    </ul>
+    <ul class="basis meta">
+      {sizes.map((s) => <li><b>{name(s.engine)}</b> · {s.basis[lang]}{s.source && <> · <a href={s.source} rel="noopener" target="_blank">{new URL(s.source).hostname}</a></>}</li>)}
+    </ul>
+  </div>
+</div>
+
+<div class="subhead reveal"><h3 class="display d-md">{k.numbersTitle[lang]}</h3></div>
+<div class="numbers reveal" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+  {(bench.engine as { key: string; value: string | null; pending?: boolean; unit?: L; label: L; source: L }[]).map((n) => (
+    <div class={n.pending ? "pending-num" : ""} title={n.source[lang]}>
+      <div class="value" data-count={n.pending ? undefined : n.value}>{n.value ?? "—"}{n.unit && <small>{n.unit[lang]}</small>}</div>
+      <div class="label">{n.label[lang]}</div>
+      <div class="src">{n.pending ? <span class="chip" data-kind="pending">{k.pending[lang]}</span> : n.source[lang]}</div>
+    </div>
+  ))}
+</div>

@@ -643,21 +643,6 @@
    "machine": "mac satellite (metal)"
   }
  },
- "char-autorig-mage": {
-  "kind": "video",
-  "width": 1600,
-  "height": 900,
-  "duration": 4,
-  "mp4": "char-autorig-mage-5080b1f45e.mp4",
-  "poster": "char-autorig-mage-5080b1f45e.jpg",
-  "status": "interim",
-  "from": {
-   "id": "G3-1/e0274e276163",
-   "commit": "64c4ecedf",
-   "date": "2026-11-02",
-   "machine": "mac satellite (metal)"
-  }
- },
  "char-motion-course": {
   "kind": "image",
   "width": 960,
@@ -685,29 +670,29 @@
  },
  "char-cloth": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "char-cloth-362492479c-960.avif",
+    "char-cloth-08193cdc1d-960.avif",
     960
    ],
    [
-    "char-cloth-362492479c-1280.avif",
-    1280
+    "char-cloth-08193cdc1d-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "char-cloth-362492479c-960.webp",
+    "char-cloth-08193cdc1d-960.webp",
     960
    ],
    [
-    "char-cloth-362492479c-1280.webp",
-    1280
+    "char-cloth-08193cdc1d-1024.webp",
+    1024
    ]
   ],
-  "jpg": "char-cloth-362492479c.jpg",
+  "jpg": "char-cloth-08193cdc1d.jpg",
   "status": "interim",
   "from": {
    "id": "fx-showcase/282040ae7015",
@@ -715,11 +700,36 @@
    "date": "2026-11-01"
   }
  },
- "char-motion": {
+ "motion-poster": {
+  "kind": "image",
+  "width": 960,
+  "height": 540,
+  "avif": [
+   [
+    "motion-poster-670a21cfe7-960.avif",
+    960
+   ]
+  ],
+  "webp": [
+   [
+    "motion-poster-670a21cfe7-960.webp",
+    960
+   ]
+  ],
+  "jpg": "motion-poster-670a21cfe7.jpg",
+  "status": "interim",
+  "from": {
+   "id": "og.motion/8f9c1f54284d",
+   "commit": "bf39e9077",
+   "date": "2026-11-02",
+   "machine": "macrunner"
+  }
+ },
+ "motion-film": {
   "kind": "pending",
   "status": "pending",
   "from": {
-   "pending": "site-characters: og.motion characters, cloth and crowd, 4K"
+   "pending": "site-motion: a visitor steering the og.motion character with the step log, 15–20 s, 4K"
   }
  },
  "world-terrain": {
@@ -827,212 +837,6 @@
   "status": "interim",
   "from": {
    "path": "crates/og-tests/references/metal/terrain-grass-wind.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "world-stream": {
-  "kind": "pending",
-  "status": "pending",
-  "from": {
-   "pending": "site-forest: streaming cells seen from above, 4K"
-  }
- },
- "ui-grid": {
-  "kind": "pending",
-  "status": "pending",
-  "from": {
-   "pending": "U8: the 17 genre showcases × style packs × locales"
-  }
- },
- "play-meridian": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-meridian-f8b75f1994-960.avif",
-    960
-   ],
-   [
-    "play-meridian-f8b75f1994-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-meridian-f8b75f1994-960.webp",
-    960
-   ],
-   [
-    "play-meridian-f8b75f1994-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-meridian-f8b75f1994.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/meridian-loop/references/metal/race.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "play-hollowbell": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-hollowbell-cf3a26c6f1-960.avif",
-    960
-   ],
-   [
-    "play-hollowbell-cf3a26c6f1-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-hollowbell-cf3a26c6f1-960.webp",
-    960
-   ],
-   [
-    "play-hollowbell-cf3a26c6f1-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-hollowbell-cf3a26c6f1.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/hollowbell/references/metal/play.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "play-brasswick": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-brasswick-9a42f500d8-960.avif",
-    960
-   ],
-   [
-    "play-brasswick-9a42f500d8-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-brasswick-9a42f500d8-960.webp",
-    960
-   ],
-   [
-    "play-brasswick-9a42f500d8-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-brasswick-9a42f500d8.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/brasswick/references/metal/title.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "play-kestrel": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-kestrel-2fc6eaf766-960.avif",
-    960
-   ],
-   [
-    "play-kestrel-2fc6eaf766-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-kestrel-2fc6eaf766-960.webp",
-    960
-   ],
-   [
-    "play-kestrel-2fc6eaf766-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-kestrel-2fc6eaf766.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/kestrel-stair/references/metal/explore.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "play-lantern": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-lantern-d1c4fb7e4a-960.avif",
-    960
-   ],
-   [
-    "play-lantern-d1c4fb7e4a-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-lantern-d1c4fb7e4a-960.webp",
-    960
-   ],
-   [
-    "play-lantern-d1c4fb7e4a-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-lantern-d1c4fb7e4a.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/lantern-vale/references/metal/far.png",
-   "commit": "737a70331",
-   "date": "2026-11-02"
-  }
- },
- "play-rumpus": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "play-rumpus-2809523a45-960.avif",
-    960
-   ],
-   [
-    "play-rumpus-2809523a45-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "play-rumpus-2809523a45-960.webp",
-    960
-   ],
-   [
-    "play-rumpus-2809523a45-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "play-rumpus-2809523a45.jpg",
-  "status": "interim",
-  "from": {
-   "path": "examples/rumpus-isle/references/metal/lobby.png",
    "commit": "737a70331",
    "date": "2026-11-02"
   }

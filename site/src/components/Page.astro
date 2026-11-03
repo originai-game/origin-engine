@@ -2,7 +2,9 @@
 import "../styles/site.css";
 import { engine, mark, motionCss } from "../lib/brand";
 import { copy, langs, path, type Lang } from "../i18n";
-import { numbers } from "../numbers";
+import Compare from "./Compare.astro";
+import MotionEmbed from "./MotionEmbed.astro";
+import UiGrid from "./UiGrid.astro";
 import { tokenCss } from "../tokens";
 import Hero from "./Hero.astro";
 import Loop from "./Loop.astro";
@@ -17,7 +19,6 @@ const { lang } = Astro.props;
 const c = copy;
 const r = c.rendering;
 const site = "https://engine.origingame.ai";
-const head = numbers.find((n) => n.key === "days")!;
 const commit = (await import("node:child_process")).execFileSync("git", ["rev-parse", "--short=9", "HEAD"], { encoding: "utf8" }).trim();
 const wipes = [
   { key: "fog", left: "render-fog-before", right: "render-fog-after", l: r.before, rr: r.after },
@@ -29,14 +30,6 @@ const hashes = [
   { t: c.determinism.lockstep, b: c.determinism.lockstepBody, h: "04fdc5c4b5e353f4" },
   { t: c.determinism.save, b: c.determinism.saveBody, h: "485ed0a7de28cb9a" },
 ];
-const games = [
-  ["play-meridian", "Meridian Loop", "meridian"],
-  ["play-hollowbell", "Hollowbell", "hollowbell"],
-  ["play-kestrel", "The Kestrel Stair", "kestrel"],
-  ["play-lantern", "Lantern Vale", "lantern"],
-  ["play-brasswick", "Brasswick", "brasswick"],
-  ["play-rumpus", "Rumpus Isle", "rumpus"],
-] as const;
 ---
 <!doctype html>
 <html lang={lang === "zh" ? "zh-CN" : "en"}>
@@ -67,12 +60,12 @@ const games = [
   )}
 </head>
 <body>
-  <a class="sr-only" href="#loop">{lang === "en" ? "Skip to content" : "跳到正文"}</a>
+  <a class="sr-only" href="#ai">{lang === "en" ? "Skip to content" : "跳到正文"}</a>
   <Nav lang={lang} />
   <main>
     <Hero lang={lang} />
 
-    <section class="section" id="loop">
+    <section class="section" id="ai">
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow">{c.loop.eyebrow[lang]}</p>
@@ -125,6 +118,18 @@ const games = [
           <p>{r.oceanBody[lang]}</p>
         </div>
         <Prov slots={["water-sunset", "water-storm"]} lang={lang} />
+        <div class="subhead reveal">
+          <h3 class="display d-md">{r.worldsTitle[lang]}</h3>
+          <p class="lede">{r.worldsBody[lang]}</p>
+        </div>
+        <div class="frame r16x9 reveal"><Media slot="world-grass" lang={lang} /></div>
+        <div class="grid-3" style="margin-top:var(--space-lg)">
+          {([["world-terrain", r.terrain], ["world-dungeon", r.dungeon], ["world-village", r.village]] as const).map(([sl, t], i) => (
+            <div class="card reveal" style={`--delay:${i * 100}ms`}><div class="frame"><Media slot={sl} lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
+              <div class="caption"><h3>{t[lang]}</h3></div></div>
+          ))}
+        </div>
+        <Prov slots={["world-grass", "world-terrain", "world-dungeon", "world-village"]} lang={lang} />
         <div class="frame r16x9 reveal" style="margin-top:clamp(64px,9vw,120px)"><Media slot="render-reel" lang={lang} /></div>
         <Prov slots={["render-reel"]} lang={lang} />
       </div>
@@ -137,34 +142,15 @@ const games = [
           <h2 class="display d-2xl">{c.characters.title[lang]}</h2>
           <p class="lede">{c.characters.body[lang]}</p>
         </header>
-        <div class="frame r16x9 reveal"><Media slot="char-motion" lang={lang} /></div>
-        <div class="grid-3" style="margin-top:var(--space-lg)">
-          <div class="card reveal"><div class="frame"><Media slot="char-autorig" lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
-            <div class="caption"><h3>{c.characters.autorig[lang]}</h3><p>{c.characters.autorigBody[lang]}</p></div></div>
-          <div class="card reveal" style="--delay:100ms"><div class="frame"><Media slot="char-motion-course" lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
-            <div class="caption"><h3>{c.characters.motion[lang]}</h3><p>{c.characters.motionBody[lang]}</p></div></div>
-          <div class="card reveal" style="--delay:200ms"><div class="frame"><Media slot="char-cloth" lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
-            <div class="caption"><h3>{c.characters.cloth[lang]}</h3><p>{c.characters.clothBody[lang]}</p></div></div>
-        </div>
-        <Prov slots={["char-autorig", "char-motion-course", "char-cloth"]} lang={lang} />
-      </div>
-    </section>
-
-    <section class="section" id="worlds">
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="eyebrow">{c.worlds.eyebrow[lang]}</p>
-          <h2 class="display d-2xl">{c.worlds.title[lang]}</h2>
-          <p class="lede">{c.worlds.body[lang]}</p>
-        </header>
-        <div class="frame r16x9 reveal"><Media slot="world-grass" lang={lang} /></div>
-        <div class="grid-3" style="margin-top:var(--space-lg)">
-          {([["world-terrain", c.worlds.terrain], ["world-dungeon", c.worlds.dungeon], ["world-village", c.worlds.village]] as const).map(([s, t], i) => (
-            <div class="card reveal" style={`--delay:${i * 100}ms`}><div class="frame"><Media slot={s} lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
-              <div class="caption"><h3>{t[lang]}</h3></div></div>
+        <div class="reveal"><MotionEmbed lang={lang} /></div>
+        <Prov slots={["motion-poster", "motion-film"]} lang={lang} />
+        <div class="grid-3" style="margin-top:var(--space-xl)">
+          {([["char-autorig", c.characters.autorig, c.characters.autorigBody], ["char-motion-course", c.characters.course, c.characters.courseBody], ["char-cloth", c.characters.cloth, c.characters.clothBody]] as const).map(([slot, t, b], i) => (
+            <div class="card reveal" style={`--delay:${i * 100}ms`}><div class="frame"><Media slot={slot} lang={lang} sizes="(max-width: 899px) 100vw, 420px" /></div>
+              <div class="caption"><h3>{t[lang]}</h3><p>{b[lang]}</p></div></div>
           ))}
         </div>
-        <Prov slots={["world-grass", "world-terrain", "world-dungeon", "world-village"]} lang={lang} />
+        <Prov slots={["char-autorig", "char-motion-course", "char-cloth"]} lang={lang} />
       </div>
     </section>
 
@@ -175,49 +161,18 @@ const games = [
           <h2 class="display d-2xl">{c.ui.title[lang]}</h2>
           <p class="lede">{c.ui.body[lang]}</p>
         </header>
-        <div class="frame r16x9 reveal"><Media slot="ui-grid" lang={lang} /></div>
-        <p class="meta" style="margin-top:12px">{c.ui.pending[lang]}</p>
+        <div class="reveal"><UiGrid lang={lang} /></div>
       </div>
     </section>
 
-    <section class="section" id="play">
+    <section class="section" id="compare">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="eyebrow">{c.play.eyebrow[lang]}</p>
-          <h2 class="display d-2xl">{c.play.title[lang]}</h2>
-          <p class="lede">{c.play.body[lang]}</p>
+          <p class="eyebrow">{c.compare.eyebrow[lang]}</p>
+          <h2 class="display d-2xl">{c.compare.title[lang]}</h2>
+          <p class="lede">{c.compare.body[lang]}</p>
         </header>
-        <div class="tiles">
-          {games.map(([slot, name, key], i) => (
-            <figure class="tile reveal" style={`--delay:${(i % 3) * 100}ms;margin:0`}>
-              <div class="frame"><Media slot={slot} lang={lang} sizes="(max-width: 599px) 100vw, (max-width: 899px) 50vw, 420px" /></div>
-              <figcaption><h3>{name}</h3><p>{c.play.games[key][lang]}</p><p class="meta">{c.play.soon[lang]}</p></figcaption>
-            </figure>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="numbers">
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="eyebrow">{c.numbers.eyebrow[lang]}</p>
-          <h2 class="display d-2xl">{c.numbers.title[lang]}</h2>
-          <p class="lede">{c.numbers.body[lang]}</p>
-        </header>
-        <div class="numbers reveal">
-          {numbers.map((n) => (
-            <div class={n.pending ? "pending-num" : ""} title={n.source[lang]}>
-              <div class="value" data-count={n.pending ? undefined : n.value}>{n.value}{n.unit && <small>{n.unit[lang]}</small>}</div>
-              <div class="label">{n.label[lang]}</div>
-              <div class="src">{n.pending ? <span class="status" data-kind="pending" style="position:static">{c.numbers.pending[lang]}</span> : n.source[lang]}</div>
-            </div>
-          ))}
-        </div>
-        <div class="bench reveal">
-          <div><h3>{c.numbers.benchmark[lang]}</h3><p>{c.numbers.benchmarkBody[lang]}</p></div>
-          <span class="status" data-kind="pending" style="position:static">{c.numbers.pending[lang]}</span>
-        </div>
+        <Compare lang={lang} />
       </div>
     </section>
 
@@ -236,7 +191,7 @@ const games = [
   <footer>
     <div class="wrap">
       <span class="brand" style="font-size:var(--text-base)"><Fragment set:html={engine()} />Origin Engine</span>
-      <span class="meta">{c.footer.built[lang]} <span class="mono">{commit}</span> · {head.source[lang]}</span>
+      <span class="meta">{c.footer.built[lang]} <span class="mono">{commit}</span></span>
       <span class="meta">{c.footer.rights[lang]}</span>
     </div>
   </footer>

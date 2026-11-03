@@ -10,12 +10,11 @@ const { lang } = Astro.props;
 const other: Lang = lang === "en" ? "zh" : "en";
 const n = copy.nav;
 const links = [
-  ["loop", n.loop],
+  ["ai", n.ai],
   ["rendering", n.rendering],
   ["characters", n.characters],
-  ["worlds", n.worlds],
   ["ui", n.ui],
-  ["play", n.play],
+  ["compare", n.compare],
 ] as const;
 ---
 <header class="nav">

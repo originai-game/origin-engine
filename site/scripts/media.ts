@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { $ } from "bun";
 import { download, readManifest } from "../../scripts/showcase.ts";
 import { media, type Slot } from "../src/media.ts";
+import { cells } from "../src/ui-grid.ts";
 
 const site = join(import.meta.dir, "..");
 const root = join(site, "..");
@@ -121,3 +122,22 @@ for (const [name, slot] of Object.entries(media) as [string, Slot][]) {
 }
 writeFileSync(join(site, "src/generated/media.json"), `${JSON.stringify(index, null, 1)}\n`);
 process.stdout.write(`wrote src/generated/media.json: ${Object.keys(index).length} slots\n`);
+
+// The UI grid: one width per cell (the frame's own, never upscaled), AVIF and WebP, several at once.
+const ui: Record<string, { avif: string; webp: string; w: number; h: number }> = {};
+mkdirSync(join(out, "ui"), { recursive: true });
+const todo = cells();
+async function one(c: (typeof todo)[number]) {
+  const src = join(root, c.file);
+  if (!existsSync(src)) throw new Error(`media: ${c.file} does not exist (ui grid ${c.id})`);
+  const hash = createHash("sha256").update(readFileSync(src)).update(c.crop ?? "").update(String(c.width)).digest("hex").slice(0, 12);
+  const base = `ui/${hash}`;
+  const crop = c.crop ? ["-crop", c.crop, "+repage"] : [];
+  if (!existsSync(join(out, `${base}.avif`))) await $`magick ${src}[0] ${crop} -resize ${`${c.width}x>`} -quality 60 ${join(out, `${base}.avif`)}`.quiet();
+  if (!existsSync(join(out, `${base}.webp`))) await $`magick ${src}[0] ${crop} -resize ${`${c.width}x>`} -quality 80 ${join(out, `${base}.webp`)}`.quiet();
+  const [w, h] = await dims(join(out, `${base}.webp`));
+  ui[c.id] = { avif: `${base}.avif`, webp: `${base}.webp`, w, h };
+}
+for (let i = 0; i < todo.length; i += 8) await Promise.all(todo.slice(i, i + 8).map(one));
+writeFileSync(join(site, "src/generated/ui-grid.json"), `${JSON.stringify(Object.fromEntries(todo.map((c) => [c.id, ui[c.id]])), null, 1)}\n`);
+process.stdout.write(`wrote src/generated/ui-grid.json: ${todo.length} frames\n`);

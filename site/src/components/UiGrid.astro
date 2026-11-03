@@ -1,0 +1,137 @@
+---
+// The UI centrepiece: the engine's own og-ui frames, switched by the reader.
+// Two modes over one stage: genres (17 screens × language × device) and style
+// packs (12 packs × screen × device). Every frame is a picture the gate
+// holds; switching swaps the picture, nothing is mocked in HTML.
+import index from "../generated/ui-grid.json";
+import { copy, type Lang } from "../i18n";
+import { url } from "../lib/media";
+import { devices, genres, locales, packScreens, PACKS, UI_STATUS } from "../ui-grid";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const u = copy.ui;
+const frames = index as Record<string, { avif: string; webp: string; w: number; h: number }>;
+const data = Object.fromEntries(Object.entries(frames).map(([k, f]) => [k, { a: url(f.avif), w: url(f.webp), r: f.w / f.h }]));
+const first = frames["g/lobby/en/desktop"];
+---
+<div class="uigrid" data-uigrid data-frames={JSON.stringify(data)}>
+  <div class="ui-bar">
+    <div class="seg" role="radiogroup" aria-label={u.eyebrow[lang]}>
+      <button type="button" role="radio" aria-checked="true" data-mode="g">{u.genres[lang]}</button>
+      <button type="button" role="radio" aria-checked="false" data-mode="p">{u.packs[lang]}</button>
+    </div>
+    <div class="ui-opts">
+      <div class="seg" role="radiogroup" aria-label={u.locale[lang]} data-axis="loc">
+        {locales.map((l, i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-v={l.key} lang={l.key === "rtl" ? "ar" : l.key}>{l.label[lang]}</button>)}
+      </div>
+      <div class="seg" role="radiogroup" aria-label={u.device[lang]} data-axis="dev">
+        {devices.map((d, i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-v={d.key}>{d.label[lang]}</button>)}
+      </div>
+    </div>
+  </div>
+
+  <div class="ui-stage">
+    <div class="ui-frame" data-frame>
+      <picture>
+        <source type="image/avif" srcset={url(first.avif)} />
+        <img src={url(first.webp)} alt="" width={first.w} height={first.h} decoding="async" loading="lazy" />
+      </picture>
+    </div>
+  </div>
+
+  <div class="ui-list" data-list="g" role="radiogroup" aria-label={u.genres[lang]}>
+    {genres.map((g, i) => (
+      <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-v={g.key}>
+        <span class="n mono">{String(i + 1).padStart(2, "0")}</span>{g.label[lang]}
+      </button>
+    ))}
+  </div>
+  <div class="ui-list packs" data-list="p" hidden>
+    <div class="ui-row" role="radiogroup" aria-label={u.packs[lang]} data-axis="pack">
+      {PACKS.map(([k, label], i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-v={k}>{label[lang]}</button>)}
+    </div>
+    <div class="ui-row" role="radiogroup" aria-label={u.screen[lang]} data-axis="screen">
+      {packScreens.map((s, i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-v={s.key}>{s.label[lang]}</button>)}
+    </div>
+    <p class="meta">{u.packNote[lang]}</p>
+  </div>
+  <div class="prov">
+    {UI_STATUS === "interim" && <span class="chip" data-kind="interim" title={copy.placeholder.interimNote[lang]}>{copy.placeholder.interim[lang]}</span>}
+    <span>{copy.media.source[lang]}</span><span class="mono">crates/og-ui/references/metal · og-ui reference frames on Metal</span>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-uigrid]")) {
+    const frames = JSON.parse(root.dataset.frames!) as Record<string, { a: string; w: string; r: number }>;
+    const frame = root.querySelector<HTMLElement>("[data-frame]")!;
+    const state = { mode: "g", g: "lobby", loc: "en", dev: "desktop", pack: "cyber", screen: "title" };
+    const id = () => (state.mode === "g" ? `g/${state.g}/${state.loc}/${state.dev}` : `p/${state.pack}/${state.screen}/${state.dev}`);
+    // Preload a frame before showing it, so a switch never shows a blank.
+    const cache = new Map<string, Promise<void>>();
+    const load = (f: { a: string; w: string }) => {
+      if (!cache.has(f.w)) cache.set(f.w, new Promise((res) => { const i = new Image(); i.onload = i.onerror = () => res(); i.src = f.w; }));
+      return cache.get(f.w)!;
+    };
+    let shown = "";
+    async function render() {
+      const key = id();
+      const f = frames[key];
+      if (!f || key === shown) return;
+      shown = key;
+      root.dataset.dev = state.dev;
+      root.dataset.mode = state.mode;
+      await load(f);
+      if (shown !== key) return;
+      const pic = frame.querySelector("picture")!;
+      const next = pic.cloneNode(true) as HTMLElement;
+      next.querySelector("source")!.srcset = f.a;
+      const img = next.querySelector("img")!;
+      img.src = f.w;
+      img.loading = "eager";
+      next.classList.add("enter");
+      frame.style.aspectRatio = String(f.r);
+      frame.append(next);
+      requestAnimationFrame(() => next.classList.remove("enter"));
+      setTimeout(() => frame.querySelectorAll("picture").forEach((p) => p !== next && p.remove()), 420);
+      // Warm the neighbours of the current choice.
+      const near = state.mode === "g"
+        ? [`g/${state.g}/${state.loc}/${state.dev === "desktop" ? "phone" : "desktop"}`, ...["en", "ja", "rtl"].map((l) => `g/${state.g}/${l}/${state.dev}`)]
+        : [`p/${state.pack}/${state.screen}/${state.dev === "desktop" ? "phone" : "desktop"}`];
+      near.forEach((k) => frames[k] && load(frames[k]));
+    }
+    function pick(group: HTMLElement, btn: HTMLButtonElement) {
+      group.querySelectorAll<HTMLButtonElement>("[role=radio]").forEach((b) => b.setAttribute("aria-checked", String(b === btn)));
+    }
+    root.querySelectorAll<HTMLElement>("[role=radiogroup]").forEach((group) => {
+      group.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("button[role=radio]");
+        if (!btn) return;
+        pick(group, btn);
+        if (btn.dataset.mode) {
+          state.mode = btn.dataset.mode;
+          root.querySelector<HTMLElement>("[data-list=g]")!.hidden = state.mode !== "g";
+          root.querySelector<HTMLElement>("[data-list=p]")!.hidden = state.mode !== "p";
+          root.querySelector<HTMLElement>("[data-axis=loc]")!.toggleAttribute("data-off", state.mode === "p");
+        } else {
+          const axis = group.dataset.axis ?? group.closest<HTMLElement>("[data-list]")!.dataset.list!;
+          (state as Record<string, string>)[axis] = btn.dataset.v!;
+        }
+        void render();
+      });
+      // Arrow keys move within a group, as radio groups do.
+      group.addEventListener("keydown", (e) => {
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+        const bs = [...group.querySelectorAll<HTMLButtonElement>("button[role=radio]")];
+        const i = bs.indexOf(document.activeElement as HTMLButtonElement);
+        const n = bs[(i + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length];
+        n.focus();
+        n.click();
+        e.preventDefault();
+      });
+    });
+    root.dataset.dev = "desktop";
+    root.dataset.mode = "g";
+  }
+</script>

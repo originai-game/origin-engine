@@ -1,0 +1,1622 @@
+{
+ "g/lobby/en/desktop": {
+  "avif": "ui/dd1b1f37348f.avif",
+  "webp": "ui/dd1b1f37348f.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/lobby/en/phone": {
+  "avif": "ui/c449f73e3567.avif",
+  "webp": "ui/c449f73e3567.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/lobby/ja/desktop": {
+  "avif": "ui/8add032fa586.avif",
+  "webp": "ui/8add032fa586.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/lobby/ja/phone": {
+  "avif": "ui/203db950139f.avif",
+  "webp": "ui/203db950139f.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/lobby/rtl/desktop": {
+  "avif": "ui/967627249bef.avif",
+  "webp": "ui/967627249bef.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/lobby/rtl/phone": {
+  "avif": "ui/5e8ee37bf304.avif",
+  "webp": "ui/5e8ee37bf304.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/draft/en/desktop": {
+  "avif": "ui/406415ae0458.avif",
+  "webp": "ui/406415ae0458.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/draft/en/phone": {
+  "avif": "ui/fe577f265326.avif",
+  "webp": "ui/fe577f265326.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/draft/ja/desktop": {
+  "avif": "ui/cb24129a94ca.avif",
+  "webp": "ui/cb24129a94ca.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/draft/ja/phone": {
+  "avif": "ui/83acde89447b.avif",
+  "webp": "ui/83acde89447b.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/draft/rtl/desktop": {
+  "avif": "ui/2cbb096d8186.avif",
+  "webp": "ui/2cbb096d8186.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/draft/rtl/phone": {
+  "avif": "ui/27691f61b721.avif",
+  "webp": "ui/27691f61b721.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/select/en/desktop": {
+  "avif": "ui/6f0baf88e4a8.avif",
+  "webp": "ui/6f0baf88e4a8.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/select/en/phone": {
+  "avif": "ui/0184a9eeed69.avif",
+  "webp": "ui/0184a9eeed69.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/select/ja/desktop": {
+  "avif": "ui/8a80a25b21a2.avif",
+  "webp": "ui/8a80a25b21a2.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/select/ja/phone": {
+  "avif": "ui/81c8fd1f2c47.avif",
+  "webp": "ui/81c8fd1f2c47.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/select/rtl/desktop": {
+  "avif": "ui/dee699543c70.avif",
+  "webp": "ui/dee699543c70.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/select/rtl/phone": {
+  "avif": "ui/e66aaf4f94ac.avif",
+  "webp": "ui/e66aaf4f94ac.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/versus/en/desktop": {
+  "avif": "ui/fffc69bd2f0c.avif",
+  "webp": "ui/fffc69bd2f0c.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/versus/en/phone": {
+  "avif": "ui/66ceaf4501a5.avif",
+  "webp": "ui/66ceaf4501a5.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/versus/ja/desktop": {
+  "avif": "ui/90d0a201796e.avif",
+  "webp": "ui/90d0a201796e.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/versus/ja/phone": {
+  "avif": "ui/03b165a90d43.avif",
+  "webp": "ui/03b165a90d43.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/versus/rtl/desktop": {
+  "avif": "ui/ca23528e4bd5.avif",
+  "webp": "ui/ca23528e4bd5.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/versus/rtl/phone": {
+  "avif": "ui/cea292003699.avif",
+  "webp": "ui/cea292003699.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/songs/en/desktop": {
+  "avif": "ui/773438d40949.avif",
+  "webp": "ui/773438d40949.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/songs/en/phone": {
+  "avif": "ui/f6c6649de140.avif",
+  "webp": "ui/f6c6649de140.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/songs/ja/desktop": {
+  "avif": "ui/fa31fd9d3584.avif",
+  "webp": "ui/fa31fd9d3584.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/songs/ja/phone": {
+  "avif": "ui/8399aca792ba.avif",
+  "webp": "ui/8399aca792ba.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/songs/rtl/desktop": {
+  "avif": "ui/4673a13cc537.avif",
+  "webp": "ui/4673a13cc537.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/songs/rtl/phone": {
+  "avif": "ui/96e94f03f11a.avif",
+  "webp": "ui/96e94f03f11a.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/worldMap/en/desktop": {
+  "avif": "ui/e50483a2ae57.avif",
+  "webp": "ui/e50483a2ae57.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/worldMap/en/phone": {
+  "avif": "ui/220899923607.avif",
+  "webp": "ui/220899923607.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/worldMap/ja/desktop": {
+  "avif": "ui/37fabe5e138f.avif",
+  "webp": "ui/37fabe5e138f.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/worldMap/ja/phone": {
+  "avif": "ui/8f6af9b50c14.avif",
+  "webp": "ui/8f6af9b50c14.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/worldMap/rtl/desktop": {
+  "avif": "ui/ce507a3f22c7.avif",
+  "webp": "ui/ce507a3f22c7.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/worldMap/rtl/phone": {
+  "avif": "ui/718f5c045567.avif",
+  "webp": "ui/718f5c045567.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/garage/en/desktop": {
+  "avif": "ui/e0a8af002391.avif",
+  "webp": "ui/e0a8af002391.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/garage/en/phone": {
+  "avif": "ui/233a2c040c6a.avif",
+  "webp": "ui/233a2c040c6a.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/garage/ja/desktop": {
+  "avif": "ui/fd1c339b1673.avif",
+  "webp": "ui/fd1c339b1673.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/garage/ja/phone": {
+  "avif": "ui/756c47a68d39.avif",
+  "webp": "ui/756c47a68d39.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/garage/rtl/desktop": {
+  "avif": "ui/99957b749808.avif",
+  "webp": "ui/99957b749808.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/garage/rtl/phone": {
+  "avif": "ui/d2f6d709aea6.avif",
+  "webp": "ui/d2f6d709aea6.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/rts/en/desktop": {
+  "avif": "ui/a7f67f69da3e.avif",
+  "webp": "ui/a7f67f69da3e.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/rts/en/phone": {
+  "avif": "ui/bef58227a27b.avif",
+  "webp": "ui/bef58227a27b.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/rts/ja/desktop": {
+  "avif": "ui/78b324367ba4.avif",
+  "webp": "ui/78b324367ba4.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/rts/ja/phone": {
+  "avif": "ui/07cdffacf6bb.avif",
+  "webp": "ui/07cdffacf6bb.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/rts/rtl/desktop": {
+  "avif": "ui/9f6d57128a22.avif",
+  "webp": "ui/9f6d57128a22.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/rts/rtl/phone": {
+  "avif": "ui/c4eb1519fb44.avif",
+  "webp": "ui/c4eb1519fb44.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cityMap/en/desktop": {
+  "avif": "ui/112377965028.avif",
+  "webp": "ui/112377965028.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cityMap/en/phone": {
+  "avif": "ui/0e805616ce10.avif",
+  "webp": "ui/0e805616ce10.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cityMap/ja/desktop": {
+  "avif": "ui/aaba82e94d23.avif",
+  "webp": "ui/aaba82e94d23.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cityMap/ja/phone": {
+  "avif": "ui/d142b3ddc7ca.avif",
+  "webp": "ui/d142b3ddc7ca.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cityMap/rtl/desktop": {
+  "avif": "ui/859849dbce41.avif",
+  "webp": "ui/859849dbce41.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cityMap/rtl/phone": {
+  "avif": "ui/2d69f860a0c2.avif",
+  "webp": "ui/2d69f860a0c2.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/ledger/en/desktop": {
+  "avif": "ui/431d0416be1b.avif",
+  "webp": "ui/431d0416be1b.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/ledger/en/phone": {
+  "avif": "ui/0bebd0ace664.avif",
+  "webp": "ui/0bebd0ace664.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/ledger/ja/desktop": {
+  "avif": "ui/6dbc3fff2cf3.avif",
+  "webp": "ui/6dbc3fff2cf3.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/ledger/ja/phone": {
+  "avif": "ui/efc956997919.avif",
+  "webp": "ui/efc956997919.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/ledger/rtl/desktop": {
+  "avif": "ui/ab682780aa9f.avif",
+  "webp": "ui/ab682780aa9f.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/ledger/rtl/phone": {
+  "avif": "ui/6d58c4485f04.avif",
+  "webp": "ui/6d58c4485f04.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/chat/en/desktop": {
+  "avif": "ui/cd0c2d28875a.avif",
+  "webp": "ui/cd0c2d28875a.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/chat/en/phone": {
+  "avif": "ui/e3095e7a2858.avif",
+  "webp": "ui/e3095e7a2858.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/chat/ja/desktop": {
+  "avif": "ui/45fb2e8d53b6.avif",
+  "webp": "ui/45fb2e8d53b6.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/chat/ja/phone": {
+  "avif": "ui/a5162cd9a809.avif",
+  "webp": "ui/a5162cd9a809.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/chat/rtl/desktop": {
+  "avif": "ui/44feb32d4426.avif",
+  "webp": "ui/44feb32d4426.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/chat/rtl/phone": {
+  "avif": "ui/82d792b8cfce.avif",
+  "webp": "ui/82d792b8cfce.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/deck/en/desktop": {
+  "avif": "ui/7a994f166bc8.avif",
+  "webp": "ui/7a994f166bc8.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/deck/en/phone": {
+  "avif": "ui/f122ca757318.avif",
+  "webp": "ui/f122ca757318.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/deck/ja/desktop": {
+  "avif": "ui/92224066d253.avif",
+  "webp": "ui/92224066d253.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/deck/ja/phone": {
+  "avif": "ui/90e16b61d444.avif",
+  "webp": "ui/90e16b61d444.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/deck/rtl/desktop": {
+  "avif": "ui/3744a0c8f88d.avif",
+  "webp": "ui/3744a0c8f88d.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/deck/rtl/phone": {
+  "avif": "ui/1e8c4ef44865.avif",
+  "webp": "ui/1e8c4ef44865.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/loadout/en/desktop": {
+  "avif": "ui/6610532c51e0.avif",
+  "webp": "ui/6610532c51e0.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/loadout/en/phone": {
+  "avif": "ui/0b6d67c76ea4.avif",
+  "webp": "ui/0b6d67c76ea4.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/loadout/ja/desktop": {
+  "avif": "ui/ab64bb0afa85.avif",
+  "webp": "ui/ab64bb0afa85.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/loadout/ja/phone": {
+  "avif": "ui/fcd0c05fa732.avif",
+  "webp": "ui/fcd0c05fa732.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/loadout/rtl/desktop": {
+  "avif": "ui/9ae3eac2a2a6.avif",
+  "webp": "ui/9ae3eac2a2a6.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/loadout/rtl/phone": {
+  "avif": "ui/f822a7d0b365.avif",
+  "webp": "ui/f822a7d0b365.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/routes/en/desktop": {
+  "avif": "ui/de81eea2f598.avif",
+  "webp": "ui/de81eea2f598.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/routes/en/phone": {
+  "avif": "ui/3d85ed151c9d.avif",
+  "webp": "ui/3d85ed151c9d.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/routes/ja/desktop": {
+  "avif": "ui/c6951b8154d1.avif",
+  "webp": "ui/c6951b8154d1.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/routes/ja/phone": {
+  "avif": "ui/1132c1f892c1.avif",
+  "webp": "ui/1132c1f892c1.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/routes/rtl/desktop": {
+  "avif": "ui/dd4a29465acd.avif",
+  "webp": "ui/dd4a29465acd.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/routes/rtl/phone": {
+  "avif": "ui/6d84f953d16a.avif",
+  "webp": "ui/6d84f953d16a.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cgGallery/en/desktop": {
+  "avif": "ui/a728ef976815.avif",
+  "webp": "ui/a728ef976815.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cgGallery/en/phone": {
+  "avif": "ui/fc24dccd2b47.avif",
+  "webp": "ui/fc24dccd2b47.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cgGallery/ja/desktop": {
+  "avif": "ui/2ddb31ea4028.avif",
+  "webp": "ui/2ddb31ea4028.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cgGallery/ja/phone": {
+  "avif": "ui/61da326be1e0.avif",
+  "webp": "ui/61da326be1e0.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/cgGallery/rtl/desktop": {
+  "avif": "ui/de11b7f3e29d.avif",
+  "webp": "ui/de11b7f3e29d.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/cgGallery/rtl/phone": {
+  "avif": "ui/48d4866e6651.avif",
+  "webp": "ui/48d4866e6651.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/photo/en/desktop": {
+  "avif": "ui/a4be9dc0874b.avif",
+  "webp": "ui/a4be9dc0874b.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/photo/en/phone": {
+  "avif": "ui/6e7c92b5c028.avif",
+  "webp": "ui/6e7c92b5c028.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/photo/ja/desktop": {
+  "avif": "ui/337985ffffec.avif",
+  "webp": "ui/337985ffffec.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/photo/ja/phone": {
+  "avif": "ui/5ee3e3557457.avif",
+  "webp": "ui/5ee3e3557457.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/photo/rtl/desktop": {
+  "avif": "ui/42531fa9ff4d.avif",
+  "webp": "ui/42531fa9ff4d.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/photo/rtl/phone": {
+  "avif": "ui/516cfc4caa71.avif",
+  "webp": "ui/516cfc4caa71.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/settingsTree/en/desktop": {
+  "avif": "ui/b184460a909f.avif",
+  "webp": "ui/b184460a909f.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/settingsTree/en/phone": {
+  "avif": "ui/b7ad04256075.avif",
+  "webp": "ui/b7ad04256075.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/settingsTree/ja/desktop": {
+  "avif": "ui/b935c9f00a49.avif",
+  "webp": "ui/b935c9f00a49.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/settingsTree/ja/phone": {
+  "avif": "ui/800e2ec654bf.avif",
+  "webp": "ui/800e2ec654bf.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "g/settingsTree/rtl/desktop": {
+  "avif": "ui/627941c16cce.avif",
+  "webp": "ui/627941c16cce.webp",
+  "w": 1280,
+  "h": 720
+ },
+ "g/settingsTree/rtl/phone": {
+  "avif": "ui/87afbe3bb31c.avif",
+  "webp": "ui/87afbe3bb31c.webp",
+  "w": 585,
+  "h": 1266
+ },
+ "p/cyber/title/desktop": {
+  "avif": "ui/23fea623bdcf.avif",
+  "webp": "ui/23fea623bdcf.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/title/phone": {
+  "avif": "ui/f2b5963d7b1c.avif",
+  "webp": "ui/f2b5963d7b1c.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/shop/desktop": {
+  "avif": "ui/21c7e727c5d6.avif",
+  "webp": "ui/21c7e727c5d6.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/shop/phone": {
+  "avif": "ui/9cfe90cf90d7.avif",
+  "webp": "ui/9cfe90cf90d7.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/inventory/desktop": {
+  "avif": "ui/9956d59df8cc.avif",
+  "webp": "ui/9956d59df8cc.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/inventory/phone": {
+  "avif": "ui/eb16154da5c8.avif",
+  "webp": "ui/eb16154da5c8.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/levels/desktop": {
+  "avif": "ui/51f03c74f77b.avif",
+  "webp": "ui/51f03c74f77b.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/levels/phone": {
+  "avif": "ui/c19e7cb84b21.avif",
+  "webp": "ui/c19e7cb84b21.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/complete/desktop": {
+  "avif": "ui/4f1dd9524362.avif",
+  "webp": "ui/4f1dd9524362.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/complete/phone": {
+  "avif": "ui/1be254e9777f.avif",
+  "webp": "ui/1be254e9777f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/leaderboard/desktop": {
+  "avif": "ui/598bd295df67.avif",
+  "webp": "ui/598bd295df67.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/leaderboard/phone": {
+  "avif": "ui/5cae1f8f4b31.avif",
+  "webp": "ui/5cae1f8f4b31.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cyber/settings/desktop": {
+  "avif": "ui/3d64ff7f328b.avif",
+  "webp": "ui/3d64ff7f328b.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cyber/settings/phone": {
+  "avif": "ui/c848cb13eb14.avif",
+  "webp": "ui/c848cb13eb14.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/title/desktop": {
+  "avif": "ui/60803bfaa30c.avif",
+  "webp": "ui/60803bfaa30c.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/title/phone": {
+  "avif": "ui/cbfa4977fff5.avif",
+  "webp": "ui/cbfa4977fff5.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/shop/desktop": {
+  "avif": "ui/e80a490ece37.avif",
+  "webp": "ui/e80a490ece37.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/shop/phone": {
+  "avif": "ui/b1d037725f41.avif",
+  "webp": "ui/b1d037725f41.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/inventory/desktop": {
+  "avif": "ui/65bf6fab14ef.avif",
+  "webp": "ui/65bf6fab14ef.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/inventory/phone": {
+  "avif": "ui/d8fca6bcec90.avif",
+  "webp": "ui/d8fca6bcec90.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/levels/desktop": {
+  "avif": "ui/63fdf3425349.avif",
+  "webp": "ui/63fdf3425349.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/levels/phone": {
+  "avif": "ui/b43c22158454.avif",
+  "webp": "ui/b43c22158454.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/complete/desktop": {
+  "avif": "ui/34a4a3f8b2d5.avif",
+  "webp": "ui/34a4a3f8b2d5.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/complete/phone": {
+  "avif": "ui/9741ae8a7cad.avif",
+  "webp": "ui/9741ae8a7cad.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/leaderboard/desktop": {
+  "avif": "ui/0d76479b2589.avif",
+  "webp": "ui/0d76479b2589.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/leaderboard/phone": {
+  "avif": "ui/c1f86a128425.avif",
+  "webp": "ui/c1f86a128425.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/gilded/settings/desktop": {
+  "avif": "ui/2558ba2ac282.avif",
+  "webp": "ui/2558ba2ac282.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/gilded/settings/phone": {
+  "avif": "ui/6e644dd45bd6.avif",
+  "webp": "ui/6e644dd45bd6.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/title/desktop": {
+  "avif": "ui/5d73e956498b.avif",
+  "webp": "ui/5d73e956498b.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/title/phone": {
+  "avif": "ui/92d76062800a.avif",
+  "webp": "ui/92d76062800a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/shop/desktop": {
+  "avif": "ui/458f1c0edd37.avif",
+  "webp": "ui/458f1c0edd37.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/shop/phone": {
+  "avif": "ui/6a79b7cdd301.avif",
+  "webp": "ui/6a79b7cdd301.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/inventory/desktop": {
+  "avif": "ui/71b0e55cabcf.avif",
+  "webp": "ui/71b0e55cabcf.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/inventory/phone": {
+  "avif": "ui/ca25108ecbc8.avif",
+  "webp": "ui/ca25108ecbc8.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/levels/desktop": {
+  "avif": "ui/79ff9fca8382.avif",
+  "webp": "ui/79ff9fca8382.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/levels/phone": {
+  "avif": "ui/23be2c5f399c.avif",
+  "webp": "ui/23be2c5f399c.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/complete/desktop": {
+  "avif": "ui/885b26741a51.avif",
+  "webp": "ui/885b26741a51.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/complete/phone": {
+  "avif": "ui/8e1484184a6c.avif",
+  "webp": "ui/8e1484184a6c.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/leaderboard/desktop": {
+  "avif": "ui/c56af0221a11.avif",
+  "webp": "ui/c56af0221a11.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/leaderboard/phone": {
+  "avif": "ui/241909afa7ab.avif",
+  "webp": "ui/241909afa7ab.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/kawaii/settings/desktop": {
+  "avif": "ui/93f8ed922804.avif",
+  "webp": "ui/93f8ed922804.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/kawaii/settings/phone": {
+  "avif": "ui/ee837da1c8d9.avif",
+  "webp": "ui/ee837da1c8d9.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/title/desktop": {
+  "avif": "ui/546c013599af.avif",
+  "webp": "ui/546c013599af.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/title/phone": {
+  "avif": "ui/7f7c7df3cc3f.avif",
+  "webp": "ui/7f7c7df3cc3f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/shop/desktop": {
+  "avif": "ui/bc5d016e621d.avif",
+  "webp": "ui/bc5d016e621d.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/shop/phone": {
+  "avif": "ui/e1da24ac7a03.avif",
+  "webp": "ui/e1da24ac7a03.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/inventory/desktop": {
+  "avif": "ui/452de2c436f5.avif",
+  "webp": "ui/452de2c436f5.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/inventory/phone": {
+  "avif": "ui/a106dce92590.avif",
+  "webp": "ui/a106dce92590.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/levels/desktop": {
+  "avif": "ui/9cb8be2fec68.avif",
+  "webp": "ui/9cb8be2fec68.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/levels/phone": {
+  "avif": "ui/d74533041d3d.avif",
+  "webp": "ui/d74533041d3d.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/complete/desktop": {
+  "avif": "ui/0e9d04a04e56.avif",
+  "webp": "ui/0e9d04a04e56.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/complete/phone": {
+  "avif": "ui/c45bc5207c44.avif",
+  "webp": "ui/c45bc5207c44.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/leaderboard/desktop": {
+  "avif": "ui/1ae3481f8b85.avif",
+  "webp": "ui/1ae3481f8b85.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/leaderboard/phone": {
+  "avif": "ui/8f072a206d13.avif",
+  "webp": "ui/8f072a206d13.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/dread/settings/desktop": {
+  "avif": "ui/ce9eab2fd4ff.avif",
+  "webp": "ui/ce9eab2fd4ff.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/dread/settings/phone": {
+  "avif": "ui/ec5abece3c93.avif",
+  "webp": "ui/ec5abece3c93.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/title/desktop": {
+  "avif": "ui/ffd21a480772.avif",
+  "webp": "ui/ffd21a480772.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/title/phone": {
+  "avif": "ui/1a0a764b70b3.avif",
+  "webp": "ui/1a0a764b70b3.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/shop/desktop": {
+  "avif": "ui/c75a7c263b5c.avif",
+  "webp": "ui/c75a7c263b5c.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/shop/phone": {
+  "avif": "ui/e6f1db6c5e5c.avif",
+  "webp": "ui/e6f1db6c5e5c.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/inventory/desktop": {
+  "avif": "ui/3a97fba5b5f5.avif",
+  "webp": "ui/3a97fba5b5f5.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/inventory/phone": {
+  "avif": "ui/2031c97c3539.avif",
+  "webp": "ui/2031c97c3539.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/levels/desktop": {
+  "avif": "ui/937221230ce0.avif",
+  "webp": "ui/937221230ce0.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/levels/phone": {
+  "avif": "ui/46ae54fc63df.avif",
+  "webp": "ui/46ae54fc63df.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/complete/desktop": {
+  "avif": "ui/265a38e37994.avif",
+  "webp": "ui/265a38e37994.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/complete/phone": {
+  "avif": "ui/f865da7f96bc.avif",
+  "webp": "ui/f865da7f96bc.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/leaderboard/desktop": {
+  "avif": "ui/0f36b5f1c38e.avif",
+  "webp": "ui/0f36b5f1c38e.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/leaderboard/phone": {
+  "avif": "ui/caf04154dcdd.avif",
+  "webp": "ui/caf04154dcdd.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/fantasy/settings/desktop": {
+  "avif": "ui/4d0624ff3080.avif",
+  "webp": "ui/4d0624ff3080.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/fantasy/settings/phone": {
+  "avif": "ui/b4bc65d5dacf.avif",
+  "webp": "ui/b4bc65d5dacf.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/title/desktop": {
+  "avif": "ui/b89999d764c8.avif",
+  "webp": "ui/b89999d764c8.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/title/phone": {
+  "avif": "ui/e4991ec8791f.avif",
+  "webp": "ui/e4991ec8791f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/shop/desktop": {
+  "avif": "ui/27d8b69b8765.avif",
+  "webp": "ui/27d8b69b8765.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/shop/phone": {
+  "avif": "ui/e978a6e8c67f.avif",
+  "webp": "ui/e978a6e8c67f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/inventory/desktop": {
+  "avif": "ui/3404400bd720.avif",
+  "webp": "ui/3404400bd720.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/inventory/phone": {
+  "avif": "ui/2520ad14679a.avif",
+  "webp": "ui/2520ad14679a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/levels/desktop": {
+  "avif": "ui/f3964cef4b36.avif",
+  "webp": "ui/f3964cef4b36.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/levels/phone": {
+  "avif": "ui/062d4daea030.avif",
+  "webp": "ui/062d4daea030.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/complete/desktop": {
+  "avif": "ui/74a93792fe33.avif",
+  "webp": "ui/74a93792fe33.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/complete/phone": {
+  "avif": "ui/a0b9a27300e5.avif",
+  "webp": "ui/a0b9a27300e5.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/leaderboard/desktop": {
+  "avif": "ui/eccf81abda68.avif",
+  "webp": "ui/eccf81abda68.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/leaderboard/phone": {
+  "avif": "ui/7077075483de.avif",
+  "webp": "ui/7077075483de.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/scifi/settings/desktop": {
+  "avif": "ui/c16c65bc2c48.avif",
+  "webp": "ui/c16c65bc2c48.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/scifi/settings/phone": {
+  "avif": "ui/10b817d13844.avif",
+  "webp": "ui/10b817d13844.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/title/desktop": {
+  "avif": "ui/f8988d4210a4.avif",
+  "webp": "ui/f8988d4210a4.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/title/phone": {
+  "avif": "ui/2229c1ba378b.avif",
+  "webp": "ui/2229c1ba378b.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/shop/desktop": {
+  "avif": "ui/6d91d6c26ea4.avif",
+  "webp": "ui/6d91d6c26ea4.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/shop/phone": {
+  "avif": "ui/3995d0c8c279.avif",
+  "webp": "ui/3995d0c8c279.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/inventory/desktop": {
+  "avif": "ui/6c9a9079d699.avif",
+  "webp": "ui/6c9a9079d699.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/inventory/phone": {
+  "avif": "ui/04b60fd503db.avif",
+  "webp": "ui/04b60fd503db.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/levels/desktop": {
+  "avif": "ui/6830eed4caa6.avif",
+  "webp": "ui/6830eed4caa6.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/levels/phone": {
+  "avif": "ui/30b3b3cb7b3f.avif",
+  "webp": "ui/30b3b3cb7b3f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/complete/desktop": {
+  "avif": "ui/c0f1c4b9c3a3.avif",
+  "webp": "ui/c0f1c4b9c3a3.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/complete/phone": {
+  "avif": "ui/87b8e4ccf5d1.avif",
+  "webp": "ui/87b8e4ccf5d1.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/leaderboard/desktop": {
+  "avif": "ui/e10970a1ad28.avif",
+  "webp": "ui/e10970a1ad28.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/leaderboard/phone": {
+  "avif": "ui/5932a9b89e52.avif",
+  "webp": "ui/5932a9b89e52.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/pixel/settings/desktop": {
+  "avif": "ui/8ab92982c532.avif",
+  "webp": "ui/8ab92982c532.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/pixel/settings/phone": {
+  "avif": "ui/39dba87d43e9.avif",
+  "webp": "ui/39dba87d43e9.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/title/desktop": {
+  "avif": "ui/d0cc503f015f.avif",
+  "webp": "ui/d0cc503f015f.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/title/phone": {
+  "avif": "ui/4fdffcb193e1.avif",
+  "webp": "ui/4fdffcb193e1.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/shop/desktop": {
+  "avif": "ui/2fb1e3f4015a.avif",
+  "webp": "ui/2fb1e3f4015a.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/shop/phone": {
+  "avif": "ui/a094fa886bd6.avif",
+  "webp": "ui/a094fa886bd6.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/inventory/desktop": {
+  "avif": "ui/95e7274798f0.avif",
+  "webp": "ui/95e7274798f0.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/inventory/phone": {
+  "avif": "ui/c8df44687212.avif",
+  "webp": "ui/c8df44687212.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/levels/desktop": {
+  "avif": "ui/d4efa38bc0dc.avif",
+  "webp": "ui/d4efa38bc0dc.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/levels/phone": {
+  "avif": "ui/2f0b8356e9ac.avif",
+  "webp": "ui/2f0b8356e9ac.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/complete/desktop": {
+  "avif": "ui/3681b9ab61c7.avif",
+  "webp": "ui/3681b9ab61c7.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/complete/phone": {
+  "avif": "ui/c326eda98c0e.avif",
+  "webp": "ui/c326eda98c0e.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/leaderboard/desktop": {
+  "avif": "ui/18ff25da9972.avif",
+  "webp": "ui/18ff25da9972.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/leaderboard/phone": {
+  "avif": "ui/056d27b64a5a.avif",
+  "webp": "ui/056d27b64a5a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/storybook/settings/desktop": {
+  "avif": "ui/2217cc797205.avif",
+  "webp": "ui/2217cc797205.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/storybook/settings/phone": {
+  "avif": "ui/4007f28445b2.avif",
+  "webp": "ui/4007f28445b2.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/title/desktop": {
+  "avif": "ui/96aa5b3e1b97.avif",
+  "webp": "ui/96aa5b3e1b97.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/title/phone": {
+  "avif": "ui/c594cc32d63a.avif",
+  "webp": "ui/c594cc32d63a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/shop/desktop": {
+  "avif": "ui/a13d41f430c0.avif",
+  "webp": "ui/a13d41f430c0.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/shop/phone": {
+  "avif": "ui/3c2f60b77e3a.avif",
+  "webp": "ui/3c2f60b77e3a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/inventory/desktop": {
+  "avif": "ui/d5d0fd96c110.avif",
+  "webp": "ui/d5d0fd96c110.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/inventory/phone": {
+  "avif": "ui/e13c1a969372.avif",
+  "webp": "ui/e13c1a969372.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/levels/desktop": {
+  "avif": "ui/aa265bb61790.avif",
+  "webp": "ui/aa265bb61790.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/levels/phone": {
+  "avif": "ui/2f692dd8c043.avif",
+  "webp": "ui/2f692dd8c043.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/complete/desktop": {
+  "avif": "ui/075a9f57fab0.avif",
+  "webp": "ui/075a9f57fab0.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/complete/phone": {
+  "avif": "ui/120eee857ac2.avif",
+  "webp": "ui/120eee857ac2.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/leaderboard/desktop": {
+  "avif": "ui/6b21d2266b0f.avif",
+  "webp": "ui/6b21d2266b0f.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/leaderboard/phone": {
+  "avif": "ui/515756a386c3.avif",
+  "webp": "ui/515756a386c3.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/tactical/settings/desktop": {
+  "avif": "ui/0aca03859cbd.avif",
+  "webp": "ui/0aca03859cbd.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/tactical/settings/phone": {
+  "avif": "ui/e81c9b8601c7.avif",
+  "webp": "ui/e81c9b8601c7.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/title/desktop": {
+  "avif": "ui/82eb8a65cc68.avif",
+  "webp": "ui/82eb8a65cc68.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/title/phone": {
+  "avif": "ui/22fa5a8788b0.avif",
+  "webp": "ui/22fa5a8788b0.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/shop/desktop": {
+  "avif": "ui/fd043b821a51.avif",
+  "webp": "ui/fd043b821a51.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/shop/phone": {
+  "avif": "ui/6d1722345bc3.avif",
+  "webp": "ui/6d1722345bc3.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/inventory/desktop": {
+  "avif": "ui/32c0870c950d.avif",
+  "webp": "ui/32c0870c950d.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/inventory/phone": {
+  "avif": "ui/059ac3b85362.avif",
+  "webp": "ui/059ac3b85362.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/levels/desktop": {
+  "avif": "ui/8b7b920490f7.avif",
+  "webp": "ui/8b7b920490f7.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/levels/phone": {
+  "avif": "ui/33a75509be8e.avif",
+  "webp": "ui/33a75509be8e.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/complete/desktop": {
+  "avif": "ui/9b9ff1b525c3.avif",
+  "webp": "ui/9b9ff1b525c3.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/complete/phone": {
+  "avif": "ui/5b1ac7778831.avif",
+  "webp": "ui/5b1ac7778831.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/leaderboard/desktop": {
+  "avif": "ui/b8f418244b87.avif",
+  "webp": "ui/b8f418244b87.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/leaderboard/phone": {
+  "avif": "ui/7a0b0f8ad1a9.avif",
+  "webp": "ui/7a0b0f8ad1a9.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/broadcast/settings/desktop": {
+  "avif": "ui/9c5970aa605c.avif",
+  "webp": "ui/9c5970aa605c.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/broadcast/settings/phone": {
+  "avif": "ui/9196345f4665.avif",
+  "webp": "ui/9196345f4665.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/title/desktop": {
+  "avif": "ui/0ed32f1d0761.avif",
+  "webp": "ui/0ed32f1d0761.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/title/phone": {
+  "avif": "ui/12e688ee325a.avif",
+  "webp": "ui/12e688ee325a.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/shop/desktop": {
+  "avif": "ui/2452dbcc45ab.avif",
+  "webp": "ui/2452dbcc45ab.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/shop/phone": {
+  "avif": "ui/b6443489c6fe.avif",
+  "webp": "ui/b6443489c6fe.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/inventory/desktop": {
+  "avif": "ui/e956dfb63217.avif",
+  "webp": "ui/e956dfb63217.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/inventory/phone": {
+  "avif": "ui/e896cc981c6d.avif",
+  "webp": "ui/e896cc981c6d.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/levels/desktop": {
+  "avif": "ui/8003b1e4d0ac.avif",
+  "webp": "ui/8003b1e4d0ac.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/levels/phone": {
+  "avif": "ui/6539c56f3696.avif",
+  "webp": "ui/6539c56f3696.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/complete/desktop": {
+  "avif": "ui/ce342d8b7066.avif",
+  "webp": "ui/ce342d8b7066.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/complete/phone": {
+  "avif": "ui/8d2dcbeaf780.avif",
+  "webp": "ui/8d2dcbeaf780.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/leaderboard/desktop": {
+  "avif": "ui/8b3e61957b49.avif",
+  "webp": "ui/8b3e61957b49.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/leaderboard/phone": {
+  "avif": "ui/bbd58e08ff54.avif",
+  "webp": "ui/bbd58e08ff54.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/cartoon/settings/desktop": {
+  "avif": "ui/b7a5fb72c7a9.avif",
+  "webp": "ui/b7a5fb72c7a9.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/cartoon/settings/phone": {
+  "avif": "ui/37cad86faae6.avif",
+  "webp": "ui/37cad86faae6.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/title/desktop": {
+  "avif": "ui/0503b018084e.avif",
+  "webp": "ui/0503b018084e.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/title/phone": {
+  "avif": "ui/d87b29091c89.avif",
+  "webp": "ui/d87b29091c89.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/shop/desktop": {
+  "avif": "ui/2467037826fe.avif",
+  "webp": "ui/2467037826fe.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/shop/phone": {
+  "avif": "ui/7b5c9f45b369.avif",
+  "webp": "ui/7b5c9f45b369.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/inventory/desktop": {
+  "avif": "ui/7da86d60e165.avif",
+  "webp": "ui/7da86d60e165.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/inventory/phone": {
+  "avif": "ui/fb9b2a14816f.avif",
+  "webp": "ui/fb9b2a14816f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/levels/desktop": {
+  "avif": "ui/e1d44d238df7.avif",
+  "webp": "ui/e1d44d238df7.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/levels/phone": {
+  "avif": "ui/77968d0f2c4f.avif",
+  "webp": "ui/77968d0f2c4f.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/complete/desktop": {
+  "avif": "ui/eed6a062f0b6.avif",
+  "webp": "ui/eed6a062f0b6.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/complete/phone": {
+  "avif": "ui/70ac740707a3.avif",
+  "webp": "ui/70ac740707a3.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/leaderboard/desktop": {
+  "avif": "ui/3488ab2e72e4.avif",
+  "webp": "ui/3488ab2e72e4.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/leaderboard/phone": {
+  "avif": "ui/42974fb0f0f0.avif",
+  "webp": "ui/42974fb0f0f0.webp",
+  "w": 390,
+  "h": 844
+ },
+ "p/craft/settings/desktop": {
+  "avif": "ui/3bac4553383c.avif",
+  "webp": "ui/3bac4553383c.webp",
+  "w": 640,
+  "h": 360
+ },
+ "p/craft/settings/phone": {
+  "avif": "ui/c449f115c3ba.avif",
+  "webp": "ui/c449f115c3ba.webp",
+  "w": 390,
+  "h": 844
+ }
+}
