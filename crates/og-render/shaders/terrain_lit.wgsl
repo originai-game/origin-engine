@@ -240,6 +240,13 @@ fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f
   return TerrainLook(albedo, normal, roughness);
 }
 
+// The toon ramp's three bands for the terrain (pbr.wgsl toon_ramp's built-in
+// one), each edge smoothed over a pixel of t.
+fn terrain_band(t: f32) -> f32 {
+  let e = max(fwidth(t), 1e-4);
+  return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
+}
+
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (terrain_hole_at(in.local)) { discard; }
@@ -268,18 +275,22 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  // og.MaterialStyle's shadow tint: the sunlight a cast shadow takes moves towards the tint, as on a lit material.
+  var tinted = (1.0 - shadow) * n_dot_l;
   if (frame.outline_style.z > 0.5) {
     // og.MaterialStyle's toon: the ground in the built-in ramp's three bands
     // (as a lit material without its own gradientMap), matte (no hard
     // highlight), each band's edge smoothed over a pixel so it does not crawl.
-    let t = n_dot_l * shadow;
-    let e = max(fwidth(t), 1e-4);
-    let band = 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
+    let band = terrain_band(n_dot_l * shadow);
     color = s.albedo / PI * band * frame.light_color.rgb;
+    // The tint takes what the ramp lost to the shadow, once, from the final
+    // shadow factor: inside the dark band a deeper shadow (two overlapping,
+    // or a soft one deepened) loses nothing more, so it gains no more tint
+    // (else overlapping shadows came out lighter).
+    tinted = terrain_band(n_dot_l) - band;
   }
-  // og.MaterialStyle's shadow tint: the light a cast shadow takes moves towards the tint, as on a lit material.
   if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
-    color += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
+    color += tinted * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb;
   }
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
   // Point, spot and rect lights: this fragment's cluster's, or every light
