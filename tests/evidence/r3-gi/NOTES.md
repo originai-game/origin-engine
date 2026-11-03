@@ -379,3 +379,25 @@ clouds-*, the weather-* surface frames and water-ocean-*. Overcast and
 cloudy frames should move most: their ambient goes greyer and dimmer
 under the deck. Frames with the default `Background::Sky`, a colour or
 an environment map must not move.
+
+## Fix-forward: a ReflectionProbe's capture is not dimmed by the ambient
+
+The batch functional lane found `light-volume-mirror`'s chrome sphere
+black with only the lamp's highlights, and
+`a_realtime_light_volume_relights_a_mirror_s_reflection` gaining
+[0, 0, 0]. The probe's capture was fine. Every lit shader scales what
+`reflected_light` and `ambient_light` return by the environment's
+intensity (`frame.params.x`), the probe's term included, and the
+light-volume room's environment intensity is 0.05. So the room the
+probe captured, already as bright as it is drawn, came back at 5 %.
+Now `probes.rs` writes the probe's intensity divided by `params.x`, so
+the capture comes back as drawn (environment intensity 0 still zeroes
+it).
+
+Frames expected to move: `light-volume-mirror`, `light-volume-glossy`
+and `light-volume-rough` (the sphere shows the room: red on its left,
+green on its right, the lit ceiling above, sharp at 0.3 and blurring at
+0.4 and 0.7), and the probe-floor family (`probe_floor_scene`,
+environment intensity 0.6), whose probe reflections and ambient inside
+the probe's box brighten by 1/0.6. Scenes at intensity 1
+(`probe-interior`, the two rooms, outdoor) must not move.

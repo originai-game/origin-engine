@@ -125,7 +125,7 @@ module render {
 | [`MAX_REFLECTION_PROBES`](#const-MAX_REFLECTION_PROBES) | constant | The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped. |
 | [`ReflectionProbeMode`](#type-ReflectionProbeMode) | enum | When a reflection probe's cube is rendered. |
 | [`ReflectionProbeMode()`](#column-ReflectionProbeMode) | column kind | A ReflectionProbeMode field: the variant's index. |
-| [`og.ReflectionProbe`](#record-ReflectionProbe) | component | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. |
+| [`og.ReflectionProbe`](#record-ReflectionProbe) | component | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as drawn, so the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity) scales the sky's light around it, not the probe's. |
 | [`og.render.standardMaterial`](#fn-standardMaterial) | function | Create a standard material. |
 | [`og.render.updateMaterial`](#fn-updateMaterial) | function | Change some parameters of a standard material. |
 | [`Shader`](#type-Shader) | handle | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read. |
@@ -3802,7 +3802,7 @@ component Afterimage {
 
 ### `og.ReflectionProbe` (component)
 
-A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections.
+A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as drawn, so the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity) scales the sky's light around it, not the probe's.
 
 Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe`; its value type is `ReflectionProbe`.
 
@@ -3818,7 +3818,7 @@ Token `og.ReflectionProbe`, registered under the schema name `og.ReflectionProbe
 
 ```ogt
 component ReflectionProbe {
-  doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections."
+  doc "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Interiors that the sky must not light: a chrome sphere in a room shows the room. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it (nothing is drawn twice) and without the probes' own reflections. It holds the light as drawn, so the environment's intensity (RenderSettings.environmentIntensity, og.Environment.intensity) scales the sky's light around it, not the probe's."
   field size Vector3 "The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned)." {
     default 10 10 10
   }

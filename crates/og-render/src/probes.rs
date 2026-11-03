@@ -572,6 +572,11 @@ impl Probes {
         for (k, (p, _)) in frame.active.iter().enumerate() {
             let mut u = *base;
             u.probe = p.rows();
+            // The capture is the light around the probe as drawn, the
+            // ambient's strength already in it; the shaders scale what
+            // reflected_light and ambient_light return by that strength
+            // (params.x) as the environment's, so it is undone here.
+            u.probe[1][3] /= base.params[0].max(1e-4);
             put(k, &u);
         }
         for (d, cams) in faces.iter().enumerate() {
