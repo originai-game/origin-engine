@@ -84,6 +84,8 @@ const ART_FILES = [
   "cg/riverboat", "cg/storm-ferry", "cg/dawn-gate",
   "city/residential", "city/commercial", "city/industrial", "city/tourism", "city/police", "city/fire", "city/health", "city/education",
   "city/transit", "city/parks", "city/power", "city/water", "scenes/city",
+  "rts/stop", "rts/patrol", "rts/build", "rts/rally", "rts/gather", "rts/repair", "rts/barracks", "rts/tower", "rts/farm", "rts/wall",
+  "rts/forge", "rts/keep", "scenes/battlefield",
 ] as const;
 /** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
 const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven"]);

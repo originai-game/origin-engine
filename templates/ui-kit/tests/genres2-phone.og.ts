@@ -16,7 +16,7 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of ["garage.json", "garage-layer.json", "ledger.json", "citymap-power.json", "chat.json", "chat-mention.json"]) {
+    for (const f of ["garage.json", "garage-layer.json", "ledger.json", "citymap-power.json", "chat.json", "chat-mention.json", "rts.json"]) {
       for (const e of ui(run, f).filter((x) => x.role === "button" && !x.states.includes("disabled"))) {
         t.ok(e.width >= 43.5 && e.height >= 43.5, `${f}: ${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
       }
@@ -30,6 +30,8 @@ export default playtest({
     t.ok(ui(run, "chat.json").some((e) => e.role === "listitem" && e.name.includes("[Ashbringer]")), "an item link stands in its message in brackets");
     t.ok(ui(run, "chat-mention.json").some((e) => e.role === "option" && e.name === "Riven"), "@Ri offers Riven");
     t.ok(ui(run, "chat-sent.json").some((e) => e.role === "listitem" && e.name.endsWith("Lumen: gg @Riven")), "the suggestion wrote the name and Send posted it");
+    t.ok(ui(run, "rts-target.json").some((e) => e.role === "status" && e.name.startsWith("Barracks")), "Barracks waits for its target, the prompt naming it");
+    t.ok(ui(run, "rts-group.json").filter((e) => e.parent.endsWith("Tiles")).map((e) => e.id).join(",") === "k1,k2", "group 2's tab selected the knights alone");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
     });

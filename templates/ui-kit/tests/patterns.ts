@@ -778,9 +778,32 @@ function genres2(b: ReturnType<typeof builder>, phone: boolean): void {
   b.cmd("pat:chat:typing:on");
   b.shot("chat-hud-typing", 0.6);
   b.cmd("pat:chat:reset");
+  // The RTS console: the workers' orders, Build's page, Barracks by its key (A) awaiting its target, Back cancelling it,
+  // Back to the orders; then group 2 (the knights) recalled by its tab, and on a desktop set to the selection with Ctrl+3.
+  b.cmd("show:rts");
+  b.shot("rts-idle", 1.0);
+  b.dump("rts");
+  b.seq((at) => tap(at, "Commands/Grid/Row#1/build"), 0.3);
+  b.shot("rts-build", 0.5);
+  if (phone) b.seq((at) => tap(at, "Commands/Grid/Row#0/barracks"), 0.3);
+  else b.seq((at) => key(at, "KeyA"), 0.3);
+  b.shot("rts-target", 0.5);
+  b.dump("rts-target");
+  if (!phone) {
+    b.seq((at) => key(at, "Escape"), 0.3);
+    b.seq((at) => tap(at, "Commands/Grid/Row#2/PageBack"), 0.3);
+  } else b.cmd("pat:rts:target:");
+  b.seq((at) => tap(at, "Tabs/g2"), 0.3);
+  b.shot("rts-group", 0.5);
+  b.dump("rts-group");
+  if (!phone) {
+    b.seq((at) => [`${at.toFixed(2)}:key_down:ControlLeft`, key(at + 0.05, "Digit3"), `${(at + 0.15).toFixed(2)}:key_up:ControlLeft`].join(";"), 0.4);
+    b.dump("rts-assigned");
+  }
+  b.cmd("pat:rts:reset");
 }
 
-const GENRE2_SCREENS = ["garage", "ledger", "cityMap", "chat"] as const;
+const GENRE2_SCREENS = ["garage", "ledger", "cityMap", "chat", "rts"] as const;
 
 /** The systems games' previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
 export function genres2Script(phone: boolean): Script {

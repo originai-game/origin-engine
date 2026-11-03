@@ -9,7 +9,7 @@
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { ChartSeries, ChatMessage, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
+import type { AbilitySlotDesc, ChartSeries, ChatMessage, SelectedUnit, World, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -372,7 +372,91 @@ export function chatScreen(): void {
   } else frame("Chats", L("chat.title"), build, [{ action: "confirm", hint: L("chat.send") }, { action: "back", hint: L("hint.back") }]);
 }
 
-/** The previews' commands: `pat:<garage|ledger|chat>:<key>:<value>`; false when the area is not one of these. */
+// ── RTS: the command card's pages, hotkeys and control groups ───────────
+
+/** The grid's keys by physical code (A S D F G, Z C V B), whatever the layout prints on them. */
+const GRID = [["cmdA", "KeyA"], ["cmdS", "KeyS"], ["cmdD", "KeyD"], ["cmdF", "KeyF"], ["cmdG", "KeyG"], ["cmdZ", "KeyZ"], ["cmdC", "KeyC"], ["cmdV", "KeyV"], ["cmdB", "KeyB"]] as const;
+
+/** The preview's UI actions: the grid's keys and the control groups' digits (the game's setup defines them). */
+export function defineGenres2Actions(world: World): void {
+  const act = (name: string, keys: string[], label: string) => og.ui.defineAction(world, { name, keys, buttons: [], trigger: "press", holdMs: 0, toggle: false, label });
+  for (const [name, code] of GRID) act(name, [code], code.slice(3));
+  for (let n = 1; n <= 5; n++) act(`group${n}`, [`Digit${n}`], String(n));
+}
+
+/** The workers' orders and, a page down, what they build: each one's art, its key's action, its cost and state. */
+const ORDERS: Array<[string, ArtName, string, string?]> = [["stop", "rts/stop", "cmdA"], ["patrol", "rts/patrol", "cmdS"], ["gather", "rts/gather", "cmdD"], ["repair", "rts/repair", "cmdF"], ["rally", "rts/rally", "cmdG"], ["build", "rts/build", "cmdZ"]];
+const BUILDS: Array<[string, ArtName, string, string, number]> = [["barracks", "rts/barracks", "cmdA", "150", 0], ["tower", "rts/tower", "cmdS", "125", 0], ["farm", "rts/farm", "cmdD", "60", 0], ["wall", "rts/wall", "cmdF", "20", 0], ["forge", "rts/forge", "cmdG", "200", 1], ["keep", "rts/keep", "cmdZ", "650", 2]];
+const UNITS: Array<[string, string, ArtName, number]> = [["w1", "worker", "portraits/wren", 38], ["w2", "worker", "portraits/maren", 40], ["w3", "worker", "portraits/brann", 22], ["k1", "knight", "portraits/kael", 140], ["k2", "knight", "portraits/torvin", 96], ["a1", "archer", "portraits/vesper", 55]];
+
+const rt0 = () => ({ page: "", targeting: "", gold: 480, groups: [["w1", "w2", "w3"], ["k1", "k2"], [], [], []] as string[][], selected: ["w1", "w2", "w3", "k1", "k2", "a1"], focus: "w1", said: "" });
+let rt = rt0();
+
+/** An RTS's console (Age of Empires IV): the selection with its groups, the command card's orders and its Build page. */
+export function rtsScreen(): void {
+  frame("Rts", "", () => {
+    og.ui.column("Field", { width: grow, height: grow }, () => {
+      const tex = art("scenes/battlefield");
+      og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal: { x: 0.5, y: 0.45 } }] : [{ kind: "solid", color: { token: "backdrop" } }] } as never);
+    });
+    const slot = (k: string, a: ArtName, action: string, extra: Partial<AbilitySlotDesc> = {}): AbilitySlotDesc => ({ key: k, name: L(`rts.cmd.${k}`), image: art(a), action, ...extra });
+    const units: SelectedUnit[] = UNITS.filter(([k]) => rt.selected.includes(k)).map(([k, kind, a, hp]) => ({ key: k, name: L(`rts.unit.${kind}`), kind: L(`rts.kind.${kind}`), image: art(a), health: hp, healthMax: kind === "knight" ? 140 : kind === "archer" ? 70 : 40 }));
+    const r = og.ui.rtsCommands("Console", {
+      console: {
+        map: { texture: art("scenes/battlefield"), size: 0, shape: "square", markers: [] },
+        selection: {
+          units,
+          focus: rt.focus,
+          groups: rt.groups.map((g, i) => ({ key: `g${i + 1}`, label: String(i + 1), count: g.length })),
+          stats: [{ key: "attack", label: L("rts.stat.attack"), value: "3" }, { key: "armour", label: L("rts.stat.armour"), value: "0 / 1" }, { key: "speed", label: L("rts.stat.speed"), value: "1.0" }],
+        },
+        commands: { columns: 5 },
+        anchor: "bottom",
+      },
+      pages: [
+        { key: "root", commands: ORDERS.map(([k, a, act]) => slot(k, a, act)) },
+        { key: "build", commands: BUILDS.map(([k, a, act, cost, lock]) => slot(k, a, act, { cost, unaffordable: Number(cost) > rt.gold, locked: lock > 1, ...(lock === 1 ? { cooldown: 12, cooldownMax: 30 } : {}) })) },
+      ],
+      page: rt.page,
+      groupActions: ["group1", "group2", "group3", "group4", "group5"],
+      targeting: rt.targeting,
+      targetLabel: L("rts.target"),
+      cancelLabel: L("rts.cancel"),
+      queueLabel: L("rts.queue"),
+      backLabel: L("rts.back"),
+    });
+    // The game's side: pages, orders (a targeted one waits for its target), the groups and the selection.
+    if (r.page !== null) rt.page = r.page;
+    if (r.command !== null) {
+      if (["patrol", "gather", "repair", "rally"].includes(r.command) || BUILDS.some(([k]) => k === r.command)) rt.targeting = r.command;
+      else rt.targeting = "";
+      if (BUILDS.some(([k]) => k === r.command)) rt.page = "root";
+    }
+    if (r.cancelTarget) rt.targeting = "";
+    const gi = (k: string | null): number => (k ? Number(k.slice(1)) - 1 : -1);
+    if (r.recall !== null || r.focus !== null) {
+      const g = rt.groups[gi(r.recall ?? r.focus)] ?? [];
+      if (g.length > 0) {
+        rt.selected = [...g];
+        rt.focus = g[0]!;
+      }
+    }
+    if (r.assign !== null) rt.groups[gi(r.assign)] = [...rt.selected];
+    if (r.add !== null) rt.groups[gi(r.add)] = [...new Set([...(rt.groups[gi(r.add)] ?? []), ...rt.selected])];
+    if (r.clicked !== null) rt.focus = r.clicked;
+    if (r.selectType !== null) {
+      const kind = UNITS.find(([k]) => k === r.selectType)?.[1];
+      rt.selected = rt.selected.filter((k) => UNITS.find(([u]) => u === k)?.[1] === kind);
+      rt.focus = r.selectType;
+    }
+    if (r.deselect !== null && rt.selected.length > 1) {
+      rt.selected = rt.selected.filter((k) => k !== r.deselect);
+      if (rt.focus === r.deselect) rt.focus = rt.selected[0]!;
+    }
+  }, [], true);
+}
+
+/** The previews' commands: `pat:<garage|ledger|chat|rts>:<key>:<value>`; false when the area is not one of these. */
 export function genres2Command(area: string, key: string, value: string): boolean {
   if (area === "garage") {
     if (key === "category") {
@@ -403,6 +487,12 @@ export function genres2Command(area: string, key: string, value: string): boolea
     else if (key === "typing") ct.typing = value !== "off";
     else if (key === "reset") ct = ct0();
     else return false;
+  } else if (area === "rts") {
+    if (key === "page") rt.page = value;
+    else if (key === "target") rt.targeting = value;
+    else if (key === "gold") rt.gold = Number(value) || 0;
+    else if (key === "reset") rt = rt0();
+    else return false;
   } else return false;
   return true;
 }
@@ -412,4 +502,5 @@ export function resetGenres2(): void {
   ga = ga0();
   ld = ld0();
   ct = ct0();
+  rt = rt0();
 }

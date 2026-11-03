@@ -2,7 +2,8 @@
 // garage (a part previewed, one refused, one bought, the livery's layers,
 // a layer moved up), the ledger (a service underfunded, sorted, the year)
 // the city's overlays (traffic, power, none) and the chat (links and a
-// mention, a mention suggested and sent, the party's tab, the HUD's chat); then each right to left, in Japanese and at 200 %
+// mention, a mention suggested and sent, the party's tab, the HUD's chat)
+// and the RTS console (its orders, Build, Barracks targeting, a group); then each right to left, in Japanese and at 200 %
 // text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-<file>.
 import { playtest } from "@origingame/engine/playtest";
@@ -30,6 +31,9 @@ export default playtest({
     t.ok(ui(run, "chat.json").some((e) => e.role === "listitem" && e.name.includes("[Ashbringer]")), "an item link stands in its message in brackets");
     t.ok(ui(run, "chat-mention.json").some((e) => e.role === "option" && e.name === "Riven"), "@Ri offers Riven");
     t.ok(ui(run, "chat-sent.json").some((e) => e.role === "listitem" && e.name.endsWith("Lumen: gg @Riven")), "the suggestion wrote the name and Send posted it");
+    t.ok(ui(run, "rts-target.json").some((e) => e.role === "status" && e.name.startsWith("Barracks")), "Barracks waits for its target, the prompt naming it");
+    t.ok(ui(run, "rts-group.json").filter((e) => e.parent.endsWith("Tiles")).map((e) => e.id).join(",") === "k1,k2", "group 2's tab selected the knights alone");
+    t.ok(ui(run, "rts-assigned.json").some((e) => e.role === "tab" && e.id === "g3" && e.value === "2"), "Ctrl+3 set group 3 to the two knights");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });
