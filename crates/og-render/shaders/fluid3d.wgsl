@@ -207,7 +207,7 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   var out = through + body * (1.0 - transmit);
 
   // The environment reflected (Schlick, water's reflectance).
-  let n_dot_v = max(dot(n, v), 0.0);
+  let n_dot_v = saturate(dot(n, v));
   let fresnel = clamp((0.02 + 0.98 * pow(1.0 - n_dot_v, 5.0)) * fluid.up.w, 0.0, 1.0);
   // The environment, or the reflection probe holding the fluid (probes.rs).
   let reflected = reflected_light(reflect(-v, n), p, 0.5) * frame.params.x;

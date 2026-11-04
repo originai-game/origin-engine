@@ -384,7 +384,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
 
   // Image-based light (split sum).
-  let n_dot_v = max(dot(n, v), 1e-4);
+  let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The baked lightmap or light volumes where there are (lightmap.rs), at

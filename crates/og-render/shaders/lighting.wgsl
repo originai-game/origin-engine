@@ -20,11 +20,11 @@ fn g_smith(n_dot_v: f32, n_dot_l: f32, roughness: f32) -> f32 {
 }
 
 fn f_schlick(cos_theta: f32, f0: vec3<f32>) -> vec3<f32> {
-  return f0 + (1.0 - f0) * pow(1.0 - cos_theta, 5.0);
+  return f0 + (1.0 - f0) * pow(saturate(1.0 - cos_theta), 5.0);
 }
 
 fn f_schlick_roughness(cos_theta: f32, f0: vec3<f32>, roughness: f32) -> vec3<f32> {
-  return f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - cos_theta, 5.0);
+  return f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(saturate(1.0 - cos_theta), 5.0);
 }
 
 // Bilinear PCF over one layer of an R32Float array: the four texels around

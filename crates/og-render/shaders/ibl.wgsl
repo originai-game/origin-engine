@@ -210,7 +210,7 @@ fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
     let l = normalize(2.0 * dot(v, h) * h - v);
     let n_dot_l = max(l.z, 0.0);
     let n_dot_h = max(h.z, 0.0);
-    let v_dot_h = max(dot(v, h), 0.0);
+    let v_dot_h = saturate(dot(v, h));
     if (n_dot_l > 0.0) {
       let g = g_smith_ibl(n_dot_v, n_dot_l, roughness);
       let g_vis = g * v_dot_h / (n_dot_h * n_dot_v + 1e-5);

@@ -191,7 +191,7 @@ fn schlick_to_f0(f: vec3<f32>, cos_theta: f32) -> vec3<f32> {
 fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> Shade {
   let h = normalize(v + l);
   let n_dot_l = max(dot(n, l), 0.0);
-  let n_dot_v = max(dot(n, v), 1e-4);
+  let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
   let n_dot_h = max(dot(n, h), 0.0);
   let h_dot_v = max(dot(h, v), 0.0);
   var f = f_schlick(h_dot_v, s.f0);
@@ -432,7 +432,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     map = vec3<f32>(map.xy * physical.coat.xy, map.z);
     s.coat_normal = normalize(tbn * map) * face;
   }
-  let n_dot_v = max(dot(n, v), 1e-4);
+  let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
 
   var k: Lobes;
   k.sheen_color = physical.sheen.rgb * srgb_decode(sheen_maps.rgb);

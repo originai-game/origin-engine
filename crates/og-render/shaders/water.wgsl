@@ -911,7 +911,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Reflection with Schlick's Fresnel.
   var r = reflect(-v, n);
   let f0 = water.extra.z;
-  var fresnel = (f0 + (1.0 - f0) * pow(1.0 - max(dot(n, v), 0.0), 5.0)) * water.look.x;
+  var fresnel = (f0 + (1.0 - f0) * pow(1.0 - saturate(dot(n, v)), 5.0)) * water.look.x;
   var mip = 0.5;
   var sig_v = 0.0;
   if (sea) {
@@ -927,7 +927,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let tilt = 0.32 * sig_v * (1.0 - smoothstep(0.0, 2.5, a_v));
     let nv = normalize(n + vh * tilt);
     r = reflect(-v, nv);
-    fresnel = (f0 + (1.0 - f0) * sea_fresnel(max(dot(n, v), 0.0), sig_v)) * water.look.x;
+    fresnel = (f0 + (1.0 - f0) * sea_fresnel(saturate(dot(n, v)), sig_v)) * water.look.x;
     mip = max(sqrt(sqrt(sea_cov.x + sea_cov.y)) * frame.params.y, 0.5);
   }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
