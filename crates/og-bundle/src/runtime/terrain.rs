@@ -369,6 +369,7 @@ impl Bundle {
                 spacing: m.lod_spacing,
                 ring: m.lod_ring,
                 budget: 0,
+                error: 0.0,
             },
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,

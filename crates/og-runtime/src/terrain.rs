@@ -1132,7 +1132,13 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
     let i = rs.ids.terrains.iter().position(|&e| e == entity)?;
     let t = rs.scene.terrains.get(i)?;
     let layout = rs.scene.terrain_layout(t.terrain)?;
-    let c = t.clipmap(layout, rs.scene.camera.position, rs.scene.camera.far);
+    let height = match rs.backend.as_ref().map(|b| b.size()) {
+        Some((_, ht)) if ht > 0 => ht,
+        _ => super::fx::viewport(rs).1 as u32,
+    };
+    let c = rs
+        .scene
+        .terrain_clipmap(i, &og_render::TerrainView::of(&rs.scene.camera, height))?;
     let regions: Vec<Value> = c
         .levels
         .iter()
@@ -1150,7 +1156,7 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
                 "triangleSpacingLocal": spacing,
                 "triangleSpacingWorldXZ": [t.transform.x_axis.truncate().length() as f64 * spacing,
                     t.transform.z_axis.truncate().length() as f64 * spacing],
-                "seam": {"morph": l.morph, "startQuads": c.morph_start,
+                "seam": {"morph": l.morph, "startQuads": l.morph_start,
                     "widthQuads": if l.morph { c.morph_width } else { 0.0 }},
             })
         })
@@ -1221,6 +1227,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 },
                 ring: if ring > 0 { ring } else { t.lod.ring },
                 budget: if budget > 0 { budget } else { t.lod.budget },
+                error: f(&v, "lodError", 0.0).max(0.0),
             },
             fade_in: !settle,
             visible: on(&v, "visible", true),

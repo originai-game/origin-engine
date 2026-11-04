@@ -468,6 +468,10 @@ pub struct TerrainLod {
     /// GPU bytes for its resident tiles (0: [`DEFAULT_TERRAIN_BUDGET`]):
     /// how many tiles it keeps, at least 8.
     pub budget: u64,
+    /// The height error, in pixels, a coarser level may show before the
+    /// finer one reaches further out (0: 1; `terrain_error.rs`). Larger
+    /// draws fewer vertices.
+    pub error: f32,
 }
 
 /// A terrain's tile budget when its lod gives none: 16 MiB.
@@ -478,6 +482,11 @@ impl TerrainLod {
     pub fn ring_quads(&self) -> u32 {
         let r = if self.ring == 0 { 64 } else { self.ring };
         (r.clamp(16, 256) / 4) * 4
+    }
+
+    /// The pixels of height error a level may show, as drawn.
+    pub fn error_pixels(&self) -> f32 {
+        if self.error > 0.0 { self.error } else { 1.0 }
     }
 
     /// GPU bytes for resident tiles, as drawn.
@@ -554,9 +563,27 @@ impl Terrain {
                 .any(|l| l.displacement != 0.0)
     }
 
-    /// The clipmap drawn for this camera, also read by frame diagnostics.
-    /// Coordinates are grid units from the terrain's -x, -z corner.
-    pub fn clipmap(&self, layout: TerrainLayout, camera: Vec3, far: f32) -> TerrainClipmap {
+    /// The clipmap drawn for `view`, also read by frame diagnostics and the
+    /// id pass. Coordinates are grid units from the terrain's -x, -z
+    /// corner. `reach` is how far out each decimation's height error shows
+    /// ([`crate::RenderScene::terrain_clipmap`] measures it; all zeros: no
+    /// error anywhere, the levels as the lod's ring alone places them).
+    ///
+    /// Each level hands over to the next coarser one in its morph band.
+    /// The band starts where the base ring puts it, or further out where
+    /// the coarser level's error would show past it (more than
+    /// [`TerrainLod::error_pixels`]): a peak that is large on screen stays
+    /// at the finer level. The band moves with the camera as the error
+    /// does, so the surface changes by at most that error as it moves. The
+    /// levels grow (the ring: the lod's, or [`AUTO_RING`] quads) only as
+    /// far as the bands need; past its band a level draws the coarser
+    /// one's surface, so the ring itself changes nothing drawn.
+    pub fn clipmap(
+        &self,
+        layout: TerrainLayout,
+        view: &crate::TerrainView,
+        reach: &[f32],
+    ) -> TerrainClipmap {
         let cell = layout.cell();
         let unit = if self.lod.spacing > 0.0 {
             self.lod.spacing
@@ -572,26 +599,56 @@ impl Terrain {
         } else {
             cell.x.min(cell.y)
         };
-        let local = self.transform.inverse().transform_point3(camera);
+        let local = self.transform.inverse().transform_point3(view.camera);
         let camera = (Vec2::new(local.x, local.z) + layout.size * 0.5) / unit;
-        let ring = self.lod.ring_quads();
+        let base = self.lod.ring_quads();
         // A level's inner edge, where the finer level meets it, lies under
         // ring / 4 + 1 of its quads from the camera; the morph starts past
         // it, or that edge's odd vertices would slide off the finer level's
         // collapsed ones and open cracks (ring 16 did, by up to half a quad).
-        let morph_width = (ring / 8).max(2).min(ring / 4 - 3) as f32;
+        let morph_width = (base / 8).max(2).min(base / 4 - 3) as f32;
+        let preferred = base as f32 * 0.5 - 2.0 - morph_width;
+        // Quads from the camera at which level `l` must still be unmorphed:
+        // past the farthest place the next level's error shows. That
+        // level's vertices are `2^(l+1) × unit / cell` samples apart.
+        let samples = unit / cell.x.min(cell.y);
+        let required = |l: u32| -> f32 {
+            let apart = (1u64 << (l + 1)) as f32 * samples;
+            if apart <= 1.0 + 1e-4 {
+                return 0.0;
+            }
+            let j = (apart.log2() - 1e-4).ceil() as usize;
+            let r = reach.get(j).copied().unwrap_or(0.0);
+            r / (unit * (1u64 << l) as f32)
+        };
+        let fits = |n: u32| n as f32 * 0.5 - 2.0 - morph_width;
+        // Grown to 128 quads at most: 256 costs a terrain-wide 3 ms on an
+        // M4 Pro (island-mid: 4.8 ms at 64, 6.0 at 128 with its bands
+        // out, 8.1 at 256), so only a lod asking for it draws it.
+        let ring = [base, base.max(AUTO_RING)]
+            .into_iter()
+            .find(|&n| (0..MAX_TERRAIN_LEVELS as u32).all(|l| required(l) <= fits(n)))
+            .unwrap_or(base.max(AUTO_RING));
+        let mut levels = levels(
+            camera,
+            layout.size / unit,
+            ring,
+            (view.far / horizontal_scale(self.transform) / unit) as f64,
+        );
+        for (l, level) in levels.iter_mut().enumerate() {
+            let inner = if level.hole.is_some() {
+                ring as f32 * 0.25 + 1.0
+            } else {
+                0.0
+            };
+            level.morph_start = required(l as u32).max(preferred).clamp(inner, fits(ring));
+        }
         TerrainClipmap {
             unit,
             camera,
             ring,
-            morph_start: ring as f32 * 0.5 - 2.0 - morph_width,
             morph_width,
-            levels: levels(
-                camera,
-                layout.size / unit,
-                ring,
-                (far / horizontal_scale(self.transform) / unit) as f64,
-            ),
+            levels,
         }
     }
 }
@@ -617,6 +674,11 @@ pub struct TerrainStampDraw {
     pub blend: f32,
     pub cast_shadows: bool,
 }
+
+/// Quads a side the clipmap's levels grow to where a coarser level's
+/// height error shows ([`Terrain::clipmap`]); a lod's own `ring` above it
+/// is kept.
+pub const AUTO_RING: u32 = 128;
 
 /// A displaced terrain's reach when it gives none ([`Terrain::new`]).
 pub const DEFAULT_DISPLACEMENT_DISTANCE: f32 = 40.0;
@@ -646,8 +708,8 @@ pub struct TerrainClipmap {
     pub unit: f32,
     pub camera: Vec2,
     pub ring: u32,
-    /// Distance and width in each level's quads, measured from the camera.
-    pub morph_start: f32,
+    /// The morph band's width in each level's quads (where it starts:
+    /// [`TerrainLevel::morph_start`]).
     pub morph_width: f32,
     pub levels: Vec<TerrainLevel>,
 }
@@ -812,6 +874,8 @@ pub struct TerrainLevel {
     /// Which ring variant leaves the finer level out (None: the finest level).
     pub hole: Option<(u32, u32)>,
     pub morph: bool,
+    /// Where its morph band starts: its quads from the camera (Chebyshev).
+    pub morph_start: f32,
 }
 
 /// The clipmap levels around `camera` (grid units, the terrain's -x, -z
@@ -847,6 +911,7 @@ pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<Ter
                 step,
                 hole,
                 morph: true,
+                morph_start: 0.0,
             });
         }
         prev = Some(c);
@@ -918,6 +983,20 @@ pub(crate) fn in_hole(n: u32, hole: Option<(u32, u32)>, x: u32, z: u32) -> bool 
         let (x1, z1) = (3 * n / 4 + ox, 3 * n / 4 + oz);
         x >= x0 && x < x1 && z >= z0 && z < z1
     })
+}
+
+impl RingRanges {
+    /// These ranges `by` indices further on.
+    fn shifted(&self, by: u32) -> RingRanges {
+        let s = |r: &std::ops::Range<u32>| r.start + by..r.end + by;
+        RingRanges {
+            variants: self.variants.clone().map(|v| RingRange {
+                all: s(&v.all),
+                blocks: v.blocks.map(|b| s(&b)),
+            }),
+            skirt: s(&self.skirt),
+        }
+    }
 }
 
 /// The index buffer of one ring size: the full grid, then the ring with
@@ -1005,7 +1084,7 @@ pub(crate) fn level_vertices(
             return 0.0;
         }
         let d = (c - clipmap.camera).abs().max_element() / s;
-        ((d - clipmap.morph_start) / width).clamp(0.0, 1.0)
+        ((d - level.morph_start) / width).clamp(0.0, 1.0)
     };
     let zigzag = |h: [f32; 4]| (h[0] - h[3]).abs() > (h[1] - h[2]).abs();
     let coarse_cell = |c: Vec2| -> Option<(Vec2, Vec2, [f32; 4])> {
@@ -1119,8 +1198,9 @@ pub(crate) fn level_blocks(
 /// made when drawn), or tiles handed over one by one (streaming).
 #[derive(Clone, Debug)]
 pub(crate) enum TerrainSource {
-    /// The field and its height range (measured once, when it was set).
-    Data(TerrainData, (f32, f32)),
+    /// The field, its height range (measured once, when it was set) and
+    /// its height errors (`terrain_error.rs`; built when first asked for).
+    Data(TerrainData, (f32, f32), FieldErrors),
     Stream {
         layout: TerrainLayout,
         range: (f32, f32),
@@ -1128,11 +1208,98 @@ pub(crate) enum TerrainSource {
     },
 }
 
+/// A field's height errors, built when first asked for.
+pub(crate) type FieldErrors = Arc<std::sync::OnceLock<Arc<crate::terrain_error::Decimation>>>;
+
 impl TerrainSource {
     /// A field in memory, its range measured.
     pub(crate) fn data(d: TerrainData) -> TerrainSource {
         let range = d.range();
-        TerrainSource::Data(d, range)
+        TerrainSource::Data(d, range, FieldErrors::default())
+    }
+
+    /// `d`, a field of the same shape as this one's edited inside `lo`..`hi`
+    /// (the terrain's space): its errors built again only there, when this
+    /// one's were built.
+    pub(crate) fn edited(&self, d: TerrainData, lo: Vec2, hi: Vec2) -> TerrainSource {
+        let errors = FieldErrors::default();
+        if let TerrainSource::Data(_, _, old) = self
+            && let Some(old) = old.get()
+        {
+            let top = Vec2::new((d.columns - 1) as f32, (d.rows - 1) as f32);
+            let sample = |v: Vec2| ((v + d.size * 0.5) / d.cell()).clamp(Vec2::ZERO, top);
+            let (a, b) = (sample(lo).floor(), sample(hi).ceil());
+            let lo = (a.x as u32, a.y as u32);
+            let hi = (b.x as u32, b.y as u32);
+            let mut e = (**old).clone();
+            e.update(&|x, z| d.heights[(z * d.columns + x) as usize], lo, hi);
+            let _ = errors.set(Arc::new(e));
+        }
+        let range = d.range();
+        TerrainSource::Data(d, range, errors)
+    }
+
+    /// Its height errors' blocks for `layout` (`terrain_error.rs`): a
+    /// field's, built the first time; a streamed terrain's, its tiles'
+    /// (each tile's, at its own level; a finer one where it has come).
+    pub(crate) fn error_blocks(
+        &self,
+        layout: &TerrainLayout,
+    ) -> Vec<crate::terrain_error::ErrorBlock> {
+        use crate::terrain_error::{Decimation, ERROR_BLOCK, ErrorBlock};
+        let cell = layout.cell();
+        let half = layout.size * 0.5;
+        let metres = |x: u32, z: u32| Vec2::new(x as f32, z as f32) * cell - half;
+        match self {
+            TerrainSource::Data(d, _, errors) => {
+                let e = errors.get_or_init(|| {
+                    let n = (d.columns.max(d.rows) - 1).max(2);
+                    let levels = 32 - (n - 1).leading_zeros();
+                    Arc::new(Decimation::new(d.columns, d.rows, levels, &|x, z| {
+                        d.heights[(z * d.columns + x) as usize]
+                    }))
+                });
+                e.blocks()
+                    .map(|(lo, hi, step, error)| ErrorBlock {
+                        lo: metres(lo.0, lo.1),
+                        hi: metres(hi.0, hi.1),
+                        step,
+                        error,
+                    })
+                    .collect()
+            }
+            TerrainSource::Stream { tiles, .. } => {
+                let t = layout.tile;
+                let mut out = Vec::new();
+                for (&index, tile) in tiles.iter() {
+                    let Some((k, tx, tz)) = layout.locate(index) else {
+                        continue;
+                    };
+                    let step = layout.step(k);
+                    let fine = |g: u32, n: u32| (g as u64 * step as u64).min(n as u64 - 1) as u32;
+                    let mut at = 0usize;
+                    for (j, b) in Decimation::tile_shape(t) {
+                        let span = ERROR_BLOCK << j;
+                        for bz in 0..b {
+                            for bx in 0..b {
+                                let error = tile.error.get(at).copied().unwrap_or(0.0);
+                                at += 1;
+                                let (x0, z0) = (tx * t + bx * span, tz * t + bz * span);
+                                let (x1, z1) =
+                                    ((x0 + span).min((tx + 1) * t), (z0 + span).min((tz + 1) * t));
+                                out.push(ErrorBlock {
+                                    lo: metres(fine(x0, layout.columns), fine(z0, layout.rows)),
+                                    hi: metres(fine(x1, layout.columns), fine(z1, layout.rows)),
+                                    step: k + j,
+                                    error,
+                                });
+                            }
+                        }
+                    }
+                }
+                out
+            }
+        }
     }
 
     /// The tile size a field in memory is drawn with: [`TERRAIN_TILE`], or
@@ -1140,7 +1307,7 @@ impl TerrainSource {
     pub(crate) fn layout(&self) -> Result<TerrainLayout, String> {
         match self {
             TerrainSource::Stream { layout, .. } => Ok(*layout),
-            TerrainSource::Data(d, _) => {
+            TerrainSource::Data(d, ..) => {
                 d.check()?;
                 let mut tile = TERRAIN_TILE;
                 loop {
@@ -1157,7 +1324,7 @@ impl TerrainSource {
     pub(crate) fn range(&self) -> (f32, f32) {
         match self {
             TerrainSource::Stream { range, .. } => *range,
-            TerrainSource::Data(_, range) => *range,
+            TerrainSource::Data(_, range, _) => *range,
         }
     }
 }
@@ -1247,7 +1414,9 @@ pub(crate) struct TerrainRenderer {
     flat_normal: wgpu::TextureView,
     /// A white array for terrains without a control map.
     white_array: wgpu::TextureView,
-    indices: Option<(u32, wgpu::Buffer, RingRanges)>,
+    /// One index buffer holding every ring size drawn so far
+    /// ([`ring_indices`], one after another), and each one's ranges in it.
+    indices: Option<(wgpu::Buffer, Vec<(u32, RingRanges)>)>,
     scene: u64,
     datas: Vec<Option<GpuData>>,
     slots: Vec<Slot>,
@@ -1998,7 +2167,7 @@ mod tests {
         ]
         .map(|p| p / p.truncate().length());
         let visible = |c: Vec3, r: f32| planes.iter().all(|p| p.truncate().dot(c) + p.w >= -r);
-        let clipmap = t.clipmap(layout, eye, camera.far);
+        let clipmap = t.clipmap(layout, &crate::TerrainView::of(&camera, 720), &[]);
         let (_, ranges) = ring_indices(clipmap.ring);
         let (mut levels, mut blocks) = (0usize, 0usize);
         for l in &clipmap.levels {
@@ -2043,6 +2212,46 @@ mod tests {
     /// Every level's hole (the ring variant its index range draws) is
     /// exactly the finer level's square, so the levels tile the plane: no
     /// quad is drawn twice and none is missing.
+    /// A level's morph band moves out past where the next coarser level's
+    /// height error shows, so a peak large on screen keeps its finer level;
+    /// with no error the bands stay where the lod's ring puts them.
+    #[test]
+    fn a_visible_height_error_keeps_the_finer_level_out_to_it() {
+        let t = Terrain::new(crate::RenderScene::new().add_terrain(TerrainData::flat(
+            Vec2::splat(64.0),
+            2,
+            2,
+        )));
+        let layout = TerrainLayout::new(Vec2::splat(4096.0), 4097, 4097, 128, None).unwrap();
+        let view = crate::TerrainView::perspective(Vec3::new(0.0, 50.0, 0.0), 5000.0, 60.0, 720);
+        let flat = t.clipmap(layout, &view, &[]);
+        assert_eq!(flat.ring, 64);
+        assert!(flat.levels.iter().all(|l| l.morph_start == 22.0));
+        // Level 1's coarser neighbour (4 samples apart) errs as far as 150 m
+        // out: level 1 (2 m quads) must stay unmorphed to 75 of its quads,
+        // which a ring of 64 cannot hold.
+        let mut reach = [0.0f32; 32];
+        reach[2] = 150.0;
+        let c = t.clipmap(layout, &view, &reach);
+        assert_eq!(c.ring, AUTO_RING);
+        assert_eq!(c.levels[1].morph_start, 54.0, "{:?}", c.levels);
+        // The others keep the base band, past their inner edge (ring / 4 + 1).
+        assert!(
+            c.levels
+                .iter()
+                .enumerate()
+                .all(|(l, v)| l == 1 || v.morph_start <= 33.0)
+        );
+        // Within 44 m (22 quads), ring 64's own band covers it.
+        reach[2] = 40.0;
+        let c = t.clipmap(layout, &view, &reach);
+        assert_eq!((c.ring, c.levels[1].morph_start), (64, 22.0));
+        // At 100 m the band starts at 50 quads, in a ring of 128.
+        reach[2] = 100.0;
+        let c = t.clipmap(layout, &view, &reach);
+        assert_eq!((c.ring, c.levels[1].morph_start), (AUTO_RING, 50.0));
+    }
+
     #[test]
     fn levels_tile_the_plane_without_overlap_or_gaps() {
         let ring = 16u32;

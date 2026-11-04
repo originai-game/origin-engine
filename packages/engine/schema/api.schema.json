@@ -76134,10 +76134,18 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).",
+          "description": "Quads per side of every clipmap level at least (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro.",
           "default": 0,
           "minimum": 0,
           "maximum": 256
+        },
+        "lodError": {
+          "type": "number",
+          "description": "Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64,
+          "x-og-tunable": true
         },
         "displacementDistance": {
           "type": "number",

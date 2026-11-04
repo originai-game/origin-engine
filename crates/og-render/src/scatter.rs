@@ -1708,7 +1708,7 @@ impl ScatterRenderer {
                 let mut complete = true;
                 let tile_ground;
                 let ground: &dyn Ground = match source {
-                    TerrainSource::Data(d, _) => d,
+                    TerrainSource::Data(d, ..) => d,
                     TerrainSource::Stream { tiles, .. } => {
                         tile_ground = TileGround { layout, tiles };
                         &tile_ground

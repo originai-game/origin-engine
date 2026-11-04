@@ -6856,6 +6856,12 @@
           "default": 0
         },
         {
+          "name": "lodError",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "displacementDistance",
           "column": "f32",
           "default": 40,

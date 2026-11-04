@@ -287,6 +287,7 @@ mod surface;
 pub use surface::SimulationSurface;
 mod targets;
 mod terrain;
+mod terrain_error;
 mod terrain_tiles;
 mod texture;
 mod texture_array;

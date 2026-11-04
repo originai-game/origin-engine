@@ -396,6 +396,12 @@ pub struct TerrainTile {
     pub normals: Arc<[u32]>,
     pub control: Option<Arc<[u8]>>,
     pub range: (f32, f32),
+    /// The height error of drawing its samples every `2^j`-th
+    /// (`terrain_error.rs`): for each `j` from 1 while `2^j` is at most
+    /// [`TerrainLayout::tile`], the largest error in each block of 8 × 8 of
+    /// those cells, row by row (`ceil(tile / 2^j / 8)` blocks a side), the
+    /// tile's level's metres. Built with the tile; never uploaded.
+    pub error: Arc<[f32]>,
 }
 
 /// A normal-map texel (Rgb10a2Unorm, `terrain.wgsl` `tile_maps`): the
@@ -536,12 +542,19 @@ impl TerrainTile {
             }
             Arc::from(out)
         });
+        let t = layout.tile;
+        let levels = 31 - t.max(2).leading_zeros();
+        let error = crate::terrain_error::Decimation::new(t + 1, t + 1, levels, &|x, z| {
+            heights[(z as usize + 1) * side + x as usize + 1]
+        })
+        .flat();
         TerrainTile {
             heights: Arc::from(heights),
             horizon: Arc::from(horizon),
             normals: Arc::from(normals),
             control,
             range: (lo, hi),
+            error: Arc::from(error),
         }
     }
 }

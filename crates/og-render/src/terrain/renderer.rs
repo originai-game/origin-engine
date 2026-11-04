@@ -329,7 +329,7 @@ impl TerrainRenderer {
 
     /// The index buffer (bound by the passes that draw terrain).
     pub(crate) fn index_buffer(&self) -> Option<&wgpu::Buffer> {
-        self.indices.as_ref().map(|(_, b, _)| b)
+        self.indices.as_ref().map(|(b, _)| b)
     }
 
     /// The tile arrays for `layout` with `capacity` slots.
@@ -582,7 +582,7 @@ impl TerrainRenderer {
                     g
                 }
                 Some(mut g)
-                    if let TerrainSource::Data(d, _) = source
+                    if let TerrainSource::Data(d, ..) = source
                         && let Some(edits) = scene.terrain_edits_since(i, g.revision) =>
                 {
                     // Edited in place: only the tiles the edits reach are
@@ -651,7 +651,7 @@ impl TerrainRenderer {
                         Some(t) => t.clone(),
                         None => continue,
                     },
-                    TerrainSource::Data(d, _) => match gpu.by_tile.get(&tile) {
+                    TerrainSource::Data(d, ..) => match gpu.by_tile.get(&tile) {
                         Some(&s) => gpu.slots[s].as_ref().expect("held").data.clone(),
                         None => {
                             if gpu.pyramid.is_none()
@@ -797,14 +797,34 @@ impl TerrainRenderer {
             ..TerrainView::of(&scene.camera, target_height)
         };
         self.sync(device, queue, scene, view)?;
-        let ring = scene
-            .terrains
-            .iter()
-            .map(|t| t.lod.ring_quads())
-            .max()
-            .unwrap_or(64);
-        if self.indices.as_ref().is_none_or(|(n, ..)| *n != ring) {
-            let (idx, ranges) = ring_indices(ring);
+        // Each terrain's clipmap from this view, and the ring sizes they draw
+        // with in the index buffer (built again, all of them one after
+        // another, when a new size is needed: rarely, ring sizes being few).
+        let clipmaps: Vec<Option<TerrainClipmap>> = (0..scene.terrains.len())
+            .map(|i| scene.terrain_clipmap(i, &view))
+            .collect();
+        let missing = |have: &[(u32, RingRanges)]| {
+            clipmaps
+                .iter()
+                .flatten()
+                .any(|c| !have.iter().any(|(n, _)| *n == c.ring))
+        };
+        if self.indices.as_ref().is_none_or(|(_, have)| missing(have)) {
+            let mut rings: Vec<u32> = self
+                .indices
+                .as_ref()
+                .map(|(_, have)| have.iter().map(|(n, _)| *n).collect())
+                .unwrap_or_default();
+            rings.extend(clipmaps.iter().flatten().map(|c| c.ring));
+            rings.sort_unstable();
+            rings.dedup();
+            let mut idx = Vec::new();
+            let mut have = Vec::new();
+            for n in rings {
+                let (i, r) = ring_indices(n);
+                have.push((n, r.shifted(idx.len() as u32)));
+                idx.extend(i);
+            }
             let buffer = crate::buffer_init(
                 device,
                 queue,
@@ -814,9 +834,8 @@ impl TerrainRenderer {
                     usage: wgpu::BufferUsages::INDEX,
                 },
             );
-            self.indices = Some((ring, buffer, ranges));
+            self.indices = Some((buffer, have));
         }
-        let ranges = self.indices.as_ref().expect("made above").2.clone();
         while self.slots.len() < scene.terrains.len() {
             self.slots.push(Slot {
                 uniform: device.create_buffer(&wgpu::BufferDescriptor {
@@ -992,7 +1011,16 @@ impl TerrainRenderer {
 
             // The levels are laid out in the terrain's own space: the camera
             // brought into it, the far plane by the terrain's horizontal scale.
-            let clipmap = t.clipmap(lay, camera, far);
+            let clipmap = clipmaps[ti].clone().expect("a drawn terrain is laid out");
+            let ranges = &self
+                .indices
+                .as_ref()
+                .expect("made above")
+                .1
+                .iter()
+                .find(|(n, _)| *n == clipmap.ring)
+                .expect("its ring is in the buffer")
+                .1;
             let unit = clipmap.unit;
             let lo = -lay.size * 0.5;
             let cam = clipmap.camera;
@@ -1001,7 +1029,6 @@ impl TerrainRenderer {
             // The camera's height in the terrain's space (the displacement's reach).
             let eye_y = model.inverse().transform_point3(camera).y;
             let morph_width = clipmap.morph_width;
-            let morph_start = clipmap.morph_start;
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
             let mut out = Vec::with_capacity(list.len());
             let (hmin, hmax) = data.range;
@@ -1016,7 +1043,7 @@ impl TerrainRenderer {
                     ],
                     grid: [
                         n as f32,
-                        morph_start,
+                        l.morph_start,
                         if l.morph { morph_width } else { 0.0 },
                         0.0,
                     ],

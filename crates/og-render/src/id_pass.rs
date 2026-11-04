@@ -352,8 +352,9 @@ pub fn render_ids_from(
             Some(d) => d.heights.get((r * d.columns + c) as usize).copied(),
             None => heights(k, c, r),
         };
-        let Some((positions, locals, indices)) =
-            terrain_mesh(t, layout, &raw, main.position, main.far, 0.0, &planes)
+        let Some((positions, locals, indices)) = scene
+            .terrain_clipmap(k, &terrain_view(&main, height, main.far))
+            .and_then(|c| terrain_mesh(t, layout, &raw, &c, 0.0, &planes))
         else {
             continue;
         };
@@ -414,8 +415,9 @@ pub fn render_ids_from(
         };
         let lift = grass.tallest() * 0.5;
         let far = main.far.min(grass.distance + lift);
-        let Some((positions, locals, indices)) =
-            terrain_mesh(t, layout, &raw, main.position, far, lift, &planes)
+        let Some((positions, locals, indices)) = scene
+            .terrain_clipmap(g.terrain, &terrain_view(&main, height, far))
+            .and_then(|c| terrain_mesh(t, layout, &raw, &c, lift, &planes))
         else {
             continue;
         };
@@ -427,7 +429,7 @@ pub fn render_ids_from(
             // there: no blades, as on the GPU).
             let tiles;
             let ground: &dyn crate::scatter::Ground = match source {
-                crate::terrain::TerrainSource::Data(d, _) => d,
+                crate::terrain::TerrainSource::Data(d, ..) => d,
                 crate::terrain::TerrainSource::Stream { tiles: t, .. } => {
                     tiles = crate::scatter::TileGround { layout, tiles: t };
                     &tiles
@@ -647,12 +649,10 @@ fn terrain_mesh(
     t: &crate::Terrain,
     layout: crate::TerrainLayout,
     raw: &dyn Fn(u32, u32) -> Option<f32>,
-    eye: Vec3,
-    far: f32,
+    clipmap: &crate::TerrainClipmap,
     lift: f32,
     planes: &[Vec4; 6],
 ) -> Option<(Vec<Vec3>, Vec<Vec2>, Vec<u32>)> {
-    let clipmap = t.clipmap(layout, eye, far);
     let (cols, rows) = (layout.columns.max(1), layout.rows.max(1));
     let top = Vec2::new(cols as f32 - 1.0, rows as f32 - 1.0);
     // The field's height at field coordinates `s`: between samples on
@@ -671,7 +671,7 @@ fn terrain_mesh(
     let n = clipmap.ring;
     let (mut positions, mut locals, mut indices) = (Vec::new(), Vec::new(), Vec::new());
     for level in &clipmap.levels {
-        let corners = crate::terrain::level_vertices(&clipmap, level, layout, &height)?;
+        let corners = crate::terrain::level_vertices(clipmap, level, layout, &height)?;
         let world: Vec<Vec3> = corners
             .iter()
             .map(|p| t.transform.transform_point3(*p) + Vec3::Y * lift)
@@ -882,6 +882,16 @@ impl Raster {
                 }
             }
         }
+    }
+}
+
+/// The view a frame drawn by `camera` lays its terrains out for, seen
+/// from an id pass `height` pixels tall ([`id_pass_size`]: half the
+/// frame's), out to `far`.
+fn terrain_view(camera: &Camera, height: u32, far: f32) -> crate::TerrainView {
+    crate::TerrainView {
+        far,
+        ..crate::TerrainView::of(camera, height * 2)
     }
 }
 
@@ -1320,10 +1330,11 @@ mod tests {
         let all = [Vec4::new(0.0, 0.0, 0.0, 1.0); 6];
         let mesh = |x: f32| {
             let eye = Vec3::new(x, 10.0, 1.3);
-            let levels = t.clipmap(layout, eye, 500.0).levels;
+            let view = crate::TerrainView::perspective(eye, 500.0, 60.0, 720);
+            let clipmap = t.clipmap(layout, &view, &[]);
             (
-                levels,
-                terrain_mesh(&t, layout, &raw, eye, 500.0, 0.0, &all).unwrap(),
+                clipmap.levels.clone(),
+                terrain_mesh(&t, layout, &raw, &clipmap, 0.0, &all).unwrap(),
             )
         };
         let (mut compared, mut most) = (0, 0.0f32);

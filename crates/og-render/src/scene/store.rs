@@ -434,6 +434,34 @@ impl RenderScene {
         self.terrain_data.get(handle.index())?.layout().ok()
     }
 
+    /// The clipmap [`RenderScene::terrains`]`[index]` is drawn with from
+    /// `view` (its levels' extents and morph bands, placed by its height
+    /// errors as seen from there: [`crate::Terrain::clipmap`]). The
+    /// renderer, the id pass and diagnostics all lay a terrain out with it.
+    pub fn terrain_clipmap(
+        &self,
+        index: usize,
+        view: &crate::TerrainView,
+    ) -> Option<crate::TerrainClipmap> {
+        let t = self.terrains.get(index)?;
+        let source = self.terrain_data.get(t.terrain.index())?;
+        let layout = source.layout().ok()?;
+        let model = t.transform;
+        let along = crate::terrain::horizontal_scale(model);
+        let up = model.transform_vector3(glam::Vec3::Y).length();
+        let eye = model.inverse().transform_point3(view.camera);
+        let reach = crate::terrain_error::error_reach(
+            source.error_blocks(&layout).into_iter(),
+            eye,
+            source.range(),
+            (along, up),
+            view.pixel,
+            t.lod.error_pixels(),
+            view.far / along,
+        );
+        Some(t.clipmap(layout, view, &reach))
+    }
+
     /// Replaces a terrain's data (a runtime edit of its heights or its
     /// control map); the renderer uploads it again before the next frame
     /// that draws it. `false` for a handle of another scene.
@@ -452,7 +480,7 @@ impl RenderScene {
     /// A terrain's field in memory (`None` for a streamed one).
     pub fn terrain(&self, handle: TerrainHandle) -> Option<&crate::TerrainData> {
         match self.terrain_data.get(handle.index())? {
-            crate::terrain::TerrainSource::Data(d, _) => Some(d),
+            crate::terrain::TerrainSource::Data(d, ..) => Some(d),
             crate::terrain::TerrainSource::Stream { .. } => None,
         }
     }
@@ -484,8 +512,12 @@ impl RenderScene {
         let in_place = match self.terrain_data.get_mut(i) {
             Some(s) => {
                 // A field streamed until now, or of another shape, is new.
-                let same = matches!(&*s, crate::terrain::TerrainSource::Data(d, _) if shape(d) == shape(&data));
-                *s = crate::terrain::TerrainSource::data(data);
+                let same = matches!(&*s, crate::terrain::TerrainSource::Data(d, ..) if shape(d) == shape(&data));
+                *s = if same {
+                    s.edited(data, lo, hi)
+                } else {
+                    crate::terrain::TerrainSource::data(data)
+                };
                 same
             }
             None => return false,

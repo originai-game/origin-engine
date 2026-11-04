@@ -81,7 +81,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 26975</sub>
+<sub>`api.ogt` line 26980</sub>
 
 <a id="fn-sample"></a>
 
@@ -111,7 +111,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 26982</sub>
+<sub>`api.ogt` line 26987</sub>
 
 <a id="fn-bounds"></a>
 
@@ -153,7 +153,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 26989</sub>
+<sub>`api.ogt` line 26994</sub>
 
 <a id="fn-edit"></a>
 
@@ -185,7 +185,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 27005</sub>
+<sub>`api.ogt` line 27010</sub>
 
 <a id="fn-stamp"></a>
 
@@ -215,7 +215,7 @@ fn stamp {
 }
 ```
 
-<sub>`api.ogt` line 27013</sub>
+<sub>`api.ogt` line 27018</sub>
 
 <a id="fn-unstamp"></a>
 
@@ -247,7 +247,7 @@ fn unstamp {
 }
 ```
 
-<sub>`api.ogt` line 27020</sub>
+<sub>`api.ogt` line 27025</sub>
 
 <a id="fn-layer"></a>
 
@@ -279,7 +279,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27028</sub>
+<sub>`api.ogt` line 27033</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -313,7 +313,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27036</sub>
+<sub>`api.ogt` line 27041</sub>
 
 ## Components, resources and events
 
@@ -332,7 +332,8 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 | `castShadows` | `boolean` | `true` | — | — | — | Cast the directional and local lights' shadows (it always receives them). |
 | `horizonShadows` | `boolean` | `true` | — | — | — | Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less. |
 | `lodSpacing` | `number` | `0` | 0 … 64 | `m` | tunable | The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing). |
-| `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). |
+| `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level at least (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro. |
+| `lodError` | `number` | `0` | 0 … 64 | — | tunable | Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices. |
 | `displacementDistance` | `number` | `40` | 0 … 1000 | `m` | tunable | Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement. |
 
 ```ogt
@@ -354,9 +355,14 @@ component Terrain {
     unit m
     tunable true
   }
-  field lodRing u32 "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4)." {
+  field lodRing u32 "Quads per side of every clipmap level at least (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro." {
     min 0
     max 256
+  }
+  field lodError f32 "Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices." {
+    min 0
+    max 64
+    tunable true
   }
   field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement." {
     default 40
@@ -407,7 +413,7 @@ component TerrainStamp {
 }
 ```
 
-<sub>`api.ogt` line 26424</sub>
+<sub>`api.ogt` line 26429</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -535,7 +541,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 26443</sub>
+<sub>`api.ogt` line 26448</sub>
 
 <a id="record-Grass"></a>
 
@@ -740,7 +746,7 @@ component Grass {
 }
 ```
 
-<sub>`api.ogt` line 26535</sub>
+<sub>`api.ogt` line 26540</sub>
 
 <a id="record-GrassType"></a>
 
@@ -798,7 +804,7 @@ component GrassType {
 }
 ```
 
-<sub>`api.ogt` line 26694</sub>
+<sub>`api.ogt` line 26699</sub>
 
 <a id="record-GrassPusher"></a>
 
@@ -841,7 +847,7 @@ component GrassPusher {
 }
 ```
 
-<sub>`api.ogt` line 26731</sub>
+<sub>`api.ogt` line 26736</sub>
 
 ## Types
 
@@ -962,7 +968,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 26756</sub>
+<sub>`api.ogt` line 26761</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -1002,7 +1008,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26780</sub>
+<sub>`api.ogt` line 26785</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -1033,7 +1039,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 26799</sub>
+<sub>`api.ogt` line 26804</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -1058,7 +1064,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 26812</sub>
+<sub>`api.ogt` line 26817</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -1116,7 +1122,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 26822</sub>
+<sub>`api.ogt` line 26827</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -1145,7 +1151,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 26856</sub>
+<sub>`api.ogt` line 26861</sub>
 
 <a id="type-TerrainStampDesc"></a>
 
@@ -1197,7 +1203,7 @@ struct TerrainStampDesc {
 }
 ```
 
-<sub>`api.ogt` line 26868</sub>
+<sub>`api.ogt` line 26873</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -1308,7 +1314,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 26895</sub>
+<sub>`api.ogt` line 26900</sub>
 
 ## Column kinds
 

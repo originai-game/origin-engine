@@ -42,7 +42,9 @@ is one line here, written at the merge that changes
   cells' split triangles, as collision does, instead of bilinearly; this
   also changes a `lodSpacing` finer than the samples. In the morph band
   even corners now also move, to the coarser level's corner as that level
-  reads it, so displaced levels meet without cracks. Collision,
+  reads it, so displaced levels meet without cracks. The shadow lookup
+  is offset along the displaced surface, and a layer without a normal map
+  is shaded with its relief's slope. Collision,
   `og.terrain.sample` and picking keep the undisplaced field. The terrain
   blob's layer row is v4, so terrains cook again. Off by default:
   existing terrains draw as before.
@@ -59,6 +61,16 @@ is one line here, written at the merge that changes
   sliding up to one quad sideways. A streamed tile fades in over 0.2 s of
   the host's frames (`frame(elapsed)`) instead of 12 frames, so it takes
   as long at 30 or 144 Hz. Terrain frames move.
+  Each level's morph band is placed by the height error the next coarser
+  level would show on screen (chunked and CDLOD terrain's screen-space
+  error): where that error is over og.Terrain's new `lodError` pixels
+  (default 1), the finer level reaches further out, and the levels grow
+  to 128 quads a side when their ring cannot hold it, so a peak that is
+  large on screen keeps its shape. The errors are measured per block of
+  each decimation, from the field in memory (again only where an edit
+  changed it) or with each streamed tile (`TerrainTile.error`); nothing is
+  cooked. On an M4 Pro the island costs 0.8 to 1.3 ms more a frame (seen
+  from 150 m: 6.0 ms instead of 4.8); a lodRing of 256 costs 8.1.
 
 - **Terrain collision follows an edit's region (terrain v2, T6).** A
   static SHAPE_HEIGHTFIELD collider over more than 256 cells a side is

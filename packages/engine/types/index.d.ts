@@ -45215,11 +45215,18 @@ export interface Terrain {
    */
   lodSpacing: number;
   /**
-   * Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4).
+   * Quads per side of every clipmap level at least (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro.
    *
    * @range 0..256
    */
   lodRing: number;
+  /**
+   * Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices.
+   *
+   * @range 0..64
+   * @tunable
+   */
+  lodError: number;
   /**
    * Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement.
    *
@@ -53213,7 +53220,7 @@ export declare namespace og {
   /**
    * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
-  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32">; readonly displacementDistance: FieldSpec<"f32"> }, Terrain>;
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32">; readonly lodError: FieldSpec<"f32">; readonly displacementDistance: FieldSpec<"f32"> }, Terrain>;
   /**
    * Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
    */

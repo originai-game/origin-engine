@@ -753,8 +753,12 @@ behind) and `sheen`, the wind's hold with `sway` and `stiffness`;
 `castShadows` adds the blades' shadows near the camera. Lower `density`
 or `distance` to save frame time; prefer it to a hand-made grass
 og.TerrainScatter, which suits flowers, stones and bushes. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
-the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
-detail for frame time.
+the walkable slopes for og-ai. The clipmap keeps a finer level out as
+far as the next coarser one's height error would show more than
+og.Terrain's `lodError` pixels (default 1), so far ridges keep their
+peaks; the levels then grow to 128 quads (6.0 ms instead of 4.8 for the
+island seen from 150 m on an M4 Pro). Raise `lodError` or lower `lodRing`
+on og.Terrain to trade detail for frame time.
 A cliff, arch or overhang the height field cannot make (a sheer 300 m drop
 on a half-metre grid is a sawtooth wall) is a mesh stamped into the
 terrain. Draw it with `og.TerrainStamp { data, geometry, blend }` on its
