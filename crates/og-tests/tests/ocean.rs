@@ -784,14 +784,14 @@ fn a_gales_foam_streaks_along_the_wind_and_its_crests_throw_spray() {
         "gale: the streaks add {gain} of luma, {along} times as coherent along the wind; spray changes the frame by {d_spray}"
     );
     // (The code before: 0.13, its lace's cut all but never reached, and no coherence; spray 0. The streaks are faint
-    // drift, about 0.25 of luma, and spray shows only within some 35 m, about 0.003 of the frame; the coherence
+    // drift, about 0.25 of luma; the spray's plumes change some 0.04 of the frame; the coherence
     // along the wind, over a hundred, is what tells streaks from noise.)
     assert!(gain > 0.18, "the gale's foam has no streaks ({gain})");
     assert!(
         along > 1.5,
         "the foam does not streak along the wind ({along})"
     );
-    assert!(d_spray > 0.0015, "no spray ({d_spray})");
+    assert!(d_spray > 0.01, "no spray ({d_spray})");
     // A breeze (9 m/s), under spray's threshold, throws none.
     let breeze = |spray: f32| {
         let mut s = ocean_scene("water-ocean");

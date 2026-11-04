@@ -1441,15 +1441,23 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let pop = ii / SPRAY_SLOTS;
   let slot = ii % SPRAY_SLOTS;
   if (f32(slot) >= water.spray.z) { return o; }
-  let seed = spray_hash(slot * 2u + pop + 0x51ed270bu);
-  // This slot's lives: each `life` seconds long after a pause as long, phased by the slot.
+  // The slots come in plumes: a crest throws its spray as a stream, not one puff, so the members of a plume share
+  // its lives and its point and leave it one after another over the first 60 % of a life, each with its own throw
+  // and size (a lone sprite read as a dot hanging over the sea; a stream reads as spindrift off a crest).
+  let plume = select(4u, 8u, pop == 1u);
+  let member = slot % plume;
+  let seed = spray_hash((slot / plume) * 2u + pop + 0x51ed270bu);
+  // This plume's lives: each `life` seconds long, then a pause, phased by the plume.
   let life = mix(0.9, 2.4, spray_rand(seed));
   let period = life * (1.6 + spray_rand(seed + 1u));
   let clock = water.spray.y + spray_rand(seed + 2u) * period;
   let n = floor(clock / period);
-  let tau = clock - n * period;
-  if (tau >= life) { return o; }
+  // (The last member leaves at 0.6 of a life and lives one: within the period, at least 1.6 lives.)
+  let tau = clock - n * period - life * 0.6 * f32(member) / f32(plume);
+  if (tau < 0.0 || tau >= life) { return o; }
   let h = spray_hash(seed ^ (u32(i32(n)) * 2654435761u));
+  // The member's own throw and size.
+  let hm = spray_hash(h + member * 977u);
   // Its point on the foam level, the one nearest the camera with that uv (the level is toroidal about it).
   let lv = water.foam_levels[pop];
   // The window its slots fall in: the level's square (toroidal, so a point stays where it is in the world while the
@@ -1457,8 +1465,11 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // looks (about the camera, two thirds of the slots fell behind it or under the frame).
   let fwd = frame.view_forward.xz;
   let ahead = select(vec2<f32>(0.0), fwd / max(length(fwd), 1e-6), dot(fwd, fwd) > 1e-6);
-  let cam = frame.view_pos.xz + ahead * (0.33 * lv.w * 0.9);
-  let cam_uv = cam * lv.x + lv.yz;
+  // The spume's window is the near 200 m where its sheets are seen, not its level's 512 m: over that, nine in ten of
+  // its plumes fell past the fade or out of the frame, and a gale's spume all but never showed.
+  let win = select(lv.w * 0.9, 200.0, pop == 1u);
+  let cam = frame.view_pos.xz + ahead * (0.33 * win);
+  let cam_uv = cam / win;
   // Only where a crest breaks now: where the surface folds (its Jacobian, the whitecaps' own test in sea_foam) or the
   // foam level's freshest foam was laid. (The level's freshness alone, decaying within a second, rarely held a slot.)
   // A gale's crests break over a few percent of the sea, so each life tries up to six points for one.
@@ -1471,10 +1482,12 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   for (var t = 0u; t < 6u && !found; t++) {
     let ht = h + 16u * t;
     let off = fract(vec2<f32>(spray_rand(ht), spray_rand(ht + 1u)) - cam_uv + 0.5) - 0.5;
-    rest = cam + off * lv.w * 0.9;
+    rest = cam + off * win;
     edge = 1.0 - smoothstep(0.4, 0.5, max(abs(off.x), abs(off.y)));
     let fw = textureSampleLevel(heights, ripple_sampler, rest * lv.x + lv.yz, first + pop, 0.0);
-    let jac = ocean_normal(rest, rest, ts, vec2<f32>(0.0), vec2<f32>(0.0)).jac;
+    // (At the fine level's texel, for either population: the coarse level's 2 m smoothed every gale crest's fold
+    // away, and its spume never found a crest to leave.)
+    let jac = ocean_normal(rest, rest, water.foam_levels[0].w / 256.0, vec2<f32>(0.0), vec2<f32>(0.0)).jac;
     let breaking = clamp((water.ocean.z - jac) * water.ocean.w, 0.0, 1.0);
     keep = smoothstep(0.05, 0.5, max(breaking, fw.g)) * gust;
     found = spray_rand(ht + 2u) < keep;
@@ -1486,9 +1499,9 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // Thrown off with part of the crest's speed downwind and upwards; drifting towards the wind near the surface.
   let wd = water.sea_wind.xy;
   let side = vec2<f32>(-wd.y, wd.x);
-  let along = wind * mix(0.15, 0.45, spray_rand(h + 3u));
-  let across = wind * 0.08 * (spray_rand(h + 4u) * 2.0 - 1.0);
-  let up = mix(1.0, 3.2, spray_rand(h + 5u)) * mix(0.7, 1.4, gust) * select(1.0, 1.6, pop == 1u);
+  let along = wind * mix(0.15, 0.45, spray_rand(hm + 3u));
+  let across = wind * 0.08 * (spray_rand(hm + 4u) * 2.0 - 1.0);
+  let up = mix(1.0, 3.2, spray_rand(hm + 5u)) * mix(0.7, 1.4, gust) * select(1.0, 1.6, pop == 1u);
   let v0 = vec3<f32>(wd.x * along + side.x * across, up, wd.y * along + side.y * across);
   let air = vec3<f32>(wd.x, 0.0, wd.y) * wind * 0.75;
   // The response rate (1/s): small droplets follow the air within a fraction of a second, sheets of spume slower.
@@ -1498,15 +1511,15 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var p = start + air * tau + (v0 - air) * decay;
   p.y = start.y + (v0.y + g / k) * decay - g * tau / k;
   // The sprite: growing as the spray spreads, fading in as it leaves the crest and out as it settles or falls back.
-  let rnd = spray_rand(h + 6u);
+  let rnd = spray_rand(hm + 6u);
   var size = select(mix(0.2, 0.7, rnd), mix(0.6, 2.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
-  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.45, 0.3, pop == 1u) * mix(0.6, 1.0, keep) * edge;
+  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.6, 0.55, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
-  // Spray is seen near: past some 35 m (the spume's sheets 90 m) it is a haze over the crests,
-  // not sprites (a lone droplet cloud farther out read as a dot hanging over the sea).
-  alpha *= 1.0 - smoothstep(select(15.0, 40.0, pop == 1u), select(35.0, 90.0, pop == 1u), dist);
+  // Spray is seen near: past some 35 m (the spume's sheets, torn off a gale's crests in
+  // streams seen far across the sea, 220 m) it is a haze over the crests, not sprites.
+  alpha *= 1.0 - smoothstep(select(15.0, 80.0, pop == 1u), select(35.0, 220.0, pop == 1u), dist);
   let scale = length(vec3<f32>(frame.view_proj[0].y, frame.view_proj[1].y, frame.view_proj[2].y));
   let floor_size = 1.5 * dist * 2.0 / max(scale * water.screen.y, 1e-6);
   if (size < floor_size) {
@@ -1556,8 +1569,12 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   let sky = ambient_light_level(vec3<f32>(0.0, 1.0, 0.0), in.world) * frame.params.x;
   let deck = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
   let deck_up = select(deck, vec4<f32>(0.0), frame.clouds[4].w > 0.5);
-  let ambient = mix(sky, deck_up.rgb * 1.4, deck_up.a);
-  let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.0795775) + ambient * 0.9);
+  // Lit by the sky as the sea's foam is (nearly grey, its irradiance over the whole sky above): spume is foam torn off
+  // the crest and a dense cloud of droplets scatters as much; lit at 0.9 of the sky's radiance, it sat at a third of
+  // the foam it leaves and vanished under an overcast.
+  let sky_grey = mix(sky, vec3<f32>(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85) * 1.55;
+  let ambient = mix(sky_grey, deck_up.rgb * 1.4, deck_up.a);
+  let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.0795775) + ambient);
   let fogged = apply_fog(lit, in.world);
   return vec4<f32>(fogged * a, a);
 }
