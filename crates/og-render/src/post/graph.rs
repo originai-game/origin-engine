@@ -492,6 +492,10 @@ impl FrameGraph {
                 }
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
                 FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
+                // The AO it passes through (none without the AO passes).
+                FramePass::Contact => {
+                    pair(&|_| fx_group(black, self.try_view("ao.pre").unwrap_or(&passes.white)))
+                }
                 FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::DepthBands => pair(&|_| fx_group(self.view(names.base), black)),
                 FramePass::Outline => {
@@ -544,16 +548,19 @@ impl FrameGraph {
         // Screen-space GI in the AO passes' place (ssgi.rs).
         let gi = self.cfg.is_some_and(|c| c.gi);
         let half = self.views.contains_key("ao.blur");
+        // With contact shadows the AO passes end in `ao.pre` (plan.rs).
+        let ao = super::plan::ao_target_name(self.views.contains_key("ao.pre"));
         let effect = match pass {
             FramePass::Ao if gi => Some(("fs_ssgi", "ao.raw")),
             FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
-            FramePass::AoBlur if gi => Some(("fs_gi_blur", if half { "ao.blur" } else { "ao" })),
+            FramePass::AoBlur if gi => Some(("fs_gi_blur", if half { "ao.blur" } else { ao })),
             // Half resolution: the blur's depth is at twice its texel, which
             // gathers do not read.
             FramePass::AoBlur if half => Some(("fs_ao_blur", "ao.blur")),
-            FramePass::AoBlur => Some((AO_BLUR_GATHER, "ao")),
-            FramePass::AoUpsample if gi => Some(("fs_gi_upsample", "ao")),
-            FramePass::AoUpsample => Some(("fs_ao_upsample", "ao")),
+            FramePass::AoBlur => Some((AO_BLUR_GATHER, ao)),
+            FramePass::AoUpsample if gi => Some(("fs_gi_upsample", ao)),
+            FramePass::AoUpsample => Some(("fs_ao_upsample", ao)),
+            FramePass::Contact => Some(("fs_contact", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
             FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
@@ -742,6 +749,7 @@ impl FrameGraph {
             FramePass::Ao
             | FramePass::AoBlur
             | FramePass::AoUpsample
+            | FramePass::Contact
             | FramePass::Outline
             | FramePass::DofCoc
             | FramePass::DofBlur

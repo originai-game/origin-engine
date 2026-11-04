@@ -60,6 +60,9 @@ pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+/// The AO texture with contact shadows (fxpost.wgsl `fs_contact`): the AO
+/// in r, the contact lights' masks in gba.
+pub(crate) const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// The view depth the prepass clears to (sky).
 pub(crate) const FAR_DEPTH: f32 = 1.0e9;
 
@@ -154,6 +157,11 @@ pub(crate) struct FxPostUniform {
     /// Screen-space global illumination
     /// (`ScreenSpaceGlobalIllumination::rows`).
     pub gi: [[f32; 4]; 3],
+    /// Screen-space contact shadows (fxpost.wgsl `fs_contact`): rows 0 to 2
+    /// the contact lights' view-space positions (w 1: drawn), row 3 the
+    /// ray's length per metre of view depth, its shortest, the thickness per
+    /// metre of length and the steps.
+    pub contact: [[f32; 4]; 4],
 }
 
 /// `struct Stylise` in stylise.wgsl: the post-tonemap stylisation passes'
@@ -513,6 +521,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_ssao", AO_FORMAT),
     ("fs_ao_blur", AO_FORMAT),
     ("fs_ao_upsample", AO_FORMAT),
+    ("fs_contact", CONTACT_FORMAT),
     ("fs_outline", HDR_FORMAT),
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),

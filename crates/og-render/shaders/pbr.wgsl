@@ -446,7 +446,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   if (atten <= 0.0) { return vec3<f32>(0.0); }
   if (dot(n, l) <= 0.0 && s.translucency <= 0.0) { return vec3<f32>(0.0); }
   var shadow = 1.0;
-  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l)); }
+  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l)) * contact_shadow(light, p); }
   // Its cookie (area.wgsl; white without).
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
   if (EFFECTS && material.toon.x > 0.5) {

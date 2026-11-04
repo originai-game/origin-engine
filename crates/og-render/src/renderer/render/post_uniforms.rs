@@ -21,6 +21,8 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) depth_bands: Option<DepthBands>,
     pub(super) ssr: Option<ScreenSpaceReflections>,
     pub(super) screen_blur: Option<ScreenBlur>,
+    /// Contact shadows' rows (`FxPostUniform::contact`).
+    pub(super) contact: [[f32; 4]; 4],
 }
 
 impl Renderer {
@@ -43,6 +45,7 @@ impl Renderer {
             depth_bands,
             ssr,
             screen_blur,
+            contact,
         }: WriteFramePostUniformsInputs<'_>,
     ) {
         let proj = cam.view_proj * cam.view.inverse();
@@ -168,6 +171,7 @@ impl Renderer {
                     Some(_) => GiOcclusion::Gtao,
                 },
             ),
+            contact,
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));

@@ -21,6 +21,10 @@ pub(crate) enum FramePass {
     /// ([`crate::AoResolution::Half`]): with it, `ao` and its blur run at
     /// half resolution and this pass writes the full-resolution `ao`.
     AoUpsample,
+    /// Screen-space contact shadows for the shadowed local lights
+    /// (fxpost.wgsl `fs_contact`): writes `ao`, the AO (from `ao.pre`, the
+    /// AO passes' target with it) in r and the lights' masks in gba.
+    Contact,
     /// The particle simulation (compute).
     Particles,
     /// The 2D light map.
@@ -163,6 +167,7 @@ impl FramePass {
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),
             FramePass::AoUpsample => "ao-upsample".into(),
+            FramePass::Contact => "contact".into(),
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
@@ -254,6 +259,12 @@ pub(crate) struct GraphConfig {
     /// The overlay reads the prepass's view depth (UI occluders and mass
     /// elements, after every pass): `lindepth` lives to the frame's end.
     pub ui_depth: bool,
+}
+
+/// The target the AO passes end in: `ao`, or with contact shadows
+/// `ao.pre`, which the contact pass reads.
+pub(super) fn ao_target_name(contact: bool) -> &'static str {
+    if contact { "ao.pre" } else { "ao" }
 }
 
 /// The metaball field targets, by field.
@@ -468,16 +479,23 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     } else {
         AO_FORMAT
     };
+    // With contact shadows the AO passes end in `ao.pre`, which the contact
+    // pass copies into `ao`'s r beside the lights' masks.
+    let contact = has(FramePass::Contact);
+    let ao_out = ao_target_name(contact);
     if has(FramePass::AoUpsample) {
         // Searched and blurred at half resolution (each texel the depth's
         // at twice its coordinate), then upsampled to `ao`.
         let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
         g.transient("ao.raw", desc(hw, hh, ao_format, 1, attach_bind))
             .transient("ao.blur", desc(hw, hh, ao_format, 1, attach_bind))
-            .transient("ao", desc(w, h, ao_format, 1, attach_bind));
+            .transient(ao_out, desc(w, h, ao_format, 1, attach_bind));
     } else if has(FramePass::Ao) {
         g.transient("ao.raw", desc(w, h, ao_format, 1, attach_bind))
-            .transient("ao", desc(w, h, ao_format, 1, attach_bind));
+            .transient(ao_out, desc(w, h, ao_format, 1, attach_bind));
+    }
+    if contact {
+        g.transient("ao", desc(w, h, CONTACT_FORMAT, 1, attach_bind));
     }
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
@@ -664,8 +682,12 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::AoBlur if has(FramePass::AoUpsample) => {
                 g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao.blur"])
             }
-            FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao"]),
-            FramePass::AoUpsample => g.pass(name, &["ao.blur", "lindepth"], &["ao"]),
+            FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &[ao_out]),
+            FramePass::AoUpsample => g.pass(name, &["ao.blur", "lindepth"], &[ao_out]),
+            FramePass::Contact if has(FramePass::AoBlur) => {
+                g.pass(name, &["ao.pre", "lindepth", "gbuffer"], &["ao"])
+            }
+            FramePass::Contact => g.pass(name, &["lindepth", "gbuffer"], &["ao"]),
             FramePass::Particles if prepass => {
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
@@ -708,7 +730,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::Volumetric) {
                     reads.push("froxels");
                 }
-                if has(FramePass::AoBlur) {
+                if has(FramePass::AoBlur) || contact {
                     reads.push("ao");
                 }
                 if prepass {
@@ -985,6 +1007,33 @@ mod tests {
                 plan.physical()[weights].format,
                 wgpu::TextureFormat::Rgba8Unorm
             );
+        }
+    }
+
+    /// Contact shadows write `ao` (the AO in r, the lights' masks in gba),
+    /// after the AO passes, which then end in `ao.pre`, and before the main
+    /// pass that samples it; without AO the contact pass alone writes it.
+    #[test]
+    fn contact_shadows_take_the_ao_target_before_the_main_pass() {
+        for ao in [false, true] {
+            let mut passes = vec![FramePass::Prepass];
+            if ao {
+                passes.extend([FramePass::Ao, FramePass::AoBlur]);
+            }
+            passes.extend([FramePass::Contact, FramePass::Main, FramePass::Tonemap]);
+            let plan = build_graph(&passes, &cfg(false, false))
+                .compile()
+                .unwrap_or_else(|e| panic!("ao {ao}: {e}"));
+            let at = |p: FramePass| plan.order().iter().position(|&i| passes[i] == p);
+            assert!(at(FramePass::Contact) < at(FramePass::Main));
+            let format = |name| plan.slot(name).map(|s| plan.physical()[s].format);
+            assert_eq!(format("ao"), Some(CONTACT_FORMAT), "ao {ao}");
+            if ao {
+                assert!(at(FramePass::AoBlur) < at(FramePass::Contact));
+                assert_eq!(format("ao.pre"), Some(AO_FORMAT));
+            } else {
+                assert_eq!(format("ao.pre"), None);
+            }
         }
     }
 }

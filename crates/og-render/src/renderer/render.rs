@@ -162,6 +162,18 @@ impl Renderer {
         });
         // The AO passes run (for the AO, the GI or both).
         let ao_target = ao.is_some() || gi.is_some();
+        // Screen-space contact shadows for the shadowed point and spot
+        // lights (fxpost.wgsl `fs_contact`): they resolve the centimetres
+        // where a caster meets its receiver, which a local shadow map's
+        // texels (a few centimetres at a few metres) cannot. Their masks
+        // share the AO texture (gba), which the GI's bounce fills instead.
+        let contact = WORLD_3D
+            && gi.is_none()
+            && scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
+            && scene
+                .lights
+                .iter()
+                .any(|l| l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. }));
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -191,6 +203,7 @@ impl Renderer {
         let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
         let prepass = !custom_posts.is_empty()
             || ao_target
+            || contact
             || ssr.is_some()
             // Volumetric fog reads each pixel's depth.
             || volumetric_fog.is_some()
@@ -215,7 +228,7 @@ impl Renderer {
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
-                ao: ao_target,
+                ao: ao_target || contact,
                 batches: &mut batches,
                 skinned_batches: &mut skinned_batches,
                 skinned_visible: &mut skinned_visible,
@@ -1481,6 +1494,22 @@ impl Renderer {
                 .last()
                 .is_none_or(|ls| ls.layer + ls.faces.len() <= self.local_map.layers.len())
         );
+        // The contact lights (frame.rs `contact_lights`): their view-space
+        // positions for the contact pass, and in their records' shadow
+        // slots a quarter per mask channel past the layer, which the lit
+        // shaders' `contact_shadow` reads.
+        let mut contact_rows = [[0.0f32; 4]; 4];
+        if contact {
+            for (c, ls) in frame::contact_lights(&local_shadows, &scene.lights, camera.position)
+                .into_iter()
+                .enumerate()
+            {
+                let p = cam.view.transform_point3(scene.lights[ls.light].position);
+                contact_rows[c] = p.extend(1.0).to_array();
+                lights_gpu[ls.record].direction_slot[3] += 0.25 * (c + 1) as f32;
+            }
+            contact_rows[3] = CONTACT_PARAMS;
+        }
         // Cookies in the local shadow array past its shadow layers (area.rs).
         let cookie_base =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows) as u32;
@@ -2325,6 +2354,7 @@ impl Renderer {
             depth_bands,
             ssr,
             screen_blur,
+            contact: contact_rows,
         });
         let slot = (self.frame_index % 2) as usize;
         let taa_blend = taa && self.taa_history.is_some();
@@ -2365,6 +2395,9 @@ impl Renderer {
             if resolution == AoResolution::Half {
                 passes.push(FramePass::AoUpsample);
             }
+        }
+        if contact {
+            passes.push(FramePass::Contact);
         }
         if particle_frame.any_gpu {
             passes.push(FramePass::Particles);
@@ -2786,7 +2819,7 @@ impl Renderer {
             scene.id(),
             scene.decal_atlas,
             self.decal_buffers.generation,
-            ao_target,
+            ao_target || contact,
             scene.lighting_2d.is_some(),
             reflection.is_some(),
         );
@@ -2794,7 +2827,7 @@ impl Renderer {
             let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
-            let ao_view = if ao_target {
+            let ao_view = if ao_target || contact {
                 self.graph.view("ao")
             } else {
                 &self.post.white
@@ -2923,7 +2956,7 @@ impl Renderer {
                     let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                         &self.cache.textures[t.index()].view
                     });
-                    let ao_view = if ao_target {
+                    let ao_view = if ao_target || contact {
                         self.graph.view("ao")
                     } else {
                         &self.post.white
@@ -4402,6 +4435,16 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
         [0.0; 4]
     }
 }
+
+/// Contact shadows' ray (fxpost.wgsl `fs_contact`, `FxPost::contact` row 3):
+/// 4 cm per metre of view depth and at least 10 cm long (a caster's foot
+/// is a few centimetres of a local light's texels), a hit within a quarter
+/// of the pixel's view depth behind the depth buffer, 16 steps. The
+/// thickness must hold a solid caster seen from its front: the ray under a
+/// 0.8 m box at 4.5 m (shadows-local-contact) passes up to 0.75 m behind
+/// the face the camera sees. A larger thickness darkens more behind thin
+/// foreground silhouettes, within the ray's length of them.
+const CONTACT_PARAMS: [f32; 4] = [0.04, 0.1, 0.25, 16.0];
 
 /// Whether an instance was drawn elsewhere in the previous frame
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's

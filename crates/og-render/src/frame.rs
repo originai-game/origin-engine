@@ -489,6 +489,10 @@ pub(crate) fn fit_cascades(
 /// hemispheres for a point light, one for a spot). A paraboloid layer's
 /// matrix is unused (the projection is not linear); its volume culls.
 pub(crate) struct LocalShadow {
+    /// Its light's index in the scene's lights, and its record's in the
+    /// frame's light records.
+    pub light: usize,
+    pub record: usize,
     pub layer: usize,
     pub position: Vec3,
     pub range: f32,
@@ -521,6 +525,31 @@ fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
     let outer = angle_degrees.clamp(0.1, 89.0).to_radians();
     let inner = outer * (1.0 - penumbra.clamp(0.0, 1.0));
     (outer.cos(), inner.cos())
+}
+
+/// The most shadowed lights a frame draws screen-space contact shadows for
+/// (fxpost.wgsl `fs_contact`): one each in the AO texture's g, b and a.
+pub(crate) const CONTACT_LIGHTS: usize = 3;
+
+/// The shadowed point and spot lights whose contact shadows a frame draws:
+/// the [`CONTACT_LIGHTS`] most important at `eye` (radiance at the camera,
+/// as the shadows are kept; ties in scene order). A rect light keeps its
+/// map alone (its shadow is `rect_shadow`, not `local_shadow`).
+pub(crate) fn contact_lights<'a>(
+    shadows: &'a [LocalShadow],
+    lights: &[Light],
+    eye: Vec3,
+) -> Vec<&'a LocalShadow> {
+    let mut picked: Vec<&LocalShadow> = shadows
+        .iter()
+        .filter(|s| !matches!(lights[s.light].kind, LightKind::Rect { .. }))
+        .collect();
+    let score = |s: &LocalShadow| crate::clusters::importance(&lights[s.light], eye);
+    og_core::sort::sort_by(&mut picked, |a, b| {
+        score(b).total_cmp(&score(a)).then(a.light.cmp(&b.light))
+    });
+    picked.truncate(CONTACT_LIGHTS);
+    picked
 }
 
 /// The near plane of a local light's shadow views.
@@ -667,6 +696,8 @@ pub(crate) fn local_lights(
                 }
             };
             shadows.push(LocalShadow {
+                light: kept[k],
+                record: k,
                 layer: next_layer,
                 position: light.position,
                 range,
@@ -769,6 +800,55 @@ mod tests {
             layouter[wind.ty].size as usize,
             std::mem::size_of::<[crate::foliage::FoliageWind; 2]>()
         );
+    }
+
+    /// Contact shadows go to the shadowed point and spot lights brightest at
+    /// the camera, at most three, never a rect light; a nearer, dimmer light
+    /// can outrank a far, bright one.
+    #[test]
+    fn contact_shadows_go_to_the_brightest_shadowed_lights() {
+        let at = |x: f32, intensity: f32, kind: LightKind| Light {
+            kind,
+            position: Vec3::new(x, 2.0, 0.0),
+            intensity,
+            cast_shadows: true,
+            ..Default::default()
+        };
+        let rect = LightKind::Rect {
+            half_width: Vec3::X,
+            half_height: Vec3::Z,
+            two_sided: false,
+        };
+        let spot = LightKind::Spot {
+            direction: Vec3::NEG_Y,
+            angle_degrees: 40.0,
+            penumbra: 0.2,
+        };
+        let lights = vec![
+            at(0.0, 10.0, LightKind::Point),
+            at(30.0, 200.0, LightKind::Point),
+            at(1.0, 500.0, rect),
+            at(2.0, 24.0, spot),
+            at(-1.0, 5.0, LightKind::Point),
+            at(-2.0, 1.0, LightKind::Point),
+        ];
+        let kept: Vec<usize> = (0..lights.len()).collect();
+        let budget = LocalShadowBudget {
+            max_shadowed: 16,
+            rect_shadows: true,
+            point: PointShadows::Cube,
+            shadow_size: 512,
+        };
+        let (_, shadows, _) = local_lights(&lights, &kept, Vec3::ZERO, budget);
+        let picked: Vec<usize> = contact_lights(&shadows, &lights, Vec3::ZERO)
+            .iter()
+            .map(|s| s.light)
+            .collect();
+        // Radiance at the camera: 3 (spot, 24 / 8), 2.5 (point 0, 10 / 4 at
+        // 2 m), 1 (5 / 5); the far point (200 / 904), the dim one (1 / 8)
+        // and the rect lose.
+        assert_eq!(picked, vec![3, 0, 4]);
+        assert!(contact_lights(&[], &lights, Vec3::ZERO).is_empty());
     }
 
     /// Four cascades split the shadow distance in order, the last ending at

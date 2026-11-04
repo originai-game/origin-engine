@@ -31,6 +31,11 @@ struct FxPost {
   gi0: vec4<f32>,             // screen-space GI (ssgi.wgsl): x max distance, y thickness, z intensity (0: off), w steps
   gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
   gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
+  // Screen-space contact shadows (fs_contact): rows 0 to 2 the contact
+  // lights' view-space positions (w 1: drawn), row 3 x the ray's length per
+  // metre of view depth, y its shortest, z the thickness a hit may lie
+  // behind the depth per metre of the pixel's view depth, w the steps.
+  contact: array<vec4<f32>, 4>,
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var fx_linear: sampler;
@@ -662,4 +667,63 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
   }
   // Normalized to 48 taps: the brightness does not depend on the tap count.
   return vec4<f32>(sum * (4.0 / f32(max(n, 1u))) * fxp.god_tint.rgb * fxp.god2.z, 1.0);
+}
+
+// Screen-space contact shadows for the shadowed local lights (frame.rs
+// `contact_lights`): from each pixel a short ray towards each contact
+// light, marched through the prepass depth; where it passes behind a
+// surface (within the thickness), the light is hidden. They resolve what
+// the shadow maps cannot, the centimetres where a caster meets what it
+// stands on, a few texels of a local map at a few metres from the light
+// (the concept of UE's contact shadows and Bend Studio's screen-space
+// shadows, a plain march here). The AO in tex_b (AO's own target, before
+// the contact pass) passes through in r; the lights' masks go to gba
+// (1 lit, 0 hidden), which the lit shaders multiply into their map
+// shadows (lighting.wgsl `local_shadow`).
+@fragment
+fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let ao_size = vec2<i32>(textureDimensions(tex_b));
+  let ao = textureLoad(tex_b, min(px, ao_size - 1), 0).r;
+  var masks = vec3<f32>(1.0);
+  let d0 = depth_at(px);
+  if (is_sky(d0)) { return vec4<f32>(ao, masks); }
+  let uv = (vec2<f32>(px) + 0.5) * fxp.screen.zw;
+  let p = view_pos(uv, d0);
+  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
+  // A pixel and a half off the surface, so the ray leaves its own pixel.
+  let start = p + n * (1.5 / pixels_per_unit(d0));
+  let params = fxp.contact[3];
+  let size = vec2<i32>(textureDimensions(tex_depth));
+  let size_f = vec2<f32>(size);
+  let steps = max(i32(params.w), 1);
+  let jitter = ign(in.pos.xy);
+  for (var i = 0; i < 3; i++) {
+    let light = fxp.contact[i];
+    if (light.w < 0.5) { continue; }
+    let to = light.xyz - start;
+    let dist = length(to);
+    if (dist < 1e-4 || dot(to, n) <= 0.0) { continue; }
+    let dir = to / dist;
+    let len = min(max(params.x * d0, params.y), 0.9 * dist);
+    let thickness = params.z * d0;
+    var lit = 1.0;
+    for (var k = 0; k < steps; k++) {
+      let t = (f32(k) + jitter) / f32(steps);
+      let q = start + dir * (len * t);
+      let clip = fxp.proj * vec4<f32>(q, 1.0);
+      if (clip.w <= 0.0) { break; }
+      let ndc = clip.xy / clip.w;
+      let quv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+      if (any(quv < vec2<f32>(0.0)) || any(quv > vec2<f32>(1.0))) { break; }
+      let behind = -q.z - depth_tap(quv, size, size_f);
+      if (behind > 0.0 && behind < thickness) {
+        // Fades out over the ray's last quarter, so its reach has no edge.
+        lit = smoothstep(0.75, 1.0, t);
+        break;
+      }
+    }
+    masks[i] = lit;
+  }
+  return vec4<f32>(ao, masks);
 }
