@@ -174,6 +174,12 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **og.TerrainScatter and og.Wind registered lazily.** Like og.Grass,
+  og.Water and og.Aurora, they enter a world's type table only once the
+  game names them, so a world without scattered copies or wind keeps its
+  hash as their fields grow (area 4 added placement rules and the
+  simulated wind). Behaviour change: the raw hash of every world without
+  them moves once; the pinned world hashes are re-pinned with notes.
 - **Grass fields in describe and pick, at field fidelity.** The probe's
   entity-id pass draws each og.Grass under its own entity (label `grass`):
   not per blade (the blades live on the GPU and are never read back) but
