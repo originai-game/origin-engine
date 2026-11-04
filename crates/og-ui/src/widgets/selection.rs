@@ -503,6 +503,10 @@ impl Ui {
                 } else {
                     t.space.xs
                 },
+                // A row of options too wide for its room (a phone, large
+                // text) flows onto a second line rather than squeezing a
+                // label under its own width.
+                wrap: desc.horizontal,
                 ..Element::default()
             },
         );
