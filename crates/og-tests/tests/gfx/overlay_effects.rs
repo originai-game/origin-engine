@@ -1097,6 +1097,73 @@ fn region_mean(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>
     sum.map(|s| s / n.max(1.0))
 }
 
+/// The columns' mean luma over rows `y`, across `x`.
+fn column_luma(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> Vec<f64> {
+    x.map(|px| {
+        let [r, g, b] = region_mean(img, px..px + 1, y.clone());
+        0.2126 * r + 0.7152 * g + 0.0722 * b
+    })
+    .collect()
+}
+
+/// The pixels a rising edge in `profile` takes from 10% to 90% of its
+/// range.
+fn edge_width(profile: &[f64]) -> usize {
+    let lo = profile.iter().copied().fold(f64::MAX, f64::min);
+    let hi = profile.iter().copied().fold(f64::MIN, f64::max);
+    let at = |f: f64| {
+        profile
+            .iter()
+            .position(|&v| v >= lo + f * (hi - lo))
+            .unwrap_or(profile.len())
+    };
+    at(0.9) - at(0.1)
+}
+
+/// A glossy reflection widens with roughness: the left edge of the lit
+/// slab's reflection in a metal floor is a few pixels across at roughness
+/// 0.05 and several times that at 0.4, where the GGX lobe spreads it. A
+/// mirror-sharp image faded by roughness keeps the edge sharp at any
+/// roughness.
+#[test]
+fn ssr_blurs_with_roughness() {
+    let desc = scenes::base_desc();
+    let n = og_tests::depth_render_scenes::SSR_FRAMES;
+    let width = |roughness: f32| {
+        let scene = og_tests::depth_render_scenes::ssr_metal_scene(roughness, 0.6);
+        let img = frame(&desc, &scene, n).0;
+        // The slab's reflection's left edge, about x 740 at y 560..620.
+        edge_width(&column_luma(&img, 560..820, 560..620))
+    };
+    let (sharp, rough) = (width(0.05), width(0.4));
+    println!("slab reflection's edge: {sharp} px at roughness 0.05, {rough} px at 0.4");
+    assert!(sharp <= 12, "a near-mirror blurred: {sharp} px");
+    assert!(
+        rough >= 3 * sharp.max(4) && rough >= 30,
+        "roughness 0.4 kept a sharp edge: {rough} px against {sharp} px"
+    );
+}
+
+/// `maxRoughness` bounds what is traced: a floor rougher than it reflects
+/// only the probes and the environment (black here), so the slab's
+/// reflection is gone; below it, the reflection is there.
+#[test]
+fn ssr_max_roughness_bounds_the_traced_surfaces() {
+    let desc = scenes::base_desc();
+    let n = og_tests::depth_render_scenes::SSR_FRAMES;
+    let slab = |max_roughness: f32| {
+        let scene = og_tests::depth_render_scenes::ssr_metal_scene(0.3, max_roughness);
+        region_mean(&frame(&desc, &scene, n).0, 780..860, 480..600)
+    };
+    let (traced, cut) = (slab(0.6), slab(0.2));
+    println!("slab reflection: traced {traced:?}, beyond maxRoughness {cut:?}");
+    assert!(traced[1] > 60.0, "no reflection when traced: {traced:?}");
+    assert!(
+        cut[1] < traced[1] * 0.3,
+        "traced beyond maxRoughness: {cut:?}"
+    );
+}
+
 /// `probe-interior` (depth S6; reference `probe-interior.png`): a chrome
 /// sphere in a closed room reflecting the room's reflection probe.
 #[test]
@@ -1141,8 +1208,9 @@ fn ssr_wet_floor_matches_its_reference() {
 #[test]
 fn ssr_reflects_the_sphere_in_the_floor() {
     let desc = scenes::base_desc();
-    let on = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(true), 1).0;
-    let off = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(false), 1).0;
+    let n = og_tests::depth_render_scenes::SSR_FRAMES;
+    let on = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(true), n).0;
+    let off = frame(&desc, &og_tests::depth_render_scenes::ssr_scene(false), n).0;
     // The reflection lies about x 440..550, y 500..620.
     let (x, y) = (460..530, 540..600);
     let (a, b) = (

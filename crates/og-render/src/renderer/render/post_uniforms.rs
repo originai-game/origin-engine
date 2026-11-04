@@ -19,7 +19,6 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) god_visible: bool,
     pub(super) sun_fade: f32,
     pub(super) depth_bands: Option<DepthBands>,
-    pub(super) ssr: Option<ScreenSpaceReflections>,
     pub(super) screen_blur: Option<ScreenBlur>,
     /// Contact shadows' rows (`FxPostUniform::contact`).
     pub(super) contact: [[f32; 4]; 4],
@@ -43,7 +42,6 @@ impl Renderer {
             god_visible,
             sun_fade,
             depth_bands,
-            ssr,
             screen_blur,
             contact,
         }: WriteFramePostUniformsInputs<'_>,
@@ -160,7 +158,6 @@ impl Renderer {
             bands_far: depth_bands.map_or([0.0; 4], |b| {
                 [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]
             }),
-            ssr: ssr::ScreenSpaceReflections::rows(ssr.as_ref()),
             blur: screen_blur.map_or([[0.0; 4]; 2], |b| {
                 b.rows(self.width as f32, self.height as f32)
             }),

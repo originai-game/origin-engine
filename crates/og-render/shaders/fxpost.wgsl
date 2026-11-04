@@ -24,8 +24,6 @@ struct FxPost {
   bands: vec4<f32>,           // x: depth bands (0: none), y: near, z: far, w: flatten
   bands_near: vec4<f32>,      // the nearest band's colour (linear)
   bands_far: vec4<f32>,       // the farthest band's colour (linear)
-  ssr: vec4<f32>,             // x: max distance, y: thickness, z: edge fade, w: intensity (0: off) (ssr.wgsl)
-  ssr2: vec4<f32>,            // x: steps
   blur: vec4<f32>,            // the screen blur: x kind (0 off, 1 zoom, 2 spin, 3 directional), y strength, zw centre (uv)
   blur2: vec4<f32>,           // x: taps, yz: directional's offset (uv) at t = 1
   gi0: vec4<f32>,             // screen-space GI (ssgi.wgsl): x max distance, y thickness, z intensity (0: off), w steps

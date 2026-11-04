@@ -100,9 +100,12 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The environment, or the batch's reflection probe blended with it (probes.rs).
   let irradiance = ambient_light_level(n, in.world);
-  let prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y);
+  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
+  // unless blended: then it lies over the surface they were traced for.
+  var prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y) * frame.params.x;
+  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
   let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * frame.params.x * material.flags.z;
+  color += (kd_ibl * irradiance * s.albedo * frame.params.x + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
   color += out.emissive;
   return vec4<f32>(apply_fog(color, in.world), alpha);
 }

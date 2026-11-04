@@ -4,7 +4,7 @@
 // weighed and summed in the loop's order (rows top to bottom, each left to
 // right), so its answer is fs_ao_blur's to the bit. Half-resolution AO
 // keeps fs_ao_blur (its depth is at twice its texel). Appended to the
-// effect module (fullscreen.wgsl, fxpost.wgsl, ssr.wgsl; post.rs
+// effect module (fullscreen.wgsl, fxpost.wgsl, ssgi.wgsl; post.rs
 // `fx_source`).
 
 // Nearest, clamped to the edge: a gather's out-of-range texels are the

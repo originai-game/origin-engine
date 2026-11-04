@@ -9688,6 +9688,17 @@
           "tunable": true
         },
         {
+          "name": "ssrMaxRoughness",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "ssrResolution",
+          "column": "AoResolution",
+          "default": "full"
+        },
+        {
           "name": "custom",
           "column": "Post",
           "list": 8,

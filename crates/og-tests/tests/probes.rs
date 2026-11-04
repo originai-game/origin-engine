@@ -394,8 +394,18 @@ fn ssr_reads_roughness_maps_and_terrain_layers() {
     let desc = scenes::base_desc();
     // Under the sphere, as `ssr_reflects_the_sphere_in_the_floor` reads it.
     let at = |floor, ssr| {
-        let (img, _) = render(&desc, &ssr_floor_scene(floor, ssr), None);
-        region_mean(&img, 460..530, 540..600)
+        let scene = ssr_floor_scene(floor, ssr);
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        for _ in 0..og_tests::depth_render_scenes::SSR_FRAMES {
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        region_mean(
+            &renderer.read_offscreen().expect("capture"),
+            460..530,
+            540..600,
+        )
     };
     let mapped = at(SsrFloor::Mapped(true), true);
     let factor = at(SsrFloor::Mapped(false), true);

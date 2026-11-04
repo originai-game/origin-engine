@@ -90,6 +90,10 @@ pub(crate) struct FrameUniform {
     /// (`toon_softness`, 0: hard steps), y how smooth a toon material's
     /// ambient light stays (`toon_ambient`), zw unused.
     pub toon: [f32; 4],
+    /// Screen-space reflections (`ssr.rs`): x 1 when the frame group's
+    /// `ssr_tex` holds this camera's reflections (the main camera's; 0 for
+    /// views, probe faces and planar reflections).
+    pub ssr: [f32; 4],
 }
 
 /// The camera's matrices for one frame.

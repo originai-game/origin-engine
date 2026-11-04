@@ -762,6 +762,8 @@ pub struct Renderer {
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,
+    /// Screen-space reflections' passes, targets and history (`ssr.rs`).
+    ssr: ssr::SsrRenderer,
     /// The scene origin the last frame was drawn at ([`RenderScene::origin`]):
     /// the history above is in its coordinates.
     drawn_origin: Vec3,

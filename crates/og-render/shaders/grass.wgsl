@@ -218,7 +218,8 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let irradiance = ambient_light(n0, p) * frame.params.x + hemi_irradiance(n0);
   let r = reflect(-v, n0);
-  let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
+  // With the screen-space reflections over it (frame.wgsl ssr_reflected).
+  let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, in.clip.xy);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   if (view == 4u) { return vec4<f32>((vec3<f32>(1.0) - f_ibl) * irradiance * s.albedo * occlusion, 1.0); }
   if (view == 5u) { return vec4<f32>(prefiltered * (f_ibl * lut.x + lut.y) * occlusion, 1.0); }

@@ -726,6 +726,8 @@ impl Views {
             u.view_forward = p.frame.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = p.frame.axes();
             u.cluster = slot.clusters.params;
+            // The main camera's screen-space reflections lie elsewhere.
+            u.ssr = [0.0; 4];
             queue.write_buffer(&slot.frame_buffer, 0, bytemuck::bytes_of(&u));
             let mut f = *fx;
             f.ao = [0.0; 4];
@@ -1312,6 +1314,7 @@ impl crate::Renderer {
                         self.lightmaps.probe_buffer.as_entire_binding(),
                         self.ltc.as_entire_binding(),
                         self.caustic_grid.as_entire_binding(),
+                        wgpu::BindingResource::TextureView(self.ssr.off_view()),
                     ],
                 );
                 let fx = crate::fx::fx_group(

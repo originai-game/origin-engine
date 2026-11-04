@@ -572,7 +572,7 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   Bavoil 2013) with each pixel's nearest layer exact (hybrid transparency,
   Maule et al. 2013; marked by an alpha-only depth pass into the same
   arena) by default; per-pixel lists as the high tier, one packed
-  atomic arena at group 0 binding 12 with a fixed node budget a pixel,
+  atomic arena at group 0 binding 14 with a fixed node budget a pixel,
   sized against the device's own limits, every fragment also weighted and
   a pixel past its budget resolved whole as weighted and counted (stats,
   `dump_render`). Resolved per MSAA sample before TAA, whose history
@@ -1020,16 +1020,43 @@ S6).
     assets or code changed since as `stale-probe`.
   - A `realtime` probe is drawn again every `interval` ticks.
 - **SSR.** `PostEffects.ssr` (with `ssrMaxDistance`, `ssrThickness`,
-  `ssrSteps`, `ssrFade` and `ssrIntensity`) adds a full-tier pass after
-  the main pass (`ssr.rs`, `ssr.wgsl`). Each glossy pixel marches its
-  reflected ray in view space through the prepass's view depth, then
-  bisects the hit. The prepass's depth target is RG32F, and its second
-  channel carries the gloss and metalness the lit pass shades: the
-  factors times the roughness and metalness maps, a terrain's blended
-  layer roughness, a scattered copy's material. The hit is weighted
-  by Fresnel and gloss² and faded at the screen's edges, towards the
-  maximum distance, and for rays turning back to the camera. Where a ray
-  misses, the probes and environment already drawn remain
+  `ssrSteps`, `ssrFade`, `ssrIntensity`, `ssrMaxRoughness` and
+  `ssrResolution`) is stochastic screen-space reflection after AMD
+  FidelityFX SSSR and its reflection denoiser (MIT,
+  `third_party/fidelityfx-sssr`) and Frostbite's SSR (Stachowiak 2015)
+  (`ssr.rs`, `ssr.wgsl`). One graph pass, `ssr`, between the prepass (and
+  the AO passes) and the main pass, records compute passes: the
+  nearest-depth pyramid of the prepass's view depth; one ray a pixel (or a
+  2x2 block at half resolution, a different pixel each frame) drawn from
+  the GGX distribution of visible normals for the pixel's roughness and
+  marched through the pyramid in (uv, 1/z), with FidelityFX's hit
+  validation (the lobe's grazing rim is never sampled, Stachowiak's
+  bias, and each pixel's frames walk the R2 sequence); the resolve, where
+  each pixel weighs its neighbours' rays by its own lobe over each ray's
+  pdf; FidelityFX's edge-stopping prefilter; and the temporal pass, the
+  denoiser's reprojection (a mirror follows its reflected point's
+  parallax, a rough surface its own motion, a disoccluded history is
+  dropped) and temporal resolve (history clipped to the neighbourhood's
+  box, whose variance is accumulated over eight frames as SVGF's so a
+  rough lobe's sparse tail keeps its spread; up to 32 samples on rough
+  surfaces). A hit reads the previous frame's
+  lit image (TAA's history, or the main pass's copy that screen-space GI
+  reads too), so a frame after a cut has none. The prepass's depth
+  target is RG32F, and its second channel carries the gloss and
+  metalness the lit pass shades: the factors times the roughness and
+  metalness maps, a terrain's blended layer roughness, a scattered copy's
+  material. The result, the reflected radiance premultiplied by the
+  share of the lobe the screen resolved, is a read-only storage texture
+  in the frame group (binding 13, no texture slot), and `frame.wgsl`'s
+  `ssr_reflected` blends it over the radiance the reflection probes, the
+  probe GI's specular and the environment give, before the split sum, in
+  every lit shader that writes the prepass's reflectivity (meshes,
+  physical materials, terrain, grass, impostors, scattered copies,
+  custom lit materials): diffuse light is untouched, and the probes and
+  the sky show where a ray leaves the screen, hits the sky, misses or the
+  surface is rougher than `ssrMaxRoughness`. `Frame.ssr` switches it: on
+  in the main camera's uniform, off in a view's, a probe face's and a
+  planar reflection's. Opaque surfaces of a perspective 3D camera only
   (`RenderCapabilities.ssr` is false only without a renderer).
 - **Screen-space GI (R3).** The lazy resource `og.GlobalIllumination`
   (`enabled`, `intensity`, `maxDistance`, `thickness`, `steps`, `rays`,

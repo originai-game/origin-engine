@@ -610,7 +610,8 @@ fn face_target_sizes(frame: &ProbeFrame) -> Vec<u32> {
 
 /// The frame uniform of a cube face drawn by camera `f` from `at`: the
 /// frame's own `base` with the face camera's matrices, drawn without
-/// clusters (every light), caustics, stylisation or probe.
+/// clusters (every light), caustics, stylisation, probe or screen-space
+/// reflections.
 pub(crate) fn face_uniform(
     base: &FrameUniform,
     f: &crate::frame::CameraFrame,
@@ -635,6 +636,7 @@ pub(crate) fn face_uniform(
     u.caustics = [[0.0; 4]; 6];
     u.stylise = [0.0; 4];
     u.probe = [[0.0; 4]; 3];
+    u.ssr = [0.0; 4];
     u
 }
 

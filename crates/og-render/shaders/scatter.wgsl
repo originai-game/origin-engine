@@ -159,7 +159,10 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // at its intensity, plus the hemisphere light at its own.
   let irradiance = ambient_light(n, in.world) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
+  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
+  // unless blended: then it lies over the surface they were traced for.
+  var prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
+  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let dbg_direct = color;  // the direct light, for the debug views below (fork s68)
   var ibl_scale = material.flags.z * ssao_scale;

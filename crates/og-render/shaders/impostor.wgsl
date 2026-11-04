@@ -258,7 +258,10 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   let irradiance = ambient_light(n, surface.world) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, surface.world, s.roughness * frame.params.y) * frame.params.x;
+  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
+  // unless blended: then it lies over the surface they were traced for.
+  var prefiltered = reflected_light(r, surface.world, s.roughness * frame.params.y) * frame.params.x;
+  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, surface.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
   color += emissive;

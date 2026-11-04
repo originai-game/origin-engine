@@ -443,7 +443,8 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   // at its intensity, plus the hemisphere light at its own.
   let irradiance = ambient_light(n, p) * frame.params.x + hemi_irradiance(n);
   let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
+  // With the screen-space reflections over it (frame.wgsl ssr_reflected).
+  let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, clip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * sky;

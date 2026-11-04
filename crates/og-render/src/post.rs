@@ -34,9 +34,9 @@ const POST_WGSL: &str = concat!(
 const TAA_WGSL: &str = concat!(wgsl!("taa_uniform.wgsl"), wgsl!("taa.wgsl"));
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
-// Screen-space reflections (ssr.rs) and global illumination (ssgi.rs) are
-// more effect passes of the module.
-const FXPOST_WGSL: &str = concat!(wgsl!("fxpost.wgsl"), wgsl!("ssr.wgsl"), wgsl!("ssgi.wgsl"));
+// Screen-space global illumination (ssgi.rs) is more effect passes of the
+// module.
+const FXPOST_WGSL: &str = concat!(wgsl!("fxpost.wgsl"), wgsl!("ssgi.wgsl"));
 /// The full-resolution AO blur by gathers (`fs_ao_blur_gather`), appended
 /// to the effect module ([`fx_source`]).
 const FX_GATHER_WGSL: &str = wgsl!("fxpost_gather.wgsl");
@@ -164,8 +164,6 @@ pub(crate) struct FxPostUniform {
     pub bands: [f32; 4],
     pub bands_near: [f32; 4],
     pub bands_far: [f32; 4],
-    /// Screen-space reflections (`ssr.rs`): `ScreenSpaceReflections::rows`.
-    pub ssr: [[f32; 4]; 2],
     /// The screen blur (`ScreenBlur::rows`).
     pub blur: [[f32; 4]; 2],
     /// Screen-space global illumination
@@ -567,7 +565,6 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_depth_bands", HDR_FORMAT),
-    ("fs_ssr", HDR_FORMAT),
     ("fs_ssgi", crate::ssgi::GI_FORMAT),
     ("fs_gi_blur", crate::ssgi::GI_FORMAT),
     ("fs_gi_upsample", crate::ssgi::GI_FORMAT),

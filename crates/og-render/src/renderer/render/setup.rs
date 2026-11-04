@@ -30,6 +30,7 @@ impl Renderer {
         if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
             self.taa_history = None;
             self.gi_history = None;
+            self.ssr.reset();
         }
         self.stylise_chain = Some(chain);
         let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);
@@ -42,9 +43,32 @@ impl Renderer {
         self.grow_local_shadows(scene);
         self.fit_shelter_layer(scene);
         self.prepare_gi_probes(scene);
+        // The reflections' targets (ssr.rs), before the frame groups that
+        // bind them: new ones make the groups again.
+        if let Some(s) = Self::frame_ssr(scene)
+            && self
+                .ssr
+                .ensure_targets(&self.device, &s, (self.width, self.height))
+        {
+            self.environment = None;
+        }
         self.ensure_environment(scene);
         self.write_sky_params(scene);
         (upscale, grid_offset)
+    }
+
+    /// The frame's screen-space reflections (ssr.rs): a perspective 3D
+    /// camera's only, as an orthographic view reflects nothing it shows.
+    pub(super) fn frame_ssr(scene: &RenderScene) -> Option<ssr::ScreenSpaceReflections> {
+        let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
+        scene
+            .post
+            .ssr
+            .filter(|s| WORLD_3D && perspective && scene.quality.ssr && s.intensity > 0.0)
+            .map(|s| ssr::ScreenSpaceReflections {
+                steps: scene.quality.ssr_steps(s.steps),
+                ..s
+            })
     }
 
     /// The probe GI's frame (gi_probes.rs): off where the quality's GI

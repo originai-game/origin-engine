@@ -92,6 +92,7 @@ struct Frame {
   // material's ambient light stays (0 one flat colour, 1 the PBR ambient),
   // zw unused.
   toon: vec4<f32>,
+  ssr: vec4<f32>,             // screen-space reflections (ssr.rs): x 1 when ssr_tex holds this camera's, y intensity
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's
@@ -110,6 +111,28 @@ fn hemi_irradiance(n: vec3<f32>) -> vec3<f32> {
 @group(0) @binding(4) var prefiltered_map: texture_cube<f32>;
 @group(0) @binding(5) var brdf_lut: texture_2d<f32>;
 @group(0) @binding(6) var ibl_sampler: sampler;
+// Screen-space reflections (ssr.rs): rgb the reflected radiance over the
+// share of the lobe the screen resolved, a that share. A storage texture, so it takes none of the lit pipelines'
+// sixteen texture slots.
+@group(0) @binding(13) var ssr_tex: texture_storage_2d<rgba16float, read>;
+
+// The radiance a surface at `p` drawn at fragment `clip` reflects:
+// `prefiltered` (the probes, the probe GI and the environment) with the
+// main camera's screen-space reflections over it where they resolved the
+// surface's lobe. Only the opaque surface the camera drew at the pixel
+// reads them: one more than a pixel and a half off where `p` projects lies
+// over another (a blended surface), and other cameras have none
+// (`frame.ssr.x` 0).
+fn ssr_reflected(prefiltered: vec3<f32>, p: vec3<f32>, clip: vec2<f32>) -> vec3<f32> {
+  if (frame.ssr.x < 0.5) { return prefiltered; }
+  let size = vec2<i32>(textureDimensions(ssr_tex));
+  let c = frame.view_proj * vec4<f32>(p, 1.0);
+  let px = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5) * vec2<f32>(size);
+  if (c.w <= 0.0 || any(abs(px - clip) > vec2<f32>(1.5))) { return prefiltered; }
+  let s = textureLoad(ssr_tex, clamp(vec2<i32>(clip), vec2<i32>(0), size - 1));
+  let k = frame.ssr.y;
+  return prefiltered * (1.0 - s.a * k) + s.rgb * k;
+}
 
 // How much of the probe's light reaches `p`: 1 inside its box farther
 // than the blend distance from every face, falling to 0 at the faces.

@@ -1,7 +1,7 @@
 // The linked-list mode's per-pixel fragment nodes (oit.rs `Arena`), in
 // the participants' modules after oit.wgsl. Only their `*_oit_list`
 // entry points read it, so the opaque and weighted pipelines keep the
-// frame group without binding 12. The pixel-local storage follows Bevy's
+// frame group without binding 14. The pixel-local storage follows Bevy's
 // OIT (MIT/Apache-2.0) and WebGPU Samples' A-buffer (BSD-3-Clause), with
 // the engine's bounded allocation; notices in third_party/oit/.
 //
@@ -14,7 +14,7 @@
 // fragments in never decides which pixel keeps a fragment: a pixel keeps
 // its first nodes-per-pixel fragments, and one with more is counted once
 // in the header and resolved whole from the weighted targets.
-@group(0) @binding(13) var<storage, read_write> oit_arena: array<atomic<u32>>;
+@group(0) @binding(14) var<storage, read_write> oit_arena: array<atomic<u32>>;
 
 const OIT_HEADER_WORDS: u32 = 4u;
 const OIT_NODE_WORDS: u32 = 7u;

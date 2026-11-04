@@ -576,8 +576,7 @@ impl FrameGraph {
                 FramePass::Contact => {
                     pair(&|_| fx_group(black, self.try_view("ao.pre").unwrap_or(&passes.white)))
                 }
-                FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
-                FramePass::DepthBands => pair(&|_| fx_group(self.view(names.base), black)),
+                FramePass::DepthBands => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::Outline => {
                     pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
                 }
@@ -711,7 +710,6 @@ impl FrameGraph {
             FramePass::GodRaysMask => Some(("fs_godrays_mask", "god.mask")),
             FramePass::GodRaysBlur => Some(("fs_godrays_blur", "god.blur")),
             FramePass::DepthBands => Some(("fs_depth_bands", "hdr.bands")),
-            FramePass::Ssr => Some(("fs_ssr", "hdr.ssr")),
             _ => None,
         };
         if let Some((entry, target)) = effect {

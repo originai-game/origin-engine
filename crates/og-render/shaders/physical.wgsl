@@ -507,7 +507,10 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   let r = reflect(-v, bent);
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  let prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
+  var prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
+  // Screen-space reflections over it (ssr.rs; frame.wgsl ssr_reflected),
+  // not a blended surface's: it lies over the one they were traced for.
+  if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;

@@ -96,7 +96,7 @@ pub(crate) enum Oit {
 }
 
 impl Oit {
-    /// Whether its passes bind the arena (the frame group's binding 12).
+    /// Whether its passes bind the arena (the frame group's binding 14).
     pub fn arena(self) -> bool {
         self != Oit::Weighted
     }
@@ -224,11 +224,11 @@ pub(crate) fn pipeline(
     })
 }
 
-/// The arena's entry in the linked-list frame group: binding 13, after
-/// the frame group's own (`frame.wgsl`, bindings 0 to 12).
+/// The arena's entry in the linked-list frame group: binding 14, after
+/// the frame group's own (`frame.wgsl`, bindings 0 to 13).
 pub(crate) fn arena_layout_entry() -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
-        binding: 13,
+        binding: 14,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -543,7 +543,7 @@ pub(crate) struct OitState {
     pub layers: u32,
     /// The device's arena budget ([`arena_budget`]).
     pub budget: u64,
-    /// The frame group with binding 12, the arena (the linked lists, and
+    /// The frame group with binding 14, the arena (the linked lists, and
     /// the weighted mode's front layer), where the device writes storage
     /// from fragment shaders.
     pub frame_list_layout: Option<wgpu::BindGroupLayout>,

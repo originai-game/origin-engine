@@ -27576,7 +27576,7 @@
         },
         "ssr": {
           "type": "boolean",
-          "description": "Screen-space reflections: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses.",
+          "description": "Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass.",
           "default": false
         },
         "ssrMaxDistance": {
@@ -27599,14 +27599,14 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Steps along each ray (a binary refinement follows the hit).",
+          "description": "The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen.",
           "default": 32,
           "minimum": 4,
           "maximum": 128
         },
         "ssrFade": {
           "type": "number",
-          "description": "The fraction of the screen's edge, and of the march's end, over which a reflection fades into the probes'.",
+          "description": "The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too).",
           "default": 0.15,
           "minimum": 0,
           "maximum": 1,
@@ -27614,11 +27614,25 @@
         },
         "ssrIntensity": {
           "type": "number",
-          "description": "How much of the reflection is laid over the frame; 1 is physically weighted by the surface's Fresnel.",
+          "description": "How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are).",
           "default": 1,
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "ssrMaxRoughness": {
+          "type": "number",
+          "description": "The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. Rays on rough surfaces cost the same as on mirrors, and the denoiser accumulates them over more frames.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "ssrResolution": {
+          "$ref": "#/$defs/AoResolution",
+          "description": "Full: one ray per pixel. Half: one ray per 2x2 block, a different pixel of the block each frame, resolved at full resolution: a quarter of the rays for softer contact detail.",
+          "default": "full"
         },
         "custom": {
           "type": "array",

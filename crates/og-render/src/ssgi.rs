@@ -1,12 +1,12 @@
 //! Screen-space global illumination (`docs/design.md` §2.6): the ambient
 //! occlusion pass's place in the frame, before the main pass
-//! (`FramePass::Ao` drawing `fs_ssgi`, `ssgi.wgsl` after `ssr.wgsl`).
+//! (`FramePass::Ao` drawing `fs_ssgi`, `ssgi.wgsl` after `fxpost.wgsl`).
 //!
 //! Each pixel casts [`ScreenSpaceGlobalIllumination::rays`] rays over the
 //! cosine-weighted hemisphere of its prepass normal and marches each in
-//! view space through the prepass's view depth, as screen-space
-//! reflections march theirs. Where a ray passes behind a surface facing
-//! it by less than [`ScreenSpaceGlobalIllumination::thickness`], the light
+//! view space through the prepass's view depth. Where a ray passes behind
+//! a surface facing it by less than
+//! [`ScreenSpaceGlobalIllumination::thickness`], the light
 //! that surface sent towards the camera on the previous frame is read
 //! from the previous frame's lit image, where the prepass velocity says
 //! the hit pixel was then: TAA's history under TAA (so GI noise, rotated

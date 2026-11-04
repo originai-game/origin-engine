@@ -313,14 +313,9 @@ impl Renderer {
         // pass, a canvas, hatching or halftone on surfaces in the paint or
         // lines pass.
         let ink_depth = scene.stylise.depth_edges();
-        // Screen-space reflections, read from the prepass (ssr.rs).
-        let ssr = post_fx
-            .ssr
-            .filter(|s| scene.quality.ssr && s.intensity > 0.0)
-            .map(|s| ssr::ScreenSpaceReflections {
-                steps: scene.quality.ssr_steps(s.steps),
-                ..s
-            });
+        // Screen-space reflections, traced through the prepass before the
+        // main pass (ssr.rs).
+        let ssr = Self::frame_ssr(scene);
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
@@ -2353,6 +2348,7 @@ impl Renderer {
                 0.0,
                 0.0,
             ],
+            ssr: ssr::ScreenSpaceReflections::frame_row(ssr.as_ref()),
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
@@ -2440,6 +2436,7 @@ impl Renderer {
             (u.view_right, u.view_up) = f.axes();
             u.caustics = [[0.0; 4]; 6];
             u.cluster = self.reflection_clusters[k].params;
+            u.ssr = [0.0; 4];
             self.queue
                 .write_buffer(&self.reflection_buffer[k], 0, bytemuck::bytes_of(&u));
         }
@@ -2678,7 +2675,7 @@ impl Renderer {
         }
         // Screen-space GI reads the previous frame's lit image: TAA's
         // history, or without TAA its own copy of the main pass's image.
-        let gi_copy = gi.is_some() && !taa;
+        let gi_copy = (gi.is_some() || ssr.is_some()) && !taa;
         if gi_copy
             && self
                 .persistent
@@ -2706,10 +2703,25 @@ impl Renderer {
             god_visible,
             sun_fade,
             depth_bands,
-            ssr,
             screen_blur,
             contact: contact_rows,
         });
+        if let Some(s) = &ssr {
+            self.ssr.prepare(
+                &self.device,
+                &self.queue,
+                s,
+                (self.width, self.height),
+                &ssr::SsrCamera {
+                    view: cam.view,
+                    view_proj: cam.view_proj,
+                    near: camera.near,
+                    far: camera.far,
+                },
+                self.frame_index,
+                gi_history_valid,
+            );
+        }
         let slot = (self.frame_index % 2) as usize;
         let taa_blend = taa && self.taa_history.is_some();
         self.write_frame_taa_uniform(temporal, prepass, &cam);
@@ -2781,10 +2793,10 @@ impl Renderer {
         if volumetric_fog.is_some() && self.volumetric.method == VolumetricMethod::Froxel {
             passes.push(FramePass::Volumetric);
         }
-        passes.push(FramePass::Main);
         if ssr.is_some() {
             passes.push(FramePass::Ssr);
         }
+        passes.push(FramePass::Main);
         if depth_bands.is_some() {
             passes.push(FramePass::DepthBands);
         }
@@ -3022,6 +3034,7 @@ impl Renderer {
                     lightdir: lightdir_on,
                     gtao,
                     gi: gi.is_some(),
+                    ssr: ssr.is_some(),
                     bent,
                     water: !scene_water.is_empty() || fluids_3d || particle_frame.distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
@@ -3373,7 +3386,7 @@ impl Renderer {
         // irradiance and prefiltered cubes; per due capture face, the
         // frame's own cubes under the face camera's uniform.
         // With the linked lists (oit.rs) the OIT pass binds the frame's and
-        // its probes' groups again with the arena at binding 12.
+        // its probes' groups again with the arena at binding 14.
         let oit_arena = self
             .oit
             .frame_list_layout
@@ -3382,6 +3395,9 @@ impl Renderer {
             .filter(|_| oit_mode.is_some_and(oit::Oit::arena));
         let (probe_groups, face_groups, oit_frame_group, oit_probe_groups) = {
             let ibl = self.ibl.views();
+            // The reflections' read (frame.wgsl ssr_tex), whose rows the
+            // uniforms switch: on in the main camera's and its probes'.
+            let ssr_view = self.ssr.frame_view();
             let group_in = |layout: &wgpu::BindGroupLayout,
                             arena: Option<&wgpu::Buffer>,
                             label: &str,
@@ -3402,6 +3418,7 @@ impl Renderer {
                     self.lightmaps.probe_buffer.as_entire_binding(),
                     self.ltc.as_entire_binding(),
                     self.caustic_grid.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(ssr_view),
                 ];
                 entries.extend(arena.map(|a| a.as_entire_binding()));
                 bind_group(&self.device, label, layout, &entries)
@@ -3436,6 +3453,7 @@ impl Renderer {
                         self.lightmaps.probe_buffer.as_entire_binding(),
                         self.ltc.as_entire_binding(),
                         self.caustic_grid.as_entire_binding(),
+                        wgpu::BindingResource::TextureView(ssr_view),
                     ],
                 )
             };
@@ -4702,6 +4720,7 @@ impl Renderer {
                                 self.lightmaps.probe_buffer.as_entire_binding(),
                                 self.ltc.as_entire_binding(),
                                 self.caustic_grid.as_entire_binding(),
+                                wgpu::BindingResource::TextureView(self.ssr.off_view()),
                             ],
                         )
                     };
@@ -4902,6 +4921,23 @@ impl Renderer {
                             write,
                         ],
                         self.history_size(),
+                    );
+                }
+                FramePass::Ssr => {
+                    // The previous frame's lit image: TAA's history, or
+                    // without TAA the main pass's copy (`gi-write`).
+                    let prev = match (&self.persistent.history, &self.persistent.gi) {
+                        (Some(h), _) if taa => &h[1 - slot],
+                        (_, Some((_, g))) if !taa => &g[1 - slot],
+                        _ => &self.post.black,
+                    };
+                    self.ssr.encode(
+                        &self.device,
+                        &mut encoder,
+                        self.graph.view("lindepth"),
+                        self.graph.view("gbuffer"),
+                        prev,
+                        self.frame_index,
                     );
                 }
                 post_pass => {

@@ -53,7 +53,9 @@ pub(crate) enum FramePass {
     /// Opaque meshes, sky, transparent meshes, particles, strips, sprites
     /// and text into the HDR target.
     Main,
-    /// Screen-space reflections over the lit image (`ssr.rs`).
+    /// Screen-space reflections (`ssr.rs`): compute passes after the
+    /// prepass and the AO into the renderer's own targets (the imported
+    /// `ssr`), which the main pass's lit shaders read.
     Ssr,
     /// Glowing sprites into the glow buffer.
     Glow,
@@ -312,6 +314,10 @@ pub(crate) struct GraphConfig {
     /// without TAA `gi-read`, which the main pass's copy into `gi-write`
     /// fills for the next frame).
     pub gi: bool,
+    /// Screen-space reflections (`ssr.rs`) trace before the main pass and
+    /// read the previous frame's lit image as the GI does (TAA's history,
+    /// or `gi-read`); the main pass reads their result (imported `ssr`).
+    pub ssr: bool,
     /// GTAO writes its bent normals beside the AO for the probe GI
     /// (fxpost.wgsl `fs_gtao_bent`): the AO targets hold
     /// [`crate::ssgi::GI_FORMAT`], blurred over all four channels.
@@ -368,9 +374,7 @@ pub(super) fn bloom_name(i: u32) -> String {
 /// pass (and outlines), after TAA (`None`: the history; its sharpening:
 /// `hdr.sharp`), after depth of field and motion blur.
 pub(super) struct LitNames {
-    /// The lit image after the main pass and screen-space reflections.
-    pub(super) base: &'static str,
-    /// The lit image after the main pass, reflections and the depth bands.
+    /// The lit image after the main pass and the depth bands.
     pub(super) lit: &'static str,
     pub(super) main: &'static str,
     /// `None` when TAA writes the history and nothing sharpens it.
@@ -398,15 +402,10 @@ pub(crate) const CUSTOM_POST_NAMES: [&str; crate::post_custom::MAX_CUSTOM_POSTS]
 
 pub(super) fn lit_names(passes: &[FramePass]) -> LitNames {
     let has = |p| passes.contains(&p);
-    let base = if has(FramePass::Ssr) {
-        "hdr.ssr"
-    } else {
-        "hdr"
-    };
     let lit = if has(FramePass::DepthBands) {
         "hdr.bands"
     } else {
-        base
+        "hdr"
     };
     let main = if has(FramePass::OutlineWide) {
         "hdr.wide"
@@ -444,7 +443,6 @@ pub(super) fn lit_names(passes: &[FramePass]) -> LitNames {
         n => Some(CUSTOM_POST_NAMES[n - 1]),
     };
     LitNames {
-        base,
         lit,
         main,
         aa,
@@ -484,7 +482,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 h,
                 HDR_FORMAT,
                 1,
-                if cfg.water || cfg.transmission || (cfg.gi && !cfg.taa) {
+                if cfg.water || cfg.transmission || ((cfg.gi || cfg.ssr) && !cfg.taa) {
                     attach_bind | wgpu::TextureUsages::COPY_SRC
                 } else {
                     attach_bind
@@ -540,11 +538,15 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if cfg.taa {
         g.import("history-read").import("history-write");
     }
+    if cfg.ssr {
+        g.import("ssr");
+    }
     if smaa_t2x {
         g.import("smaa-read").import("smaa-write");
     }
-    // The GI's own copy of the lit image when there is no TAA history.
-    let gi_copy = cfg.gi && !cfg.taa;
+    // The GI's and the reflections' own copy of the lit image when there is
+    // no TAA history.
+    let gi_copy = (cfg.gi || cfg.ssr) && !cfg.taa;
     if gi_copy {
         g.import("gi-read").import("gi-write");
     }
@@ -682,9 +684,6 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     }
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, attach_bind));
-    }
-    if has(FramePass::Ssr) {
-        g.transient("hdr.ssr", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
     if has(FramePass::OutlineSeed) {
         g.transient("outline-jfa.a", desc(w, h, JFA_FORMAT, 1, attach_bind))
@@ -897,6 +896,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if has(FramePass::Fluid3d) {
                     reads.extend(["fluid.smooth", "fluid.thick"]);
                 }
+                if has(FramePass::Ssr) {
+                    reads.push("ssr");
+                }
                 let mut writes = vec!["hdr", "depth"];
                 if msaa {
                     writes.push("hdr-msaa");
@@ -913,8 +915,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &reads, &writes)
             }
             FramePass::Glow => g.pass(name, &[], &["glow"]),
-            FramePass::Ssr => g.pass(name, &["hdr", "lindepth", "gbuffer"], &["hdr.ssr"]),
-            FramePass::DepthBands => g.pass(name, &[names.base, "lindepth"], &["hdr.bands"]),
+            // Into the renderer's own targets (`ssr.rs`), the imported `ssr`.
+            FramePass::Ssr => g.pass(
+                name,
+                &[
+                    "lindepth",
+                    "gbuffer",
+                    if cfg.taa { "history-read" } else { "gi-read" },
+                ],
+                &["ssr"],
+            ),
+            FramePass::DepthBands => g.pass(name, &["hdr", "lindepth"], &["hdr.bands"]),
             FramePass::Outline => g.pass(
                 name,
                 &[names.lit, "gbuffer", "lindepth", "outline-id"],
@@ -1111,6 +1122,7 @@ mod tests {
             lightdir: false,
             gtao: true,
             gi,
+            ssr: false,
             bent: false,
             water: false,
             water_ao: false,

@@ -404,9 +404,12 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  let prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos);
+  var prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
+  // Screen-space reflections over it (ssr.rs), in the opaque main pass.
+  // (Not a blended surface's: it lies over the one they were traced for.)
+  if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  var specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
+  var specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
   if (EFFECTS && material.toon.x > 0.5 && frame.toon.y < 1.0) {
     // Toon ambient (frame.toon.y 0): one flat colour, the light from above
     // and below averaged (MToon's equalised ambient), and the environment's

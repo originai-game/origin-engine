@@ -956,6 +956,9 @@ impl Renderer {
             self.lightmaps.probe_buffer.as_entire_binding(),
             self.ltc.as_entire_binding(),
             self.caustic_grid.as_entire_binding(),
+            // The main camera's reflections (ssr.rs; `Frame.ssr` switches
+            // them, off in the planar reflections' uniforms).
+            wgpu::BindingResource::TextureView(self.ssr.frame_view()),
         ];
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let reflection_group = (0..self.reflection_buffer.len()).map(|k| {

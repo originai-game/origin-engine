@@ -1,5 +1,5 @@
-// Screen-space global illumination (ssgi.rs), after fxpost.wgsl and
-// ssr.wgsl: in the AO pass's place, each pixel casts gi1.x rays over the
+// Screen-space global illumination (ssgi.rs), after fxpost.wgsl: in the
+// AO pass's place, each pixel casts gi1.x rays over the
 // cosine-weighted hemisphere of its normal, marches each through the
 // prepass's view depth and, where one passes just behind a surface facing
 // it, reads the light that surface sent last frame from tex_a (TAA's
@@ -10,6 +10,13 @@
 // fs_gi_blur and fs_gi_upsample then filter as the AO's blur does.
 
 const GI_GOLDEN: f32 = 0.61803398875;
+
+// A view-space point's screen uv.
+fn gi_uv(q: vec3<f32>) -> vec2<f32> {
+  let c = fxp.proj * vec4<f32>(q, 1.0);
+  let ndc = c.xy / c.w;
+  return vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+}
 const GI_PLASTIC: f32 = 0.75487766625;
 
 // A direction about view-space normal `n` with density cos(theta) / pi,
@@ -41,7 +48,7 @@ fn gi_ray(origin: vec3<f32>, dir: vec3<f32>, jitter: f32) -> vec4<f32> {
     let t = k * k * max_distance;
     let q = origin + dir * t;
     if (q.z > -fxp.cam.z) { break; }
-    let s = ssr_uv(q);
+    let s = gi_uv(q);
     if (any(s < vec2<f32>(0.0)) || any(s > vec2<f32>(1.0))) { break; }
     let scene = depth_uv(s);
     let behind = -q.z - scene;

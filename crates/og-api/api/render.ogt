@@ -1183,7 +1183,7 @@ module render {
       unit hz
     }
     field shakeSeed u32 "The shake's noise seed."
-    field ssr bool "Screen-space reflections: smooth surfaces reflect what the frame already drew by marching the depth-normal prepass along the reflected ray, faded by roughness and at the screen's edges, over the reflection probes and the environment where the ray misses."
+    field ssr bool "Screen-space reflections, stochastic and denoised (after AMD FidelityFX SSSR and Frostbite's SSR): each pixel up to ssrMaxRoughness casts one ray drawn from its GGX lobe, marched through a hierarchical depth pyramid of the depth-normal prepass; neighbours' rays are reused and the result accumulated over frames, so mirrors stay sharp and rough metal blurs as its lobe does. A hit reflects the previous frame's lit image (a frame after a cut has none yet). Lit surfaces blend it over the reflection probes', the probe GI's and the environment's reflection by how much of the lobe the screen resolved: where a ray leaves the screen, hits the sky or misses, those show. Opaque surfaces of a perspective 3D camera only; it turns on the depth-normal prepass."
     field ssrMaxDistance f32 "How far a reflected ray marches, in world units." {
       default 20
       min 0
@@ -1196,23 +1196,31 @@ module render {
       unit m
       tunable true
     }
-    field ssrSteps u32 "Steps along each ray (a binary refinement follows the hit)." {
+    field ssrSteps u32 "The hierarchical march's iterations along each ray: each crosses a cell of the depth pyramid's current level, so 32 reaches across the screen." {
       default 32
       min 4
       max 128
     }
-    field ssrFade f32 "The fraction of the screen's edge, and of the march's end, over which a reflection fades into the probes'." {
+    field ssrFade f32 "The fraction of the screen's edge over which a reflection fades into the probes' (the last fifth of ssrMaxDistance fades too)." {
       default 0.15
       min 0
       max 1
       unit ratio
     }
-    field ssrIntensity f32 "How much of the reflection is laid over the frame; 1 is physically weighted by the surface's Fresnel." {
+    field ssrIntensity f32 "How much of the reflection replaces the probes' and the environment's where it resolved; 1 is physical (weighted by the surface's Fresnel and lobe as the probes' are)." {
       default 1
       min 0
       max 1
       tunable true
     }
+    field ssrMaxRoughness f32 "The roughest surface traced: rougher ones keep the probes' reflection, and the last quarter below it fades into them. Rays on rough surfaces cost the same as on mirrors, and the denoiser accumulates them over more frames." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field ssrResolution AoResolution "Full: one ray per pixel. Half: one ray per 2x2 block, a different pixel of the block each frame, resolved at full resolution: a quarter of the rays for softer contact detail."
     field custom List.Post.8 "The custom post passes, in order (og.load.post, `type post` assets): at most RenderCapabilities.maxCustomPosts (8, og-render's MAX_CUSTOM_POSTS). Each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (any pass turns the prepass on). Write the whole list: `post.custom = [grade, crt]`, `post.custom = []`; a look gives it on one line (`custom \"post/tint.ogt\" \"post/crt.ogt\"`). A 0 in it is skipped. Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped."
   }
 

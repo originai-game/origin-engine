@@ -315,6 +315,9 @@ impl Renderer {
             // A sea's caustics (W2, water.rs `Caustics`): a uniform, as the
             // storage buffers a lit pipeline may bind are spent.
             water::caustic_layout_entry(),
+            // The main camera's screen-space reflections (ssr.rs): a
+            // read-only storage texture, so it takes no texture slot.
+            ssr::SsrRenderer::lit_layout_entry(13),
         ];
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
@@ -967,6 +970,7 @@ impl Renderer {
         );
 
         let lost = LostFlag::watch(&device);
+        let ssr = ssr::SsrRenderer::new(&device);
         Ok(Renderer {
             device,
             queue,
@@ -1125,6 +1129,7 @@ impl Renderer {
             wind_field,
             trample,
             gi_history: None,
+            ssr,
             drawn_origin: Vec3::ZERO,
             stylise_chain: None,
             sprite_arrays: None,

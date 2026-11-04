@@ -129,6 +129,12 @@ pub fn probe_scene(probe: bool) -> RenderScene {
     scene
 }
 
+/// The frames a screen-space reflection scene is drawn for before it is
+/// read: its rays read the previous frame's lit image, and the denoiser
+/// accumulates them (`og_render`'s `ssr.rs`), so the first frame reflects
+/// nothing and the reflection settles over the next few.
+pub const SSR_FRAMES: u32 = 16;
+
 /// `ssr-wet-floor` (module docs); `ssr` false turns the reflections off.
 pub fn ssr_scene(ssr: bool) -> RenderScene {
     let mut scene = RenderScene::new();
@@ -181,6 +187,19 @@ pub fn ssr_scene(ssr: bool) -> RenderScene {
             steps: 48,
             ..Default::default()
         });
+    }
+    scene
+}
+
+/// [`ssr_scene`] with SSR on and its floor a pale metal of `roughness`,
+/// traced up to `max_roughness`: the glossy and rough reflections of the
+/// lit slab and the red sphere.
+pub fn ssr_metal_scene(roughness: f32, max_roughness: f32) -> RenderScene {
+    let mut scene = ssr_scene(true);
+    let floor = scene.instances[0].material;
+    scene.set_standard_material(floor, mat(Vec3::splat(0.9), 1.0, roughness));
+    if let Some(ssr) = scene.post.ssr.as_mut() {
+        ssr.max_roughness = max_roughness;
     }
     scene
 }

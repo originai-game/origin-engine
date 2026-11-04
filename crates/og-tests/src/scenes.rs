@@ -1154,6 +1154,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "ssr-wet-floor" => |g, _| {
             g.scene = crate::depth_render_scenes::ssr_scene(true);
+            g.frames = crate::depth_render_scenes::SSR_FRAMES;
             Ok(())
         },
         // Reflection probes picked per instance (two rooms sharing a
