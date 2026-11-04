@@ -386,6 +386,10 @@ export function showcaseNext(go: (screen: string) => void, screen: string): void
   // button that names it, and at large text it steps aside (the Gallery still leads to every page; og-ui's square
   // button doubles past the Gallery's height there).
   const vp = og.ui.frameViewport();
+  // A document page on a phone keeps its chrome to the one row above its panel: at large text the two buttons are
+  // wider than the screen, so the next page steps aside there too.
+  const phonePage = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  if (phonePage && chromeInDocument(screen) && (og.ui.frameTheme().textScale ?? 1) >= 1.5) return;
   if (CHROME[screen]) {
     if ((og.ui.frameTheme().textScale ?? 1) >= 1.5) return;
     if (vp.breakpoint !== "desktop") {

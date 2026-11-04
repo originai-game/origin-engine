@@ -82,6 +82,8 @@ column Screen {
       text "Leaderboard"
       step xl2
       heading true
+      width grow
+      fitMin lg
       at phone {
         step xl
       }
