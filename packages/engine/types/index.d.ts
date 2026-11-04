@@ -5710,7 +5710,7 @@ export interface RenderOptions {
    */
   readonly antialias?: Antialias;
   /**
-   * Request extended-range HDR surface output. False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last.
+   * Request extended-range HDR surface output. Opt-in; not yet accepted on a real HDR display (acceptance belongs to the compatibility phase). False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last.
    *
    * @default false
    */

@@ -1,5 +1,10 @@
 # FidelityFX LPM HDR display mapper
 
+HDR output is opt-in and **not yet accepted on a real HDR display**.
+Real-display acceptance is deferred to the compatibility phase. The Metal/XDR
+attempt negotiated HDR but remained occluded, with no successful presents.
+Unchanged SDR frames are the landing condition, not evidence of HDR acceptance.
+
 Source: AMD GPUOpen, https://github.com/GPUOpen-Effects/FidelityFX-LPM,
 revision `ed6ecd5b8963d2ec24603809b90ecfa00a1c3614`.
 `ffx_lpm.h` is retained verbatim, with its MIT copyright/permission notice.

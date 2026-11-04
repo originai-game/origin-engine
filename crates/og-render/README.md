@@ -714,6 +714,13 @@ native host (`og-host-node`) links when the variable is set.
 
 ## Testing
 
+**HDR output is opt-in and not yet accepted on a real HDR display.**
+Real-display acceptance is deferred to the compatibility phase (owner decision,
+2026-11-04). The native Metal/XDR attempt negotiated HDR but remained occluded,
+with zero successful presents. Neither that negotiation nor SDR-preview capture
+establishes display acceptance. Landing the feature requires unchanged SDR
+reference frames; it does not remove the outstanding HDR display validation.
+
 Native HDR acceptance needs a real surface: neither `og run`'s shared-frame
 preview nor the headless reference harness configures an HDR swapchain.
 The opt-in `og-tests` surface example opens a native window and calls
