@@ -71,6 +71,8 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
         gap: u(6),
         cross: "center",
         padding: xy(u(12), u(touch ? 10 : 6)),
+        // A whole touch target under a finger, whatever the style's type: kawaii's tabs laid out 41 px tall.
+        height: { kind: "fit", min: touch ? 44 : 0 },
         radius: 999,
         semantics: { role: "tab", name: `${c.name ?? k}${unread > 0 ? `, ${unread} unread` : ""}${mention ? ", mentioned" : ""}`, selected: on },
       }, () => {
