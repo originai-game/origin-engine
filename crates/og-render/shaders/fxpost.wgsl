@@ -679,21 +679,24 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
 // the lights' masks go to gba (1 lit, 0 hidden), which the lit shaders
 // multiply into their map shadows (lighting.wgsl `local_shadow`).
 //
-// What makes a hit, all in linear view depth: the ray crosses a surface,
-// in front of it at one sample and behind it at the next with the depth
-// buffer continuous between the two (it changed by no more than the
-// thickness and the ray's own depth change), or it lies behind it by less
-// than the thickness, a few centimetres scaled by the view depth. A
-// silhouette in front of a far surface is a jump in the depth buffer, and
-// the thin edge of a caster's silhouette (a box's top seen at a grazing
-// angle, with the floor behind it) is not crossed: neither counts. Once
-// in, the ray is inside the occluder while the depth buffer stays on that
-// surface, so a solid caster hides the light fully. A sample on the
-// receiver's own plane is never its occluder (a grazing wall's depth
-// changes by more than the thickness per pixel). The steps grow quadratically from a one-pixel start along
+// What makes a hit, all in linear view depth: the ray lies behind the
+// depth buffer by less than a thin thickness (1 cm per metre of view
+// depth), or by less than a solid one (CONTACT_SOLID, plus the ray's own
+// depth change over the step) where the surface it is behind is no
+// silhouette: the depth buffer two pixels away on every side also lies in
+// front of the ray. Near a silhouette (a box's top-back edge, a ball's
+// rim) the ray may be passing behind the caster rather than through it,
+// what lies beyond the edge shows that, and only the thin test holds; a
+// solid caster's interior takes the deep one, so it hides the light fully.
+// A sample on the receiver's own surface (its plane and its normal) is
+// never its occluder: a grazing wall's depth changes by more than the
+// thickness per pixel. A ball's underside, near the floor's plane but
+// facing it, still is. The steps grow quadratically from a one-pixel start along
 // the ray, so the centimetres beside a caster are sampled densely, and a
 // hit darkens by how far behind it lies over a pixel's depth (a ramp, not
 // a step), so the per-pixel jitter leaves no speckle.
+const CONTACT_SOLID: f32 = 0.25;
+
 @fragment
 fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -723,8 +726,6 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
     let len = min(max(params.x * d0, params.y), 0.9 * dist);
     var occluded = 0.0;
     var prev = start;
-    var prev_surface = d0;
-    var prev_behind = -1.0;
     var inside = false;
     for (var k = 0; k < steps; k++) {
       let f = (f32(k) + jitter) / f32(steps);
@@ -738,15 +739,23 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
       let qd = -q.z;
       let surface = depth_tap(quv, size, size_f);
       let behind = qd - surface;
-      let thickness = params.z * qd + pixel;
-      let same = abs(surface - prev_surface) < thickness + abs(q.z - prev.z);
-      let own = abs(dot(view_pos(quv, surface) - p, n)) < 2.0 * pixel;
-      let crossed = behind < thickness || (prev_behind <= 0.0 && same);
-      inside = !own && behind > 0.0 && (crossed || (inside && same));
+      let thin = params.z * qd + pixel;
+      var hit = behind > 0.0 && behind < thin;
+      if (behind > 0.0 && !hit && behind < CONTACT_SOLID * qd + abs(q.z - prev.z)) {
+        let e = 2.0 / size_f;
+        hit = depth_tap(quv + vec2<f32>(e.x, 0.0), size, size_f) < qd
+          && depth_tap(quv - vec2<f32>(e.x, 0.0), size, size_f) < qd
+          && depth_tap(quv + vec2<f32>(0.0, e.y), size, size_f) < qd
+          && depth_tap(quv - vec2<f32>(0.0, e.y), size, size_f) < qd;
+      }
       prev = q;
-      prev_surface = surface;
-      prev_behind = behind;
-      if (inside) {
+      if (hit) {
+        let at = clamp(vec2<i32>(quv * size_f), vec2<i32>(0), size - 1);
+        let sn = normalize((fxp.view * vec4<f32>(world_normal(at), 0.0)).xyz);
+        let own = abs(dot(view_pos(quv, surface) - p, n)) < 2.0 * pixel && dot(sn, n) > 0.9;
+        hit = !own;
+      }
+      if (hit) {
         let ramp = smoothstep(0.0, 1.0 / pixels_per_unit(qd), behind);
         // Fades out over the ray's last part, so its reach has no edge.
         occluded = max(occluded, ramp * (1.0 - smoothstep(0.6, 1.0, f)));

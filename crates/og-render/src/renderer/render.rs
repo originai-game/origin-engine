@@ -4477,10 +4477,11 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
 /// 8 cm per metre of view depth and at least 25 cm long, so a floor pixel
 /// a few centimetres beside a block reaches it under a steep light (the
 /// local maps' bias leaves that gap: 10 cm left an 8 px lit strip beside
-/// baked-cornell's short block); a thickness of 1 cm per metre of view
-/// depth (and a pixel) in linear view depth, past which only a continuous
-/// crossing counts (the shader's hit test; a quarter of the view depth
-/// let a block's silhouette shadow the wall behind it); 16 steps.
+/// baked-cornell's short block); a thin thickness of 1 cm per metre of
+/// view depth (and a pixel), past which a hit needs a surface that is no
+/// silhouette (the shader's CONTACT_SOLID test: a quarter of the view
+/// depth everywhere let a block's silhouette shadow the wall behind it, 1
+/// cm per metre alone left a solid caster's leak at 0.17); 16 steps.
 const CONTACT_PARAMS: [f32; 4] = [0.08, 0.25, 0.01, 16.0];
 
 /// Whether an instance was drawn elsewhere in the previous frame
