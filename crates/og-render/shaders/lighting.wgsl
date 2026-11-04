@@ -206,9 +206,16 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   }
   if (blockers < 0.5) { return 1.0; }
   let blocker = sum / blockers;
-  // At least the tent's reach (pcf_tent: 1.5 texels each side, a 4x4
-  // footprint), so a soft sun is never sharper than the hard one at contact.
-  let penumbra = clamp(softness * (ref_depth - blocker) * depth_range / texel, 1.5, PCSS_MAX_TEXELS);
+  // The light's penumbra (its disc's radius in texels) convolved with the
+  // hard sun's own filter, as a soft shadow is the hard one blurred by the
+  // light: their variances add. pcf_tent averages three bilinear PCFs a
+  // texel apart per axis (variance 2/3 beyond the bilinear each tap here
+  // already takes), the disc of radius r has r² / 4, so the disc that
+  // carries both has r² + 8/3. A soft sun is then never sharper than the
+  // hard one at contact (1.63 texels there) and every edge is the light's
+  // width on top of the map's filter, not the larger of the two.
+  let disc = softness * (ref_depth - blocker) * depth_range / texel;
+  let penumbra = min(sqrt(disc * disc + 8.0 / 3.0), PCSS_MAX_TEXELS);
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, penumbra, turn);
