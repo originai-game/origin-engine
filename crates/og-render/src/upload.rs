@@ -24,10 +24,17 @@ pub(crate) const BLOCK: usize = 4096;
 /// A buffer's contents as last written, for writing only the changes.
 #[derive(Default)]
 pub(crate) struct DirtyUpload {
+    /// What the buffer holds from its start, as far as any frame wrote it:
+    /// a shorter frame leaves the bytes past its end as they were, and a
+    /// later longer one compares against them.
     held: Vec<u8>,
     /// Per [`BLOCK`] of `held`, whether it is what the buffer holds (false
     /// until the block is written, and for every block after the buffer is
-    /// replaced or the length changed).
+    /// replaced). Neither shrinks with a shorter frame: a shadow layer the
+    /// static cache keeps (shadow_cache.rs) appends no copies, so a still
+    /// scene's records shorten without changing, and when the layer is
+    /// drawn again its copies come back at the same offsets, which the
+    /// buffer still holds.
     known: Vec<bool>,
 }
 
@@ -62,11 +69,15 @@ impl DirtyUpload {
     /// The block runs [`DirtyUpload::write`] writes, taken as written:
     /// `held` and `known` describe the buffer after them.
     fn runs(&mut self, bytes: &[u8], drawn: &[Range<usize>]) -> Vec<(usize, usize)> {
-        if self.held.len() != bytes.len() {
-            self.held.clear();
+        let old = self.held.len();
+        if bytes.len() > old {
             self.held.resize(bytes.len(), 0);
-            self.known.clear();
             self.known.resize(bytes.len().div_ceil(BLOCK), false);
+            // A block the old length ended in holds bytes past it that
+            // `held` never saw.
+            if !old.is_multiple_of(BLOCK) {
+                self.known[old / BLOCK] = false;
+            }
         }
         let mut runs: Vec<(usize, usize)> = Vec::new();
         // Two ranges may end and start in one block: it is seen once.
@@ -151,11 +162,51 @@ mod tests {
             up.runs(&bytes, std::slice::from_ref(&(0..BLOCK * 6))),
             vec![(0, BLOCK), (3 * BLOCK, 4 * BLOCK)]
         );
-        // Another length: every drawn block again.
+        // Longer: the buffer still holds block 5; only the new one.
         bytes.push(7);
         assert_eq!(
             up.runs(&bytes, std::slice::from_ref(&(5 * BLOCK..bytes.len()))),
-            vec![(5 * BLOCK, bytes.len())]
+            vec![(6 * BLOCK, bytes.len())]
+        );
+        // Longer again, from a partial block: the block it ended in is
+        // written whole (the buffer never held its new bytes).
+        bytes.extend_from_slice(&[7, 7, 7, 7]);
+        assert_eq!(
+            up.runs(&bytes, std::slice::from_ref(&(5 * BLOCK..bytes.len()))),
+            vec![(6 * BLOCK, bytes.len())]
+        );
+    }
+
+    /// A shorter frame of the same records (a still scene whose shadow
+    /// layers the static cache keeps, so their lists append no copies)
+    /// writes nothing; a changed record in it is still written.
+    #[test]
+    fn a_shorter_frame_of_the_same_records_writes_nothing() {
+        let mut bytes: Vec<u8> = (0..BLOCK * 5 + 64).map(|i| (i % 251) as u8).collect();
+        let mut up = DirtyUpload::default();
+        assert_eq!(
+            up.runs(&bytes, std::slice::from_ref(&(0..bytes.len()))),
+            vec![(0, bytes.len())]
+        );
+        bytes.truncate(BLOCK * 3 + 100);
+        assert!(
+            up.runs(&bytes, std::slice::from_ref(&(0..bytes.len())))
+                .is_empty()
+        );
+        bytes[BLOCK * 3 + 10] ^= 1;
+        assert_eq!(
+            up.runs(&bytes, std::slice::from_ref(&(0..bytes.len()))),
+            vec![(BLOCK * 3, bytes.len())]
+        );
+        // The layer drawn again: its records return at the offsets the
+        // buffer still holds them (block 3 as last written, its tail as
+        // the first frame left it); only the changed block 4 is written.
+        let mut again: Vec<u8> = (0..BLOCK * 5 + 64).map(|i| (i % 251) as u8).collect();
+        again[BLOCK * 3 + 10] ^= 1;
+        again[BLOCK * 4 + 5] ^= 1;
+        assert_eq!(
+            up.runs(&again, std::slice::from_ref(&(0..again.len()))),
+            vec![(BLOCK * 4, BLOCK * 5)]
         );
     }
 }
