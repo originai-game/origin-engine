@@ -293,6 +293,26 @@ dress "Slot.frame[rarity=mythic]" {
   effect outerGlow 12 "#ef444480"
   material hologram 0.5 2
 }
+dress "Inventory.item[selected]" {
+  stroke 1 primary inside
+}
+dress "Inventory.item[rarity=rare]" {
+  stroke 2 "#3d8bfd" inside
+}
+dress "Inventory.item[rarity=epic]" {
+  stroke 2 "#a855f7" inside
+  effect outerGlow 8 "#a855f766"
+}
+dress "Inventory.item[rarity=legendary]" {
+  stroke 2 "#f59e0b" inside
+  effect outerGlow 10 "#f59e0b80"
+  material shine 0.6
+}
+dress "Inventory.item[rarity=mythic]" {
+  stroke 2 "#ef4444" inside
+  effect outerGlow 12 "#ef444480"
+  material hologram 0.5 2
+}
 dress "Field.frame" {
   slice 347 191 142 40 20 12 20 12 authored
   tone 0.991 0.989 0.977 1

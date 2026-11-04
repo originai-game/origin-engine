@@ -340,3 +340,6 @@ dress "Tabs.tab[selected]" {
 dress "Slot.frame[selected]" {
   stroke 3 primary inside
 }
+dress "Inventory.item[selected]" {
+  stroke 3 primary inside
+}

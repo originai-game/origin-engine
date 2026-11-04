@@ -311,3 +311,6 @@ dress "Slot.frame[selected]" {
 dress "Slider.track" {
   segments 10 2 ramp primaryActive primary
 }
+dress "Inventory.item[selected]" {
+  stroke 2 primary inside
+}

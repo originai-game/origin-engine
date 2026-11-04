@@ -1618,6 +1618,15 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
             None => blocks.push((sel.clone(), lines.clone())),
         }
     }
+    // A bag's cells (`Inventory.item`) are slots: they take the slot's
+    // selected and tier marks. A sliced frame stays the slot's (a bag cell
+    // draws no background for art to sit on).
+    let bag: Vec<(String, Vec<String>)> = blocks
+        .iter()
+        .filter(|(s, l)| s.starts_with("Slot.frame") && !l.iter().any(|l| l.starts_with("slice ")))
+        .map(|(s, l)| (s.replacen("Slot.frame", "Inventory.item", 1), l.clone()))
+        .collect();
+    blocks.extend(bag);
     let mut out = String::new();
     for (sel, lines) in blocks {
         out.push_str(&format!("dress \"{sel}\" {{\n"));

@@ -420,3 +420,33 @@ dress "Button.base[danger]" {
   fill "#8a1a1a"
   stroke 1 "#e84040" inside
 }
+dress "Inventory.item" {
+  stroke 1 lineStrong inside
+  effect innerShadow 0 2 4 0 "#000000a6"
+}
+dress "Inventory.item[rarity=common]" {
+  stroke 2 "#9c6b3c" inside
+}
+dress "Inventory.item[rarity=uncommon]" {
+  stroke 2 "#6fbf55" inside
+}
+dress "Inventory.item[rarity=rare]" {
+  stroke 2 "#5b9be8" inside
+}
+dress "Inventory.item[rarity=epic]" {
+  stroke 2 "#b77ae8" inside
+  effect outerGlow 8 "#b77ae866"
+}
+dress "Inventory.item[rarity=legendary]" {
+  stroke 2 "#e8601a" inside
+  effect outerGlow 10 "#e8601a80"
+  material shine 0.6
+}
+dress "Inventory.item[rarity=mythic]" {
+  stroke 2 "#e8505f" inside
+  effect outerGlow 12 "#e8505f80"
+}
+dress "Inventory.item[selected]" {
+  stroke 1.5 primary inside
+  effect outerGlow 8 "#e8a33a59"
+}

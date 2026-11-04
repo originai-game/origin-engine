@@ -110,7 +110,10 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
   const base = tier ?? role("lineStrong");
   const r = Math.max(2, Math.round(frame().t.small));
   // The well: the tier's colour rising from the foot, an edge in it (two px once epic), so the tier reads at a glance.
+  // Dressable: a style that dresses the cell (`Inventory.item[rarity=…][selected]`, a pack's slot marks) draws its
+  // strokes and effects in place of these, one rim per cell; the well's fills stay unless it sets its own.
   kit.setDraw({
+    dressable: true,
     shape: { kind: "rect", radii: [r, r, r, r] },
     fills: [
       { kind: "solid", color: token("well") },

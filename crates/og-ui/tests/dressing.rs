@@ -1150,3 +1150,37 @@ fn a_segmented_track_fills_whole_segments_along_its_ramp() {
         "no third segment filled"
     );
 }
+
+#[test]
+fn every_packs_bag_cell_takes_its_slots_selected_and_tier_marks() {
+    // Wrong: a pack's tier rims and selection dressed on `Slot.frame` only,
+    // so the kit's bag (`Inventory.item[rarity=…][selected]`) draws none.
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    let mut packs = 0;
+    for e in std::fs::read_dir(dir).unwrap() {
+        let f = e.unwrap().path().join("style.ogt");
+        let Ok(text) = std::fs::read_to_string(&f) else {
+            continue;
+        };
+        packs += 1;
+        let set = og_ui::dress::DressSet::new(parse_style(&text).unwrap().dressings);
+        for tier in ["none", "common", "rare", "legendary"] {
+            for sel in [false, true] {
+                let of = |c, p| {
+                    PartRef::new(c, p, ElementClass::Slot)
+                        .attr("rarity", tier)
+                        .flag_if(sel, "selected")
+                };
+                let slot = set.resolve(&of("Slot", "frame"));
+                let bag = set.resolve(&of("Inventory", "item"));
+                assert_eq!(
+                    bag.draw,
+                    slot.draw,
+                    "{}: {tier} selected={sel}",
+                    f.display()
+                );
+            }
+        }
+    }
+    assert!(packs >= 12, "{packs} packs");
+}

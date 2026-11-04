@@ -330,3 +330,6 @@ dress "Button.base[danger]" {
   fill "#9a1f17"
   stroke none
 }
+dress "Inventory.item[selected]" {
+  stroke 1 primary inside
+}
