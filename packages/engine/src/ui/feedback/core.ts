@@ -334,10 +334,12 @@ export function text(id: string, s: string, desc: TextDesc = {}, props?: Props):
   // outline and halo its sceneShadow: a light style's dark ink and shadow vanished into a dark scene.
   const scene = !!label.onScene;
   if (scene) label.color = sceneInk(label.color);
-  kit.label(id, s, label);
-  if (outline || soft || name || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1, scene) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText(scene) : {};
-    kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
+  const fx = !!(outline || soft || name || gradient);
+  // Its own effects (in sceneShadow) stand for the label's scene shadow, which they would otherwise replace.
+  kit.label(id, s, fx ? { ...label, onScene: false } : label);
+  if (fx) {
+    const effects = outline ? hudText(typeof outline === "number" ? outline : 1, scene) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft || scene ? softText(scene) : {};
+    kit.setDraw({ text: gradient ? { ...effects, fill: gradient } : effects });
   }
   apply(props);
 }

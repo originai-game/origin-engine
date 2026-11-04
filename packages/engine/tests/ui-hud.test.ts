@@ -427,9 +427,10 @@ test("in a light style the HUD's text over the scene is drawn light and its text
       configured = true;
     }
     og.ui.hudTimer("T", { seconds: 74, total: 90 });
-    og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Seal the crypt", steps: [{ key: "s", text: "Light the braziers" }] }] });
+    og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Seal the crypt", steps: [{ key: "s", text: "Light the braziers", count: 1, target: 3 }] }] });
     og.ui.orbMeter("Mana", { value: 210, max: 300, kind: "mana", anchor: "bottomRight" } as never);
     og.ui.abilityBar("Bar", { slots: [{ key: "a", icon: "bolt", cooldown: 4, cooldownMax: 8, hotkey: "Q" }] } as never);
+    og.ui.compass("Compass", { heading: 0 });
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
   if (!r.ok) throw new Error(r.reason);
@@ -442,8 +443,11 @@ test("in a light style the HUD's text over the scene is drawn light and its text
     if (!c) throw new Error(`no text "${s}": ${f.texts.map((x) => x.text).join(", ")}`);
     return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
   };
-  for (const s of ["Seal the crypt", "Light the braziers", "210", "4.0", "Q"]) expect(light(s)).toBeGreaterThan(0.5);
+  for (const s of ["Seal the crypt", "Light the braziers", "1/3", "210", "4.0", "Q"]) expect(light(s)).toBeGreaterThan(0.5);
   expect(light("1:14")).toBeLessThan(0.2);
+  // Its own outline stands for the scene shadow: the label's was replaced by it, a warning on every outlined line
+  // (the tracker's count, the cooldown's seconds, the compass's points).
+  expect(f.warnings.filter((w) => w.includes("replaced the draw set"))).toEqual([]);
   e.destroy();
 });
 
