@@ -402,7 +402,7 @@ function aim(w: World, eye: { x: number; y: number; z: number }, target: { x: nu
 
 /** The probe's describe of the current frame, by entity id. */
 function seen(engine: Engine): Map<string, Seen> {
-  const d = engine.probe.describe() as { entities: Seen[] };
+  const d = engine.probe.describe() as unknown as { entities: Seen[] };
   return new Map(d.entities.map((e) => [e.id, e]));
 }
 
