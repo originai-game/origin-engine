@@ -48,7 +48,7 @@ colors {
   info pattern grid
   common "#8a96a3" pips 1
   uncommon "#5fd38a" pips 2
-  rare "#9ccdf5" pips 3
+  rare "#4f8fef" pips 3
   epic "#b49cf0" pips 4
   legendary "#e8c46a" pips 5
   mythic "#d0584c" pips 6
@@ -305,4 +305,28 @@ dress "Toggle.knob[off]" {
 }
 dress "Slider.knob" {
   fill "#f4f7fa"
+}
+dress "Tabs.track" {
+  fill none
+  stroke none
+  effect none
+}
+dress "Tabs.tab[selected]" {
+  fill none
+  stroke none
+  effect none
+}
+dress "Tabs.indicator" {
+  fill "#9ccdf5"
+}
+dress "Chip.base[selected]" {
+  stroke 1 primary inside
+}
+dress "Slot.frame[selected]" {
+  stroke 1 primary inside
+}
+dress "Button.base[danger]" {
+  slice none
+  fill "#9a1f17"
+  stroke none
 }

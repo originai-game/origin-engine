@@ -1576,6 +1576,11 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
     ] {
         dress(sel, vec![format!("stroke {} primary inside", num(w))]);
     }
+    // A tab bar's underlined tab: its sliding indicator is the one mark.
+    dress(
+        "Tabs.tab[selected][underline]",
+        vec!["fill none".into(), "stroke none".into()],
+    );
     // The rarities glow in their colours and the top tiers shine.
     dress(
         "Slot.frame[rarity=rare]",
@@ -2093,6 +2098,9 @@ pub fn seeds() -> Vec<StyleChoices> {
             // slab on its cut corners; Delete and Abort a deep red fill.
             dressings: own(&[
                 ("Tabs.tab[selected]", &["fill primary", "stroke none"]),
+                // A tab bar's pill slides under its tabs, whose labels
+                // take the plain ink: the pill is the mark there.
+                ("Tabs.tab[selected][pill]", &["fill none", "stroke none"]),
                 ("Button.base[danger]", &["fill \"#9e0f14\"", "stroke none"]),
             ]),
             ..seed(

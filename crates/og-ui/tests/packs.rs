@@ -183,7 +183,12 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             ("slot", p.control, StylePart::Slot, vec![("fg", p.ink)]),
         ];
         for (what, fill, part, inks) in checks {
-            let ground = under(&atlas, &slice(part), fill, bg);
+            // A part the pack draws flat (fantasy's plain slot well) is its
+            // fill over the backdrop.
+            let ground = match style.slices[part.index()] {
+                None if part == StylePart::Slot => over(linear(fill), fill.alpha, bg),
+                _ => under(&atlas, &slice(part), fill, bg),
+            };
             for (ink, c) in inks {
                 let r = ratio(over(linear(c), c.alpha, ground), ground);
                 report.push(format!("{name:8} {ink:9} on {what:16} {r:5.2}:1"));

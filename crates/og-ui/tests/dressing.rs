@@ -1069,3 +1069,23 @@ fn a_packs_selected_chip_slot_and_tab_share_one_grammar_and_its_wells_read_3_to_
         );
     }
 }
+
+#[test]
+fn slice_none_drops_a_less_specific_dressings_art() {
+    // Wrong: a `[danger]` dressing inheriting `Button.base`'s slice, so its
+    // own fill (scifi's red ABORT) never shows under the pack's art.
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/styles/scifi/style.ogt"
+    );
+    let file = parse_style(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let set = og_ui::dress::DressSet::new(file.dressings.clone());
+    let part = |f| PartRef::new("Button", "base", ElementClass::Button).flag(f);
+    assert!(
+        set.resolve(&part("secondary")).frame.slice.is_some(),
+        "the pack's buttons are art"
+    );
+    let danger = set.resolve(&part("danger"));
+    assert!(danger.frame.slice.is_none(), "slice none");
+    assert!(!danger.draw.fills.is_empty(), "its fill is what draws");
+}

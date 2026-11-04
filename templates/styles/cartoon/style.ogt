@@ -26,7 +26,7 @@ palette {
   onPrimary "#1e0f04"
   primarySoft "#f2862f40"
   highlight "#9b3a09"
-  focus "#3fa7ff"
+  focus "#2b1a4a"
   knob "#ffffff"
   hud "#fff4dcf5"
   scrim "#1a0f3ccc"
@@ -330,4 +330,13 @@ dress "Toggle.knob[on]" {
 dress "Toggle.knob[off]" {
   slice 141 493 24 24 1 1 1 1 authored
   tone 0.845 0.763 0.675 0.99
+}
+dress "Chip.base[selected]" {
+  stroke 3 primary inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 3 primary inside
+}
+dress "Slot.frame[selected]" {
+  stroke 3 primary inside
 }

@@ -259,6 +259,10 @@ dress "Tabs.tab[selected]" {
 dress "Slot.frame[selected]" {
   stroke 1 primary inside
 }
+dress "Tabs.tab[selected][underline]" {
+  fill none
+  stroke none
+}
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside
 }
@@ -275,6 +279,10 @@ dress "Slot.frame[rarity=mythic]" {
   stroke 2 "#ef4444" inside
   effect outerGlow 12 "#ef444480"
   material hologram 0.5 2
+}
+dress "Tabs.tab[selected][pill]" {
+  fill none
+  stroke none
 }
 dress "Button.base[danger]" {
   fill "#9e0f14"

@@ -299,3 +299,12 @@ dress "Meter.fill" {
   slice 216 104 32 16 4 tint
   tone 0.791 0.791 0.791 1.00
 }
+dress "Chip.base[selected]" {
+  stroke 2 primary inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 2 primary inside
+}
+dress "Slot.frame[selected]" {
+  stroke 2 primary inside
+}

@@ -34,7 +34,7 @@ palette {
   sheen "#ffffff2e"
   success "#7cc265"
   warn "#e0a240"
-  danger "#ec7860"
+  danger "#f49482"
   info "#78a6e0"
   health "#d55d51"
   mana "#4a8ae8"
@@ -50,7 +50,7 @@ colors {
   uncommon "#6fbf55" pips 2
   rare "#5b9be8" pips 3
   epic "#b77ae8" pips 4
-  legendary "#e8a33a" icon "crown"
+  legendary "#e8601a" icon "crown"
   mythic "#e8505f" icon "gem"
   team1 "#5b9be8"
   team2 "#e8505f"
@@ -275,8 +275,8 @@ dress "Field.frame" {
   tone 0.005 0.004 0.004 0.99
 }
 dress "Slot.frame" {
-  slice 197 257 64 64 16 16 16 16 authored
-  tone 0.013 0.011 0.008 0.99
+  stroke 1 lineStrong inside
+  effect innerShadow 0 2 4 0 "#000000a6"
 }
 dress "Tooltip.frame" {
   slice 275 257 110 48 12 12 12 12 authored
@@ -338,4 +338,80 @@ dress "Toggle.knob[on]" {
 dress "Toggle.knob[off]" {
   slice 423 493 24 24 1 1 1 1 authored
   tone 0.168 0.084 0.031 0.99
+}
+dress "Tabs.track" {
+  fill none
+  stroke none
+  effect none
+}
+dress "Tabs.tab[selected]" {
+  fill none
+  stroke none
+  effect none
+}
+dress "Tabs.indicator" {
+  fill primary
+  effect outerGlow 6 "#e8a33a59"
+}
+dress "Slot.frame[rarity=common]" {
+  stroke 2 "#9c6b3c" inside
+}
+dress "Slot.frame[rarity=uncommon]" {
+  stroke 2 "#6fbf55" inside
+}
+dress "Slot.frame[rarity=rare]" {
+  stroke 2 "#5b9be8" inside
+}
+dress "Slot.frame[rarity=epic]" {
+  stroke 2 "#b77ae8" inside
+  effect outerGlow 8 "#b77ae866"
+}
+dress "Slot.frame[rarity=legendary]" {
+  stroke 2 "#e8601a" inside
+  effect outerGlow 10 "#e8601a80"
+  material shine 0.6
+}
+dress "Slot.frame[rarity=mythic]" {
+  stroke 2 "#e8505f" inside
+  effect outerGlow 12 "#e8505f80"
+}
+dress "Button.base[secondary][narrow]" {
+  slice 172 4 48 48 10 tint
+  tone 0.789 0.789 0.789 1.00
+}
+dress "Button.base[secondary][narrow][hover]" {
+  slice 224 4 48 48 10 tint
+  tone 0.890 0.890 0.890 1.00
+}
+dress "Button.base[secondary][narrow][pressed]" {
+  slice 276 4 48 48 10 tint
+  tone 0.693 0.693 0.693 1.00
+}
+dress "Button.base[secondary][narrow][disabled]" {
+  slice 328 4 48 48 10 tint
+  tone 0.630 0.630 0.630 1.00
+}
+dress "Button.base[primary][narrow]" {
+  slice 172 4 48 48 10 tint
+  tone 0.789 0.789 0.789 1.00
+}
+dress "Button.base[primary][narrow][hover]" {
+  slice 224 4 48 48 10 tint
+  tone 0.890 0.890 0.890 1.00
+}
+dress "Button.base[primary][narrow][pressed]" {
+  slice 276 4 48 48 10 tint
+  tone 0.693 0.693 0.693 1.00
+}
+dress "Button.base[primary][narrow][disabled]" {
+  slice 328 4 48 48 10 tint
+  tone 0.630 0.630 0.630 1.00
+}
+dress "Chip.base[selected]" {
+  stroke 1.5 primary inside
+  effect outerGlow 8 "#e8a33a59"
+}
+dress "Slot.frame[selected]" {
+  stroke 1.5 primary inside
+  effect outerGlow 8 "#e8a33a59"
 }

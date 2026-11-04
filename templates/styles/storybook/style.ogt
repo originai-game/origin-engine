@@ -266,6 +266,10 @@ dress "Tabs.tab[selected]" {
 dress "Slot.frame[selected]" {
   stroke 1 primary inside
 }
+dress "Tabs.tab[selected][underline]" {
+  fill none
+  stroke none
+}
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside
 }
