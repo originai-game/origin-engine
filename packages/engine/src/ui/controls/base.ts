@@ -286,9 +286,9 @@ export function glyphIcon(id: string, name: string, size: number, color: Rgba): 
 }
 
 /** The marks the controls draw themselves: the shapes no icon set is needed for. */
-export type Drawn = "tick" | "cross" | "plus" | "minus" | "dot" | "search" | "chevronDown" | "chevronUp" | "chevronStart" | "chevronEnd" | "eye" | "reset" | "dash" | "backspace" | "shift" | "enter" | "globe" | "lock" | "star" | "warning" | "info";
+export type Drawn = "tick" | "cross" | "plus" | "minus" | "dot" | "search" | "chevronDown" | "chevronUp" | "chevronStart" | "chevronEnd" | "eye" | "reset" | "dash" | "backspace" | "shift" | "enter" | "globe" | "lock" | "star" | "warning" | "info" | "view-grid";
 
-const MARKS = new Set(["tick", "cross", "plus", "minus", "dot", "search", "chevronDown", "chevronUp", "chevronStart", "chevronEnd", "eye", "reset", "dash", "backspace", "shift", "enter", "globe", "lock", "star", "warning", "info"]);
+const MARKS = new Set(["tick", "cross", "plus", "minus", "dot", "search", "chevronDown", "chevronUp", "chevronStart", "chevronEnd", "eye", "reset", "dash", "backspace", "shift", "enter", "globe", "lock", "star", "warning", "info", "view-grid"]);
 /** Whether the controls draw a mark of this name. */
 export function hasMark(name: string): boolean {
   return MARKS.has(name);
@@ -362,6 +362,18 @@ export function drawn(id: string, name: string, size: number, color: Rgba, weigh
       kit.close();
       kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
       break;
+    case "view-grid": {
+      // A gallery: four tiles in a 2×2 grid, outlined so the mark keeps the weight of the other line marks.
+      const cell = (x: number, y: number) => line([q(x, y), q(x + 0.3, y), q(x + 0.3, y + 0.3), q(x, y + 0.3)], true);
+      kit.setDraw({ shape: cell(0.16, 0.16), fills: fill });
+      for (const [k, x, y] of [["B", 0.54, 0.16], ["C", 0.16, 0.54], ["D", 0.54, 0.54]] as const) {
+        kit.open(k, { width: px(s), height: px(s) });
+        kit.setDraw({ shape: cell(x, y), fills: fill });
+        kit.close();
+        kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
+      }
+      break;
+    }
     default: kit.setDraw({ shape: { kind: "ellipse" }, fills: fill });
   }
   kit.close();
