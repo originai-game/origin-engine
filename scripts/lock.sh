@@ -102,6 +102,17 @@ og_lock_release() {
 
 og_gpu_root="${OG_GPU_ROOT:-$HOME/.cache/og-gate}"
 
+# One implementation for the whole machine (the owner, 2026-11-04): every
+# lane sources its own scripts/lock.sh, so a lane on an old commit (or a
+# wrapper with a private copy) used to queue by old rules beside the new
+# ones. The slot functions below are written to $og_gpu_root/gpu-lock.sh
+# whenever this copy's og_gpu_lock_version is newer than the one there, and
+# everyone sources that file, so the newest version on the machine wins for
+# every lane at once. Bump og_gpu_lock_version with any change below.
+og_gpu_impl() {
+  cat <<'OG_GPU_IMPL'
+og_gpu_lock_version=2
+
 og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
   og_gpu_slot="$og_gpu_root/gpu-slot-$1.lock"
   if mkdir "$og_gpu_slot" 2>/dev/null; then
@@ -171,3 +182,18 @@ og_gpu_acquire_all() {
     og_gpu_n=$((og_gpu_n + 1))
   done
 }
+OG_GPU_IMPL
+}
+
+og_gpu_machine="$og_gpu_root/gpu-lock.sh"
+og_gpu_mine="$(og_gpu_impl | sed -n 's/^og_gpu_lock_version=//p')"
+og_gpu_theirs="$(sed -n 's/^og_gpu_lock_version=//p' "$og_gpu_machine" 2>/dev/null | head -n 1)"
+if [ "${og_gpu_theirs:-0}" -lt "$og_gpu_mine" ] && mkdir -p "$og_gpu_root" 2>/dev/null; then
+  og_gpu_impl > "$og_gpu_machine.$$" && mv -f "$og_gpu_machine.$$" "$og_gpu_machine"
+fi
+if [ -f "$og_gpu_machine" ]; then
+  # shellcheck disable=SC1090
+  . "$og_gpu_machine"
+else
+  eval "$(og_gpu_impl)"
+fi

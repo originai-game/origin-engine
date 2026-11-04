@@ -265,7 +265,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   perf measurements, wave-end and the full gate take every slot
   (`og_gpu_acquire_all`), one acquisition per scene or run, never one
   held across a chain of them, so queued single slots get in between
-  (it lets the single waiters queued before it go first); nobody runs the full gate, `--all`, wasm builds
+  (it lets the single waiters queued before it go first). The slot code
+  is one machine-wide copy (`~/.cache/og-gate/gpu-lock.sh`, the newest
+  `og_gpu_lock_version` any lane has wins); source `scripts/lock.sh`,
+  never a private copy, and never override its `sleep` or poll; nobody runs the full gate, `--all`, wasm builds
   or web-reference beside others. Long-running
   threads are retired and replaced by fresh ones before their context
   fills. macrunner carries two landing sessions
