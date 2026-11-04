@@ -985,10 +985,12 @@ fn lens_flare_grows_as_a_lamp_clears_a_pillar() {
 /// A source's ghost is a smooth disc, the lens's defocused aperture: down
 /// a line across the clear lamp's first ghost, along the circle round the
 /// frame's centre (where the starburst's rays from the centre cross it),
-/// the light it adds falls from the middle to the rim with no dark line
-/// inside. With the starburst on the whole flare, its rays striped every
-/// ghost; and drawn at the size of a few quarter-frame texels, the
-/// texels' rows showed.
+/// the light it adds rises to one peak and falls to the rim with no dark
+/// line inside. With the starburst on the whole flare, its rays striped
+/// every ghost; and drawn at the size of a few quarter-frame texels, the
+/// texels' rows showed. The peak is found, not assumed at the mirrored
+/// pixel: the disc's flat top, upsampled from the quarter frame, may peak
+/// a texel's half away from it.
 #[test]
 fn lens_flare_ghosts_are_smooth_discs() {
     let desc = small();
@@ -1015,19 +1017,31 @@ fn lens_flare_ghosts_are_smooth_discs() {
         region(&on, r) - region(&off, r)
     };
     // The ghost is at least 6 of the quarter frame's texels (24 pixels)
-    // in radius; its profile is sampled out to 16 pixels each way.
-    let middle = added(0.0);
-    println!("clear lamp's ghost, added at its middle: {middle}");
-    assert!(middle > 6.0, "the clear lamp's ghost shows: {middle}");
-    for side in [1.0f32, -1.0] {
-        let profile: Vec<f32> = (0..=8).map(|i| added(side * i as f32 * 2.0)).collect();
-        println!("ghost profile towards {side}: {profile:?}");
-        for pair in profile.windows(2) {
-            assert!(
-                pair[1] <= pair[0] + 1.5,
-                "no dark line inside the ghost: {profile:?}"
-            );
-        }
+    // in radius; its profile is sampled every 2 pixels out to 16 each way.
+    let profile: Vec<f32> = (-8..=8).map(|i| added(i as f32 * 2.0)).collect();
+    println!("clear lamp's ghost, its profile across: {profile:?}");
+    let peak = (0..profile.len())
+        .max_by(|&a, &b| profile[a].total_cmp(&profile[b]))
+        .unwrap();
+    assert!(
+        profile[peak] > 6.0,
+        "the clear lamp's ghost shows: {profile:?}"
+    );
+    assert!(
+        (6..=10).contains(&peak),
+        "the ghost peaks near the mirrored pixel: {profile:?}"
+    );
+    // Rising to the peak and falling after it, a step at a time.
+    for i in 1..profile.len() {
+        let (from, to) = if i <= peak {
+            (profile[i], profile[i - 1])
+        } else {
+            (profile[i - 1], profile[i])
+        };
+        assert!(
+            to <= from + 1.5,
+            "no dark line inside the ghost (step {i}): {profile:?}"
+        );
     }
 }
 
