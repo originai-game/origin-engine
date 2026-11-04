@@ -100,9 +100,23 @@ impl Backend {
     /// at most its instances, zero offsets) over buffers sized for them.
     /// About 0.4 ms of CPU a frame on spheres-20k natively (release); the
     /// browsers validate WebGPU's indirect draws themselves.
+    ///
+    /// Except on DX12, where that pass is also what makes an indirect draw's
+    /// `@builtin(vertex_index)` and `@builtin(instance_index)` count from its
+    /// `base_vertex` and `first_instance`. D3D12's SV_VertexID and
+    /// SV_InstanceID never include them, so wgpu-hal passes them as root
+    /// constants, and only through the command signatures wgpu-core asks for
+    /// when the pass is on (wgpu-core 30 `PipelineLayoutFlags::
+    /// INDIRECT_BUILTIN_UPDATE`; without them `draw_indexed_indirect`
+    /// writes 0). Without the pass, grass's LOD 1 and 2 blades, whose
+    /// draws start at `l * GRASS_LOD_STRIDE`, drew as LOD 0, and the
+    /// grass past LOD 0's ring was missing on DX12 (studio-win, 2026-11-05;
+    /// tests/evidence/compat/windows/native/).
     pub fn instance(self) -> wgpu::Instance {
         let mut flags = wgpu::InstanceFlags::from_build_config();
-        flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
+        if !self.backends().contains(wgpu::Backends::DX12) {
+            flags.remove(wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL);
+        }
         let descriptor = wgpu::InstanceDescriptor {
             backends: self.backends(),
             flags,
