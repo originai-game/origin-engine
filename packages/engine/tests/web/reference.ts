@@ -59,7 +59,11 @@
 // Exits 1 when a station does not match or has no reference (neither its
 // tier's nor metal's), the engine does not start or the probe does not
 // refuse. Needs Chrome (cdp.ts: a missing one is an error), or Firefox with
-// --firefox [<path>] (bidi.ts; WebGPU opens a window).
+// --firefox [<path>] (bidi.ts; WebGPU opens a window), or Chrome on an Android
+// phone with --android [<serial>] (cdp.ts Browser.android; its tier is
+// webgpu-android, judged against webgpu-android, else webgpu, else metal, a
+// webgpu-android frame recorded only for a legitimate difference:
+// tests/evidence/compat/android/).
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -67,7 +71,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { bundleGame } from "../../src/node/build.ts";
 import { recordReference, type PlaytestDesc } from "../../src/playtest.ts";
-import { Browser, chromePath } from "./cdp.ts";
+import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
@@ -86,7 +90,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"));
-const tier = "webgpu";
+const android = androidOf(args);
+const tier = android ? "webgpu-android" : "webgpu";
 const record = args.includes("--record");
 const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
@@ -156,7 +161,7 @@ if (args.includes("--print")) {
   process.exit(0);
 }
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
-const chrome = firefox ? "" : chromePath(args);
+const chrome = firefox || android ? "" : chromePath(args);
 
 /** An n× box filter, rounded (templates/ui-kit/tests/styles.ts `shrink`). */
 function shrink(img: Image, n: number): Image {
@@ -199,15 +204,21 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>reference<
 <style>html,body{margin:0;background:#14161b}canvas{display:block;width:${WIDTH}px;height:${HEIGHT}px}</style></head>
 <body><canvas></canvas><script type="module" src="/game/reference-page.js"></script></body></html>`;
 const server = serve({ dist, isolate: true, extra: { "/reference.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.launch({ chrome, width: WIDTH, height: HEIGHT });
+const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.from(args, { chrome, width: WIDTH, height: HEIGHT, reverse: [server.port] });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 const own = join(refsRoot, tier);
 const metal = join(refsRoot, "metal");
-/** The reference a shot (or the sheet) is judged against: this tier's, else metal's. */
-const referenceOf = (file: string) => (record || existsSync(join(own, file)) ? join(own, file) : join(metal, file));
+/** The reference a shot (or the sheet) is judged against: this tier's, else webgpu's (a phone's tier), else metal's. */
+const referenceOf = (file: string) =>
+  record || existsSync(join(own, file))
+    ? join(own, file)
+    : tier !== "webgpu" && existsSync(join(refsRoot, "webgpu", file))
+      ? join(refsRoot, "webgpu", file)
+      : join(metal, file);
 const result: Record<string, unknown> = { tier, size: `${WIDTH}x${HEIGHT}`, tolerance: TOLERANCE, script: SCRIPT, stations: {} as Record<string, unknown> };
+if (browser instanceof Browser && browser.device) result["device"] = browser.device;
 if (SHEET) result["sheet"] = { ...SHEET, against: referenceOf(SHEET.name).slice(repo.length + 1) };
 const sheetRef = SHEET && !record && existsSync(referenceOf(SHEET.name)) ? decodePng(new Uint8Array(readFileSync(referenceOf(SHEET.name)))) : undefined;
 const cells: Image[] = [];

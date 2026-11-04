@@ -30,7 +30,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webBuild, settingsOf } from "../../src/node/web-build.ts";
-import { Browser, chromePath, type Page } from "./cdp.ts";
+import { androidOf, Browser, chromePath, type Page } from "./cdp.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 
@@ -42,7 +42,7 @@ const repo = join(pkg, "..", "..");
 const project = join(repo, "templates", "archetypes", "runner");
 const work = join(pkg, "dist", "test-wire");
 const outFile = resolve(opt("--out") ?? join(work, "transcript.json"));
-const chrome = chromePath(args);
+const chrome = androidOf(args) ? "" : chromePath(args);
 
 type Answer = { kind?: string; result?: unknown; code?: string; message?: string; silent?: true };
 const transcript: Array<Record<string, unknown>> = [];
@@ -113,6 +113,7 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
   const live = serve({ dist: dists[`${kind} ${pipelines}`]!, isolate, told: () => told, extra: pages });
   pages["/parent.html"] = parentHtml(`http://localhost:${live.port}`);
   told = `http://127.0.0.1:${live.port}`;
+  browser.reverse(live.port);
   const log: string[] = [];
   const page: Page = await browser.open(`http://127.0.0.1:${live.port}/parent.html`, log);
   const call = (method: string, params: Record<string, unknown> = {}, v = 1, wait?: number) =>
@@ -276,6 +277,7 @@ async function inPage(browser: Browser): Promise<void> {
   let told: string | null = null;
   const live = serve({ dist: dists["dev sync"]!, isolate: false, told: () => told });
   told = `http://127.0.0.1:${live.port}`;
+  browser.reverse(live.port);
   const log: string[] = [];
   const page: Page = await browser.open(`http://127.0.0.1:${live.port}/game/index.html`, log);
   const host = `(() => { if (window.wire) return; const pending = new Map(); let n = 0; window.hellos = [];
@@ -310,7 +312,7 @@ async function inPage(browser: Browser): Promise<void> {
   }
 }
 
-const browser = await Browser.launch({ chrome });
+const browser = await Browser.from(args, { chrome, reverse: [] });
 try {
   for (const pipelines of ["sync", "async"] as const) for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, pipelines, browser);
   await inPage(browser);

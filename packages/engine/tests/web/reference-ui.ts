@@ -39,7 +39,7 @@ const kit = join(repo, "templates", "ui-kit");
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const tier = "webgpu";
-const pass = args.filter((a, i) => a === "--record" || a === "--chrome" || args[i - 1] === "--chrome");
+const pass = args.filter((a, i) => a === "--record" || a === "--chrome" || args[i - 1] === "--chrome" || a === "--android" || (args[i - 1] === "--android" && !a.startsWith("--")));
 const work = join(pkg, "dist", "test-reference", "ui");
 
 /** The reference prefix each frames playtest checks its screenshots under (its `checkFrames` call). */

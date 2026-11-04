@@ -5,6 +5,12 @@
 // Chrome: --chrome <path>, $CHROME, or the agent-browser install
 // (~/.agent-browser/browsers/chrome-150.0.7871.115). A missing Chrome is an
 // error, never a skip.
+//
+// --android [serial] (Browser.android): Chrome on a phone over adb instead,
+// its DevTools socket forwarded here and the test server's ports reversed to
+// the phone, so the page's 127.0.0.1 and localhost are this machine's (a
+// secure context, as on the desktop). The phone's Chrome is the user's own:
+// a run opens its tabs there and closes only those.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +22,7 @@ declare module "node:fs" {
 
 declare const Bun: {
   spawn(cmd: string[], o?: { stdout?: string; stderr?: string }): { kill(): void; exited: Promise<number> };
+  spawnSync(cmd: string[], o?: { stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
 
 export function chromePath(argv: string[] = process.argv): string {
@@ -43,18 +50,45 @@ export async function waitFor<T>(read: () => T, what: string, timeoutMs = 30_000
 
 type Pending = { resolve(v: unknown): void; reject(e: Error): void };
 
+/** The device an `--android [serial]` run attaches to, when the arguments ask for one. */
+export function androidOf(argv: string[] = process.argv): { serial: string | null } | undefined {
+  const i = argv.indexOf("--android");
+  if (i < 0) return undefined;
+  const next = argv[i + 1];
+  return { serial: next && !next.startsWith("--") ? next : null };
+}
+
+function adb(serial: string | null, ...args: string[]): string {
+  const r = Bun.spawnSync(["adb", ...(serial ? ["-s", serial] : []), ...args], { stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) throw new Error(`adb ${args.join(" ")} failed: ${new TextDecoder().decode(r.stderr).trim()} (is the phone unlocked and USB debugging allowed?)`);
+  return new TextDecoder().decode(r.stdout).trim();
+}
+
 export class Browser {
   readonly #ws: WebSocket;
-  readonly #proc: { kill(): void; exited: Promise<number> };
+  /** The Chrome this run launched; null on a phone, whose Chrome stays open (only this run's tabs close). */
+  readonly #proc: { kill(): void; exited: Promise<number> } | null;
   readonly #profile: string;
+  /** The phone a `Browser.android` run attached to: its serial and the ports adb forwards and reverses. */
+  readonly #android: { serial: string; forwarded: number; reversed: number[] } | null;
+  readonly #targets = new Set<string>();
   readonly #pending = new Map<number, Pending>();
   readonly #listeners = new Set<(method: string, params: Record<string, unknown>, session?: string) => void>();
   #next = 1;
+  /** The device a run on a phone attached to (model and serial), else null. */
+  readonly device: string | null;
 
-  private constructor(ws: WebSocket, proc: { kill(): void; exited: Promise<number> }, profile: string) {
+  private constructor(
+    ws: WebSocket,
+    proc: { kill(): void; exited: Promise<number> } | null,
+    profile: string,
+    android: { serial: string; forwarded: number; reversed: number[]; model: string } | null = null,
+  ) {
     this.#ws = ws;
     this.#proc = proc;
     this.#profile = profile;
+    this.#android = android;
+    this.device = android ? `${android.model} (${android.serial})` : null;
     ws.addEventListener("message", (e) => {
       const m = JSON.parse(String((e as MessageEvent).data)) as { id?: number; result?: unknown; error?: { message: string }; method?: string; params?: Record<string, unknown>; sessionId?: string };
       if (m.id !== undefined) {
@@ -106,6 +140,57 @@ export class Browser {
     return new Browser(ws, proc, profile);
   }
 
+  /**
+   * Chrome on an Android phone (`adb devices` lists it as `device`; one, or
+   * the one `serial` names): its DevTools socket on a forwarded port, and
+   * each of `reverse` (the test server's ports) reversed so the phone's
+   * 127.0.0.1:<port> is this machine's.
+   */
+  static async android(o: { serial?: string | null; reverse: number[] }): Promise<Browser> {
+    const devices = adb(null, "devices")
+      .split("\n")
+      .slice(1)
+      .map((l) => l.trim().split(/\s+/))
+      .filter((p) => p[1] === "device")
+      .map((p) => p[0]!);
+    if (devices.length === 0) throw new Error("no Android device: connect one with USB debugging on and accept the prompt (`adb devices` lists it as device)");
+    if (o.serial && !devices.includes(o.serial)) throw new Error(`no Android device ${o.serial}: adb lists ${devices.join(", ") || "none"}`);
+    if (!o.serial && devices.length > 1) throw new Error(`several Android devices (${devices.join(", ")}): pass --android <serial>`);
+    const serial = o.serial ?? devices[0]!;
+    for (const p of o.reverse) adb(serial, "reverse", `tcp:${p}`, `tcp:${p}`);
+    adb(serial, "shell", "am", "start", "-n", "com.android.chrome/com.google.android.apps.chrome.Main", "-d", "about:blank");
+    const forwarded = Number(adb(serial, "forward", "tcp:0", "localabstract:chrome_devtools_remote"));
+    let url: string | undefined;
+    for (let i = 0; i < 50 && !url; i++) {
+      try {
+        url = ((await (await fetch(`http://127.0.0.1:${forwarded}/json/version`)).json()) as { webSocketDebuggerUrl?: string }).webSocketDebuggerUrl;
+      } catch {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+    if (!url) throw new Error(`Chrome on ${serial} does not answer DevTools: unlock the phone and open Chrome once`);
+    const ws = new WebSocket(url.replace(/^ws:\/\/[^/]+/, `ws://127.0.0.1:${forwarded}`));
+    await new Promise<void>((resolve, reject) => {
+      ws.addEventListener("open", () => resolve());
+      ws.addEventListener("error", () => reject(new Error(`cannot connect to the DevTools socket of Chrome on ${serial}`)));
+    });
+    const model = adb(serial, "shell", "getprop", "ro.product.model");
+    return new Browser(ws, null, "", { serial, forwarded, reversed: o.reverse, model });
+  }
+
+  /** `Browser.android` when the arguments carry --android [serial], else `Browser.launch`. */
+  static async from(argv: string[], o: { chrome?: string; width?: number; height?: number; flags?: string[]; webgpu?: boolean; reverse: number[] }): Promise<Browser> {
+    const phone = androidOf(argv);
+    return phone ? Browser.android({ serial: phone.serial, reverse: o.reverse }) : Browser.launch(o);
+  }
+
+  /** A server started after the browser: on a phone its port is reversed too (closed with the browser); on this machine nothing to do. */
+  reverse(port: number): void {
+    if (!this.#android || this.#android.reversed.includes(port)) return;
+    adb(this.#android.serial, "reverse", `tcp:${port}`, `tcp:${port}`);
+    this.#android.reversed.push(port);
+  }
+
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, sessionId?: string): Promise<T> {
     const id = this.#next++;
     return new Promise((resolve, reject) => {
@@ -122,6 +207,7 @@ export class Browser {
   /** A new tab at `url`, attached; console messages and exceptions go to `log`. */
   async open(url: string, log: string[] = []): Promise<Page> {
     const { targetId } = await this.send<{ targetId: string }>("Target.createTarget", { url: "about:blank" });
+    this.#targets.add(targetId);
     const { sessionId } = await this.send<{ sessionId: string }>("Target.attachToTarget", { targetId, flatten: true });
     const page = new Page(this, sessionId, log);
     await page.send("Page.enable");
@@ -132,12 +218,24 @@ export class Browser {
   }
 
   async close(): Promise<void> {
+    if (this.#android) {
+      const a = this.#android;
+      for (const t of this.#targets) await Promise.race([this.send("Target.closeTarget", { targetId: t }).catch(() => {}), new Promise((r) => setTimeout(r, 2000))]);
+      try {
+        this.#ws.close();
+      } catch {
+        /* already closed */
+      }
+      Bun.spawnSync(["adb", "-s", a.serial, "forward", "--remove", `tcp:${a.forwarded}`], { stdout: "ignore", stderr: "ignore" });
+      for (const p of a.reversed) Bun.spawnSync(["adb", "-s", a.serial, "reverse", "--remove", `tcp:${p}`], { stdout: "ignore", stderr: "ignore" });
+      return;
+    }
     // Chrome closes itself and every process it started: on Windows a kill
     // ends the process Bun spawned and leaves the browser, its GPU and
     // renderer processes running with the profile open. The kill stays for
     // a browser that does not answer within 5 s.
     const closed = await Promise.race([
-      this.send("Browser.close").then(() => this.#proc.exited).then(() => true, () => false),
+      this.send("Browser.close").then(() => this.#proc!.exited).then(() => true, () => false),
       new Promise<boolean>((r) => setTimeout(() => r(false), 5000)),
     ]);
     try {
@@ -145,8 +243,8 @@ export class Browser {
     } catch {
       /* already closed */
     }
-    if (!closed) this.#proc.kill();
-    await this.#proc.exited;
+    if (!closed) this.#proc!.kill();
+    await this.#proc!.exited;
     // Windows: the last child process can hold a file of the profile for a
     // moment after the browser has exited (EBUSY).
     for (let tries = 0; ; tries++) {

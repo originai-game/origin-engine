@@ -48,7 +48,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Browser, chromePath } from "./cdp.ts";
+import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
@@ -67,12 +67,13 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
-const tier = "webgpu";
+const android = androidOf(args);
+const tier = android ? "webgpu-android" : "webgpu";
 const record = args.includes("--record");
 const work = join(pkg, "dist", "test-gfx");
 const out = resolve(opt("--out") ?? join(work, "out"));
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
-const chrome = firefox ? "" : chromePath(args);
+const chrome = firefox || android ? "" : chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
 /** Where a scene's references live: og-ui's under crates/og-ui/references. */
 function referencesOf(scene: string): { root: string; name: string } {
@@ -134,7 +135,9 @@ import init, * as gfx from "/game/pkg/og-tests.js";
 try { await init(); globalThis.__gfx = gfx; } catch (e) { globalThis.__gfx_error = String(e && e.stack || e); }
 </script></body></html>`;
 const server = serve({ dist, isolate: false, extra: { "/gfx.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.launch({ chrome, width: 1280, height: 720 });
+const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.from(args, { chrome, width: 1280, height: 720, reverse: [server.port] });
+/** The phone a --android run draws on (model and serial), else null. */
+const device = browser instanceof Browser ? browser.device : null;
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
@@ -273,7 +276,9 @@ try {
         console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
       } else {
         const own = join(where.root, tier, `${where.name}.png`);
-        const against = existsSync(own) ? own : metal;
+        // A phone's tier (webgpu-android) falls back to the browsers' webgpu, then metal.
+        const browsers = join(where.root, "webgpu", `${where.name}.png`);
+        const against = existsSync(own) ? own : tier !== "webgpu" && existsSync(browsers) ? browsers : metal;
         if (!existsSync(against)) throw new Error(`no reference at ${own} or ${metal}; record one with --record --scene ${scene}`);
         const d = compare(img, decodePng(new Uint8Array(readFileSync(against))), o.tolerance.channel);
         const ok = d.outliers <= o.tolerance.outliers && d.rmse <= o.tolerance.rmse;
@@ -311,7 +316,7 @@ try {
         const perf = {
           scene,
           tier,
-          browser: firefox ? "Firefox (bidi.ts)" : "Chrome for Testing (cdp.ts)",
+          browser: firefox ? "Firefox (bidi.ts)" : device ? `Chrome on ${device} (cdp.ts)` : "Chrome for Testing (cdp.ts)",
           adapter: o.adapter,
           culling: cpuCulling ? "cpu" : "auto",
           last_frame: t.stats,
@@ -326,10 +331,10 @@ try {
         };
         // Chrome names no WebGPU adapter and ANGLE's string is long: the
         // directory names the machine (its CPU, which on Apple silicon is
-        // the GPU's name too), the adapter string stays in the file.
+        // the GPU's name too), or the phone's model, the adapter string stays in the file.
         const pdir = perfOut
           ? join(resolve(perfOut), `${tier}${cpuCulling ? "-cpu-culling" : ""}`)
-          : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : "chrome"}-${slug(cpus()[0]?.model ?? "") || "unknown"}`);
+          : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : "chrome"}-${slug(device?.replace(/ \(.*$/, "") ?? cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");
         row["frameMs"] = perf.frame_ms;
