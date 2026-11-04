@@ -1050,8 +1050,10 @@ impl Ui {
     }
 
     /// Moves node `i` and its subtree by `(dx, dy)` (with the clips its own
-    /// scroll containers make).
-    pub(crate) fn shift_subtree(&mut self, i: usize, dx: f32, dy: f32) {
+    /// scroll containers make). With `layout` its laid-out position moves
+    /// too, which a clean subtree keeps into the next frame; without it only
+    /// where it draws, so a move made again each frame does not add up.
+    pub(crate) fn shift_subtree(&mut self, i: usize, dx: f32, dy: f32, layout: bool) {
         if dx == 0.0 && dy == 0.0 {
             return;
         }
@@ -1059,8 +1061,10 @@ impl Ui {
         let inside: std::collections::BTreeSet<usize> = sub.iter().copied().collect();
         for &j in &sub {
             let n = &mut self.nodes[j];
-            n.x += dx;
-            n.y += dy;
+            if layout {
+                n.x += dx;
+                n.y += dy;
+            }
             n.rect.x += dx;
             n.rect.y += dy;
             if n.clip_src != NONE && inside.contains(&n.clip_src) {
@@ -1120,9 +1124,14 @@ impl Ui {
                 let Some(max) = bs.iter().flatten().copied().reduce(f32::max) else {
                     continue;
                 };
+                // Where it draws only: a clean row keeps its children's
+                // laid-out places into the next frame, and a shift kept
+                // there was made again on top of itself every frame (a
+                // slider's label and its value in two faces, 0.38 px
+                // apart, sank 14 px a second).
                 for (&c, b) in kids[s..e].iter().zip(bs) {
                     if let Some(b) = b {
-                        self.shift_subtree(c, 0.0, max - b);
+                        self.shift_subtree(c, 0.0, max - b, false);
                     }
                 }
             }
@@ -1173,7 +1182,7 @@ impl Ui {
             let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
             let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
             let (dx, dy) = (x - n.rect.x, y - n.rect.y);
-            self.shift_subtree(i, dx, dy);
+            self.shift_subtree(i, dx, dy, true);
         }
     }
 

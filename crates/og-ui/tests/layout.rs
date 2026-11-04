@@ -303,3 +303,55 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
     assert_eq!(r("Loading/Scrim"), (0.0, 47.0, 390.0, 763.0));
     assert_eq!(r("Loading/Corner"), (340.0, 824.0, 50.0, 20.0));
 }
+
+#[test]
+fn a_baseline_row_stays_put_from_frame_to_frame() {
+    // Two steps whose baselines sit a fraction of a pixel apart (a slider's
+    // label and its value in two faces): the row lines them up once, and a
+    // clean frame after it keeps them there rather than sinking them.
+    let step = |size: f32, line_height: f32| TypeStep {
+        size,
+        line_height,
+        tracking_em: 0.0,
+        cjk_line_height: line_height,
+        cjk_tracking_em: 0.0,
+        features: og_ui::shape::Features::default(),
+        weight: 0,
+    };
+    let frame = |ui: &mut Ui| {
+        ui.begin(
+            InputFrame::default(),
+            Viewport {
+                width: 400.0,
+                height: 300.0,
+                dpr: 1.0,
+                ..Viewport::default()
+            },
+        );
+        ui.row(
+            "Head",
+            Element {
+                width: Size::grow(),
+                gap: 8.0,
+                cross: Cross::Baseline,
+                ..Element::default()
+            },
+            |ui| {
+                let desc = |s| LabelDesc {
+                    step: Some(s),
+                    ..LabelDesc::default()
+                };
+                ui.label("Label", "Field of view", desc(step(14.0, 19.0)));
+                ui.label("Value", "60", desc(step(14.0, 19.75)));
+            },
+        );
+        ui.end();
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    frame(&mut ui);
+    let first = (rect(&ui, "Head/Label"), rect(&ui, "Head/Value"));
+    for _ in 0..120 {
+        frame(&mut ui);
+    }
+    assert_eq!((rect(&ui, "Head/Label"), rect(&ui, "Head/Value")), first);
+}

@@ -40,6 +40,13 @@ is one line here, written at the merge that changes
   white Titan One on near-black read 1.71:1. When that median falls
   between the box's two tones, the ground is now the tone round the word
   (the box's edge rows and columns); other text measures as before.
+- **Baseline rows no longer sink.** A `cross: "baseline"` row whose
+  children's baselines sit a fraction of a pixel apart (a slider's label
+  and value in two faces) moved them down a little more every frame: the
+  alignment was written into the laid-out places a clean subtree keeps
+  into the next frame, and made again on top of itself (midcore's slider
+  labels sank 14 px a second, gilded's 5). It now moves only where the
+  children draw, once per frame. Frames with such rows move.
 - **Model skin diagnostics.** Missing model skin data and incompatible
   palette counts, joint order or inverse bind matrices warn in the log and
   appear as `render.skinIssue` in entity probes and dumps. Equivalent rigs
