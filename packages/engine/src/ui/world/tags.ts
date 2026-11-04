@@ -165,8 +165,11 @@ export function interactionPrompt(world: Api.World, id: string, desc: Api.Intera
       box("Glyph", { width: px(gs), height: px(gs), align: "center", cross: "center", part: sel("InteractionPrompt", "glyph") }, undefined, () => {
         if (glyph && kit.hasIcon(glyph.icon)) icon("Icon", glyph.icon, gs, disabled ? token("inkFaint") : token("ink"));
         else {
+          // Under a hold ring the cap is round, its rim inside the ring's: a square cap's corners reach
+          // past the ring's inner edge (half its diagonal, 17 px, to the ring's 14), so the arc crossed the key.
+          const r = hold !== null ? (gs - 2) / 2 : 4;
           box("Cap", { width: px(gs - 2), height: px(gs - 2), align: "center", cross: "center", partClass: "chip" }, {
-            shape: { kind: "rect", radii: [4, 4, 4, 4] },
+            shape: { kind: "rect", radii: [r, r, r, r] },
             fills: [vgrad([[0, token("ink")], [1, lit(mix(role("ink"), { r: 0, g: 0, b: 0, a: 1 }, 0.2))]])],
             effects: [{ kind: "dropShadow", offset: { x: 0, y: 2 }, blur: 0, spread: 0, color: token("shadow", 0.6) }],
           }, () => text("Key", glyph?.text || "E", { step: ts(12), font: "display", color: lit(inkOn(role("ink"))), nowrap: true }));

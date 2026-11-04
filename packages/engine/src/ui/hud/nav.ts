@@ -330,21 +330,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         fills: [vgrad([[0, token("shadow", 0)], [0.18, token("shadow", 0.45)], [0.82, token("shadow", 0.45)], [1, token("shadow", 0)]], 90)],
         clip: "shape",
       }, () => {
-        for (let d = 0; d < 360; d += 15) {
-          const b = (d * Math.PI) / 180;
-          const x = xOf(b);
-          if (x < -10 || x > width + 10) continue;
-          const fade = 1 - Math.abs(x - width / 2) / (width / 2);
-          const cardinal = d % 90 === 0;
-          const named = d % 45 === 0;
-          if (named) {
-            text(`P${d}`, names[d / 45]!, { step: cardinal ? ts(16) : ts(12), font: "display", color: d === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 },
-              fixed({ start: x, top: u(2) }, { transform: { x: -u(cardinal ? 6 : 9) }, opacity: clamp01(fade * 1.6) }));
-          } else {
-            leaf(`T${d}`, { width: px(2), height: px(u(8)), part: sel("Compass", "tick", named ? "major" : null) }, { fills: [solid(token("ink", 0.7))] },
-              fixed({ start: x - 1, top: u(6) }, { opacity: clamp01(fade * 1.6) }));
-          }
-        }
+        const boxW = (p: Api.CompassPoi): number => Math.max(u(48), Math.ceil(`${Math.round(p.distance ?? 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
         // Where each marker sits, then which distances show: a label that
         // would collide with one already placed thins out, objectives and
         // pings first, then the nearest (a strip that names every marker
@@ -355,12 +341,32 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
           const keep = kind === "objective" || kind === "ping";
           let x = xOf(p.bearing ?? 0);
           let clamped = false;
-          if (x < u(10) || x > width - u(10)) {
+          // A marker off the strip's edge holds inside it with its distance whole: its box (the
+          // distance's width, at least the mark's) clear of the edge by the fade's margin.
+          const edgeIn = boxW(p) / 2 + u(4);
+          if (x < edgeIn || x > width - edgeIn) {
             if (!keep) continue;
-            x = x < width / 2 ? u(10) : width - u(10);
+            x = x < width / 2 ? edgeIn : width - edgeIn;
             clamped = true;
           }
           placed.push({ p, kind, x, clamped });
+        }
+        // A clamped marker owns its stretch of the strip's edge: the points and ticks under it step aside.
+        const held = placed.filter((q) => q.clamped).map((q) => [q.x - boxW(q.p) / 2, q.x + boxW(q.p) / 2] as const);
+        for (let d = 0; d < 360; d += 15) {
+          const b = (d * Math.PI) / 180;
+          const x = xOf(b);
+          if (x < -10 || x > width + 10 || held.some(([l, r]) => x > l - u(8) && x < r + u(8))) continue;
+          const fade = 1 - Math.abs(x - width / 2) / (width / 2);
+          const cardinal = d % 90 === 0;
+          const named = d % 45 === 0;
+          if (named) {
+            text(`P${d}`, names[d / 45]!, { step: cardinal ? ts(16) : ts(12), font: "display", color: d === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 },
+              fixed({ start: x, top: u(2) }, { transform: { x: -u(cardinal ? 6 : 9) }, opacity: clamp01(fade * 1.6) }));
+          } else {
+            leaf(`T${d}`, { width: px(2), height: px(u(8)), part: sel("Compass", "tick", named ? "major" : null) }, { fills: [solid(token("ink", 0.7))] },
+              fixed({ start: x - 1, top: u(6) }, { opacity: clamp01(fade * 1.6) }));
+          }
         }
         const rank = (q: (typeof placed)[number]): number => (q.kind === "objective" ? 0 : q.kind === "ping" ? 1 : 2) * 1e9 + (q.p.distance ?? 1e8);
         const labelled = new Set<Api.CompassPoi>();
@@ -374,7 +380,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         }
         for (const { p, kind, x, clamped } of placed) {
           const ink = markerInk(kind, p.color);
-          const bw = Math.max(u(48), Math.ceil(`${Math.round(p.distance ?? 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
+          const bw = boxW(p);
           box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(bw), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
             mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {}, true);
             if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
