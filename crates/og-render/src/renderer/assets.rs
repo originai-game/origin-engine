@@ -537,6 +537,7 @@ impl Renderer {
                     && !material.draws_array_maps(),
                 lean: false,
                 flat: material.flatShading != 0,
+                wire_only: material.wireframe == 1,
                 wireframe: (material.wireframe != 0).then(|| {
                     let c = material.color + material.emissive * material.emissiveIntensity;
                     (

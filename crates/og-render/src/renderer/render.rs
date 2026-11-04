@@ -898,7 +898,7 @@ impl Renderer {
                             b,
                             m.clustered(b.mesh),
                             self.lightmaps.group(b.mesh).is_some(),
-                        ) && self.cache.materials[b.material].wireframe.is_none()
+                        ) && !self.cache.materials[b.material].wire_only
                     })
                     .map(|(i, _)| i as u32)
                     .collect()

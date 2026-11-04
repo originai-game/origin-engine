@@ -3206,7 +3206,7 @@ Token `og.MaterialStyle`, registered under the schema name `og.MaterialStyle`; i
 | `toonAmbient` | `number` | `0` | 0 … 1 | `ratio` | tunable | How smooth a toon material's ambient light (the Environment and its hemisphere light) stays: 0 one flat colour, the light from above and below averaged (MToon's equalised ambient), with the environment's reflection as one flat colour, so the bands sit on flat colour; 1 the smooth PBR ambient and reflections, which wash the bands out. |
 | `toonSoftness` | `number` | `1` | 0 … 4 | — | tunable | The toon bands' and highlight's edges, anti-aliased over this many pixels (lilToon's screen-space smoothing); 0 hard steps that only TAA softens. |
 | `outlinePlace` | `OutlinePlace` | `"inside"` | — | — | — | Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside. |
-| `wireframe` | `boolean` | `false` | — | — | — | Draw every lit material as its feature edges (StandardMaterialDesc.wireframe with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom: vector and neon looks. |
+| `wireframe` | `boolean` | `false` | — | — | — | Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone. |
 | `wireframeAngle` | `number` | `30` | 0 … 180 | `deg` | — | The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge. |
 
 ```ogt
@@ -3278,7 +3278,7 @@ resource MaterialStyle {
     tunable true
   }
   field outlinePlace OutlinePlace "Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside."
-  field wireframe bool "Draw every lit material as its feature edges (StandardMaterialDesc.wireframe with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom: vector and neon looks."
+  field wireframe bool "Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."
   field wireframeAngle f32 "The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge." {
     default 30
     min 0

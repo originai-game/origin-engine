@@ -1144,7 +1144,7 @@ impl RenderScene {
             !m.is_transparent()
                 && !m.is_physical()
                 && !m.draws_array_maps()
-                && m.wireframe == 0
+                && m.wireframe != 1
                 && self.material_shaders.get(i).is_none_or(Option::is_none)
         }
     }

@@ -334,8 +334,9 @@ pub struct StandardMaterial {
     /// 1: drawn as the edges of its triangles, one CSS pixel wide, in its
     /// colour plus its emissive light, depth tested and unlit (three.js
     /// `wireframe`, on every backend: lines, not a polygon mode). Its instances
-    /// cast no shadow.
-    #[reflect(min = 0.0, max = 1.0, default = 0.0)]
+    /// cast no shadow. 2 (what [`crate::MaterialStyle::wireframe`] sets):
+    /// those edges over its triangles, drawn as usual.
+    #[reflect(min = 0.0, max = 2.0, default = 0.0)]
     pub wireframe: u32,
     /// With `wireframe`: only the mesh's feature edges, its borders and the
     /// edges whose faces meet at more than this many degrees (a vector or
@@ -988,7 +989,11 @@ pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> Stan
         s.flatShading = 1;
     }
     if style.wireframe && s.wireframe == 0 {
-        s.wireframe = 1;
+        // Over its triangles (2), not in their place: a look's vector
+        // lines with the hidden ones hidden, as Battlezone and Tron drew
+        // theirs. Edges alone left the scene see-through and empty (the
+        // neon-vector sample: hills and sky gone, every back edge drawn).
+        s.wireframe = 2;
         s.wireframeAngle = style.wireframe_angle.max(0.0);
     }
     s

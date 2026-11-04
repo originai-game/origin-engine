@@ -15,8 +15,9 @@
 //!   draw and screen lines, which read the same in every capture.
 //!
 //! A material with `wireframe` draws its instances' triangle edges here
-//! (scene, depth tested, one CSS pixel) instead of their triangles: the
-//! unique edges of a mesh are found once per mesh revision.
+//! (scene, depth tested, one CSS pixel): instead of their triangles (1),
+//! or over them (2, a look's wireframe). The unique edges of a mesh are
+//! found once per mesh revision.
 
 use crate::deferred::Sampled;
 use crate::scene::{MeshData, RenderScene};

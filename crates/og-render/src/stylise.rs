@@ -431,8 +431,9 @@ pub struct MaterialStyle {
     /// Where outlines lie against the shape (the outline pass, and
     /// `ArtLine.place`).
     pub outline_place: OutlinePlace,
-    /// Every lit material drawn as its feature edges (`wireframe_angle`),
-    /// in its colour plus its emissive light: vector and neon looks.
+    /// Every lit material's feature edges (`wireframe_angle`) drawn over
+    /// its faces, in its colour plus its emissive light, the faces hiding
+    /// the edges behind them: vector and neon looks.
     pub wireframe: bool,
     /// The crease angle of `wireframe` in degrees (0: every edge).
     pub wireframe_angle: f32,

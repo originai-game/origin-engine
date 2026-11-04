@@ -9100,7 +9100,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Draw every lit material as its feature edges (StandardMaterialDesc.wireframe with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom: vector and neon looks."),
+                doc: doc!("Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

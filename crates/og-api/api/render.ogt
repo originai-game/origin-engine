@@ -1683,7 +1683,7 @@ module render {
       tunable true
     }
     field outlinePlace OutlinePlace "Where outlines lie against an object's silhouette: inside (the zero value, its own edge pixels), outside (round it, at any width, anti-aliased) or both. Creases between objects stay inside."
-    field wireframe bool "Draw every lit material as its feature edges (StandardMaterialDesc.wireframe with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom: vector and neon looks."
+    field wireframe bool "Draw every lit material's feature edges over its faces (StandardMaterialDesc.wireframe's edges, with wireframeAngle from this style where the material sets none), in its colour plus its emissive light, so emissive colours glow through bloom; the faces stay drawn as usual and hide the edges behind them, as vector displays drew with hidden lines removed: vector and neon looks, whose dark materials make the fill. A material's own wireframe draws its edges alone."
     field wireframeAngle f32 "The crease angle wireframe draws past (StandardMaterialDesc.wireframeAngle); 0 every triangle edge." {
       default 30
       min 0

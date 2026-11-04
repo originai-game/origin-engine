@@ -20,7 +20,7 @@ impl Renderer {
             materials.len(),
             |mesh, material| Self::dequant(meshes, materials, mesh, material),
             |material| materials[material].array.is_some(),
-            |material| materials[material].wireframe.is_some(),
+            |material| materials[material].wire_only,
         )?;
         let batches = sorted
             .runs
