@@ -364,6 +364,43 @@ const CHROME: Record<string, [desktop: Anchor, phone: Anchor, phoneLandscape?: A
   rhythmHud: ["left", "bottomLeft"], fightHud: ["bottom", "left"], survivalHud: ["left", "left", "bottom"], horrorHud: ["left", "left", "bottom"], openHud: ["left", "left", "bottom"],
 };
 
+/**
+ * The HUD groups that share the chrome's edge on a page whose chrome stands at an edge's middle: the chrome slides
+ * along the edge into the free run between them (chromeSlide), so at any text size it stands over none of them.
+ */
+const CHROME_AVOID: Record<string, readonly string[]> = {
+  shooterHud: ["MapHud", "ZoneHud", "Squad", "AbilitiesHud", "TouchMove"], shooterScore: ["MapHud", "ZoneHud", "Squad", "AbilitiesHud", "TouchMove"],
+  survivalHud: ["Vitals", "TouchMove"], tdHud: ["PurseHud", "WavesHud", "Call", "BuildHud"],
+  manageHud: ["ResourcesHud", "Clock", "Plot", "BuildHud"],
+};
+
+/**
+ * How far the chrome (`size`, as laid last tick) slides down (positive) or up from its edge's middle on `screen` so it
+ * stands in the free run of the edge nearest the middle, between the groups CHROME_AVOID names (as laid last tick)
+ * that reach into its column; 0 where the middle is free or the page names none, null where no run of the edge holds it.
+ */
+export function chromeSlide(screen: string, size: { x: number; width: number; height: number }): number | null {
+  const avoid = CHROME_AVOID[screen];
+  if (!avoid) return 0;
+  const vp = og.ui.frameViewport();
+  const gap = og.ui.frameTheme().space.sm;
+  const top = vp.safeArea.top + gap, bottom = vp.height - vp.safeArea.bottom - gap;
+  const taken = avoid.map((p) => og.ui.bounds(p)).filter((b): b is NonNullable<typeof b> => !!b && b.width > 0 && b.x < size.x + size.width + gap && b.x + b.width > size.x - gap)
+    .map((b) => [b.y - gap, b.y + b.height + gap] as const).sort((a, b) => a[0] - b[0]);
+  // The free runs of the edge, and in each the place nearest the middle where the chrome fits.
+  const mid = vp.height / 2 - size.height / 2;
+  let best: number | null = null;
+  let from = top;
+  for (const [a, b] of [...taken, [bottom, bottom] as const]) {
+    if (a - from >= size.height) {
+      const y = Math.min(Math.max(mid, from), a - size.height);
+      if (best === null || Math.abs(y - mid) < Math.abs(best - mid)) best = y;
+    }
+    from = Math.max(from, b);
+  }
+  return best === null ? null : Math.round(best - mid);
+}
+
 /** Where a showcase HUD page wants the kit's chrome, or null for the kit's own rule. */
 export function chromeAnchor(screen: string): Anchor | null {
   const c = CHROME[screen];

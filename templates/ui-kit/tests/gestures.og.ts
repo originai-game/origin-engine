@@ -10,11 +10,12 @@
 import { playtest } from "@origingame/engine/playtest";
 import { demo, ui } from "./lib.ts";
 
-// At 1280×720 the quest list is at (866, 345) 200×200 and the map at
-// (540, 345) 314×177 (tests/evidence/P4/ui-shell/gestures.md); the script
-// checks the rows and the map are there before it touches them.
-const LIST = { x: 960, y: 423 };
-const MAP = { x: 697, y: 433 };
+// At 1280×720 the quest list is at (866, 317) 200×200 and the map at
+// (540, 317) 314×177 (the panel centred in the room the kit's chrome
+// leaves; tests/evidence/P4/ui-shell/gestures.md); the script checks the
+// rows and the map are there before it touches them.
+const LIST = { x: 960, y: 395 };
+const MAP = { x: 697, y: 405 };
 const steps: string[] = ["0.5:show:materials", "1.2:dump_ui:before.json"];
 let t = 1.3;
 const at = (dt = 0.05) => (t += dt).toFixed(2);

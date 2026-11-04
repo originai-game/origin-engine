@@ -7,7 +7,7 @@
 // other word is the game's, keyed in assets/strings.
 
 import { og } from "@origingame/engine";
-import { art, besideChrome, L, phone, titleLine, type ArtName } from "./patterns.ts";
+import { art, besideChrome, chromeRoom, L, phone, titleLine, type ArtName } from "./patterns.ts";
 import type { DraftTeam, LobbyMember, RosterEntry, SelectCursor, Size, SongEntry, WorldMarker, WorldRegion } from "@origingame/engine";
 
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -29,7 +29,11 @@ export function frame(id: string, title: string, build: () => void, hints: Array
   // Room for the action hints at the foot: 72 px a line, or last tick's hints where they wrapped taller.
   const hintsBox = og.ui.bounds("Hints");
   const hintsH = hintsBox && hints.length > 0 ? vp.height - sa.bottom - hintsBox.y + t.space.sm : 0;
-  const bottom = bleed ? 0 : small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), Math.round(hintsH));
+  // On a desktop the kit's chrome stands in the bottom start corner, over the hints where they reach it: the body
+  // keeps out of its room.
+  // A bleeding screen (a map, a versus) still keeps out of the chrome where it stands at the foot: an interactive
+  // view under it would hide the button and trap the pad.
+  const bottom = bleed ? chromeRoom().bottom : small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), Math.round(hintsH), chromeRoom().bottom);
   const top = bleed ? 0 : small ? t.space.sm : t.space.lg;
   const height = vp.height - sa.top - sa.bottom;
   // The pattern's room is exact (the header's height taken off): a screen-filling pattern sizes its parts from it. The
@@ -197,7 +201,9 @@ export function versusScreen(): void {
       skipLabel: L("vs.skip"),
     });
     if (r.skipped) vsProgress = 1;
-  }, [], true);
+    // A desktop's versus takes the whole screen (the chrome stands over the seam); a phone's stands under the chrome's
+    // row, so its Skip and the first fighter's name keep clear of it.
+  }, [], !phone());
 }
 
 // ── draft and ban ───────────────────────────────────────────────────────

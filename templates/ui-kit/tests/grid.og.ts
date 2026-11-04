@@ -20,6 +20,9 @@ export default playtest({
     "1.7:dump_ui:store.json",
     "1.8:viewport:phone",
     "1.9:show:gear",
+    // The phone stacks the backpack under the paperdoll, past the body's foot: scroll it into view.
+    "2.3:touch_move_to:Doll",
+    "2.35:scroll:0,600",
     "2.6:dump_ui:gear-phone.json",
     "2.7:show:store",
     "3.4:dump_ui:store-phone.json",

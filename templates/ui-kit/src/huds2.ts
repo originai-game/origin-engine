@@ -8,7 +8,7 @@
 import { og } from "@origingame/engine";
 import type { AbilitySlotDesc, Paint, Size, StatusEffect, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
-import { at, frame, gameScene, hudArt, pauseButton } from "./huds.ts";
+import { at, frame, gameScene, held, hudArt, pauseButton } from "./huds.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -51,14 +51,19 @@ export function mobaHud(world: World): void {
   og.ui.nameplate("Foe", { target: { point: at(0.66, 0.42) }, name: "Morrow", level: "11", reaction: "hostile", health: 0.42, targeted: true });
   og.ui.nameplate("Ally", { target: { point: at(0.34, 0.5) }, name: "Ilsa", level: "12", reaction: "friendly", health: 0.78 });
   og.ui.nameplate("Me", { target: { point: at(0.48, 0.58) }, name: L("sc.you"), level: "12", reaction: "self", health: 0.64 });
-  // On a phone the map takes the start corner and the score the end one; the hero's own plate carries its health.
+  // On a phone the map takes the start corner and the score the end one, lowered under the map where the two would meet
+  // (large text: both as laid last tick); the hero's own plate carries its health.
+  const vp0 = og.ui.frameViewport();
+  const mapB = og.ui.bounds("MapHud");
+  const scoreB = og.ui.bounds("Score");
+  const lower = small && mapB !== null && held("mobaScore", `${vp0.width}x${vp0.height}|${t.textScale ?? 1}|${t.style}`, scoreB !== null && scoreB.x < mapB.x + mapB.width + t.space.sm && scoreB.y < mapB.y + mapB.height);
   chip("Score", () => {
     og.ui.label("Blue", "14", { step: "xl", font: "display", color: { token: "info" }, nowrap: true });
     og.ui.icon("Swords", "sword", { size: Math.round(18 * k) } as never);
     og.ui.label("Red", "9", { step: "xl", font: "display", color: { token: "danger" }, nowrap: true });
     const secs = 14 * 60 + 32 + Math.floor(tick / 60);
     og.ui.label("Clock", `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, { step: "base", font: "mono", color: { token: "inkMuted" }, nowrap: true });
-  }, { anchor: small ? "topRight" : "top" });
+  }, { anchor: small ? "topRight" : "top", offsetY: lower && mapB ? Math.round(mapB.y + mapB.height + t.space.sm - (vp0.safeArea.top + m)) : 0 });
   og.ui.minimapView("Map", {
     texture: hudArt("maps/world"), size: Math.round((small ? 112 : 176) * k), shape: "square", north: "",
     markers: [{ key: "me", kind: "player", x: 0.46, y: 0.56, heading: 40 }, { key: "ilsa", kind: "ally", x: 0.38, y: 0.62 }, { key: "morrow", kind: "enemy", x: 0.6, y: 0.4 }, { key: "baron", kind: "objective", x: 0.7, y: 0.3 }],
@@ -106,13 +111,20 @@ export function rpgHud(world: World): void {
   if (tick % 90 === 20) og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: 1_240 + (tick % 7) * 31, kind: (tick / 90) % 3 === 2 ? "critical" : "normal", seed: tick }] });
   og.ui.minimapView("Map", { texture: hudArt("maps/world"), size: Math.round((small ? 104 : 164) * k), shape: "circle", zone: L("sc.rpg.zone"), north: "", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5, heading: 30 }, { key: "q", kind: "objective", x: 0.62, y: 0.38 }, { key: "f", kind: "enemy", x: 0.56, y: 0.44 }], anchor: "topRight" });
   if (!touch) {
-    og.ui.objectiveTracker("Quests", {
+    // Centred on the end edge, and lowered under the minimap's zone plate where it would reach it (large text): both
+    // as laid last tick; the tracker's height does not depend on where it stands.
+    const vp = og.ui.frameViewport();
+    const map = og.ui.bounds("MapHud");
+    const tracker = og.ui.bounds("QuestsHud");
+    const down = map && tracker ? Math.max(0, Math.round(map.y + map.height + t.space.sm - (vp.height - tracker.height) / 2)) : 0;
+    og.ui.anchor("QuestsHud", { anchor: "right", margin: m, offsetY: down }, () => og.ui.objectiveTracker("Quests", {
       quests: [
         { key: "crypt", title: L("sc.rpg.quest"), icon: "skull", focused: true, steps: [{ key: "seal", text: L("sc.rpg.seals"), count: 2, target: 3 }, { key: "boss", text: L("sc.rpg.boss") }] },
         { key: "herbs", title: L("sc.rpg.side"), icon: "leaf", steps: [{ key: "moss", text: L("sc.rpg.moss"), count: 4, target: 6 }] },
       ],
-      width: Math.round(260 * k), anchor: "right",
-    });
+      // At large text the focused quest alone, so the tracker fits under the minimap.
+      width: Math.round(260 * k * Math.min(1.5, t.textScale ?? 1)), max: (t.textScale ?? 1) >= 1.5 ? 1 : 0, maxSteps: (t.textScale ?? 1) >= 1.5 ? 1 : 0, anchor: null,
+    }));
   }
   if (touch) {
     og.ui.anchor("Bars", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
@@ -148,6 +160,12 @@ export function rpgHud(world: World): void {
  * minimap and the buffs top end, the encounter's objective on the end
  * edge.
  */
+/** Whether the rhythm HUD's score stands at the foot, for the look it was measured in (rhythmHud). */
+let rhythmScore = { look: "", foot: false };
+
+/** Whether the MMO's touch buttons stand as a column, for the look it was measured in (mmoHud). */
+let mmoButtons = { look: "", column: false };
+
 export function mmoHud(world: World): void {
   const { t, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
@@ -179,7 +197,14 @@ export function mmoHud(world: World): void {
   }
   og.ui.minimapView("Map", { texture: hudArt("maps/world"), size: Math.round((small ? 96 : 150) * k), shape: "circle", zone: L("sc.mmo.zone"), north: "", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5, heading: 300 }, { key: "boss", kind: "enemy", x: 0.56, y: 0.4 }], anchor: portrait ? "bottomLeft" : "topRight" });
   if (touch) {
-    og.ui.anchor("Buttons", { anchor: "bottomRight", margin: m, gap: t.space.md, cross: "end" }, () => {
+    // A row beside the minimap in the bottom start corner; a column where the row would reach the map (large text
+    // widens its zone plate): both as laid last tick, held for the look.
+    const map = og.ui.bounds("MapHud");
+    const row = og.ui.bounds("Buttons");
+    const look = `${og.ui.frameViewport().width}|${t.textScale ?? 1}|${t.style}`;
+    if (mmoButtons.look !== look) mmoButtons = { look, column: false };
+    if (map && row && !mmoButtons.column && row.x < map.x + map.width + t.space.sm) mmoButtons.column = true;
+    og.ui.anchor("Buttons", { anchor: "bottomRight", margin: m, gap: t.space.md, cross: "end", ...(mmoButtons.column ? { direction: "column" as const } : {}) }, () => {
       og.ui.actionButton("Heal", L("sc.mmo.heal"), { icon: "plus", size: 60 });
       og.ui.actionButton("Shield", L("sc.mmo.ward"), { icon: "shield", size: 60 });
       og.ui.actionButton("Strike", L("sc.mmo.strike"), { primary: true, icon: "sword", size: 80 });
@@ -187,8 +212,9 @@ export function mmoHud(world: World): void {
     return;
   }
   const bar = (keys: string[], arts: Array<Parameters<typeof hudArt>[0]>, names: string[]): AbilitySlotDesc[] => keys.map((hotkey, i) => ({ key: `s${hotkey}`, hotkey, image: hudArt(arts[i % arts.length]!), name: L(names[i % names.length]!), cooldown: i === 2 ? Math.max(0, 9 - (tick % 540) / 60) : 0, cooldownMax: 9 }));
+  // The consumables' bar over the main one: five slots, so the whole HUD stays inside the frame's element budget.
   og.ui.anchor("Bars", { anchor: "bottom", margin: m, direction: "column", gap: t.space.xs, cross: "center" }, () => {
-    og.ui.abilityBar("Bar2", { slots: bar(["S1", "S2", "S3", "S4", "S5", "S6"], ["items/healing-draught", "items/mana-vial", "boons/star", "boons/apple", "items/iron-key", "boons/bomb"], ["sc.mmo.heal", "sc.rpg.vial", "sc.mmo.might", "sc.mmo.food", "sc.mmo.key", "sc.mmo.bomb"]), size: Math.round(40 * k), gap: 4, anchor: null });
+    og.ui.abilityBar("Bar2", { slots: bar(["S1", "S2", "S3", "S4", "S5"], ["items/healing-draught", "items/mana-vial", "boons/star", "boons/apple", "items/iron-key"], ["sc.mmo.heal", "sc.rpg.vial", "sc.mmo.might", "sc.mmo.food", "sc.mmo.key"]), size: Math.round(40 * k), gap: 4, anchor: null });
     og.ui.abilityBar("Bar1", { slots: bar(["1", "2", "3", "4", "5", "6", "7", "8"], ["boons/flame-blade", "boons/thunder-strike", "boons/frost", "boons/rune-shield", "boons/titan-heart", "boons/poison", "boons/crystal", "boons/broken-chain"], ["sc.mmo.strike", "sc.rpg.storm", "sc.rpg.nova", "sc.mmo.ward", "sc.mmo.might", "sc.mmo.venom", "sc.mmo.blink", "sc.mmo.free"]), size: Math.round(48 * k), gap: 4, anchor: null });
   });
 }
@@ -344,10 +370,13 @@ export function rhythmHud(world: World): void {
   const left = Math.round((vp.width - width) / 2);
   // The keys under the hit line keep a gap over the kit's chrome in the bottom start corner on a phone (both as laid last
   // tick: at large text the keys and the chrome grow into each other).
-  const chrome = small ? og.ui.bounds("Back") : null;
+  // The score in the bottom end corner (a phone at large text, below) is kept clear the same way.
   const keys = og.ui.bounds("KeysHud");
   const lastHit = og.ui.memory("rhythm~hitY", 0);
-  const clear = chrome && keys && lastHit > 0 && chrome.y > vp.height / 2 && chrome.x + chrome.width > keys.x ? chrome.y - t.space.sm - (keys.y + keys.height - lastHit) : Infinity;
+  let clear = Infinity;
+  for (const b of [small ? og.ui.bounds("Back") : null, rhythmScore.foot ? og.ui.bounds("Score") : null]) {
+    if (b && keys && lastHit > 0 && b.y > vp.height / 2 && b.x + b.width > keys.x && b.x < keys.x + keys.width) clear = Math.min(clear, b.y - t.space.sm - (keys.y + keys.height - lastHit));
+  }
   const hitY = Math.round(Math.min(vp.height - (portrait ? 200 : small ? 90 : 140) * k, clear));
   og.ui.remember("rhythm~hitY", hitY);
   // The highway: four lanes on a dark well, the notes falling at 0.6 of the height a second. The well is the game's
@@ -386,6 +415,7 @@ export function rhythmHud(world: World): void {
   // Each plate is centred on its widget's place (the static box the word and the count animate in) and as large as the
   // largest its text has been drawn.
   const plates: Array<[string, string, string[]]> = [["JudgePlate", "JudgeHud", ["JudgeHud/Judge/Word"]], ["ComboPlate", "ComboHud", ["ComboHud/Combo/Count", "ComboHud/Combo/Under"]]];
+  let plateFloor = -Infinity;
   for (const [id, home, paths] of plates) {
     const box = (judgeBoxes.boxes[id] ??= { w: 0, h: 0 });
     const at = og.ui.bounds(home);
@@ -401,8 +431,15 @@ export function rhythmHud(world: World): void {
     if (bottom > top) box.h = Math.max(box.h, bottom - top);
     if (!at || box.w <= 0) continue;
     const w = box.w + 2 * t.space.sm;
-    const h = Math.max(at.height, box.h) + 2 * t.space.xs;
-    og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetX: Math.round(at.x + at.width / 2 - w / 2 - vp.safeArea.left), offsetY: Math.round(at.y + at.height / 2 - h / 2 - vp.safeArea.top), width: px(w), height: px(h), background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {});
+    let h = Math.max(at.height, box.h) + 2 * t.space.xs;
+    // A plate starts under the one above it where their margins would meet (large text brings the two together).
+    let y = Math.round(at.y + at.height / 2 - h / 2);
+    if (y < plateFloor) {
+      h -= plateFloor - y;
+      y = plateFloor;
+    }
+    plateFloor = y + Math.round(h);
+    og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetX: Math.round(at.x + at.width / 2 - w / 2 - vp.safeArea.left), offsetY: y - vp.safeArea.top, width: px(w), height: px(Math.round(h)), background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {});
     og.ui.props({ inert: true, overlaps: [home] } as never);
   }
   const tiers = ["sc.rhythm.perfect", "sc.rhythm.great", "sc.rhythm.perfect", "sc.rhythm.good"];
@@ -410,7 +447,15 @@ export function rhythmHud(world: World): void {
   og.ui.judgement("Judge", { last: { text: L(tiers[beat % 4]!), tier: [0, 1, 0, 2][beat % 4]!, offsetMs: [0, -18, 0, 26][beat % 4]!, at: beat * 26 }, earlyLabel: L("sc.rhythm.early"), lateLabel: L("sc.rhythm.late"), anchor: "center", offsetY: -Math.round(40 * k) });
   og.ui.comboCounter("Combo", { count: 212 + beat, label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [250, 500], anchor: "center" });
   const plate = { background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" as const, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.sm } };
-  og.ui.anchor("Score", { anchor: "topRight", margin: m, direction: "column", cross: "end", gap: 2, ...plate }, () => {
+  // Beside the song's plate where both fit the width (as laid last tick); where they would meet (a phone at large
+  // text) the score takes the bottom end corner, clear of the judgement and the combo in the middle (the keys rise
+  // over it, above). Held for the look.
+  const songB = og.ui.bounds("Song");
+  const scoreB = og.ui.bounds("Score");
+  const scoreLook = `${vp.width}|${t.textScale ?? 1}|${t.style}`;
+  if (rhythmScore.look !== scoreLook) rhythmScore = { look: scoreLook, foot: false };
+  if (songB && scoreB && !rhythmScore.foot && songB.x + songB.width + m > scoreB.x && scoreB.y < songB.y + songB.height) rhythmScore.foot = true;
+  og.ui.anchor("Score", { anchor: rhythmScore.foot ? "bottomRight" : "topRight", margin: m, direction: "column", cross: "end", gap: 2, ...plate }, () => {
     og.ui.counter("Points", 812_400 + beat * 1_250, { step: "xl2", font: "display" });
     og.ui.label("Accuracy", L("sc.rhythm.accuracy", { pct: "98.42" }), { step: "sm", font: "mono", color: { token: "inkMuted" }, nowrap: true });
   });

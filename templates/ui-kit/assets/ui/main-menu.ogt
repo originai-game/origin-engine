@@ -58,7 +58,7 @@ stack Menu {
     bottom 0
   }
   scroll Menu {
-    width grow 0 420
+    width fit 420
     height grow
     padding 48
     gap 12
@@ -78,8 +78,7 @@ stack Menu {
       step displayXl2
       heading true
       nowrap true
-      width grow
-      fitMin xl4
+      width fit
       color "#FFF1DC"
       at phone {
         step xl4

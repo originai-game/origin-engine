@@ -28,6 +28,26 @@ export function phone(): boolean {
   return b === "phonePortrait" || b === "phoneLandscape";
 }
 
+/**
+ * The room the kit's chrome (the Gallery button and the next page, anchored as "Back") takes from a screen, as laid
+ * last tick, measured from the safe area's edges with a `gap` beyond it: `top` when it stands in the top half (a
+ * phone's row over the page), `bottom` when in the bottom half (a desktop's bottom start corner), `left` and `right`
+ * when it stands at an edge's middle as a column. A screen keeps its content out of that room (its padding, its
+ * anchor's offset or its own height) rather than a fixed guess of the chrome's size, which a style's larger buttons
+ * and the text size outgrow. Zero on its first tick, and where the screen's document carries the chrome (Kit slot).
+ */
+export function chromeRoom(gap = og.ui.frameTheme().space.sm): { top: number; bottom: number; left: number; right: number; rect: UiRect | null } {
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const b = og.ui.bounds("Back");
+  const none = { top: 0, bottom: 0, left: 0, right: 0, rect: null };
+  if (!b || b.width <= 0) return none;
+  const cy = b.y + b.height / 2, cx = b.x + b.width / 2;
+  const edgeMiddle = b.height >= b.width && cy > vp.height * 0.25 && cy < vp.height * 0.75;
+  if (edgeMiddle) return cx < vp.width / 2 ? { ...none, left: Math.ceil(b.x + b.width + gap - sa.left), rect: b } : { ...none, right: Math.ceil(vp.width - sa.right - b.x + gap), rect: b };
+  return cy < vp.height / 2 ? { ...none, top: Math.ceil(b.y + b.height + gap - sa.top), rect: b } : { ...none, bottom: Math.ceil(vp.height - sa.bottom - b.y + gap), rect: b };
+}
+
 /** Each phone header title's place, on its own row or beside the chrome, for the look it was measured in (besideChrome). */
 const titles = new Map<string, { own: boolean; look: string }>();
 
@@ -83,9 +103,13 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   const top = small ? t.space.sm : t.space.lg;
   const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm, `${id}/Header/Title`, title, "xl2");
   // The action hints sit on the bottom edge (actionHints anchors itself), and grow with the text size.
-  // On a phone the body runs to the screen's foot, so its fade ends at the edge rather than over a band of scene.
-  const bottom = small ? 0 : Math.round(72 * Math.max(1, t.textScale ?? 1));
-  og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - (small ? 0 : sa.bottom)), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
+  // On a phone the body stops at the safe area's foot (nothing reads under the home indicator); its fade ends there.
+  // On a desktop the body keeps out of the hints as laid (they wrap at large text) and of the kit's chrome, which
+  // stands in the bottom start corner, over the hints where they reach it.
+  const hintsBox = og.ui.bounds("Hints");
+  const hintsH = hintsBox && hints.length > 0 ? vp.height - sa.bottom - hintsBox.y + t.space.sm : 0;
+  const bottom = small ? 0 : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), Math.round(hintsH), chromeRoom().bottom);
+  og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
     // At least the Gallery button's height on a phone, so the body starts under it (a pass's header ran up into it).
     og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, gap: 2, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
       og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", ...titleLine(chrome) });
@@ -93,8 +117,8 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
     });
     // The body fades out at the foot where more lies below, so a row cut by the screen's edge reads as more to scroll.
     // A screen whose pattern scrolls itself (a battle pass's track) takes the room as it is, so its own view scrolls.
-    if (scroll) og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.md, fade: small ? 72 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
-    else og.ui.column("Body", { width: grow, height: grow, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
+    if (scroll) og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.md, fade: small ? 72 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build);
+    else og.ui.column("Body", { width: grow, height: grow, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build);
     if (hints.length > 0 && !small) og.ui.actionHints("Hints", { hints });
   });
 }
@@ -370,15 +394,27 @@ export function cardsScreen(world?: World): void {
   // The plates: as wide as the table allows (two side by side on a phone in portrait), the portrait as tall as the
   // table's height leaves once the intent, the name and the health have theirs.
   const plateW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : landscape ? 150 : big ? 260 : 196;
-  const tableH = og.ui.bounds(tablePath)?.height ?? 0;
-  const chrome = Math.round((small ? 104 : big ? 128 : 108) * ts);
+  // The table's room as laid last tick: from its top to the foot's (the anchor stops above the hand), not its own
+  // height, which a plate too tall for it would stretch.
+  const tb = og.ui.bounds(tablePath);
+  const tableH = tb ? Math.max(0, sa.top + Hs - Math.round(footH + t.space.sm) - tb.y) : 0;
+  // What a plate takes beside its portrait (the intent, the name, the health), as laid last tick: the style's type and
+  // the text size set it, so it is measured rather than guessed.
+  // The tallest foe's (a name on two lines, a taunt) sets it.
+  const besides = c.foes.map((f) => {
+    const col = og.ui.bounds(`${tablePath}/Foes/${f.key}`);
+    return col ? col.height - (og.ui.bounds(`${tablePath}/Foes/${f.key}/Plate/Figure`)?.height ?? 0) : 0;
+  });
+  const chrome = Math.round(Math.max(...besides, 0) || (small ? 104 : big ? 128 : 108) * ts);
   // A phone in portrait gives the portraits the table's height: up to a quarter taller than wide, as a mobile card
   // game's enemies stand.
   const figMax = Math.round((plateW - 2 * frameW) * (portrait ? 1.7 : 1));
   // Where the table has no room for a portrait (a phone on its side, a phone at 200 % text) the plates stand on their
   // names alone rather than run under the hand's bar.
   const room = tableH > 0 ? tableH - chrome : portrait ? 150 : figMax;
-  const figH = landscape || room < 64 ? 0 : Math.round(Math.min(figMax, room));
+  // A portrait shorter than the name over its foot (two lines at its step) would carry the name up over the intent.
+  const nameLine = t.typeRamp[small ? "base" : big ? "xl2" : "lg"]?.lineHeight ?? 24;
+  const figH = landscape || room < Math.max(64, 2 * nameLine + 14) ? 0 : Math.round(Math.min(figMax, room));
   const plate = (f0: Foe): void => {
     const f = { ...f0, name: L(`cards.foe.${f0.key}`) };
     const flash = c.refused === f.key && c.refusedT > 0;
@@ -474,12 +510,21 @@ export function cardsScreen(world?: World): void {
     });
     // The enemies centred over the play area: standing on the table's foot on a desktop, filling the table's middle on
     // a phone (their portraits as tall as it allows).
-    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "center", cross: "end", gap: small ? t.space.md : t.space.xl3 }, foes);
+    // Where even plates without portraits are taller than the table (large text in a style with a large body), the
+    // table scrolls them rather than run them under the hand.
+    // Measured from the plates as laid in the row (a scroll's bounds are cut to its view), it holds for the look.
+    const look = `${vp.width}x${vp.height}|${ts}|${t.style}|${t.typeRamp["base"]?.size ?? 0}`;
+    if (tableScroll.look !== look) tableScroll = { look, on: false };
+    if (!tableScroll.on && !landscape && figH === 0 && tableH > 0 && chrome > tableH) tableScroll.on = true;
+    if (tableScroll.on && !landscape) og.ui.scroll("Table", { width: grow, height: px(tableH), gap: 0, padding: { left: 0, top: 0, right: 0, bottom: 0 }, fade: 24, fadeInto: "shadow" }, () => og.ui.row("Foes", { width: grow, align: "center", gap: small ? t.space.md : t.space.xl, cross: "end" }, () => {
+      for (const f of c.foes) plate(f);
+    }));
+    else if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "center", cross: "end", gap: small ? t.space.md : t.space.xl3 }, foes);
   });
   // The hand along the foot with the energy at its start and End turn at its end, as card games lay them: on a desktop
   // and a phone on its side in the hand's own row; on a phone in portrait on a bar under it (Marvel Snap), so End turn
   // sits at the thumb and the energy where the player reads it while choosing a card.
-  og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: portrait ? "column" : "row", cross: portrait ? "stretch" : "center", gap: portrait ? t.space.xs : t.space.lg, padding: { left: small ? t.space.xs : t.space.xl, top: 0, right: small ? t.space.xs : t.space.xl, bottom: small ? t.space.xs : t.space.md } }, () => {
+  og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: portrait ? "column" : "row", cross: portrait ? "stretch" : "center", gap: portrait ? t.space.xs : t.space.lg, padding: { left: small ? t.space.xs : t.space.xl, top: 0, right: small ? t.space.xs : t.space.xl, bottom: small ? t.space.xs : Math.max(t.space.md, chromeRoom().bottom) } }, () => {
     if (!portrait) energy();
     og.ui.column("HandArea", { width: grow, cross: "stretch" }, () => hand(targets));
     // On a phone in portrait the bar docks under the hand, in the thumb's reach: a lifted card rises away from it.
@@ -492,6 +537,12 @@ export function cardsScreen(world?: World): void {
     } else endTurn();
   });
 }
+
+/** Whether the reward choice scrolls, for the look it was measured in (rewardsScreen). */
+let rewardsScroll = { look: "", on: false };
+
+/** Whether the card table scrolls its plates, for the look it was measured in (cardsScreen). */
+let tableScroll = { look: "", on: false };
 
 /** The kit's hand: the cardHand over the table's viewmodel, and the game's side of a play. */
 function hand(targets: CardTarget[]): void {
@@ -580,9 +631,14 @@ export function rewardsScreen(): void {
   // the actions under the cards (docked at the foot on a phone in portrait). A phone keeps the Gallery's row clear; a
   // short frame, large text or a style whose body is larger than the default's (pixel's 24) scrolls.
   const ts = t.textScale ?? 1;
-  const scrolls = !portrait || ts >= 1.5 || (t.typeRamp["base"]?.size ?? 16) > 18 * ts;
-  const top = small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + t.space.lg) : t.space.xl;
-  og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: scrolls && !small ? "center" : "start", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1)) } }, () => {
+  // ...and so does any look whose choice, laid unscrolled, ran past the room (measured, and held for that look).
+  const look = `${vp.width}x${vp.height}|${ts}|${t.style}|${t.typeRamp["base"]?.size ?? 0}`;
+  if (rewardsScroll.look !== look) rewardsScroll = { look, on: false };
+  const laid = og.ui.bounds("Rewards/Choice");
+  if (laid && !rewardsScroll.on && laid.y + laid.height > vp.height - sa.bottom - t.space.sm + 0.5) rewardsScroll.on = true;
+  const scrolls = rewardsScroll.on || !portrait || ts >= 1.5 || (t.typeRamp["base"]?.size ?? 16) > 18 * ts;
+  const top = small ? chromeRoom(t.space.lg).top : t.space.xl;
+  og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: scrolls && !small ? "center" : "start", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), chromeRoom().bottom) } }, () => {
     const body = (build: () => void): void => (scrolls ? og.ui.scrollArea("Body", { width: grow, height: small ? grow : null, gap: t.space.md, fade: small ? 40 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build) : build());
     body(() => {
     const res = og.ui.rewardChoice("Choice", {
@@ -687,7 +743,7 @@ export function gachaScreen(backdrop = 0): void {
   // On a phone the banner is the screen: its art runs under the status bar and the notch (the banner keeps its words
   // inside the safe area), the Gallery button floating on it over the tabs.
   const bleed = small && vp.breakpoint === "phonePortrait";
-  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, ...(bleed ? { offsetX: -sa.left, offsetY: -sa.top } : {}), width: px(bleed ? vp.width : vp.width - sa.left - sa.right), height: px(bleed ? vp.height : vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small && !bleed ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.sm) : 0, right: 0, bottom: 0 } }, () => {
+  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, ...(bleed ? { offsetX: -sa.left, offsetY: -sa.top } : {}), width: px(bleed ? vp.width : vp.width - sa.left - sa.right), height: px(bleed ? vp.height : vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small && !bleed ? chromeRoom().top : 0, right: 0, bottom: small ? 0 : chromeRoom().bottom } }, () => {
     const keyArt = b.key === "event" ? art("scenes/gacha-moonlit-tide") : null;
     const res = og.ui.gachaBanner("Banner", {
       banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh, image: art(BANNER_THUMB[x.key]) })),
@@ -720,7 +776,7 @@ export function gachaScreen(backdrop = 0): void {
       daysLabel: L("time.days"),
       hoursLabel: L("time.hours"),
       minutesLabel: L("time.minutes"),
-      topInset: bleed ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.xs) : 0,
+      topInset: bleed ? chromeRoom(og.ui.frameTheme().space.xs).top : 0,
     }, () => {});
     if (res.banner) g.banner = res.banner;
     if (res.pull > 0 && g.balance >= res.pull * 160) {
@@ -974,8 +1030,11 @@ export function sagaScreen(): void {
   const small = phone();
   const big = !small && vp.height >= 1000;
   const lvl = (s.picked || s.current).slice(1);
-  // The map runs under the notch and the status bar; its words keep to the safe area.
-  og.ui.anchor("Saga", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), height: px(vp.height), direction: "column" }, () => {
+  // The map runs under the notch and the status bar on a desktop; on a phone, whose header and chrome take the top, it
+  // starts under the header's words (as laid last tick), so no level scrolls under the title or the Gallery button.
+  const sub = small ? og.ui.bounds("SagaHead/Sub") : null;
+  const mapTop = sub ? Math.round(sub.y + sub.height + t.space.sm) : 0;
+  og.ui.anchor("Saga", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top + mapTop, width: px(vp.width), height: px(vp.height - mapTop), direction: "column" }, () => {
     const r = og.ui.sagaMap("Map", {
       nodes: SAGA0.map((n) => ({ ...n, ...(n.boss ? { image: art("portraits/cultist") } : {}) })),
       current: s.current,
@@ -1038,7 +1097,7 @@ export function boardScreen(): void {
       og.ui.starBar("Stars", { value: b.score, thresholds: [8000, 16000, 26000], label: L("board.score"), valueText: og.ui.formatNumber(b.score, { notation: "grouped" } as never), starsLabel: L("saga.stars") });
     });
   };
-  og.ui.anchor("Board", { anchor: "topLeft", margin: 0, width: px(W), height: px(H), direction: portrait ? "column" : "row", align: "center", cross: "center", gap: portrait ? t.space.sm : t.space.xl, padding: { left: t.space.sm, top: portrait ? Math.round((og.ui.bounds("Back")?.height ?? 44) + t.space.md) : t.space.lg, right: t.space.sm, bottom: t.space.sm } }, () => {
+  og.ui.anchor("Board", { anchor: "topLeft", margin: 0, width: px(W), height: px(H), direction: portrait ? "column" : "row", align: "center", cross: "center", gap: portrait ? t.space.sm : t.space.xl, padding: { left: t.space.sm, top: portrait ? chromeRoom(t.space.md).top : t.space.lg, right: t.space.sm, bottom: Math.max(t.space.sm, chromeRoom().bottom) } }, () => {
     if (!portrait) panel();
     og.ui.column("Play", { gap: t.space.md, cross: "center" }, () => {
       og.ui.goalChips("Goals", { goals, label: L("board.goals"), progressLabel: L("board.progress"), doneLabel: L("board.done"), compact: portrait });

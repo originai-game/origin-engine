@@ -30,8 +30,8 @@ export default playtest({
     t.ok(ui(run, "vn-line.json").some((e) => e.role === "status" && e.name.startsWith("Aria: There.")), "a tap went on from the narrator to Aria");
     const quests = ui(run, "quests.json");
     t.ok(quests.some((e) => e.role === "option" && e.name.startsWith("The Dawn Gate") && e.name.includes("Tracked")), "the tracked main quest is said tracked");
-    t.ok(quests.some((e) => e.role === "checkbox" && e.name.startsWith("Recover the star charts, 2 of 3")), "an objective says its count");
-    t.ok(quests.some((e) => e.role === "checkbox" && e.name === "???"), "a hidden objective is ???");
+    t.ok(quests.some((e) => e.role === "listitem" && e.name.startsWith("Recover the star charts, 2 of 3")), "an objective says its count");
+    t.ok(quests.some((e) => e.role === "listitem" && e.name === "???"), "a hidden objective is ???");
     t.ok(ui(run, "quests-tracked.json").some((e) => e.role === "option" && e.name.startsWith("Supply Run") && e.name.includes("Tracked")), "Track tracked the daily");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);

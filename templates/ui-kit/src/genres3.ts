@@ -7,7 +7,7 @@
 // game's, keyed in assets/strings.
 
 import { og } from "@origingame/engine";
-import { art, L, type ArtName } from "./patterns.ts";
+import { art, chromeRoom, L, phone, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
 import type { CgEntry, CollectionCard, LoadoutAttachment, LoadoutSlot, LoadoutStat, PhotoControl, PhotoLook, DisplaySettings, Rarity, RouteScene, SettingEntry, SettingKind, Size, World } from "@origingame/engine";
 
@@ -83,7 +83,8 @@ export function photoScreen(): boolean {
   og.ui.props({ inert: true } as never);
 
   let exit = false;
-  og.ui.anchor("Photo", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column" }, () => {
+  // On a desktop the mode keeps out of the kit's chrome in the bottom start corner (its room as laid).
+  og.ui.anchor("Photo", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: 0, right: 0, bottom: phone() ? 0 : chromeRoom().bottom } }, () => {
     const controls: PhotoControl[] = CONTROLS.map(([key, tab, min, max, step, unit, digits, origin]) => ({ key, tab, label: L(`photo.ctl.${key}`), value: v[key] ?? 0, min, max, step, unit, digits, origin }));
     // The game's own render of the shot through each filter and frame for their tiles.
     const filters: PhotoLook[] = FILTERS.map(([key, a]) => ({ key, name: L(`photo.filter.${key}`), image: art(a) }));

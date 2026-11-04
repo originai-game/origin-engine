@@ -90,7 +90,14 @@ export function foundationsScreen(picture: Texture | null): void {
       og.ui.prose("Lore", "The [b]Ember Blade[/b] was forged in the [color=warn]deep[/color] mines of Kharak.\n\nIt burns whoever holds it without a [link=codex]pact[/link].", {});
     });
     panel("Media", "Icons, art slots and shapes", w(400), () => {
-      og.ui.row("Icons", { gap: t.space.md, cross: "center", wrap: true }, () => {
+      // The badges stand out over their marks' top edge (more at large text): the row keeps that much room under the
+      // heading, as laid last tick.
+      const over = Math.max(0, ...["Mail", "Shield"].map((k) => {
+        const mark = og.ui.bounds(`Foundations/Body/View/Content/Panels/Media/Icons/${k}`);
+        const badge = og.ui.bounds(`Foundations/Body/View/Content/Panels/Media/Icons/${k}/Badge`);
+        return mark && badge ? Math.ceil(mark.y - badge.y) : 0;
+      }));
+      og.ui.row("Icons", { gap: t.space.md, cross: "center", wrap: true, padding: { left: 0, top: over, right: 0, bottom: 0 } }, () => {
         og.ui.iconMark("Mail", "chat-bubble", { badge: "3", label: "Messages" });
         og.ui.iconMark("Bell", "bell", { dot: true, label: "Alerts" });
         og.ui.iconMark("Gem", "gem", { plate: "circle", tone: "primary", label: "Gems" });
@@ -149,7 +156,12 @@ export function controlsScreen(): void {
         og.ui.pushButton("Disabled", "Shop", { disabled: true, disabledReason: "Reach level 5 to open the shop" });
         og.ui.pushButton("Pinned", "Pinned", { selected: true, icon: "map-pin" });
       });
-      og.ui.row("Icons", { gap: t.space.sm, wrap: true, cross: "center" }, () => {
+      // The count badge stands out over its button's end edge (more at large text): the row's gap keeps that much room
+      // more, as laid last tick.
+      const mail = og.ui.bounds("Controls/Body/View/Content/Panels/Buttons/Icons/Mail");
+      const mailBadge = og.ui.bounds("Controls/Body/View/Content/Panels/Buttons/Icons/Mail/Badge");
+      const past = mail && mailBadge ? Math.max(0, Math.ceil(mailBadge.x + mailBadge.width - (mail.x + mail.width))) : 0;
+      og.ui.row("Icons", { gap: t.space.sm + past, wrap: true, cross: "center" }, () => {
         og.ui.iconButton("Close", "cross", { label: "Close" });
         og.ui.iconButton("Mail", "chat-bubble", { label: "Messages", badge: "12" });
         og.ui.iconButton("Bell", "bell", { label: "Alerts", dot: true, variant: "secondary" });

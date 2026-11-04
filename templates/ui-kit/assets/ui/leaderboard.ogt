@@ -82,10 +82,9 @@ column Screen {
       text "Leaderboard"
       step xl2
       heading true
-      width grow
-      fitMin lg
+      width fit
       at phone {
-        step xl
+        step lg
       }
     }
     spacer

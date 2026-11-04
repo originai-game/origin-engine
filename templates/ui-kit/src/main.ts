@@ -22,12 +22,12 @@ import { dialogueScreen, loadStory, questsScreen, vnScreen } from "./story.ts";
 import { charactersScreen, draftScreen, lobbyScreen, mapScreen, songsScreen, versusScreen } from "./genres.ts";
 import { chatScreen, cityMapScreen, defineGenres2Actions, garageScreen, ledgerScreen, rtsScreen } from "./genres2.ts";
 import { cgGalleryScreen, cgViewing, deckScreen, defineGenres3Actions, loadoutScreen, photoHidden, photoScreen, restoreSettingsTree, routeChartScreen, settingsTreeScreen } from "./genres3.ts";
-import { art, boardScreen, L, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
+import { art, boardScreen, chromeRoom, L, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shipStatusScreen, starshipCommand, turnOrderScreen } from "./starship.ts";
 import { buildRaceScene, RaceView } from "./raceScene.ts";
-import { chromeAnchor, chromeInDocument, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
+import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
 import { defineHudActions } from "./huds.ts";
 
 export const SCREENS = [
@@ -317,6 +317,32 @@ const STYLE_BACKDROPS: Record<string, string> = {
 const HEROES = ["Knight", "Ranger", "Mage", "Rogue", "Bard", "Monk", "Smith", "Thief"];
 const PLAYER_INKS = ["focus", "info", "success", "warn"] as const;
 
+/**
+ * A preview's panel in the room the kit's chrome leaves (under it on a phone, above it on a desktop), centred there at
+ * `width` (grow on a phone): its content (`build`, in a scroll area `<id>/Body`) scrolls where it is taller than that
+ * room, as at large text, so nothing runs under the chrome or past the screen.
+ */
+function roomPanel(id: string, width: number, pad: { x: number; y: number }, gap: number, build: () => void): void {
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const t = og.ui.frameTheme();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  const room = chromeRoom(t.space.sm);
+  const margin = 16;
+  const free = vp.height - sa.top - sa.bottom - room.top - room.bottom - 2 * margin;
+  og.ui.anchor(id, {
+    anchor: "center",
+    offsetY: Math.round((room.top - room.bottom) / 2 + (sa.top - sa.bottom) / 2),
+    direction: "column",
+    width: phone ? { kind: "grow" } : { kind: "fixed", px: width },
+    padding: { left: pad.x, top: pad.y, right: pad.x, bottom: pad.y },
+    background: { token: "panel" },
+    radius: t.radius.panel,
+  }, () => {
+    og.ui.scrollArea("Body", { width: { kind: "grow" }, height: { kind: "fit", max: Math.max(80, free - 2 * pad.y) }, gap, fadeInto: "panel", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build);
+  });
+}
+
 /** A local-multiplayer lobby: up to four pads, each with its own focus ring; A picks a hero for that pad's player. */
 function playersScreen(d: DemoState): void {
   og.ui.setPlayers(4);
@@ -325,15 +351,7 @@ function playersScreen(d: DemoState): void {
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
   const picks = [d.pick0, d.pick1, d.pick2, d.pick3];
-  og.ui.anchor("Lobby", {
-    anchor: "center",
-    direction: "column",
-    gap: t.space.md,
-    width: phone ? grow : { kind: "fixed", px: 640 },
-    padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.xl },
-    background: { token: "panel" },
-    radius: t.radius.panel,
-  }, () => {
+  roomPanel("Lobby", 640, { x: t.space.xl, y: t.space.xl }, t.space.md, () => {
     og.ui.label("Title", "Players", { step: "xl2", font: "display", heading: true });
     // Rich text: the button in bold, a link (a child element Hint/join, focusable by every pad).
     const hint = og.ui.richText("Hint", "Each pad moves its own ring; [b]A[/b] picks a hero for that player. [link=join]How to join[/link]", { color: { token: "inkMuted" }, width: grow });
@@ -349,7 +367,8 @@ function playersScreen(d: DemoState): void {
     });
     og.ui.row("Heroes", { gap: t.space.sm, wrap: true, width: grow }, () => {
       HEROES.forEach((h, i) => {
-        const r = og.ui.button(og.ui.idi("Hero", i), h, { width: { kind: "fixed", px: phone ? 150 : 132 } });
+        // At least a column's width, and as wide as its name at large text.
+        const r = og.ui.button(og.ui.idi("Hero", i), h, { width: { kind: "fit", min: phone ? 150 : 132 } });
         if (r.clicked) picks[r.pad ?? 0] = i + 1;
       });
     });
@@ -600,15 +619,7 @@ function textScreen(world: World): void {
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
-  og.ui.anchor("Type", {
-    anchor: "center",
-    direction: "column",
-    gap: t.space.sm,
-    width: phone ? grow : { kind: "fixed", px: 640 },
-    padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
-    background: { token: "panel" },
-    radius: t.radius.panel,
-  }, () => {
+  roomPanel("Type", 640, { x: t.space.xl, y: t.space.lg }, t.space.sm, () => {
     og.ui.label("Title", "Type and scripts", { step: "displaySm", font: "display", heading: true });
     og.ui.row("Faces", { gap: t.space.lg, width: grow, cross: "center" }, () => {
       og.ui.label("Kerned", "AVATAR · Toyota · WAVE", { step: "xl", font: "display", nowrap: true });
@@ -648,16 +659,7 @@ function materialsScreen(d: DemoState): void {
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
-  og.ui.anchor("Materials", {
-    anchor: phone ? "top" : "center",
-    offsetY: phone ? 100 : 0,
-    direction: "column",
-    gap: t.space.md,
-    width: phone ? grow : { kind: "fixed", px: 900 },
-    padding: { left: t.space.xl, top: t.space.lg, right: t.space.xl, bottom: t.space.lg },
-    background: { token: "panel" },
-    radius: t.radius.panel,
-  }, () => {
+  roomPanel("Materials", 900, { x: t.space.xl, y: t.space.lg }, t.space.md, () => {
     og.ui.label("Title", "Icons, pictures and gestures", { step: "xl", font: "display", heading: true });
     og.ui.row("Icons", { gap: t.space.sm, wrap: true, width: grow }, () => {
       ICONOIR.slice(0, phone ? 16 : 32).forEach((name, i) => og.ui.icon(og.ui.idi("Icon", i), name, { size: i % 8 === 0 ? 32 : 24, tint: { token: i % 8 === 0 ? "primary" : "inkMuted" } }));
@@ -708,22 +710,44 @@ function galleryButton(world: World, d: DemoState): void {
   // menu button does (the start corner is the web shell's Back).
   const corner = phone && !rts && (PATTERN_SCREENS.has(SCREENS[d.screen]!) || STARSHIP_SCREENS.has(SCREENS[d.screen]!));
   // On a versus screen the corners carry the fighters' names and the Skip: the button stands at the top middle over the
-  // seam on a desktop, and at the start edge's middle beside the mark on a phone.
-  const versus = SCREENS[d.screen] === "versus";
+  // seam on a desktop. A phone's seam carries the mark and the stage's name, so there it takes the top end corner as on
+  // the other pattern screens, and the versus stands under it (genres.ts).
+  const versus = SCREENS[d.screen] === "versus" && !phone;
   // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls took the
   // bottom-left corner last tick, the button stands mid-way down the left edge.
   const taken = !top && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
-  // Elsewhere it sits above a docked action bar (under a finger the bar spans the bottom edge):
-  // last tick's place of the bar, when the screen has one.
+  // Elsewhere it sits above a docked action bar where the bar reaches its corner (under a finger the bar spans the
+  // bottom edge; at large text a desktop's hints wrap and run to the start edge): last tick's places of the bar and of
+  // the chrome, when the screen has one.
   const bar = og.ui.bounds("Hints");
-  const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
+  const was = og.ui.bounds("Back");
+  const reach = (was ? was.width : 240) + 2 * og.ui.frameTheme().space.lg;
+  const lift = !top && bar && bar.y + bar.height >= vp.height - vp.safeArea.bottom - og.ui.frameTheme().space.xl && bar.x < reach ? vp.height - bar.y : 0;
   // A showcase's document page takes the chrome in its Kit slot (showcases.ts); a HUD page names its free spot.
   if (chromeInDocument(SCREENS[d.screen]!)) return;
   const own = chromeAnchor(SCREENS[d.screen]!);
   // On an edge's middle the chrome stands as a column, so it reaches no further into the HUD than its widest button (a
   // row on a phone on its side, whose height is the scarce one).
   const column = (own === "left" || own === "right") && bp !== "phoneLandscape";
-  og.ui.anchor("Back", own ? { anchor: own, gap: 8, cross: "center", ...(column ? { direction: "column" as const } : {}) } : {
+  // On an edge's middle it slides along the edge into the run the HUD leaves free (chromeSlide); where that edge has
+  // none (large text fills it), it takes the opposite edge's, held for the look.
+  let edge = own;
+  let slide = 0;
+  if (own && column && was) {
+    const look = `${SCREENS[d.screen]}|${vp.width}x${vp.height}|${og.ui.frameTheme().textScale ?? 1}|${og.ui.frameTheme().style}`;
+    const other = own === "left" ? "right" : "left";
+    if (chromeFlip !== look) {
+      const here = chromeSlide(SCREENS[d.screen]!, was);
+      const there = here === null ? chromeSlide(SCREENS[d.screen]!, { ...was, x: vp.width - was.x - was.width }) : null;
+      if (there !== null) chromeFlip = look;
+      else slide = here ?? 0;
+    }
+    if (chromeFlip === look) {
+      edge = other;
+      slide = chromeSlide(SCREENS[d.screen]!, was) ?? 0;
+    }
+  }
+  og.ui.anchor("Back", edge ? { anchor: edge, gap: 8, cross: "center", offsetY: slide, ...(column ? { direction: "column" as const } : {}) } : {
     anchor: versus || (rts && phone) ? (phone ? "left" : "top") : corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
     offsetY: versus ? 0 : rts && phone ? -Math.round(vp.height * 0.12) : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
     gap: 8,
@@ -731,14 +755,18 @@ function galleryButton(world: World, d: DemoState): void {
   }, () => chromeButtons(world, d));
 }
 
+/** The look whose HUD page took its chrome to the opposite edge (chromeSlide found no run on its own). */
+let chromeFlip = "";
+
 /** The Gallery button and, on a showcase's page, its next page beside it. */
 function chromeButtons(world: World, d: DemoState): void {
   const label = tr(world, "gallery.button");
   const compact = compactChrome(label, SCREENS[d.screen]!);
   if (compact) {
-    // Icon buttons at the touch size, their words their accessible names: a label is never cut.
-    const icon = ["view-grid", "grid", "menu", "home"].find((n) => og.ui.hasIcon(n)) ?? "view-grid";
-    if (og.ui.iconButton("Gallery", icon, { variant: "secondary", label }).clicked) d.screen = 0;
+    // Icon buttons at the touch size, their words their accessible names: a label is never cut. The gallery's grid
+    // (never a house: Gallery is not home); a style's set without one (the packs' 32-icon grids) its back arrow, the way
+    // to the gallery, until og-ui draws a grid mark for every set.
+    if (og.ui.iconButton("Gallery", og.ui.hasIcon("view-grid") ? "view-grid" : "back", { variant: "secondary", label }).clicked) d.screen = 0;
   } else if (og.ui.pushButton("Gallery", label, { variant: "secondary", width: { kind: "fit" } }).clicked) d.screen = 0;
   // The same button as the next page beside it (showcaseNext), so the two read as one pair: one size, one label.
   showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!, compact);
@@ -755,6 +783,9 @@ let chromeLook = { look: "", compact: false };
  */
 function compactChrome(label: string, screen: string): boolean {
   const vp = og.ui.frameViewport();
+  // A HUD page's chrome keeps a small footprint at large text on any surface: the HUD is the frame, and the words'
+  // plate would stand over its widgets.
+  if (chromeAnchor(screen) && (og.ui.frameTheme().textScale ?? 1) >= 1.5) return true;
   if (vp.breakpoint !== "phonePortrait" && vp.breakpoint !== "phoneLandscape") return false;
   const t = og.ui.frameTheme();
   const look = `${screen}|${label}|${t.textScale ?? 1}|${Math.round(vp.width)}|${t.typeRamp["button"]?.size ?? 0}`;
@@ -775,8 +806,12 @@ function widgetsScreen(world: World, d: DemoState): void {
   const touch = phone || vp.breakpoint === "tablet" || vp.coarsePointer;
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
+  // Under the kit's chrome on a phone, above it on a desktop (its room as laid), and above the touch controls.
+  const room = chromeRoom(t.space.sm);
+  const free = vp.height - vp.safeArea.top - vp.safeArea.bottom - room.top - room.bottom - 2 * t.space.lg - 32;
   og.ui.anchor("Widgets", {
     anchor: phone ? "top" : "topLeft",
+    offsetY: room.top,
     width: phone ? grow : { kind: "fixed", px: 560 },
     direction: "column",
     gap: t.space.md,
@@ -785,10 +820,10 @@ function widgetsScreen(world: World, d: DemoState): void {
     radius: t.radius.panel,
   }, () => {
     // A scroll area: the row cut at its bottom fades into the panel, so it reads as more below, not a clip.
-    og.ui.scrollArea("Body", { width: grow, height: { kind: "fixed", px: touch ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 }, fadeInto: "panel" }, () => {
+    og.ui.scrollArea("Body", { width: grow, height: { kind: "fixed", px: Math.max(120, free - (touch ? 260 : 0)) }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 }, fadeInto: "panel" }, () => {
       const tabs = og.ui.tabs("Tabs", ["Overview", "Stats", "Gear"], d.tab, { fill: true, width: grow });
       d.tab = tabs.selected;
-      og.ui.row("Pickers", { width: grow, gap: t.space.md, cross: "center" }, () => {
+      og.ui.row("Pickers", { width: grow, gap: t.space.md, cross: "center", wrap: true }, () => {
         d.difficulty = og.ui.select("Difficulty", ["Easy", "Normal", "Hard"], d.difficulty, {}).selected;
         d.amount = og.ui.stepper("Amount", d.amount, { min: 0, max: 9 }).value;
       });
@@ -1159,10 +1194,15 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "toasts": {
       const t = og.ui.frameTheme();
-      og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
+      roomPanel("ToastDemo", 360, { x: t.space.lg, y: t.space.lg }, t.space.sm, () => {
         og.ui.label("Title", "Toasts", { step: "xl" });
+        // Each message a line of words that wraps at large text, its own button beside it (a button's label never
+        // wraps, so at 200 % on a phone the words would not fit one).
         for (const [tone, text] of [["neutral", "Checkpoint reached"], ["success", "Achievement unlocked"], ["warn", "Low battery"], ["danger", "Connection lost"], ["info", "New version available"]] as const) {
-          if (og.ui.button(tone, text, { width: { kind: "grow" } }).clicked) og.ui.toast(world, text, { tone });
+          og.ui.row(tone, { width: { kind: "grow" }, gap: t.space.sm, cross: "center" }, () => {
+            og.ui.label("Text", text, { width: { kind: "grow" } });
+            if (og.ui.iconButton("Show", "play", { variant: "secondary", label: `Show “${text}”` }).clicked) og.ui.toast(world, text, { tone });
+          });
         }
       });
       back = og.ui.back();

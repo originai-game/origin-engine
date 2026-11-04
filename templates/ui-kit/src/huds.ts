@@ -8,7 +8,7 @@
 
 import { og } from "@origingame/engine";
 import type { AbilitySlotDesc, Anchor, KillfeedEntry, Paint, MapMarkerItem, Size, StandingsEntry, Vector3, World } from "@origingame/engine";
-import { L } from "./patterns.ts";
+import { chromeRoom, L } from "./patterns.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -295,6 +295,15 @@ const BUILD: ReadonlyArray<[string, HudArt]> = [
   ["power", "city/power"], ["water", "city/water"], ["transit", "city/transit"], ["police", "city/police"],
 ];
 
+/** Whether a piece of the HUD has moved for this look: once `meets` (two boxes as laid last tick), held until the look
+ * changes, so the move cannot flip it back the next tick. */
+const heldLooks = new Map<string, string>();
+export function held(key: string, look: string, meets: boolean): boolean {
+  if (heldLooks.get(key) === look) return true;
+  if (meets) heldLooks.set(key, look);
+  return meets;
+}
+
 /**
  * A management game's HUD (Cities: Skylines, Stardew Valley, Anno): the
  * resources along the top with their rates, the date and the game's speed
@@ -330,14 +339,21 @@ export function manageHud(world: World): void {
     if (speed.selected !== st.speed) st.speed = speed.selected;
   });
   if (!small) {
-    og.ui.objectiveTracker("Goals", {
+    // Centred on the end edge, lowered under the clock where it would reach it (large text): both as laid last tick; the
+    // tracker's height does not depend on where it stands.
+    const vpG = og.ui.frameViewport();
+    const clkG = og.ui.bounds("Clock");
+    const goalsG = og.ui.bounds("GoalsHud");
+    const down = clkG && goalsG ? Math.max(0, Math.round(clkG.y + clkG.height + t.space.sm - (vpG.height - goalsG.height) / 2)) : 0;
+    og.ui.anchor("GoalsHud", { anchor: "right", margin: m, offsetY: down }, () => og.ui.objectiveTracker("Goals", {
       quests: [
         { key: "grow", title: L("sc.manage.goal.grow"), icon: "person", focused: true, steps: [{ key: "people", text: L("sc.manage.goal.people"), count: 1_204, target: 1_500 }, { key: "park", text: L("sc.manage.goal.park"), done: true }] },
         { key: "trade", title: L("sc.manage.goal.trade"), icon: "coin", steps: [{ key: "market", text: L("sc.manage.goal.market"), progress: 0.4 }] },
       ],
-      width: Math.round(280 * k),
-      anchor: "right",
-    });
+      // At large text the focused goal alone, so the tracker fits between the clock and the build palette.
+      width: Math.round(280 * k), max: (t.textScale ?? 1) >= 1.5 ? 1 : 0, maxSteps: (t.textScale ?? 1) >= 1.5 ? 1 : 0,
+      anchor: null,
+    }));
   }
   // The plot under the cursor: the chosen tool's footprint on the ground (the placement ghost), and over it, tied to it
   // by a stem, the card of what it would build there, its cost and upkeep.
@@ -349,7 +365,8 @@ export function manageHud(world: World): void {
     const cardW = Math.round(220 * k);
     // The card keeps clear of the goals on the end edge (as laid last tick): a tablet's goals reach in past the middle.
     const goals = og.ui.bounds("GoalsHud");
-    const cx = Math.round(Math.min(vp.width * (portrait ? 0.5 : small ? 0.62 : 0.66), goals ? goals.x - t.space.md - cardW / 2 : Infinity));
+    // ...and of the kit's chrome on the start edge's middle (its room as laid), where they would meet at large text.
+    const cx = Math.round(Math.max(Math.min(vp.width * (portrait ? 0.5 : small ? 0.62 : 0.66), goals ? goals.x - t.space.md - cardW / 2 : Infinity), sa.left + chromeRoom().left + cardW / 2));
     const cardH = og.ui.bounds("Plot")?.height ?? Math.round(64 * k);
     const stem = Math.round(18 * k);
     // The card stays under the clock (as laid last tick, at any text size), the plot under the card.
@@ -411,7 +428,12 @@ export function sportsHud(world: World): void {
     const vp = og.ui.frameViewport();
     const bug = og.ui.bounds("BugHud");
     const was = og.ui.bounds("SubHud");
-    if (vp.breakpoint === "desktop") og.ui.substitution("Sub", { ...sub, anchor: "bottomLeft" });
+    // On a desktop the lower third keeps the foot's start corner unless it would reach the player's plate (large text):
+    // then it too takes the top end, as laid last tick and held for the look.
+    const plate = og.ui.bounds("PlayerHud");
+    const look = `${vp.width}x${vp.height}|${t.textScale ?? 1}|${t.style}`;
+    const foot = vp.breakpoint === "desktop" && !held("sportsSub", look, plate !== null && was !== null && was.y + was.height > plate.y && was.x + was.width + t.space.sm > plate.x);
+    if (foot) og.ui.substitution("Sub", { ...sub, anchor: "bottomLeft" });
     else if (bug && was && bug.x + bug.width + t.space.sm > was.x) {
       og.ui.anchor("SubHud", { anchor: "topRight", margin: m, offsetY: Math.round(bug.y + bug.height + t.space.sm - (vp.safeArea.top + m)) }, () => og.ui.substitution("Sub", { ...sub, anchor: null }));
     } else og.ui.substitution("Sub", { ...sub, anchor: "topRight" });
@@ -427,20 +449,25 @@ export function matchFacts(world: World): void {
   void world;
   gameScene("scenes/genre-sports", { x: 0.5, y: 0.5 });
   og.ui.anchor("Facts", { anchor: small ? "top" : "center", margin: m, direction: "column", gap: t.space.md, width: small ? grow : px(640 * k), padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
-    og.ui.scorebug("Bug", { home: HOME, away: AWAY, clock: "90:00", period: "", final: L("sc.sports.ft"), anchor: null });
-    og.ui.goalTimeline("Goals", { events: [{ key: "g1", team: 0, name: "D. Arlo", minute: "23'", icon: "ball" }, { key: "g2", team: 1, name: "R. Kade", minute: "51'", icon: "ball" }, { key: "g3", team: 0, name: "T. Ilves", minute: "88'", icon: "ball", note: L("sc.sports.pen") }], anchor: null });
-    og.ui.matchStats("Stats", {
-      home: HOME, away: AWAY, header: false,
-      stats: [
-        { key: "pos", label: L("sc.sports.possession"), home: 58, away: 42, homeText: "58%", awayText: "42%" },
-        { key: "shots", label: L("sc.sports.shots"), home: 14, away: 9 },
-        { key: "target", label: L("sc.sports.onTarget"), home: 6, away: 3 },
-        { key: "pass", label: L("sc.sports.passes"), home: 512, away: 388 },
-        { key: "fouls", label: L("sc.sports.fouls"), home: 11, away: 14, worse: true },
-      ],
-      anchor: null,
+    // The board scrolls where it would reach the kit's chrome at the foot (large text): its room as laid.
+    const vp = og.ui.frameViewport();
+    const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - 2 * m - chromeRoom().bottom - 2 * t.space.lg;
+    og.ui.scroll("Board", { width: grow, height: { kind: "fit", max: Math.max(160, room) }, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: 0 }, fade: 24, fadeInto: "hud" }, () => {
+      og.ui.scorebug("Bug", { home: HOME, away: AWAY, clock: "90:00", period: "", final: L("sc.sports.ft"), anchor: null });
+      og.ui.goalTimeline("Goals", { events: [{ key: "g1", team: 0, name: "D. Arlo", minute: "23'", icon: "ball" }, { key: "g2", team: 1, name: "R. Kade", minute: "51'", icon: "ball" }, { key: "g3", team: 0, name: "T. Ilves", minute: "88'", icon: "ball", note: L("sc.sports.pen") }], anchor: null });
+      og.ui.matchStats("Stats", {
+        home: HOME, away: AWAY, header: false,
+        stats: [
+          { key: "pos", label: L("sc.sports.possession"), home: 58, away: 42, homeText: "58%", awayText: "42%" },
+          { key: "shots", label: L("sc.sports.shots"), home: 14, away: 9 },
+          { key: "target", label: L("sc.sports.onTarget"), home: 6, away: 3 },
+          { key: "pass", label: L("sc.sports.passes"), home: 512, away: 388 },
+          { key: "fouls", label: L("sc.sports.fouls"), home: 11, away: 14, worse: true },
+        ],
+        anchor: null,
+      });
     });
-  });
+    });
 }
 
 export type { Anchor };

@@ -10,7 +10,7 @@
 
 import { og } from "@origingame/engine";
 import type { Size, World } from "@origingame/engine";
-import { L } from "./patterns.ts";
+import { chromeRoom, L } from "./patterns.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -52,8 +52,9 @@ function frame() {
   const ts = Math.max(1, t.textScale ?? 1);
   const back = og.ui.bounds("Back");
   // On a phone the Gallery button takes the top end corner (the screens start under it); on a desktop the bottom start one.
-  const top = small ? (back ? back.y + back.height - sa.top : 60) + t.space.sm : 0;
-  const foot = small ? 0 : (back?.height ?? 40) + t.space.md;
+  // The chrome's room as laid (chromeRoom: on a desktop lifted over the hints where they reach its corner).
+  const top = small ? chromeRoom(t.space.sm).top || 60 + t.space.sm : 0;
+  const foot = small ? 0 : chromeRoom(t.space.md).bottom || 40 + t.space.md;
   const footW = small ? 0 : (back?.width ?? 120) + t.space.md;
   const m = small ? t.space.sm : t.space.lg;
   const line = (step: string, fallback: number) => t.typeRamp[step]?.lineHeight ?? fallback * ts;
@@ -84,38 +85,41 @@ export function shipStatusScreen(): void {
   const stack = small && ts >= 1.5;
   const labelW = Math.round(92 * k * Math.min(ts, 2));
   const valueW = Math.round(56 * k * Math.min(ts, 2));
-  og.ui.anchor("ShipStatus", { anchor: "topLeft", margin: m, offsetY: f.top, width: px(w), direction: "column", gap: t.space.md, padding: all(small ? t.space.md : t.space.lg), background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
-    og.ui.column("Head", { width: grow, gap: 2 }, () => {
-      og.ui.label("Name", "AFS Valiant", { step: small ? "xl2" : f.big ? "xl4" : "xl3", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
-      og.ui.label("Class", L("ship.class"), { step: small ? "sm" : "base", color: { token: "inkMuted" }, nowrap: true, ellipsis: true, width: grow });
-    });
-    og.ui.artSlot("Ship", { texture: art("ships/valiant.png"), kind: "unitPortrait", aspect: 400 / 150, fit: "contain", mask: "none", width: grow, label: "AFS Valiant" });
-    const row = (id: string, label: string, bar: () => void, value: () => void) => {
-      if (stack) {
-        og.ui.column(id, { width: grow, gap: t.space.xs }, () => {
-          og.ui.row("Head", { width: grow, gap: t.space.sm, cross: "center" }, () => {
-            og.ui.label("Label", label, { step: "base", nowrap: true, ellipsis: true, width: grow });
-            og.ui.row("Value", { align: "end", cross: "center", gap: 2 }, value);
+  og.ui.anchor("ShipStatus", { anchor: "topLeft", margin: m, offsetY: f.top, width: px(w), direction: "column", gap: 0, padding: all(small ? t.space.md : t.space.lg), background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
+    // Its rows scroll where the panel would run past the chrome's room (large text in a style with a large body).
+    og.ui.scroll("Body", { width: grow, height: { kind: "fit", max: Math.max(120, f.innerH - f.top - f.foot - 2 * m - 2 * (small ? t.space.md : t.space.lg)) }, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: 0 }, fade: 24, fadeInto: "hud" }, () => {
+      og.ui.column("Head", { width: grow, gap: 2 }, () => {
+        og.ui.label("Name", "AFS Valiant", { step: small ? "xl2" : f.big ? "xl4" : "xl3", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+        og.ui.label("Class", L("ship.class"), { step: small ? "sm" : "base", color: { token: "inkMuted" }, nowrap: true, ellipsis: true, width: grow });
+      });
+      og.ui.artSlot("Ship", { texture: art("ships/valiant.png"), kind: "unitPortrait", aspect: 400 / 150, fit: "contain", mask: "none", width: grow, label: "AFS Valiant" });
+      const row = (id: string, label: string, bar: () => void, value: () => void) => {
+        if (stack) {
+          og.ui.column(id, { width: grow, gap: t.space.xs }, () => {
+            og.ui.row("Head", { width: grow, gap: t.space.sm, cross: "center" }, () => {
+              og.ui.label("Label", label, { step: "base", nowrap: true, ellipsis: true, width: grow });
+              og.ui.row("Value", { align: "end", cross: "center", gap: 2 }, value);
+            });
+            og.ui.row("Track", { width: grow, gap: t.space.sm, cross: "center" }, bar);
           });
-          og.ui.row("Track", { width: grow, gap: t.space.sm, cross: "center" }, bar);
+          return;
+        }
+        og.ui.row(id, { width: grow, gap: t.space.sm, cross: "center" }, () => {
+          og.ui.label("Label", label, { step: "base", nowrap: true, ellipsis: true, width: px(labelW) });
+          bar();
+          og.ui.row("Value", { width: px(valueW), align: "end", cross: "center", gap: 2 }, value);
         });
-        return;
-      }
-      og.ui.row(id, { width: grow, gap: t.space.sm, cross: "center" }, () => {
-        og.ui.label("Label", label, { step: "base", nowrap: true, ellipsis: true, width: px(labelW) });
-        bar();
-        og.ui.row("Value", { width: px(valueW), align: "end", cross: "center", gap: 2 }, value);
+      };
+      // Every row's mark as tall as its name's line (the names are labels of the screen's, at base, outside the bars).
+      og.ui.column("Systems", { width: grow, gap: t.space.sm }, () => {
+        row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { bare: true, value: 78, max: 100, kind: "health", icon: "heart", iconStep: "base", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
+          og.ui.label("N", "78", { step: "lg", font: "mono", nowrap: true });
+          og.ui.label("Unit", "%", { step: "sm", color: { token: "inkMuted" }, nowrap: true });
+        });
+        // Shields as discrete pips, three of four; the reactor's mark before its slimmer bar.
+        row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { bare: true, value: 3, max: 4, style: "pips", color: { token: "info" }, icon: "shield", iconStep: "base", width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
+        row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { bare: true, value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "base", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
       });
-    };
-    // Every row's mark as tall as its name's line (the names are labels of the screen's, at base, outside the bars).
-    og.ui.column("Systems", { width: grow, gap: t.space.sm }, () => {
-      row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { bare: true, value: 78, max: 100, kind: "health", icon: "heart", iconStep: "base", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
-        og.ui.label("N", "78", { step: "lg", font: "mono", nowrap: true });
-        og.ui.label("Unit", "%", { step: "sm", color: { token: "inkMuted" }, nowrap: true });
-      });
-      // Shields as discrete pips, three of four; the reactor's mark before its slimmer bar.
-      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { bare: true, value: 3, max: 4, style: "pips", color: { token: "info" }, icon: "shield", iconStep: "base", width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
-      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { bare: true, value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "base", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
     });
   });
 }
@@ -229,7 +233,12 @@ export function abilityCardsScreen(): void {
         });
       }
     });
-    if (og.ui.heroButton("EndTurn", L("ab.endTurn"), { tone: "primary", size: "large", width: small ? grow : px(endW), key: keys ? "Space" : "" }).clicked) st.card = -1;
+    const end = (): void => {
+      if (og.ui.heroButton("EndTurn", L("ab.endTurn"), { tone: "primary", size: "large", width: small ? grow : px(endW), key: keys ? "Space" : "" }).clicked) st.card = -1;
+    };
+    // On a desktop the foot row is as tall as the chrome's room, so the scrolling hand stops above the Gallery button.
+    if (small) end();
+    else og.ui.row("Foot", { width: grow, height: { kind: "fit", min: Math.max(0, f.foot - m) }, align: "end", cross: "end" }, end);
   });
 }
 
@@ -267,7 +276,8 @@ export function sectorMapScreen(): void {
   const fh = Math.max(200, small ? fill : Math.min(fw * 0.6, fill));
   // The systems in graph units shaped like the graph's window (its zoom bar, and the room nodeGraph keeps round its
   // nodes, a node and its fade at each end, taken off), so at its fit the sector fills the window with that margin.
-  const node = Math.round((small ? 20 : 24) * k);
+  // A node is a touch target: 44 CSS px under a finger (docs/ui.md §14), the small star dot under a mouse.
+  const node = og.ui.frameViewport().coarsePointer ? Math.max(44, Math.round(24 * k)) : Math.round((small ? 20 : 24) * k);
   const aspect = Math.max(0.3, (fh - (small ? 56 : 52) - node - 60) / Math.max(1, fw - node - 2 * t.space.sm));
   const xs = NODES.map((n) => n.x);
   const ys = NODES.map((n) => n.y);
@@ -414,7 +424,7 @@ export function hangarScreen(world: World): void {
       og.ui.label("Class", L(`hangar.${cls.key}.class`), { step: small ? "sm" : "base", color: { token: "inkMuted" }, nowrap: true, ellipsis: true, width: grow });
     });
   };
-  og.ui.anchor("Hangar", { anchor: "topLeft", margin: 0, offsetY: f.top, width: px(f.innerW), height: px(f.innerH - f.top + (small ? f.sa.bottom : 0)), direction: "column", gap: t.space.md, padding: { left: pad, top: small ? 0 : t.space.lg, right: pad, bottom: small ? 0 : f.foot + t.space.sm } }, () => {
+  og.ui.anchor("Hangar", { anchor: "topLeft", margin: 0, offsetY: f.top, width: px(f.innerW), height: px(f.innerH - f.top), direction: "column", gap: t.space.md, padding: { left: pad, top: small ? 0 : t.space.lg, right: pad, bottom: small ? 0 : f.foot + t.space.sm } }, () => {
     if (!small) og.ui.label("Title", L("hangar.title"), { step: f.big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
     if (stacked) {
       og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.lg, fade: 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? f.sa.bottom + t.space.md : 0 } }, () => {
