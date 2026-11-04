@@ -136,7 +136,7 @@ column Results {
           on click set tab "\"summary\""
           state selection bind "tab == \"summary\"" {
             off {
-              opacity 0.7
+              opacity 0.85
             }
             on {
               opacity 1
@@ -154,7 +154,7 @@ column Results {
           on click set tab "\"graphs\""
           state selection bind "tab == \"graphs\"" {
             off {
-              opacity 0.7
+              opacity 0.85
             }
             on {
               opacity 1
@@ -172,7 +172,7 @@ column Results {
           on click set tab "\"board\""
           state selection bind "tab == \"board\"" {
             off {
-              opacity 0.7
+              opacity 0.85
             }
             on {
               opacity 1

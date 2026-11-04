@@ -412,7 +412,7 @@ dress "Chip.base[selected]" {
   effect outerGlow 8 "#e8a33a59"
 }
 dress "Slot.frame[selected]" {
-  stroke 1.5 primary inside
+  stroke 2 focus inside
   effect outerGlow 8 "#e8a33a59"
 }
 dress "Button.base[danger]" {
@@ -447,6 +447,6 @@ dress "Inventory.item[rarity=mythic]" {
   effect outerGlow 12 "#e8505f80"
 }
 dress "Inventory.item[selected]" {
-  stroke 1.5 primary inside
+  stroke 2 focus inside
   effect outerGlow 8 "#e8a33a59"
 }

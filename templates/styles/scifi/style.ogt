@@ -323,7 +323,7 @@ dress "Chip.base[selected]" {
   stroke 1 primary inside
 }
 dress "Slot.frame[selected]" {
-  stroke 1 primary inside
+  stroke 2 focus inside
 }
 dress "Button.base[danger]" {
   slice none
@@ -331,5 +331,5 @@ dress "Button.base[danger]" {
   stroke none
 }
 dress "Inventory.item[selected]" {
-  stroke 1 primary inside
+  stroke 2 focus inside
 }

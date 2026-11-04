@@ -85,7 +85,7 @@ column Screen {
         on click emit section
         state selection bind "$index == section" {
           off {
-            opacity 0.7
+            opacity 0.85
           }
           on {
             opacity 1

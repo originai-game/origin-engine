@@ -71,7 +71,7 @@ column Screen {
         on click set tab "\"track\""
         state selection bind "tab == \"track\"" {
           off {
-            opacity 0.7
+            opacity 0.85
           }
           on {
             opacity 1
@@ -85,7 +85,7 @@ column Screen {
         on click set tab "\"challenges\""
         state selection bind "tab == \"challenges\"" {
           off {
-            opacity 0.7
+            opacity 0.85
           }
           on {
             opacity 1

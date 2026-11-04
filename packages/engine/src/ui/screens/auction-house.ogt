@@ -78,7 +78,7 @@ column Screen {
       on click set tab "\"browse\""
       state selection bind "tab == \"browse\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -92,7 +92,7 @@ column Screen {
       on click set tab "\"sell\""
       state selection bind "tab == \"sell\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -106,7 +106,7 @@ column Screen {
       on click set tab "\"mine\""
       state selection bind "tab == \"mine\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1

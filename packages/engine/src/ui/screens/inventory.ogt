@@ -100,7 +100,7 @@ column Screen {
         on click emit filter
         state selection bind "$index == filter" {
           off {
-            opacity 0.7
+            opacity 0.85
           }
           on {
             opacity 1

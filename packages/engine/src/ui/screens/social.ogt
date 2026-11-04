@@ -92,7 +92,7 @@ column Screen {
       on click set tab "\"friends\""
       state selection bind "tab == \"friends\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -106,7 +106,7 @@ column Screen {
       on click set tab "\"guild\""
       state selection bind "tab == \"guild\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -120,7 +120,7 @@ column Screen {
       on click set tab "\"chat\""
       state selection bind "tab == \"chat\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1

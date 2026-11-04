@@ -79,7 +79,7 @@ column Screen {
       on click emit view
       state selection bind "view == \"garage\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -94,7 +94,7 @@ column Screen {
       on click emit view
       state selection bind "view == \"tuning\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1

@@ -78,7 +78,7 @@ column Screen {
       on click set tab "\"global\""
       state selection bind "tab == \"global\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -92,7 +92,7 @@ column Screen {
       on click set tab "\"friends\""
       state selection bind "tab == \"friends\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -106,7 +106,7 @@ column Screen {
       on click set tab "\"league\""
       state selection bind "tab == \"league\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1

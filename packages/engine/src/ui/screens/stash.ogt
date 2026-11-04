@@ -121,7 +121,7 @@ column Screen {
             on click set tab "$index"
             state selection bind "$index == tab" {
               off {
-                opacity 0.7
+                opacity 0.85
               }
               on {
                 opacity 1

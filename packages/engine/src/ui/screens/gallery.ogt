@@ -89,7 +89,7 @@ column Screen {
       on click set tab "\"cg\""
       state selection bind "tab == \"cg\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -103,7 +103,7 @@ column Screen {
       on click set tab "\"music\""
       state selection bind "tab == \"music\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
@@ -117,7 +117,7 @@ column Screen {
       on click set tab "\"endings\""
       state selection bind "tab == \"endings\"" {
         off {
-          opacity 0.7
+          opacity 0.85
         }
         on {
           opacity 1
