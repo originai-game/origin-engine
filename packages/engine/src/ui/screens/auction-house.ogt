@@ -13,7 +13,7 @@ version 1
 # level and time left; it answers the row selected); Filters takes the
 # category tree and level range (og.ui.tree, og.ui.rangeSlider); History
 # takes the price history (og.ui.chart, line); Post takes the sell form
-# (og.ui.inventoryGrid of the bag, og.ui.numberStepper for the price).
+# (rpg.inventoryGrid of the bag, og.ui.numberStepper for the price).
 name "auction-house"
 layer menu
 focus "Body/Listings"

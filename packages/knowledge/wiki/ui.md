@@ -413,19 +413,6 @@ module ui {
 | [`KeyboardDesc`](#type-KeyboardDesc) | desc struct | An on-screen keyboard: what it edits and how it types. |
 | [`KeyboardResult`](#type-KeyboardResult) | struct | What an on-screen keyboard did this tick. |
 | [`og.ui.onScreenKeyboard`](#fn-onScreenKeyboard) | function | An on-screen keyboard for pads and touch (docs/ui.md §11, Appendix D: search and names with a pad): a panel at the screen's bottom with the text being typed and its caret, a candidate bar while composing, and keys a pad walks with focus wrapping by rows (Y erases, LB and RB move the caret, Back closes) and a finger presses (a key pops its letter above the finger on a press). Letters (shift for one, double tap for caps), symbols, a number pad and the Japanese kana table, with composition for an IME: typed kana (or letters with compose) stay underlined in KeyboardResult.composition until a candidate (the game's, plus the katakana) or Enter commits them. Plays press, select and back sounds. Parts: `Keyboard.panel`, `Keyboard.key[wide][action][active][primary][hover\|pressed\|focused\|disabled]` (primary: the enter key; disabled: a gap in the kana table), `Keyboard.preview`, `Keyboard.candidates`, `Keyboard.candidate[hover\|pressed\|focused]`, `Keyboard.popup`. A dialog named by its title; keys are buttons named by what they type. Probe: `<id>/Panel/Content/Keys/Row#r/Key#k`, `<id>/Panel/Content/Preview`, `<id>/Panel/Content/Candidates/Candidate#i`. |
-| [`GridItem`](#type-GridItem) | desc struct | An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it. |
-| [`InventoryCarry`](#type-InventoryCarry) | struct | An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it. |
-| [`InventoryPick`](#type-InventoryPick) | desc struct | The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried. |
-| [`InventoryMove`](#type-InventoryMove) | struct | A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do). |
-| [`InventoryGridDesc`](#type-InventoryGridDesc) | desc struct | A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers. |
-| [`InventoryGridResult`](#type-InventoryGridResult) | struct | What an inventory grid answered this tick. |
-| [`og.ui.inventoryGrid`](#fn-inventoryGrid) | function | A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container. |
-| [`PaperdollSlot`](#type-PaperdollSlot) | desc struct | An equipment slot around the paperdoll's figure. |
-| [`PaperdollStat`](#type-PaperdollStat) | desc struct | A line of the paperdoll's stats, with the change the carried or hovered item would make. |
-| [`PaperdollEquip`](#type-PaperdollEquip) | struct | An item the player put in a slot. |
-| [`PaperdollDesc`](#type-PaperdollDesc) | desc struct | A paperdoll: equipment slots around the character's figure, and its stats. |
-| [`PaperdollResult`](#type-PaperdollResult) | struct | What a paperdoll answered this tick. |
-| [`og.ui.paperdoll`](#fn-paperdoll) | function | A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid. |
 | [`HandCard`](#type-HandCard) | desc struct | A card in the player's hand, as the game's viewmodel holds it. |
 | [`CardTarget`](#type-CardTarget) | desc struct | A place a targeted card can be played on: an enemy, an ally, a lane, as the game projects it onto the screen. |
 | [`CardHandDesc`](#type-CardHandDesc) | desc struct | A hand of cards, its targets and what it says. |
@@ -441,26 +428,9 @@ module ui {
 | [`RewardChoiceDesc`](#type-RewardChoiceDesc) | desc struct | A choice of rewards and what it allows. |
 | [`RewardChoiceResult`](#type-RewardChoiceResult) | struct | What the choice did this tick. |
 | [`og.ui.rewardChoice`](#fn-rewardChoice) | function | A choice of N rewards (Slay the Spire's card reward, Hades' boons, Vampire Survivors' level-up, Balatro's shop packs): each reward a card in its tier's colour with its art, kind, title, tag and rich-text effect, dealt in one after another and flipped face up. The card under the pointer or the focus lifts and its edge brightens; a press takes it (or selects it, with confirm or several picks, its ring and a tick in the focus ink), the taken one rises and grows while the others fall away. Reroll, Banish (armed, every card shows a cross until one is pressed) and Skip sit under the cards. Keys and pads move along the cards, confirm takes or selects, Back disarms banishing. Side by side on a desktop and a phone on its side; one above another, compact, on a phone in portrait. |
-| [`GachaFeatured`](#type-GachaFeatured) | desc struct | A featured unit of a banner (its rate-up). |
-| [`GachaBannerTab`](#type-GachaBannerTab) | desc struct | One banner of the set the player switches between. |
-| [`GachaBannerDesc`](#type-GachaBannerDesc) | desc struct | A gacha banner (its art, its featured units, its rules) and the player's purse. |
-| [`GachaBannerResult`](#type-GachaBannerResult) | struct | What the banner did this tick. |
-| [`og.ui.gachaBanner`](#fn-gachaBanner) | function | A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art across the screen (the game's texture, or the style's placeholder figure) with the first featured unit's name plate large on the art side, and, on the other side over a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), and under them the purchase block: the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). On a phone in portrait the purchase block sits at the foot, under the thumb. A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons. |
-| [`PullItem`](#type-PullItem) | desc struct | One result of a pull. |
-| [`PullSequenceDesc`](#type-PullSequenceDesc) | desc struct | A pull to reveal: start one by giving a new token. |
-| [`PullPhase`](#type-PullPhase) | enum | Where a pull sequence is. |
-| [`PullSequenceResult`](#type-PullSequenceResult) | struct | What the sequence did this tick. |
-| [`og.ui.pullSequence`](#fn-pullSequence) | function | A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, epithet, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once. |
-| [`SagaNode`](#type-SagaNode) | desc struct | One level on a saga map, as the game's viewmodel holds it. |
-| [`SagaMapDesc`](#type-SagaMapDesc) | desc struct | A saga map: its levels in order, where the player stands, and its art. |
-| [`SagaMapResult`](#type-SagaMapResult) | struct | What the map did this tick. |
-| [`og.ui.sagaMap`](#fn-sagaMap) | function | A saga map (Candy Crush Saga, Royal Match, Gardenscapes): the run's levels as badges along a painted path that scrolls, sideways on a desktop and a phone on its side (start to end, mirrored right to left) and upward on a phone in portrait (the first level at the foot). Each badge reads its number with its stars under it; the path is lit up to the level the player stands on, where the avatar's pin floats and a soft ring breathes; locked levels lie dim behind a lock; a boss stands larger in danger ink with its portrait. It opens centred on the current level (og.ui.scrollIntoView) and keeps it in view when current changes. A press on an open level picks it; on a locked one it shakes and is refused. Keys and pads walk the badges in path order. |
 | [`StarBarDesc`](#type-StarBarDesc) | desc struct | A level's score toward its stars. |
 | [`StarBarResult`](#type-StarBarResult) | struct | What the bar showed this tick. |
 | [`og.ui.starBar`](#fn-starBar) | function | A level's score toward its stars (Candy Crush, Homescapes, Angry Birds): the score in the display face over a bar that fills in a warm gold, a star standing on the bar at each threshold, lit as the score passes it with a pop and the success sound, an outline until then. The bar runs start to end, mirrored right to left. |
-| [`LevelGoal`](#type-LevelGoal) | desc struct | One goal of a level (collect 20 blue gems, break 6 ice tiles). |
-| [`GoalChipsDesc`](#type-GoalChipsDesc) | desc struct | A level's goals. |
-| [`og.ui.goalChips`](#fn-goalChips) | function | A level's goals as chips (Candy Crush's orders, Royal Match's targets): each its piece's art, what to do, have / need and a thin bar; one met turns to the success ink with a tick. A count that rises pops; a goal met plays success. |
 | [`IdleGeneratorDesc`](#type-IdleGeneratorDesc) | desc struct | A generator of an idle game, as the game's viewmodel holds it. The game writes its numbers (og.ui.formatNumber, idle letters), so they read in its notation and language. |
 | [`IdleGeneratorResult`](#type-IdleGeneratorResult) | struct | What the generator's row did this tick. |
 | [`og.ui.idleGenerator`](#fn-idleGenerator) | function | One generator of an idle game (AdVenture Capitalist, Cookie Clicker, Idle Miner): its art, name, level, owned count, the cycle's bar filling toward its next payout, what it makes, and a buy button with its cost, lit when the purse pays and glass when it does not. Held, Buy repeats (after a beat, every few ticks) as long as the purse pays. A locked generator lies dim with what unlocks it. One row; a game stacks them in a scrolling list with the buy amount chosen above (og.ui.segmented). |
@@ -479,22 +449,11 @@ module ui {
 | [`BattlePassDesc`](#type-BattlePassDesc) | desc struct | A battle pass: the season, the player's level and XP, the premium track's ownership and the tiers. |
 | [`BattlePassResult`](#type-BattlePassResult) | struct | What the pass did this tick. |
 | [`og.ui.battlePass`](#fn-battlePass) | function | A battle pass (Fortnite, Apex Legends, Brawl Stars): a header over the season's art with its name, the time left, the level in a badge and the XP bar, then the track: the tiers side by side in a scrolling row on a desktop (the free track under the level line, the premium one over it) and stacked in portrait. Tiers reached are lit up to the player's level; a reward ready to claim glows and pulses with Claim, a claimed one shows a tick and dims, a premium one without the track wears a lock. The track opens on the player's level; Claim all and Unlock Premium stand at its head. |
-| [`ConversationLayout`](#type-ConversationLayout) | enum | How a conversation stands on the screen. |
-| [`ConversationDesc`](#type-ConversationDesc) | desc struct | A conversation on screen, as og.story.view answers it. |
-| [`ConversationResult`](#type-ConversationResult) | struct | What the conversation's player did this tick: the game passes it on to og.story. |
-| [`og.ui.conversation`](#fn-conversation) | function | A conversation to the bar of Mass Effect, Baldur's Gate 3, Disco Elysium and Persona, fed by og.story.view: the speaker's name in the display face over the line, which types out by the tick (a press shows it whole, the next goes on; skip-read lines, DialogueView.seen, show whole), a chevron bobbing when it waits, a voice cue (three bars) while its voice plays, and auto that holds until the voice ends. Choices stand in a stack, numbered for the keys: an active check leads with its stat and chance in a tag tinted by the odds, a passive one that passed with its stat, a disabled one muted behind a lock with its reason, a visited one in muted ink. A timed choice runs a bar under them that warms as it runs out, the default choice marked. A roll (DialogueView.lastCheck) pops a d20 with its number and Success or Failure. Skip, Log and Auto stand at the top end with the device's glyphs. |
 | [`BacklogDesc`](#type-BacklogDesc) | desc struct | A conversation's backlog, as og.story.history answers it. |
 | [`BacklogResult`](#type-BacklogResult) | struct | What the backlog's player did this tick. |
 | [`og.ui.backlog`](#fn-backlog) | function | A visual novel's backlog (Ren'Py, Persona, Ace Attorney): a panel over the dimmed scene that opens on the newest line and scrolls back, each line under its speaker's name, the narrator's in muted italics, the choice the player made on a line under it as their reply, a voiced line with a button that plays it again; Close (and back) hides it. |
 | [`BarksDesc`](#type-BarksDesc) | desc struct | The barks being said, as og.story.barks answers them. |
 | [`og.ui.barks`](#fn-barks) | function | Barks over their speakers (The Last of Us, Hitman, Sea of Thieves): one og.ui.speechBubble for each bark og.story is saying, typed out from the tick it began and leaving as og.story's time for it (BarkView.ticksLeft) runs out; a new line on the same entity replaces the old at once; a shout from shoutPriority up. |
-| [`QuestTab`](#type-QuestTab) | desc struct | One tab of the quest log: a category of QuestView.category. |
-| [`QuestArt`](#type-QuestArt) | desc struct | A texture for an asset path a quest names (a reward's image), loaded by the game (og.load.texture). |
-| [`QuestLogDesc`](#type-QuestLogDesc) | desc struct | The quest log, as og.story.quests answers it. |
-| [`QuestLogResult`](#type-QuestLogResult) | struct | What the quest log's player did this tick. |
-| [`og.ui.questLog`](#fn-questLog) | function | A quest log to the bar of The Witcher 3, Genshin Impact and Destiny 2: tabs by category over a list of quests (the active ones, then the completed and failed under their heading, muted), each with its category's mark, its region, a New dot until it is looked at and an updated dot when it changed, the tracked one pinned; beside it (stacked on a phone, the list then the quest) the quest itself: its title in the display face, the giver and region, the summary, the stage's objectives as boxes with their counts and bars (optional ones tagged, hidden ones ???, failed ones crossed in danger), the rewards as tiles with their art and amounts, and Track and Show on map. A completed quest wears a stamp. |
-| [`QuestTrackerDesc`](#type-QuestTrackerDesc) | desc struct | The HUD's quest tracker, fed by og.story.quests. |
-| [`og.ui.questTracker`](#fn-questTracker) | function | The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's quests (each tracked active quest's title, its stage's objectives that are revealed, their counts and bars, optional and failed ones as the tracker draws them, the distance to its marker), and a tracked quest that completes flashing Complete before it leaves. |
 | [`LobbyMember`](#type-LobbyMember) | desc struct | One player in the party, as the game's viewmodel holds it. |
 | [`LobbyMode`](#type-LobbyMode) | desc struct | The mode the party queues for. |
 | [`ReadyCheckView`](#type-ReadyCheckView) | desc struct | A match found, waiting for every player to accept. |
@@ -526,14 +485,6 @@ module ui {
 | [`SongSelectDesc`](#type-SongSelectDesc) | desc struct | A song select: the songs, the selected one and chart, the preview. |
 | [`SongSelectResult`](#type-SongSelectResult) | struct | What the player asked for this tick, for the game to apply. |
 | [`og.ui.songSelect`](#fn-songSelect) | function | A song select (Project Sekai, osu!, Beat Saber, Taiko): the songs on an angled wheel at the end side, each row its jacket, title and artist with its tempo, the selected row larger and lit, the rows above and below it leaning away and fading, gliding as the selection moves; beside it the selected song large: its jacket filling a square, the title in the display face, the artist, the tempo and length in tabular numerals, the charts as chips with their levels (the selected one lit, a locked one dimmed with a lock), the best score with its grade and a full combo badge; at the foot the preview's bar, its waveform lit up to where the preview is, with its play toggle and time, the accuracy as a ring beside it, and Play in the accent. Up and down (keys, a pad, the wheel's rows under the focus) move the selection, the tab actions (Q and E, the bumpers) step the chart over locked ones, confirm plays. On a phone in portrait the jacket and the detail stand at the top, the wheel scrolls under them and Play docks at the thumb. |
-| [`GarageCategory`](#type-GarageCategory) | desc struct | One category of the garage's rail (Engine, Turbo, Tyres; Livery). |
-| [`GaragePart`](#type-GaragePart) | desc struct | One part on offer in the selected category, as the game holds it. |
-| [`GarageStat`](#type-GarageStat) | desc struct | One of the car's performance figures, now and with the selected part fitted. |
-| [`LiveryLayer`](#type-LiveryLayer) | desc struct | One layer of the car's livery, topmost first. |
-| [`LayerMove`](#type-LayerMove) | struct | A layer asked to move in the stack. |
-| [`GarageDesc`](#type-GarageDesc) | desc struct | A garage: the categories, the selected category's parts, the car's figures, the livery's layers. |
-| [`GarageResult`](#type-GarageResult) | struct | What the player asked for this tick, for the game to apply. |
-| [`og.ui.garage`](#fn-garage) | function | A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot. |
 | [`LedgerFigure`](#type-LedgerFigure) | desc struct | One headline figure over the ledger (Balance, Income, Expenses, Population). |
 | [`LedgerSection`](#type-LedgerSection) | desc struct | A section of the ledger's lines (Income, Expenses; Revenue, Upkeep). |
 | [`LedgerLine`](#type-LedgerLine) | desc struct | One line of the ledger: a tax, a service, a department, a contract. |
@@ -554,10 +505,6 @@ module ui {
 | [`ChatDesc`](#type-ChatDesc) | desc struct | A chat window: the channels, the messages, the player's draft and the channel it goes to. |
 | [`ChatResult`](#type-ChatResult) | struct | What the player asked for this tick, for the game to apply. |
 | [`og.ui.chat`](#fn-chat) | function | A chat window (World of Warcraft, Final Fantasy XIV, Discord in a game): the channel tabs, each its name and its unread count (in the highlight when a message there names the player); the log, each message one wrapping line of its time, its channel's tag in the channel's ink where the tab shows every channel, the author's name in that ink (a press answers them), and the words as typed, with each link a bracketed press in its tier's ink and each @mention in the highlight; a message naming the player is lit along its edge, a system line is muted. The log stays on the newest message while the player is at its foot; scrolled up, new messages gather in a pill (3 new) that brings the view down. Under it the input: the channel chip in its ink (a press steps to the next channel that can be sent to), the field and Send (a round button with its arrow where the window is narrow for its text, the chip's name then cut short); Enter sends, and while an @word is typed the matching members are offered over the input, a press writing the name. The HUD form draws no panel, only the newest lines over the game, which fade once idle, and shows the tabs and the input while the player types. On a phone the window takes its room and Send is a whole touch target. |
-| [`CommandPage`](#type-CommandPage) | desc struct | One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens. |
-| [`RtsCommandsDesc`](#type-RtsCommandsDesc) | desc struct | The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target. |
-| [`RtsCommandsResult`](#type-RtsCommandsResult) | struct | What the player asked for this tick, for the game to carry out. |
-| [`og.ui.rtsCommands`](#fn-rtsCommands) | function | The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell, or og.ui.back, which it then takes so the game's own Back does not see it) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's. |
 | [`PhotoTab`](#type-PhotoTab) | desc struct | One tab of photo mode's controls (Camera, Lens, Filters, Frames). |
 | [`PhotoControl`](#type-PhotoControl) | desc struct | One slider of photo mode (field of view, roll, focus distance, aperture, exposure, vignette). |
 | [`PhotoLook`](#type-PhotoLook) | desc struct | A filter or a frame: its tile shows the picture as it would come out. |
@@ -565,12 +512,6 @@ module ui {
 | [`PhotoModeDesc`](#type-PhotoModeDesc) | desc struct | Photo mode's controls over the game's paused, free camera: the tabs, the sliders, the filters and frames, the grid and the shutter. |
 | [`PhotoModeResult`](#type-PhotoModeResult) | struct | What the player asked for this tick, for the game to apply. |
 | [`og.ui.photoMode`](#fn-photoMode) | function | Photo mode's controls (Horizon Forbidden West, Ghost of Tsushima, Forza Horizon) over the game's own paused view, which this never draws: on a desktop a glass panel at the end side with the title, the tabs (a lit underline on the one shown; the tab actions step them), the tab's sliders (og.ui.valueSlider), each its name, its reading and a track filling from its origin, or for `filters` and `frames` a grid of tiles showing the shot through each, the chosen one rimmed and ticked, with the filter's strength under them; at the foot the shutter, a large round button, between Grid, Hide UI, Reset and Exit as round icon buttons with their names. The rule of thirds and the chosen frame's art lie over the whole picture. Hidden, only a quiet hint stays at the foot; any press, Back, or the hide action brings the controls back, and confirm takes the shot. The shutter's flash (a white wash fading over flashMs, still under reduced motion) follows a capture. On a phone in portrait the panel is a sheet at the foot over the lower third, its tabs a row of chips, and the shutter row under it. |
-| [`LoadoutSlot`](#type-LoadoutSlot) | desc struct | One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it. |
-| [`LoadoutAttachment`](#type-LoadoutAttachment) | desc struct | One attachment point of the selected item, and what is on it. |
-| [`LoadoutStat`](#type-LoadoutStat) | desc struct | One of the selected item's figures, with what its attachments change. |
-| [`LoadoutDesc`](#type-LoadoutDesc) | desc struct | A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments. |
-| [`LoadoutResult`](#type-LoadoutResult) | struct | What the player asked for this tick, for the game to apply. |
-| [`og.ui.loadout`](#fn-loadout) | function | A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows. |
 | [`CollectionCard`](#type-CollectionCard) | desc struct | One card of the collection, as the game holds it: the face og.ui.cardHand draws, the copies owned and in the deck. |
 | [`DeckKind`](#type-DeckKind) | desc struct | A card kind: a filter chip and a line of the deck's counts. |
 | [`DeckRarity`](#type-DeckRarity) | desc struct | A tier the rarity filter offers. |
@@ -746,25 +687,6 @@ module ui {
 | [`StatusGridResult`](#type-StatusGridResult) | struct | What a status grid answered. |
 | [`og.ui.statusGrid`](#fn-statusGrid) | function | Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile; the columns as wide as the row's widest timer, so the tiles stay evenly spaced and each time overhangs its tile centred (WoW's auras). |
 | [`UnitClass`](#type-UnitClass) | enum | A unit's standing, which dresses its frame. |
-| [`UnitFrameSize`](#type-UnitFrameSize) | enum | A unit frame's size. |
-| [`UnitFrameDesc`](#type-UnitFrameDesc) | desc struct | A unit's frame: portrait, name, bars. |
-| [`og.ui.unitFrame`](#fn-unitFrame) | function | A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, their names in the HUD's name treatment (a thin dark outline and a soft drop, no band behind them), the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it. |
-| [`PartyFramesDesc`](#type-PartyFramesDesc) | desc struct | The party's frames. |
-| [`FramesResult`](#type-FramesResult) | struct | What a set of frames answered. |
-| [`og.ui.partyFrames`](#fn-partyFrames) | function | Party frames: a column of medium unit frames, the leader crowned, each pressable to target. |
-| [`RaidRole`](#type-RaidRole) | enum | A raid member's role. |
-| [`RaidMember`](#type-RaidMember) | desc struct | One cell of raid frames. |
-| [`RaidFramesDesc`](#type-RaidFramesDesc) | desc struct | Raid frames: a grid of compact cells. |
-| [`og.ui.raidFrames`](#fn-raidFrames) | function | Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets. |
-| [`CastState`](#type-CastState) | enum | Where a cast is. |
-| [`CastBarDesc`](#type-CastBarDesc) | desc struct | A cast or channel bar. |
-| [`og.ui.castBar`](#fn-castBar) | function | A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out. |
-| [`CrosshairStyle`](#type-CrosshairStyle) | enum | A crosshair's shape. |
-| [`HitKind`](#type-HitKind) | enum | What a hit marker shows. |
-| [`CrosshairDesc`](#type-CrosshairDesc) | desc struct | A crosshair and its hit markers. |
-| [`og.ui.crosshair`](#fn-crosshair) | function | A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill. |
-| [`AmmoDesc`](#type-AmmoDesc) | desc struct | A weapon's ammunition. |
-| [`og.ui.ammoCounter`](#fn-ammoCounter) | function | An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode. |
 | [`MarkerKind`](#type-MarkerKind) | enum | What a map marker is. |
 | [`MapMarkerItem`](#type-MapMarkerItem) | desc struct | A marker on a minimap. |
 | [`MapShape`](#type-MapShape) | enum | A minimap's outline. |
@@ -778,14 +700,6 @@ module ui {
 | [`ObjectiveQuest`](#type-ObjectiveQuest) | desc struct | An objective in the tracker. |
 | [`ObjectiveTrackerDesc`](#type-ObjectiveTrackerDesc) | desc struct | The objective tracker. |
 | [`og.ui.objectiveTracker`](#fn-objectiveTracker) | function | An objective tracker to the bar of open worlds and MMOs: each objective's title by its icon with its distance and a countdown, its steps as boxes that tick with a pop when done (dimmed after), counts that pop as they rise, progress bars, optional steps muted, failed steps crossed in danger, the focused one marked, a completed one flashing Complete and leaving; over a soft scrim so it reads over any scene. |
-| [`KillfeedEntry`](#type-KillfeedEntry) | desc struct | A line of a killfeed. |
-| [`KillfeedDesc`](#type-KillfeedDesc) | desc struct | A killfeed. |
-| [`og.ui.killfeed`](#fn-killfeed) | function | A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time. |
-| [`ScoreColumn`](#type-ScoreColumn) | desc struct | A scoreboard column. |
-| [`ScoreRow`](#type-ScoreRow) | desc struct | A player's row on a scoreboard. |
-| [`ScoreTeam`](#type-ScoreTeam) | desc struct | A team on a scoreboard. |
-| [`ScoreboardDesc`](#type-ScoreboardDesc) | desc struct | A scoreboard. |
-| [`og.ui.scoreboard`](#fn-scoreboard) | function | A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel. |
 | [`TimerMode`](#type-TimerMode) | enum | Which way a timer runs. |
 | [`HudTimerDesc`](#type-HudTimerDesc) | desc struct | A round, match or turn timer. |
 | [`og.ui.hudTimer`](#fn-hudTimer) | function | A timer to the bar of fighting and battle royale HUDs: the time in tabular digits on the HUD chip, a ring for a countdown's share left, warn and then danger with a pulse and a tick sound each second of the last ones, tenths in the last ten seconds, dimmed and blinking while paused. |
@@ -794,16 +708,6 @@ module ui {
 | [`JudgementEvent`](#type-JudgementEvent) | desc struct | A judgement of a hit. |
 | [`JudgementDesc`](#type-JudgementDesc) | desc struct | Judgement pops. |
 | [`og.ui.judgement`](#fn-judgement) | function | Judgement pops to the bar of rhythm games (Project Sekai, osu!, Beat Saber): the word pops from large on its tier's colour (gold with a gradient for the best), with Early or Late and the milliseconds under it, rises a little and fades; a miss drops and greys. |
-| [`ResourceItem`](#type-ResourceItem) | desc struct | A resource on a resource bar. |
-| [`ResourceBarDesc`](#type-ResourceBarDesc) | desc struct | A resource bar. |
-| [`og.ui.resourceBar`](#fn-resourceBar) | function | A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it. |
-| [`TurnUnit`](#type-TurnUnit) | desc struct | A unit in the turn order. |
-| [`TurnOrderStyle`](#type-TurnOrderStyle) | enum | How a turn order lays out its units. |
-| [`TurnOrderDesc`](#type-TurnOrderDesc) | desc struct | A turn order. |
-| [`og.ui.turnOrder`](#fn-turnOrder) | function | A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes. |
-| [`SpeedoStyle`](#type-SpeedoStyle) | enum | A speedometer's look. |
-| [`SpeedometerDesc`](#type-SpeedometerDesc) | desc struct | A speedometer and tachometer. |
-| [`og.ui.speedometer`](#fn-speedometer) | function | A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar. |
 | [`ScorebugTeam`](#type-ScorebugTeam) | desc struct | A team on a scorebug. |
 | [`ScorebugDesc`](#type-ScorebugDesc) | desc struct | A broadcast scorebug. |
 | [`og.ui.scorebug`](#fn-scorebug) | function | A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a final chip (FT) in its place once the match is over, a situation line sliding out under it. |
@@ -818,53 +722,11 @@ module ui {
 | [`SubPlayer`](#type-SubPlayer) | desc struct | A player on og.ui.substitution. |
 | [`SubstitutionDesc`](#type-SubstitutionDesc) | desc struct | A substitution. |
 | [`og.ui.substitution`](#fn-substitution) | function | A substitution's lower third, as a broadcast shows it: a caption tab over one plate, the player going off at the start (portrait, a down mark in the danger hue, number and name, Out) and the one coming on at the end (an up mark in the success hue, In), a hairline between; it rises in when it appears. |
-| [`WaveEntry`](#type-WaveEntry) | desc struct | A wave on og.ui.wavePreview. |
-| [`WavePreviewDesc`](#type-WavePreviewDesc) | desc struct | The waves to come. |
-| [`og.ui.wavePreview`](#fn-wavePreview) | function | A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots. |
 | [`LaneKey`](#type-LaneKey) | desc struct | A lane's key on og.ui.laneKeys. |
 | [`LaneKeysDesc`](#type-LaneKeysDesc) | desc struct | A rhythm game's lane keys. |
 | [`og.ui.laneKeys`](#fn-laneKeys) | function | A rhythm game's lane keys under its hit line, to the bar of osu!mania and DJMAX: a keycap per lane at the lane's x with its letter or the action's glyph on the device used last, the lane's colour on its edge, pressed down and lit while held, flashing on a hit. |
 | [`FlightHudDesc`](#type-FlightHudDesc) | desc struct | A flight HUD. |
 | [`og.ui.flightHud`](#fn-flightHud) | function | A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of few rungs (every 10°, broken below the horizon, numbered in a face that reads at a glance) turning with roll about the boresight in a central window, the horizon line, the waterline and the flight path marker heaviest as the focal pair, a heading tape across the top (numbers every 30°, the cardinals by letter) fading at its ends, quiet speed and altitude tapes with large boxed readouts on either side and the climb rate, all in one ink from the style (its primary, lifted) with a dark outline. A narrow screen drops the ladder's left numbers. |
-| [`StandingsEntry`](#type-StandingsEntry) | desc struct | A car in the standings, in race order. |
-| [`StandingsTowerDesc`](#type-StandingsTowerDesc) | desc struct | A racing standings tower. |
-| [`og.ui.standingsTower`](#fn-standingsTower) | function | A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; one continuous panel with hairlines between rows, the player's row lit (a solid position cell over a tinted row); a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between. |
-| [`SectorState`](#type-SectorState) | enum | A lap's sector as timing screens colour it. |
-| [`LapTimerShow`](#type-LapTimerShow) | enum | Which part of the lap block a call builds, so the place and lap and the times can be anchored apart. |
-| [`LapTimerDesc`](#type-LapTimerDesc) | desc struct | A racing lap and split block. |
-| [`og.ui.lapTimer`](#fn-lapTimer) | function | A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone. |
-| [`ItemSlotDesc`](#type-ItemSlotDesc) | desc struct | An arcade racer's held item. |
-| [`og.ui.itemSlot`](#fn-itemSlot) | function | An arcade racer's item slot (Mario Kart's): a ring frame holding the current item, a smaller slot beside it for the next one, and a roulette after a pickup that cycles the roulette's items, slowing, then lands with a pop; by the tick from rollingAt, so a still is deterministic. Part of the racing HUD's arcade look. |
-| [`DriftScoreDesc`](#type-DriftScoreDesc) | desc struct | An arcade racer's running drift score. |
-| [`og.ui.driftScore`](#fn-driftScore) | function | An arcade racer's drift chain (Need for Speed's, Forza Horizon's skill chains): the running score in a big slanted numeral near the car or its anchor with its multiplier on a badge that pops as it climbs; banked, it ticks up into the total and leaves; broken, it shakes and fades in danger. By the tick from bankedAt and failedAt. Part of the racing HUD's arcade look. |
-| [`RaceEvent`](#type-RaceEvent) | enum | A race's moment the race banner shows. |
-| [`RaceBannerDesc`](#type-RaceBannerDesc) | desc struct | The race banner's moment. |
-| [`og.ui.raceBanner`](#fn-raceBanner) | function | The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time (`below` names it), signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a gold band sweeping the centre between the side panels, its words at display size), the finish (a checker wipe, the place huge with the time under it) and wrong way (a centred danger band with a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised). |
-| [`RearViewDesc`](#type-RearViewDesc) | desc struct | A rear-view mirror. |
-| [`og.ui.rearView`](#fn-rearView) | function | A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road. |
-| [`SelectedUnit`](#type-SelectedUnit) | desc struct | A unit or building in an RTS selection. |
-| [`UnitStat`](#type-UnitStat) | desc struct | A line of the focused unit's stats. |
-| [`ControlGroup`](#type-ControlGroup) | desc struct | A control group's tab over the selection. |
-| [`QueueItem`](#type-QueueItem) | desc struct | Something in a production queue. |
-| [`ProductionQueueDesc`](#type-ProductionQueueDesc) | desc struct | A building's production queue. |
-| [`ProductionQueueResult`](#type-ProductionQueueResult) | struct | What a production queue answered. |
-| [`og.ui.productionQueue`](#fn-productionQueue) | function | A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it. |
-| [`SelectionPanelDesc`](#type-SelectionPanelDesc) | desc struct | An RTS selection panel. |
-| [`SelectionPanelResult`](#type-SelectionPanelResult) | struct | What a selection panel answered. |
-| [`og.ui.selectionPanel`](#fn-selectionPanel) | function | A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs seated on the top edge of one panel of the style's HUD glass (labels at the caption step; the current one on the panel's own ground running on into it, lit along its top by the highlight; the others a step back); the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile in the selected-tile rule (a highlight ring inside its edge, 3 px at 1080p, its art lit from the rim and a highlight glow lifting it); a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); one unit or building selected has no grid of one: its card takes the zone, and a building with a queue shows its production beside the card (the item being built in a slot the size of a command cell, its sweep over the art and its time under it, its name over a gold progress bar beside it, the rest of the queue as smaller slots under them; the building's card stays the one large image). Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles (beside the one tile of a single selection), and trims the grid to the rows its units fill. The control group tabs stay under a fifth of the zone's height at any text size. |
-| [`CommandCardDesc`](#type-CommandCardDesc) | desc struct | An RTS command card. |
-| [`og.ui.commandCard`](#fn-commandCard) | function | A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed. |
-| [`RtsConsoleDesc`](#type-RtsConsoleDesc) | desc struct | An RTS bottom console. |
-| [`RtsConsoleResult`](#type-RtsConsoleResult) | struct | What an RTS console answered. |
-| [`og.ui.rtsConsole`](#fn-rtsConsole) | function | An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, square whatever the shape given, without its own bezel, filling its zone edge to edge with its north mark inside its top edge), the selection with its control group tabs over it, the focused unit's card with a building's production beside it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap out of the console (beside it in the bottom start corner where the band leaves the width, as a phone held sideways does, else the top end corner under what stands there), then stacks the command card over the selection. |
-| [`DragSelectDesc`](#type-DragSelectDesc) | desc struct | An RTS drag selection. |
-| [`DragSelectResult`](#type-DragSelectResult) | struct | What a drag selection answered. |
-| [`og.ui.dragSelect`](#fn-dragSelect) | function | A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection. |
-| [`DamageHit`](#type-DamageHit) | desc struct | A hit from a direction. |
-| [`DamageDirectionDesc`](#type-DamageDirectionDesc) | desc struct | Damage direction indicators. |
-| [`og.ui.damageDirection`](#fn-damageDirection) | function | Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older. |
-| [`LowHealthDesc`](#type-LowHealthDesc) | desc struct | A low-health and hit vignette. |
-| [`og.ui.lowHealthVignette`](#fn-lowHealthVignette) | function | The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth. |
 | [`Reaction`](#type-Reaction) | enum | How a unit stands toward the player, which colours its tag. |
 | [`NameplateDesc`](#type-NameplateDesc) | desc struct | A nameplate over a unit. |
 | [`og.ui.nameplate`](#fn-nameplate) | function | A nameplate to the bar of World of Warcraft and Final Fantasy XIV: the name in its reaction's colour with a level badge and an icon, a title under it, a slim health bar with its absorb and a cast bar under that, an elite or boss frame, the target larger and outlined and kept on top; crowds stack instead of overlapping, it fades behind walls and sheds detail with distance (title, then name). |
@@ -5742,76 +5604,6 @@ fn onScreenKeyboard {
 
 <sub>`api.ogt` line 19623</sub>
 
-<a id="fn-inventoryGrid"></a>
-
-### `og.ui.inventoryGrid`
-
-A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container.
-
-Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost.
-
-```ts
-og.ui.inventoryGrid(id: string, desc?: InventoryGridDesc): InventoryGridResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `InventoryGridDesc` | yes | The grid, its items and what is carried in. |
-
-**Returns** `InventoryGridResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn inventoryGrid {
-  doc "A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident Evil): items covering several cells, drawn on wells in their tier's colour with pips, a count on stacks, a lock, a fresh dot, an equipped tick and a charge bar. The pointer or a finger drags an item (Shift splits half a stack off), its footprint lit success where it fits, primary where it merges or swaps, danger where it cannot; R (a pad's X, a touch button) turns it a quarter while carried; a release outside lands it on the paperdoll or grid under the pointer. Keys and a pad move the focus cell by cell; confirm picks the focused item up, the footprint follows the focus, confirm places it and Back puts it back. A long press or the details action asks for the item's menu; a double press uses it; Shift and a press, or the details action held, sends it to the other container."
-  doc "Parts: Inventory.grid, Inventory.cell[empty|locked|target], Inventory.item[rarity=<tier>][selected][lifted][locked][unusable][dim], Inventory.art, Inventory.count, Inventory.charge, Inventory.footprint[valid|merge|swap|invalid], Inventory.ghost, Inventory.rotate. Slots: each item's image (art kind item, its cells' aspect). States: on each item, group selection (off, on), carry (resting, lifted) and highlight (normal, lit, dim); on the footprint, group drop (valid, merge, swap, invalid). Motion: the carried item lifts on the ui spring, items that move without a drag slide to their new cells (layout motion), a refused drop shakes. Sounds: select on a pick-up, confirm on a placing, error on a refusal, cancel when Back puts it back. Accessibility: a grid named by label and the cells used; items are gridcells named by their name, count, tier and states; empty cells too. Probe ids: <id>/Cells/<key>, <id>/Cells/Cell#<index>, <id>/Cells/Footprint, <id>/Ghost."
-  host false
-  param id String "Its id."
-  param desc InventoryGridDesc "The grid, its items and what is carried in."
-  returns InventoryGridResult
-}
-```
-
-<sub>`api.ogt` line 19766</sub>
-
-<a id="fn-paperdoll"></a>
-
-### `og.ui.paperdoll`
-
-A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid.
-
-Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>.
-
-```ts
-og.ui.paperdoll(id: string, desc: PaperdollDesc, figure: UiBuild): PaperdollResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `PaperdollDesc` | no | The slots, the stats and what is carried. |
-| `figure` | `UiBuild` | no | Builds the figure in its box (an art slot, a viewport). |
-
-**Returns** `PaperdollResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn paperdoll {
-  doc "A paperdoll (Diablo, Baldur's Gate 3, World of Warcraft, Genshin's artifacts): the figure the game builds, framed in a well, with equipment slots placed around it by fractions of its box, each an item tile or an empty slot's silhouette and name; the character's name, a headline rating and the stats with the deltas of the item being compared beside it (under it on a phone in portrait). A carried item lights the slots that take its tag and dims the rest; dropping it there, or confirm on the slot with keys or a pad, equips it. An item is dragged out of its slot as from a grid."
-  doc "Parts: Paperdoll.frame, Paperdoll.figure, Paperdoll.slot[empty|filled][accepts|rejects][locked][selected], Paperdoll.slotLabel, Paperdoll.rating, Paperdoll.stats, Paperdoll.stat, Paperdoll.delta[up|down]. Slots: the figure (built by the game: art kind character, a sceneViewport turntable); each worn item's image (art kind item). States: on each slot, group fill (empty, filled), target (none, accepts, rejects) and selection (off, on). Sounds: confirm on equip, error on a refusal. Accessibility: a group named by title; each slot a button named by its label and its item (or empty, locked); stats are text with their changes said. Probe ids: <id>/Doll/Slots/<slot key>, <id>/Doll/Figure, <id>/Stats/Stat#<i>."
-  host false
-  param id String "Its id."
-  param desc PaperdollDesc "The slots, the stats and what is carried."
-  param figure UiBuild "Builds the figure in its box (an art slot, a viewport)."
-  returns PaperdollResult
-}
-```
-
-<sub>`api.ogt` line 19858</sub>
-
 <a id="fn-cardHand"></a>
 
 ### `og.ui.cardHand`
@@ -5844,7 +5636,7 @@ fn cardHand {
 }
 ```
 
-<sub>`api.ogt` line 19954</sub>
+<sub>`api.ogt` line 19728</sub>
 
 <a id="fn-heroButton"></a>
 
@@ -5880,7 +5672,7 @@ fn heroButton {
 }
 ```
 
-<sub>`api.ogt` line 19983</sub>
+<sub>`api.ogt` line 19757</sub>
 
 <a id="fn-rewardChoice"></a>
 
@@ -5914,111 +5706,7 @@ fn rewardChoice {
 }
 ```
 
-<sub>`api.ogt` line 20064</sub>
-
-<a id="fn-gachaBanner"></a>
-
-### `og.ui.gachaBanner`
-
-A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art across the screen (the game's texture, or the style's placeholder figure) with the first featured unit's name plate large on the art side, and, on the other side over a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), and under them the purchase block: the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). On a phone in portrait the purchase block sits at the foot, under the thumb. A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons.
-
-Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (desc.image, art kind banner, the full frame; the art builder draws over it); each tab's thumbnail. Parts also: Gacha.spotlight (the name plate). States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Spotlight, <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History.
-
-```ts
-og.ui.gachaBanner(id: string, desc: GachaBannerDesc, art: UiBuild): GachaBannerResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `GachaBannerDesc` | no | The banner and the purse. |
-| `art` | `UiBuild` | no | Builds over the key art, filling the frame (a sceneViewport, particles, a second figure); may build nothing. |
-
-**Returns** `GachaBannerResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn gachaBanner {
-  doc "A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art across the screen (the game's texture, or the style's placeholder figure) with the first featured unit's name plate large on the art side, and, on the other side over a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), and under them the purchase block: the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). On a phone in portrait the purchase block sits at the foot, under the thumb. A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons."
-  doc "Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (desc.image, art kind banner, the full frame; the art builder draws over it); each tab's thumbnail. Parts also: Gacha.spotlight (the name plate). States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Spotlight, <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History."
-  host false
-  param id String "Its id."
-  param desc GachaBannerDesc "The banner and the purse."
-  param art UiBuild "Builds over the key art, filling the frame (a sceneViewport, particles, a second figure); may build nothing."
-  returns GachaBannerResult
-}
-```
-
-<sub>`api.ogt` line 20165</sub>
-
-<a id="fn-pullSequence"></a>
-
-### `og.ui.pullSequence`
-
-A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, epithet, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once.
-
-Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip.
-
-```ts
-og.ui.pullSequence(id: string, desc?: PullSequenceDesc): PullSequenceResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `PullSequenceDesc` | yes | The pull. |
-
-**Returns** `PullSequenceResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn pullSequence {
-  doc "A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, epithet, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once."
-  doc "Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip."
-  host false
-  param id String "Its id."
-  param desc PullSequenceDesc "The pull."
-  returns PullSequenceResult
-}
-```
-
-<sub>`api.ogt` line 20241</sub>
-
-<a id="fn-sagaMap"></a>
-
-### `og.ui.sagaMap`
-
-A saga map (Candy Crush Saga, Royal Match, Gardenscapes): the run's levels as badges along a painted path that scrolls, sideways on a desktop and a phone on its side (start to end, mirrored right to left) and upward on a phone in portrait (the first level at the foot). Each badge reads its number with its stars under it; the path is lit up to the level the player stands on, where the avatar's pin floats and a soft ring breathes; locked levels lie dim behind a lock; a boss stands larger in danger ink with its portrait. It opens centred on the current level (og.ui.scrollIntoView) and keeps it in view when current changes. A press on an open level picks it; on a locked one it shakes and is refused. Keys and pads walk the badges in path order.
-
-Parts: Saga.map, Saga.path[lit], Saga.node[done|current|open|locked][boss][selected], Saga.badge, Saga.label, Saga.stars, Saga.lock, Saga.pin, Saga.avatar. Slots: the backdrop (art kind map), each boss's portrait (art kind portrait), the avatar (art kind avatar). States: on each node, group progress (done, current, open, locked). Motion: the pin bobs and the current ring breathes (still under reduced motion); hover lifts a badge on the ui spring; a refused press shakes it. Sounds: hover, confirm on a pick, error on a locked level. Accessibility: a list named by label; each level a button named by its level or boss label, its stars, locked and current, said disabled when locked. Probe ids: <id>/View/Path/<key>, <id>/View/Path/Pin.
-
-```ts
-og.ui.sagaMap(id: string, desc?: SagaMapDesc): SagaMapResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `SagaMapDesc` | yes | The levels, the current one and the art. |
-
-**Returns** `SagaMapResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn sagaMap {
-  doc "A saga map (Candy Crush Saga, Royal Match, Gardenscapes): the run's levels as badges along a painted path that scrolls, sideways on a desktop and a phone on its side (start to end, mirrored right to left) and upward on a phone in portrait (the first level at the foot). Each badge reads its number with its stars under it; the path is lit up to the level the player stands on, where the avatar's pin floats and a soft ring breathes; locked levels lie dim behind a lock; a boss stands larger in danger ink with its portrait. It opens centred on the current level (og.ui.scrollIntoView) and keeps it in view when current changes. A press on an open level picks it; on a locked one it shakes and is refused. Keys and pads walk the badges in path order."
-  doc "Parts: Saga.map, Saga.path[lit], Saga.node[done|current|open|locked][boss][selected], Saga.badge, Saga.label, Saga.stars, Saga.lock, Saga.pin, Saga.avatar. Slots: the backdrop (art kind map), each boss's portrait (art kind portrait), the avatar (art kind avatar). States: on each node, group progress (done, current, open, locked). Motion: the pin bobs and the current ring breathes (still under reduced motion); hover lifts a badge on the ui spring; a refused press shakes it. Sounds: hover, confirm on a pick, error on a locked level. Accessibility: a list named by label; each level a button named by its level or boss label, its stars, locked and current, said disabled when locked. Probe ids: <id>/View/Path/<key>, <id>/View/Path/Pin."
-  host false
-  param id String "Its id."
-  param desc SagaMapDesc "The levels, the current one and the art."
-  returns SagaMapResult
-}
-```
-
-<sub>`api.ogt` line 20311</sub>
+<sub>`api.ogt` line 19838</sub>
 
 <a id="fn-starBar"></a>
 
@@ -6052,41 +5740,7 @@ fn starBar {
 }
 ```
 
-<sub>`api.ogt` line 20342</sub>
-
-<a id="fn-goalChips"></a>
-
-### `og.ui.goalChips`
-
-A level's goals as chips (Candy Crush's orders, Royal Match's targets): each its piece's art, what to do, have / need and a thin bar; one met turns to the success ink with a tick. A count that rises pops; a goal met plays success.
-
-Parts: Goals.frame[compact], Goals.chip[done], Goals.art, Goals.label, Goals.count, Goals.track, Goals.fill, Goals.check. States: on each chip, group goal (open, done). Motion: a count that rises pops on the emphasis spring (still under reduced motion). Sounds: success when a goal is met. Accessibility: a list named by label; each goal a list item named by its label and count, done when met. Probe ids: <id>/<key>, <id>/<key>/Count.
-
-```ts
-og.ui.goalChips(id: string, desc?: GoalChipsDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `GoalChipsDesc` | yes | The goals. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn goalChips {
-  doc "A level's goals as chips (Candy Crush's orders, Royal Match's targets): each its piece's art, what to do, have / need and a thin bar; one met turns to the success ink with a tick. A count that rises pops; a goal met plays success."
-  doc "Parts: Goals.frame[compact], Goals.chip[done], Goals.art, Goals.label, Goals.count, Goals.track, Goals.fill, Goals.check. States: on each chip, group goal (open, done). Motion: a count that rises pops on the emphasis spring (still under reduced motion). Sounds: success when a goal is met. Accessibility: a list named by label; each goal a list item named by its label and count, done when met. Probe ids: <id>/<key>, <id>/<key>/Count."
-  host false
-  param id String "Its id."
-  param desc GoalChipsDesc "The goals."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 20378</sub>
+<sub>`api.ogt` line 19873</sub>
 
 <a id="fn-idleGenerator"></a>
 
@@ -6120,7 +5774,7 @@ fn idleGenerator {
 }
 ```
 
-<sub>`api.ogt` line 20432</sub>
+<sub>`api.ogt` line 19927</sub>
 
 <a id="fn-prestigePanel"></a>
 
@@ -6154,7 +5808,7 @@ fn prestigePanel {
 }
 ```
 
-<sub>`api.ogt` line 20468</sub>
+<sub>`api.ogt` line 19963</sub>
 
 <a id="fn-storeFront"></a>
 
@@ -6188,7 +5842,7 @@ fn storeFront {
 }
 ```
 
-<sub>`api.ogt` line 20578</sub>
+<sub>`api.ogt` line 20073</sub>
 
 <a id="fn-battlePass"></a>
 
@@ -6222,41 +5876,7 @@ fn battlePass {
 }
 ```
 
-<sub>`api.ogt` line 20677</sub>
-
-<a id="fn-conversation"></a>
-
-### `og.ui.conversation`
-
-A conversation to the bar of Mass Effect, Baldur's Gate 3, Disco Elysium and Persona, fed by og.story.view: the speaker's name in the display face over the line, which types out by the tick (a press shows it whole, the next goes on; skip-read lines, DialogueView.seen, show whole), a chevron bobbing when it waits, a voice cue (three bars) while its voice plays, and auto that holds until the voice ends. Choices stand in a stack, numbered for the keys: an active check leads with its stat and chance in a tag tinted by the odds, a passive one that passed with its stat, a disabled one muted behind a lock with its reason, a visited one in muted ink. A timed choice runs a bar under them that warms as it runs out, the default choice marked. A roll (DialogueView.lastCheck) pops a d20 with its number and Success or Failure. Skip, Log and Auto stand at the top end with the device's glyphs.
-
-Parts: Conversation.frame[cinematic|box], Conversation.box, Conversation.name, Conversation.line[typing|shown], Conversation.more, Conversation.voice, Conversation.choices, Conversation.choice[enabled|disabled][visited][default][check], Conversation.number, Conversation.tag[passive|active], Conversation.reason, Conversation.timer[low], Conversation.roll[passed|failed], Conversation.die, Conversation.tools, Conversation.tool[on]. Slots: the portrait (art kind portrait). States: on the line, group reveal (typing, shown); on each choice, group choice (open, visited, disabled); on the roll, group roll (passed, failed). Motion: the line types by the tick; choices rise in one after another on the panel spring; the chevron bobs and the voice bars move (still under reduced motion); a roll pops on the emphasis spring; the timer pulses under its last fifth. Sounds: counterTick as the line types, select on a choice, confirm on going on, success or error on a roll. Accessibility: a region named by the speaker whose line is a live status (read whole, not letter by letter); the choices a list of buttons named by number, text, check and reason, said disabled when they are; the timer a timer. Probe ids: <id>/Line, <id>/Name, <id>/Choices/List/<choice id>, <id>/Timer, <id>/Roll, <id>/Tools/Skip, <id>/Tools/Log, <id>/Tools/Auto.
-
-```ts
-og.ui.conversation(id: string, desc?: ConversationDesc): ConversationResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `ConversationDesc` | yes | The view and the words. |
-
-**Returns** `ConversationResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn conversation {
-  doc "A conversation to the bar of Mass Effect, Baldur's Gate 3, Disco Elysium and Persona, fed by og.story.view: the speaker's name in the display face over the line, which types out by the tick (a press shows it whole, the next goes on; skip-read lines, DialogueView.seen, show whole), a chevron bobbing when it waits, a voice cue (three bars) while its voice plays, and auto that holds until the voice ends. Choices stand in a stack, numbered for the keys: an active check leads with its stat and chance in a tag tinted by the odds, a passive one that passed with its stat, a disabled one muted behind a lock with its reason, a visited one in muted ink. A timed choice runs a bar under them that warms as it runs out, the default choice marked. A roll (DialogueView.lastCheck) pops a d20 with its number and Success or Failure. Skip, Log and Auto stand at the top end with the device's glyphs."
-  doc "Parts: Conversation.frame[cinematic|box], Conversation.box, Conversation.name, Conversation.line[typing|shown], Conversation.more, Conversation.voice, Conversation.choices, Conversation.choice[enabled|disabled][visited][default][check], Conversation.number, Conversation.tag[passive|active], Conversation.reason, Conversation.timer[low], Conversation.roll[passed|failed], Conversation.die, Conversation.tools, Conversation.tool[on]. Slots: the portrait (art kind portrait). States: on the line, group reveal (typing, shown); on each choice, group choice (open, visited, disabled); on the roll, group roll (passed, failed). Motion: the line types by the tick; choices rise in one after another on the panel spring; the chevron bobs and the voice bars move (still under reduced motion); a roll pops on the emphasis spring; the timer pulses under its last fifth. Sounds: counterTick as the line types, select on a choice, confirm on going on, success or error on a roll. Accessibility: a region named by the speaker whose line is a live status (read whole, not letter by letter); the choices a list of buttons named by number, text, check and reason, said disabled when they are; the timer a timer. Probe ids: <id>/Line, <id>/Name, <id>/Choices/List/<choice id>, <id>/Timer, <id>/Roll, <id>/Tools/Skip, <id>/Tools/Log, <id>/Tools/Auto."
-  host false
-  param id String "Its id."
-  param desc ConversationDesc "The view and the words."
-  returns ConversationResult
-}
-```
-
-<sub>`api.ogt` line 20747</sub>
+<sub>`api.ogt` line 20172</sub>
 
 <a id="fn-backlog"></a>
 
@@ -6290,7 +5910,7 @@ fn backlog {
 }
 ```
 
-<sub>`api.ogt` line 20780</sub>
+<sub>`api.ogt` line 20207</sub>
 
 <a id="fn-barks"></a>
 
@@ -6324,75 +5944,7 @@ fn barks {
 }
 ```
 
-<sub>`api.ogt` line 20807</sub>
-
-<a id="fn-questLog"></a>
-
-### `og.ui.questLog`
-
-A quest log to the bar of The Witcher 3, Genshin Impact and Destiny 2: tabs by category over a list of quests (the active ones, then the completed and failed under their heading, muted), each with its category's mark, its region, a New dot until it is looked at and an updated dot when it changed, the tracked one pinned; beside it (stacked on a phone, the list then the quest) the quest itself: its title in the display face, the giver and region, the summary, the stage's objectives as boxes with their counts and bars (optional ones tagged, hidden ones ???, failed ones crossed in danger), the rewards as tiles with their art and amounts, and Track and Show on map. A completed quest wears a stamp.
-
-Parts: QuestLog.frame, QuestLog.tabs, QuestLog.list, QuestLog.group, QuestLog.row[selected][tracked][new][updated][completed|failed], QuestLog.mark, QuestLog.dot, QuestLog.detail, QuestLog.title, QuestLog.meta, QuestLog.summary, QuestLog.objective[done|failed|optional|hidden], QuestLog.check, QuestLog.count, QuestLog.bar, QuestLog.reward (the tile), QuestLog.caption (its name and pips, in their own row under the tile), QuestLog.stamp[completed|failed], QuestLog.track[on], QuestLog.map, QuestLog.back (a phone in portrait: the style's secondary button with a chevron to the start edge). Slots: each reward's art (art kind item). States: on each row, group status (active, completed, failed); on each objective, group step (open, done, failed). Motion: the detail slides in on a change of quest on the panel spring; a done objective's box ticks with a pop; the New dot breathes (still under reduced motion). Sounds: select on a row, confirm on Track, back on Back. Accessibility: tabs a tablist; the list a listbox of quests named title, category, status, new or updated and tracked; the detail a region named its title; each objective a checkbox named its text and count; Track a toggle. Probe ids: <id>/Tabs/<tab>, <id>/List/<quest id>, <id>/Detail/Title, <id>/Detail/Objectives/<objective id>, <id>/Detail/Rewards/R<i>, <id>/Detail/Actions/Track, <id>/Detail/Actions/Map.
-
-```ts
-og.ui.questLog(id: string, desc?: QuestLogDesc): QuestLogResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `QuestLogDesc` | yes | The quests and the words. |
-
-**Returns** `QuestLogResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn questLog {
-  doc "A quest log to the bar of The Witcher 3, Genshin Impact and Destiny 2: tabs by category over a list of quests (the active ones, then the completed and failed under their heading, muted), each with its category's mark, its region, a New dot until it is looked at and an updated dot when it changed, the tracked one pinned; beside it (stacked on a phone, the list then the quest) the quest itself: its title in the display face, the giver and region, the summary, the stage's objectives as boxes with their counts and bars (optional ones tagged, hidden ones ???, failed ones crossed in danger), the rewards as tiles with their art and amounts, and Track and Show on map. A completed quest wears a stamp."
-  doc "Parts: QuestLog.frame, QuestLog.tabs, QuestLog.list, QuestLog.group, QuestLog.row[selected][tracked][new][updated][completed|failed], QuestLog.mark, QuestLog.dot, QuestLog.detail, QuestLog.title, QuestLog.meta, QuestLog.summary, QuestLog.objective[done|failed|optional|hidden], QuestLog.check, QuestLog.count, QuestLog.bar, QuestLog.reward (the tile), QuestLog.caption (its name and pips, in their own row under the tile), QuestLog.stamp[completed|failed], QuestLog.track[on], QuestLog.map, QuestLog.back (a phone in portrait: the style's secondary button with a chevron to the start edge). Slots: each reward's art (art kind item). States: on each row, group status (active, completed, failed); on each objective, group step (open, done, failed). Motion: the detail slides in on a change of quest on the panel spring; a done objective's box ticks with a pop; the New dot breathes (still under reduced motion). Sounds: select on a row, confirm on Track, back on Back. Accessibility: tabs a tablist; the list a listbox of quests named title, category, status, new or updated and tracked; the detail a region named its title; each objective a checkbox named its text and count; Track a toggle. Probe ids: <id>/Tabs/<tab>, <id>/List/<quest id>, <id>/Detail/Title, <id>/Detail/Objectives/<objective id>, <id>/Detail/Rewards/R<i>, <id>/Detail/Actions/Track, <id>/Detail/Actions/Map."
-  host false
-  param id String "Its id."
-  param desc QuestLogDesc "The quests and the words."
-  returns QuestLogResult
-}
-```
-
-<sub>`api.ogt` line 20894</sub>
-
-<a id="fn-questTracker"></a>
-
-### `og.ui.questTracker`
-
-The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's quests (each tracked active quest's title, its stage's objectives that are revealed, their counts and bars, optional and failed ones as the tracker draws them, the distance to its marker), and a tracked quest that completes flashing Complete before it leaves.
-
-Parts: those of og.ui.objectiveTracker. Accessibility: as og.ui.objectiveTracker's. Probe ids: <id>/<quest id>, <id>/<quest id>/<objective id>.
-
-```ts
-og.ui.questTracker(id: string, desc?: QuestTrackerDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `QuestTrackerDesc` | yes | The quests. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn questTracker {
-  doc "The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's quests (each tracked active quest's title, its stage's objectives that are revealed, their counts and bars, optional and failed ones as the tracker draws them, the distance to its marker), and a tracked quest that completes flashing Complete before it leaves."
-  doc "Parts: those of og.ui.objectiveTracker. Accessibility: as og.ui.objectiveTracker's. Probe ids: <id>/<quest id>, <id>/<quest id>/<objective id>."
-  host false
-  param id String "Its id."
-  param desc QuestTrackerDesc "The quests."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 20921</sub>
+<sub>`api.ogt` line 20234</sub>
 
 <a id="fn-lobby"></a>
 
@@ -6426,7 +5978,7 @@ fn lobby {
 }
 ```
 
-<sub>`api.ogt` line 21046</sub>
+<sub>`api.ogt` line 20359</sub>
 
 <a id="fn-characterSelect"></a>
 
@@ -6460,7 +6012,7 @@ fn characterSelect {
 }
 ```
 
-<sub>`api.ogt` line 21116</sub>
+<sub>`api.ogt` line 20429</sub>
 
 <a id="fn-versus"></a>
 
@@ -6494,7 +6046,7 @@ fn versus {
 }
 ```
 
-<sub>`api.ogt` line 21158</sub>
+<sub>`api.ogt` line 20471</sub>
 
 <a id="fn-draft"></a>
 
@@ -6528,7 +6080,7 @@ fn draft {
 }
 ```
 
-<sub>`api.ogt` line 21233</sub>
+<sub>`api.ogt` line 20546</sub>
 
 <a id="fn-worldMap"></a>
 
@@ -6562,7 +6114,7 @@ fn worldMap {
 }
 ```
 
-<sub>`api.ogt` line 21335</sub>
+<sub>`api.ogt` line 20648</sub>
 
 <a id="fn-songSelect"></a>
 
@@ -6596,41 +6148,7 @@ fn songSelect {
 }
 ```
 
-<sub>`api.ogt` line 21434</sub>
-
-<a id="fn-garage"></a>
-
-### `og.ui.garage`
-
-A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
-
-Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Body/Rail/<key>, <id>/Body/Parts/List/<key>, <id>/Body/Side/Cards/Performance, <id>/Body/Side/Action, <id>/Body/Layers/List/<key>, <id>/Body/Side/Cards/Livery/Picker; on a phone in portrait <id>/Rail/Chips/<key>, <id>/Body/Parts/<key>, <id>/Body/<layer>, <id>/Action.
-
-```ts
-og.ui.garage(id: string, desc?: GarageDesc): GarageResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `GarageDesc` | yes | The categories, parts, figures and layers, and the words. |
-
-**Returns** `GarageResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn garage {
-  doc "A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot."
-  doc "Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Body/Rail/<key>, <id>/Body/Parts/List/<key>, <id>/Body/Side/Cards/Performance, <id>/Body/Side/Action, <id>/Body/Layers/List/<key>, <id>/Body/Side/Cards/Livery/Picker; on a phone in portrait <id>/Rail/Chips/<key>, <id>/Body/Parts/<key>, <id>/Body/<layer>, <id>/Action."
-  host false
-  param id String "Its id."
-  param desc GarageDesc "The categories, parts, figures and layers, and the words."
-  returns GarageResult
-}
-```
-
-<sub>`api.ogt` line 21584</sub>
+<sub>`api.ogt` line 20747</sub>
 
 <a id="fn-ledger"></a>
 
@@ -6664,7 +6182,7 @@ fn ledger {
 }
 ```
 
-<sub>`api.ogt` line 21703</sub>
+<sub>`api.ogt` line 20868</sub>
 
 <a id="fn-overlayBar"></a>
 
@@ -6698,7 +6216,7 @@ fn overlayBar {
 }
 ```
 
-<sub>`api.ogt` line 21737</sub>
+<sub>`api.ogt` line 20902</sub>
 
 <a id="fn-chat"></a>
 
@@ -6732,41 +6250,7 @@ fn chat {
 }
 ```
 
-<sub>`api.ogt` line 21832</sub>
-
-<a id="fn-rtsCommands"></a>
-
-### `og.ui.rtsCommands`
-
-The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell, or og.ui.back, which it then takes so the game's own Back does not see it) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's.
-
-Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt.
-
-```ts
-og.ui.rtsCommands(id: string, desc?: RtsCommandsDesc): RtsCommandsResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `RtsCommandsDesc` | yes | The console, the pages, the groups' keys and the targeting command. |
-
-**Returns** `RtsCommandsResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn rtsCommands {
-  doc "The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell, or og.ui.back, which it then takes so the game's own Back does not see it) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's."
-  doc "Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt."
-  host false
-  param id String "Its id."
-  param desc RtsCommandsDesc "The console, the pages, the groups' keys and the targeting command."
-  returns RtsCommandsResult
-}
-```
-
-<sub>`api.ogt` line 21888</sub>
+<sub>`api.ogt` line 20997</sub>
 
 <a id="fn-photoMode"></a>
 
@@ -6800,41 +6284,7 @@ fn photoMode {
 }
 ```
 
-<sub>`api.ogt` line 21989</sub>
-
-<a id="fn-loadout"></a>
-
-### `og.ui.loadout`
-
-A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows.
-
-Parts: Loadout.tab[selected], Loadout.slot[selected][locked], Loadout.stage, Loadout.callout[selected], Loadout.leader, Loadout.stat, Loadout.attachment[selected], Loadout.remove. Slots: each slot's art (item), the item's art (item), each attachment's art (item). Sounds: tab on a tab, select on a slot or a point, confirm on remove, error on a refusal. Accessibility: the tabs a tablist, the slots a tablist of tabs, each callout and row a button named by its point and what is on it, each figure a meter. Probe ids: <id>/Head/Tabs/<n>, <id>/Slots/<key>, <id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>, <id>/Side/Attachments/List/<key>/Remove.
-
-```ts
-og.ui.loadout(id: string, desc?: LoadoutDesc): LoadoutResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `LoadoutDesc` | yes | The loadouts, the slots, the selected item and its attachments. |
-
-**Returns** `LoadoutResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn loadout {
-  doc "A shooter's loadout (Call of Duty, Apex Legends, The Division): a head with the title, the loadouts as tabs (a lit underline on the one shown; the tab actions step them, wrapping) and the purse; at the start a rail of slots, each its eyebrow (Primary), its item's name in the display face and its detail under it, its art at the end, the selected one rimmed in the focus colour; in the middle the selected item large over a soft floor light, its name, its subtitle divided by rules with the tier's word in its colour, its line, and each attachment point as a callout (its art, the point's eyebrow and what is on it) standing above or below the art and joined to its point by a thin leader line; at the end its figures (a name, a bar, the value and the attachments' change with an arrow, gain in success, loss in danger) and its attachments, each a row with its art, its name and its tier's band, and a remove button. A locked slot shakes and is refused. On a phone in portrait the tabs are chips, the slots a row of tiles that scrolls, then the item, its figures and its attachments in one scrolling column; the callouts give way to the rows."
-  doc "Parts: Loadout.tab[selected], Loadout.slot[selected][locked], Loadout.stage, Loadout.callout[selected], Loadout.leader, Loadout.stat, Loadout.attachment[selected], Loadout.remove. Slots: each slot's art (item), the item's art (item), each attachment's art (item). Sounds: tab on a tab, select on a slot or a point, confirm on remove, error on a refusal. Accessibility: the tabs a tablist, the slots a tablist of tabs, each callout and row a button named by its point and what is on it, each figure a meter. Probe ids: <id>/Head/Tabs/<n>, <id>/Slots/<key>, <id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>, <id>/Side/Attachments/List/<key>/Remove."
-  host false
-  param id String "Its id."
-  param desc LoadoutDesc "The loadouts, the slots, the selected item and its attachments."
-  returns LoadoutResult
-}
-```
-
-<sub>`api.ogt` line 22084</sub>
+<sub>`api.ogt` line 21098</sub>
 
 <a id="fn-deckBuilder"></a>
 
@@ -6868,7 +6318,7 @@ fn deckBuilder {
 }
 ```
 
-<sub>`api.ogt` line 22200</sub>
+<sub>`api.ogt` line 21214</sub>
 
 <a id="fn-cgGallery"></a>
 
@@ -6902,7 +6352,7 @@ fn cgGallery {
 }
 ```
 
-<sub>`api.ogt` line 22263</sub>
+<sub>`api.ogt` line 21277</sub>
 
 <a id="fn-routeChart"></a>
 
@@ -6936,7 +6386,7 @@ fn routeChart {
 }
 ```
 
-<sub>`api.ogt` line 22320</sub>
+<sub>`api.ogt` line 21334</sub>
 
 <a id="fn-settingsTree"></a>
 
@@ -6974,7 +6424,7 @@ fn settingsTree {
 }
 ```
 
-<sub>`api.ogt` line 22434</sub>
+<sub>`api.ogt` line 21448</sub>
 
 <a id="fn-props"></a>
 
@@ -7002,7 +6452,7 @@ fn props {
 }
 ```
 
-<sub>`api.ogt` line 23204</sub>
+<sub>`api.ogt` line 22218</sub>
 
 <a id="fn-defineTimeline"></a>
 
@@ -7032,7 +6482,7 @@ fn defineTimeline {
 }
 ```
 
-<sub>`api.ogt` line 23210</sub>
+<sub>`api.ogt` line 22224</sub>
 
 <a id="fn-play"></a>
 
@@ -7064,7 +6514,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 23217</sub>
+<sub>`api.ogt` line 22231</sub>
 
 <a id="fn-playTimeline"></a>
 
@@ -7096,7 +6546,7 @@ fn playTimeline {
 }
 ```
 
-<sub>`api.ogt` line 23225</sub>
+<sub>`api.ogt` line 22239</sub>
 
 <a id="fn-seek"></a>
 
@@ -7126,7 +6576,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 23233</sub>
+<sub>`api.ogt` line 22247</sub>
 
 <a id="fn-pause"></a>
 
@@ -7154,7 +6604,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 23240</sub>
+<sub>`api.ogt` line 22254</sub>
 
 <a id="fn-resume"></a>
 
@@ -7182,7 +6632,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 23246</sub>
+<sub>`api.ogt` line 22260</sub>
 
 <a id="fn-reverse"></a>
 
@@ -7210,7 +6660,7 @@ fn reverse {
 }
 ```
 
-<sub>`api.ogt` line 23252</sub>
+<sub>`api.ogt` line 22266</sub>
 
 <a id="fn-stop"></a>
 
@@ -7238,7 +6688,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 23258</sub>
+<sub>`api.ogt` line 22272</sub>
 
 <a id="fn-playInfo"></a>
 
@@ -7266,7 +6716,7 @@ fn playInfo {
 }
 ```
 
-<sub>`api.ogt` line 23264</sub>
+<sub>`api.ogt` line 22278</sub>
 
 <a id="fn-forceState"></a>
 
@@ -7298,7 +6748,7 @@ fn forceState {
 }
 ```
 
-<sub>`api.ogt` line 23270</sub>
+<sub>`api.ogt` line 22284</sub>
 
 <a id="fn-openPath"></a>
 
@@ -7321,7 +6771,7 @@ fn openPath {
 }
 ```
 
-<sub>`api.ogt` line 23278</sub>
+<sub>`api.ogt` line 22292</sub>
 
 <a id="fn-visualState"></a>
 
@@ -7351,7 +6801,7 @@ fn visualState {
 }
 ```
 
-<sub>`api.ogt` line 23283</sub>
+<sub>`api.ogt` line 22297</sub>
 
 <a id="fn-animate"></a>
 
@@ -7383,7 +6833,7 @@ fn animate {
 }
 ```
 
-<sub>`api.ogt` line 23290</sub>
+<sub>`api.ogt` line 22304</sub>
 
 <a id="fn-gesture"></a>
 
@@ -7411,7 +6861,7 @@ fn gesture {
 }
 ```
 
-<sub>`api.ogt` line 23298</sub>
+<sub>`api.ogt` line 22312</sub>
 
 <a id="fn-motionEvents"></a>
 
@@ -7434,7 +6884,7 @@ fn motionEvents {
 }
 ```
 
-<sub>`api.ogt` line 23304</sub>
+<sub>`api.ogt` line 22318</sub>
 
 <a id="fn-overlaps"></a>
 
@@ -7457,7 +6907,7 @@ fn overlaps {
 }
 ```
 
-<sub>`api.ogt` line 23309</sub>
+<sub>`api.ogt` line 22323</sub>
 
 <a id="fn-layoutStats"></a>
 
@@ -7480,7 +6930,7 @@ fn layoutStats {
 }
 ```
 
-<sub>`api.ogt` line 23314</sub>
+<sub>`api.ogt` line 22328</sub>
 
 <a id="fn-notifications"></a>
 
@@ -7517,7 +6967,7 @@ fn notifications {
 }
 ```
 
-<sub>`api.ogt` line 23399</sub>
+<sub>`api.ogt` line 22413</sub>
 
 <a id="fn-countBadge"></a>
 
@@ -7551,7 +7001,7 @@ fn countBadge {
 }
 ```
 
-<sub>`api.ogt` line 23435</sub>
+<sub>`api.ogt` line 22449</sub>
 
 <a id="fn-tooltipCard"></a>
 
@@ -7585,7 +7035,7 @@ fn tooltipCard {
 }
 ```
 
-<sub>`api.ogt` line 23510</sub>
+<sub>`api.ogt` line 22524</sub>
 
 <a id="fn-progressBar"></a>
 
@@ -7619,7 +7069,7 @@ fn progressBar {
 }
 ```
 
-<sub>`api.ogt` line 23555</sub>
+<sub>`api.ogt` line 22569</sub>
 
 <a id="fn-progressRing"></a>
 
@@ -7653,7 +7103,7 @@ fn progressRing {
 }
 ```
 
-<sub>`api.ogt` line 23583</sub>
+<sub>`api.ogt` line 22597</sub>
 
 <a id="fn-skeletonGroup"></a>
 
@@ -7687,7 +7137,7 @@ fn skeletonGroup {
 }
 ```
 
-<sub>`api.ogt` line 23617</sub>
+<sub>`api.ogt` line 22631</sub>
 
 <a id="fn-formatNumber"></a>
 
@@ -7718,7 +7168,7 @@ fn formatNumber {
 }
 ```
 
-<sub>`api.ogt` line 23652</sub>
+<sub>`api.ogt` line 22666</sub>
 
 <a id="fn-numberCounter"></a>
 
@@ -7754,7 +7204,7 @@ fn numberCounter {
 }
 ```
 
-<sub>`api.ogt` line 23686</sub>
+<sub>`api.ogt` line 22700</sub>
 
 <a id="fn-banner"></a>
 
@@ -7788,7 +7238,7 @@ fn banner {
 }
 ```
 
-<sub>`api.ogt` line 23732</sub>
+<sub>`api.ogt` line 22746</sub>
 
 <a id="fn-ribbon"></a>
 
@@ -7822,7 +7272,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 23755</sub>
+<sub>`api.ogt` line 22769</sub>
 
 <a id="fn-celebration"></a>
 
@@ -7856,7 +7306,7 @@ fn celebration {
 }
 ```
 
-<sub>`api.ogt` line 23793</sub>
+<sub>`api.ogt` line 22807</sub>
 
 <a id="fn-starRating"></a>
 
@@ -7890,7 +7340,7 @@ fn starRating {
 }
 ```
 
-<sub>`api.ogt` line 23821</sub>
+<sub>`api.ogt` line 22835</sub>
 
 <a id="fn-subtitles"></a>
 
@@ -7924,7 +7374,7 @@ fn subtitles {
 }
 ```
 
-<sub>`api.ogt` line 23889</sub>
+<sub>`api.ogt` line 22903</sub>
 
 <a id="fn-statBar"></a>
 
@@ -7958,7 +7408,7 @@ fn statBar {
 }
 ```
 
-<sub>`api.ogt` line 23977</sub>
+<sub>`api.ogt` line 22991</sub>
 
 <a id="fn-orbMeter"></a>
 
@@ -7992,7 +7442,7 @@ fn orbMeter {
 }
 ```
 
-<sub>`api.ogt` line 24009</sub>
+<sub>`api.ogt` line 23023</sub>
 
 <a id="fn-radialMeter"></a>
 
@@ -8026,7 +7476,7 @@ fn radialMeter {
 }
 ```
 
-<sub>`api.ogt` line 24038</sub>
+<sub>`api.ogt` line 23052</sub>
 
 <a id="fn-abilitySlot"></a>
 
@@ -8060,7 +7510,7 @@ fn abilitySlot {
 }
 ```
 
-<sub>`api.ogt` line 24086</sub>
+<sub>`api.ogt` line 23100</sub>
 
 <a id="fn-abilityBar"></a>
 
@@ -8094,7 +7544,7 @@ fn abilityBar {
 }
 ```
 
-<sub>`api.ogt` line 24119</sub>
+<sub>`api.ogt` line 23133</sub>
 
 <a id="fn-statusGrid"></a>
 
@@ -8128,211 +7578,7 @@ fn statusGrid {
 }
 ```
 
-<sub>`api.ogt` line 24174</sub>
-
-<a id="fn-unitFrame"></a>
-
-### `og.ui.unitFrame`
-
-A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, their names in the HUD's name treatment (a thin dark outline and a soft drop, no band behind them), the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.
-
-Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.
-
-```ts
-og.ui.unitFrame(id: string, desc?: UnitFrameDesc): Response
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `UnitFrameDesc` | yes | The unit. |
-
-**Returns** `Response`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn unitFrame {
-  doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, their names in the HUD's name treatment (a thin dark outline and a soft drop, no band behind them), the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it."
-  doc "Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast."
-  host false
-  param id String "Its id."
-  param desc UnitFrameDesc "The unit."
-  returns Response
-}
-```
-
-<sub>`api.ogt` line 24239</sub>
-
-<a id="fn-partyFrames"></a>
-
-### `og.ui.partyFrames`
-
-Party frames: a column of medium unit frames, the leader crowned, each pressable to target.
-
-Parts: PartyFrames.frame, and each member's unit frame. Accessibility: list named Party. Probe ids: <id>/<key>.
-
-```ts
-og.ui.partyFrames(id: string, desc?: PartyFramesDesc): FramesResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `PartyFramesDesc` | yes | The members. |
-
-**Returns** `FramesResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn partyFrames {
-  doc "Party frames: a column of medium unit frames, the leader crowned, each pressable to target."
-  doc "Parts: PartyFrames.frame, and each member's unit frame. Accessibility: list named Party. Probe ids: <id>/<key>."
-  host false
-  param id String "Its id."
-  param desc PartyFramesDesc "The members."
-  returns FramesResult
-}
-```
-
-<sub>`api.ogt` line 24266</sub>
-
-<a id="fn-raidFrames"></a>
-
-### `og.ui.raidFrames`
-
-Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets.
-
-Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.bar, RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
-
-```ts
-og.ui.raidFrames(id: string, desc?: RaidFramesDesc): FramesResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `RaidFramesDesc` | yes | The members. |
-
-**Returns** `FramesResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn raidFrames {
-  doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets."
-  doc "Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.bar, RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name."
-  host false
-  param id String "Its id."
-  param desc RaidFramesDesc "The members."
-  returns FramesResult
-}
-```
-
-<sub>`api.ogt` line 24326</sub>
-
-<a id="fn-castBar"></a>
-
-### `og.ui.castBar`
-
-A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.
-
-Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Body/Head/Name, <id>/Body/Head/Time, <id>/Body/Track/Fill (a unit frame's compact cast the same: <id>/Body/Head/Name, <id>/Body/Track).
-
-```ts
-og.ui.castBar(id: string, desc?: CastBarDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `CastBarDesc` | yes | The cast. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn castBar {
-  doc "A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out."
-  doc "Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Body/Head/Name, <id>/Body/Head/Time, <id>/Body/Track/Fill (a unit frame's compact cast the same: <id>/Body/Head/Name, <id>/Body/Track)."
-  host false
-  param id String "Its id."
-  param desc CastBarDesc "The cast."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24373</sub>
-
-<a id="fn-crosshair"></a>
-
-### `og.ui.crosshair`
-
-A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill.
-
-Parts: Crosshair.line, Crosshair.dot, Crosshair.ring, Crosshair.marker[<hit>]. States: group aim (idle, onTarget), group hit (none, hit, headshot, kill). Accessibility: none (decoration; hits are the game's to announce). Probe ids: <id>, <id>/N, <id>/Marker.
-
-```ts
-og.ui.crosshair(id: string, desc?: CrosshairDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `CrosshairDesc` | yes | The look and the last hit. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn crosshair {
-  doc "A crosshair to the bar of shooters' crosshair editors: cross, dot, circle, chevron or T, its gap opening with the weapon's spread on a fast spring, outlined so it reads over any scene, turning danger on an enemy; a hit marker's four diagonal ticks flash and spring out on a hit, larger in gold for a headshot, in danger and held for a kill."
-  doc "Parts: Crosshair.line, Crosshair.dot, Crosshair.ring, Crosshair.marker[<hit>]. States: group aim (idle, onTarget), group hit (none, hit, headshot, kill). Accessibility: none (decoration; hits are the game's to announce). Probe ids: <id>, <id>/N, <id>/Marker."
-  host false
-  param id String "Its id."
-  param desc CrosshairDesc "The look and the last hit."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24431</sub>
-
-<a id="fn-ammoCounter"></a>
-
-### `og.ui.ammoCounter`
-
-An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode.
-
-Parts: Ammo.frame[low|empty|reloading], Ammo.magazine, Ammo.reserve, Ammo.round[spent], Ammo.weapon, Ammo.mode, Ammo.reload, Ammo.hint. States: group ammo (full, low, empty, reloading). Sounds: warning when it runs empty. Accessibility: status named the magazine and reserve. Probe ids: <id>, <id>/Magazine, <id>/Reserve, <id>/Rounds/Round#i, <id>/Hint.
-
-```ts
-og.ui.ammoCounter(id: string, desc?: AmmoDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `AmmoDesc` | yes | The ammunition. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn ammoCounter {
-  doc "An ammunition counter to the bar of shooters: the magazine in large digits over its reserve, a row of rounds that empties as it fires (a round leaving springs off), low in warn with the reload hint, empty in danger, a reload ring with its word, the weapon's name, icon and fire mode."
-  doc "Parts: Ammo.frame[low|empty|reloading], Ammo.magazine, Ammo.reserve, Ammo.round[spent], Ammo.weapon, Ammo.mode, Ammo.reload, Ammo.hint. States: group ammo (full, low, empty, reloading). Sounds: warning when it runs empty. Accessibility: status named the magazine and reserve. Probe ids: <id>, <id>/Magazine, <id>/Reserve, <id>/Rounds/Round#i, <id>/Hint."
-  host false
-  param id String "Its id."
-  param desc AmmoDesc "The ammunition."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24468</sub>
+<sub>`api.ogt` line 23188</sub>
 
 <a id="fn-minimapView"></a>
 
@@ -8366,7 +7612,7 @@ fn minimapView {
 }
 ```
 
-<sub>`api.ogt` line 24561</sub>
+<sub>`api.ogt` line 23289</sub>
 
 <a id="fn-compass"></a>
 
@@ -8400,7 +7646,7 @@ fn compass {
 }
 ```
 
-<sub>`api.ogt` line 24610</sub>
+<sub>`api.ogt` line 23338</sub>
 
 <a id="fn-objectiveTracker"></a>
 
@@ -8434,75 +7680,7 @@ fn objectiveTracker {
 }
 ```
 
-<sub>`api.ogt` line 24672</sub>
-
-<a id="fn-killfeed"></a>
-
-### `og.ui.killfeed`
-
-A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time.
-
-Parts: Killfeed.line[local], Killfeed.killer, Killfeed.weapon, Killfeed.victim, Killfeed.headshot. Accessibility: log named Killfeed, each line text killer weapon victim. Probe ids: <id>/<key>, its Killer, Weapon, Victim.
-
-```ts
-og.ui.killfeed(id: string, desc?: KillfeedDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `KillfeedDesc` | yes | The entries. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn killfeed {
-  doc "A killfeed to the bar of shooters and battle royales: killer, weapon and victim on a dark chip each line, names in their teams' colours, a headshot mark, an assister, the player's lines highlighted, the newest sliding in at the top, each fading after its time."
-  doc "Parts: Killfeed.line[local], Killfeed.killer, Killfeed.weapon, Killfeed.victim, Killfeed.headshot. Accessibility: log named Killfeed, each line text killer weapon victim. Probe ids: <id>/<key>, its Killer, Weapon, Victim."
-  host false
-  param id String "Its id."
-  param desc KillfeedDesc "The entries."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24711</sub>
-
-<a id="fn-scoreboard"></a>
-
-### `og.ui.scoreboard`
-
-A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel.
-
-Parts: Scoreboard.panel, Scoreboard.team[team=<n>], Scoreboard.header, Scoreboard.row[local][dead], Scoreboard.cell, Scoreboard.ping[good|fair|poor], Scoreboard.mvp. Accessibility: table named title; rows named by name and values. Probe ids: <id>/Team#t, <id>/Team#t/<key>, its Name and Value#i.
-
-```ts
-og.ui.scoreboard(id: string, desc?: ScoreboardDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `ScoreboardDesc` | yes | The teams and their players. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn scoreboard {
-  doc "A scoreboard to the bar of shooters and MOBAs: a team header in its colour with its score, rows of players with their portrait or icon, name, values in tabular digits and ping bars, the player's row highlighted, the dead dimmed with a skull, an MVP star, over a glass panel."
-  doc "Parts: Scoreboard.panel, Scoreboard.team[team=<n>], Scoreboard.header, Scoreboard.row[local][dead], Scoreboard.cell, Scoreboard.ping[good|fair|poor], Scoreboard.mvp. Accessibility: table named title; rows named by name and values. Probe ids: <id>/Team#t, <id>/Team#t/<key>, its Name and Value#i."
-  host false
-  param id String "Its id."
-  param desc ScoreboardDesc "The teams and their players."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24770</sub>
+<sub>`api.ogt` line 23400</sub>
 
 <a id="fn-hudTimer"></a>
 
@@ -8536,7 +7714,7 @@ fn hudTimer {
 }
 ```
 
-<sub>`api.ogt` line 24810</sub>
+<sub>`api.ogt` line 23440</sub>
 
 <a id="fn-comboCounter"></a>
 
@@ -8570,7 +7748,7 @@ fn comboCounter {
 }
 ```
 
-<sub>`api.ogt` line 24837</sub>
+<sub>`api.ogt` line 23467</sub>
 
 <a id="fn-judgement"></a>
 
@@ -8604,115 +7782,7 @@ fn judgement {
 }
 ```
 
-<sub>`api.ogt` line 24875</sub>
-
-<a id="fn-resourceBar"></a>
-
-### `og.ui.resourceBar`
-
-A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.
-
-Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock.
-
-```ts
-og.ui.resourceBar(id: string, desc?: ResourceBarDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `ResourceBarDesc` | yes | The resources. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn resourceBar {
-  doc "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it."
-  doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock."
-  host false
-  param id String "Its id."
-  param desc ResourceBarDesc "The resources."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24914</sub>
-
-<a id="fn-turnOrder"></a>
-
-### `og.ui.turnOrder`
-
-A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes.
-
-A list (style list) is rows of portrait and name read top to bottom with no numbers: the current unit first, on the selected row's rule (controlStrong lit by the highlight's rim and glow); each row starts with a stripe the width of a mark, in its side's ink for an enemy and empty for the player's side, so every portrait starts on one line, and the row mirrors right to left with it; the dead greyed and crossed, a delayed one marked, an active time gauge under the name.
-
-Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay; in a list TurnOrder.frame[list], TurnOrder.row[current][team=<n>][dead], TurnOrder.stripe[team=<n>], TurnOrder.portrait, TurnOrder.atb, TurnOrder.delay. Accessibility: list named Turn order; in a strip each unit an image named by name and its place; in a list each row a listitem named by its name, then hostileLabel for an enemy and nowLabel for the current one (selected), its value its place. Probe ids: <id>/<key>, its Atb; in a list <id>/<key>/Stripe, <id>/<key>/Portrait, <id>/<key>/Text/Name, <id>/<key>/Text/Atb.
-
-```ts
-og.ui.turnOrder(id: string, desc?: TurnOrderDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `TurnOrderDesc` | yes | The order. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn turnOrder {
-  doc "A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes."
-  doc "A list (style list) is rows of portrait and name read top to bottom with no numbers: the current unit first, on the selected row's rule (controlStrong lit by the highlight's rim and glow); each row starts with a stripe the width of a mark, in its side's ink for an enemy and empty for the player's side, so every portrait starts on one line, and the row mirrors right to left with it; the dead greyed and crossed, a delayed one marked, an active time gauge under the name."
-  doc "Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay; in a list TurnOrder.frame[list], TurnOrder.row[current][team=<n>][dead], TurnOrder.stripe[team=<n>], TurnOrder.portrait, TurnOrder.atb, TurnOrder.delay. Accessibility: list named Turn order; in a strip each unit an image named by name and its place; in a list each row a listitem named by its name, then hostileLabel for an enemy and nowLabel for the current one (selected), its value its place. Probe ids: <id>/<key>, its Atb; in a list <id>/<key>/Stripe, <id>/<key>/Portrait, <id>/<key>/Text/Name, <id>/<key>/Text/Atb."
-  host false
-  param id String "Its id."
-  param desc TurnOrderDesc "The order."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 24968</sub>
-
-<a id="fn-speedometer"></a>
-
-### `og.ui.speedometer`
-
-A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar.
-
-The tach style (style tach) is the racing HUD's instrument: a 240° arc of the revs with its numbers (thousands of maxRpm, every rpmStep) outside the arc, its last stretch from the redline in danger and the fill turning from the accent to danger as it crosses; a row of shift lights (7, 5 on a small dial) over the readout filling green, accent, danger up to shiftAt and all flashing there; the speed the largest numeral, condensed italic in a fixed three-digit box with its unit under it; the gear a square badge beside it, N and R in warn; boost a thin inner arc. It caps at 34 % of the screen's short side, and at a large text size its numbers drop before the readout shrinks.
-
-Parts: Speedometer.dial[tach|digital], Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear[neutral], Speedometer.shift, Speedometer.light[on], Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear.
-
-```ts
-og.ui.speedometer(id: string, desc?: SpeedometerDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `SpeedometerDesc` | yes | Speed, revs and gear. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn speedometer {
-  doc "A speedometer to the bar of racing games (Forza Horizon, Gran Turismo): a dial of ticks with numbers, a needle on a spring, the tach's arc filling to its red zone, the speed in large tabular digits with its unit, the gear in a badge, a shift light that flashes past the redline, a boost gauge; or digital, the speed over a segmented tach bar."
-  doc "The tach style (style tach) is the racing HUD's instrument: a 240° arc of the revs with its numbers (thousands of maxRpm, every rpmStep) outside the arc, its last stretch from the redline in danger and the fill turning from the accent to danger as it crosses; a row of shift lights (7, 5 on a small dial) over the readout filling green, accent, danger up to shiftAt and all flashing there; the speed the largest numeral, condensed italic in a fixed three-digit box with its unit under it; the gear a square badge beside it, N and R in warn; boost a thin inner arc. It caps at 34 % of the screen's short side, and at a large text size its numbers drop before the readout shrinks."
-  doc "Parts: Speedometer.dial[tach|digital], Speedometer.tick[major], Speedometer.needle, Speedometer.tach[red], Speedometer.speed, Speedometer.unit, Speedometer.gear[neutral], Speedometer.shift, Speedometer.light[on], Speedometer.boost. States: group rev (normal, redline). Accessibility: meter named Speed, its value with the unit. Probe ids: <id>, <id>/Speed, <id>/Gear."
-  host false
-  param id String "Its id."
-  param desc SpeedometerDesc "Speed, revs and gear."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25033</sub>
+<sub>`api.ogt` line 23505</sub>
 
 <a id="fn-scorebug"></a>
 
@@ -8746,7 +7816,7 @@ fn scorebug {
 }
 ```
 
-<sub>`api.ogt` line 25072</sub>
+<sub>`api.ogt` line 23543</sub>
 
 <a id="fn-matchStats"></a>
 
@@ -8780,7 +7850,7 @@ fn matchStats {
 }
 ```
 
-<sub>`api.ogt` line 25104</sub>
+<sub>`api.ogt` line 23575</sub>
 
 <a id="fn-goalTimeline"></a>
 
@@ -8814,7 +7884,7 @@ fn goalTimeline {
 }
 ```
 
-<sub>`api.ogt` line 25131</sub>
+<sub>`api.ogt` line 23602</sub>
 
 <a id="fn-playerPlate"></a>
 
@@ -8848,7 +7918,7 @@ fn playerPlate {
 }
 ```
 
-<sub>`api.ogt` line 25159</sub>
+<sub>`api.ogt` line 23630</sub>
 
 <a id="fn-substitution"></a>
 
@@ -8882,41 +7952,7 @@ fn substitution {
 }
 ```
 
-<sub>`api.ogt` line 25195</sub>
-
-<a id="fn-wavePreview"></a>
-
-### `og.ui.wavePreview`
-
-A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots.
-
-Parts: WavePreview.frame, WavePreview.wave[current][boss], WavePreview.art, WavePreview.more. Accessibility: list named title; each wave text named its number and name with its count. Probe ids: <id>/<key>, its Number and Count; <id>/More.
-
-```ts
-og.ui.wavePreview(id: string, desc?: WavePreviewDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `WavePreviewDesc` | yes | The waves. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn wavePreview {
-  doc "A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots."
-  doc "Parts: WavePreview.frame, WavePreview.wave[current][boss], WavePreview.art, WavePreview.more. Accessibility: list named title; each wave text named its number and name with its count. Probe ids: <id>/<key>, its Number and Count; <id>/More."
-  host false
-  param id String "Its id."
-  param desc WavePreviewDesc "The waves."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25230</sub>
+<sub>`api.ogt` line 23666</sub>
 
 <a id="fn-laneKeys"></a>
 
@@ -8950,7 +7986,7 @@ fn laneKeys {
 }
 ```
 
-<sub>`api.ogt` line 25265</sub>
+<sub>`api.ogt` line 23701</sub>
 
 <a id="fn-flightHud"></a>
 
@@ -8984,449 +8020,7 @@ fn flightHud {
 }
 ```
 
-<sub>`api.ogt` line 25311</sub>
-
-<a id="fn-standingsTower"></a>
-
-### `og.ui.standingsTower`
-
-A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; one continuous panel with hairlines between rows, the player's row lit (a solid position cell over a tinted row); a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.
-
-Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.rule, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.
-
-```ts
-og.ui.standingsTower(id: string, desc?: StandingsTowerDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `StandingsTowerDesc` | yes | The cars in race order. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn standingsTower {
-  doc "A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; one continuous panel with hairlines between rows, the player's row lit (a solid position cell over a tinted row); a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between."
-  doc "Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.rule, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap."
-  host false
-  param id String "Its id."
-  param desc StandingsTowerDesc "The cars in race order."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25362</sub>
-
-<a id="fn-lapTimer"></a>
-
-### `og.ui.lapTimer`
-
-A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone.
-
-Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Final (the final lap's line), <id>/Lap/Time and <id>/Lap/Split and <id>/Best/Time (compact), <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
-
-```ts
-og.ui.lapTimer(id: string, desc?: LapTimerDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `LapTimerDesc` | yes | The race state. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn lapTimer {
-  doc "A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone."
-  doc "Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Final (the final lap's line), <id>/Lap/Time and <id>/Lap/Split and <id>/Best/Time (compact), <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time."
-  host false
-  param id String "Its id."
-  param desc LapTimerDesc "The race state."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25440</sub>
-
-<a id="fn-itemSlot"></a>
-
-### `og.ui.itemSlot`
-
-An arcade racer's item slot (Mario Kart's): a ring frame holding the current item, a smaller slot beside it for the next one, and a roulette after a pickup that cycles the roulette's items, slowing, then lands with a pop; by the tick from rollingAt, so a still is deterministic. Part of the racing HUD's arcade look.
-
-Parts: ItemSlot.frame[empty|rolling], ItemSlot.item, ItemSlot.queued. Accessibility: image named by its label (Rolling while it spins). Probe ids: <id>, <id>/Ring/Item, <id>/Queued.
-
-```ts
-og.ui.itemSlot(id: string, desc?: ItemSlotDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `ItemSlotDesc` | yes | The items. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn itemSlot {
-  doc "An arcade racer's item slot (Mario Kart's): a ring frame holding the current item, a smaller slot beside it for the next one, and a roulette after a pickup that cycles the roulette's items, slowing, then lands with a pop; by the tick from rollingAt, so a still is deterministic. Part of the racing HUD's arcade look."
-  doc "Parts: ItemSlot.frame[empty|rolling], ItemSlot.item, ItemSlot.queued. Accessibility: image named by its label (Rolling while it spins). Probe ids: <id>, <id>/Ring/Item, <id>/Queued."
-  host false
-  param id String "Its id."
-  param desc ItemSlotDesc "The items."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25473</sub>
-
-<a id="fn-driftScore"></a>
-
-### `og.ui.driftScore`
-
-An arcade racer's drift chain (Need for Speed's, Forza Horizon's skill chains): the running score in a big slanted numeral near the car or its anchor with its multiplier on a badge that pops as it climbs; banked, it ticks up into the total and leaves; broken, it shakes and fades in danger. By the tick from bankedAt and failedAt. Part of the racing HUD's arcade look.
-
-Parts: DriftScore.score[banked|failed], DriftScore.multiplier, DriftScore.total. State group: chain (idle, running, banked, failed). Accessibility: status named by its label, its value the score and multiplier. Probe ids: <id>, <id>/Label, <id>/Score, <id>/Multiplier, <id>/Total.
-
-```ts
-og.ui.driftScore(id: string, desc?: DriftScoreDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `DriftScoreDesc` | yes | The chain. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn driftScore {
-  doc "An arcade racer's drift chain (Need for Speed's, Forza Horizon's skill chains): the running score in a big slanted numeral near the car or its anchor with its multiplier on a badge that pops as it climbs; banked, it ticks up into the total and leaves; broken, it shakes and fades in danger. By the tick from bankedAt and failedAt. Part of the racing HUD's arcade look."
-  doc "Parts: DriftScore.score[banked|failed], DriftScore.multiplier, DriftScore.total. State group: chain (idle, running, banked, failed). Accessibility: status named by its label, its value the score and multiplier. Probe ids: <id>, <id>/Label, <id>/Score, <id>/Multiplier, <id>/Total."
-  host false
-  param id String "Its id."
-  param desc DriftScoreDesc "The chain."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25503</sub>
-
-<a id="fn-raceBanner"></a>
-
-### `og.ui.raceBanner`
-
-The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time (`below` names it), signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a gold band sweeping the centre between the side panels, its words at display size), the finish (a checker wipe, the place huge with the time under it) and wrong way (a centred danger band with a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised).
-
-Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label.
-
-```ts
-og.ui.raceBanner(id: string, desc?: RaceBannerDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `RaceBannerDesc` | yes | The moment and its words. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn raceBanner {
-  doc "The racing HUD's centre-third moments, one at a time: the countdown (numerals scaling in from 1.4× over start lights filling danger, then GO with the lights green), a checkpoint's split (Trackmania's, centre-top under the lap time (`below` names it), signed with a true minus to two decimals in tabular digits: ahead in success, behind in danger, a new best in purple), the final lap (a gold band sweeping the centre between the side panels, its words at display size), the finish (a checker wipe, the place huge with the time under it) and wrong way (a centred danger band with a U-turn arrow, a 1 Hz pulse), which wins over the others while it holds. Its motion runs by the tick from `at`, so a still is deterministic; under reduced motion the numerals and bands show without scaling or sweeping. Labels come from the desc (localised)."
-  doc "Parts: RaceBanner.lights, RaceBanner.light[on|go], RaceBanner.count, RaceBanner.checkpoint[ahead|behind|best], RaceBanner.band[final], RaceBanner.checker, RaceBanner.place, RaceBanner.time, RaceBanner.wrongWay. State group: event (none, countdown, go, checkpoint, finalLap, finish, wrongWay). Accessibility: a status naming the moment (the numeral, GO, the split, the place). Probe ids: <id>, <id>/Count, <id>/Lights/Light#<i>, <id>/Split/Label, <id>/Split/Delta, <id>/Band/Label, <id>/Place, <id>/Time, <id>/WrongWay/Label."
-  host false
-  param id String "Its id."
-  param desc RaceBannerDesc "The moment and its words."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25562</sub>
-
-<a id="fn-rearView"></a>
-
-### `og.ui.rearView`
-
-A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road.
-
-Parts: RearView.frame (the bezel), RearView.glass, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/Glass/View.
-
-```ts
-og.ui.rearView(id: string, desc?: RearViewDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `RearViewDesc` | yes | What it shows and its size. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn rearView {
-  doc "A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road."
-  doc "Parts: RearView.frame (the bezel), RearView.glass, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/Glass/View."
-  host false
-  param id String "Its id."
-  param desc RearViewDesc "What it shows and its size."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25594</sub>
-
-<a id="fn-productionQueue"></a>
-
-### `og.ui.productionQueue`
-
-A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it.
-
-Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty, ProductionQueue.zone (a selected building's production beside its card). State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count.
-
-```ts
-og.ui.productionQueue(id: string, desc?: ProductionQueueDesc): ProductionQueueResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `ProductionQueueDesc` | yes | What it builds. |
-
-**Returns** `ProductionQueueResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn productionQueue {
-  doc "A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it."
-  doc "Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty, ProductionQueue.zone (a selected building's production beside its card). State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count."
-  host false
-  param id String "Its id."
-  param desc ProductionQueueDesc "What it builds."
-  returns ProductionQueueResult
-}
-```
-
-<sub>`api.ogt` line 25690</sub>
-
-<a id="fn-selectionPanel"></a>
-
-### `og.ui.selectionPanel`
-
-A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs seated on the top edge of one panel of the style's HUD glass (labels at the caption step; the current one on the panel's own ground running on into it, lit along its top by the highlight; the others a step back); the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile in the selected-tile rule (a highlight ring inside its edge, 3 px at 1080p, its art lit from the rim and a highlight glow lifting it); a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); one unit or building selected has no grid of one: its card takes the zone, and a building with a queue shows its production beside the card (the item being built in a slot the size of a command cell, its sweep over the art and its time under it, its name over a gold progress bar beside it, the rest of the queue as smaller slots under them; the building's card stays the one large image). Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles (beside the one tile of a single selection), and trims the grid to the rows its units fill. The control group tabs stay under a fifth of the zone's height at any text size.
-
-Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tabLit, SelectionPanel.seam (the current tab's foot over the panel's top edge), SelectionPanel.tile[focused], SelectionPanel.focus, SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.stats (a single selection with nothing queued: its stats in the grid's zone), SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value (one selected with nothing queued: <id>/Body/Stats/Columns/Col#<n>/<key>/Value), a building's <id>/Body/Production/Current/Active/Queue/<key>, its time <id>/Body/Production/Current/Active/Time, and <id>/Body/Production/Next/<key>.
-
-```ts
-og.ui.selectionPanel(id: string, desc?: SelectionPanelDesc): SelectionPanelResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `SelectionPanelDesc` | yes | The selection. |
-
-**Returns** `SelectionPanelResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn selectionPanel {
-  doc "A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs seated on the top edge of one panel of the style's HUD glass (labels at the caption step; the current one on the panel's own ground running on into it, lit along its top by the highlight; the others a step back); the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile in the selected-tile rule (a highlight ring inside its edge, 3 px at 1080p, its art lit from the rim and a highlight glow lifting it); a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); one unit or building selected has no grid of one: its card takes the zone, and a building with a queue shows its production beside the card (the item being built in a slot the size of a command cell, its sweep over the art and its time under it, its name over a gold progress bar beside it, the rest of the queue as smaller slots under them; the building's card stays the one large image). Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles (beside the one tile of a single selection), and trims the grid to the rows its units fill. The control group tabs stay under a fifth of the zone's height at any text size."
-  doc "Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tabLit, SelectionPanel.seam (the current tab's foot over the panel's top edge), SelectionPanel.tile[focused], SelectionPanel.focus, SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.stats (a single selection with nothing queued: its stats in the grid's zone), SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value (one selected with nothing queued: <id>/Body/Stats/Columns/Col#<n>/<key>/Value), a building's <id>/Body/Production/Current/Active/Queue/<key>, its time <id>/Body/Production/Current/Active/Time, and <id>/Body/Production/Next/<key>."
-  host false
-  param id String "Its id."
-  param desc SelectionPanelDesc "The selection."
-  returns SelectionPanelResult
-}
-```
-
-<sub>`api.ogt` line 25724</sub>
-
-<a id="fn-commandCard"></a>
-
-### `og.ui.commandCard`
-
-A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed.
-
-Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key.
-
-```ts
-og.ui.commandCard(id: string, desc?: CommandCardDesc): AbilityBarResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `CommandCardDesc` | yes | The commands. |
-
-**Returns** `AbilityBarResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn commandCard {
-  doc "A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed."
-  doc "Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key."
-  host false
-  param id String "Its id."
-  param desc CommandCardDesc "The commands."
-  returns AbilityBarResult
-}
-```
-
-<sub>`api.ogt` line 25747</sub>
-
-<a id="fn-rtsConsole"></a>
-
-### `og.ui.rtsConsole`
-
-An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, square whatever the shape given, without its own bezel, filling its zone edge to edge with its north mark inside its top edge), the selection with its control group tabs over it, the focused unit's card with a building's production beside it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap out of the console (beside it in the bottom start corner where the band leaves the width, as a phone held sideways does, else the top end corner under what stands there), then stacks the command card over the selection.
-
-Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's).
-
-```ts
-og.ui.rtsConsole(id: string, desc?: RtsConsoleDesc): RtsConsoleResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `RtsConsoleDesc` | yes | Its zones. |
-
-**Returns** `RtsConsoleResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn rtsConsole {
-  doc "An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, square whatever the shape given, without its own bezel, filling its zone edge to edge with its north mark inside its top edge), the selection with its control group tabs over it, the focused unit's card with a building's production beside it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap out of the console (beside it in the bottom start corner where the band leaves the width, as a phone held sideways does, else the top end corner under what stands there), then stacks the command card over the selection."
-  doc "Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's)."
-  host false
-  param id String "Its id."
-  param desc RtsConsoleDesc "Its zones."
-  returns RtsConsoleResult
-}
-```
-
-<sub>`api.ogt` line 25777</sub>
-
-<a id="fn-dragSelect"></a>
-
-### `og.ui.dragSelect`
-
-A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection.
-
-Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>.
-
-```ts
-og.ui.dragSelect(id: string, desc?: DragSelectDesc): DragSelectResult
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `DragSelectDesc` | yes | Where it follows from. |
-
-**Returns** `DragSelectResult`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn dragSelect {
-  doc "A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection."
-  doc "Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>."
-  host false
-  param id String "Its id."
-  param desc DragSelectDesc "Where it follows from."
-  returns DragSelectResult
-}
-```
-
-<sub>`api.ogt` line 25821</sub>
-
-<a id="fn-damageDirection"></a>
-
-### `og.ui.damageDirection`
-
-Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older.
-
-Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i.
-
-```ts
-og.ui.damageDirection(id: string, desc?: DamageDirectionDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `DamageDirectionDesc` | yes | The hits. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn damageDirection {
-  doc "Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older."
-  doc "Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i."
-  host false
-  param id String "Its id."
-  param desc DamageDirectionDesc "The hits."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25858</sub>
-
-<a id="fn-lowHealthVignette"></a>
-
-### `og.ui.lowHealthVignette`
-
-The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth.
-
-Parts: none (a meta layer). Accessibility: none. Probe ids: its meta layer <id>.
-
-```ts
-og.ui.lowHealthVignette(id: string, desc?: LowHealthDesc): void
-```
-
-| Parameter | Type | Optional | Doc |
-|---|---|---|---|
-| `id` | `string` | no | Its id. |
-| `desc` | `LowHealthDesc` | yes | Health and the last hit. |
-
-**Returns** `void`.
-
-Implemented by the TypeScript runtime over the members of this module: no binding symbol.
-
-```ogt
-fn lowHealthVignette {
-  doc "The low-health vignette of action games (a meta layer over the scene, under the HUD): red at the screen's edges deepening as health falls under the threshold, pulsing like a heartbeat faster near death, and a short flash on each hit. Under reduced motion it holds still at its depth."
-  doc "Parts: none (a meta layer). Accessibility: none. Probe ids: its meta layer <id>."
-  host false
-  param id String "Its id."
-  param desc LowHealthDesc "Health and the last hit."
-  returns Void
-}
-```
-
-<sub>`api.ogt` line 25881</sub>
+<sub>`api.ogt` line 23747</sub>
 
 <a id="fn-nameplate"></a>
 
@@ -9460,7 +8054,7 @@ fn nameplate {
 }
 ```
 
-<sub>`api.ogt` line 25943</sub>
+<sub>`api.ogt` line 23809</sub>
 
 <a id="fn-overheadBars"></a>
 
@@ -9494,7 +8088,7 @@ fn overheadBars {
 }
 ```
 
-<sub>`api.ogt` line 25984</sub>
+<sub>`api.ogt` line 23850</sub>
 
 <a id="fn-damageNumbers"></a>
 
@@ -9528,7 +8122,7 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 26033</sub>
+<sub>`api.ogt` line 23899</sub>
 
 <a id="fn-interactionPrompt"></a>
 
@@ -9564,7 +8158,7 @@ fn interactionPrompt {
 }
 ```
 
-<sub>`api.ogt` line 26064</sub>
+<sub>`api.ogt` line 23930</sub>
 
 <a id="fn-waypoint"></a>
 
@@ -9598,7 +8192,7 @@ fn waypoint {
 }
 ```
 
-<sub>`api.ogt` line 26112</sub>
+<sub>`api.ogt` line 23978</sub>
 
 <a id="fn-selectionRing"></a>
 
@@ -9634,7 +8228,7 @@ fn selectionRing {
 }
 ```
 
-<sub>`api.ogt` line 26166</sub>
+<sub>`api.ogt` line 24032</sub>
 
 <a id="fn-telegraph"></a>
 
@@ -9670,7 +8264,7 @@ fn telegraph {
 }
 ```
 
-<sub>`api.ogt` line 26220</sub>
+<sub>`api.ogt` line 24086</sub>
 
 <a id="fn-pathLine"></a>
 
@@ -9706,7 +8300,7 @@ fn pathLine {
 }
 ```
 
-<sub>`api.ogt` line 26251</sub>
+<sub>`api.ogt` line 24117</sub>
 
 <a id="fn-placementGhost"></a>
 
@@ -9742,7 +8336,7 @@ fn placementGhost {
 }
 ```
 
-<sub>`api.ogt` line 26292</sub>
+<sub>`api.ogt` line 24158</sub>
 
 <a id="fn-lootLabel"></a>
 
@@ -9776,7 +8370,7 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 26330</sub>
+<sub>`api.ogt` line 24196</sub>
 
 <a id="fn-speechBubble"></a>
 
@@ -9810,7 +8404,7 @@ fn speechBubble {
 }
 ```
 
-<sub>`api.ogt` line 26367</sub>
+<sub>`api.ogt` line 24233</sub>
 
 <a id="fn-semantics"></a>
 
@@ -9838,7 +8432,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 26843</sub>
+<sub>`api.ogt` line 24709</sub>
 
 <a id="fn-partAttr"></a>
 
@@ -9868,7 +8462,7 @@ fn partAttr {
 }
 ```
 
-<sub>`api.ogt` line 26849</sub>
+<sub>`api.ogt` line 24715</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -9896,7 +8490,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 26856</sub>
+<sub>`api.ogt` line 24722</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -9926,7 +8520,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 26987</sub>
+<sub>`api.ogt` line 24853</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -9956,7 +8550,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 27042</sub>
+<sub>`api.ogt` line 24908</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -9986,7 +8580,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 27187</sub>
+<sub>`api.ogt` line 25053</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -10016,7 +8610,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 27194</sub>
+<sub>`api.ogt` line 25060</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -10046,7 +8640,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 27201</sub>
+<sub>`api.ogt` line 25067</sub>
 
 <a id="fn-massCount"></a>
 
@@ -10074,7 +8668,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 27208</sub>
+<sub>`api.ogt` line 25074</sub>
 
 <a id="fn-particles"></a>
 
@@ -10102,7 +8696,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 27281</sub>
+<sub>`api.ogt` line 25147</sub>
 
 <a id="fn-meta"></a>
 
@@ -10132,7 +8726,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 27331</sub>
+<sub>`api.ogt` line 25197</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -10162,7 +8756,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 27382</sub>
+<sub>`api.ogt` line 25248</sub>
 
 <a id="fn-screen"></a>
 
@@ -10194,7 +8788,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 27472</sub>
+<sub>`api.ogt` line 25338</sub>
 
 <a id="fn-component"></a>
 
@@ -10228,7 +8822,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 27481</sub>
+<sub>`api.ogt` line 25347</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -10256,7 +8850,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 27491</sub>
+<sub>`api.ogt` line 25357</sub>
 
 <a id="fn-push"></a>
 
@@ -10290,7 +8884,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 27497</sub>
+<sub>`api.ogt` line 25363</sub>
 
 <a id="fn-pop"></a>
 
@@ -10318,7 +8912,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 27507</sub>
+<sub>`api.ogt` line 25373</sub>
 
 <a id="fn-replace"></a>
 
@@ -10352,7 +8946,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 27513</sub>
+<sub>`api.ogt` line 25379</sub>
 
 <a id="fn-clear"></a>
 
@@ -10380,7 +8974,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 27523</sub>
+<sub>`api.ogt` line 25389</sub>
 
 <a id="fn-layers"></a>
 
@@ -10408,7 +9002,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 27529</sub>
+<sub>`api.ogt` line 25395</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -10438,7 +9032,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 27535</sub>
+<sub>`api.ogt` line 25401</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -10466,7 +9060,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 27542</sub>
+<sub>`api.ogt` line 25408</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -10494,7 +9088,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 27548</sub>
+<sub>`api.ogt` line 25414</sub>
 
 <a id="fn-paused"></a>
 
@@ -10522,7 +9116,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 27554</sub>
+<sub>`api.ogt` line 25420</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -10552,7 +9146,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 27560</sub>
+<sub>`api.ogt` line 25426</sub>
 
 <a id="fn-action"></a>
 
@@ -10580,7 +9174,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 27567</sub>
+<sub>`api.ogt` line 25433</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -10608,7 +9202,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 27573</sub>
+<sub>`api.ogt` line 25439</sub>
 
 <a id="fn-glyph"></a>
 
@@ -10638,7 +9232,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 27579</sub>
+<sub>`api.ogt` line 25445</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -10666,7 +9260,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 27586</sub>
+<sub>`api.ogt` line 25452</sub>
 
 <a id="fn-device"></a>
 
@@ -10694,7 +9288,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 27592</sub>
+<sub>`api.ogt` line 25458</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -10724,7 +9318,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 27598</sub>
+<sub>`api.ogt` line 25464</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -10752,7 +9346,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 27605</sub>
+<sub>`api.ogt` line 25471</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -10775,7 +9369,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 27611</sub>
+<sub>`api.ogt` line 25477</sub>
 
 <a id="fn-setProp"></a>
 
@@ -10809,7 +9403,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 27616</sub>
+<sub>`api.ogt` line 25482</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -10837,7 +9431,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 27625</sub>
+<sub>`api.ogt` line 25491</sub>
 
 ## Types
 
@@ -18735,477 +17329,6 @@ struct KeyboardResult {
 
 <sub>`api.ogt` line 19613</sub>
 
-<a id="type-GridItem"></a>
-
-### `GridItem` (desc struct)
-
-An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>. |
-| `name` | `string` | `""` | — | — | — | What it is called: a screen reader's name and the tooltip's title. |
-| `icon` | `string` | `""` | — | — | — | An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it. |
-| `x` | `number` | `0` | — | — | — | Its column from the start edge, 0 first. |
-| `y` | `number` | `0` | — | — | — | Its row from the top, 0 first. |
-| `w` | `number` | `1` | ≥ 1 | — | — | Columns it covers lying unturned. |
-| `h` | `number` | `1` | ≥ 1 | — | — | Rows it covers lying unturned. |
-| `rotated` | `boolean` | `false` | — | — | — | It lies turned a quarter: it covers h columns and w rows, and its art turns with it. |
-| `count` | `number` | `0` | — | — | — | How many are in its stack: shown from 2, or from 1 when it stacks. |
-| `maxStack` | `number` | `0` | — | — | — | The most its stack holds; 0 and 1 do not stack. |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the tile's wash, its edge and its pips. |
-| `tag` | `string` | `""` | — | — | — | What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one. |
-| `locked` | `boolean` | `false` | — | — | — | It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused. |
-| `fresh` | `boolean` | `false` | — | — | — | Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered). |
-| `equipped` | `boolean` | `false` | — | — | — | Worn or slotted elsewhere: a tick in its corner. |
-| `unusable` | `boolean` | `false` | — | — | — | The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader. |
-| `charge` | `number \| null` | `null` | — | `ratio` | — | Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter. |
-
-```ogt
-struct GridItem {
-  doc "An item of an inventory grid or a paperdoll slot, as the game's viewmodel holds it."
-  desc true
-  field key String "Its key, stable while it lives: its element id (letters, digits, - and _), so its probe path is <id>/Cells/<key>."
-  field name String "What it is called: a screen reader's name and the tooltip's title."
-  field icon String "An icon of the style's set drawn on it; empty draws its art, else its kind's silhouette."
-  field image Option.Texture "Its art (art kind item: 1×1, 1×2, 2×3, 2×4 cells), covering its cells and turning with it."
-  field x u32 "Its column from the start edge, 0 first."
-  field y u32 "Its row from the top, 0 first."
-  field w u32 "Columns it covers lying unturned." {
-    default 1
-    min 1
-  }
-  field h u32 "Rows it covers lying unturned." {
-    default 1
-    min 1
-  }
-  field rotated bool "It lies turned a quarter: it covers h columns and w rows, and its art turns with it."
-  field count u32 "How many are in its stack: shown from 2, or from 1 when it stacks."
-  field maxStack u32 "The most its stack holds; 0 and 1 do not stack."
-  field rarity Rarity "Its tier: the tile's wash, its edge and its pips."
-  field tag String "What kind of thing it is (helmet, ring, potion): a paperdoll slot takes the tags it lists, and InventoryGridDesc.highlight lights every item of one."
-  field locked bool "It cannot be moved (a quest item, a bound one): a lock in its corner, and a drag or a pick-up of it shakes and is refused."
-  field fresh bool "Picked up since the player last looked: a dot in its corner (the game clears it on InventoryGridResult.hovered)."
-  field equipped bool "Worn or slotted elsewhere: a tick in its corner."
-  field unusable bool "The player cannot use it (a class it does not fit, a level too high): a danger wash, and said so to a screen reader."
-  field charge Option.f32 "Durability or charge, 0 to 1: a thin bar along its foot, danger under a quarter." {
-    unit ratio
-  }
-}
-```
-
-<sub>`api.ogt` line 19642</sub>
-
-<a id="type-InventoryCarry"></a>
-
-### `InventoryCarry` (struct)
-
-An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | The item. |
-| `source` | `string` | `""` | — | — | — | The id of the grid or paperdoll it was picked up from. |
-| `slot` | `string` | `""` | — | — | — | The paperdoll slot it was picked up from; empty when from a grid. |
-| `tag` | `string` | `""` | — | — | — | Its tag. |
-| `w` | `number` | `0` | — | — | — | Columns it covers as carried (turned when rotated). |
-| `h` | `number` | `0` | — | — | — | Rows it covers as carried. |
-| `rotated` | `boolean` | `false` | — | — | — | It is carried turned. |
-| `count` | `number` | `0` | — | — | — | How many are carried: its whole stack, or the part split from it. |
-| `x` | `number` | `0` | — | `cssPx` | — | The pointer's x (for keys and pads, the centre of the place the focus is on). |
-| `y` | `number` | `0` | — | `cssPx` | — | The pointer's y. |
-| `byFocus` | `boolean` | `false` | — | — | — | Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go. |
-| `released` | `boolean` | `false` | — | — | — | The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick). |
-
-```ogt
-struct InventoryCarry {
-  doc "An item in the player's hand: dragged by the pointer or a finger, or picked up with confirm and moved with keys or a pad. A grid or paperdoll reports the one it holds; pass it to the others on the screen (their desc's carry) so the places that take it light up and a release over them lands it."
-  field key String "The item."
-  field source String "The id of the grid or paperdoll it was picked up from."
-  field slot String "The paperdoll slot it was picked up from; empty when from a grid."
-  field tag String "Its tag."
-  field w u32 "Columns it covers as carried (turned when rotated)."
-  field h u32 "Rows it covers as carried."
-  field rotated bool "It is carried turned."
-  field count u32 "How many are carried: its whole stack, or the part split from it."
-  field x f32 "The pointer's x (for keys and pads, the centre of the place the focus is on)." {
-    unit cssPx
-  }
-  field y f32 "The pointer's y." {
-    unit cssPx
-  }
-  field byFocus bool "Keys or a pad carry it: it lands where confirm is pressed, not where the pointer lets go."
-  field released bool "The pointer let it go this tick at x and y, outside the place that holds it: the grid or paperdoll under that point takes it (it is in no one's hand from the next tick)."
-}
-```
-
-<sub>`api.ogt` line 19673</sub>
-
-<a id="type-InventoryPick"></a>
-
-### `InventoryPick` (desc struct)
-
-The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | The item. |
-| `count` | `number` | `0` | — | — | — | How many to carry; 0 is the whole stack. |
-
-```ogt
-struct InventoryPick {
-  doc "The game puts an item (or part of a stack) in the player's hand: after its own menu's Split 10, Take one, or a transfer it wants carried."
-  desc true
-  field key String "The item."
-  field count u32 "How many to carry; 0 is the whole stack."
-}
-```
-
-<sub>`api.ogt` line 19693</sub>
-
-<a id="type-InventoryMove"></a>
-
-### `InventoryMove` (struct)
-
-A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do).
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | The item moved. |
-| `from` | `string` | `""` | — | — | — | The id of the grid or paperdoll it came from (this grid's own id for a move inside it). |
-| `fromSlot` | `string` | `""` | — | — | — | The paperdoll slot it came from; empty when from a grid. |
-| `x` | `number` | `0` | — | — | — | Its new column. |
-| `y` | `number` | `0` | — | — | — | Its new row. |
-| `rotated` | `boolean` | `false` | — | — | — | It now lies turned. |
-| `count` | `number` | `0` | — | — | — | How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key). |
-| `split` | `boolean` | `false` | — | — | — | Part of a stack moved. |
-| `mergeInto` | `string \| null` | `null` | — | — | — | It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from. |
-| `swapWith` | `string \| null` | `null` | — | — | — | It was dropped on one item it trades places with: that item goes where this one came from. |
-
-```ogt
-struct InventoryMove {
-  doc "A move the player made: apply it to the viewmodel (the item is drawn where the viewmodel says, so it stays where it was until you do)."
-  field key String "The item moved."
-  field from String "The id of the grid or paperdoll it came from (this grid's own id for a move inside it)."
-  field fromSlot String "The paperdoll slot it came from; empty when from a grid."
-  field x u32 "Its new column."
-  field y u32 "Its new row."
-  field rotated bool "It now lies turned."
-  field count u32 "How many moved: the whole stack, or the part split from it (leave the rest where it was, and give the moved part a new key)."
-  field split bool "Part of a stack moved."
-  field mergeInto Option.String "It was dropped on a stack of the same tag with room: add count to that stack (up to its maxStack) instead of placing it; what does not fit stays where it came from."
-  field swapWith Option.String "It was dropped on one item it trades places with: that item goes where this one came from."
-}
-```
-
-<sub>`api.ogt` line 19700</sub>
-
-<a id="type-InventoryGridDesc"></a>
-
-### `InventoryGridDesc` (desc struct)
-
-A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `columns` | `number` | `10` | ≥ 1 | — | — | Its columns. |
-| `rows` | `number` | `6` | ≥ 1 | — | — | Its rows. |
-| `items` | `readonly GridItem[]` | `[]` | — | — | — | The items, each at its cell. |
-| `cellSize` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls. |
-| `capacity` | `number` | `0` | — | — | — | Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell. |
-| `selected` | `string` | `""` | — | — | — | The selected item's key: ringed in the focus ink (a details panel beside shows it). |
-| `highlight` | `string` | `""` | — | — | — | A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none. |
-| `carry` | `InventoryCarry \| null` | `null` | — | — | — | An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from. |
-| `pick` | `InventoryPick \| null` | `null` | — | — | — | Put an item, or part of a stack, in the player's hand this tick (pass it once). |
-| `label` | `string` | `""` | — | — | — | What a screen reader calls the grid (Backpack); it is also said with the cells used. |
-| `emptyLabel` | `string` | `"Empty"` | — | — | — | What a screen reader calls an empty cell. |
-| `lockedLabel` | `string` | `"Locked"` | — | — | — | What it calls a locked cell, and a locked item's state. |
-| `unusableLabel` | `string` | `"Cannot use"` | — | — | — | What it says of an item the player cannot use. |
-| `rotateLabel` | `string` | `"Rotate"` | — | — | — | The touch button that turns the carried item. |
-
-```ogt
-struct InventoryGridDesc {
-  doc "A grid inventory (a backpack, a stash, a chest): items of several cells, rotation, stacks and splitting, quick transfer between containers."
-  desc true
-  field columns u32 "Its columns." {
-    default 10
-    min 1
-  }
-  field rows u32 "Its rows." {
-    default 6
-    min 1
-  }
-  field items List.GridItem "The items, each at its cell."
-  field cellSize f32 "A cell's side; 0 is 52 on a desktop and 48 on touch. Cells never go below 44 on a coarse pointer: a grid wider than its room scrolls." {
-    unit cssPx
-    min 0
-  }
-  field capacity u32 "Cells past this many, in reading order, are locked (a bag not yet bought): drawn with a lock, taking nothing; 0 is every cell."
-  field selected String "The selected item's key: ringed in the focus ink (a details panel beside shows it)."
-  field highlight String "A tag whose items are lit and the others dimmed (what a slot or a recipe takes); empty lights none."
-  field carry Option.InventoryCarry "An item carried from another grid or a paperdoll: its footprint shows where it would land under the pointer (or the focus), and a release or confirm there answers move with its from."
-  field pick Option.InventoryPick "Put an item, or part of a stack, in the player's hand this tick (pass it once)."
-  field label String "What a screen reader calls the grid (Backpack); it is also said with the cells used."
-  field emptyLabel String "What a screen reader calls an empty cell." {
-    default "Empty"
-  }
-  field lockedLabel String "What it calls a locked cell, and a locked item's state." {
-    default "Locked"
-  }
-  field unusableLabel String "What it says of an item the player cannot use." {
-    default "Cannot use"
-  }
-  field rotateLabel String "The touch button that turns the carried item." {
-    default "Rotate"
-  }
-}
-```
-
-<sub>`api.ogt` line 19714</sub>
-
-<a id="type-InventoryGridResult"></a>
-
-### `InventoryGridResult` (struct)
-
-What an inventory grid answered this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `selected` | `string \| null` | `null` | — | — | — | The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it. |
-| `used` | `string \| null` | `null` | — | — | — | The item used: a double press or a double tap (drink the potion, equip the sword). |
-| `menu` | `string \| null` | `null` | — | — | — | The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use. |
-| `menuAt` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | — | Where that menu opens: the long press's point, or the focused item's corner. |
-| `quick` | `string \| null` | `null` | — | — | — | The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held. |
-| `move` | `InventoryMove \| null` | `null` | — | — | — | A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere. |
-| `carried` | `InventoryCarry \| null` | `null` | — | — | — | The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen. |
-| `hovered` | `string \| null` | `null` | — | — | — | The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover). |
-| `hoveredRect` | `UiRect \| null` | `null` | — | — | — | Where that item is on screen. |
-| `refused` | `boolean` | `false` | — | — | — | A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played. |
-
-```ogt
-struct InventoryGridResult {
-  doc "What an inventory grid answered this tick."
-  field selected Option.String "The item pressed (a tap, a click, confirm on it while nothing is carried and it cannot be picked up): select it."
-  field used Option.String "The item used: a double press or a double tap (drink the potion, equip the sword)."
-  field menu Option.String "The item whose actions were asked for: a long press, or the details action (X, a pad's Y) on the focused item. Open its menu at menuAt (og.ui.contextMenu): split, drop, use."
-  field menuAt Vector2 "Where that menu opens: the long press's point, or the focused item's corner." {
-    unit cssPx
-  }
-  field quick Option.String "The item to send to the other container at once (quick transfer): a press with Shift held, or the details action held."
-  field move Option.InventoryMove "A move to apply: an item placed, turned, merged, swapped or split, or one carried in from elsewhere."
-  field carried Option.InventoryCarry "The item in the player's hand from this grid while it is carried (and on the tick it is let go outside the grid, with released): pass it to the paperdoll and the other grids on the screen."
-  field hovered Option.String "The item under the pointer or the focus: show its tooltip beside hoveredRect (og.ui.tooltipCard, og.ui.popover)."
-  field hoveredRect Option.UiRect "Where that item is on screen."
-  field refused bool "A drop or a pick-up was refused this tick (no room, a locked cell or item): the place shook red and the error sound played."
-}
-```
-
-<sub>`api.ogt` line 19750</sub>
-
-<a id="type-PaperdollSlot"></a>
-
-### `PaperdollSlot` (desc struct)
-
-An equipment slot around the paperdoll's figure.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | The slot's id (head, chest, mainHand): its element id. |
-| `label` | `string` | `""` | — | — | — | Its name (Head): said by a screen reader, and shown under an empty slot on a desktop. |
-| `accept` | `readonly string[]` | `[]` | — | — | — | The item tags it takes; empty takes any. |
-| `item` | `GridItem \| null` | `null` | — | — | — | What is worn there; null is empty (its w and h are not read: the item fills the slot). |
-| `x` | `number` | `0.5` | — | `ratio` | — | Where its centre sits across the doll's box, 0 its start edge to 1 its end. |
-| `y` | `number` | `0.5` | — | `ratio` | — | Where its centre sits down the box, 0 the top to 1 the foot. |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its side; 0 is 64 on a desktop, 56 on a phone. |
-| `aspect` | `number` | `0` | ≥ 0 | — | — | Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square. |
-| `icon` | `string` | `""` | — | — | — | The empty slot's silhouette, an icon of the style's set; without one (or one the set lacks) the kind its icon name, key or accepted tags say is drawn as a shape: helm, amulet, sword, shield, ring, glove, boot, armor or a relic's star, else a plain socket. |
-| `locked` | `boolean` | `false` | — | — | — | Not open yet: a lock, taking nothing. |
-| `lockedHint` | `string` | `""` | — | — | — | Why it is locked (Unlocks at level 20). |
-
-```ogt
-struct PaperdollSlot {
-  doc "An equipment slot around the paperdoll's figure."
-  desc true
-  field key String "The slot's id (head, chest, mainHand): its element id."
-  field label String "Its name (Head): said by a screen reader, and shown under an empty slot on a desktop."
-  field accept List.String "The item tags it takes; empty takes any."
-  field item Option.GridItem "What is worn there; null is empty (its w and h are not read: the item fills the slot)."
-  field x f32 "Where its centre sits across the doll's box, 0 its start edge to 1 its end." {
-    default 0.5
-    unit ratio
-  }
-  field y f32 "Where its centre sits down the box, 0 the top to 1 the foot." {
-    default 0.5
-    unit ratio
-  }
-  field size f32 "Its side; 0 is 64 on a desktop, 56 on a phone." {
-    unit cssPx
-    min 0
-  }
-  field aspect f32 "Its width over its height (a two-handed weapon's tall slot is 0.5); 0 is square." {
-    min 0
-  }
-  field icon String "The empty slot's silhouette, an icon of the style's set; without one (or one the set lacks) the kind its icon name, key or accepted tags say is drawn as a shape: helm, amulet, sword, shield, ring, glove, boot, armor or a relic's star, else a plain socket."
-  field locked bool "Not open yet: a lock, taking nothing."
-  field lockedHint String "Why it is locked (Unlocks at level 20)."
-}
-```
-
-<sub>`api.ogt` line 19775</sub>
-
-<a id="type-PaperdollStat"></a>
-
-### `PaperdollStat` (desc struct)
-
-A line of the paperdoll's stats, with the change the carried or hovered item would make.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `label` | `string` | `""` | — | — | — | What it is (Armor). |
-| `value` | `string` | `""` | — | — | — | Its value as shown (1,240). |
-| `delta` | `number` | `0` | — | — | — | The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none. |
-| `deltaText` | `string` | `""` | — | — | — | The change as shown (+48); empty writes delta. |
-| `lowerIsBetter` | `boolean` | `false` | — | — | — | A smaller value is better (a cooldown): flips the marks' meaning. |
-
-```ogt
-struct PaperdollStat {
-  doc "A line of the paperdoll's stats, with the change the carried or hovered item would make."
-  desc true
-  field label String "What it is (Armor)."
-  field value String "Its value as shown (1,240)."
-  field delta f32 "The change the compared item makes: positive is better, drawn with an up mark in success; negative with a down mark in danger; 0 shows none."
-  field deltaText String "The change as shown (+48); empty writes delta."
-  field lowerIsBetter bool "A smaller value is better (a cooldown): flips the marks' meaning."
-}
-```
-
-<sub>`api.ogt` line 19802</sub>
-
-<a id="type-PaperdollEquip"></a>
-
-### `PaperdollEquip` (struct)
-
-An item the player put in a slot.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `slot` | `string` | `""` | — | — | — | The slot. |
-| `key` | `string` | `""` | — | — | — | The item. |
-| `from` | `string` | `""` | — | — | — | The id of the grid (or this paperdoll) it came from. |
-| `fromSlot` | `string` | `""` | — | — | — | The slot it came from when moved between slots. |
-| `swapped` | `string \| null` | `null` | — | — | — | The item that was in the slot: it goes where the new one came from. |
-
-```ogt
-struct PaperdollEquip {
-  doc "An item the player put in a slot."
-  field slot String "The slot."
-  field key String "The item."
-  field from String "The id of the grid (or this paperdoll) it came from."
-  field fromSlot String "The slot it came from when moved between slots."
-  field swapped Option.String "The item that was in the slot: it goes where the new one came from."
-}
-```
-
-<sub>`api.ogt` line 19812</sub>
-
-<a id="type-PaperdollDesc"></a>
-
-### `PaperdollDesc` (desc struct)
-
-A paperdoll: equipment slots around the character's figure, and its stats.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `slots` | `readonly PaperdollSlot[]` | `[]` | — | — | — | The slots, each placed around the figure. |
-| `title` | `string` | `""` | — | — | — | The character's name over the figure; empty is none. |
-| `subtitle` | `string` | `""` | — | — | — | A line under it (Level 42 Paladin); empty is none. |
-| `rating` | `string` | `""` | — | — | — | A headline number (812); empty is none. |
-| `ratingLabel` | `string` | `""` | — | — | — | What it is (Item power). |
-| `stats` | `readonly PaperdollStat[]` | `[]` | — | — | — | The stats beside the figure (under it on a phone in portrait). |
-| `statsTitle` | `string` | `""` | — | — | — | The stats' heading (Attributes); empty is none. |
-| `stack` | `boolean` | `false` | — | — | — | The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them. |
-| `carry` | `InventoryCarry \| null` | `null` | — | — | — | An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip. |
-| `compare` | `boolean` | `false` | — | — | — | The stats' deltas are shown (the game sets them from the carried or hovered item). |
-| `selected` | `string` | `""` | — | — | — | The selected slot's key: ringed in the focus ink. |
-| `figureAspect` | `number` | `0` | ≥ 0 | — | — | The figure's box, width over height; 0 is 0.62 (a standing character). |
-| `emptyLabel` | `string` | `"Empty"` | — | — | — | What a screen reader adds for an empty slot. |
-| `lockedLabel` | `string` | `"Locked"` | — | — | — | What it adds for a locked slot. |
-| `width` | `Size \| null` | `null` | — | — | — | Its width; null grows. |
-
-```ogt
-struct PaperdollDesc {
-  doc "A paperdoll: equipment slots around the character's figure, and its stats."
-  desc true
-  field slots List.PaperdollSlot "The slots, each placed around the figure."
-  field title String "The character's name over the figure; empty is none."
-  field subtitle String "A line under it (Level 42 Paladin); empty is none."
-  field rating String "A headline number (812); empty is none."
-  field ratingLabel String "What it is (Item power)."
-  field stats List.PaperdollStat "The stats beside the figure (under it on a phone in portrait)."
-  field statsTitle String "The stats' heading (Attributes); empty is none."
-  field stack bool "The stats go under the figure, not beside it (a screen that puts the grids beside the doll); a phone in portrait always stacks them."
-  field carry Option.InventoryCarry "An item carried from a grid: the slots that take its tag light up and the others dim; a release or confirm over one answers equip."
-  field compare bool "The stats' deltas are shown (the game sets them from the carried or hovered item)."
-  field selected String "The selected slot's key: ringed in the focus ink."
-  field figureAspect f32 "The figure's box, width over height; 0 is 0.62 (a standing character)." {
-    min 0
-  }
-  field emptyLabel String "What a screen reader adds for an empty slot." {
-    default "Empty"
-  }
-  field lockedLabel String "What it adds for a locked slot." {
-    default "Locked"
-  }
-  field width Option.Size "Its width; null grows."
-}
-```
-
-<sub>`api.ogt` line 19821</sub>
-
-<a id="type-PaperdollResult"></a>
-
-### `PaperdollResult` (struct)
-
-What a paperdoll answered this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `equip` | `PaperdollEquip \| null` | `null` | — | — | — | An item placed in a slot: apply it. |
-| `selected` | `string \| null` | `null` | — | — | — | The slot pressed while nothing is carried. |
-| `used` | `string \| null` | `null` | — | — | — | The slot double pressed (take the item off at once). |
-| `carried` | `InventoryCarry \| null` | `null` | — | — | — | The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids. |
-| `hovered` | `string \| null` | `null` | — | — | — | The slot under the pointer or the focus: show its item's tooltip beside hoveredRect. |
-| `hoveredRect` | `UiRect \| null` | `null` | — | — | — | Where that slot is on screen. |
-| `refused` | `boolean` | `false` | — | — | — | The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played. |
-
-```ogt
-struct PaperdollResult {
-  doc "What a paperdoll answered this tick."
-  field equip Option.PaperdollEquip "An item placed in a slot: apply it."
-  field selected Option.String "The slot pressed while nothing is carried."
-  field used Option.String "The slot double pressed (take the item off at once)."
-  field carried Option.InventoryCarry "The item dragged out of a slot (or picked up with confirm) while it is carried, and on the tick it is let go outside with released: pass it to the grids."
-  field hovered Option.String "The slot under the pointer or the focus: show its item's tooltip beside hoveredRect."
-  field hoveredRect Option.UiRect "Where that slot is on screen."
-  field refused bool "The carried item was refused this tick (a slot that does not take its tag, a locked slot): the slot shook and the error sound played."
-}
-```
-
-<sub>`api.ogt` line 19847</sub>
-
 <a id="type-HandCard"></a>
 
 ### `HandCard` (desc struct)
@@ -19250,7 +17373,7 @@ struct HandCard {
 }
 ```
 
-<sub>`api.ogt` line 19870</sub>
+<sub>`api.ogt` line 19644</sub>
 
 <a id="type-CardTarget"></a>
 
@@ -19280,7 +17403,7 @@ struct CardTarget {
 }
 ```
 
-<sub>`api.ogt` line 19888</sub>
+<sub>`api.ogt` line 19662</sub>
 
 <a id="type-CardHandDesc"></a>
 
@@ -19331,7 +17454,7 @@ struct CardHandDesc {
 }
 ```
 
-<sub>`api.ogt` line 19899</sub>
+<sub>`api.ogt` line 19673</sub>
 
 <a id="type-CardPlay"></a>
 
@@ -19352,7 +17475,7 @@ struct CardPlay {
 }
 ```
 
-<sub>`api.ogt` line 19926</sub>
+<sub>`api.ogt` line 19700</sub>
 
 <a id="type-CardAim"></a>
 
@@ -19381,7 +17504,7 @@ struct CardAim {
 }
 ```
 
-<sub>`api.ogt` line 19932</sub>
+<sub>`api.ogt` line 19706</sub>
 
 <a id="type-CardHandResult"></a>
 
@@ -19410,7 +17533,7 @@ struct CardHandResult {
 }
 ```
 
-<sub>`api.ogt` line 19944</sub>
+<sub>`api.ogt` line 19718</sub>
 
 <a id="type-HeroTone"></a>
 
@@ -19437,7 +17560,7 @@ enum HeroTone {
 }
 ```
 
-<sub>`api.ogt` line 19965</sub>
+<sub>`api.ogt` line 19739</sub>
 
 <a id="type-HeroButtonDesc"></a>
 
@@ -19467,7 +17590,7 @@ struct HeroButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 19973</sub>
+<sub>`api.ogt` line 19747</sub>
 
 <a id="type-RewardTagKind"></a>
 
@@ -19492,7 +17615,7 @@ enum RewardTagKind {
 }
 ```
 
-<sub>`api.ogt` line 19995</sub>
+<sub>`api.ogt` line 19769</sub>
 
 <a id="type-RewardOption"></a>
 
@@ -19534,7 +17657,7 @@ struct RewardOption {
 }
 ```
 
-<sub>`api.ogt` line 20002</sub>
+<sub>`api.ogt` line 19776</sub>
 
 <a id="type-RewardChoiceDesc"></a>
 
@@ -19598,7 +17721,7 @@ struct RewardChoiceDesc {
 }
 ```
 
-<sub>`api.ogt` line 20018</sub>
+<sub>`api.ogt` line 19792</sub>
 
 <a id="type-RewardChoiceResult"></a>
 
@@ -19629,478 +17752,7 @@ struct RewardChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 20053</sub>
-
-<a id="type-GachaFeatured"></a>
-
-### `GachaFeatured` (desc struct)
-
-A featured unit of a banner (its rate-up).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `name` | `string` | `""` | — | — | — | Its name. |
-| `title` | `string` | `""` | — | — | — | A line under it (Lightning Swordswoman). |
-| `stars` | `number` | `0` | — | — | — | Its stars, drawn as stars (never a glyph a font may lack). |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier's colour. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait), in its tile; without it the style's placeholder figure. |
-
-```ogt
-struct GachaFeatured {
-  doc "A featured unit of a banner (its rate-up)."
-  desc true
-  field name String "Its name."
-  field title String "A line under it (Lightning Swordswoman)."
-  field stars u32 "Its stars, drawn as stars (never a glyph a font may lack)."
-  field rarity Rarity "Its tier's colour."
-  field image Option.Texture "Its portrait (art kind portrait), in its tile; without it the style's placeholder figure."
-}
-```
-
-<sub>`api.ogt` line 20075</sub>
-
-<a id="type-GachaBannerTab"></a>
-
-### `GachaBannerTab` (desc struct)
-
-One banner of the set the player switches between.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its element id. |
-| `name` | `string` | `""` | — | — | — | Its short name (Event, Weapon, Standard). |
-| `image` | `Texture \| null` | `null` | — | — | — | A thumbnail (art kind banner); without it the tier wash. |
-| `endsIn` | `number \| null` | `null` | — | `s` | — | Seconds until it ends; null for a permanent banner. |
-| `fresh` | `boolean` | `false` | — | — | — | New since the player last looked: a dot. |
-
-```ogt
-struct GachaBannerTab {
-  doc "One banner of the set the player switches between."
-  desc true
-  field key String "Its key: its element id."
-  field name String "Its short name (Event, Weapon, Standard)."
-  field image Option.Texture "A thumbnail (art kind banner); without it the tier wash."
-  field endsIn Option.f32 "Seconds until it ends; null for a permanent banner." {
-    unit s
-  }
-  field fresh bool "New since the player last looked: a dot."
-}
-```
-
-<sub>`api.ogt` line 20085</sub>
-
-<a id="type-GachaBannerDesc"></a>
-
-### `GachaBannerDesc` (desc struct)
-
-A gacha banner (its art, its featured units, its rules) and the player's purse.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `banners` | `readonly GachaBannerTab[]` | `[]` | — | — | — | The banners; one or none draws no switcher. |
-| `current` | `string` | `""` | — | — | — | The key of the banner shown. |
-| `title` | `string` | `""` | — | — | — | The banner's title over the art. |
-| `subtitle` | `string` | `""` | — | — | — | A line under it (Limited banner · Character). |
-| `image` | `Texture \| null` | `null` | — | — | — | The key art (art kind banner), across the frame around its focal point under the art builder's layer; null draws the style's placeholder: a figure on a gradient of two hues, lit at the focal point. |
-| `focal` | `Vector2 \| null` | `null` | — | — | — | The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait). |
-| `topInset` | `number` | `0` | ≥ 0 | `cssPx` | — | Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar. |
-| `featured` | `readonly GachaFeatured[]` | `[]` | — | — | — | The featured units: the first named large on the art (its name plate) and each in a row with its stars beside the title. |
-| `rateText` | `string` | `""` | — | — | — | The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured). |
-| `endsIn` | `number \| null` | `null` | — | `s` | — | Seconds until it ends: a timer chip, urgent in its last hour. |
-| `pity` | `number` | `0` | — | — | — | Pulls made toward the guarantee. |
-| `pityMax` | `number` | `0` | — | — | — | Pulls at which a top tier is guaranteed; 0 shows no pity meter. |
-| `pityLabel` | `string` | `"Guaranteed in {left}"` | — | — | — | What the meter says ({left} is the pulls left). |
-| `currency` | `string` | `"gem"` | — | — | — | The pull currency's name (its icon when the style has one). |
-| `currencyIcon` | `Texture \| null` | `null` | — | — | — | The currency's own art, drawn wherever a price or the purse names it; null draws the style's icon of that name, else a gem drawn as a shape. |
-| `balance` | `number` | `0` | — | — | — | How much of it the player has. |
-| `single` | `number` | `0` | — | — | — | What one pull costs. |
-| `multi` | `number` | `0` | — | — | — | What ten cost; 0 hides the ten-pull. |
-| `multiCount` | `number` | `10` | — | — | — | How many the multi pull draws. |
-| `singleLabel` | `string` | `"Summon ×1"` | — | — | — | The one-pull button. |
-| `multiLabel` | `string` | `"Summon ×{n}"` | — | — | — | The ten-pull button ({n} is multiCount). |
-| `shortLabel` | `string` | `"not enough"` | — | — | — | Said with a price the balance cannot pay. |
-| `detailsLabel` | `string` | `"Details"` | — | — | — | The rates and details button. |
-| `historyLabel` | `string` | `"History"` | — | — | — | The pull history button. |
-| `daysLabel` | `string` | `"{d}d {h}h"` | — | — | — | A time left of a day or more, on the timer and the tabs ({d} days, {h} hours). |
-| `hoursLabel` | `string` | `"{h}h {m}m"` | — | — | — | A time left of an hour or more ({h} hours, {m} minutes). |
-| `minutesLabel` | `string` | `"{m}m"` | — | — | — | A time left under an hour, on the tabs ({m} minutes; the timer counts it down as m:ss). |
-
-```ogt
-struct GachaBannerDesc {
-  doc "A gacha banner (its art, its featured units, its rules) and the player's purse."
-  desc true
-  field banners List.GachaBannerTab "The banners; one or none draws no switcher."
-  field current String "The key of the banner shown."
-  field title String "The banner's title over the art."
-  field subtitle String "A line under it (Limited banner · Character)."
-  field image Option.Texture "The key art (art kind banner), across the frame around its focal point under the art builder's layer; null draws the style's placeholder: a figure on a gradient of two hues, lit at the focal point."
-  field focal Option.Vector2 "The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait)."
-  field topInset f32 "Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar." {
-    unit cssPx
-    min 0
-  }
-  field featured List.GachaFeatured "The featured units: the first named large on the art (its name plate) and each in a row with its stars beside the title."
-  field rateText String "The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured)."
-  field endsIn Option.f32 "Seconds until it ends: a timer chip, urgent in its last hour." {
-    unit s
-  }
-  field pity u32 "Pulls made toward the guarantee."
-  field pityMax u32 "Pulls at which a top tier is guaranteed; 0 shows no pity meter."
-  field pityLabel String "What the meter says ({left} is the pulls left)." {
-    default "Guaranteed in {left}"
-  }
-  field currency String "The pull currency's name (its icon when the style has one)." {
-    default "gem"
-  }
-  field currencyIcon Option.Texture "The currency's own art, drawn wherever a price or the purse names it; null draws the style's icon of that name, else a gem drawn as a shape."
-  field balance u32 "How much of it the player has."
-  field single u32 "What one pull costs."
-  field multi u32 "What ten cost; 0 hides the ten-pull."
-  field multiCount u32 "How many the multi pull draws." {
-    default 10
-  }
-  field singleLabel String "The one-pull button." {
-    default "Summon ×1"
-  }
-  field multiLabel String "The ten-pull button ({n} is multiCount)." {
-    default "Summon ×{n}"
-  }
-  field shortLabel String "Said with a price the balance cannot pay." {
-    default "not enough"
-  }
-  field detailsLabel String "The rates and details button." {
-    default "Details"
-  }
-  field historyLabel String "The pull history button." {
-    default "History"
-  }
-  field daysLabel String "A time left of a day or more, on the timer and the tabs ({d} days, {h} hours)." {
-    default "{d}d {h}h"
-  }
-  field hoursLabel String "A time left of an hour or more ({h} hours, {m} minutes)." {
-    default "{h}h {m}m"
-  }
-  field minutesLabel String "A time left under an hour, on the tabs ({m} minutes; the timer counts it down as m:ss)." {
-    default "{m}m"
-  }
-}
-```
-
-<sub>`api.ogt` line 20097</sub>
-
-<a id="type-GachaBannerResult"></a>
-
-### `GachaBannerResult` (struct)
-
-What the banner did this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `pull` | `number` | `0` | — | — | — | Pulls asked for this tick: 1, multiCount, or 0. The game checks the purse, spends it and starts og.ui.pullSequence. |
-| `short` | `number` | `0` | — | — | — | Pulls asked for that the balance cannot pay: offer the top-up (0 when none). |
-| `banner` | `string \| null` | `null` | — | — | — | Another banner picked. |
-| `details` | `boolean` | `false` | — | — | — | Details was pressed. |
-| `history` | `boolean` | `false` | — | — | — | History was pressed. |
-
-```ogt
-struct GachaBannerResult {
-  doc "What the banner did this tick."
-  field pull u32 "Pulls asked for this tick: 1, multiCount, or 0. The game checks the purse, spends it and starts og.ui.pullSequence."
-  field short u32 "Pulls asked for that the balance cannot pay: offer the top-up (0 when none)."
-  field banner Option.String "Another banner picked."
-  field details bool "Details was pressed."
-  field history bool "History was pressed."
-}
-```
-
-<sub>`api.ogt` line 20156</sub>
-
-<a id="type-PullItem"></a>
-
-### `PullItem` (desc struct)
-
-One result of a pull.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key within the pull: its element id. |
-| `name` | `string` | `""` | — | — | — | What was drawn. |
-| `kind` | `string` | `""` | — | — | — | What sort it is (Character, Weapon, Light Cone). |
-| `stars` | `number` | `0` | — | — | — | Its stars, drawn as stars. |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind character or item). |
-| `isNew` | `boolean` | `false` | — | — | — | Drawn for the first time: a New tag. |
-| `extra` | `string` | `""` | — | — | — | What a duplicate turned into (+10 Star Shards); empty for none. |
-| `rarityLabel` | `string` | `""` | — | — | — | Its tier's word in the player's language (Legendary), set in the tier's ink before its kind on the reveal, so the tier is read in a word as well as in colour and stars; empty takes the tier's English name. |
-| `title` | `string` | `""` | — | — | — | A character's epithet, a caption in its tier's ink under the name (the banner's grammar: the name large, the epithet under it); empty for none. |
-
-```ogt
-struct PullItem {
-  doc "One result of a pull."
-  desc true
-  field key String "Its key within the pull: its element id."
-  field name String "What was drawn."
-  field kind String "What sort it is (Character, Weapon, Light Cone)."
-  field stars u32 "Its stars, drawn as stars."
-  field rarity Rarity "Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary."
-  field image Option.Texture "Its art (art kind character or item)."
-  field isNew bool "Drawn for the first time: a New tag."
-  field extra String "What a duplicate turned into (+10 Star Shards); empty for none."
-  field rarityLabel String "Its tier's word in the player's language (Legendary), set in the tier's ink before its kind on the reveal, so the tier is read in a word as well as in colour and stars; empty takes the tier's English name."
-  field title String "A character's epithet, a caption in its tier's ink under the name (the banner's grammar: the name large, the epithet under it); empty for none."
-}
-```
-
-<sub>`api.ogt` line 20175</sub>
-
-<a id="type-PullSequenceDesc"></a>
-
-### `PullSequenceDesc` (desc struct)
-
-A pull to reveal: start one by giving a new token.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `token` | `number` | `0` | — | — | — | The pull's number: a change starts the sequence again from its charge; 0 shows nothing. |
-| `items` | `readonly PullItem[]` | `[]` | — | — | — | What was drawn, in reveal order. |
-| `againLabel` | `string` | `"Again ×{n}"` | — | — | — | The pull-again button in the summary ({n} is the count); empty shows none. |
-| `againPrice` | `number` | `0` | — | — | — | Its price, in currency. |
-| `currency` | `string` | `"gem"` | — | — | — | The currency of againPrice. |
-| `currencyIcon` | `Texture \| null` | `null` | — | — | — | The currency's own art beside againPrice; null draws the style's icon, else a gem. |
-| `backdrop` | `Texture \| null` | `null` | — | — | — | The banner's scene behind the charge and the reveal, blurred and dimmed under the tier's light (the banner's key art); null is the stage's dark. |
-| `affordable` | `boolean` | `true` | — | — | — | The purse pays againPrice. |
-| `doneLabel` | `string` | `"Done"` | — | — | — | The summary's close button. |
-| `skipLabel` | `string` | `"Skip"` | — | — | — | The skip-to-summary button. |
-| `tapLabel` | `string` | `"Tap to continue"` | — | — | — | What the reveal says to go on on a touch screen. |
-| `continueLabel` | `string` | `"Continue"` | — | — | — | What it says after the confirm glyph when a key or a pad was used last (one hint for the device in hand, never both). |
-| `newLabel` | `string` | `"NEW"` | — | — | — | The badge on a unit seen for the first time. |
-
-```ogt
-struct PullSequenceDesc {
-  doc "A pull to reveal: start one by giving a new token."
-  desc true
-  field token u32 "The pull's number: a change starts the sequence again from its charge; 0 shows nothing."
-  field items List.PullItem "What was drawn, in reveal order."
-  field againLabel String "The pull-again button in the summary ({n} is the count); empty shows none." {
-    default "Again ×{n}"
-  }
-  field againPrice u32 "Its price, in currency."
-  field currency String "The currency of againPrice." {
-    default "gem"
-  }
-  field currencyIcon Option.Texture "The currency's own art beside againPrice; null draws the style's icon, else a gem."
-  field backdrop Option.Texture "The banner's scene behind the charge and the reveal, blurred and dimmed under the tier's light (the banner's key art); null is the stage's dark."
-  field affordable bool "The purse pays againPrice." {
-    default true
-  }
-  field doneLabel String "The summary's close button." {
-    default "Done"
-  }
-  field skipLabel String "The skip-to-summary button." {
-    default "Skip"
-  }
-  field tapLabel String "What the reveal says to go on on a touch screen." {
-    default "Tap to continue"
-  }
-  field continueLabel String "What it says after the confirm glyph when a key or a pad was used last (one hint for the device in hand, never both)." {
-    default "Continue"
-  }
-  field newLabel String "The badge on a unit seen for the first time." {
-    default "NEW"
-  }
-}
-```
-
-<sub>`api.ogt` line 20190</sub>
-
-<a id="type-PullPhase"></a>
-
-### `PullPhase` (enum)
-
-Where a pull sequence is.
-
-A string: one of the variants below. The zero value is `"idle"`.
-
-| Variant | Doc |
-|---|---|
-| `"idle"` | Nothing shown (token 0, or closed). |
-| `"charge"` | The charge: a light gathering in the colour of the pull's highest tier. |
-| `"reveal"` | One result shown large, one after another. |
-| `"summary"` | Every result at once. |
-
-```ogt
-enum PullPhase {
-  doc "Where a pull sequence is."
-  variant idle "Nothing shown (token 0, or closed)."
-  variant charge "The charge: a light gathering in the colour of the pull's highest tier."
-  variant reveal "One result shown large, one after another."
-  variant summary "Every result at once."
-}
-```
-
-<sub>`api.ogt` line 20224</sub>
-
-<a id="type-PullSequenceResult"></a>
-
-### `PullSequenceResult` (struct)
-
-What the sequence did this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `phase` | `PullPhase` | `"idle"` | — | — | — | Where it is. |
-| `index` | `number` | `0` | — | — | — | The result shown in reveal (0 first). |
-| `revealed` | `string \| null` | `null` | — | — | — | A result revealed this tick (play its voice line, count it seen). |
-| `again` | `boolean` | `false` | — | — | — | Pull again was pressed in the summary. |
-| `done` | `boolean` | `false` | — | — | — | Done was pressed (or Back in the summary): it closed; set token to 0. |
-
-```ogt
-struct PullSequenceResult {
-  doc "What the sequence did this tick."
-  field phase PullPhase "Where it is."
-  field index u32 "The result shown in reveal (0 first)."
-  field revealed Option.String "A result revealed this tick (play its voice line, count it seen)."
-  field again bool "Pull again was pressed in the summary."
-  field done bool "Done was pressed (or Back in the summary): it closed; set token to 0."
-}
-```
-
-<sub>`api.ogt` line 20232</sub>
-
-<a id="type-SagaNode"></a>
-
-### `SagaNode` (desc struct)
-
-One level on a saga map, as the game's viewmodel holds it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key, stable for the run: its element id, so its probe path is <id>/View/Path/<key>. |
-| `label` | `string` | `""` | — | — | — | What its badge reads (47); empty is its place counted from 1. |
-| `stars` | `number` | `0` | — | — | — | Stars earned on it, 0 to maxStars. |
-| `maxStars` | `number` | `3` | — | — | — | Stars it can give; 0 shows none (a boss gives none). |
-| `locked` | `boolean` | `false` | — | — | — | Not reached yet: dimmed with a lock, and a press shakes and is refused. |
-| `boss` | `boolean` | `false` | — | — | — | A boss level: a larger badge in the danger ink, its portrait inside. |
-| `image` | `Texture \| null` | `null` | — | — | — | A boss's portrait (art kind portrait); null draws a crown. |
-| `lane` | `number` | `0` | -1 … 1 | — | — | Where it sits across the path, -1 to 1 (the map's art decides); 0 lets the map wind it. |
-
-```ogt
-struct SagaNode {
-  doc "One level on a saga map, as the game's viewmodel holds it."
-  desc true
-  field key String "Its key, stable for the run: its element id, so its probe path is <id>/View/Path/<key>."
-  field label String "What its badge reads (47); empty is its place counted from 1."
-  field stars u32 "Stars earned on it, 0 to maxStars."
-  field maxStars u32 "Stars it can give; 0 shows none (a boss gives none)." {
-    default 3
-  }
-  field locked bool "Not reached yet: dimmed with a lock, and a press shakes and is refused."
-  field boss bool "A boss level: a larger badge in the danger ink, its portrait inside."
-  field image Option.Texture "A boss's portrait (art kind portrait); null draws a crown."
-  field lane f32 "Where it sits across the path, -1 to 1 (the map's art decides); 0 lets the map wind it." {
-    min -1
-    max 1
-  }
-}
-```
-
-<sub>`api.ogt` line 20252</sub>
-
-<a id="type-SagaMapDesc"></a>
-
-### `SagaMapDesc` (desc struct)
-
-A saga map: its levels in order, where the player stands, and its art.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `nodes` | `readonly SagaNode[]` | `[]` | — | — | — | The levels, first to last. |
-| `current` | `string` | `""` | — | — | — | The level the player stands on: the avatar's pin over it, lit, the path lit up to it; the map opens centred on it. |
-| `avatar` | `Texture \| null` | `null` | — | — | — | The player's avatar in the pin (art kind avatar); null draws a figure. |
-| `backdrop` | `Texture \| null` | `null` | — | — | — | The map's painted art behind the path, across the whole scroll (art kind map); null draws a dusk gradient. |
-| `spacing` | `number` | `0` | ≥ 0 | `cssPx` | — | Space between levels along the path; 0 is 150 (scaled with the screen). |
-| `label` | `string` | `"Levels"` | — | — | — | What a screen reader calls the map. |
-| `levelLabel` | `string` | `"Level {label}"` | — | — | — | A level's name to a screen reader ({label} is its badge). |
-| `bossLabel` | `string` | `"Boss, level {label}"` | — | — | — | A boss level's name to a screen reader ({label} is its badge). |
-| `starsLabel` | `string` | `"{n} of {max} stars"` | — | — | — | Its stars to a screen reader ({n} earned of {max}). |
-| `lockedLabel` | `string` | `"Locked"` | — | — | — | What a locked level adds. |
-| `currentLabel` | `string` | `"You are here"` | — | — | — | What the current level adds. |
-| `footInset` | `number` | `0` | — | `cssPx` | — | Room at the map's foot that the game's own chrome takes (a Play button docked at the thumb): the view of the path stops above it, so no level sits under the button, while the map's art runs on behind it; 0 is none. |
-
-```ogt
-struct SagaMapDesc {
-  doc "A saga map: its levels in order, where the player stands, and its art."
-  desc true
-  field nodes List.SagaNode "The levels, first to last."
-  field current String "The level the player stands on: the avatar's pin over it, lit, the path lit up to it; the map opens centred on it."
-  field avatar Option.Texture "The player's avatar in the pin (art kind avatar); null draws a figure."
-  field backdrop Option.Texture "The map's painted art behind the path, across the whole scroll (art kind map); null draws a dusk gradient."
-  field spacing f32 "Space between levels along the path; 0 is 150 (scaled with the screen)." {
-    unit cssPx
-    min 0
-  }
-  field label String "What a screen reader calls the map." {
-    default "Levels"
-  }
-  field levelLabel String "A level's name to a screen reader ({label} is its badge)." {
-    default "Level {label}"
-  }
-  field bossLabel String "A boss level's name to a screen reader ({label} is its badge)." {
-    default "Boss, level {label}"
-  }
-  field starsLabel String "Its stars to a screen reader ({n} earned of {max})." {
-    default "{n} of {max} stars"
-  }
-  field lockedLabel String "What a locked level adds." {
-    default "Locked"
-  }
-  field currentLabel String "What the current level adds." {
-    default "You are here"
-  }
-  field footInset f32 "Room at the map's foot that the game's own chrome takes (a Play button docked at the thumb): the view of the path stops above it, so no level sits under the button, while the map's art runs on behind it; 0 is none." {
-    unit cssPx
-  }
-}
-```
-
-<sub>`api.ogt` line 20270</sub>
-
-<a id="type-SagaMapResult"></a>
-
-### `SagaMapResult` (struct)
-
-What the map did this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `picked` | `string \| null` | `null` | — | — | — | A level pressed that is open: start it (or show its goals first). |
-| `refused` | `string \| null` | `null` | — | — | — | A locked level pressed: it shook. |
-| `hovered` | `string \| null` | `null` | — | — | — | The level under the pointer or the focus. |
-
-```ogt
-struct SagaMapResult {
-  doc "What the map did this tick."
-  field picked Option.String "A level pressed that is open: start it (or show its goals first)."
-  field refused Option.String "A locked level pressed: it shook."
-  field hovered Option.String "The level under the pointer or the focus."
-}
-```
-
-<sub>`api.ogt` line 20304</sub>
+<sub>`api.ogt` line 19827</sub>
 
 <a id="type-StarBarDesc"></a>
 
@@ -20136,7 +17788,7 @@ struct StarBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 20322</sub>
+<sub>`api.ogt` line 19853</sub>
 
 <a id="type-StarBarResult"></a>
 
@@ -20157,75 +17809,7 @@ struct StarBarResult {
 }
 ```
 
-<sub>`api.ogt` line 20336</sub>
-
-<a id="type-LevelGoal"></a>
-
-### `LevelGoal` (desc struct)
-
-One goal of a level (collect 20 blue gems, break 6 ice tiles).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its element id, <id>/<key>. |
-| `label` | `string` | `""` | — | — | — | What to do (Collect Blue Gems). |
-| `have` | `number` | `0` | — | — | — | How many are done. |
-| `need` | `number` | `0` | — | — | — | How many it takes. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its piece's art (art kind item); null draws icon or a gem. |
-| `icon` | `string` | `""` | — | — | — | An icon of the style's set for it when it has no art. |
-
-```ogt
-struct LevelGoal {
-  doc "One goal of a level (collect 20 blue gems, break 6 ice tiles)."
-  desc true
-  field key String "Its key: its element id, <id>/<key>."
-  field label String "What to do (Collect Blue Gems)."
-  field have u32 "How many are done."
-  field need u32 "How many it takes."
-  field image Option.Texture "Its piece's art (art kind item); null draws icon or a gem."
-  field icon String "An icon of the style's set for it when it has no art."
-}
-```
-
-<sub>`api.ogt` line 20351</sub>
-
-<a id="type-GoalChipsDesc"></a>
-
-### `GoalChipsDesc` (desc struct)
-
-A level's goals.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `goals` | `readonly LevelGoal[]` | `[]` | — | — | — | The goals, in the order the level states them. |
-| `compact` | `boolean` | `false` | — | — | — | Counts only, as a row of icons with a number each (a phone's top strip): the label goes to a screen reader. |
-| `label` | `string` | `"Goals"` | — | — | — | What a screen reader calls them. |
-| `progressLabel` | `string` | `"{have} of {need}"` | — | — | — | A goal's count to a screen reader ({have} of {need}). |
-| `doneLabel` | `string` | `"Done"` | — | — | — | What a goal met adds. |
-
-```ogt
-struct GoalChipsDesc {
-  doc "A level's goals."
-  desc true
-  field goals List.LevelGoal "The goals, in the order the level states them."
-  field compact bool "Counts only, as a row of icons with a number each (a phone's top strip): the label goes to a screen reader."
-  field label String "What a screen reader calls them." {
-    default "Goals"
-  }
-  field progressLabel String "A goal's count to a screen reader ({have} of {need})." {
-    default "{have} of {need}"
-  }
-  field doneLabel String "What a goal met adds." {
-    default "Done"
-  }
-}
-```
-
-<sub>`api.ogt` line 20362</sub>
+<sub>`api.ogt` line 19867</sub>
 
 <a id="type-IdleGeneratorDesc"></a>
 
@@ -20293,7 +17877,7 @@ struct IdleGeneratorDesc {
 }
 ```
 
-<sub>`api.ogt` line 20389</sub>
+<sub>`api.ogt` line 19884</sub>
 
 <a id="type-IdleGeneratorResult"></a>
 
@@ -20316,7 +17900,7 @@ struct IdleGeneratorResult {
 }
 ```
 
-<sub>`api.ogt` line 20425</sub>
+<sub>`api.ogt` line 19920</sub>
 
 <a id="type-PrestigeDesc"></a>
 
@@ -20361,7 +17945,7 @@ struct PrestigeDesc {
 }
 ```
 
-<sub>`api.ogt` line 20441</sub>
+<sub>`api.ogt` line 19936</sub>
 
 <a id="type-PrestigeResult"></a>
 
@@ -20382,7 +17966,7 @@ struct PrestigeResult {
 }
 ```
 
-<sub>`api.ogt` line 20462</sub>
+<sub>`api.ogt` line 19957</sub>
 
 <a id="type-WalletEntry"></a>
 
@@ -20412,7 +17996,7 @@ struct WalletEntry {
 }
 ```
 
-<sub>`api.ogt` line 20477</sub>
+<sub>`api.ogt` line 19972</sub>
 
 <a id="type-StoreOffer"></a>
 
@@ -20474,7 +18058,7 @@ struct StoreOffer {
 }
 ```
 
-<sub>`api.ogt` line 20487</sub>
+<sub>`api.ogt` line 19982</sub>
 
 <a id="type-StoreSection"></a>
 
@@ -20504,7 +18088,7 @@ struct StoreSection {
 }
 ```
 
-<sub>`api.ogt` line 20515</sub>
+<sub>`api.ogt` line 20010</sub>
 
 <a id="type-StoreFrontDesc"></a>
 
@@ -20578,7 +18162,7 @@ struct StoreFrontDesc {
 }
 ```
 
-<sub>`api.ogt` line 20526</sub>
+<sub>`api.ogt` line 20021</sub>
 
 <a id="type-StoreFrontResult"></a>
 
@@ -20605,7 +18189,7 @@ struct StoreFrontResult {
 }
 ```
 
-<sub>`api.ogt` line 20569</sub>
+<sub>`api.ogt` line 20064</sub>
 
 <a id="type-PassReward"></a>
 
@@ -20635,7 +18219,7 @@ struct PassReward {
 }
 ```
 
-<sub>`api.ogt` line 20587</sub>
+<sub>`api.ogt` line 20082</sub>
 
 <a id="type-PassTier"></a>
 
@@ -20667,7 +18251,7 @@ struct PassTier {
 }
 ```
 
-<sub>`api.ogt` line 20597</sub>
+<sub>`api.ogt` line 20092</sub>
 
 <a id="type-PassClaim"></a>
 
@@ -20688,7 +18272,7 @@ struct PassClaim {
 }
 ```
 
-<sub>`api.ogt` line 20608</sub>
+<sub>`api.ogt` line 20103</sub>
 
 <a id="type-BattlePassDesc"></a>
 
@@ -20780,7 +18364,7 @@ struct BattlePassDesc {
 }
 ```
 
-<sub>`api.ogt` line 20614</sub>
+<sub>`api.ogt` line 20109</sub>
 
 <a id="type-BattlePassResult"></a>
 
@@ -20805,133 +18389,7 @@ struct BattlePassResult {
 }
 ```
 
-<sub>`api.ogt` line 20669</sub>
-
-<a id="type-ConversationLayout"></a>
-
-### `ConversationLayout` (enum)
-
-How a conversation stands on the screen.
-
-A string: one of the variants below. The zero value is `"cinematic"`.
-
-| Variant | Doc |
-|---|---|
-| `"cinematic"` | The speaker's portrait large at its side (SpeakerView.side), the line as a caption over a shade at the foot, the choices stacked on the other side: a CRPG's or an action game's conversation (Mass Effect, Baldur's Gate 3, Cyberpunk 2077). |
-| `"box"` | A visual novel's text box across the foot, the speaker's name on a plate over its top edge and the portrait standing behind it; the choices centred over the scene (Ace Attorney, Persona, Fate). |
-
-```ogt
-enum ConversationLayout {
-  doc "How a conversation stands on the screen."
-  variant cinematic "The speaker's portrait large at its side (SpeakerView.side), the line as a caption over a shade at the foot, the choices stacked on the other side: a CRPG's or an action game's conversation (Mass Effect, Baldur's Gate 3, Cyberpunk 2077)."
-  variant box "A visual novel's text box across the foot, the speaker's name on a plate over its top edge and the portrait standing behind it; the choices centred over the scene (Ace Attorney, Persona, Fate)."
-}
-```
-
-<sub>`api.ogt` line 20688</sub>
-
-<a id="type-ConversationDesc"></a>
-
-### `ConversationDesc` (desc struct)
-
-A conversation on screen, as og.story.view answers it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `view` | `DialogueView \| null` | `null` | — | — | — | What og.story.view answers this tick; null shows nothing (no conversation runs). |
-| `portrait` | `Texture \| null` | `null` | — | — | — | The speaker's portrait (art kind portrait): the texture the game loaded for view.speaker.portrait and its expression (og.load.texture). Null draws the style's placeholder figure for a speaker with a portrait path, and no portrait for the narrator or a speaker without one. |
-| `layout` | `ConversationLayout` | `"cinematic"` | — | — | — | How it stands. |
-| `charsPerSecond` | `number` | `45` | ≥ 0 | — | — | How fast the line types out; 0 shows it whole at once (also under reduced motion). |
-| `auto` | `boolean` | `false` | — | — | — | Auto: a whole line advances by itself once its voice has ended (DialogueView.voiceLeft) and autoDelayMs has passed; choices always wait. |
-| `autoDelayMs` | `number` | `0` | ≥ 0 | `ms` | — | The pause after a whole line before auto advances; 0 is 900 plus 30 per character. |
-| `statNames` | `unknown` | `null` | — | — | — | A check's stat in words, by its variable ({ "charm": "Persuasion" }); a stat it lacks is written as its variable name. |
-| `skipLabel` | `string` | `"Skip"` | — | — | — | Skip (the back action); empty hides it. |
-| `logLabel` | `string` | `"Log"` | — | — | — | Log (the details action); empty hides it. |
-| `autoLabel` | `string` | `"Auto"` | — | — | — | Auto; empty hides it. |
-| `continueLabel` | `string` | `"Continue"` | — | — | — | What a press does on a whole line, said to a screen reader and beside the confirm glyph. |
-| `unavailableLabel` | `string` | `"Unavailable"` | — | — | — | A disabled choice's reason when the dialogue gives none. |
-| `checkLabel` | `string` | `"{stat} · {chance}"` | — | — | — | An active check's tag before its choice ({stat}, {chance} as a percent). |
-| `passedLabel` | `string` | `"Success"` | — | — | — | An active check passed. |
-| `failedLabel` | `string` | `"Failure"` | — | — | — | An active check missed. |
-
-```ogt
-struct ConversationDesc {
-  doc "A conversation on screen, as og.story.view answers it."
-  desc true
-  field view Option.DialogueView "What og.story.view answers this tick; null shows nothing (no conversation runs)."
-  field portrait Option.Texture "The speaker's portrait (art kind portrait): the texture the game loaded for view.speaker.portrait and its expression (og.load.texture). Null draws the style's placeholder figure for a speaker with a portrait path, and no portrait for the narrator or a speaker without one."
-  field layout ConversationLayout "How it stands."
-  field charsPerSecond f32 "How fast the line types out; 0 shows it whole at once (also under reduced motion)." {
-    default 45
-    min 0
-  }
-  field auto bool "Auto: a whole line advances by itself once its voice has ended (DialogueView.voiceLeft) and autoDelayMs has passed; choices always wait."
-  field autoDelayMs f32 "The pause after a whole line before auto advances; 0 is 900 plus 30 per character." {
-    min 0
-    unit ms
-  }
-  field statNames Json "A check's stat in words, by its variable ({ \"charm\": \"Persuasion\" }); a stat it lacks is written as its variable name."
-  field skipLabel String "Skip (the back action); empty hides it." {
-    default "Skip"
-  }
-  field logLabel String "Log (the details action); empty hides it." {
-    default "Log"
-  }
-  field autoLabel String "Auto; empty hides it." {
-    default "Auto"
-  }
-  field continueLabel String "What a press does on a whole line, said to a screen reader and beside the confirm glyph." {
-    default "Continue"
-  }
-  field unavailableLabel String "A disabled choice's reason when the dialogue gives none." {
-    default "Unavailable"
-  }
-  field checkLabel String "An active check's tag before its choice ({stat}, {chance} as a percent)." {
-    default "{stat} · {chance}"
-  }
-  field passedLabel String "An active check passed." {
-    default "Success"
-  }
-  field failedLabel String "An active check missed." {
-    default "Failure"
-  }
-}
-```
-
-<sub>`api.ogt` line 20694</sub>
-
-<a id="type-ConversationResult"></a>
-
-### `ConversationResult` (struct)
-
-What the conversation's player did this tick: the game passes it on to og.story.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `advanced` | `boolean` | `false` | — | — | — | Go on: og.story.advance (a press or confirm on a whole line with no choices, or auto). |
-| `chosen` | `number \| null` | `null` | — | — | — | A choice taken: og.story.choose with this ChoiceView.index. |
-| `skipped` | `boolean` | `false` | — | — | — | Skip (or back) was pressed. |
-| `log` | `boolean` | `false` | — | — | — | Log was pressed: show the backlog (og.ui.backlog). |
-| `autoToggled` | `boolean` | `false` | — | — | — | Auto was pressed: flip ConversationDesc.auto. |
-| `revealed` | `boolean` | `false` | — | — | — | The whole line shows. |
-| `hovered` | `number \| null` | `null` | — | — | — | The ChoiceView.index under the pointer or the focus. |
-
-```ogt
-struct ConversationResult {
-  doc "What the conversation's player did this tick: the game passes it on to og.story."
-  field advanced bool "Go on: og.story.advance (a press or confirm on a whole line with no choices, or auto)."
-  field chosen Option.u32 "A choice taken: og.story.choose with this ChoiceView.index."
-  field skipped bool "Skip (or back) was pressed."
-  field log bool "Log was pressed: show the backlog (og.ui.backlog)."
-  field autoToggled bool "Auto was pressed: flip ConversationDesc.auto."
-  field revealed bool "The whole line shows."
-  field hovered Option.u32 "The ChoiceView.index under the pointer or the focus."
-}
-```
-
-<sub>`api.ogt` line 20736</sub>
+<sub>`api.ogt` line 20164</sub>
 
 <a id="type-BacklogDesc"></a>
 
@@ -20969,7 +18427,7 @@ struct BacklogDesc {
 }
 ```
 
-<sub>`api.ogt` line 20756</sub>
+<sub>`api.ogt` line 20183</sub>
 
 <a id="type-BacklogResult"></a>
 
@@ -20990,7 +18448,7 @@ struct BacklogResult {
 }
 ```
 
-<sub>`api.ogt` line 20774</sub>
+<sub>`api.ogt` line 20201</sub>
 
 <a id="type-BarksDesc"></a>
 
@@ -21028,211 +18486,7 @@ struct BarksDesc {
 }
 ```
 
-<sub>`api.ogt` line 20789</sub>
-
-<a id="type-QuestTab"></a>
-
-### `QuestTab` (desc struct)
-
-One tab of the quest log: a category of QuestView.category.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its category (main, side, daily). |
-| `label` | `string` | `""` | — | — | — | Its words. |
-
-```ogt
-struct QuestTab {
-  doc "One tab of the quest log: a category of QuestView.category."
-  desc true
-  field key String "Its category (main, side, daily)."
-  field label String "Its words."
-}
-```
-
-<sub>`api.ogt` line 20816</sub>
-
-<a id="type-QuestArt"></a>
-
-### `QuestArt` (desc struct)
-
-A texture for an asset path a quest names (a reward's image), loaded by the game (og.load.texture).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `path` | `string` | `""` | — | — | — | The path, as QuestView names it. |
-| `texture` | `Texture` | `0` | — | — | — | Its texture. |
-
-```ogt
-struct QuestArt {
-  doc "A texture for an asset path a quest names (a reward's image), loaded by the game (og.load.texture)."
-  desc true
-  field path String "The path, as QuestView names it."
-  field texture Texture "Its texture."
-}
-```
-
-<sub>`api.ogt` line 20823</sub>
-
-<a id="type-QuestLogDesc"></a>
-
-### `QuestLogDesc` (desc struct)
-
-The quest log, as og.story.quests answers it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `quests` | `readonly QuestView[]` | `[]` | — | — | — | The quests, in og.story.quests' order (their start). |
-| `selected` | `string` | `""` | — | — | — | The quest shown in the detail (game state); empty or unknown shows the tracked one, else the first. |
-| `tabs` | `readonly QuestTab[]` | `[]` | — | — | — | The tabs, in order; empty is one list of every quest. |
-| `tab` | `string` | `""` | — | — | — | The tab shown (game state); empty is the first. |
-| `art` | `readonly QuestArt[]` | `[]` | — | — | — | Textures for the reward images the quests name; one it lacks draws the style's placeholder. |
-| `title` | `string` | `"Quests"` | — | — | — | Its title. |
-| `trackLabel` | `string` | `"Track"` | — | — | — | Track. |
-| `trackedLabel` | `string` | `"Tracked"` | — | — | — | A tracked quest's toggle. |
-| `mapLabel` | `string` | `"Show on map"` | — | — | — | Show on map (a quest with a marker); empty hides it. |
-| `objectivesLabel` | `string` | `"Objectives"` | — | — | — | The objectives' heading. |
-| `rewardsLabel` | `string` | `"Rewards"` | — | — | — | The rewards' heading. |
-| `optionalLabel` | `string` | `"Optional"` | — | — | — | An optional objective's tag. |
-| `hiddenLabel` | `string` | `"???"` | — | — | — | An objective not yet revealed. |
-| `giverLabel` | `string` | `"From {giver}"` | — | — | — | Who gave it ({giver}). |
-| `newLabel` | `string` | `"New"` | — | — | — | A quest not looked at yet. |
-| `activeLabel` | `string` | `"Active"` | — | — | — | The active quests' heading. |
-| `completedLabel` | `string` | `"Completed"` | — | — | — | The completed quests' heading and a completed quest's stamp. |
-| `failedLabel` | `string` | `"Failed"` | — | — | — | A failed quest's stamp. |
-| `emptyLabel` | `string` | `"No quests yet."` | — | — | — | With no quests in the tab. |
-| `backLabel` | `string` | `"Back"` | — | — | — | On a phone, back from a quest to the list. |
-
-```ogt
-struct QuestLogDesc {
-  doc "The quest log, as og.story.quests answers it."
-  desc true
-  field quests List.QuestView "The quests, in og.story.quests' order (their start)."
-  field selected String "The quest shown in the detail (game state); empty or unknown shows the tracked one, else the first."
-  field tabs List.QuestTab "The tabs, in order; empty is one list of every quest."
-  field tab String "The tab shown (game state); empty is the first."
-  field art List.QuestArt "Textures for the reward images the quests name; one it lacks draws the style's placeholder."
-  field title String "Its title." {
-    default "Quests"
-  }
-  field trackLabel String "Track." {
-    default "Track"
-  }
-  field trackedLabel String "A tracked quest's toggle." {
-    default "Tracked"
-  }
-  field mapLabel String "Show on map (a quest with a marker); empty hides it." {
-    default "Show on map"
-  }
-  field objectivesLabel String "The objectives' heading." {
-    default "Objectives"
-  }
-  field rewardsLabel String "The rewards' heading." {
-    default "Rewards"
-  }
-  field optionalLabel String "An optional objective's tag." {
-    default "Optional"
-  }
-  field hiddenLabel String "An objective not yet revealed." {
-    default "???"
-  }
-  field giverLabel String "Who gave it ({giver})." {
-    default "From {giver}"
-  }
-  field newLabel String "A quest not looked at yet." {
-    default "New"
-  }
-  field activeLabel String "The active quests' heading." {
-    default "Active"
-  }
-  field completedLabel String "The completed quests' heading and a completed quest's stamp." {
-    default "Completed"
-  }
-  field failedLabel String "A failed quest's stamp." {
-    default "Failed"
-  }
-  field emptyLabel String "With no quests in the tab." {
-    default "No quests yet."
-  }
-  field backLabel String "On a phone, back from a quest to the list." {
-    default "Back"
-  }
-}
-```
-
-<sub>`api.ogt` line 20830</sub>
-
-<a id="type-QuestLogResult"></a>
-
-### `QuestLogResult` (struct)
-
-What the quest log's player did this tick.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `selected` | `string \| null` | `null` | — | — | — | A quest picked: show it (game state), and og.story.markSeen it. |
-| `track` | `string \| null` | `null` | — | — | — | Track pressed: og.story.track it, flipping QuestView.tracked. |
-| `showOnMap` | `string \| null` | `null` | — | — | — | Show on map pressed: open the map on its marker. |
-| `tab` | `string \| null` | `null` | — | — | — | A tab picked: show it (game state). |
-| `closed` | `boolean` | `false` | — | — | — | Back was pressed at the list. |
-
-```ogt
-struct QuestLogResult {
-  doc "What the quest log's player did this tick."
-  field selected Option.String "A quest picked: show it (game state), and og.story.markSeen it."
-  field track Option.String "Track pressed: og.story.track it, flipping QuestView.tracked."
-  field showOnMap Option.String "Show on map pressed: open the map on its marker."
-  field tab Option.String "A tab picked: show it (game state)."
-  field closed bool "Back was pressed at the list."
-}
-```
-
-<sub>`api.ogt` line 20885</sub>
-
-<a id="type-QuestTrackerDesc"></a>
-
-### `QuestTrackerDesc` (desc struct)
-
-The HUD's quest tracker, fed by og.story.quests.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `quests` | `readonly QuestView[]` | `[]` | — | — | — | The quests (og.story.quests): the tracked active ones show, and a tracked one that completes flashes Complete and leaves. |
-| `from` | `Vector3 \| null` | `null` | — | — | — | Where the player stands: each quest's distance to its marker. Null shows none. |
-| `max` | `number` | `0` | — | — | — | The most shown; 0 is og.ui.objectiveTracker's. |
-| `width` | `number` | `0` | ≥ 0 | `cssPx` | — | Its width; 0 is og.ui.objectiveTracker's. |
-| `completeLabel` | `string` | `"Complete"` | — | — | — | The completed word. |
-| `anchor` | `Anchor \| null` | `"right"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct QuestTrackerDesc {
-  doc "The HUD's quest tracker, fed by og.story.quests."
-  desc true
-  field quests List.QuestView "The quests (og.story.quests): the tracked active ones show, and a tracked one that completes flashes Complete and leaves."
-  field from Option.Vector3 "Where the player stands: each quest's distance to its marker. Null shows none."
-  field max u32 "The most shown; 0 is og.ui.objectiveTracker's."
-  field width f32 "Its width; 0 is og.ui.objectiveTracker's." {
-    min 0
-    unit cssPx
-  }
-  field completeLabel String "The completed word." {
-    default "Complete"
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default right
-  }
-}
-```
-
-<sub>`api.ogt` line 20903</sub>
+<sub>`api.ogt` line 20216</sub>
 
 <a id="type-LobbyMember"></a>
 
@@ -21274,7 +18528,7 @@ struct LobbyMember {
 }
 ```
 
-<sub>`api.ogt` line 20932</sub>
+<sub>`api.ogt` line 20245</sub>
 
 <a id="type-LobbyMode"></a>
 
@@ -21300,7 +18554,7 @@ struct LobbyMode {
 }
 ```
 
-<sub>`api.ogt` line 20948</sub>
+<sub>`api.ogt` line 20261</sub>
 
 <a id="type-ReadyCheckView"></a>
 
@@ -21330,7 +18584,7 @@ struct ReadyCheckView {
 }
 ```
 
-<sub>`api.ogt` line 20956</sub>
+<sub>`api.ogt` line 20269</sub>
 
 <a id="type-LobbyDesc"></a>
 
@@ -21434,7 +18688,7 @@ struct LobbyDesc {
 }
 ```
 
-<sub>`api.ogt` line 20969</sub>
+<sub>`api.ogt` line 20282</sub>
 
 <a id="type-LobbyResult"></a>
 
@@ -21467,7 +18721,7 @@ struct LobbyResult {
 }
 ```
 
-<sub>`api.ogt` line 21034</sub>
+<sub>`api.ogt` line 20347</sub>
 
 <a id="type-RosterEntry"></a>
 
@@ -21505,7 +18759,7 @@ struct RosterEntry {
 }
 ```
 
-<sub>`api.ogt` line 21057</sub>
+<sub>`api.ogt` line 20370</sub>
 
 <a id="type-SelectCursor"></a>
 
@@ -21537,7 +18791,7 @@ struct SelectCursor {
 }
 ```
 
-<sub>`api.ogt` line 21071</sub>
+<sub>`api.ogt` line 20384</sub>
 
 <a id="type-CharacterSelectDesc"></a>
 
@@ -21586,7 +18840,7 @@ struct CharacterSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 21082</sub>
+<sub>`api.ogt` line 20395</sub>
 
 <a id="type-CharacterSelectResult"></a>
 
@@ -21613,7 +18867,7 @@ struct CharacterSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 21107</sub>
+<sub>`api.ogt` line 20420</sub>
 
 <a id="type-VersusSide"></a>
 
@@ -21643,7 +18897,7 @@ struct VersusSide {
 }
 ```
 
-<sub>`api.ogt` line 21125</sub>
+<sub>`api.ogt` line 20438</sub>
 
 <a id="type-VersusDesc"></a>
 
@@ -21682,7 +18936,7 @@ struct VersusDesc {
 }
 ```
 
-<sub>`api.ogt` line 21135</sub>
+<sub>`api.ogt` line 20448</sub>
 
 <a id="type-VersusResult"></a>
 
@@ -21701,7 +18955,7 @@ struct VersusResult {
 }
 ```
 
-<sub>`api.ogt` line 21153</sub>
+<sub>`api.ogt` line 20466</sub>
 
 <a id="type-DraftSlot"></a>
 
@@ -21731,7 +18985,7 @@ struct DraftSlot {
 }
 ```
 
-<sub>`api.ogt` line 21169</sub>
+<sub>`api.ogt` line 20482</sub>
 
 <a id="type-DraftTeam"></a>
 
@@ -21759,7 +19013,7 @@ struct DraftTeam {
 }
 ```
 
-<sub>`api.ogt` line 21179</sub>
+<sub>`api.ogt` line 20492</sub>
 
 <a id="type-DraftDesc"></a>
 
@@ -21827,7 +19081,7 @@ struct DraftDesc {
 }
 ```
 
-<sub>`api.ogt` line 21188</sub>
+<sub>`api.ogt` line 20501</sub>
 
 <a id="type-DraftResult"></a>
 
@@ -21850,7 +19104,7 @@ struct DraftResult {
 }
 ```
 
-<sub>`api.ogt` line 21226</sub>
+<sub>`api.ogt` line 20539</sub>
 
 <a id="type-WorldMarker"></a>
 
@@ -21894,7 +19148,7 @@ struct WorldMarker {
 }
 ```
 
-<sub>`api.ogt` line 21244</sub>
+<sub>`api.ogt` line 20557</sub>
 
 <a id="type-WorldRegion"></a>
 
@@ -21932,7 +19186,7 @@ struct WorldRegion {
 }
 ```
 
-<sub>`api.ogt` line 21264</sub>
+<sub>`api.ogt` line 20577</sub>
 
 <a id="type-WorldMapDesc"></a>
 
@@ -22007,7 +19261,7 @@ struct WorldMapDesc {
 }
 ```
 
-<sub>`api.ogt` line 21281</sub>
+<sub>`api.ogt` line 20594</sub>
 
 <a id="type-WorldMapResult"></a>
 
@@ -22038,7 +19292,7 @@ struct WorldMapResult {
 }
 ```
 
-<sub>`api.ogt` line 21324</sub>
+<sub>`api.ogt` line 20637</sub>
 
 <a id="type-SongDifficulty"></a>
 
@@ -22066,7 +19320,7 @@ struct SongDifficulty {
 }
 ```
 
-<sub>`api.ogt` line 21346</sub>
+<sub>`api.ogt` line 20659</sub>
 
 <a id="type-SongEntry"></a>
 
@@ -22117,7 +19371,7 @@ struct SongEntry {
 }
 ```
 
-<sub>`api.ogt` line 21355</sub>
+<sub>`api.ogt` line 20668</sub>
 
 <a id="type-SongPreview"></a>
 
@@ -22146,7 +19400,7 @@ struct SongPreview {
 }
 ```
 
-<sub>`api.ogt` line 21378</sub>
+<sub>`api.ogt` line 20691</sub>
 
 <a id="type-SongSelectDesc"></a>
 
@@ -22210,7 +19464,7 @@ struct SongSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 21389</sub>
+<sub>`api.ogt` line 20702</sub>
 
 <a id="type-SongSelectResult"></a>
 
@@ -22237,329 +19491,7 @@ struct SongSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 21425</sub>
-
-<a id="type-GarageCategory"></a>
-
-### `GarageCategory` (desc struct)
-
-One category of the garage's rail (Engine, Turbo, Tyres; Livery).
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its rail entry's element id, so its probe path is <id>/Body/Rail/<key> (<id>/Rail/Chips/<key> on a phone in portrait). |
-| `name` | `string` | `""` | — | — | — | Its name beside its art. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark. |
-| `count` | `string` | `""` | — | — | — | A line under the name or at the list's head (4 / 8 owned); empty shows none. |
-| `livery` | `boolean` | `false` | — | — | — | The livery editor: the parts list becomes the car's layers and the side the selected layer's colour. |
-
-```ogt
-struct GarageCategory {
-  doc "One category of the garage's rail (Engine, Turbo, Tyres; Livery)."
-  desc true
-  field key String "Its key: its rail entry's element id, so its probe path is <id>/Body/Rail/<key> (<id>/Rail/Chips/<key> on a phone in portrait)."
-  field name String "Its name beside its art."
-  field image Option.Texture "Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark."
-  field count String "A line under the name or at the list's head (4 / 8 owned); empty shows none."
-  field livery bool "The livery editor: the parts list becomes the car's layers and the side the selected layer's colour."
-}
-```
-
-<sub>`api.ogt` line 21444</sub>
-
-<a id="type-GaragePart"></a>
-
-### `GaragePart` (desc struct)
-
-One part on offer in the selected category, as the game holds it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Body/Parts/List/<key> (<id>/Body/Parts/<key> on a phone in portrait). |
-| `name` | `string` | `""` | — | — | — | Its name, the row's reading. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder. |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the tile's rim and the detail's tier word. |
-| `rarityLabel` | `string` | `""` | — | — | — | The tier's word in the detail (Rare); empty shows none. |
-| `tier` | `number` | `0` | — | — | — | Its upgrade level, as lit pips. |
-| `tierMax` | `number` | `0` | — | — | — | The pips in all; 0 is 3. |
-| `price` | `number` | `0` | — | — | — | Its price in the garage's currency; 0 is free. |
-| `owned` | `boolean` | `false` | — | — | — | Owned: no price; its action is Equip. |
-| `equipped` | `boolean` | `false` | — | — | — | On the car now: a tick and the equipped word; its action is inert. |
-| `locked` | `boolean` | `false` | — | — | — | Not available yet: dimmed with a lock and lockedHint in place of the price; pressing it is refused. |
-| `lockedHint` | `string` | `""` | — | — | — | Why it is locked (Reach driver level 30). |
-| `description` | `string` | `""` | — | — | — | The detail's paragraph. |
-
-```ogt
-struct GaragePart {
-  doc "One part on offer in the selected category, as the game holds it."
-  desc true
-  field key String "Its key: its row's element id, so its probe path is <id>/Body/Parts/List/<key> (<id>/Body/Parts/<key> on a phone in portrait)."
-  field name String "Its name, the row's reading."
-  field image Option.Texture "Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder."
-  field rarity Rarity "Its tier: the tile's rim and the detail's tier word."
-  field rarityLabel String "The tier's word in the detail (Rare); empty shows none."
-  field tier u32 "Its upgrade level, as lit pips."
-  field tierMax u32 "The pips in all; 0 is 3."
-  field price f64 "Its price in the garage's currency; 0 is free."
-  field owned bool "Owned: no price; its action is Equip."
-  field equipped bool "On the car now: a tick and the equipped word; its action is inert."
-  field locked bool "Not available yet: dimmed with a lock and lockedHint in place of the price; pressing it is refused."
-  field lockedHint String "Why it is locked (Reach driver level 30)."
-  field description String "The detail's paragraph."
-}
-```
-
-<sub>`api.ogt` line 21453</sub>
-
-<a id="type-GarageStat"></a>
-
-### `GarageStat` (desc struct)
-
-One of the car's performance figures, now and with the selected part fitted.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key. |
-| `label` | `string` | `""` | — | — | — | Its name (Speed). |
-| `value` | `number` | `0` | — | — | — | Its value now. |
-| `preview` | `number` | `-1` | — | — | — | Its value with the selected part fitted; a negative value shows none. |
-| `max` | `number` | `0` | ≥ 0 | — | — | The bar's whole; 0 is 10. |
-
-```ogt
-struct GarageStat {
-  doc "One of the car's performance figures, now and with the selected part fitted."
-  desc true
-  field key String "Its key."
-  field label String "Its name (Speed)."
-  field value f32 "Its value now."
-  field preview f32 "Its value with the selected part fitted; a negative value shows none." {
-    default -1
-  }
-  field max f32 "The bar's whole; 0 is 10." {
-    min 0
-  }
-}
-```
-
-<sub>`api.ogt` line 21470</sub>
-
-<a id="type-LiveryLayer"></a>
-
-### `LiveryLayer` (desc struct)
-
-One layer of the car's livery, topmost first.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Body/Layers/List/<key> (<id>/Body/<key> on a phone in portrait). |
-| `name` | `string` | `""` | — | — | — | Its name (Stripe, Number 7). |
-| `kind` | `string` | `""` | — | — | — | What it is, the row's second line (Decal, Shape, Text). |
-| `color` | `PickedColor` | `{}` | — | — | — | Its colour: the row's swatch, and the picker's while it is selected. |
-| `visible` | `boolean` | `true` | — | — | — | Shown on the car; a hidden layer's row is dimmed and its eye is shut. |
-| `locked` | `boolean` | `false` | — | — | — | Not editable: no colour, no moves (a manufacturer's badge). |
-
-```ogt
-struct LiveryLayer {
-  doc "One layer of the car's livery, topmost first."
-  desc true
-  field key String "Its key: its row's element id, so its probe path is <id>/Body/Layers/List/<key> (<id>/Body/<key> on a phone in portrait)."
-  field name String "Its name (Stripe, Number 7)."
-  field kind String "What it is, the row's second line (Decal, Shape, Text)."
-  field color PickedColor "Its colour: the row's swatch, and the picker's while it is selected."
-  field visible bool "Shown on the car; a hidden layer's row is dimmed and its eye is shut." {
-    default true
-  }
-  field locked bool "Not editable: no colour, no moves (a manufacturer's badge)."
-}
-```
-
-<sub>`api.ogt` line 21483</sub>
-
-<a id="type-LayerMove"></a>
-
-### `LayerMove` (struct)
-
-A layer asked to move in the stack.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | The layer. |
-| `by` | `number` | `0` | — | — | — | Up (−1, towards the top) or down (+1). |
-
-```ogt
-struct LayerMove {
-  doc "A layer asked to move in the stack."
-  field key String "The layer."
-  field by i32 "Up (−1, towards the top) or down (+1)."
-}
-```
-
-<sub>`api.ogt` line 21495</sub>
-
-<a id="type-GarageDesc"></a>
-
-### `GarageDesc` (desc struct)
-
-A garage: the categories, the selected category's parts, the car's figures, the livery's layers.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `title` | `string` | `""` | — | — | — | The screen's title (Garage); empty shows none (the game titles it). |
-| `balance` | `number` | `0` | — | — | — | The purse the parts are priced in. |
-| `currencyImage` | `Texture \| null` | `null` | — | — | — | The currency's art beside the balance and on prices; null draws a coin. |
-| `categories` | `readonly GarageCategory[]` | `[]` | — | — | — | The rail, top to bottom. |
-| `category` | `string` | `""` | — | — | — | The selected category's key. |
-| `parts` | `readonly GaragePart[]` | `[]` | — | — | — | The selected category's parts. |
-| `selected` | `string` | `""` | — | — | — | The part whose detail and preview are shown (the game's: it passes GarageResult.selected back). |
-| `vehicle` | `Texture \| null` | `null` | — | — | — | The car (art kind vehicle, a cut-out) standing on its turntable in the middle; null leaves the middle to the game's own view (og.ui.sceneViewport built under the garage). |
-| `stats` | `readonly GarageStat[]` | `[]` | — | — | — | The car's figures, each a bar of its value with the preview's change lit. |
-| `ratingClass` | `string` | `""` | — | — | — | The car's class letter (A, S1) in its badge; empty shows no badge. |
-| `rating` | `number` | `0` | — | — | — | The car's rating beside the class (742). |
-| `ratingPreview` | `number` | `0` | — | — | — | The rating with the selected part fitted; 0 shows none. |
-| `layers` | `readonly LiveryLayer[]` | `[]` | — | — | — | The livery's layers, for a livery category. |
-| `layer` | `string` | `""` | — | — | — | The selected layer's key. |
-| `swatches` | `readonly string[]` | `[]` | — | — | — | The colour picker's swatches (`#rrggbb`). |
-| `performanceLabel` | `string` | `"Performance"` | — | — | — | The figures' heading. |
-| `classLabel` | `string` | `"Class"` | — | — | — | The rating's caption. |
-| `currentLabel` | `string` | `"Current"` | — | — | — | The legend's word for the value now. |
-| `previewLabel` | `string` | `"Preview"` | — | — | — | The legend's word for the change. |
-| `equipLabel` | `string` | `"Equip"` | — | — | — | The action on an owned part. |
-| `equippedLabel` | `string` | `"Equipped"` | — | — | — | An equipped part's word. |
-| `buyLabel` | `string` | `"Buy"` | — | — | — | The action on a part to buy. |
-| `lockedLabel` | `string` | `"Locked"` | — | — | — | A locked part's word. |
-| `freeLabel` | `string` | `"Free"` | — | — | — | A free part's price. |
-| `shortLabel` | `string` | `"not enough"` | — | — | — | Said after a price the purse cannot pay. |
-| `layersLabel` | `string` | `"Layers"` | — | — | — | The layers list's heading. |
-| `colorLabel` | `string` | `"Colour"` | — | — | — | The colour picker's heading. |
-| `addLayerLabel` | `string` | `"Add layer"` | — | — | — | The action adding a layer. |
-| `deleteLabel` | `string` | `"Delete"` | — | — | — | The action deleting the selected layer. |
-| `upLabel` | `string` | `"Move up"` | — | — | — | Moving a layer up, to a screen reader. |
-| `downLabel` | `string` | `"Move down"` | — | — | — | Moving a layer down, to a screen reader. |
-| `visibleLabel` | `string` | `"Visible"` | — | — | — | A layer's eye, to a screen reader. |
-
-```ogt
-struct GarageDesc {
-  doc "A garage: the categories, the selected category's parts, the car's figures, the livery's layers."
-  desc true
-  field title String "The screen's title (Garage); empty shows none (the game titles it)."
-  field balance f64 "The purse the parts are priced in."
-  field currencyImage Option.Texture "The currency's art beside the balance and on prices; null draws a coin."
-  field categories List.GarageCategory "The rail, top to bottom."
-  field category String "The selected category's key."
-  field parts List.GaragePart "The selected category's parts."
-  field selected String "The part whose detail and preview are shown (the game's: it passes GarageResult.selected back)."
-  field vehicle Option.Texture "The car (art kind vehicle, a cut-out) standing on its turntable in the middle; null leaves the middle to the game's own view (og.ui.sceneViewport built under the garage)."
-  field stats List.GarageStat "The car's figures, each a bar of its value with the preview's change lit."
-  field ratingClass String "The car's class letter (A, S1) in its badge; empty shows no badge."
-  field rating u32 "The car's rating beside the class (742)."
-  field ratingPreview u32 "The rating with the selected part fitted; 0 shows none."
-  field layers List.LiveryLayer "The livery's layers, for a livery category."
-  field layer String "The selected layer's key."
-  field swatches List.String "The colour picker's swatches (`#rrggbb`)."
-  field performanceLabel String "The figures' heading." {
-    default "Performance"
-  }
-  field classLabel String "The rating's caption." {
-    default "Class"
-  }
-  field currentLabel String "The legend's word for the value now." {
-    default "Current"
-  }
-  field previewLabel String "The legend's word for the change." {
-    default "Preview"
-  }
-  field equipLabel String "The action on an owned part." {
-    default "Equip"
-  }
-  field equippedLabel String "An equipped part's word." {
-    default "Equipped"
-  }
-  field buyLabel String "The action on a part to buy." {
-    default "Buy"
-  }
-  field lockedLabel String "A locked part's word." {
-    default "Locked"
-  }
-  field freeLabel String "A free part's price." {
-    default "Free"
-  }
-  field shortLabel String "Said after a price the purse cannot pay." {
-    default "not enough"
-  }
-  field layersLabel String "The layers list's heading." {
-    default "Layers"
-  }
-  field colorLabel String "The colour picker's heading." {
-    default "Colour"
-  }
-  field addLayerLabel String "The action adding a layer." {
-    default "Add layer"
-  }
-  field deleteLabel String "The action deleting the selected layer." {
-    default "Delete"
-  }
-  field upLabel String "Moving a layer up, to a screen reader." {
-    default "Move up"
-  }
-  field downLabel String "Moving a layer down, to a screen reader." {
-    default "Move down"
-  }
-  field visibleLabel String "A layer's eye, to a screen reader." {
-    default "Visible"
-  }
-}
-```
-
-<sub>`api.ogt` line 21500</sub>
-
-<a id="type-GarageResult"></a>
-
-### `GarageResult` (struct)
-
-What the player asked for this tick, for the game to apply.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `category` | `string \| null` | `null` | — | — | — | Another category was pressed: show its parts. |
-| `selected` | `string \| null` | `null` | — | — | — | A part was pressed or focused: show its detail and preview. |
-| `equip` | `string \| null` | `null` | — | — | — | Equip was pressed on an owned part. |
-| `buy` | `string \| null` | `null` | — | — | — | Buy was pressed on a part the purse pays (the game charges it and fits it). |
-| `refused` | `string \| null` | `null` | — | — | — | A locked part, or one the purse cannot pay, was asked for: it shook. |
-| `layer` | `string \| null` | `null` | — | — | — | A layer was pressed: select it. |
-| `layerColor` | `PickedColor \| null` | `null` | — | — | — | The selected layer's colour was changed in the picker. |
-| `layerMove` | `LayerMove \| null` | `null` | — | — | — | A layer's up or down was pressed. |
-| `layerVisible` | `string \| null` | `null` | — | — | — | A layer's eye was pressed: show or hide it. |
-| `addLayer` | `boolean` | `false` | — | — | — | Add layer was pressed. |
-| `deleteLayer` | `string \| null` | `null` | — | — | — | Delete was pressed on the selected layer. |
-
-```ogt
-struct GarageResult {
-  doc "What the player asked for this tick, for the game to apply."
-  field category Option.String "Another category was pressed: show its parts."
-  field selected Option.String "A part was pressed or focused: show its detail and preview."
-  field equip Option.String "Equip was pressed on an owned part."
-  field buy Option.String "Buy was pressed on a part the purse pays (the game charges it and fits it)."
-  field refused Option.String "A locked part, or one the purse cannot pay, was asked for: it shook."
-  field layer Option.String "A layer was pressed: select it."
-  field layerColor Option.PickedColor "The selected layer's colour was changed in the picker."
-  field layerMove Option.LayerMove "A layer's up or down was pressed."
-  field layerVisible Option.String "A layer's eye was pressed: show or hide it."
-  field addLayer bool "Add layer was pressed."
-  field deleteLayer Option.String "Delete was pressed on the selected layer."
-}
-```
-
-<sub>`api.ogt` line 21570</sub>
+<sub>`api.ogt` line 20738</sub>
 
 <a id="type-LedgerFigure"></a>
 
@@ -22595,7 +19527,7 @@ struct LedgerFigure {
 }
 ```
 
-<sub>`api.ogt` line 21592</sub>
+<sub>`api.ogt` line 20757</sub>
 
 <a id="type-LedgerSection"></a>
 
@@ -22621,7 +19553,7 @@ struct LedgerSection {
 }
 ```
 
-<sub>`api.ogt` line 21604</sub>
+<sub>`api.ogt` line 20769</sub>
 
 <a id="type-LedgerLine"></a>
 
@@ -22663,7 +19595,7 @@ struct LedgerLine {
 }
 ```
 
-<sub>`api.ogt` line 21611</sub>
+<sub>`api.ogt` line 20776</sub>
 
 <a id="type-LedgerTab"></a>
 
@@ -22687,7 +19619,7 @@ struct LedgerTab {
 }
 ```
 
-<sub>`api.ogt` line 21628</sub>
+<sub>`api.ogt` line 20793</sub>
 
 <a id="type-LedgerFunding"></a>
 
@@ -22708,7 +19640,7 @@ struct LedgerFunding {
 }
 ```
 
-<sub>`api.ogt` line 21634</sub>
+<sub>`api.ogt` line 20799</sub>
 
 <a id="type-LedgerDesc"></a>
 
@@ -22806,7 +19738,7 @@ struct LedgerDesc {
 }
 ```
 
-<sub>`api.ogt` line 21639</sub>
+<sub>`api.ogt` line 20804</sub>
 
 <a id="type-LedgerResult"></a>
 
@@ -22833,7 +19765,7 @@ struct LedgerResult {
 }
 ```
 
-<sub>`api.ogt` line 21695</sub>
+<sub>`api.ogt` line 20860</sub>
 
 <a id="type-MapOverlay"></a>
 
@@ -22865,7 +19797,7 @@ struct MapOverlay {
 }
 ```
 
-<sub>`api.ogt` line 21711</sub>
+<sub>`api.ogt` line 20876</sub>
 
 <a id="type-OverlayBarDesc"></a>
 
@@ -22897,7 +19829,7 @@ struct OverlayBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 21721</sub>
+<sub>`api.ogt` line 20886</sub>
 
 <a id="type-OverlayBarResult"></a>
 
@@ -22916,7 +19848,7 @@ struct OverlayBarResult {
 }
 ```
 
-<sub>`api.ogt` line 21733</sub>
+<sub>`api.ogt` line 20898</sub>
 
 <a id="type-ChatChannel"></a>
 
@@ -22950,7 +19882,7 @@ struct ChatChannel {
 }
 ```
 
-<sub>`api.ogt` line 21745</sub>
+<sub>`api.ogt` line 20910</sub>
 
 <a id="type-ChatLink"></a>
 
@@ -22978,7 +19910,7 @@ struct ChatLink {
 }
 ```
 
-<sub>`api.ogt` line 21756</sub>
+<sub>`api.ogt` line 20921</sub>
 
 <a id="type-ChatMessage"></a>
 
@@ -23018,7 +19950,7 @@ struct ChatMessage {
 }
 ```
 
-<sub>`api.ogt` line 21764</sub>
+<sub>`api.ogt` line 20929</sub>
 
 <a id="type-ChatMember"></a>
 
@@ -23044,7 +19976,7 @@ struct ChatMember {
 }
 ```
 
-<sub>`api.ogt` line 21778</sub>
+<sub>`api.ogt` line 20943</sub>
 
 <a id="type-ChatSend"></a>
 
@@ -23065,7 +19997,7 @@ struct ChatSend {
 }
 ```
 
-<sub>`api.ogt` line 21785</sub>
+<sub>`api.ogt` line 20950</sub>
 
 <a id="type-ChatDesc"></a>
 
@@ -23129,7 +20061,7 @@ struct ChatDesc {
 }
 ```
 
-<sub>`api.ogt` line 21790</sub>
+<sub>`api.ogt` line 20955</sub>
 
 <a id="type-ChatResult"></a>
 
@@ -23160,127 +20092,7 @@ struct ChatResult {
 }
 ```
 
-<sub>`api.ogt` line 21822</sub>
-
-<a id="type-CommandPage"></a>
-
-### `CommandPage` (desc struct)
-
-One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: a command whose key is a page's key opens that page. |
-| `commands` | `readonly AbilitySlotDesc[]` | `[]` | — | — | — | Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints. |
-
-```ogt
-struct CommandPage {
-  doc "One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens."
-  desc true
-  field key String "Its key: a command whose key is a page's key opens that page."
-  field commands List.AbilitySlotDesc "Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints."
-}
-```
-
-<sub>`api.ogt` line 21840</sub>
-
-<a id="type-RtsCommandsDesc"></a>
-
-### `RtsCommandsDesc` (desc struct)
-
-The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `console` | `RtsConsoleDesc` | `{}` | — | — | — | The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces). |
-| `pages` | `readonly CommandPage[]` | `[]` | — | — | — | The command pages; the first is the root. |
-| `page` | `string` | `""` | — | — | — | The page shown; empty is the root. |
-| `groupActions` | `readonly string[]` | `[]` | — | — | — | The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it. |
-| `targeting` | `string` | `""` | — | — | — | A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it. |
-| `doubleTapMs` | `number` | `350` | — | `ms` | — | Two taps of a group's key within this long focus it. |
-| `targetLabel` | `string` | `"{command}: choose a target"` | — | — | — | The targeting prompt ({command} is its name). |
-| `cancelLabel` | `string` | `"Cancel"` | — | — | — | The prompt's cancel word, after the back glyph. |
-| `queueLabel` | `string` | `"Queue"` | — | — | — | The prompt's hint for queueing, after the Shift glyph. |
-| `backLabel` | `string` | `"Back"` | — | — | — | The Back command a sub-page ends with. |
-
-```ogt
-struct RtsCommandsDesc {
-  doc "The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target."
-  desc true
-  field console RtsConsoleDesc "The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces)."
-  field pages List.CommandPage "The command pages; the first is the root."
-  field page String "The page shown; empty is the root."
-  field groupActions List.String "The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it."
-  field targeting String "A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it."
-  field doubleTapMs f32 "Two taps of a group's key within this long focus it." {
-    default 350
-    unit ms
-  }
-  field targetLabel String "The targeting prompt ({command} is its name)." {
-    default "{command}: choose a target"
-  }
-  field cancelLabel String "The prompt's cancel word, after the back glyph." {
-    default "Cancel"
-  }
-  field queueLabel String "The prompt's hint for queueing, after the Shift glyph." {
-    default "Queue"
-  }
-  field backLabel String "The Back command a sub-page ends with." {
-    default "Back"
-  }
-}
-```
-
-<sub>`api.ogt` line 21846</sub>
-
-<a id="type-RtsCommandsResult"></a>
-
-### `RtsCommandsResult` (struct)
-
-What the player asked for this tick, for the game to carry out.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `command` | `string \| null` | `null` | — | — | — | A command fired (pressed, or its action): its key. A command naming a page opens the page instead. |
-| `queued` | `boolean` | `false` | — | — | — | Shift was held as it fired (the order goes to the end of the units' queues). |
-| `refused` | `string \| null` | `null` | — | — | — | A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold). |
-| `page` | `string \| null` | `null` | — | — | — | A page was opened, or Back (the cell or the action) went to the root: its key. |
-| `cancelTarget` | `boolean` | `false` | — | — | — | Back with a command waiting for its target: cancel it. |
-| `recall` | `string \| null` | `null` | — | — | — | A control group's key or tab: select it. |
-| `focus` | `string \| null` | `null` | — | — | — | A control group recalled twice quickly: centre the camera on it. |
-| `assign` | `string \| null` | `null` | — | — | — | Ctrl and a group's key: the group becomes the selection. |
-| `add` | `string \| null` | `null` | — | — | — | Shift and a group's key: the selection joins the group. |
-| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed: focus it (or select only it). |
-| `selectType` | `string \| null` | `null` | — | — | — | Ctrl and a unit's tile: select every unit of its type in the selection. |
-| `deselect` | `string \| null` | `null` | — | — | — | Shift and a unit's tile: take it out of the selection. |
-| `mapClicked` | `boolean` | `false` | — | — | — | The minimap was pressed. |
-| `cancelled` | `string \| null` | `null` | — | — | — | A production queue item pressed: cancel it. |
-
-```ogt
-struct RtsCommandsResult {
-  doc "What the player asked for this tick, for the game to carry out."
-  field command Option.String "A command fired (pressed, or its action): its key. A command naming a page opens the page instead."
-  field queued bool "Shift was held as it fired (the order goes to the end of the units' queues)."
-  field refused Option.String "A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold)."
-  field page Option.String "A page was opened, or Back (the cell or the action) went to the root: its key."
-  field cancelTarget bool "Back with a command waiting for its target: cancel it."
-  field recall Option.String "A control group's key or tab: select it."
-  field focus Option.String "A control group recalled twice quickly: centre the camera on it."
-  field assign Option.String "Ctrl and a group's key: the group becomes the selection."
-  field add Option.String "Shift and a group's key: the selection joins the group."
-  field clicked Option.String "A unit's tile pressed: focus it (or select only it)."
-  field selectType Option.String "Ctrl and a unit's tile: select every unit of its type in the selection."
-  field deselect Option.String "Shift and a unit's tile: take it out of the selection."
-  field mapClicked bool "The minimap was pressed."
-  field cancelled Option.String "A production queue item pressed: cancel it."
-}
-```
-
-<sub>`api.ogt` line 21871</sub>
+<sub>`api.ogt` line 20987</sub>
 
 <a id="type-PhotoTab"></a>
 
@@ -23304,7 +20116,7 @@ struct PhotoTab {
 }
 ```
 
-<sub>`api.ogt` line 21896</sub>
+<sub>`api.ogt` line 21005</sub>
 
 <a id="type-PhotoControl"></a>
 
@@ -23346,7 +20158,7 @@ struct PhotoControl {
 }
 ```
 
-<sub>`api.ogt` line 21902</sub>
+<sub>`api.ogt` line 21011</sub>
 
 <a id="type-PhotoLook"></a>
 
@@ -23374,7 +20186,7 @@ struct PhotoLook {
 }
 ```
 
-<sub>`api.ogt` line 21918</sub>
+<sub>`api.ogt` line 21027</sub>
 
 <a id="type-PhotoSet"></a>
 
@@ -23395,7 +20207,7 @@ struct PhotoSet {
 }
 ```
 
-<sub>`api.ogt` line 21926</sub>
+<sub>`api.ogt` line 21035</sub>
 
 <a id="type-PhotoModeDesc"></a>
 
@@ -23476,7 +20288,7 @@ struct PhotoModeDesc {
 }
 ```
 
-<sub>`api.ogt` line 21931</sub>
+<sub>`api.ogt` line 21040</sub>
 
 <a id="type-PhotoModeResult"></a>
 
@@ -23513,220 +20325,7 @@ struct PhotoModeResult {
 }
 ```
 
-<sub>`api.ogt` line 21976</sub>
-
-<a id="type-LoadoutSlot"></a>
-
-### `LoadoutSlot` (desc struct)
-
-One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its rail entry's element id, so its probe path is <id>/Slots/<key>. |
-| `label` | `string` | `""` | — | — | — | What the slot is, the entry's eyebrow (Primary). |
-| `name` | `string` | `""` | — | — | — | What is in it (AR-7 Raven); empty is an empty slot, its emptyLabel shown. |
-| `detail` | `string` | `""` | — | — | — | A line under the name (Lvl 12); empty shows none. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon, or a weapon's side view); null draws the style's placeholder. |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the art's rim. |
-| `locked` | `boolean` | `false` | — | — | — | Not available yet: dimmed with a lock; pressing it is refused. |
-
-```ogt
-struct LoadoutSlot {
-  doc "One slot of a loadout (Primary, Secondary, Lethal, Tactical, Perk 1), as the game holds it."
-  desc true
-  field key String "Its key: its rail entry's element id, so its probe path is <id>/Slots/<key>."
-  field label String "What the slot is, the entry's eyebrow (Primary)."
-  field name String "What is in it (AR-7 Raven); empty is an empty slot, its emptyLabel shown."
-  field detail String "A line under the name (Lvl 12); empty shows none."
-  field image Option.Texture "Its art (art kind itemIcon, or a weapon's side view); null draws the style's placeholder."
-  field rarity Rarity "Its tier: the art's rim."
-  field locked bool "Not available yet: dimmed with a lock; pressing it is refused."
-}
-```
-
-<sub>`api.ogt` line 21997</sub>
-
-<a id="type-LoadoutAttachment"></a>
-
-### `LoadoutAttachment` (desc struct)
-
-One attachment point of the selected item, and what is on it.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its callout's and its row's element id (<id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>). |
-| `label` | `string` | `""` | — | — | — | The point's name, the callout's eyebrow (Barrel, Optic). |
-| `name` | `string` | `""` | — | — | — | What is on it (Vanguard Suppressor); empty is nothing, the point's emptyLabel shown, and it has no row. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon); null draws the style's placeholder. |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the row's band and the callout's rim. |
-| `rarityLabel` | `string` | `""` | — | — | — | The tier's word on the row's band (Rare); empty shows none. |
-| `x` | `number` | `0.5` | — | `ratio` | — | Where the point is on the item's art, across it, 0 to 1: the leader line's end. |
-| `y` | `number` | `0.5` | — | `ratio` | — | Where the point is, down it, 0 to 1; above the middle its callout stands above the art, else below. |
-
-```ogt
-struct LoadoutAttachment {
-  doc "One attachment point of the selected item, and what is on it."
-  desc true
-  field key String "Its key: its callout's and its row's element id (<id>/Stage/Callouts/<key>, <id>/Side/Attachments/List/<key>)."
-  field label String "The point's name, the callout's eyebrow (Barrel, Optic)."
-  field name String "What is on it (Vanguard Suppressor); empty is nothing, the point's emptyLabel shown, and it has no row."
-  field image Option.Texture "Its art (art kind itemIcon); null draws the style's placeholder."
-  field rarity Rarity "Its tier: the row's band and the callout's rim."
-  field rarityLabel String "The tier's word on the row's band (Rare); empty shows none."
-  field x f32 "Where the point is on the item's art, across it, 0 to 1: the leader line's end." {
-    default 0.5
-    unit ratio
-  }
-  field y f32 "Where the point is, down it, 0 to 1; above the middle its callout stands above the art, else below." {
-    default 0.5
-    unit ratio
-  }
-}
-```
-
-<sub>`api.ogt` line 22008</sub>
-
-<a id="type-LoadoutStat"></a>
-
-### `LoadoutStat` (desc struct)
-
-One of the selected item's figures, with what its attachments change.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key. |
-| `label` | `string` | `""` | — | — | — | Its name (Damage). |
-| `value` | `number` | `0` | — | — | — | Its value with the attachments. |
-| `delta` | `number` | `0` | — | — | — | What the attachments add (negative: take away); 0 shows none. |
-| `max` | `number` | `0` | ≥ 0 | — | — | The bar's whole; 0 is 100. |
-
-```ogt
-struct LoadoutStat {
-  doc "One of the selected item's figures, with what its attachments change."
-  desc true
-  field key String "Its key."
-  field label String "Its name (Damage)."
-  field value f32 "Its value with the attachments."
-  field delta f32 "What the attachments add (negative: take away); 0 shows none."
-  field max f32 "The bar's whole; 0 is 100." {
-    min 0
-  }
-}
-```
-
-<sub>`api.ogt` line 22026</sub>
-
-<a id="type-LoadoutDesc"></a>
-
-### `LoadoutDesc` (desc struct)
-
-A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `title` | `string` | `""` | — | — | — | The screen's title (Loadout). |
-| `loadouts` | `readonly string[]` | `[]` | — | — | — | The loadouts' names, one tab each (Loadout 1); fewer than two shows no tabs. |
-| `loadout` | `number` | `0` | — | — | — | The loadout shown, an index of loadouts. |
-| `balance` | `number \| null` | `null` | — | — | — | The purse at the end of the head; null shows none. |
-| `currencyImage` | `Texture \| null` | `null` | — | — | — | The purse's coin; null draws the style's coin. |
-| `slots` | `readonly LoadoutSlot[]` | `[]` | — | — | — | The slots, top to bottom. |
-| `slot` | `string` | `""` | — | — | — | The selected slot: its item stands large in the middle. |
-| `image` | `Texture \| null` | `null` | — | — | — | The selected item's art, large (art kind item, a side view on transparent ground); null draws the style's placeholder. |
-| `aspect` | `number` | `0` | — | — | — | The item's art's width over its height, so the attachment points land on it as drawn (fit inside its box); 0 takes the box's own. |
-| `name` | `string` | `""` | — | — | — | The selected item's name, in the display face. |
-| `subtitle` | `readonly string[]` | `[]` | — | — | — | The words under its name, divided by rules (Assault rifle, Rare, Lvl 12). |
-| `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the subtitle's tier word takes its colour when rarityWord names the word's index. |
-| `rarityWord` | `number` | `-1` | — | — | — | Which of subtitle is the tier's word, -1 none. |
-| `description` | `string` | `""` | — | — | — | A line under the subtitle; empty shows none. |
-| `attachments` | `readonly LoadoutAttachment[]` | `[]` | — | — | — | The item's attachment points: callouts on leader lines around its art on a desktop, rows at the side. |
-| `attachment` | `string` | `""` | — | — | — | The attachment point picked (its callout and row lit); empty none. |
-| `capacity` | `number` | `0` | — | — | — | The attachment points the item has in all, for the count (5/5); 0 counts the given points. |
-| `stats` | `readonly LoadoutStat[]` | `[]` | — | — | — | The item's figures. |
-| `statsLabel` | `string` | `"Weapon stats"` | — | — | — | The figures' heading. |
-| `attachmentsLabel` | `string` | `"Attachments"` | — | — | — | The attachments' heading. |
-| `emptyLabel` | `string` | `"Empty"` | — | — | — | An empty slot's or point's word. |
-| `removeLabel` | `string` | `"Remove"` | — | — | — | The remove button's name, before the attachment's. |
-| `lockedLabel` | `string` | `"Locked"` | — | — | — | A locked slot's word. |
-
-```ogt
-struct LoadoutDesc {
-  doc "A loadout screen: the loadouts' tabs, the slots, the selected item large with its attachment points, its figures and its attachments."
-  desc true
-  field title String "The screen's title (Loadout)."
-  field loadouts List.String "The loadouts' names, one tab each (Loadout 1); fewer than two shows no tabs."
-  field loadout u32 "The loadout shown, an index of loadouts."
-  field balance Option.f64 "The purse at the end of the head; null shows none."
-  field currencyImage Option.Texture "The purse's coin; null draws the style's coin."
-  field slots List.LoadoutSlot "The slots, top to bottom."
-  field slot String "The selected slot: its item stands large in the middle."
-  field image Option.Texture "The selected item's art, large (art kind item, a side view on transparent ground); null draws the style's placeholder."
-  field aspect f32 "The item's art's width over its height, so the attachment points land on it as drawn (fit inside its box); 0 takes the box's own."
-  field name String "The selected item's name, in the display face."
-  field subtitle List.String "The words under its name, divided by rules (Assault rifle, Rare, Lvl 12)."
-  field rarity Rarity "Its tier: the subtitle's tier word takes its colour when rarityWord names the word's index."
-  field rarityWord i32 "Which of subtitle is the tier's word, -1 none." {
-    default -1
-  }
-  field description String "A line under the subtitle; empty shows none."
-  field attachments List.LoadoutAttachment "The item's attachment points: callouts on leader lines around its art on a desktop, rows at the side."
-  field attachment String "The attachment point picked (its callout and row lit); empty none."
-  field capacity u32 "The attachment points the item has in all, for the count (5/5); 0 counts the given points."
-  field stats List.LoadoutStat "The item's figures."
-  field statsLabel String "The figures' heading." {
-    default "Weapon stats"
-  }
-  field attachmentsLabel String "The attachments' heading." {
-    default "Attachments"
-  }
-  field emptyLabel String "An empty slot's or point's word." {
-    default "Empty"
-  }
-  field removeLabel String "The remove button's name, before the attachment's." {
-    default "Remove"
-  }
-  field lockedLabel String "A locked slot's word." {
-    default "Locked"
-  }
-}
-```
-
-<sub>`api.ogt` line 22037</sub>
-
-<a id="type-LoadoutResult"></a>
-
-### `LoadoutResult` (struct)
-
-What the player asked for this tick, for the game to apply.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `loadout` | `number \| null` | `null` | — | — | — | Another loadout's tab was pressed (or the tab actions stepped). |
-| `slot` | `string \| null` | `null` | — | — | — | Another slot was pressed or reached by keys. |
-| `attachment` | `string \| null` | `null` | — | — | — | An attachment point was pressed (its callout or its row): the game opens its choices. |
-| `remove` | `string \| null` | `null` | — | — | — | An attachment's remove button was pressed. |
-| `refused` | `string \| null` | `null` | — | — | — | A locked slot was pressed: it shakes. |
-
-```ogt
-struct LoadoutResult {
-  doc "What the player asked for this tick, for the game to apply."
-  field loadout Option.u32 "Another loadout's tab was pressed (or the tab actions stepped)."
-  field slot Option.String "Another slot was pressed or reached by keys."
-  field attachment Option.String "An attachment point was pressed (its callout or its row): the game opens its choices."
-  field remove Option.String "An attachment's remove button was pressed."
-  field refused Option.String "A locked slot was pressed: it shakes."
-}
-```
-
-<sub>`api.ogt` line 22076</sub>
+<sub>`api.ogt` line 21085</sub>
 
 <a id="type-CollectionCard"></a>
 
@@ -23768,7 +20367,7 @@ struct CollectionCard {
 }
 ```
 
-<sub>`api.ogt` line 22092</sub>
+<sub>`api.ogt` line 21106</sub>
 
 <a id="type-DeckKind"></a>
 
@@ -23794,7 +20393,7 @@ struct DeckKind {
 }
 ```
 
-<sub>`api.ogt` line 22107</sub>
+<sub>`api.ogt` line 21121</sub>
 
 <a id="type-DeckRarity"></a>
 
@@ -23818,7 +20417,7 @@ struct DeckRarity {
 }
 ```
 
-<sub>`api.ogt` line 22114</sub>
+<sub>`api.ogt` line 21128</sub>
 
 <a id="type-DeckSort"></a>
 
@@ -23842,7 +20441,7 @@ struct DeckSort {
 }
 ```
 
-<sub>`api.ogt` line 22120</sub>
+<sub>`api.ogt` line 21134</sub>
 
 <a id="type-DeckBuilderDesc"></a>
 
@@ -23946,7 +20545,7 @@ struct DeckBuilderDesc {
 }
 ```
 
-<sub>`api.ogt` line 22126</sub>
+<sub>`api.ogt` line 21140</sub>
 
 <a id="type-DeckBuilderResult"></a>
 
@@ -23983,7 +20582,7 @@ struct DeckBuilderResult {
 }
 ```
 
-<sub>`api.ogt` line 22187</sub>
+<sub>`api.ogt` line 21201</sub>
 
 <a id="type-GalleryChapter"></a>
 
@@ -24007,7 +20606,7 @@ struct GalleryChapter {
 }
 ```
 
-<sub>`api.ogt` line 22208</sub>
+<sub>`api.ogt` line 21222</sub>
 
 <a id="type-CgEntry"></a>
 
@@ -24043,7 +20642,7 @@ struct CgEntry {
 }
 ```
 
-<sub>`api.ogt` line 22214</sub>
+<sub>`api.ogt` line 21228</sub>
 
 <a id="type-CgGalleryDesc"></a>
 
@@ -24099,7 +20698,7 @@ struct CgGalleryDesc {
 }
 ```
 
-<sub>`api.ogt` line 22226</sub>
+<sub>`api.ogt` line 21240</sub>
 
 <a id="type-CgGalleryResult"></a>
 
@@ -24128,7 +20727,7 @@ struct CgGalleryResult {
 }
 ```
 
-<sub>`api.ogt` line 22254</sub>
+<sub>`api.ogt` line 21268</sub>
 
 <a id="type-RouteScene"></a>
 
@@ -24168,7 +20767,7 @@ struct RouteScene {
 }
 ```
 
-<sub>`api.ogt` line 22271</sub>
+<sub>`api.ogt` line 21285</sub>
 
 <a id="type-RouteLink"></a>
 
@@ -24196,7 +20795,7 @@ struct RouteLink {
 }
 ```
 
-<sub>`api.ogt` line 22285</sub>
+<sub>`api.ogt` line 21299</sub>
 
 <a id="type-RouteChartDesc"></a>
 
@@ -24242,7 +20841,7 @@ struct RouteChartDesc {
 }
 ```
 
-<sub>`api.ogt` line 22293</sub>
+<sub>`api.ogt` line 21307</sub>
 
 <a id="type-RouteChartResult"></a>
 
@@ -24265,7 +20864,7 @@ struct RouteChartResult {
 }
 ```
 
-<sub>`api.ogt` line 22314</sub>
+<sub>`api.ogt` line 21328</sub>
 
 <a id="type-SettingsCustomBuild"></a>
 
@@ -24290,7 +20889,7 @@ callback SettingsCustomBuild {
 }
 ```
 
-<sub>`api.ogt` line 22328</sub>
+<sub>`api.ogt` line 21342</sub>
 
 <a id="type-SettingKind"></a>
 
@@ -24321,7 +20920,7 @@ enum SettingKind {
 }
 ```
 
-<sub>`api.ogt` line 22332</sub>
+<sub>`api.ogt` line 21346</sub>
 
 <a id="type-SettingEntry"></a>
 
@@ -24379,7 +20978,7 @@ struct SettingEntry {
 }
 ```
 
-<sub>`api.ogt` line 22341</sub>
+<sub>`api.ogt` line 21355</sub>
 
 <a id="type-SettingsPage"></a>
 
@@ -24407,7 +21006,7 @@ struct SettingsPage {
 }
 ```
 
-<sub>`api.ogt` line 22365</sub>
+<sub>`api.ogt` line 21379</sub>
 
 <a id="type-SettingChange"></a>
 
@@ -24432,7 +21031,7 @@ struct SettingChange {
 }
 ```
 
-<sub>`api.ogt` line 22373</sub>
+<sub>`api.ogt` line 21387</sub>
 
 <a id="type-SettingsTreeDesc"></a>
 
@@ -24504,7 +21103,7 @@ struct SettingsTreeDesc {
 }
 ```
 
-<sub>`api.ogt` line 22380</sub>
+<sub>`api.ogt` line 21394</sub>
 
 <a id="type-SettingsTreeResult"></a>
 
@@ -24541,7 +21140,7 @@ struct SettingsTreeResult {
 }
 ```
 
-<sub>`api.ogt` line 22421</sub>
+<sub>`api.ogt` line 21435</sub>
 
 <a id="type-UiProp"></a>
 
@@ -24600,7 +21199,7 @@ enum UiProp {
 }
 ```
 
-<sub>`api.ogt` line 22446</sub>
+<sub>`api.ogt` line 21460</sub>
 
 <a id="type-LayoutMode"></a>
 
@@ -24625,7 +21224,7 @@ enum LayoutMode {
 }
 ```
 
-<sub>`api.ogt` line 22470</sub>
+<sub>`api.ogt` line 21484</sub>
 
 <a id="type-Position"></a>
 
@@ -24652,7 +21251,7 @@ enum Position {
 }
 ```
 
-<sub>`api.ogt` line 22477</sub>
+<sub>`api.ogt` line 21491</sub>
 
 <a id="type-GridFlow"></a>
 
@@ -24675,7 +21274,7 @@ enum GridFlow {
 }
 ```
 
-<sub>`api.ogt` line 22485</sub>
+<sub>`api.ogt` line 21499</sub>
 
 <a id="type-DragAxis"></a>
 
@@ -24702,7 +21301,7 @@ enum DragAxis {
 }
 ```
 
-<sub>`api.ogt` line 22491</sub>
+<sub>`api.ogt` line 21505</sub>
 
 <a id="type-EaseName"></a>
 
@@ -24729,7 +21328,7 @@ enum EaseName {
 }
 ```
 
-<sub>`api.ogt` line 22499</sub>
+<sub>`api.ogt` line 21513</sub>
 
 <a id="type-MotionToken"></a>
 
@@ -24760,7 +21359,7 @@ enum MotionToken {
 }
 ```
 
-<sub>`api.ogt` line 22507</sub>
+<sub>`api.ogt` line 21521</sub>
 
 <a id="type-ReducedMotion"></a>
 
@@ -24785,7 +21384,7 @@ enum ReducedMotion {
 }
 ```
 
-<sub>`api.ogt` line 22517</sub>
+<sub>`api.ogt` line 21531</sub>
 
 <a id="type-Orientation"></a>
 
@@ -24808,7 +21407,7 @@ enum Orientation {
 }
 ```
 
-<sub>`api.ogt` line 22524</sub>
+<sub>`api.ogt` line 21538</sub>
 
 <a id="type-Repeat"></a>
 
@@ -24833,7 +21432,7 @@ enum Repeat {
 }
 ```
 
-<sub>`api.ogt` line 22530</sub>
+<sub>`api.ogt` line 21544</sub>
 
 <a id="type-UiTransform"></a>
 
@@ -24885,7 +21484,7 @@ struct UiTransform {
 }
 ```
 
-<sub>`api.ogt` line 22537</sub>
+<sub>`api.ogt` line 21551</sub>
 
 <a id="type-Edges"></a>
 
@@ -24925,7 +21524,7 @@ struct Edges {
 }
 ```
 
-<sub>`api.ogt` line 22565</sub>
+<sub>`api.ogt` line 21579</sub>
 
 <a id="type-TrackPx"></a>
 
@@ -24946,7 +21545,7 @@ struct TrackPx {
 }
 ```
 
-<sub>`api.ogt` line 22584</sub>
+<sub>`api.ogt` line 21598</sub>
 
 <a id="type-TrackFr"></a>
 
@@ -24967,7 +21566,7 @@ struct TrackFr {
 }
 ```
 
-<sub>`api.ogt` line 22591</sub>
+<sub>`api.ogt` line 21605</sub>
 
 <a id="type-TrackRange"></a>
 
@@ -24992,7 +21591,7 @@ struct TrackRange {
 }
 ```
 
-<sub>`api.ogt` line 22598</sub>
+<sub>`api.ogt` line 21612</sub>
 
 <a id="type-TrackPercent"></a>
 
@@ -25013,7 +21612,7 @@ struct TrackPercent {
 }
 ```
 
-<sub>`api.ogt` line 22608</sub>
+<sub>`api.ogt` line 21622</sub>
 
 <a id="type-TrackAuto"></a>
 
@@ -25027,7 +21626,7 @@ struct TrackAuto {
 }
 ```
 
-<sub>`api.ogt` line 22615</sub>
+<sub>`api.ogt` line 21629</sub>
 
 <a id="type-Track"></a>
 
@@ -25057,7 +21656,7 @@ union Track {
 }
 ```
 
-<sub>`api.ogt` line 22619</sub>
+<sub>`api.ogt` line 21633</sub>
 
 <a id="type-GridSpec"></a>
 
@@ -25097,7 +21696,7 @@ struct GridSpec {
 }
 ```
 
-<sub>`api.ogt` line 22629</sub>
+<sub>`api.ogt` line 21643</sub>
 
 <a id="type-GridPlace"></a>
 
@@ -25127,7 +21726,7 @@ struct GridPlace {
 }
 ```
 
-<sub>`api.ogt` line 22646</sub>
+<sub>`api.ogt` line 21660</sub>
 
 <a id="type-PropValue"></a>
 
@@ -25148,7 +21747,7 @@ struct PropValue {
 }
 ```
 
-<sub>`api.ogt` line 22656</sub>
+<sub>`api.ogt` line 21670</sub>
 
 <a id="type-UiQuery"></a>
 
@@ -25182,7 +21781,7 @@ struct UiQuery {
 }
 ```
 
-<sub>`api.ogt` line 22662</sub>
+<sub>`api.ogt` line 21676</sub>
 
 <a id="type-UiPatch"></a>
 
@@ -25228,7 +21827,7 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 22676</sub>
+<sub>`api.ogt` line 21690</sub>
 
 <a id="type-UiVariant"></a>
 
@@ -25249,7 +21848,7 @@ struct UiVariant {
 }
 ```
 
-<sub>`api.ogt` line 22695</sub>
+<sub>`api.ogt` line 21709</sub>
 
 <a id="type-SpringSpec"></a>
 
@@ -25279,7 +21878,7 @@ struct SpringSpec {
 }
 ```
 
-<sub>`api.ogt` line 22701</sub>
+<sub>`api.ogt` line 21715</sub>
 
 <a id="type-TweenSpec"></a>
 
@@ -25308,7 +21907,7 @@ struct TweenSpec {
 }
 ```
 
-<sub>`api.ogt` line 22714</sub>
+<sub>`api.ogt` line 21728</sub>
 
 <a id="type-TokenRef"></a>
 
@@ -25327,7 +21926,7 @@ struct TokenRef {
 }
 ```
 
-<sub>`api.ogt` line 22725</sub>
+<sub>`api.ogt` line 21739</sub>
 
 <a id="type-InstantSpec"></a>
 
@@ -25341,7 +21940,7 @@ struct InstantSpec {
 }
 ```
 
-<sub>`api.ogt` line 22730</sub>
+<sub>`api.ogt` line 21744</sub>
 
 <a id="type-Transition"></a>
 
@@ -25369,7 +21968,7 @@ union Transition {
 }
 ```
 
-<sub>`api.ogt` line 22734</sub>
+<sub>`api.ogt` line 21748</sub>
 
 <a id="type-DismissSpec"></a>
 
@@ -25395,7 +21994,7 @@ struct DismissSpec {
 }
 ```
 
-<sub>`api.ogt` line 22743</sub>
+<sub>`api.ogt` line 21757</sub>
 
 <a id="type-SnapPoint"></a>
 
@@ -25420,7 +22019,7 @@ struct SnapPoint {
 }
 ```
 
-<sub>`api.ogt` line 22752</sub>
+<sub>`api.ogt` line 21766</sub>
 
 <a id="type-DragSpec"></a>
 
@@ -25462,7 +22061,7 @@ struct DragSpec {
 }
 ```
 
-<sub>`api.ogt` line 22762</sub>
+<sub>`api.ogt` line 21776</sub>
 
 <a id="type-PinchSpec"></a>
 
@@ -25488,7 +22087,7 @@ struct PinchSpec {
 }
 ```
 
-<sub>`api.ogt` line 22779</sub>
+<sub>`api.ogt` line 21793</sub>
 
 <a id="type-DropSpec"></a>
 
@@ -25510,7 +22109,7 @@ struct DropSpec {
 }
 ```
 
-<sub>`api.ogt` line 22787</sub>
+<sub>`api.ogt` line 21801</sub>
 
 <a id="type-PresenceSpec"></a>
 
@@ -25544,7 +22143,7 @@ struct PresenceSpec {
 }
 ```
 
-<sub>`api.ogt` line 22793</sub>
+<sub>`api.ogt` line 21807</sub>
 
 <a id="type-VisualState"></a>
 
@@ -25569,7 +22168,7 @@ struct VisualState {
 }
 ```
 
-<sub>`api.ogt` line 22807</sub>
+<sub>`api.ogt` line 21821</sub>
 
 <a id="type-StateTransition"></a>
 
@@ -25592,7 +22191,7 @@ struct StateTransition {
 }
 ```
 
-<sub>`api.ogt` line 22815</sub>
+<sub>`api.ogt` line 21829</sub>
 
 <a id="type-StateGroup"></a>
 
@@ -25615,7 +22214,7 @@ struct StateGroup {
 }
 ```
 
-<sub>`api.ogt` line 22822</sub>
+<sub>`api.ogt` line 21836</sub>
 
 <a id="type-StateValue"></a>
 
@@ -25636,7 +22235,7 @@ struct StateValue {
 }
 ```
 
-<sub>`api.ogt` line 22829</sub>
+<sub>`api.ogt` line 21843</sub>
 
 <a id="type-NavLinks"></a>
 
@@ -25668,7 +22267,7 @@ struct NavLinks {
 }
 ```
 
-<sub>`api.ogt` line 22835</sub>
+<sub>`api.ogt` line 21849</sub>
 
 <a id="type-FocusGroup"></a>
 
@@ -25692,7 +22291,7 @@ struct FocusGroup {
 }
 ```
 
-<sub>`api.ogt` line 22846</sub>
+<sub>`api.ogt` line 21860</sub>
 
 <a id="type-GestureSpec"></a>
 
@@ -25735,7 +22334,7 @@ struct GestureSpec {
 }
 ```
 
-<sub>`api.ogt` line 22853</sub>
+<sub>`api.ogt` line 21867</sub>
 
 <a id="type-Customize"></a>
 
@@ -25779,7 +22378,7 @@ struct Customize {
 }
 ```
 
-<sub>`api.ogt` line 22874</sub>
+<sub>`api.ogt` line 21888</sub>
 
 <a id="type-Cursor"></a>
 
@@ -25836,7 +22435,7 @@ enum Cursor {
 }
 ```
 
-<sub>`api.ogt` line 22896</sub>
+<sub>`api.ogt` line 21910</sub>
 
 <a id="type-ElementProps"></a>
 
@@ -25928,7 +22527,7 @@ struct ElementProps {
 }
 ```
 
-<sub>`api.ogt` line 22919</sub>
+<sub>`api.ogt` line 21933</sub>
 
 <a id="type-EaseKey"></a>
 
@@ -25947,7 +22546,7 @@ struct EaseKey {
 }
 ```
 
-<sub>`api.ogt` line 22963</sub>
+<sub>`api.ogt` line 21977</sub>
 
 <a id="type-HoldKey"></a>
 
@@ -25961,7 +22560,7 @@ struct HoldKey {
 }
 ```
 
-<sub>`api.ogt` line 22968</sub>
+<sub>`api.ogt` line 21982</sub>
 
 <a id="type-LinearKey"></a>
 
@@ -25975,7 +22574,7 @@ struct LinearKey {
 }
 ```
 
-<sub>`api.ogt` line 22972</sub>
+<sub>`api.ogt` line 21986</sub>
 
 <a id="type-BezierKey"></a>
 
@@ -25994,7 +22593,7 @@ struct BezierKey {
 }
 ```
 
-<sub>`api.ogt` line 22976</sub>
+<sub>`api.ogt` line 21990</sub>
 
 <a id="type-KeyEase"></a>
 
@@ -26024,7 +22623,7 @@ union KeyEase {
 }
 ```
 
-<sub>`api.ogt` line 22981</sub>
+<sub>`api.ogt` line 21995</sub>
 
 <a id="type-TimelineKey"></a>
 
@@ -26049,7 +22648,7 @@ struct TimelineKey {
 }
 ```
 
-<sub>`api.ogt` line 22991</sub>
+<sub>`api.ogt` line 22005</sub>
 
 <a id="type-TimelineTrack"></a>
 
@@ -26072,7 +22671,7 @@ struct TimelineTrack {
 }
 ```
 
-<sub>`api.ogt` line 23000</sub>
+<sub>`api.ogt` line 22014</sub>
 
 <a id="type-SoundEvent"></a>
 
@@ -26095,7 +22694,7 @@ struct SoundEvent {
 }
 ```
 
-<sub>`api.ogt` line 23007</sub>
+<sub>`api.ogt` line 22021</sub>
 
 <a id="type-HapticEvent"></a>
 
@@ -26114,7 +22713,7 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 23015</sub>
+<sub>`api.ogt` line 22029</sub>
 
 <a id="type-BurstEvent"></a>
 
@@ -26139,7 +22738,7 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 23020</sub>
+<sub>`api.ogt` line 22034</sub>
 
 <a id="type-StateEvent"></a>
 
@@ -26160,7 +22759,7 @@ struct StateEvent {
 }
 ```
 
-<sub>`api.ogt` line 23029</sub>
+<sub>`api.ogt` line 22043</sub>
 
 <a id="type-CallbackEvent"></a>
 
@@ -26179,7 +22778,7 @@ struct CallbackEvent {
 }
 ```
 
-<sub>`api.ogt` line 23035</sub>
+<sub>`api.ogt` line 22049</sub>
 
 <a id="type-TimelineAction"></a>
 
@@ -26209,7 +22808,7 @@ union TimelineAction {
 }
 ```
 
-<sub>`api.ogt` line 23040</sub>
+<sub>`api.ogt` line 22054</sub>
 
 <a id="type-TimelineEvent"></a>
 
@@ -26234,7 +22833,7 @@ struct TimelineEvent {
 }
 ```
 
-<sub>`api.ogt` line 23050</sub>
+<sub>`api.ogt` line 22064</sub>
 
 <a id="type-TimelineLabel"></a>
 
@@ -26257,7 +22856,7 @@ struct TimelineLabel {
 }
 ```
 
-<sub>`api.ogt` line 23059</sub>
+<sub>`api.ogt` line 22073</sub>
 
 <a id="type-UiTimeline"></a>
 
@@ -26287,7 +22886,7 @@ struct UiTimeline {
 }
 ```
 
-<sub>`api.ogt` line 23067</sub>
+<sub>`api.ogt` line 22081</sub>
 
 <a id="type-ChoreoPlay"></a>
 
@@ -26312,7 +22911,7 @@ struct ChoreoPlay {
 }
 ```
 
-<sub>`api.ogt` line 23078</sub>
+<sub>`api.ogt` line 22092</sub>
 
 <a id="type-ChoreoSteps"></a>
 
@@ -26331,7 +22930,7 @@ struct ChoreoSteps {
 }
 ```
 
-<sub>`api.ogt` line 23087</sub>
+<sub>`api.ogt` line 22101</sub>
 
 <a id="type-ChoreoStagger"></a>
 
@@ -26364,7 +22963,7 @@ struct ChoreoStagger {
 }
 ```
 
-<sub>`api.ogt` line 23092</sub>
+<sub>`api.ogt` line 22106</sub>
 
 <a id="type-ChoreoCascade"></a>
 
@@ -26385,7 +22984,7 @@ struct ChoreoCascade {
 }
 ```
 
-<sub>`api.ogt` line 23107</sub>
+<sub>`api.ogt` line 22121</sub>
 
 <a id="type-Choreo"></a>
 
@@ -26415,7 +23014,7 @@ union Choreo {
 }
 ```
 
-<sub>`api.ogt` line 23113</sub>
+<sub>`api.ogt` line 22127</sub>
 
 <a id="type-PlayDesc"></a>
 
@@ -26451,7 +23050,7 @@ struct PlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 23123</sub>
+<sub>`api.ogt` line 22137</sub>
 
 <a id="type-PlayInfo"></a>
 
@@ -26482,7 +23081,7 @@ struct PlayInfo {
 }
 ```
 
-<sub>`api.ogt` line 23137</sub>
+<sub>`api.ogt` line 22151</sub>
 
 <a id="type-GestureInfo"></a>
 
@@ -26541,7 +23140,7 @@ struct GestureInfo {
 }
 ```
 
-<sub>`api.ogt` line 23150</sub>
+<sub>`api.ogt` line 22164</sub>
 
 <a id="type-UiMotionEvent"></a>
 
@@ -26570,7 +23169,7 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>`api.ogt` line 23178</sub>
+<sub>`api.ogt` line 22192</sub>
 
 <a id="type-UiOverlap"></a>
 
@@ -26595,7 +23194,7 @@ struct UiOverlap {
 }
 ```
 
-<sub>`api.ogt` line 23188</sub>
+<sub>`api.ogt` line 22202</sub>
 
 <a id="type-UiLayoutStats"></a>
 
@@ -26620,7 +23219,7 @@ struct UiLayoutStats {
 }
 ```
 
-<sub>`api.ogt` line 23196</sub>
+<sub>`api.ogt` line 22210</sub>
 
 <a id="type-NotificationVariant"></a>
 
@@ -26649,7 +23248,7 @@ enum NotificationVariant {
 }
 ```
 
-<sub>`api.ogt` line 23327</sub>
+<sub>`api.ogt` line 22341</sub>
 
 <a id="type-Rarity"></a>
 
@@ -26682,7 +23281,7 @@ enum Rarity {
 }
 ```
 
-<sub>`api.ogt` line 23336</sub>
+<sub>`api.ogt` line 22350</sub>
 
 <a id="type-NotificationItem"></a>
 
@@ -26741,7 +23340,7 @@ struct NotificationItem {
 }
 ```
 
-<sub>`api.ogt` line 23347</sub>
+<sub>`api.ogt` line 22361</sub>
 
 <a id="type-NotificationsDesc"></a>
 
@@ -26778,7 +23377,7 @@ struct NotificationsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23374</sub>
+<sub>`api.ogt` line 22388</sub>
 
 <a id="type-NotificationsResult"></a>
 
@@ -26803,7 +23402,7 @@ struct NotificationsResult {
 }
 ```
 
-<sub>`api.ogt` line 23391</sub>
+<sub>`api.ogt` line 22405</sub>
 
 <a id="type-BadgeKind"></a>
 
@@ -26828,7 +23427,7 @@ enum BadgeKind {
 }
 ```
 
-<sub>`api.ogt` line 23409</sub>
+<sub>`api.ogt` line 22423</sub>
 
 <a id="type-CountBadgeDesc"></a>
 
@@ -26870,7 +23469,7 @@ struct CountBadgeDesc {
 }
 ```
 
-<sub>`api.ogt` line 23416</sub>
+<sub>`api.ogt` line 22430</sub>
 
 <a id="type-TooltipStat"></a>
 
@@ -26900,7 +23499,7 @@ struct TooltipStat {
 }
 ```
 
-<sub>`api.ogt` line 23444</sub>
+<sub>`api.ogt` line 22458</sub>
 
 <a id="type-TooltipLink"></a>
 
@@ -26926,7 +23525,7 @@ struct TooltipLink {
 }
 ```
 
-<sub>`api.ogt` line 23454</sub>
+<sub>`api.ogt` line 22468</sub>
 
 <a id="type-TooltipCardDesc"></a>
 
@@ -27001,7 +23600,7 @@ struct TooltipCardDesc {
 }
 ```
 
-<sub>`api.ogt` line 23462</sub>
+<sub>`api.ogt` line 22476</sub>
 
 <a id="type-TooltipCardResult"></a>
 
@@ -27026,7 +23625,7 @@ struct TooltipCardResult {
 }
 ```
 
-<sub>`api.ogt` line 23502</sub>
+<sub>`api.ogt` line 22516</sub>
 
 <a id="type-ProgressStyle"></a>
 
@@ -27051,7 +23650,7 @@ enum ProgressStyle {
 }
 ```
 
-<sub>`api.ogt` line 23519</sub>
+<sub>`api.ogt` line 22533</sub>
 
 <a id="type-ProgressBarDesc"></a>
 
@@ -27106,7 +23705,7 @@ struct ProgressBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 23526</sub>
+<sub>`api.ogt` line 22540</sub>
 
 <a id="type-ProgressRingDesc"></a>
 
@@ -27146,7 +23745,7 @@ struct ProgressRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 23564</sub>
+<sub>`api.ogt` line 22578</sub>
 
 <a id="type-SkeletonShape"></a>
 
@@ -27175,7 +23774,7 @@ enum SkeletonShape {
 }
 ```
 
-<sub>`api.ogt` line 23592</sub>
+<sub>`api.ogt` line 22606</sub>
 
 <a id="type-SkeletonGroupDesc"></a>
 
@@ -27212,7 +23811,7 @@ struct SkeletonGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 23601</sub>
+<sub>`api.ogt` line 22615</sub>
 
 <a id="type-Notation"></a>
 
@@ -27241,7 +23840,7 @@ enum Notation {
 }
 ```
 
-<sub>`api.ogt` line 23626</sub>
+<sub>`api.ogt` line 22640</sub>
 
 <a id="type-NumberFormatDesc"></a>
 
@@ -27281,7 +23880,7 @@ struct NumberFormatDesc {
 }
 ```
 
-<sub>`api.ogt` line 23635</sub>
+<sub>`api.ogt` line 22649</sub>
 
 <a id="type-NumberCounterDesc"></a>
 
@@ -27334,7 +23933,7 @@ struct NumberCounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 23660</sub>
+<sub>`api.ogt` line 22674</sub>
 
 <a id="type-BannerKind"></a>
 
@@ -27363,7 +23962,7 @@ enum BannerKind {
 }
 ```
 
-<sub>`api.ogt` line 23696</sub>
+<sub>`api.ogt` line 22710</sub>
 
 <a id="type-BannerDesc"></a>
 
@@ -27404,7 +24003,7 @@ struct BannerDesc {
 }
 ```
 
-<sub>`api.ogt` line 23705</sub>
+<sub>`api.ogt` line 22719</sub>
 
 <a id="type-BannerResult"></a>
 
@@ -27429,7 +24028,7 @@ struct BannerResult {
 }
 ```
 
-<sub>`api.ogt` line 23723</sub>
+<sub>`api.ogt` line 22737</sub>
 
 <a id="type-UiRibbonDesc"></a>
 
@@ -27463,7 +24062,7 @@ struct UiRibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 23741</sub>
+<sub>`api.ogt` line 22755</sub>
 
 <a id="type-CelebrationKind"></a>
 
@@ -27490,7 +24089,7 @@ enum CelebrationKind {
 }
 ```
 
-<sub>`api.ogt` line 23764</sub>
+<sub>`api.ogt` line 22778</sub>
 
 <a id="type-CelebrationDesc"></a>
 
@@ -27533,7 +24132,7 @@ struct CelebrationDesc {
 }
 ```
 
-<sub>`api.ogt` line 23772</sub>
+<sub>`api.ogt` line 22786</sub>
 
 <a id="type-StarRatingDesc"></a>
 
@@ -27573,7 +24172,7 @@ struct StarRatingDesc {
 }
 ```
 
-<sub>`api.ogt` line 23802</sub>
+<sub>`api.ogt` line 22816</sub>
 
 <a id="type-SubtitleSize"></a>
 
@@ -27600,7 +24199,7 @@ enum SubtitleSize {
 }
 ```
 
-<sub>`api.ogt` line 23830</sub>
+<sub>`api.ogt` line 22844</sub>
 
 <a id="type-SubtitleSettings"></a>
 
@@ -27649,7 +24248,7 @@ struct SubtitleSettings {
 }
 ```
 
-<sub>`api.ogt` line 23838</sub>
+<sub>`api.ogt` line 22852</sub>
 
 <a id="type-SubtitleLine"></a>
 
@@ -27683,7 +24282,7 @@ struct SubtitleLine {
 }
 ```
 
-<sub>`api.ogt` line 23865</sub>
+<sub>`api.ogt` line 22879</sub>
 
 <a id="type-SubtitlesDesc"></a>
 
@@ -27712,7 +24311,7 @@ struct SubtitlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 23878</sub>
+<sub>`api.ogt` line 22892</sub>
 
 <a id="type-StatBarStyle"></a>
 
@@ -27739,7 +24338,7 @@ enum StatBarStyle {
 }
 ```
 
-<sub>`api.ogt` line 23909</sub>
+<sub>`api.ogt` line 22923</sub>
 
 <a id="type-StatBarDesc"></a>
 
@@ -27842,7 +24441,7 @@ struct StatBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 23917</sub>
+<sub>`api.ogt` line 22931</sub>
 
 <a id="type-OrbMeterDesc"></a>
 
@@ -27889,7 +24488,7 @@ struct OrbMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 23986</sub>
+<sub>`api.ogt` line 23000</sub>
 
 <a id="type-RadialMeterDesc"></a>
 
@@ -27932,7 +24531,7 @@ struct RadialMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 24018</sub>
+<sub>`api.ogt` line 23032</sub>
 
 <a id="type-AbilitySlotDesc"></a>
 
@@ -28007,7 +24606,7 @@ struct AbilitySlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 24047</sub>
+<sub>`api.ogt` line 23061</sub>
 
 <a id="type-AbilityBarDesc"></a>
 
@@ -28045,7 +24644,7 @@ struct AbilityBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 24095</sub>
+<sub>`api.ogt` line 23109</sub>
 
 <a id="type-AbilityBarResult"></a>
 
@@ -28066,7 +24665,7 @@ struct AbilityBarResult {
 }
 ```
 
-<sub>`api.ogt` line 24113</sub>
+<sub>`api.ogt` line 23127</sub>
 
 <a id="type-StatusEffect"></a>
 
@@ -28112,7 +24711,7 @@ struct StatusEffect {
 }
 ```
 
-<sub>`api.ogt` line 24128</sub>
+<sub>`api.ogt` line 23142</sub>
 
 <a id="type-StatusGridDesc"></a>
 
@@ -28153,7 +24752,7 @@ struct StatusGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 24149</sub>
+<sub>`api.ogt` line 23163</sub>
 
 <a id="type-StatusGridResult"></a>
 
@@ -28174,7 +24773,7 @@ struct StatusGridResult {
 }
 ```
 
-<sub>`api.ogt` line 24168</sub>
+<sub>`api.ogt` line 23182</sub>
 
 <a id="type-UnitClass"></a>
 
@@ -28201,539 +24800,7 @@ enum UnitClass {
 }
 ```
 
-<sub>`api.ogt` line 24183</sub>
-
-<a id="type-UnitFrameSize"></a>
-
-### `UnitFrameSize` (enum)
-
-A unit frame's size.
-
-A string: one of the variants below. The zero value is `"large"`.
-
-| Variant | Doc |
-|---|---|
-| `"large"` | The player's or the target's frame (the default). |
-| `"medium"` | A party member's. |
-| `"small"` | A target-of-target's or a pet's. |
-
-```ogt
-enum UnitFrameSize {
-  doc "A unit frame's size."
-  variant large "The player's or the target's frame (the default)."
-  variant medium "A party member's."
-  variant small "A target-of-target's or a pet's."
-}
-```
-
-<sub>`api.ogt` line 24191</sub>
-
-<a id="type-UnitFrameDesc"></a>
-
-### `UnitFrameDesc` (desc struct)
-
-A unit's frame: portrait, name, bars.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key in party frames (and its probe id there). |
-| `name` | `string` | `""` | — | — | — | Its name. |
-| `level` | `string` | `""` | — | — | — | Its level (60, ??); empty is none. |
-| `title` | `string` | `""` | — | — | — | A line under the name (a guild, a class). |
-| `portrait` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait, 1:1). |
-| `icon` | `string` | `""` | — | — | — | A class or role icon of the atlas. |
-| `health` | `number` | `0` | — | — | — | Health. |
-| `healthMax` | `number` | `100` | — | — | — | Its maximum. |
-| `shield` | `number` | `0` | ≥ 0 | — | — | An absorb shield over the health. |
-| `resource` | `number \| null` | `null` | — | — | — | A resource bar's value (mana, rage, energy); null draws none. |
-| `resourceMax` | `number` | `100` | — | — | — | Its maximum. |
-| `resourceColor` | `Paint \| null` | `null` | — | — | — | The resource's own colour instead of its kind's (rage red, energy yellow). |
-| `resourceKind` | `MeterKind` | `"mana"` | — | — | — | Its colour. |
-| `castName` | `string` | `""` | — | — | — | What it is casting; empty is nothing. |
-| `castProgress` | `number` | `0` | — | `ratio` | — | How far the cast is, 0 to 1. |
-| `effects` | `readonly StatusEffect[]` | `[]` | — | — | — | Buffs and debuffs, small under the bars. |
-| `hostile` | `boolean` | `false` | — | — | — | An enemy: its name and bar in danger. |
-| `unitClass` | `UnitClass` | `"normal"` | — | — | — | Elite, rare or boss. |
-| `targeted` | `boolean` | `false` | — | — | — | The player's target: a highlight ring. |
-| `dead` | `boolean` | `false` | — | — | — | Dead: grey, a skull. |
-| `offline` | `boolean` | `false` | — | — | — | Disconnected: the portrait and bar greyed. |
-| `combat` | `boolean` | `false` | — | — | — | In combat: crossed swords by the level. |
-| `leader` | `boolean` | `false` | — | — | — | A party's leader: a crown. |
-| `size` | `UnitFrameSize` | `"large"` | — | — | — | How large. |
-| `reverse` | `boolean` | `false` | — | — | — | Mirrored: the portrait at the end (a target frame). |
-| `anchor` | `Anchor \| null` | `null` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct UnitFrameDesc {
-  doc "A unit's frame: portrait, name, bars."
-  desc true
-  field key String "Its key in party frames (and its probe id there)."
-  field name String "Its name."
-  field level String "Its level (60, ??); empty is none."
-  field title String "A line under the name (a guild, a class)."
-  field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
-  field icon String "A class or role icon of the atlas."
-  field health f32 "Health."
-  field healthMax f32 "Its maximum." {
-    default 100
-  }
-  field shield f32 "An absorb shield over the health." {
-    min 0
-  }
-  field resource Option.f32 "A resource bar's value (mana, rage, energy); null draws none."
-  field resourceMax f32 "Its maximum." {
-    default 100
-  }
-  field resourceColor Option.Paint "The resource's own colour instead of its kind's (rage red, energy yellow)."
-  field resourceKind MeterKind "Its colour." {
-    default mana
-  }
-  field castName String "What it is casting; empty is nothing."
-  field castProgress f32 "How far the cast is, 0 to 1." {
-    unit ratio
-  }
-  field effects List.StatusEffect "Buffs and debuffs, small under the bars."
-  field hostile bool "An enemy: its name and bar in danger."
-  field unitClass UnitClass "Elite, rare or boss."
-  field targeted bool "The player's target: a highlight ring."
-  field dead bool "Dead: grey, a skull."
-  field offline bool "Disconnected: the portrait and bar greyed."
-  field combat bool "In combat: crossed swords by the level."
-  field leader bool "A party's leader: a crown."
-  field size UnitFrameSize "How large."
-  field reverse bool "Mirrored: the portrait at the end (a target frame)."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
-}
-```
-
-<sub>`api.ogt` line 24198</sub>
-
-<a id="type-PartyFramesDesc"></a>
-
-### `PartyFramesDesc` (desc struct)
-
-The party's frames.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `members` | `readonly UnitFrameDesc[]` | `[]` | — | — | — | The members, each with its key. |
-| `anchor` | `Anchor \| null` | `"left"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-| `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | Between frames; 0 is the style's sm space. |
-
-```ogt
-struct PartyFramesDesc {
-  doc "The party's frames."
-  desc true
-  field members List.UnitFrameDesc "The members, each with its key."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default left
-  }
-  field gap f32 "Between frames; 0 is the style's sm space." {
-    min 0
-    unit cssPx
-  }
-}
-```
-
-<sub>`api.ogt` line 24248</sub>
-
-<a id="type-FramesResult"></a>
-
-### `FramesResult` (struct)
-
-What a set of frames answered.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `clicked` | `string \| null` | `null` | — | — | — | The member pressed this tick (its key). |
-
-```ogt
-struct FramesResult {
-  doc "What a set of frames answered."
-  field clicked Option.String "The member pressed this tick (its key)."
-}
-```
-
-<sub>`api.ogt` line 24261</sub>
-
-<a id="type-RaidRole"></a>
-
-### `RaidRole` (enum)
-
-A raid member's role.
-
-A string: one of the variants below. The zero value is `"none"`.
-
-| Variant | Doc |
-|---|---|
-| `"none"` | No role shown. |
-| `"tank"` | Tank: a shield mark. |
-| `"healer"` | Healer: a cross. |
-| `"damage"` | Damage: a sword. |
-
-```ogt
-enum RaidRole {
-  doc "A raid member's role."
-  variant none "No role shown."
-  variant tank "Tank: a shield mark."
-  variant healer "Healer: a cross."
-  variant damage "Damage: a sword."
-}
-```
-
-<sub>`api.ogt` line 24275</sub>
-
-<a id="type-RaidMember"></a>
-
-### `RaidMember` (desc struct)
-
-One cell of raid frames.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | Its name. |
-| `health` | `number` | `0` | — | — | — | Health. |
-| `healthMax` | `number` | `100` | — | — | — | Its maximum. |
-| `absorb` | `number` | `0` | ≥ 0 | — | — | An absorb shield. |
-| `incomingHeal` | `number` | `0` | ≥ 0 | — | — | Healing on its way. |
-| `role` | `RaidRole` | `"none"` | — | — | — | Its role. |
-| `classColor` | `Paint \| null` | `null` | — | — | — | Its class colour for the bar (a WoW raid's), null is the health colour. |
-| `dead` | `boolean` | `false` | — | — | — | Dead. |
-| `offline` | `boolean` | `false` | — | — | — | Disconnected. |
-| `outOfRange` | `boolean` | `false` | — | — | — | Out of range: its bar and class stripe faded to 45 % and its name muted (the name keeps its outline). |
-| `aggro` | `boolean` | `false` | — | — | — | It has the enemy's attention: a danger border. |
-| `dispel` | `string` | `""` | — | — | — | A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border. |
-| `selected` | `boolean` | `false` | — | — | — | The player's target. |
-
-```ogt
-struct RaidMember {
-  doc "One cell of raid frames."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "Its name."
-  field health f32 "Health."
-  field healthMax f32 "Its maximum." {
-    default 100
-  }
-  field absorb f32 "An absorb shield." {
-    min 0
-  }
-  field incomingHeal f32 "Healing on its way." {
-    min 0
-  }
-  field role RaidRole "Its role."
-  field classColor Option.Paint "Its class colour for the bar (a WoW raid's), null is the health colour."
-  field dead bool "Dead."
-  field offline bool "Disconnected."
-  field outOfRange bool "Out of range: its bar and class stripe faded to 45 % and its name muted (the name keeps its outline)."
-  field aggro bool "It has the enemy's attention: a danger border."
-  field dispel String "A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border."
-  field selected bool "The player's target."
-}
-```
-
-<sub>`api.ogt` line 24283</sub>
-
-<a id="type-RaidFramesDesc"></a>
-
-### `RaidFramesDesc` (desc struct)
-
-Raid frames: a grid of compact cells.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `members` | `readonly RaidMember[]` | `[]` | — | — | — | Up to 40 members. |
-| `columns` | `number` | `0` | — | — | — | Members per column (groups of five, as raids are); 0 is 5. |
-| `cellWidth` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's width; 0 is 96. |
-| `cellHeight` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's height; 0 is 36. |
-| `anchor` | `Anchor \| null` | `"left"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct RaidFramesDesc {
-  doc "Raid frames: a grid of compact cells."
-  desc true
-  field members List.RaidMember "Up to 40 members."
-  field columns u32 "Members per column (groups of five, as raids are); 0 is 5."
-  field cellWidth f32 "A cell's width; 0 is 96." {
-    min 0
-    unit cssPx
-  }
-  field cellHeight f32 "A cell's height; 0 is 36." {
-    min 0
-    unit cssPx
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default left
-  }
-}
-```
-
-<sub>`api.ogt` line 24308</sub>
-
-<a id="type-CastState"></a>
-
-### `CastState` (enum)
-
-Where a cast is.
-
-A string: one of the variants below. The zero value is `"casting"`.
-
-| Variant | Doc |
-|---|---|
-| `"casting"` | Under way. |
-| `"success"` | Finished: the bar flashes and fades. |
-| `"interrupted"` | Interrupted: it turns danger, says so, and fades. |
-| `"failed"` | Failed (out of range, moved): the same as interrupted, with its own word. |
-
-```ogt
-enum CastState {
-  doc "Where a cast is."
-  variant casting "Under way."
-  variant success "Finished: the bar flashes and fades."
-  variant interrupted "Interrupted: it turns danger, says so, and fades."
-  variant failed "Failed (out of range, moved): the same as interrupted, with its own word."
-}
-```
-
-<sub>`api.ogt` line 24335</sub>
-
-<a id="type-CastBarDesc"></a>
-
-### `CastBarDesc` (desc struct)
-
-A cast or channel bar.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `name` | `string` | `""` | — | — | — | What is cast. |
-| `icon` | `string` | `""` | — | — | — | Its icon, drawn large on a gradient of its own hue when there is no image. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind ability, 1:1), filling the tile at the bar's start; null draws the icon. |
-| `progress` | `number` | `0` | — | `ratio` | — | How far: a cast fills, a channel drains. |
-| `remaining` | `number` | `0` | — | `s` | — | Seconds left (shown at its end). |
-| `channel` | `boolean` | `false` | — | — | — | A channel: the bar drains, with tick marks at ticks. |
-| `ticks` | `number` | `0` | — | — | — | A channel's ticks (marks along it). |
-| `uninterruptible` | `boolean` | `false` | — | — | — | A shield on its icon and a grey border: it cannot be interrupted. |
-| `state` | `CastState` | `"casting"` | — | — | — | Where it is. |
-| `stateAt` | `number` | `0` | — | — | — | og.ui.tick() when it ended (success, interrupted, failed): it fades out after. |
-| `latency` | `number` | `0` | — | `ratio` | — | The latency zone at its end, a fraction of the bar (a cast can be queued in it), a pale tint of the fill. |
-| `interruptedLabel` | `string` | `"Interrupted"` | — | — | — | The interrupted word. |
-| `failedLabel` | `string` | `"Failed"` | — | — | — | The failed word. |
-| `width` | `Size \| null` | `null` | — | — | — | Its width; null is 280. |
-| `anchor` | `Anchor \| null` | `null` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct CastBarDesc {
-  doc "A cast or channel bar."
-  desc true
-  field name String "What is cast."
-  field icon String "Its icon, drawn large on a gradient of its own hue when there is no image."
-  field image Option.Texture "Its art (art kind ability, 1:1), filling the tile at the bar's start; null draws the icon."
-  field progress f32 "How far: a cast fills, a channel drains." {
-    unit ratio
-  }
-  field remaining f32 "Seconds left (shown at its end)." {
-    unit s
-  }
-  field channel bool "A channel: the bar drains, with tick marks at ticks."
-  field ticks u32 "A channel's ticks (marks along it)."
-  field uninterruptible bool "A shield on its icon and a grey border: it cannot be interrupted."
-  field state CastState "Where it is."
-  field stateAt u32 "og.ui.tick() when it ended (success, interrupted, failed): it fades out after."
-  field latency f32 "The latency zone at its end, a fraction of the bar (a cast can be queued in it), a pale tint of the fill." {
-    unit ratio
-  }
-  field interruptedLabel String "The interrupted word." {
-    default "Interrupted"
-  }
-  field failedLabel String "The failed word." {
-    default "Failed"
-  }
-  field width Option.Size "Its width; null is 280."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place."
-}
-```
-
-<sub>`api.ogt` line 24343</sub>
-
-<a id="type-CrosshairStyle"></a>
-
-### `CrosshairStyle` (enum)
-
-A crosshair's shape.
-
-A string: one of the variants below. The zero value is `"cross"`.
-
-| Variant | Doc |
-|---|---|
-| `"cross"` | Four lines round a gap (the default). |
-| `"dot"` | A dot. |
-| `"circle"` | A ring with a dot. |
-| `"chevron"` | A chevron under the aim point. |
-| `"tShape"` | Three lines, none above (Valorant's T). |
-
-```ogt
-enum CrosshairStyle {
-  doc "A crosshair's shape."
-  variant cross "Four lines round a gap (the default)."
-  variant dot "A dot."
-  variant circle "A ring with a dot."
-  variant chevron "A chevron under the aim point."
-  variant tShape "Three lines, none above (Valorant's T)."
-}
-```
-
-<sub>`api.ogt` line 24382</sub>
-
-<a id="type-HitKind"></a>
-
-### `HitKind` (enum)
-
-What a hit marker shows.
-
-A string: one of the variants below. The zero value is `"hit"`.
-
-| Variant | Doc |
-|---|---|
-| `"hit"` | A hit: four white ticks. |
-| `"headshot"` | A critical or headshot: larger, in gold. |
-| `"kill"` | A kill: larger, in danger, held longer. |
-
-```ogt
-enum HitKind {
-  doc "What a hit marker shows."
-  variant hit "A hit: four white ticks."
-  variant headshot "A critical or headshot: larger, in gold."
-  variant kill "A kill: larger, in danger, held longer."
-}
-```
-
-<sub>`api.ogt` line 24391</sub>
-
-<a id="type-CrosshairDesc"></a>
-
-### `CrosshairDesc` (desc struct)
-
-A crosshair and its hit markers.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `style` | `CrosshairStyle` | `"cross"` | — | — | — | Its shape. |
-| `spread` | `number` | `0` | ≥ 0 | `cssPx` | — | How far the lines stand off for the weapon's spread (moves on a fast spring). |
-| `length` | `number` | `0` | ≥ 0 | `cssPx` | — | A line's length; 0 is 8. |
-| `thickness` | `number` | `0` | ≥ 0 | `cssPx` | — | A line's width; 0 is 2. |
-| `gap` | `number` | `0` | ≥ 0 | `cssPx` | — | The gap at rest; 0 is 6. |
-| `color` | `Paint \| null` | `null` | — | — | — | Its ink; null is white. |
-| `outline` | `boolean` | `true` | — | — | — | A dark outline round each line (the default). |
-| `dot` | `boolean` | `false` | — | — | — | A centre dot with the lines. |
-| `hitAt` | `number \| null` | `null` | — | — | — | og.ui.tick() of the last hit: a marker flashes for it. |
-| `hit` | `HitKind` | `"hit"` | — | — | — | What the last hit was. |
-| `onTarget` | `boolean` | `false` | — | — | — | The aim is on an enemy: the ink turns danger. |
-| `anchor` | `Anchor` | `"center"` | — | — | — | Where it sits; the default is the centre. |
-
-```ogt
-struct CrosshairDesc {
-  doc "A crosshair and its hit markers."
-  desc true
-  field style CrosshairStyle "Its shape."
-  field spread f32 "How far the lines stand off for the weapon's spread (moves on a fast spring)." {
-    min 0
-    unit cssPx
-  }
-  field length f32 "A line's length; 0 is 8." {
-    min 0
-    unit cssPx
-  }
-  field thickness f32 "A line's width; 0 is 2." {
-    min 0
-    unit cssPx
-  }
-  field gap f32 "The gap at rest; 0 is 6." {
-    min 0
-    unit cssPx
-  }
-  field color Option.Paint "Its ink; null is white."
-  field outline bool "A dark outline round each line (the default)." {
-    default true
-  }
-  field dot bool "A centre dot with the lines."
-  field hitAt Option.u32 "og.ui.tick() of the last hit: a marker flashes for it."
-  field hit HitKind "What the last hit was."
-  field onTarget bool "The aim is on an enemy: the ink turns danger."
-  field anchor Anchor "Where it sits; the default is the centre." {
-    default center
-  }
-}
-```
-
-<sub>`api.ogt` line 24398</sub>
-
-<a id="type-AmmoDesc"></a>
-
-### `AmmoDesc` (desc struct)
-
-A weapon's ammunition.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `magazine` | `number` | `0` | — | — | — | Rounds in the magazine. |
-| `magazineMax` | `number` | `0` | — | — | — | Rounds a magazine holds. |
-| `reserve` | `number \| null` | `null` | — | — | — | Rounds in reserve; null is infinite (∞). |
-| `weapon` | `string` | `""` | — | — | — | The weapon's name; empty is none. |
-| `icon` | `string` | `""` | — | — | — | The weapon's icon. |
-| `fireMode` | `string` | `""` | — | — | — | Its fire mode (AUTO, BURST); empty is none. |
-| `reloading` | `number \| null` | `null` | — | `ratio` | — | A reload's progress 0 to 1; null is not reloading. |
-| `reloadLabel` | `string` | `"Reloading"` | — | — | — | The reload word. |
-| `low` | `number` | `0.25` | — | `ratio` | — | At or under this fraction of a magazine it is low: warn, and the reload hint shows. |
-| `reloadHint` | `string` | `""` | — | — | — | Under low: the hint (R Reload); empty is none. |
-| `pips` | `boolean` | `true` | — | — | — | The magazine as a row of rounds when it holds 40 or fewer (the default). |
-| `anchor` | `Anchor \| null` | `"bottomRight"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct AmmoDesc {
-  doc "A weapon's ammunition."
-  desc true
-  field magazine u32 "Rounds in the magazine."
-  field magazineMax u32 "Rounds a magazine holds."
-  field reserve Option.u32 "Rounds in reserve; null is infinite (∞)."
-  field weapon String "The weapon's name; empty is none."
-  field icon String "The weapon's icon."
-  field fireMode String "Its fire mode (AUTO, BURST); empty is none."
-  field reloading Option.f32 "A reload's progress 0 to 1; null is not reloading." {
-    unit ratio
-  }
-  field reloadLabel String "The reload word." {
-    default "Reloading"
-  }
-  field low f32 "At or under this fraction of a magazine it is low: warn, and the reload hint shows." {
-    default 0.25
-    unit ratio
-  }
-  field reloadHint String "Under low: the hint (R Reload); empty is none."
-  field pips bool "The magazine as a row of rounds when it holds 40 or fewer (the default)." {
-    default true
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default bottomRight
-  }
-}
-```
-
-<sub>`api.ogt` line 24440</sub>
+<sub>`api.ogt` line 23197</sub>
 
 <a id="type-MarkerKind"></a>
 
@@ -28766,7 +24833,7 @@ enum MarkerKind {
 }
 ```
 
-<sub>`api.ogt` line 24477</sub>
+<sub>`api.ogt` line 23205</sub>
 
 <a id="type-MapMarkerItem"></a>
 
@@ -28812,7 +24879,7 @@ struct MapMarkerItem {
 }
 ```
 
-<sub>`api.ogt` line 24488</sub>
+<sub>`api.ogt` line 23216</sub>
 
 <a id="type-MapShape"></a>
 
@@ -28835,7 +24902,7 @@ enum MapShape {
 }
 ```
 
-<sub>`api.ogt` line 24509</sub>
+<sub>`api.ogt` line 23237</sub>
 
 <a id="type-MinimapViewDesc"></a>
 
@@ -28907,7 +24974,7 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 24515</sub>
+<sub>`api.ogt` line 23243</sub>
 
 <a id="type-MinimapResult"></a>
 
@@ -28926,7 +24993,7 @@ struct MinimapResult {
 }
 ```
 
-<sub>`api.ogt` line 24556</sub>
+<sub>`api.ogt` line 23284</sub>
 
 <a id="type-CompassPoi"></a>
 
@@ -28964,7 +25031,7 @@ struct CompassPoi {
 }
 ```
 
-<sub>`api.ogt` line 24570</sub>
+<sub>`api.ogt` line 23298</sub>
 
 <a id="type-CompassDesc"></a>
 
@@ -29010,7 +25077,7 @@ struct CompassDesc {
 }
 ```
 
-<sub>`api.ogt` line 24586</sub>
+<sub>`api.ogt` line 23314</sub>
 
 <a id="type-ObjectiveStep"></a>
 
@@ -29048,7 +25115,7 @@ struct ObjectiveStep {
 }
 ```
 
-<sub>`api.ogt` line 24619</sub>
+<sub>`api.ogt` line 23347</sub>
 
 <a id="type-ObjectiveQuest"></a>
 
@@ -29092,7 +25159,7 @@ struct ObjectiveQuest {
 }
 ```
 
-<sub>`api.ogt` line 24634</sub>
+<sub>`api.ogt` line 23362</sub>
 
 <a id="type-ObjectiveTrackerDesc"></a>
 
@@ -29131,214 +25198,7 @@ struct ObjectiveTrackerDesc {
 }
 ```
 
-<sub>`api.ogt` line 24654</sub>
-
-<a id="type-KillfeedEntry"></a>
-
-### `KillfeedEntry` (desc struct)
-
-A line of a killfeed.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `killer` | `string` | `""` | — | — | — | Who got the kill; empty for a fall or the zone. |
-| `killerTeam` | `number` | `0` | — | — | — | The killer's team (its colour). |
-| `victim` | `string` | `""` | — | — | — | Who fell. |
-| `victimTeam` | `number` | `0` | — | — | — | The victim's team. |
-| `weapon` | `string` | `""` | — | — | — | The weapon's icon. |
-| `weaponText` | `string` | `""` | — | — | — | The weapon in words, when it has no icon. |
-| `headshot` | `boolean` | `false` | — | — | — | A headshot mark. |
-| `assist` | `string` | `""` | — | — | — | An assister, after the killer (+ name). |
-| `local` | `boolean` | `false` | — | — | — | The player is in it: the line is highlighted. |
-| `at` | `number` | `0` | — | — | — | og.ui.tick() when it happened. |
-
-```ogt
-struct KillfeedEntry {
-  doc "A line of a killfeed."
-  desc true
-  field key String "Its key (its probe id)."
-  field killer String "Who got the kill; empty for a fall or the zone."
-  field killerTeam u32 "The killer's team (its colour)."
-  field victim String "Who fell."
-  field victimTeam u32 "The victim's team."
-  field weapon String "The weapon's icon."
-  field weaponText String "The weapon in words, when it has no icon."
-  field headshot bool "A headshot mark."
-  field assist String "An assister, after the killer (+ name)."
-  field local bool "The player is in it: the line is highlighted."
-  field at u32 "og.ui.tick() when it happened."
-}
-```
-
-<sub>`api.ogt` line 24681</sub>
-
-<a id="type-KillfeedDesc"></a>
-
-### `KillfeedDesc` (desc struct)
-
-A killfeed.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `entries` | `readonly KillfeedEntry[]` | `[]` | — | — | — | The latest entries, oldest first. |
-| `max` | `number` | `0` | — | — | — | The most lines; 0 is 5 (3 on a phone). |
-| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long a line stays; 0 is 6000. |
-| `anchor` | `Anchor \| null` | `"topRight"` | — | — | — | Opens its own anchored group there (top right; on a phone in portrait top centre, stacked under the compass and the timer built before it, in landscape mid-right); null builds it in place. |
-
-```ogt
-struct KillfeedDesc {
-  doc "A killfeed."
-  desc true
-  field entries List.KillfeedEntry "The latest entries, oldest first."
-  field max u32 "The most lines; 0 is 5 (3 on a phone)."
-  field durationMs f32 "How long a line stays; 0 is 6000." {
-    min 0
-    unit ms
-  }
-  field anchor Option.Anchor "Opens its own anchored group there (top right; on a phone in portrait top centre, stacked under the compass and the timer built before it, in landscape mid-right); null builds it in place." {
-    default topRight
-  }
-}
-```
-
-<sub>`api.ogt` line 24697</sub>
-
-<a id="type-ScoreColumn"></a>
-
-### `ScoreColumn` (desc struct)
-
-A scoreboard column.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key. |
-| `label` | `string` | `""` | — | — | — | Its heading (K, D, A, Score). |
-| `width` | `number` | `0` | ≥ 0 | `cssPx` | — | Its width; 0 is 56. |
-
-```ogt
-struct ScoreColumn {
-  doc "A scoreboard column."
-  desc true
-  field key String "Its key."
-  field label String "Its heading (K, D, A, Score)."
-  field width f32 "Its width; 0 is 56." {
-    min 0
-    unit cssPx
-  }
-}
-```
-
-<sub>`api.ogt` line 24720</sub>
-
-<a id="type-ScoreRow"></a>
-
-### `ScoreRow` (desc struct)
-
-A player's row on a scoreboard.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | The player's name. |
-| `values` | `readonly string[]` | `[]` | — | — | — | The values, one per column. |
-| `local` | `boolean` | `false` | — | — | — | The player: highlighted. |
-| `dead` | `boolean` | `false` | — | — | — | Dead: dimmed with a skull. |
-| `ping` | `number` | `0` | — | — | — | Latency in ms: bars, warn past 100, danger past 200; 0 hides it. |
-| `avatar` | `Texture \| null` | `null` | — | — | — | A portrait (art kind portrait). |
-| `icon` | `string` | `""` | — | — | — | A rank, class or agent icon. |
-| `mvp` | `boolean` | `false` | — | — | — | The best of the match: a star. |
-
-```ogt
-struct ScoreRow {
-  doc "A player's row on a scoreboard."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "The player's name."
-  field values List.String "The values, one per column."
-  field local bool "The player: highlighted."
-  field dead bool "Dead: dimmed with a skull."
-  field ping u32 "Latency in ms: bars, warn past 100, danger past 200; 0 hides it."
-  field avatar Option.Texture "A portrait (art kind portrait)."
-  field icon String "A rank, class or agent icon."
-  field mvp bool "The best of the match: a star."
-}
-```
-
-<sub>`api.ogt` line 24731</sub>
-
-<a id="type-ScoreTeam"></a>
-
-### `ScoreTeam` (desc struct)
-
-A team on a scoreboard.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `team` | `number` | `0` | — | — | — | Its team colour. |
-| `name` | `string` | `""` | — | — | — | Its name. |
-| `score` | `string` | `""` | — | — | — | Its score. |
-| `rows` | `readonly ScoreRow[]` | `[]` | — | — | — | Its players. |
-
-```ogt
-struct ScoreTeam {
-  doc "A team on a scoreboard."
-  desc true
-  field team u32 "Its team colour."
-  field name String "Its name."
-  field score String "Its score."
-  field rows List.ScoreRow "Its players."
-}
-```
-
-<sub>`api.ogt` line 24745</sub>
-
-<a id="type-ScoreboardDesc"></a>
-
-### `ScoreboardDesc` (desc struct)
-
-A scoreboard.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `title` | `string` | `""` | — | — | — | The title (the mode, the map). |
-| `subtitle` | `string` | `""` | — | — | — | A line under it (the round, the time). |
-| `columns` | `readonly ScoreColumn[]` | `[]` | — | — | — | The columns after the name. |
-| `teams` | `readonly ScoreTeam[]` | `[]` | — | — | — | The teams, each with its rows. |
-| `width` | `number` | `0` | ≥ 0 | `cssPx` | — | Its width; 0 is 760 (the safe area less its gutters on a phone). |
-| `anchor` | `Anchor \| null` | `"center"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct ScoreboardDesc {
-  doc "A scoreboard."
-  desc true
-  field title String "The title (the mode, the map)."
-  field subtitle String "A line under it (the round, the time)."
-  field columns List.ScoreColumn "The columns after the name."
-  field teams List.ScoreTeam "The teams, each with its rows."
-  field width f32 "Its width; 0 is 760 (the safe area less its gutters on a phone)." {
-    min 0
-    unit cssPx
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default center
-  }
-}
-```
-
-<sub>`api.ogt` line 24754</sub>
+<sub>`api.ogt` line 23382</sub>
 
 <a id="type-TimerMode"></a>
 
@@ -29361,7 +25221,7 @@ enum TimerMode {
 }
 ```
 
-<sub>`api.ogt` line 24779</sub>
+<sub>`api.ogt` line 23409</sub>
 
 <a id="type-HudTimerDesc"></a>
 
@@ -29409,7 +25269,7 @@ struct HudTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 24785</sub>
+<sub>`api.ogt` line 23415</sub>
 
 <a id="type-ComboDesc"></a>
 
@@ -29449,7 +25309,7 @@ struct ComboDesc {
 }
 ```
 
-<sub>`api.ogt` line 24819</sub>
+<sub>`api.ogt` line 23449</sub>
 
 <a id="type-JudgementEvent"></a>
 
@@ -29479,7 +25339,7 @@ struct JudgementEvent {
 }
 ```
 
-<sub>`api.ogt` line 24846</sub>
+<sub>`api.ogt` line 23476</sub>
 
 <a id="type-JudgementDesc"></a>
 
@@ -29517,290 +25377,7 @@ struct JudgementDesc {
 }
 ```
 
-<sub>`api.ogt` line 24857</sub>
-
-<a id="type-ResourceItem"></a>
-
-### `ResourceItem` (desc struct)
-
-A resource on a resource bar.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `icon` | `string` | `""` | — | — | — | Its icon. |
-| `name` | `string` | `""` | — | — | — | What it is (what a screen reader says). |
-| `amount` | `number` | `0` | — | — | — | How much. |
-| `rate` | `number` | `0` | — | — | — | Its rate (per second or per turn): + in success, − in danger with a mark. |
-| `rateSuffix` | `string` | `"/s"` | — | — | — | After the rate. |
-| `capacity` | `number \| null` | `null` | — | — | — | A cap: shown as amount / capacity, warn near it, danger at it (supply). |
-| `format` | `NumberFormatDesc` | `{}` | — | — | — | How its numbers are written; the default is compact. |
-
-```ogt
-struct ResourceItem {
-  doc "A resource on a resource bar."
-  desc true
-  field key String "Its key (its probe id)."
-  field icon String "Its icon."
-  field name String "What it is (what a screen reader says)."
-  field amount f64 "How much."
-  field rate f64 "Its rate (per second or per turn): + in success, − in danger with a mark."
-  field rateSuffix String "After the rate." {
-    default "/s"
-  }
-  field capacity Option.f64 "A cap: shown as amount / capacity, warn near it, danger at it (supply)."
-  field format NumberFormatDesc "How its numbers are written; the default is compact."
-}
-```
-
-<sub>`api.ogt` line 24884</sub>
-
-<a id="type-ResourceBarDesc"></a>
-
-### `ResourceBarDesc` (desc struct)
-
-A resource bar.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `items` | `readonly ResourceItem[]` | `[]` | — | — | — | The resources. |
-| `rates` | `boolean` | `true` | — | — | — | Show rates (the default). |
-| `clock` | `number \| null` | `null` | — | `s` | — | A game clock at the plate's end, in mono (12:34), after a hairline; null is none. |
-| `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct ResourceBarDesc {
-  doc "A resource bar."
-  desc true
-  field items List.ResourceItem "The resources."
-  field rates bool "Show rates (the default)." {
-    default true
-  }
-  field clock Option.f32 "A game clock at the plate's end, in mono (12:34), after a hairline; null is none." {
-    unit s
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default top
-  }
-}
-```
-
-<sub>`api.ogt` line 24899</sub>
-
-<a id="type-TurnUnit"></a>
-
-### `TurnUnit` (desc struct)
-
-A unit in the turn order.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | Its name. |
-| `portrait` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait, 1:1). |
-| `team` | `number` | `0` | — | — | — | 0 the player's side (primary), else enemies (danger) by number. |
-| `atb` | `number \| null` | `null` | — | `ratio` | — | An active time gauge 0 to 1 under it (Final Fantasy's ATB). |
-| `current` | `boolean` | `false` | — | — | — | Its turn now: larger, ringed, first. |
-| `delayed` | `boolean` | `false` | — | — | — | Pushed back: a down mark. |
-| `dead` | `boolean` | `false` | — | — | — | Out of the order: greyed and crossed. |
-
-```ogt
-struct TurnUnit {
-  doc "A unit in the turn order."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "Its name."
-  field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
-  field team u32 "0 the player's side (primary), else enemies (danger) by number."
-  field atb Option.f32 "An active time gauge 0 to 1 under it (Final Fantasy's ATB)." {
-    unit ratio
-  }
-  field current bool "Its turn now: larger, ringed, first."
-  field delayed bool "Pushed back: a down mark."
-  field dead bool "Out of the order: greyed and crossed."
-}
-```
-
-<sub>`api.ogt` line 24923</sub>
-
-<a id="type-TurnOrderStyle"></a>
-
-### `TurnOrderStyle` (enum)
-
-How a turn order lays out its units.
-
-A string: one of the variants below. The zero value is `"strip"`.
-
-| Variant | Doc |
-|---|---|
-| `"strip"` | Portraits in a strip, the current one larger and ringed with its word (the default). |
-| `"list"` | Rows of portrait and name read top to bottom (a tactics game's initiative list): the current one first in the selected row's rule, an enemy marked by a stripe in its side's ink on the start edge, no numbers. |
-
-```ogt
-enum TurnOrderStyle {
-  doc "How a turn order lays out its units."
-  variant strip "Portraits in a strip, the current one larger and ringed with its word (the default)."
-  variant list "Rows of portrait and name read top to bottom (a tactics game's initiative list): the current one first in the selected row's rule, an enemy marked by a stripe in its side's ink on the start edge, no numbers."
-}
-```
-
-<sub>`api.ogt` line 24938</sub>
-
-<a id="type-TurnOrderDesc"></a>
-
-### `TurnOrderDesc` (desc struct)
-
-A turn order.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `units` | `readonly TurnUnit[]` | `[]` | — | — | — | The units in turn order, the current first. |
-| `style` | `TurnOrderStyle` | `"strip"` | — | — | — | How it lays out: a strip of portraits, or a list of rows. |
-| `direction` | `Direction` | `"row"` | — | — | — | Which way a strip runs (a list always runs down). |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A portrait's side; 0 is 52 (the current one larger). In a list, the portrait's height (its slot 3:2, the art fitted whole). |
-| `max` | `number` | `0` | — | — | — | The most shown; 0 is 8. |
-| `nowLabel` | `string` | `"Now"` | — | — | — | The current one's word: shown under it in a strip, said with its name in both. |
-| `hostileLabel` | `string` | `"Hostile"` | — | — | — | What a screen reader says after an enemy's name in a list. |
-| `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct TurnOrderDesc {
-  doc "A turn order."
-  desc true
-  field units List.TurnUnit "The units in turn order, the current first."
-  field style TurnOrderStyle "How it lays out: a strip of portraits, or a list of rows."
-  field direction Direction "Which way a strip runs (a list always runs down)." {
-    default row
-  }
-  field size f32 "A portrait's side; 0 is 52 (the current one larger). In a list, the portrait's height (its slot 3:2, the art fitted whole)." {
-    min 0
-    unit cssPx
-  }
-  field max u32 "The most shown; 0 is 8."
-  field nowLabel String "The current one's word: shown under it in a strip, said with its name in both." {
-    default "Now"
-  }
-  field hostileLabel String "What a screen reader says after an enemy's name in a list." {
-    default "Hostile"
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default top
-  }
-}
-```
-
-<sub>`api.ogt` line 24944</sub>
-
-<a id="type-SpeedoStyle"></a>
-
-### `SpeedoStyle` (enum)
-
-A speedometer's look.
-
-A string: one of the variants below. The zero value is `"dial"`.
-
-| Variant | Doc |
-|---|---|
-| `"dial"` | A dial with a needle and the tach round it (the default). |
-| `"digital"` | The speed in large digits over a tach bar. |
-| `"arcade"` | The arcade racing look (kart and street racers): the speed as a big bouncy numeral under a fat curved nitro tube (boost) cut into boostSegments, which flares when full. |
-| `"tach"` | A 240° tach arc driven by rpm with its numbers outside it, a shift-light row, and the speed as the largest numeral (no needle) with the gear in a badge beside it. |
-
-```ogt
-enum SpeedoStyle {
-  doc "A speedometer's look."
-  variant dial "A dial with a needle and the tach round it (the default)."
-  variant digital "The speed in large digits over a tach bar."
-  variant arcade "The arcade racing look (kart and street racers): the speed as a big bouncy numeral under a fat curved nitro tube (boost) cut into boostSegments, which flares when full."
-  variant tach "A 240° tach arc driven by rpm with its numbers outside it, a shift-light row, and the speed as the largest numeral (no needle) with the gear in a badge beside it."
-}
-```
-
-<sub>`api.ogt` line 24978</sub>
-
-<a id="type-SpeedometerDesc"></a>
-
-### `SpeedometerDesc` (desc struct)
-
-A speedometer and tachometer.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `speed` | `number` | `0` | — | — | — | The speed. |
-| `maxSpeed` | `number` | `300` | — | — | — | The dial's top. |
-| `unit` | `string` | `"km/h"` | — | — | — | The speed's unit. |
-| `rpm` | `number` | `0` | — | `ratio` | — | Engine speed, 0 to 1 of the tach. |
-| `redline` | `number` | `0.85` | — | `ratio` | — | Where the red zone starts. |
-| `maxRpm` | `number` | `8000` | ≥ 0 | — | — | The tach's top in revolutions per minute (tach: its numbers are thousands, every rpmStep). |
-| `rpmStep` | `number` | `1000` | ≥ 0 | — | — | The revs between the tach's numbered ticks. |
-| `boostSegments` | `number` | `3` | 1 … 8 | — | — | arcade: the nitro tube's segments, each filled whole. |
-| `shiftAt` | `number` | `0` | — | `ratio` | — | Where the shift lights are all lit and flash, 0 to 1 of the tach; 0 is the redline. |
-| `gear` | `string` | `""` | — | — | — | The gear (N, R, 1 …); empty is none. |
-| `boost` | `number \| null` | `null` | — | `ratio` | — | A boost or nitro gauge 0 to 1. |
-| `style` | `SpeedoStyle` | `"dial"` | — | — | — | Its look. |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its diameter; 0 is 180 (132 on a phone). |
-| `anchor` | `Anchor \| null` | `"bottomRight"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct SpeedometerDesc {
-  doc "A speedometer and tachometer."
-  desc true
-  field speed f32 "The speed."
-  field maxSpeed f32 "The dial's top." {
-    default 300
-  }
-  field unit String "The speed's unit." {
-    default "km/h"
-  }
-  field rpm f32 "Engine speed, 0 to 1 of the tach." {
-    unit ratio
-  }
-  field redline f32 "Where the red zone starts." {
-    default 0.85
-    unit ratio
-  }
-  field maxRpm f32 "The tach's top in revolutions per minute (tach: its numbers are thousands, every rpmStep)." {
-    default 8000
-    min 0
-  }
-  field rpmStep f32 "The revs between the tach's numbered ticks." {
-    default 1000
-    min 0
-  }
-  field boostSegments u32 "arcade: the nitro tube's segments, each filled whole." {
-    default 3
-    min 1
-    max 8
-  }
-  field shiftAt f32 "Where the shift lights are all lit and flash, 0 to 1 of the tach; 0 is the redline." {
-    unit ratio
-  }
-  field gear String "The gear (N, R, 1 …); empty is none."
-  field boost Option.f32 "A boost or nitro gauge 0 to 1." {
-    unit ratio
-  }
-  field style SpeedoStyle "Its look."
-  field size f32 "Its diameter; 0 is 180 (132 on a phone)." {
-    min 0
-    unit cssPx
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default bottomRight
-  }
-}
-```
-
-<sub>`api.ogt` line 24986</sub>
+<sub>`api.ogt` line 23487</sub>
 
 <a id="type-ScorebugTeam"></a>
 
@@ -29836,7 +25413,7 @@ struct ScorebugTeam {
 }
 ```
 
-<sub>`api.ogt` line 25043</sub>
+<sub>`api.ogt` line 23514</sub>
 
 <a id="type-ScorebugDesc"></a>
 
@@ -29876,7 +25453,7 @@ struct ScorebugDesc {
 }
 ```
 
-<sub>`api.ogt` line 25056</sub>
+<sub>`api.ogt` line 23527</sub>
 
 <a id="type-MatchStat"></a>
 
@@ -29910,7 +25487,7 @@ struct MatchStat {
 }
 ```
 
-<sub>`api.ogt` line 25081</sub>
+<sub>`api.ogt` line 23552</sub>
 
 <a id="type-MatchStatsDesc"></a>
 
@@ -29942,7 +25519,7 @@ struct MatchStatsDesc {
 }
 ```
 
-<sub>`api.ogt` line 25093</sub>
+<sub>`api.ogt` line 23564</sub>
 
 <a id="type-MatchEvent"></a>
 
@@ -29974,7 +25551,7 @@ struct MatchEvent {
 }
 ```
 
-<sub>`api.ogt` line 25113</sub>
+<sub>`api.ogt` line 23584</sub>
 
 <a id="type-GoalTimelineDesc"></a>
 
@@ -29998,7 +25575,7 @@ struct GoalTimelineDesc {
 }
 ```
 
-<sub>`api.ogt` line 25124</sub>
+<sub>`api.ogt` line 23595</sub>
 
 <a id="type-PlayerPlateDesc"></a>
 
@@ -30039,7 +25616,7 @@ struct PlayerPlateDesc {
 }
 ```
 
-<sub>`api.ogt` line 25140</sub>
+<sub>`api.ogt` line 23611</sub>
 
 <a id="type-SubPlayer"></a>
 
@@ -30065,7 +25642,7 @@ struct SubPlayer {
 }
 ```
 
-<sub>`api.ogt` line 25168</sub>
+<sub>`api.ogt` line 23639</sub>
 
 <a id="type-SubstitutionDesc"></a>
 
@@ -30105,75 +25682,7 @@ struct SubstitutionDesc {
 }
 ```
 
-<sub>`api.ogt` line 25176</sub>
-
-<a id="type-WaveEntry"></a>
-
-### `WaveEntry` (desc struct)
-
-A wave on og.ui.wavePreview.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `number` | `number` | `0` | — | — | — | Its number. |
-| `name` | `string` | `""` | — | — | — | What comes (Crawlers), for a screen reader and the tooltip. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its enemy's art (art kind unitPortrait, 1:1). |
-| `icon` | `string` | `""` | — | — | — | An icon where there is no art. |
-| `count` | `number` | `0` | — | — | — | How many come; 0 prints none. |
-| `boss` | `boolean` | `false` | — | — | — | A boss wave: its tile in the danger hue. |
-
-```ogt
-struct WaveEntry {
-  doc "A wave on og.ui.wavePreview."
-  desc true
-  field key String "Its key (its probe id)."
-  field number u32 "Its number."
-  field name String "What comes (Crawlers), for a screen reader and the tooltip."
-  field image Option.Texture "Its enemy's art (art kind unitPortrait, 1:1)."
-  field icon String "An icon where there is no art."
-  field count u32 "How many come; 0 prints none."
-  field boss bool "A boss wave: its tile in the danger hue."
-}
-```
-
-<sub>`api.ogt` line 25204</sub>
-
-<a id="type-WavePreviewDesc"></a>
-
-### `WavePreviewDesc` (desc struct)
-
-The waves to come.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `waves` | `readonly WaveEntry[]` | `[]` | — | — | — | The waves, the next first. |
-| `title` | `string` | `"Wave preview"` | — | — | — | Its caption. |
-| `current` | `number` | `0` | — | — | — | The wave under way, lit by the selected-tile rule; 0 is none. |
-| `max` | `number` | `0` | — | — | — | The most rows shown; the rest fold into a last row of dots. 0 is 5. |
-| `anchor` | `Anchor \| null` | `"right"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct WavePreviewDesc {
-  doc "The waves to come."
-  desc true
-  field waves List.WaveEntry "The waves, the next first."
-  field title String "Its caption." {
-    default "Wave preview"
-  }
-  field current u32 "The wave under way, lit by the selected-tile rule; 0 is none."
-  field max u32 "The most rows shown; the rest fold into a last row of dots. 0 is 5."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default right
-  }
-}
-```
-
-<sub>`api.ogt` line 25216</sub>
+<sub>`api.ogt` line 23647</sub>
 
 <a id="type-LaneKey"></a>
 
@@ -30205,7 +25714,7 @@ struct LaneKey {
 }
 ```
 
-<sub>`api.ogt` line 25239</sub>
+<sub>`api.ogt` line 23675</sub>
 
 <a id="type-LaneKeysDesc"></a>
 
@@ -30239,7 +25748,7 @@ struct LaneKeysDesc {
 }
 ```
 
-<sub>`api.ogt` line 25251</sub>
+<sub>`api.ogt` line 23687</sub>
 
 <a id="type-FlightHudDesc"></a>
 
@@ -30304,1022 +25813,7 @@ struct FlightHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 25274</sub>
-
-<a id="type-StandingsEntry"></a>
-
-### `StandingsEntry` (desc struct)
-
-A car in the standings, in race order.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | The driver's name (K. Moreno). |
-| `color` | `Paint \| null` | `null` | — | — | — | Its team or car colour, a stripe by its position; null is the team colour of its index. |
-| `gap` | `number` | `0` | — | `s` | — | Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead). |
-| `lapsDown` | `number` | `0` | — | — | — | Laps behind the leader; more than 0 shows +<n> L in place of the gap. |
-| `change` | `number` | `0` | — | — | — | Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none. |
-| `player` | `boolean` | `false` | — | — | — | The player's car: its row lit. |
-| `pit` | `boolean` | `false` | — | — | — | In the pit lane. |
-| `out` | `boolean` | `false` | — | — | — | Retired: dimmed at the foot, its gap the out label. |
-| `fastest` | `boolean` | `false` | — | — | — | Holds the fastest lap: a small purple chip by its name (StandingsTowerDesc.fastestLabel). |
-
-```ogt
-struct StandingsEntry {
-  doc "A car in the standings, in race order."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "The driver's name (K. Moreno)."
-  field color Option.Paint "Its team or car colour, a stripe by its position; null is the team colour of its index."
-  field gap f32 "Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead)." {
-    unit s
-  }
-  field lapsDown u32 "Laps behind the leader; more than 0 shows +<n> L in place of the gap."
-  field change i32 "Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none."
-  field player bool "The player's car: its row lit."
-  field pit bool "In the pit lane."
-  field out bool "Retired: dimmed at the foot, its gap the out label."
-  field fastest bool "Holds the fastest lap: a small purple chip by its name (StandingsTowerDesc.fastestLabel)."
-}
-```
-
-<sub>`api.ogt` line 25320</sub>
-
-<a id="type-StandingsTowerDesc"></a>
-
-### `StandingsTowerDesc` (desc struct)
-
-A racing standings tower.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `entries` | `readonly StandingsEntry[]` | `[]` | — | — | — | The cars in race order, the leader first. |
-| `relative` | `boolean` | `false` | — | — | — | Gaps are to the player (signed, ahead negative) rather than to the leader. |
-| `rows` | `number` | `0` | — | — | — | The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between. |
-| `ahead` | `number` | `0` | — | — | — | A relative window (the racing HUD's): only the player and this many cars ahead of it (at most 1 on a phone), with behind. With ahead or behind above 0 the gaps are intervals in neutral ink, the player's row takes the accent fill with no gap and no place (the lap block has it), and rows is not used. A window at the front or the back of the field keeps its length by showing more on the other side. |
-| `behind` | `number` | `0` | — | — | — | The relative window's cars behind the player (at most 1 on a phone). |
-| `leaderLabel` | `string` | `"Leader"` | — | — | — | The leader's gap (with relative off). |
-| `pitLabel` | `string` | `"PIT"` | — | — | — | The gap of a car in the pit lane. |
-| `outLabel` | `string` | `"OUT"` | — | — | — | The gap of a retired car. |
-| `fastestLabel` | `string` | `"FL"` | — | — | — | The fastest lap's chip. |
-| `anchor` | `Anchor \| null` | `"left"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct StandingsTowerDesc {
-  doc "A racing standings tower."
-  desc true
-  field entries List.StandingsEntry "The cars in race order, the leader first."
-  field relative bool "Gaps are to the player (signed, ahead negative) rather than to the leader."
-  field rows u32 "The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between."
-  field ahead u32 "A relative window (the racing HUD's): only the player and this many cars ahead of it (at most 1 on a phone), with behind. With ahead or behind above 0 the gaps are intervals in neutral ink, the player's row takes the accent fill with no gap and no place (the lap block has it), and rows is not used. A window at the front or the back of the field keeps its length by showing more on the other side."
-  field behind u32 "The relative window's cars behind the player (at most 1 on a phone)."
-  field leaderLabel String "The leader's gap (with relative off)." {
-    default "Leader"
-  }
-  field pitLabel String "The gap of a car in the pit lane." {
-    default "PIT"
-  }
-  field outLabel String "The gap of a retired car." {
-    default "OUT"
-  }
-  field fastestLabel String "The fastest lap's chip." {
-    default "FL"
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default left
-  }
-}
-```
-
-<sub>`api.ogt` line 25337</sub>
-
-<a id="type-SectorState"></a>
-
-### `SectorState` (enum)
-
-A lap's sector as timing screens colour it.
-
-A string: one of the variants below. The zero value is `"none"`.
-
-| Variant | Doc |
-|---|---|
-| `"none"` | Not driven yet this lap. |
-| `"slower"` | Slower than the player's best (yellow, the warn role). |
-| `"personal"` | The player's best sector (green, the success role). |
-| `"best"` | The best sector of anyone (purple). |
-
-```ogt
-enum SectorState {
-  doc "A lap's sector as timing screens colour it."
-  variant none "Not driven yet this lap."
-  variant slower "Slower than the player's best (yellow, the warn role)."
-  variant personal "The player's best sector (green, the success role)."
-  variant best "The best sector of anyone (purple)."
-}
-```
-
-<sub>`api.ogt` line 25371</sub>
-
-<a id="type-LapTimerShow"></a>
-
-### `LapTimerShow` (enum)
-
-Which part of the lap block a call builds, so the place and lap and the times can be anchored apart.
-
-A string: one of the variants below. The zero value is `"all"`.
-
-| Variant | Doc |
-|---|---|
-| `"all"` | The whole block. |
-| `"head"` | The place, the lap and its sector pips. |
-| `"times"` | The current, best and last laps and the split. |
-
-```ogt
-enum LapTimerShow {
-  doc "Which part of the lap block a call builds, so the place and lap and the times can be anchored apart."
-  variant all "The whole block."
-  variant head "The place, the lap and its sector pips."
-  variant times "The current, best and last laps and the split."
-}
-```
-
-<sub>`api.ogt` line 25379</sub>
-
-<a id="type-LapTimerDesc"></a>
-
-### `LapTimerDesc` (desc struct)
-
-A racing lap and split block.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `position` | `number` | `0` | — | — | — | The player's place, from 1; 0 hides the place. |
-| `positionTotal` | `number` | `0` | — | — | — | Cars in the race. |
-| `lap` | `number` | `0` | — | — | — | The lap the player is on, from 1; 0 hides the lap. |
-| `lapTotal` | `number` | `0` | — | — | — | Laps in the race; 0 is open-ended (no total, no final lap). |
-| `currentMs` | `number` | `0` | ≥ 0 | `ms` | — | The current lap's time so far. |
-| `bestMs` | `number \| null` | `null` | — | `ms` | — | The player's best lap; null is none yet. |
-| `lastMs` | `number \| null` | `null` | — | `ms` | — | The last lap's time; null is none yet. |
-| `deltaMs` | `number \| null` | `null` | — | `ms` | — | The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split. |
-| `positionLabel` | `string` | `"Position"` | — | — | — | The place's caption. |
-| `lapLabel` | `string` | `"Lap"` | — | — | — | The lap's caption. |
-| `finalLabel` | `string` | `"Final lap"` | — | — | — | The lap's caption on the final lap. |
-| `currentLabel` | `string` | `"Current lap"` | — | — | — | The current lap's caption. |
-| `bestLabel` | `string` | `"Best lap"` | — | — | — | The best lap's caption. |
-| `lastLabel` | `string` | `"Last lap"` | — | — | — | The last lap's caption. |
-| `splitLabel` | `string` | `"Split"` | — | — | — | The split's caption. |
-| `sectors` | `readonly SectorState[]` | `[]` | — | — | — | This lap's sectors, as pips under the lap counter; empty shows none. |
-| `splitBest` | `boolean` | `false` | — | — | — | The split is a new best: purple instead of success. |
-| `boxless` | `boolean` | `false` | — | — | — | No plate: its text sits on the scene with an outline and a shadow (the Need for Speed rule). |
-| `show` | `LapTimerShow` | `"all"` | — | — | — | Which part it builds: two calls (head at the top left, times at the top centre) anchor them apart. |
-| `placeBadge` | `boolean` | `false` | — | — | — | The arcade look's place: a huge ordinal (positionText) with a bouncy pop when it changes, over its total, in place of the place's counter. |
-| `positionText` | `string` | `""` | — | — | — | The place as the game writes it in its language (1st, 1er, 1位) for placeBadge; empty is the number. |
-| `compact` | `boolean` | `false` | — | — | — | The times as a racing HUD's top centre shows them: the running lap large with the split beside it and the best lap under it at caption size (no last lap, no table). |
-| `anchor` | `Anchor \| null` | `"topLeft"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct LapTimerDesc {
-  doc "A racing lap and split block."
-  desc true
-  field position u32 "The player's place, from 1; 0 hides the place."
-  field positionTotal u32 "Cars in the race."
-  field lap u32 "The lap the player is on, from 1; 0 hides the lap."
-  field lapTotal u32 "Laps in the race; 0 is open-ended (no total, no final lap)."
-  field currentMs f32 "The current lap's time so far." {
-    min 0
-    unit ms
-  }
-  field bestMs Option.f32 "The player's best lap; null is none yet." {
-    unit ms
-  }
-  field lastMs Option.f32 "The last lap's time; null is none yet." {
-    unit ms
-  }
-  field deltaMs Option.f32 "The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split." {
-    unit ms
-  }
-  field positionLabel String "The place's caption." {
-    default "Position"
-  }
-  field lapLabel String "The lap's caption." {
-    default "Lap"
-  }
-  field finalLabel String "The lap's caption on the final lap." {
-    default "Final lap"
-  }
-  field currentLabel String "The current lap's caption." {
-    default "Current lap"
-  }
-  field bestLabel String "The best lap's caption." {
-    default "Best lap"
-  }
-  field lastLabel String "The last lap's caption." {
-    default "Last lap"
-  }
-  field splitLabel String "The split's caption." {
-    default "Split"
-  }
-  field sectors List.SectorState "This lap's sectors, as pips under the lap counter; empty shows none."
-  field splitBest bool "The split is a new best: purple instead of success."
-  field boxless bool "No plate: its text sits on the scene with an outline and a shadow (the Need for Speed rule)."
-  field show LapTimerShow "Which part it builds: two calls (head at the top left, times at the top centre) anchor them apart."
-  field placeBadge bool "The arcade look's place: a huge ordinal (positionText) with a bouncy pop when it changes, over its total, in place of the place's counter."
-  field positionText String "The place as the game writes it in its language (1st, 1er, 1位) for placeBadge; empty is the number."
-  field compact bool "The times as a racing HUD's top centre shows them: the running lap large with the split beside it and the best lap under it at caption size (no last lap, no table)."
-
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default topLeft
-  }
-}
-```
-
-<sub>`api.ogt` line 25386</sub>
-
-<a id="type-ItemSlotDesc"></a>
-
-### `ItemSlotDesc` (desc struct)
-
-An arcade racer's held item.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `item` | `Texture \| null` | `null` | — | — | — | The item held; null is an empty slot. |
-| `uv` | `[number, number, number, number] \| null` | `null` | — | — | — | The item's region of its texture, [u0, v0, u1, v1]; null is the whole texture. |
-| `queued` | `Texture \| null` | `null` | — | — | — | The next item, in the smaller slot; null hides that slot. |
-| `queuedUv` | `[number, number, number, number] \| null` | `null` | — | — | — | The next item's region. |
-| `roulette` | `readonly Texture[]` | `[]` | — | — | — | What a roulette cycles through after a pickup; empty spins the item itself. |
-| `rollingAt` | `number` | `0` | — | — | — | og.ui.tick() of the pickup: from then it cycles the roulette, slowing, for rollMs, then lands on the item with a pop; 0 is no roulette. |
-| `rollMs` | `number` | `1500` | ≥ 0 | `ms` | — | How long the roulette spins. |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | The main slot's side; 0 is 84 (64 on a phone). |
-| `label` | `string` | `""` | — | — | — | What a screen reader calls the item. |
-| `anchor` | `Anchor \| null` | `"topLeft"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct ItemSlotDesc {
-  doc "An arcade racer's held item."
-  desc true
-  field item Option.Texture "The item held; null is an empty slot."
-  field uv Option.Array.f32.4 "The item's region of its texture, [u0, v0, u1, v1]; null is the whole texture."
-  field queued Option.Texture "The next item, in the smaller slot; null hides that slot."
-  field queuedUv Option.Array.f32.4 "The next item's region."
-  field roulette List.Texture "What a roulette cycles through after a pickup; empty spins the item itself."
-  field rollingAt u32 "og.ui.tick() of the pickup: from then it cycles the roulette, slowing, for rollMs, then lands on the item with a pop; 0 is no roulette."
-  field rollMs f32 "How long the roulette spins." {
-    default 1500
-    min 0
-    unit ms
-  }
-  field size f32 "The main slot's side; 0 is 84 (64 on a phone)." {
-    min 0
-    unit cssPx
-  }
-  field label String "What a screen reader calls the item."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default topLeft
-  }
-}
-```
-
-<sub>`api.ogt` line 25449</sub>
-
-<a id="type-DriftScoreDesc"></a>
-
-### `DriftScoreDesc` (desc struct)
-
-An arcade racer's running drift score.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `score` | `number` | `0` | ≥ 0 | — | — | The chain's score so far; 0 with nothing banked hides it. |
-| `multiplier` | `number` | `0` | ≥ 0 | — | — | The chain's multiplier (x2, x3 …); 1 or less hides its badge. |
-| `bankedAt` | `number` | `0` | — | — | — | og.ui.tick() when the chain was banked: the score ticks up into the total for 0.8 s and leaves, and the chain stays over until bankedAt is 0 again (a new chain); 0 is a running chain. |
-| `failedAt` | `number` | `0` | — | — | — | og.ui.tick() when the chain broke (a crash): the score shakes and fades in danger for 0.8 s, and the chain stays over until failedAt is 0 again; 0 is none. |
-| `total` | `number` | `0` | — | — | — | The banked total the chain ticks up into. |
-| `at` | `Vector2 \| null` | `null` | — | — | — | A screen point (CSS px) it floats over, such as the car's; null builds it at its anchor. |
-| `label` | `string` | `"Drift"` | — | — | — | The chain's caption. |
-| `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there when at is null. |
-
-```ogt
-struct DriftScoreDesc {
-  doc "An arcade racer's running drift score."
-  desc true
-  field score f32 "The chain's score so far; 0 with nothing banked hides it." {
-    min 0
-  }
-  field multiplier f32 "The chain's multiplier (x2, x3 …); 1 or less hides its badge." {
-    min 0
-  }
-  field bankedAt u32 "og.ui.tick() when the chain was banked: the score ticks up into the total for 0.8 s and leaves, and the chain stays over until bankedAt is 0 again (a new chain); 0 is a running chain."
-  field failedAt u32 "og.ui.tick() when the chain broke (a crash): the score shakes and fades in danger for 0.8 s, and the chain stays over until failedAt is 0 again; 0 is none."
-  field total f32 "The banked total the chain ticks up into."
-  field at Option.Vector2 "A screen point (CSS px) it floats over, such as the car's; null builds it at its anchor."
-  field label String "The chain's caption." {
-    default "Drift"
-  }
-  field anchor Option.Anchor "Opens its own anchored group there when at is null." {
-    default top
-  }
-}
-```
-
-<sub>`api.ogt` line 25482</sub>
-
-<a id="type-RaceEvent"></a>
-
-### `RaceEvent` (enum)
-
-A race's moment the race banner shows.
-
-A string: one of the variants below. The zero value is `"none"`.
-
-| Variant | Doc |
-|---|---|
-| `"none"` | Nothing (a wrong way still shows). |
-| `"countdown"` | The start: count numerals one a second from `at`, a start light filling danger with each, then GO with every light green. |
-| `"go"` | GO alone, every light green, for a second. |
-| `"checkpoint"` | A checkpoint's split (deltaMs) centre-top under the lap time, held 1.5 s. |
-| `"finalLap"` | A thin gold band with the final lap's label sweeping across the top third, 2 s. |
-| `"finish"` | A checker wipe, then the place huge with the time under it, 2.5 s. |
-
-```ogt
-enum RaceEvent {
-  doc "A race's moment the race banner shows."
-  variant none "Nothing (a wrong way still shows)."
-  variant countdown "The start: count numerals one a second from `at`, a start light filling danger with each, then GO with every light green."
-  variant go "GO alone, every light green, for a second."
-  variant checkpoint "A checkpoint's split (deltaMs) centre-top under the lap time, held 1.5 s."
-  variant finalLap "A thin gold band with the final lap's label sweeping across the top third, 2 s."
-  variant finish "A checker wipe, then the place huge with the time under it, 2.5 s."
-}
-```
-
-<sub>`api.ogt` line 25512</sub>
-
-<a id="type-RaceBannerDesc"></a>
-
-### `RaceBannerDesc` (desc struct)
-
-The race banner's moment.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `event` | `RaceEvent` | `"none"` | — | — | — | Which moment. |
-| `at` | `number` | `0` | — | — | — | og.ui.tick() when it started: a moment plays from then (a later tick plays it again), so a still at a tick is always the same. |
-| `count` | `number` | `3` | 1 … 9 | — | — | countdown: the numeral it starts at, and the start lights' count. |
-| `deltaMs` | `number` | `0` | — | `ms` | — | checkpoint: the split against the best, signed (negative: ahead, in success; positive: behind, in danger). |
-| `best` | `boolean` | `false` | — | — | — | checkpoint: a new best split, in purple. |
-| `index` | `number` | `0` | — | — | — | checkpoint: its number, from 1, for the label's {n}. |
-| `place` | `number` | `0` | — | — | — | finish: the player's place, from 1. |
-| `placeText` | `string` | `""` | — | — | — | finish: the place as the game writes it in its language (1st, 1er, 1位); empty is the number. |
-| `timeMs` | `number` | `0` | ≥ 0 | `ms` | — | finish: the race time, written m:ss.mmm under the place. |
-| `below` | `string` | `""` | — | — | — | checkpoint and finalLap: the element (an id or path, as og.ui.bounds takes it) the moment sits under, centred, clear of its last-frame bounds: the lap timer's times. Empty: a checkpoint centre-top at a ninth of the height, the final lap at a fifth. |
-| `wrongWay` | `boolean` | `false` | — | — | — | The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds. |
-| `goLabel` | `string` | `"GO!"` | — | — | — | The start's last word. |
-| `checkpointLabel` | `string` | `"Checkpoint {n}"` | — | — | — | The checkpoint's caption; {n} is its index. |
-| `wrongWayLabel` | `string` | `"Wrong way"` | — | — | — | The wrong way's words. |
-| `finalLapLabel` | `string` | `"Final lap"` | — | — | — | The final lap's words. |
-| `finishLabel` | `string` | `"Finish"` | — | — | — | The finish's caption over the place. |
-
-```ogt
-struct RaceBannerDesc {
-  doc "The race banner's moment."
-  desc true
-  field event RaceEvent "Which moment."
-  field at u32 "og.ui.tick() when it started: a moment plays from then (a later tick plays it again), so a still at a tick is always the same."
-  field count u32 "countdown: the numeral it starts at, and the start lights' count." {
-    default 3
-    min 1
-    max 9
-  }
-  field deltaMs f32 "checkpoint: the split against the best, signed (negative: ahead, in success; positive: behind, in danger)." {
-    unit ms
-  }
-  field best bool "checkpoint: a new best split, in purple."
-  field index u32 "checkpoint: its number, from 1, for the label's {n}."
-  field place u32 "finish: the player's place, from 1."
-  field placeText String "finish: the place as the game writes it in its language (1st, 1er, 1位); empty is the number."
-  field timeMs f32 "finish: the race time, written m:ss.mmm under the place." {
-    min 0
-    unit ms
-  }
-  field below String "checkpoint and finalLap: the element (an id or path, as og.ui.bounds takes it) the moment sits under, centred, clear of its last-frame bounds: the lap timer's times. Empty: a checkpoint centre-top at a ninth of the height, the final lap at a fifth."
-  field wrongWay bool "The player drives the wrong way: a danger banner with a U-turn arrow, pulsing once a second, over every other moment while it holds."
-  field goLabel String "The start's last word." {
-    default "GO!"
-  }
-  field checkpointLabel String "The checkpoint's caption; {n} is its index." {
-    default "Checkpoint {n}"
-  }
-  field wrongWayLabel String "The wrong way's words." {
-    default "Wrong way"
-  }
-  field finalLapLabel String "The final lap's words." {
-    default "Final lap"
-  }
-  field finishLabel String "The finish's caption over the place." {
-    default "Finish"
-  }
-}
-```
-
-<sub>`api.ogt` line 25522</sub>
-
-<a id="type-RearViewDesc"></a>
-
-### `RearViewDesc` (desc struct)
-
-A rear-view mirror.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `texture` | `Texture \| null` | `null` | — | — | — | What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass. |
-| `mirror` | `boolean` | `true` | — | — | — | Flips it left to right, as a mirror shows the road behind. |
-| `width` | `number` | `0` | ≥ 0 | `cssPx` | — | Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560. |
-| `aspect` | `number` | `4.2` | ≥ 1.5 | — | — | Its width over its height. |
-| `label` | `string` | `"Rear view"` | — | — | — | What a screen reader calls it. |
-| `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct RearViewDesc {
-  doc "A rear-view mirror."
-  desc true
-  field texture Option.Texture "What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass."
-  field mirror bool "Flips it left to right, as a mirror shows the road behind." {
-    default true
-  }
-  field width f32 "Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560." {
-    min 0
-    unit cssPx
-  }
-  field aspect f32 "Its width over its height." {
-    default 4.2
-    min 1.5
-  }
-  field label String "What a screen reader calls it." {
-    default "Rear view"
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default top
-  }
-}
-```
-
-<sub>`api.ogt` line 25571</sub>
-
-<a id="type-SelectedUnit"></a>
-
-### `SelectedUnit` (desc struct)
-
-A unit or building in an RTS selection.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | Its name (Vanguard Marine). |
-| `kind` | `string` | `""` | — | — | — | Its type line under the name (Infantry). |
-| `icon` | `string` | `""` | — | — | — | An icon of the atlas when it has no art. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own. |
-| `health` | `number` | `0` | ≥ 0 | — | — | Its health. |
-| `healthMax` | `number` | `0` | ≥ 0 | — | — | Its most health; 0 hides the bar. |
-| `shield` | `number` | `0` | ≥ 0 | — | — | Its shield, over the health as a thin blue bar. |
-| `shieldMax` | `number` | `0` | ≥ 0 | — | — | Its most shield; 0 is none. |
-| `energy` | `number` | `0` | ≥ 0 | — | — | Its energy, a thin violet bar under the health. |
-| `energyMax` | `number` | `0` | ≥ 0 | — | — | Its most energy; 0 is none. |
-| `progress` | `number \| null` | `null` | — | `ratio` | — | Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none. |
-
-```ogt
-struct SelectedUnit {
-  doc "A unit or building in an RTS selection."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "Its name (Vanguard Marine)."
-  field kind String "Its type line under the name (Infantry)."
-  field icon String "An icon of the atlas when it has no art."
-  field image Option.Texture "Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own."
-  field health f32 "Its health." {
-    min 0
-  }
-  field healthMax f32 "Its most health; 0 hides the bar." {
-    min 0
-  }
-  field shield f32 "Its shield, over the health as a thin blue bar." {
-    min 0
-  }
-  field shieldMax f32 "Its most shield; 0 is none." {
-    min 0
-  }
-  field energy f32 "Its energy, a thin violet bar under the health." {
-    min 0
-  }
-  field energyMax f32 "Its most energy; 0 is none." {
-    min 0
-  }
-  field progress Option.f32 "Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none." {
-    unit ratio
-  }
-}
-```
-
-<sub>`api.ogt` line 25603</sub>
-
-<a id="type-UnitStat"></a>
-
-### `UnitStat` (desc struct)
-
-A line of the focused unit's stats.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `icon` | `string` | `""` | — | — | — | An icon of the atlas before the label; empty is none. |
-| `label` | `string` | `""` | — | — | — | What it is (Armour). |
-| `value` | `string` | `""` | — | — | — | Its value as the game words it (8 - 10). |
-
-```ogt
-struct UnitStat {
-  doc "A line of the focused unit's stats."
-  desc true
-  field key String "Its key (its probe id)."
-  field icon String "An icon of the atlas before the label; empty is none."
-  field label String "What it is (Armour)."
-  field value String "Its value as the game words it (8 - 10)."
-}
-```
-
-<sub>`api.ogt` line 25634</sub>
-
-<a id="type-ControlGroup"></a>
-
-### `ControlGroup` (desc struct)
-
-A control group's tab over the selection.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `label` | `string` | `""` | — | — | — | What its tab says (1). |
-| `count` | `number` | `0` | — | — | — | Units in it; 0 draws an empty tab. |
-
-```ogt
-struct ControlGroup {
-  doc "A control group's tab over the selection."
-  desc true
-  field key String "Its key (its probe id)."
-  field label String "What its tab says (1)."
-  field count u32 "Units in it; 0 draws an empty tab."
-}
-```
-
-<sub>`api.ogt` line 25643</sub>
-
-<a id="type-QueueItem"></a>
-
-### `QueueItem` (desc struct)
-
-Something in a production queue.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
-| `name` | `string` | `""` | — | — | — | What it makes (Vanguard Marine). |
-| `icon` | `string` | `""` | — | — | — | An icon of the atlas when it has no art. |
-| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind portrait or ability, 1:1). |
-| `remaining` | `number` | `0` | ≥ 0 | `s` | — | Seconds left; only the first item counts down. |
-| `duration` | `number` | `0` | ≥ 0 | `s` | — | Its build time; the first item's bar shows remaining over it. |
-| `count` | `number` | `0` | — | — | — | How many of it are queued in this slot; over 1 shows a small count. |
-
-```ogt
-struct QueueItem {
-  doc "Something in a production queue."
-  desc true
-  field key String "Its key (its probe id)."
-  field name String "What it makes (Vanguard Marine)."
-  field icon String "An icon of the atlas when it has no art."
-  field image Option.Texture "Its art (art kind portrait or ability, 1:1)."
-  field remaining f32 "Seconds left; only the first item counts down." {
-    min 0
-    unit s
-  }
-  field duration f32 "Its build time; the first item's bar shows remaining over it." {
-    min 0
-    unit s
-  }
-  field count u32 "How many of it are queued in this slot; over 1 shows a small count."
-}
-```
-
-<sub>`api.ogt` line 25651</sub>
-
-<a id="type-ProductionQueueDesc"></a>
-
-### `ProductionQueueDesc` (desc struct)
-
-A building's production queue.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `items` | `readonly QueueItem[]` | `[]` | — | — | — | In build order, the one being built first. |
-| `slots` | `number` | `0` | — | — | — | Slots shown (empty ones dim); 0 is 5. |
-| `paused` | `boolean` | `false` | — | — | — | Production is held (no supply, no power): the bar and its time in warn. |
-| `pausedLabel` | `string` | `"Paused"` | — | — | — | What the held bar says. |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A queued slot's side; 0 is 40 (36 on a phone). |
-| `anchor` | `Anchor \| null` | `null` | — | — | — | Opens its own anchored group there; null builds it in place (inside a selection panel). |
-
-```ogt
-struct ProductionQueueDesc {
-  doc "A building's production queue."
-  desc true
-  field items List.QueueItem "In build order, the one being built first."
-  field slots u32 "Slots shown (empty ones dim); 0 is 5."
-  field paused bool "Production is held (no supply, no power): the bar and its time in warn."
-  field pausedLabel String "What the held bar says." {
-    default "Paused"
-  }
-  field size f32 "A queued slot's side; 0 is 40 (36 on a phone)." {
-    min 0
-    unit cssPx
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place (inside a selection panel)."
-}
-```
-
-<sub>`api.ogt` line 25669</sub>
-
-<a id="type-ProductionQueueResult"></a>
-
-### `ProductionQueueResult` (struct)
-
-What a production queue answered.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `cancelled` | `string \| null` | `null` | — | — | — | The item pressed this tick to cancel it (its key). |
-
-```ogt
-struct ProductionQueueResult {
-  doc "What a production queue answered."
-  field cancelled Option.String "The item pressed this tick to cancel it (its key)."
-}
-```
-
-<sub>`api.ogt` line 25685</sub>
-
-<a id="type-SelectionPanelDesc"></a>
-
-### `SelectionPanelDesc` (desc struct)
-
-An RTS selection panel.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `units` | `readonly SelectedUnit[]` | `[]` | — | — | — | The selection, in its order. |
-| `focus` | `string` | `""` | — | — | — | The unit the detail card shows (its key); empty is the first. Its tile is outlined. |
-| `groups` | `readonly ControlGroup[]` | `[]` | — | — | — | Control group tabs over the panel; empty draws none. |
-| `group` | `string` | `""` | — | — | — | The current group's key. |
-| `stats` | `readonly UnitStat[]` | `[]` | — | — | — | The focused unit's stats in the detail card. |
-| `tags` | `readonly string[]` | `[]` | — | — | — | Its attributes, a quiet line at the card's foot (Biological, Light). |
-| `queue` | `ProductionQueueDesc \| null` | `null` | — | — | — | A building's queue while it has items (a building selected): beside its card, the item being built large with its name over a progress bar and the time left, the rest as small slots under it; on a phone a row of small slots under the card's line. |
-| `columns` | `number` | `0` | — | — | — | Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone). |
-| `rows` | `number` | `0` | — | — | — | Rows before the selection pages; 0 is 2. |
-| `page` | `number` | `0` | — | — | — | The page shown, from 0. |
-| `anchor` | `Anchor \| null` | `"bottom"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct SelectionPanelDesc {
-  doc "An RTS selection panel."
-  desc true
-  field units List.SelectedUnit "The selection, in its order."
-  field focus String "The unit the detail card shows (its key); empty is the first. Its tile is outlined."
-  field groups List.ControlGroup "Control group tabs over the panel; empty draws none."
-  field group String "The current group's key."
-  field stats List.UnitStat "The focused unit's stats in the detail card."
-  field tags List.String "Its attributes, a quiet line at the card's foot (Biological, Light)."
-  field queue Option.ProductionQueueDesc "A building's queue while it has items (a building selected): beside its card, the item being built large with its name over a progress bar and the time left, the rest as small slots under it; on a phone a row of small slots under the card's line."
-  field columns u32 "Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone)."
-  field rows u32 "Rows before the selection pages; 0 is 2."
-  field page u32 "The page shown, from 0."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default bottom
-  }
-}
-```
-
-<sub>`api.ogt` line 25699</sub>
-
-<a id="type-SelectionPanelResult"></a>
-
-### `SelectionPanelResult` (struct)
-
-What a selection panel answered.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed this tick (its key): the game focuses it, or selects only it. |
-| `group` | `string \| null` | `null` | — | — | — | A control group's tab pressed this tick (its key). |
-| `cancelled` | `string \| null` | `null` | — | — | — | A queue item pressed this tick (its key). |
-
-```ogt
-struct SelectionPanelResult {
-  doc "What a selection panel answered."
-  field clicked Option.String "A unit's tile pressed this tick (its key): the game focuses it, or selects only it."
-  field group Option.String "A control group's tab pressed this tick (its key)."
-  field cancelled Option.String "A queue item pressed this tick (its key)."
-}
-```
-
-<sub>`api.ogt` line 25717</sub>
-
-<a id="type-CommandCardDesc"></a>
-
-### `CommandCardDesc` (desc struct)
-
-An RTS command card.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `commands` | `readonly AbilitySlotDesc[]` | `[]` | — | — | — | The commands in reading order, each one's key its id; an empty key leaves its cell empty. |
-| `columns` | `number` | `0` | — | — | — | Columns; 0 is 5. |
-| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's side; 0 is 56 (48 on a phone). |
-| `anchor` | `Anchor \| null` | `"bottomRight"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct CommandCardDesc {
-  doc "An RTS command card."
-  desc true
-  field commands List.AbilitySlotDesc "The commands in reading order, each one's key its id; an empty key leaves its cell empty."
-  field columns u32 "Columns; 0 is 5."
-  field size f32 "A cell's side; 0 is 56 (48 on a phone)." {
-    min 0
-    unit cssPx
-  }
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default bottomRight
-  }
-}
-```
-
-<sub>`api.ogt` line 25733</sub>
-
-<a id="type-RtsConsoleDesc"></a>
-
-### `RtsConsoleDesc` (desc struct)
-
-An RTS bottom console.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `map` | `MinimapViewDesc \| null` | `null` | — | — | — | The minimap zone at its start; null is none. |
-| `selection` | `SelectionPanelDesc` | `{}` | — | — | — | The selection and unit card zones (its anchor is ignored). |
-| `commands` | `CommandCardDesc` | `{}` | — | — | — | The command card zone at its end (its anchor is ignored). |
-| `anchor` | `Anchor \| null` | `"bottom"` | — | — | — | Opens its own anchored group there; null builds it in place. |
-
-```ogt
-struct RtsConsoleDesc {
-  doc "An RTS bottom console."
-  desc true
-  field map Option.MinimapViewDesc "The minimap zone at its start; null is none."
-  field selection SelectionPanelDesc "The selection and unit card zones (its anchor is ignored)."
-  field commands CommandCardDesc "The command card zone at its end (its anchor is ignored)."
-  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
-    default bottom
-  }
-}
-```
-
-<sub>`api.ogt` line 25756</sub>
-
-<a id="type-RtsConsoleResult"></a>
-
-### `RtsConsoleResult` (struct)
-
-What an RTS console answered.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `mapClicked` | `boolean` | `false` | — | — | — | The minimap was pressed this tick (MinimapResult.clicked). |
-| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed this tick (its key). |
-| `group` | `string \| null` | `null` | — | — | — | A control group's tab pressed this tick (its key). |
-| `cancelled` | `string \| null` | `null` | — | — | — | A queue item pressed this tick (its key). |
-| `command` | `string \| null` | `null` | — | — | — | A command pressed and released this tick (its key). |
-| `pressed` | `readonly string[]` | `[]` | — | — | — | The commands held. |
-
-```ogt
-struct RtsConsoleResult {
-  doc "What an RTS console answered."
-  field mapClicked bool "The minimap was pressed this tick (MinimapResult.clicked)."
-  field clicked Option.String "A unit's tile pressed this tick (its key)."
-  field group Option.String "A control group's tab pressed this tick (its key)."
-  field cancelled Option.String "A queue item pressed this tick (its key)."
-  field command Option.String "A command pressed and released this tick (its key)."
-  field pressed List.String "The commands held."
-}
-```
-
-<sub>`api.ogt` line 25767</sub>
-
-<a id="type-DragSelectDesc"></a>
-
-### `DragSelectDesc` (desc struct)
-
-An RTS drag selection.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `enabled` | `boolean` | `true` | — | — | — | It follows the pointer: a press on the scene and a drag past the threshold draws the box. |
-| `from` | `Vector2 \| null` | `null` | — | — | — | Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection). |
-| `to` | `Vector2 \| null` | `null` | — | — | — | Where it ends, with from. |
-| `threshold` | `number` | `6` | ≥ 0 | `cssPx` | — | How far a press travels before it is a drag, not a click. |
-| `color` | `Paint \| null` | `null` | — | — | — | Its colour; null is the style's highlight. |
-| `exclude` | `readonly string[]` | `[]` | — | — | — | Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box. |
-
-```ogt
-struct DragSelectDesc {
-  doc "An RTS drag selection."
-  desc true
-  field enabled bool "It follows the pointer: a press on the scene and a drag past the threshold draws the box." {
-    default true
-  }
-  field from Option.Vector2 "Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection)."
-  field to Option.Vector2 "Where it ends, with from."
-  field threshold f32 "How far a press travels before it is a drag, not a click." {
-    default 6
-    min 0
-    unit cssPx
-  }
-  field color Option.Paint "Its colour; null is the style's highlight."
-  field exclude List.String "Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box."
-}
-```
-
-<sub>`api.ogt` line 25786</sub>
-
-<a id="type-DragSelectResult"></a>
-
-### `DragSelectResult` (struct)
-
-What a drag selection answered.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `dragging` | `boolean` | `false` | — | — | — | The box is drawn this tick. |
-| `released` | `boolean` | `false` | — | — | — | The box was let go this tick: select what lies inside x, y, width and height. |
-| `x` | `number` | `0` | — | `cssPx` | — | The box's left. |
-| `y` | `number` | `0` | — | `cssPx` | — | Its top. |
-| `width` | `number` | `0` | — | `cssPx` | — | Its width. |
-| `height` | `number` | `0` | — | `cssPx` | — | Its height. |
-
-```ogt
-struct DragSelectResult {
-  doc "What a drag selection answered."
-  field dragging bool "The box is drawn this tick."
-  field released bool "The box was let go this tick: select what lies inside x, y, width and height."
-  field x f32 "The box's left." {
-    unit cssPx
-  }
-  field y f32 "Its top." {
-    unit cssPx
-  }
-  field width f32 "Its width." {
-    unit cssPx
-  }
-  field height f32 "Its height." {
-    unit cssPx
-  }
-}
-```
-
-<sub>`api.ogt` line 25803</sub>
-
-<a id="type-DamageHit"></a>
-
-### `DamageHit` (desc struct)
-
-A hit from a direction.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `angle` | `number` | `0` | — | `rad` | — | Where it came from, clockwise from straight ahead. |
-| `at` | `number` | `0` | — | — | — | og.ui.tick() when it landed. |
-| `strength` | `number` | `1` | — | `ratio` | — | How hard, 0 to 1 (its width and opacity). |
-
-```ogt
-struct DamageHit {
-  doc "A hit from a direction."
-  desc true
-  field angle f32 "Where it came from, clockwise from straight ahead." {
-    unit rad
-  }
-  field at u32 "og.ui.tick() when it landed."
-  field strength f32 "How hard, 0 to 1 (its width and opacity)." {
-    default 1
-    unit ratio
-  }
-}
-```
-
-<sub>`api.ogt` line 25830</sub>
-
-<a id="type-DamageDirectionDesc"></a>
-
-### `DamageDirectionDesc` (desc struct)
-
-Damage direction indicators.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `hits` | `readonly DamageHit[]` | `[]` | — | — | — | Recent hits. |
-| `durationMs` | `number` | `0` | ≥ 0 | `ms` | — | How long an indicator shows; 0 is 1400. |
-| `radius` | `number` | `0` | ≥ 0 | `cssPx` | — | Its distance from the centre; 0 is a fifth of the surface's shorter side. |
-| `color` | `Paint \| null` | `null` | — | — | — | Its ink; null is danger. |
-
-```ogt
-struct DamageDirectionDesc {
-  doc "Damage direction indicators."
-  desc true
-  field hits List.DamageHit "Recent hits."
-  field durationMs f32 "How long an indicator shows; 0 is 1400." {
-    min 0
-    unit ms
-  }
-  field radius f32 "Its distance from the centre; 0 is a fifth of the surface's shorter side." {
-    min 0
-    unit cssPx
-  }
-  field color Option.Paint "Its ink; null is danger."
-}
-```
-
-<sub>`api.ogt` line 25843</sub>
-
-<a id="type-LowHealthDesc"></a>
-
-### `LowHealthDesc` (desc struct)
-
-A low-health and hit vignette.
-
-A desc: every field may be omitted and takes its default; `{}` is valid.
-
-| Field | Type | Default | Range | Unit | Notes | Doc |
-|---|---|---|---|---|---|---|
-| `health` | `number` | `0` | — | `ratio` | — | Health as a fraction, 0 to 1. |
-| `threshold` | `number` | `0.35` | — | `ratio` | — | Under this the vignette shows, deepening to 0. |
-| `hitAt` | `number \| null` | `null` | — | — | — | og.ui.tick() of the last hit: a quick red flash at the edges. |
-| `color` | `Paint \| null` | `null` | — | — | — | Its ink; null is a deep red. |
-
-```ogt
-struct LowHealthDesc {
-  doc "A low-health and hit vignette."
-  desc true
-  field health f32 "Health as a fraction, 0 to 1." {
-    unit ratio
-  }
-  field threshold f32 "Under this the vignette shows, deepening to 0." {
-    default 0.35
-    unit ratio
-  }
-  field hitAt Option.u32 "og.ui.tick() of the last hit: a quick red flash at the edges."
-  field color Option.Paint "Its ink; null is a deep red."
-}
-```
-
-<sub>`api.ogt` line 25867</sub>
+<sub>`api.ogt` line 23710</sub>
 
 <a id="type-Reaction"></a>
 
@@ -31348,7 +25842,7 @@ enum Reaction {
 }
 ```
 
-<sub>`api.ogt` line 25900</sub>
+<sub>`api.ogt` line 23766</sub>
 
 <a id="type-NameplateDesc"></a>
 
@@ -31414,7 +25908,7 @@ struct NameplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 25909</sub>
+<sub>`api.ogt` line 23775</sub>
 
 <a id="type-OverheadBar"></a>
 
@@ -31446,7 +25940,7 @@ struct OverheadBar {
 }
 ```
 
-<sub>`api.ogt` line 25952</sub>
+<sub>`api.ogt` line 23818</sub>
 
 <a id="type-OverheadBarsDesc"></a>
 
@@ -31486,7 +25980,7 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>`api.ogt` line 25964</sub>
+<sub>`api.ogt` line 23830</sub>
 
 <a id="type-DamageKind"></a>
 
@@ -31519,7 +26013,7 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 25993</sub>
+<sub>`api.ogt` line 23859</sub>
 
 <a id="type-DamageHitDesc"></a>
 
@@ -31551,7 +26045,7 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 26004</sub>
+<sub>`api.ogt` line 23870</sub>
 
 <a id="type-DamageNumbersDesc"></a>
 
@@ -31588,7 +26082,7 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 26015</sub>
+<sub>`api.ogt` line 23881</sub>
 
 <a id="type-InteractionPromptDesc"></a>
 
@@ -31634,7 +26128,7 @@ struct InteractionPromptDesc {
 }
 ```
 
-<sub>`api.ogt` line 26042</sub>
+<sub>`api.ogt` line 23908</sub>
 
 <a id="type-WaypointKind"></a>
 
@@ -31665,7 +26159,7 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 26074</sub>
+<sub>`api.ogt` line 23940</sub>
 
 <a id="type-WaypointDesc"></a>
 
@@ -31720,7 +26214,7 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 26084</sub>
+<sub>`api.ogt` line 23950</sub>
 
 <a id="type-GroundDesc"></a>
 
@@ -31771,7 +26265,7 @@ struct GroundDesc {
 }
 ```
 
-<sub>`api.ogt` line 26121</sub>
+<sub>`api.ogt` line 23987</sub>
 
 <a id="type-SelectionRingDesc"></a>
 
@@ -31813,7 +26307,7 @@ struct SelectionRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 26147</sub>
+<sub>`api.ogt` line 24013</sub>
 
 <a id="type-TelegraphShape"></a>
 
@@ -31840,7 +26334,7 @@ enum TelegraphShape {
 }
 ```
 
-<sub>`api.ogt` line 26176</sub>
+<sub>`api.ogt` line 24042</sub>
 
 <a id="type-TelegraphDesc"></a>
 
@@ -31902,7 +26396,7 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 26184</sub>
+<sub>`api.ogt` line 24050</sub>
 
 <a id="type-PathLineDesc"></a>
 
@@ -31946,7 +26440,7 @@ struct PathLineDesc {
 }
 ```
 
-<sub>`api.ogt` line 26230</sub>
+<sub>`api.ogt` line 24096</sub>
 
 <a id="type-PlacementGhostDesc"></a>
 
@@ -32001,7 +26495,7 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 26261</sub>
+<sub>`api.ogt` line 24127</sub>
 
 <a id="type-LootLabelDesc"></a>
 
@@ -32045,7 +26539,7 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 26302</sub>
+<sub>`api.ogt` line 24168</sub>
 
 <a id="type-LootLabelResult"></a>
 
@@ -32068,7 +26562,7 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 26323</sub>
+<sub>`api.ogt` line 24189</sub>
 
 <a id="type-SpeechBubbleDesc"></a>
 
@@ -32122,7 +26616,7 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26339</sub>
+<sub>`api.ogt` line 24205</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -32136,7 +26630,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 26378</sub>
+<sub>`api.ogt` line 24244</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -32150,7 +26644,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 26379</sub>
+<sub>`api.ogt` line 24245</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -32179,7 +26673,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 26395</sub>
+<sub>`api.ogt` line 24261</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -32206,7 +26700,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 26404</sub>
+<sub>`api.ogt` line 24270</sub>
 
 <a id="type-LineCap"></a>
 
@@ -32231,7 +26725,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 26412</sub>
+<sub>`api.ogt` line 24278</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -32256,7 +26750,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 26419</sub>
+<sub>`api.ogt` line 24285</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -32344,7 +26838,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 26426</sub>
+<sub>`api.ogt` line 24292</sub>
 
 <a id="type-GradientType"></a>
 
@@ -32371,7 +26865,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 26481</sub>
+<sub>`api.ogt` line 24347</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -32396,7 +26890,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 26489</sub>
+<sub>`api.ogt` line 24355</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -32424,7 +26918,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 26496</sub>
+<sub>`api.ogt` line 24362</sub>
 
 <a id="type-Gradient"></a>
 
@@ -32461,7 +26955,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 26507</sub>
+<sub>`api.ogt` line 24373</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -32492,7 +26986,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 26523</sub>
+<sub>`api.ogt` line 24389</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -32517,7 +27011,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 26533</sub>
+<sub>`api.ogt` line 24399</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -32539,7 +27033,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 26540</sub>
+<sub>`api.ogt` line 24406</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -32598,7 +27092,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 26546</sub>
+<sub>`api.ogt` line 24412</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -32622,7 +27116,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 26576</sub>
+<sub>`api.ogt` line 24442</sub>
 
 <a id="type-Fill"></a>
 
@@ -32650,7 +27144,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 26583</sub>
+<sub>`api.ogt` line 24449</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -32675,7 +27169,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 26592</sub>
+<sub>`api.ogt` line 24458</sub>
 
 <a id="type-Stroke"></a>
 
@@ -32721,7 +27215,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 26599</sub>
+<sub>`api.ogt` line 24465</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -32758,7 +27252,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 26623</sub>
+<sub>`api.ogt` line 24489</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -32790,7 +27284,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 26641</sub>
+<sub>`api.ogt` line 24507</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -32816,7 +27310,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 26655</sub>
+<sub>`api.ogt` line 24521</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -32871,7 +27365,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 26665</sub>
+<sub>`api.ogt` line 24531</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -32898,7 +27392,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 26695</sub>
+<sub>`api.ogt` line 24561</sub>
 
 <a id="type-Elevation"></a>
 
@@ -32925,7 +27419,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 26703</sub>
+<sub>`api.ogt` line 24569</sub>
 
 <a id="type-Effect"></a>
 
@@ -32957,7 +27451,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 26711</sub>
+<sub>`api.ogt` line 24577</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -32982,7 +27476,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 26722</sub>
+<sub>`api.ogt` line 24588</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -33008,7 +27502,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 26729</sub>
+<sub>`api.ogt` line 24595</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -33049,7 +27543,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 26737</sub>
+<sub>`api.ogt` line 24603</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -33075,7 +27569,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 26752</sub>
+<sub>`api.ogt` line 24618</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -33108,7 +27602,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 26760</sub>
+<sub>`api.ogt` line 24626</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -33138,7 +27632,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 26775</sub>
+<sub>`api.ogt` line 24641</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -33164,7 +27658,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 26787</sub>
+<sub>`api.ogt` line 24653</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -33210,7 +27704,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 26795</sub>
+<sub>`api.ogt` line 24661</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -33243,7 +27737,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 26815</sub>
+<sub>`api.ogt` line 24681</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -33287,7 +27781,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 26826</sub>
+<sub>`api.ogt` line 24692</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -33311,7 +27805,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 26864</sub>
+<sub>`api.ogt` line 24730</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -33334,7 +27828,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 26871</sub>
+<sub>`api.ogt` line 24737</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -33359,7 +27853,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 26877</sub>
+<sub>`api.ogt` line 24743</sub>
 
 <a id="type-Declutter"></a>
 
@@ -33386,7 +27880,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 26884</sub>
+<sub>`api.ogt` line 24750</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -33420,7 +27914,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 26892</sub>
+<sub>`api.ogt` line 24758</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -33515,7 +28009,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 26908</sub>
+<sub>`api.ogt` line 24774</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -33562,7 +28056,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 26963</sub>
+<sub>`api.ogt` line 24829</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -33622,7 +28116,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 26994</sub>
+<sub>`api.ogt` line 24860</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -33653,7 +28147,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 27028</sub>
+<sub>`api.ogt` line 24894</sub>
 
 <a id="type-MassKind"></a>
 
@@ -33682,7 +28176,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 27049</sub>
+<sub>`api.ogt` line 24915</sub>
 
 <a id="type-MassEase"></a>
 
@@ -33711,7 +28205,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 27058</sub>
+<sub>`api.ogt` line 24924</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -33734,7 +28228,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 27067</sub>
+<sub>`api.ogt` line 24933</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -33759,7 +28253,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 27073</sub>
+<sub>`api.ogt` line 24939</sub>
 
 <a id="type-MassKey"></a>
 
@@ -33806,7 +28300,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 27080</sub>
+<sub>`api.ogt` line 24946</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -33906,7 +28400,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 27106</sub>
+<sub>`api.ogt` line 24972</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -33953,7 +28447,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 27164</sub>
+<sub>`api.ogt` line 25030</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -33978,7 +28472,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 27214</sub>
+<sub>`api.ogt` line 25080</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -34072,7 +28566,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 27221</sub>
+<sub>`api.ogt` line 25087</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -34097,7 +28591,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 27287</sub>
+<sub>`api.ogt` line 25153</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -34159,7 +28653,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 27294</sub>
+<sub>`api.ogt` line 25160</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -34207,7 +28701,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 27338</sub>
+<sub>`api.ogt` line 25204</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -34252,7 +28746,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 27361</sub>
+<sub>`api.ogt` line 25227</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -34279,7 +28773,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 27390</sub>
+<sub>`api.ogt` line 25256</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -34302,7 +28796,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 27399</sub>
+<sub>`api.ogt` line 25265</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -34345,7 +28839,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 27406</sub>
+<sub>`api.ogt` line 25272</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -34370,7 +28864,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 27423</sub>
+<sub>`api.ogt` line 25289</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -34407,7 +28901,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 27430</sub>
+<sub>`api.ogt` line 25296</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -34438,7 +28932,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 27446</sub>
+<sub>`api.ogt` line 25312</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -34461,7 +28955,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 27456</sub>
+<sub>`api.ogt` line 25322</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -34488,7 +28982,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 27463</sub>
+<sub>`api.ogt` line 25329</sub>
 
 ## Column kinds
 
@@ -34508,7 +29002,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 26381</sub>
+<sub>`api.ogt` line 24247</sub>
 
 ```ogt
 column UiMaterial {
@@ -34519,4 +29013,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 26388</sub>
+<sub>`api.ogt` line 24254</sub>

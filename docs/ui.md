@@ -1376,6 +1376,52 @@ aliases with different sizes cannot both keep those sizes when they name
 one role. No version bump occurs in a feature stream; the integrating
 release head moves these unreleased breaking entries once for the wave.
 
+### 17.5 The first-wave genre kits (phase 1)
+
+The genre components left `og.ui` for six bundled kits under
+`packages/engine/extensions/`. Each kit's `index.ts` registers one typed
+namespace, and its `types.ts` holds the data types that used to be
+generated from `ui-hud.ogt` and `ui-patterns.ogt`:
+
+| Kit | Members |
+|---|---|
+| `rpg` | `inventoryGrid`, `paperdoll`, `questLog`, `questTracker`, `conversation`, `unitFrame`, `partyFrames`, `raidFrames`, `castBar`, `turnOrder` |
+| `shooter` | `crosshair`, `ammoCounter`, `killfeed`, `damageDirection`, `lowHealthVignette`, `scoreboard`, `loadout` |
+| `puzzle` | `sagaMap`, `goalChips` |
+| `gacha` | `gachaBanner`, `pullSequence` |
+| `strategy` | `productionQueue`, `selectionPanel`, `commandCard`, `rtsConsole`, `dragSelect`, `rtsCommands`, `wavePreview`, `resourceBar` |
+| `racing` | `speedometer`, `standingsTower`, `lapTimer`, `rearView`, `raceBanner`, `itemSlot`, `driftScore`, `garage` |
+
+Generic lists, slots, meters, timers (`hudTimer`), stars (`starBar`),
+counters, stores, rewards, cards and world tags stay in `og.ui`. A game
+imports a kit explicitly, from the bundled copy or from its installed
+copy after `og ui add <kit>`:
+
+```ts
+import { racing, type StandingsEntry } from "@origingame/engine/extensions/racing/index.ts";
+import { racing } from "../assets/ui-kits/racing/index.ts";
+```
+
+Kit code imports only public modules: `@origingame/engine` (og and its
+types), `@origingame/engine/ui-extensions`, and the authoring helpers in
+`@origingame/engine/ui-parts/hud` (HUD placement in the safe area, parts
+a style dresses, the frame's tokens and roles, motion by the tick) and
+`@origingame/engine/ui-parts/screen` (surfaces, buttons, symbols, art
+slots, price tags, a phone's room). The ui-parts modules only re-export
+helpers the common components already share; their names and signatures
+are a contract within a minor version, and changing one is a breaking
+changelog entry. Every helper is built from `og.ui`'s public members and
+keeps its state in the UI's memory, so a kit runs unchanged on both hosts.
+
+`og upgrade` crosses this change with the `ui-kits` codemod. Its
+changelog entry lists each kit's members and types, so a later kit needs
+no edit to the codemod. It rewrites `og.ui.<member>` to `<kit>.<member>`,
+moves the kit's types out of `@origingame/engine` imports and
+`Api.<Type>` uses, and adds one import per kit. An existing import of
+the kit, bundled or installed, is kept. A call through another alias of
+`og.ui`, or a file where the kit's name is already bound, is listed for a
+manual edit. A second run changes nothing.
+
 ## 17a. The existing coverage kit
 
 `templates/ui-kit` is rebuilt as the coverage proof:

@@ -5,7 +5,7 @@ version 1
 # car's name, the Garage and Tuning views and Test drive at the head; under
 # them the garage (parts and livery) or the game's tuning page.
 #
-# Slot Garage (the Garage view) takes og.ui.garage("Garage", desc): the
+# Slot Garage (the Garage view) takes racing.garage("Garage", desc): the
 # categories' rail, the category's parts with their pips, prices, locks
 # and fitted ticks, the car on its lit turntable, the performance card
 # (class badge, rating and each figure with the selected part's change),

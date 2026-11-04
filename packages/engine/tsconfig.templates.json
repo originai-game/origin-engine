@@ -13,7 +13,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "@origingame/engine": ["./types/index.d.ts"]
+      "@origingame/engine": ["./types/index.d.ts"],
+      "@origingame/engine/ui-extensions": ["./src/ui-extensions.ts"],
+      "@origingame/engine/ui-parts/*": ["./src/ui-parts/*.ts"],
+      "@origingame/engine/extensions/*": ["./extensions/*"]
     }
   },
   "include": ["../../templates/*/src/**/*.ts", "../../templates/archetypes/*/src/**/*.ts"]

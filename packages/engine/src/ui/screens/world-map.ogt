@@ -9,7 +9,7 @@ version 1
 # center (on the player) (Back pops it). Slots: Map takes og.ui.worldMap (the
 # painted map with fog, regions, pins, the player's arrow, the legend and
 # the place's detail with Fast travel and waypoints; it answers the pin
-# pressed, travel and the waypoint); Tracker takes og.ui.questTracker for
+# pressed, travel and the waypoint); Tracker takes rpg.questTracker for
 # the tracked quest over the map.
 name "world-map"
 layer menu

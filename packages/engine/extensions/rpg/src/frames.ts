@@ -1,4 +1,4 @@
-// og.ui.unitFrame, og.ui.partyFrames, og.ui.raidFrames and og.ui.castBar:
+// rpg.unitFrame, rpg.partyFrames, rpg.raidFrames and rpg.castBar:
 // Appendix C's "unit, party and raid frames" and "cast bars". Read against
 // World of Warcraft's player, target and party frames (a round portrait
 // ringed in gold for an elite, the level on its badge, health with its
@@ -10,12 +10,11 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize, minText, tsFit } from "./core.ts";
+import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize, minText, tsFit, statBar, statusGrid } from "@origingame/engine/ui-parts/hud";
+import type { CastBarDesc, CastState, FramesResult, PartyFramesDesc, RaidFramesDesc, RaidMember, RaidRole, UnitFrameDesc, UnitFrameSize } from "../types.ts";
 
 /** How much of the level badge's height its figure takes. */
 const LEVEL_FILL = 0.6;
-import { statBar } from "./meters.ts";
-import { statusGrid } from "./abilities.ts";
 
 const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false, tapped: false, doubleTapped: false, longPressed: false, longPress: 0 };
 
@@ -66,15 +65,15 @@ function hpText(v: number, max: number): string {
 /** A dimmed name's ink: a solid muted grey (#A9AEB8), never an alpha, so it steps down a tone and keeps its letter shape. */
 const MUTED: Rgba = { r: 0.663, g: 0.682, b: 0.722, a: 1 };
 
-const SIZES: Record<Api.UnitFrameSize, { portrait: number; width: number; bar: number; name: number }> = {
+const SIZES: Record<UnitFrameSize, { portrait: number; width: number; bar: number; name: number }> = {
   large: { portrait: 64, width: 232, bar: 16, name: 15 },
   medium: { portrait: 44, width: 176, bar: 12, name: 13 },
   small: { portrait: 30, width: 120, bar: 8, name: 12 },
 };
 
-export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Response {
+export function unitFrame(id: string, desc: UnitFrameDesc = {}): Api.Response {
   const tk = frame().t;
-  const size: Api.UnitFrameSize = desc.size ?? "large";
+  const size: UnitFrameSize = desc.size ?? "large";
   const m = SIZES[size];
   // The portrait grows with the player's text size (half again at 200 %), so its badge and crown keep their room on it.
   const pd = Math.round(u(m.portrait) * (1 + (Math.min(2, textScale()) - 1) / 2));
@@ -294,7 +293,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   return res;
 }
 
-export function partyFrames(id: string, desc: Api.PartyFramesDesc = {}): Api.FramesResult {
+export function partyFrames(id: string, desc: PartyFramesDesc = {}): FramesResult {
   const tk = frame().t;
   let clicked: string | null = null;
   hudPlace(id, anchorOf(desc, "left"), () => {
@@ -308,9 +307,9 @@ export function partyFrames(id: string, desc: Api.PartyFramesDesc = {}): Api.Fra
   return { clicked };
 }
 
-const ROLE_ICON: Record<Api.RaidRole, string> = { none: "", tank: "shield", healer: "plus", damage: "sword" };
+const ROLE_ICON: Record<RaidRole, string> = { none: "", tank: "shield", healer: "plus", damage: "sword" };
 
-export function raidFrames(id: string, desc: Api.RaidFramesDesc = {}): Api.FramesResult {
+export function raidFrames(id: string, desc: RaidFramesDesc = {}): FramesResult {
   const per = Math.max(1, desc.columns || 5);
   const cw = u(desc.cellWidth || 96);
   // Tall enough for the name's line over the health bar at any text size.
@@ -335,7 +334,7 @@ export function raidFrames(id: string, desc: Api.RaidFramesDesc = {}): Api.Frame
 const raidBar = (): number => Math.max(4, Math.round(u(9)));
 const raidInset = (): number => Math.max(2, u(3));
 
-function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response {
+function cell(id: string, m: RaidMember, w: number, h: number): Api.Response {
   const max = Math.max(1, m.healthMax ?? 100);
   const out = !!(m.dead || m.offline);
   const hp = out ? 0 : clamp01((m.health ?? 0) / max);
@@ -436,14 +435,14 @@ const DISPEL: Record<string, Rgba> = {
   disease: { r: 0.78, g: 0.6, b: 0.17, a: 1 },
 };
 
-export function castBar(id: string, desc: Api.CastBarDesc = {}): void {
+export function castBar(id: string, desc: CastBarDesc = {}): void {
   cast(id, desc, false);
 }
 
 /** A cast bar; compact is the thin one under a unit frame's bars. */
-function cast(id: string, desc: Api.CastBarDesc, compact: boolean, healthH = 0): void {
+function cast(id: string, desc: CastBarDesc, compact: boolean, healthH = 0): void {
   const tk = frame().t;
-  const state: Api.CastState = desc.state ?? "casting";
+  const state: CastState = desc.state ?? "casting";
   const t = now();
   const ended = state !== "casting";
   const since = ended ? t - (desc.stateAt ?? t) : 0;

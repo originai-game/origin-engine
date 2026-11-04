@@ -20,7 +20,11 @@
 // desktop film also runs each screen in Arabic and under the pseudo-locale.
 
 import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
-import type { AbilitySlotDesc, DamageHitDesc, KillfeedEntry, Texture, UnitFrameDesc, Viewport, World } from "@origingame/engine";
+import type { AbilitySlotDesc, DamageHitDesc, Texture, Viewport, World } from "@origingame/engine";
+import { racing } from "@origingame/engine/extensions/racing/index.ts";
+import { rpg, type UnitFrameDesc } from "@origingame/engine/extensions/rpg/index.ts";
+import { shooter, type KillfeedEntry } from "@origingame/engine/extensions/shooter/index.ts";
+import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 
 type UnitCommand = AbilitySlotDesc;
 
@@ -248,11 +252,11 @@ function abilitiesScreen(): void {
   });
   const interrupted = did("interrupt");
   // Built after the ability bar at the same anchor: they stack above it.
-  og.ui.castBar("Cast", { name: L("Pyroblast"), icon: "fire", image: art("pyroblast"), progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  rpg.castBar("Cast", { name: L("Pyroblast"), icon: "fire", image: art("pyroblast"), progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
   // A phone held sideways has room over its ability bar for two bars, not three.
-  if (og.ui.frameViewport().breakpoint !== "phoneLandscape") og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", image: art("thunder-strike"), channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape") rpg.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", image: art("thunder-strike"), channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
   // At 200 % text the sideways phone's bars reach the aura grid: it keeps the player's own cast.
-  if (og.ui.frameViewport().breakpoint !== "phoneLandscape" || state.textScale < 1.5) og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", image: art("frost"), uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape" || state.textScale < 1.5) rpg.castBar("Boss", { name: L("Cataclysm"), icon: "skull", image: art("frost"), uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
 }
 
 // ── unit, party and raid frames ───────────────────────────────────────────
@@ -261,12 +265,12 @@ function framesScreen(): void {
   const s = seconds();
   const art = (k: string): Texture | null => state.art[k] ?? null;
   const h = hp();
-  og.ui.unitFrame("Player", { size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
-  og.ui.unitFrame("Target", {
+  rpg.unitFrame("Player", { size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
+  rpg.unitFrame("Target", {
     name: L("Grull the Devourer"), portrait: art("cultist"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
     castName: L("Earthshatter"), castProgress: Math.min(1, s / 3) % 1, anchor: small() ? "topRight" : "top", size: small() ? "medium" : "large",
   });
-  og.ui.partyFrames("Party", {
+  rpg.partyFrames("Party", {
     anchor: small() ? "bottomLeft" : "left",
     members: ([
       { key: "tank", name: L("Borin"), portrait: art("aria"), level: "60", icon: "shield", health: 82, resource: 40, resourceColor: { color: { r: 0.86, g: 0.22, b: 0.18 } } },
@@ -276,7 +280,7 @@ function framesScreen(): void {
     ] satisfies UnitFrameDesc[]).slice(0, small() ? 2 : 4),
   });
   if (small()) return;
-  og.ui.raidFrames("Raid", {
+  rpg.raidFrames("Raid", {
     anchor: "right",
     members: Array.from({ length: 20 }, (_, i) => ({
       key: `r${i}`,
@@ -302,10 +306,10 @@ function framesScreen(): void {
 function shooterScreen(world: World): void {
   const s = seconds();
   const mag = did("empty") ? 0 : Math.max(0, 30 - state.hits * 4 - Math.floor(s * 2));
-  og.ui.crosshair("Aim", { style: "cross", spread: did("hit") && since("hit") < 20 ? 10 : 2, hitAt: lastHit(), hit: did("crit") && (state.acts.crit ?? 0) >= (state.acts.hit ?? 0) ? "headshot" : "hit", dot: true, onTarget: s % 2 < 1 });
-  og.ui.ammoCounter("Ammo", { magazine: mag, magazineMax: 30, reserve: 186, weapon: L("R-301 Carbine"), icon: "bolt", fireMode: "AUTO", reloading: did("reload") && since("reload") < 120 ? since("reload") / 120 : null, reloadHint: L("R  Reload") });
-  og.ui.damageDirection("Dir", { hits: Object.entries(state.acts).filter(([k]) => k === "hit" || k === "crit").map(([, at], i) => ({ angle: [2.2, -0.9][i % 2]!, at, strength: 0.8 })) });
-  og.ui.lowHealthVignette("Low", { health: hp() / 100, hitAt: lastHit() });
+  shooter.crosshair("Aim", { style: "cross", spread: did("hit") && since("hit") < 20 ? 10 : 2, hitAt: lastHit(), hit: did("crit") && (state.acts.crit ?? 0) >= (state.acts.hit ?? 0) ? "headshot" : "hit", dot: true, onTarget: s % 2 < 1 });
+  shooter.ammoCounter("Ammo", { magazine: mag, magazineMax: 30, reserve: 186, weapon: L("R-301 Carbine"), icon: "bolt", fireMode: "AUTO", reloading: did("reload") && since("reload") < 120 ? since("reload") / 120 : null, reloadHint: L("R  Reload") });
+  shooter.damageDirection("Dir", { hits: Object.entries(state.acts).filter(([k]) => k === "hit" || k === "crit").map(([, at], i) => ({ angle: [2.2, -0.9][i % 2]!, at, strength: 0.8 })) });
+  shooter.lowHealthVignette("Low", { health: hp() / 100, hitAt: lastHit() });
   og.ui.compass("Compass", {
     heading: s * 0.25,
     pois: [
@@ -333,7 +337,7 @@ function shooterScreen(world: World): void {
     ],
   });
   og.ui.hudTimer("Round", { seconds: Math.max(0, 14.6 - s), total: 90, label: L("Round 4") });
-  og.ui.killfeed("Feed", { entries: state.kills, max: 5 });
+  shooter.killfeed("Feed", { entries: state.kills, max: 5 });
   if (small()) return;
   og.ui.anchor("Score", { anchor: "bottomLeft", direction: "column", gap: 8 }, () => {
     og.ui.scorebug("Bug", {
@@ -349,7 +353,7 @@ function shooterScreen(world: World): void {
 
 function strategyScreen(): void {
   const s = seconds();
-  og.ui.resourceBar("Res", {
+  strategy.resourceBar("Res", {
     items: [
       { key: "min", icon: "gem", name: L("Minerals"), amount: 1250 + s * 12.5, rate: 12.5 },
       { key: "gas", icon: "drop", name: L("Vespene"), amount: 384, rate: -3 },
@@ -374,7 +378,7 @@ function strategyScreen(): void {
       { key: "side", title: L("A Hunter's Errand"), icon: "map-pin", steps: [{ key: "a", text: L("Collect wolf pelts"), count: 7, target: 7, done: true }] },
     ],
   });
-  og.ui.turnOrder("Turns", {
+  rpg.turnOrder("Turns", {
     max: small() ? 4 : 8,
     // Smaller portraits on a phone held sideways at a large text size, so the combo fits between it and the resources.
     ...(small() && state.textScale >= 1.5 && og.ui.frameViewport().breakpoint === "phoneLandscape" ? { size: 40 } : {}),
@@ -395,7 +399,7 @@ function strategyScreen(): void {
   og.ui.comboCounter("Combo", { count: state.hits >= 2 ? state.hits * 5 : did("break") ? 0 : 47, multiplier: 4, decay: 1 - (s % 2) / 2, ...(sideways ? { anchor: "left" as const } : {}) });
   og.ui.judgement("Judge", { last: did("hit") ? { text: "PERFECT", tier: 0, offsetMs: -12, at: state.acts.hit! } : did("break") ? { text: "MISS", tier: 4, at: state.acts.break! } : null, offsetY: 160 });
   if (did("score")) {
-    og.ui.scoreboard("Board", {
+    shooter.scoreboard("Board", {
       title: L("Bind · Competitive"), subtitle: L("Round 14 · 7–6"),
       columns: [{ key: "k", label: "K" }, { key: "d", label: "D" }, { key: "a", label: "A" }, { key: "s", label: L("Score"), width: 72 }],
       teams: [
@@ -439,7 +443,7 @@ function racingScreen(world: World): void {
   ];
   if (passed) [grid[1], grid[2]] = [grid[2]!, grid[1]!];
   const place = grid.findIndex((g) => g.player) + 1;
-  og.ui.lapTimer("LapTime", {
+  racing.lapTimer("LapTime", {
     position: place, positionTotal: grid.length, lap: 2, lapTotal: 3, currentMs: 72384 + s * 1000,
     bestMs: best ? 99812 : 101226, lastMs: best ? 99812 : 102450, deltaMs: best ? -420 : 180,
     positionLabel: tr("position", "Position"), lapLabel: tr("lap", "Lap"), finalLabel: tr("final", "Final lap"), currentLabel: tr("current", "Current lap"), bestLabel: tr("best", "Best lap"), lastLabel: tr("last", "Last lap"), splitLabel: tr("split", "Split"),
@@ -447,7 +451,7 @@ function racingScreen(world: World): void {
   // The tower stacks under the lap block at the top-start corner at the section gap, one column, so the driving view's
   // middle stays clear. The circuit goes bottom-left on an upright phone.
   const upright = vp.breakpoint === "phonePortrait";
-  og.ui.standingsTower("Tower", {
+  racing.standingsTower("Tower", {
     entries: grid, rows: upright ? 4 : small() ? 3 : 10, anchor: "topLeft",
     leaderLabel: tr("leader", "Leader"), pitLabel: tr("pit", "PIT"), outLabel: tr("out", "OUT"), fastestLabel: tr("fastest", "FL"),
   });
@@ -470,8 +474,8 @@ function racingScreen(world: World): void {
     ],
   });
   // The mirror needs the top band's middle: an upright phone has none, and a small screen at large text gives it to the lap block.
-  if (vp.breakpoint !== "phonePortrait" && !(small() && state.textScale >= 1.5)) og.ui.rearView("Mirror", { texture: state.art.rear ?? null });
-  og.ui.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
+  if (vp.breakpoint !== "phonePortrait" && !(small() && state.textScale >= 1.5)) racing.rearView("Mirror", { texture: state.art.rear ?? null });
+  racing.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
 }
 
 // ── rts ───────────────────────────────────────────────────────────────
@@ -487,7 +491,7 @@ function rtsScreen(world: World): void {
   const art = (k: string): Texture | null => state.art[k] ?? null;
   const hurt = did("hit");
   const building = did("place");
-  og.ui.resourceBar("Res", {
+  strategy.resourceBar("Res", {
     anchor: "topRight", rates: false, clock: 754 + s,
     items: [
       { key: "ore", icon: "gem", name: tr("ore", "Ore"), amount: 1250 + Math.floor(s) * 5 },
@@ -540,7 +544,7 @@ function rtsScreen(world: World): void {
         { key: "" }, { key: "" }, { key: "" }, { key: "" }, { key: "" },
       ];
   const sel = building ? [barracks] : squad;
-  og.ui.rtsConsole("Console", {
+  strategy.rtsConsole("Console", {
     map: {
       shape: "square", zoom: 1, centerX: 0.5, centerY: 0.5, zone: "",
       markers: [
@@ -567,7 +571,7 @@ function rtsScreen(world: World): void {
   // The drag box: scripted over the squad's part of the field.
   if (did("score") && !building) {
     const vp = og.ui.frameViewport();
-    og.ui.dragSelect("Drag", { from: { x: vp.width * 0.28, y: vp.height * 0.3 }, to: { x: vp.width * 0.46, y: vp.height * 0.52 } });
+    strategy.dragSelect("Drag", { from: { x: vp.width * 0.28, y: vp.height * 0.3 }, to: { x: vp.width * 0.46, y: vp.height * 0.52 } });
   }
 }
 

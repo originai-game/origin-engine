@@ -9,7 +9,7 @@ version 1
 # (the click wrote tab), claimAll, unlock (Back pops it). Slots: Pass takes
 # og.ui.battlePass (the header's level and XP, the tiers on both tracks,
 # claim and claim all, unlock premium; it answers the reward claimed);
-# ChallengeList takes og.ui.goalChips or og.ui.questTracker for the weekly
+# ChallengeList takes puzzle.goalChips or rpg.questTracker for the weekly
 # challenges.
 name "battle-pass"
 layer menu

@@ -1,4 +1,4 @@
-// og.ui.standingsTower, og.ui.lapTimer and og.ui.rearView: the racing rows
+// racing.standingsTower, racing.lapTimer and racing.rearView: the racing rows
 // of the genre sheets (B-racing-hud). Read against F1's and Gran Turismo's
 // timing towers (a tabular position cell, the team colour as a thin
 // stripe, the driver and the gap in tabular digits, the player's row lit,
@@ -10,7 +10,8 @@
 // lap block share one width (raceWidth) so they stack as one column.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, luminance, textScale, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "./core.ts";
+import { BLACK, WHITE, luminance, textScale, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba, now, msToTicks, ticksToMs, reduced, clamp01, easeOut, pulse, glow, tsFit, claimAnnouncement } from "@origingame/engine/ui-parts/hud";
+import type { LapTimerDesc, LapTimerShow, RaceBannerDesc, RaceEvent, RearViewDesc, StandingsEntry, StandingsTowerDesc } from "../types.ts";
 
 /** The fastest lap's and a new best's purple, as F1 timing marks them. */
 const PURPLE: Rgba = { r: 0.68, g: 0.42, b: 1, a: 1 };
@@ -62,7 +63,7 @@ function arrow(id: string, up: boolean, side: number, ink: Rgba, part: string): 
   leaf(id, { width: px(side), height: px(side), part }, { shape: { kind: "path", points: pts, closed: true, filled: true, join: "round" }, fills: [solid(lit(ink))] });
 }
 
-export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): void {
+export function standingsTower(id: string, desc: StandingsTowerDesc = {}): void {
   const f = frame();
   const tk = f.t;
   const all = desc.entries ?? [];
@@ -97,7 +98,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
   const gapW = Math.ceil(stepSize(ts(12)).size * 0.62 * 6) + u(4);
   const e = edge(`${id}~pos`, pi);
   sound("success", e.changed && pi >= 0 && e.prev >= 0 && pi < e.prev);
-  const gapText = (en: Api.StandingsEntry, i: number): string => {
+  const gapText = (en: StandingsEntry, i: number): string => {
     if (en.out) return desc.outLabel ?? "OUT";
     if (en.pit) return desc.pitLabel ?? "PIT";
     if ((en.lapsDown ?? 0) > 0) return `+${en.lapsDown} L`;
@@ -187,7 +188,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
   });
 }
 
-export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
+export function lapTimer(id: string, desc: LapTimerDesc = {}): void {
   const f = frame();
   const tk = f.t;
   const w = raceWidth();
@@ -196,7 +197,7 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   const final = total > 0 && lap >= total;
   const delta = desc.deltaMs ?? null;
   const split = delta === null ? "none" : desc.splitBest ? "best" : delta < 0 ? "ahead" : "behind";
-  const show: Api.LapTimerShow = desc.show ?? "all";
+  const show: LapTimerShow = desc.show ?? "all";
   // No plate: every text outlined on the scene.
   const boxless = !!desc.boxless;
   const ol = boxless ? 1.2 : 0;
@@ -319,7 +320,7 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   });
 }
 
-export function rearView(id: string, desc: Api.RearViewDesc = {}): void {
+export function rearView(id: string, desc: RearViewDesc = {}): void {
   const f = frame();
   const room = hudRoom();
   const w = Math.round(Math.min(room, desc.width ? u(desc.width) : Math.min(u(560), room * (f.viewport.breakpoint === "phonePortrait" ? 2 / 3 : f.phone ? 0.4 : 1 / 3))));
@@ -354,7 +355,7 @@ export function rearView(id: string, desc: Api.RearViewDesc = {}): void {
   });
 }
 
-const BANNER_MS: Record<Exclude<Api.RaceEvent, "none" | "countdown">, number> = { go: 1000, checkpoint: 1500, finalLap: 2000, finish: 2500 };
+const BANNER_MS: Record<Exclude<RaceEvent, "none" | "countdown">, number> = { go: 1000, checkpoint: 1500, finalLap: 2000, finish: 2500 };
 /** A countdown numeral's scale-in and every banner's fade, ms. */
 const IN_MS = 280;
 const FADE_MS = 200;
@@ -386,11 +387,11 @@ function underOf(below: string | undefined, fallback: number): number {
 }
 
 /**
- * og.ui.raceBanner: the racing HUD's centre-third moments, one at a time,
+ * racing.raceBanner: the racing HUD's centre-third moments, one at a time,
  * by the tick from `at` (a still at a tick is always the same). Wrong way
  * wins over the others while it holds.
  */
-export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
+export function raceBanner(id: string, desc: RaceBannerDesc = {}): void {
   const f = frame();
   const vp = f.viewport;
   const t = now();
@@ -400,7 +401,7 @@ export function raceBanner(id: string, desc: Api.RaceBannerDesc = {}): void {
   const count = Math.max(1, Math.min(9, desc.count || 3));
   const sec = msToTicks(1000);
   // What shows this tick.
-  let event: Api.RaceEvent | "wrongWay" = desc.event ?? "none";
+  let event: RaceEvent | "wrongWay" = desc.event ?? "none";
   if (desc.wrongWay) event = "wrongWay";
   else if (age < 0) event = "none";
   else if (event === "countdown" && age >= count * sec + sec) event = "none";

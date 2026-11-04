@@ -8,13 +8,9 @@
 // game's view. The car, the parts, the purse and the fitting are the game's.
 
 import type * as Api from "@origingame/engine";
-import {
-  firstRoom,
-  artSlot, btn, clamp, eyebrow, flags, frame, glow, grouped, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
-  rememberRoom, role, safeHeight, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
-} from "./core.ts";
-import { chevron } from "../containers/base.ts";
-import { colorPicker } from "../controls/pickers.ts";
+import { og } from "@origingame/engine";
+import { firstRoom, artSlot, btn, clamp, eyebrow, flags, frame, glow, grouped, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor, rememberRoom, role, safeHeight, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, chevron } from "@origingame/engine/ui-parts/screen";
+import type { GarageCategory, GarageDesc, GaragePart, GarageResult, GarageStat, LiveryLayer } from "../types.ts";
 
 const toHex = (c: Api.PickedColor | undefined): string => {
   const h = (v: number | undefined) => Math.round(clamp(v ?? 0, 0, 1) * 255).toString(16).padStart(2, "0");
@@ -34,7 +30,7 @@ function pips(id: string, n: number, max: number, size: number): void {
 }
 
 /** A figure's bar: the value now in the accent, the preview's change after it in success (or the fall in danger), the rest the track. */
-function statRow(s: Api.GarageStat, compact: boolean, words: { label: string }): void {
+function statRow(s: GarageStat, compact: boolean, words: { label: string }): void {
   const max = (s.max ?? 0) > 0 ? s.max! : 10;
   const now = clamp((s.value ?? 0) / max, 0, 1);
   const has = (s.preview ?? -1) >= 0;
@@ -69,8 +65,8 @@ function statRow(s: Api.GarageStat, compact: boolean, words: { label: string }):
  * A garage (Forza Horizon, Gran Turismo): see `fn garage` in
  * crates/og-api/api/ui.ogt.
  */
-export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
-  const out: Mut<Api.GarageResult> = { category: null, selected: null, equip: null, buy: null, refused: null, layer: null, layerColor: null, layerMove: null, layerVisible: null, addLayer: false, deleteLayer: null };
+export function garage(id: string, desc: GarageDesc): GarageResult {
+  const out: Mut<GarageResult> = { category: null, selected: null, equip: null, buy: null, refused: null, layer: null, layerColor: null, layerMove: null, layerVisible: null, addLayer: false, deleteLayer: null };
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
@@ -117,7 +113,7 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
 
   // The rail: a category per entry, its art and its name (a row of chips over the car on a phone in portrait).
   const rail = (): void => {
-    const entry = (c: Api.GarageCategory): void => {
+    const entry = (c: GarageCategory): void => {
       const k = c.key ?? "";
       const on = !!cat && cat.key === k;
       const r = surface(k, {
@@ -164,7 +160,7 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
   };
 
   // A part's row: its art on a tier-rimmed tile, its name, its pips, its price (a lock and why, or the fitted tick).
-  const partRow = (p: Api.GaragePart, rowW: Api.Size): void => {
+  const partRow = (p: GaragePart, rowW: Api.Size): void => {
     const k = p.key ?? "";
     const on = !!part && part.key === k;
     const ix = lastInteraction(k);
@@ -231,7 +227,7 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
   let selPath = "";
 
   // A livery layer's row: its swatch, name and kind, its eye, and up and down.
-  const layerRow = (l: Api.LiveryLayer, i: number, rowW: Api.Size): void => {
+  const layerRow = (l: LiveryLayer, i: number, rowW: Api.Size): void => {
     const k = l.key ?? "";
     const on = !!layer && layer.key === k;
     const hidden = l.visible === false;
@@ -396,7 +392,7 @@ export function garage(id: string, desc: Api.GarageDesc): Api.GarageResult {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.92) }], strokes: [line(1, token("ink", 0.1))] });
       if (layer) {
         eyebrow("Title", `${desc.colorLabel ?? "Colour"} · ${layer.name ?? ""}`);
-        const c = colorPicker("Picker", layer.color ?? { r: 1, g: 1, b: 1, a: 1 }, { swatches: desc.swatches ?? [], hex: !phone, label: desc.colorLabel ?? "Colour", width: grow(), disabled: !!layer.locked });
+        const c = og.ui.colorPicker("Picker", layer.color ?? { r: 1, g: 1, b: 1, a: 1 }, { swatches: desc.swatches ?? [], hex: !phone, label: desc.colorLabel ?? "Colour", width: grow(), disabled: !!layer.locked });
         if (c.changed && !layer.locked) out.layerColor = c.color;
       }
       kit.row("Actions", { width: grow(), gap: u(8) }, () => {

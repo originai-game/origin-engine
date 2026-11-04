@@ -16,7 +16,7 @@ og.load.document(world, "ui/inventory.ogt");    // once
 og.ui.push(world, "inventory", vm);             // onto the layer stack
 const r = og.ui.screen("inventory", vm);        // each tick it is up, to fill its slots
 if (og.ui.openSlot("inventory/Grid")) {         // <screen>/<slot id>
-  og.ui.inventoryGrid(/* … */);
+  rpg.inventoryGrid(/* … */);
   og.ui.close();
 }
 for (const e of r.events) if (e.kind === "emit" && e.name === "sort") sort(vm);

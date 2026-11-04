@@ -64,13 +64,13 @@ if (og.ui.openSlot("pause/Side")) { og.ui.card(/* … */); og.ui.close(); }
 | Splash, title, main menu, mode select | `splash`, `title`, `main-menu`, `mode-select` | its events (`continue`, `newGame`, `settings`, `quit` …) |
 | Pause | `pause` | its events (`resume`, also Back; `settings`, `quitToMenu`, `quit`, asked with `og.ui.confirm`) |
 | Settings | `settings` | `og.ui.settingsTree(world, id, { pages, page, pending }, custom)`: pages of typed entries, Apply, Revert, the display countdown; the game applies a graphics preset with `og.render.applyQuality` or `og.render.setDisplay` |
-| Results, game over | `results`, `game-over` | its events (`continue`, `again`, `revive`, `retry` …); `og.ui.chart`, `og.ui.scoreboard`, `og.ui.numberCounter` in its slots |
+| Results, game over | `results`, `game-over` | its events (`continue`, `again`, `revive`, `retry` …); `og.ui.chart`, `shooter.scoreboard`, `og.ui.numberCounter` in its slots |
 | A leaderboard | `leaderboard` | `og.ui.table` with its loading, empty and error states |
 | Loading | `loading` | its viewmodel's real progress (a spinner when unknown); `nextTip`, `continue` |
 | Onboarding | `tutorial` | `next`, `skip`; its Highlight slot (`og.ui.shapeBox`, `og.ui.effectLayer`) or `og.ui.spotlight` around the target |
-| Dialogue, a cutscene | `dialogue`, `backlog` | `og.ui.conversation`, `og.ui.backlog` |
-| A shop, an inventory | `store`, `vendor`, `inventory`, `stash` | `og.ui.storeFront`, `og.ui.inventoryGrid` (drag and drop, multi-cell items) |
-| Level select | `saga-map` | `og.ui.sagaMap` (`picked`, `refused` for a locked level) |
+| Dialogue, a cutscene | `dialogue`, `backlog` | `rpg.conversation`, `og.ui.backlog` |
+| A shop, an inventory | `store`, `vendor`, `inventory`, `stash` | `og.ui.storeFront`, `rpg.inventoryGrid` (drag and drop, multi-cell items) |
+| Level select | `saga-map` | `puzzle.sagaMap` (`picked`, `refused` for a locked level) |
 | A yes/no question, a notice | none | `og.ui.confirm(id, open, { title, message, confirmLabel, danger })`, `og.ui.dialog(id, open, { title, message, actions }, build)` |
 | A short message | none | `og.ui.toast(world, text, { tone })` (anywhere: systems, commands) |
 
@@ -80,7 +80,7 @@ A HUD is the HUD components in `og.ui.anchor` groups (or their own
 rates), `scorebug`, `speedometer`, `lapTimer`, `standingsTower`,
 `minimapView`, `compass`, `objectiveTracker`, `killfeed` (`og api find
 hud` lists them); an idle game adds `og.ui.idleGenerator`, a puzzle
-`og.ui.starBar` and `og.ui.goalChips`. Every pattern is in
+`og.ui.starBar` and `puzzle.goalChips`. Every pattern is in
 `og api show ui` beside its screen document.
 
 Compose them: a HUD with the pause screen pushed over it, settings pushed

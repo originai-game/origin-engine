@@ -7,7 +7,7 @@ version 1
 #
 # Viewmodel: score (as text: 7 - 5), clock (seconds), map. Events: none
 # (code pushes it while the key is held and pops it on release). Slots:
-# Board takes og.ui.scoreboard (the teams in their colours, the rows,
+# Board takes shooter.scoreboard (the teams in their colours, the rows,
 # the dead, ping bars, the MVP); Extra takes the match's own row
 # (objectives held, og.ui.matchStats).
 name "scoreboard"

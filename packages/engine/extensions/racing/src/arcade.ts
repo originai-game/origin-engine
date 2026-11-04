@@ -1,21 +1,19 @@
 // The racing HUD's arcade look (the owner's decision of 2026-11-03: an
 // option on the racing components, shipped with cartoon and kawaii, not a
-// separate kit): og.ui.speedometer's arcade style, og.ui.itemSlot and
-// og.ui.driftScore. Read against Mario Kart's item roulette and Need for
+// separate kit): racing.speedometer's arcade style, racing.itemSlot and
+// racing.driftScore. Read against Mario Kart's item roulette and Need for
 // Speed's and Forza Horizon's drift chains and nitro tubes. Every motion
 // runs by the tick from its event's tick, so a still is deterministic.
 
 import type * as Api from "@origingame/engine";
-import {
-  a11y, absolute, box, chip, clamp01, easeOut, edge, ellipseShape, fixed, frame, glow, groups, hudPlace, anchorOf, kit, leaf, lit, msToTicks, now,
-  pop, pulse, px, reduced, role, sel, solid, stroke, text, token, ts, tsFit, u, vgrad, bp, stepSize, apply, ticksToMs,
-} from "./core.ts";
+import { a11y, absolute, box, chip, clamp01, easeOut, edge, ellipseShape, fixed, frame, glow, groups, hudPlace, anchorOf, kit, leaf, lit, msToTicks, now, pop, pulse, px, reduced, role, sel, solid, stroke, text, token, ts, tsFit, u, vgrad, bp, stepSize, apply, ticksToMs } from "@origingame/engine/ui-parts/hud";
+import type { DriftScoreDesc, ItemSlotDesc, SpeedometerDesc } from "../types.ts";
 
 const TUBE_START = Math.PI * 1.1;
 const TUBE_SWEEP = Math.PI * 0.8;
 
 /** The arcade speedometer: a fat curved nitro tube cut into whole segments, flaring when full, with a big bouncy speed on its own plate under it. */
-export function arcadeSpeedo(id: string, speed: number, unit: string, desc: Api.SpeedometerDesc, size: number): void {
+export function arcadeSpeedo(id: string, speed: number, unit: string, desc: SpeedometerDesc, size: number): void {
   const n = Math.max(1, Math.min(8, desc.boostSegments || 3));
   const boost = desc.boost === null || desc.boost === undefined ? null : clamp01(desc.boost);
   const full = boost !== null && boost >= 1 - 1e-6;
@@ -71,7 +69,7 @@ export function arcadeSpeedo(id: string, speed: number, unit: string, desc: Api.
   });
 }
 
-export function itemSlot(id: string, desc: Api.ItemSlotDesc = {}): void {
+export function itemSlot(id: string, desc: ItemSlotDesc = {}): void {
   const size = Math.round(u(desc.size || (bp().phone ? 64 : 84)));
   const t = now();
   const rollT = msToTicks(desc.rollMs ?? 1500);
@@ -108,7 +106,7 @@ export function itemSlot(id: string, desc: Api.ItemSlotDesc = {}): void {
   });
 }
 
-export function driftScore(id: string, desc: Api.DriftScoreDesc = {}): void {
+export function driftScore(id: string, desc: DriftScoreDesc = {}): void {
   const f = frame();
   const t = now();
   const win = msToTicks(800);

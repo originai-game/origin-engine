@@ -8,11 +8,9 @@
 // the list is the component's own (og.ui.memory).
 
 import type * as Api from "@origingame/engine";
-import { objectiveTracker } from "../hud/nav.ts";
-import {
-  artSlot, btn, chevron, clamp, eyebrow, fill, flags, frame, grow, kit, line, mix, over, paint, pips, px, rarityColor, role, rtl, shadow, spring, st, still, surface,
-  symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind,
-} from "./core.ts";
+import { objectiveTracker } from "@origingame/engine/ui-parts/hud";
+import { artSlot, btn, chevron, clamp, eyebrow, fill, flags, frame, grow, kit, line, mix, over, paint, pips, px, rarityColor, role, rtl, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind } from "@origingame/engine/ui-parts/screen";
+import type { QuestLogDesc, QuestLogResult, QuestTrackerDesc } from "../types.ts";
 
 /** A category's mark: the main story a crown, a side quest a flag, a daily a clock, anything else a dot. */
 function categoryMark(c: string): SymbolKind {
@@ -44,7 +42,7 @@ function dot(id: string, kind: "new" | "updated"): void {
 }
 
 /** The tabs: a lit chip with a rim under it for the one shown, quiet glass with muted words for the rest. */
-function tabsRow(desc: Api.QuestLogDesc, tab: string, counts: Record<string, number>, out: Mut<Api.QuestLogResult>): void {
+function tabsRow(desc: QuestLogDesc, tab: string, counts: Record<string, number>, out: Mut<QuestLogResult>): void {
   const tabs = desc.tabs ?? [];
   if (tabs.length === 0) return;
   kit.open("Tabs", { direction: "row", gap: u(6), width: grow(), wrap: true, part: "QuestLog.tabs", partClass: "panel" });
@@ -90,7 +88,7 @@ function tabsRow(desc: Api.QuestLogDesc, tab: string, counts: Record<string, num
 }
 
 /** A quest's row in the list. */
-function questRow(q: Api.QuestView, selected: boolean, desc: Api.QuestLogDesc, out: Mut<Api.QuestLogResult>, open: () => void): void {
+function questRow(q: Api.QuestView, selected: boolean, desc: QuestLogDesc, out: Mut<QuestLogResult>, open: () => void): void {
   const ended = q.status !== "active";
   const ink = role("ink");
   const r = surface(q.id, {
@@ -140,7 +138,7 @@ function questRow(q: Api.QuestView, selected: boolean, desc: Api.QuestLogDesc, o
 }
 
 /** The quest itself: its title, giver and region, summary, objectives, rewards and actions. */
-function questDetail(q: Api.QuestView, desc: Api.QuestLogDesc, out: Mut<Api.QuestLogResult>, fresh: boolean, phone: boolean): void {
+function questDetail(q: Api.QuestView, desc: QuestLogDesc, out: Mut<QuestLogResult>, fresh: boolean, phone: boolean): void {
   const ink = role("ink");
   const ended = q.status !== "active";
   const art = new Map((desc.art ?? []).map((a) => [a.path, a.texture]));
@@ -275,8 +273,8 @@ function questDetail(q: Api.QuestView, desc: Api.QuestLogDesc, out: Mut<Api.Ques
  * A quest log (The Witcher 3, Genshin Impact, Destiny 2): see
  * `fn questLog` in crates/og-api/api/ui.ogt.
  */
-export function questLog(id: string, desc: Api.QuestLogDesc): Api.QuestLogResult {
-  const out: Mut<Api.QuestLogResult> = { selected: null, track: null, showOnMap: null, tab: null, closed: false };
+export function questLog(id: string, desc: QuestLogDesc): QuestLogResult {
+  const out: Mut<QuestLogResult> = { selected: null, track: null, showOnMap: null, tab: null, closed: false };
   const { viewport: vp, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const all = desc.quests ?? [];
@@ -348,7 +346,7 @@ export function questLog(id: string, desc: Api.QuestLogDesc): Api.QuestLogResult
  * The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's
  * quests (see `fn questTracker` in crates/og-api/api/ui.ogt).
  */
-export function questTracker(id: string, desc: Api.QuestTrackerDesc): void {
+export function questTracker(id: string, desc: QuestTrackerDesc): void {
   const tick = kit.tick();
   const quests: Api.ObjectiveQuest[] = [];
   for (const q of desc.quests ?? []) {

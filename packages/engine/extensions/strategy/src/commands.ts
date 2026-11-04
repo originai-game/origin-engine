@@ -1,7 +1,7 @@
 // The RTS command layer (docs/ui.md §11 genre patterns, command cards and
 // control groups; Appendix D: box select, select same type, control
 // groups, shift queue). Read against StarCraft II's grid hotkeys and
-// Age of Empires IV's command card: og.ui.rtsConsole draws the console
+// Age of Empires IV's command card: strategy.rtsConsole draws the console
 // (main's HUD pieces, not copied here) with the current command page in
 // its card; this layer adds what players expect of it: sub-cards opened by
 // a command and closed by Back, hotkeys by physical key through UI
@@ -9,16 +9,17 @@
 // groups set, added to, recalled and focused by their keys.
 
 import type * as Api from "@origingame/engine";
-import { frame, kit, line, shadow, st, text, token, u, xy, type Mut } from "./core.ts";
-import { rtsConsole } from "../hud/rts.ts";
+import { frame, kit, line, shadow, st, text, token, u, xy, type Mut } from "@origingame/engine/ui-parts/screen";
+import type { RtsCommandsDesc, RtsCommandsResult } from "../types.ts";
+import { rtsConsole } from "./rts.ts";
 
 const BACK = "PageBack";
 
 /** Whether a command can fire now: not locked, disabled, unaffordable or cooling down. */
 const ready = (c: Api.AbilitySlotDesc): boolean => !c.locked && !c.disabled && !c.unaffordable && !((c.cooldown ?? 0) > 0) && (c.maxCharges ? (c.charges ?? 0) > 0 : true);
 
-export function rtsCommands(id: string, desc: Api.RtsCommandsDesc): Api.RtsCommandsResult {
-  const out: Mut<Api.RtsCommandsResult> = {
+export function rtsCommands(id: string, desc: RtsCommandsDesc): RtsCommandsResult {
+  const out: Mut<RtsCommandsResult> = {
     command: null, queued: false, refused: null, page: null, cancelTarget: false, recall: null, focus: null, assign: null, add: null,
     clicked: null, selectType: null, deselect: null, mapClicked: false, cancelled: null,
   };

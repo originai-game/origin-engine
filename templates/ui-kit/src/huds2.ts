@@ -9,6 +9,9 @@ import { og } from "@origingame/engine";
 import type { AbilitySlotDesc, Paint, Size, StatusEffect, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
 import { at, frame, gameScene, held, hudArt, pauseButton, SEEN, atClear } from "./huds.ts";
+import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
+import { shooter } from "@origingame/engine/extensions/shooter/index.ts";
+import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -69,7 +72,7 @@ export function mobaHud(world: World): void {
     markers: [{ key: "me", kind: "player", x: 0.46, y: 0.56, heading: 40 }, { key: "ilsa", kind: "ally", x: 0.38, y: 0.62 }, { key: "morrow", kind: "enemy", x: 0.6, y: 0.4 }, { key: "baron", kind: "objective", x: 0.7, y: 0.3 }],
     anchor: touch ? "topLeft" : "bottomRight",
   });
-  if (!touch) og.ui.unitFrame("Hero", { name: "Cassia", level: "12", portrait: hudArt("portraits/mira"), health: 0.64, resource: 0.48, resourceKind: "mana", size: "large", anchor: "bottomLeft" });
+  if (!touch) rpg.unitFrame("Hero", { name: "Cassia", level: "12", portrait: hudArt("portraits/mira"), health: 0.64, resource: 0.48, resourceKind: "mana", size: "large", anchor: "bottomLeft" });
   const cd = (n: number, max: number) => Math.max(0, n - (tick % (max * 60)) / 60);
   if (touch) {
     thumbs([{ id: "Q", label: L("sc.moba.dash"), icon: "bolt" }, { id: "W", label: L("sc.moba.ward"), icon: "shield" }, { id: "R", label: L("sc.moba.ult"), icon: "fire" }, { id: "Attack", label: L("sc.moba.attack"), icon: "sword", primary: true }]);
@@ -179,11 +182,11 @@ export function mmoHud(world: World): void {
   ];
   const cast = (tick % 240) / 180;
   og.ui.anchor("Frames", { anchor: "topLeft", margin: m, direction: touch ? "column" : "row", gap: t.space.sm, cross: "start" }, () => {
-    og.ui.unitFrame("Player", { name: "Thessaly", level: "60", portrait: hudArt("portraits/maren"), health: 0.81, resource: 0.56, resourceKind: "mana", effects: buffs, combat: true, leader: true, size: small ? "small" : "large", anchor: null });
-    og.ui.unitFrame("Target", { name: "Vorthul", title: L("sc.mmo.title"), level: "??", portrait: hudArt("portraits/cultist"), health: 0.37, hostile: true, unitClass: "boss", castName: cast < 1 ? L("sc.mmo.cast") : "", castProgress: Math.min(1, cast), targeted: true, size: small ? "small" : "large", anchor: null });
+    rpg.unitFrame("Player", { name: "Thessaly", level: "60", portrait: hudArt("portraits/maren"), health: 0.81, resource: 0.56, resourceKind: "mana", effects: buffs, combat: true, leader: true, size: small ? "small" : "large", anchor: null });
+    rpg.unitFrame("Target", { name: "Vorthul", title: L("sc.mmo.title"), level: "??", portrait: hudArt("portraits/cultist"), health: 0.37, hostile: true, unitClass: "boss", castName: cast < 1 ? L("sc.mmo.cast") : "", castProgress: Math.min(1, cast), targeted: true, size: small ? "small" : "large", anchor: null });
   });
   if (!touch) {
-    og.ui.partyFrames("Party", {
+    rpg.partyFrames("Party", {
       members: [
         { key: "brann", name: "Brann", level: "60", portrait: hudArt("portraits/brann"), health: 0.92, resource: 0.4, resourceKind: "primary", size: "small" },
         { key: "wren", name: "Wren", level: "60", portrait: hudArt("portraits/wren"), health: 0.34, resource: 0.7, resourceKind: "mana", size: "small", effects: [buffs[2]!] },
@@ -297,14 +300,14 @@ export function tdHud(world: World): void {
   void world;
   gameScene(world, "scenes/genre-strategy", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
-  og.ui.resourceBar("Purse", {
+  strategy.resourceBar("Purse", {
     items: [
       { key: "gold", icon: "coin", name: L("sc.td.gold"), amount: 420 + Math.floor(tick / 60) * 5 },
       { key: "lives", icon: "heart", name: L("sc.td.lives"), amount: 17, capacity: 20 },
     ],
     rates: false, anchor: "topLeft",
   });
-  const wavesDesc: Parameters<typeof og.ui.wavePreview>[1] = {
+  const wavesDesc: Parameters<typeof strategy.wavePreview>[1] = {
     title: L("sc.td.waves"), current: 7, max: small ? 3 : 5,
     waves: [
       { key: "7", number: 7, name: "Wolfkin", image: hudArt("portraits/red-louse"), count: 18 },
@@ -321,9 +324,9 @@ export function tdHud(world: World): void {
   const purse = og.ui.bounds("PurseHud");
   const waves = og.ui.bounds("WavesHud");
   if (portrait && purse && waves && purse.x + purse.width + t.space.sm > waves.x) {
-    og.ui.anchor("WavesHud", { anchor: "topRight", margin: m, offsetY: Math.round(purse.y + purse.height + t.space.sm - (vp.safeArea.top + m)) }, () => og.ui.wavePreview("Waves", { ...wavesDesc, anchor: null }));
+    og.ui.anchor("WavesHud", { anchor: "topRight", margin: m, offsetY: Math.round(purse.y + purse.height + t.space.sm - (vp.safeArea.top + m)) }, () => strategy.wavePreview("Waves", { ...wavesDesc, anchor: null }));
   } else {
-    og.ui.wavePreview("Waves", wavesDesc);
+    strategy.wavePreview("Waves", wavesDesc);
   }
   // On a phone the call stands bottom end over the towers' bar (a gap above its top as laid last tick, at any text size).
   const build = small ? og.ui.bounds("BuildHud") : null;
@@ -579,7 +582,7 @@ export function horrorHud(world: World): void {
   og.ui.setNavigation(false);
   gameScene(world, "scenes/genre-horror", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
-  og.ui.lowHealthVignette("Vignette", { health: 0.3, threshold: 0.4, hitAt: null });
+  shooter.lowHealthVignette("Vignette", { health: 0.3, threshold: 0.4, hitAt: null });
   og.ui.interactionPrompt(world, "Hide", { maxDistance: SEEN, target: { point: atClear("Hide", 0.3, 0.52) }, action: "interact", verb: L("sc.horror.hide"), name: L("sc.horror.wardrobe") });
   // On the HUD's plate, so a pack whose ink is meant for light panels still reads over the dark world.
   og.ui.anchor("Objective", { anchor: "topLeft", margin: m, direction: "column", gap: 2, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.xs }, background: { token: "hud" }, radius: t.radius["panel"] ?? 8, frame: "hud" }, () => {

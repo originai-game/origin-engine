@@ -9,9 +9,9 @@ version 1
 # Viewmodel: path (the containers opened, outermost first), weight,
 # capacity, filter, filters, gold, view. Events to code: filter (the
 # click wrote filter), sort, view (grid and list), up (the breadcrumb's
-# parent), use, drop (Back pops it). Slots: Grid takes og.ui.inventoryGrid (or
+# parent), use, drop (Back pops it). Slots: Grid takes rpg.inventoryGrid (or
 # og.ui.dataList for the list view); Detail takes the selected item
-# (og.ui.tooltipCard, og.ui.statCompare); Equip takes og.ui.paperdoll
+# (og.ui.tooltipCard, og.ui.statCompare); Equip takes rpg.paperdoll
 # when the screen is the bag and the doll together.
 name "inventory"
 layer menu

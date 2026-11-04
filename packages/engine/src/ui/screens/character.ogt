@@ -7,11 +7,11 @@ version 1
 # beside it, or the loadout filling the page.
 #
 # Viewmodel: name, level, className, tab, stats. Events to code: tab (the
-# click wrote tab); Back pops it. Slots: Paperdoll takes og.ui.paperdoll
+# click wrote tab); Back pops it. Slots: Paperdoll takes rpg.paperdoll
 # (the figure, the equipment slots and the stats with deltas; its own
 # figure slot takes a sceneViewport turntable); Compare takes
 # og.ui.statCompare or og.ui.tooltipCard for the item under the pointer or
-# the focus. Loadout takes og.ui.loadout("Loadout", desc) with its title
+# the focus. Loadout takes shooter.loadout("Loadout", desc) with its title
 # empty (the head above names the character): its LoadoutDesc is loadouts
 # (the saved sets' names, its tabs), loadout, balance and currencyImage,
 # slots ({ key, label, name, detail, image, rarity, locked }), slot, the

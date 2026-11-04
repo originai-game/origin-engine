@@ -4,14 +4,11 @@
 // already shown met is the component's own memory, so a crossing pops once.
 
 import type * as Api from "@origingame/engine";
-import {
-  artSlot, clamp, fill, frame, glow, grouped, grow, hex, kit, line, mix, over, paint, pct, px, role, shadow, solid, spring, st, still, symbol, text,
-  token, u, vgrad, vstate, xy,
-} from "./core.ts";
-import { STAR_GOLD } from "./stars.ts";
+import { artSlot, clamp, fill, frame, glow, grouped, grow, hex, kit, line, mix, over, paint, pct, px, role, shadow, solid, spring, st, still, symbol, text, token, u, vgrad, vstate, xy, STAR_GOLD } from "@origingame/engine/ui-parts/screen";
+import type { GoalChipsDesc } from "../types.ts";
 
 /** A level's goals as chips: see `fn goalChips` in crates/og-api/api/ui.ogt. */
-export function goalChips(id: string, desc: Api.GoalChipsDesc): void {
+export function goalChips(id: string, desc: GoalChipsDesc): void {
   const goals = desc.goals ?? [];
   const compact = !!desc.compact;
   const tick = kit.tick();

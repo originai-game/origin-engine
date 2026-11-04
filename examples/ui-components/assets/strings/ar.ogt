@@ -85,7 +85,7 @@ string "hud.brake" "فرامل"
 string "hud.left" "يسار"
 string "hud.right" "يمين"
 string "hud.unit" "كم/س"
-# The racing HUD's words (og.ui.lapTimer, og.ui.standingsTower).
+# The racing HUD's words (racing.lapTimer, racing.standingsTower).
 string "race.position" "المركز"
 string "race.lap" "اللفة"
 string "race.final" "اللفة الأخيرة"
@@ -99,7 +99,7 @@ string "race.out" "خارج"
 string "race.fastest" "أسرع"
 string "race.track" "حلبة المستنقع"
 string "race.you" "أنت"
-# The RTS HUD's words (og.ui.rtsConsole, og.ui.resourceBar).
+# The RTS HUD's words (strategy.rtsConsole, strategy.resourceBar).
 string "rts.ore" "خام"
 string "rts.gas" "غاز"
 string "rts.supply" "مؤن"

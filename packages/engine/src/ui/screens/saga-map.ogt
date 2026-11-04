@@ -7,7 +7,7 @@ version 1
 #
 # Viewmodel: lives, maxLives, refill (seconds), stars (total), level (the
 # selected one: { name, stars, best, goal }), showLevel. Events to code:
-# play, close (the card), settings (Back pops it). Slots: Map takes og.ui.sagaMap
+# play, close (the card), settings (Back pops it). Slots: Map takes puzzle.sagaMap
 # (the path, badges, stars, locks, bosses and the pin; it answers the
 # level picked: code fills level and sets showLevel); Boosters takes the
 # boosters to take into the level (og.ui.card tiles).

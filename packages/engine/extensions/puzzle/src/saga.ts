@@ -5,11 +5,8 @@
 // game holds the levels, their stars and where the player stands.
 
 import type * as Api from "@origingame/engine";
-import {
-  accent, artSlot, clamp, fill, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, role, rtl, shadow, solid, st, still, surface,
-  symbol, text, token, u, vgrad, vstate, type Mut, type Rgba,
-} from "./core.ts";
-import { STAR_GOLD } from "./stars.ts";
+import { accent, artSlot, clamp, fill, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, role, rtl, shadow, solid, st, still, surface, symbol, text, token, u, vgrad, vstate, type Mut, type Rgba, STAR_GOLD } from "@origingame/engine/ui-parts/screen";
+import type { SagaMapDesc, SagaMapResult } from "../types.ts";
 
 /** A point on the path. */
 interface Pt { x: number; y: number }
@@ -90,11 +87,11 @@ function pathLayer(id: string, pts: Pt[], width: number, ink: Api.Paint, effects
  * A saga map (Candy Crush Saga, Royal Match): see `fn sagaMap` in
  * crates/og-api/api/ui.ogt.
  */
-export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
+export function sagaMap(id: string, desc: SagaMapDesc): SagaMapResult {
   const { viewport: vp } = frame();
   const nodes = desc.nodes ?? [];
   const n = nodes.length;
-  const out: Mut<Api.SagaMapResult> = { picked: null, refused: null, hovered: null };
+  const out: Mut<SagaMapResult> = { picked: null, refused: null, hovered: null };
   const vertical = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
   const moving = !still();

@@ -7,10 +7,8 @@
 // for the game to apply to its viewmodel, which stays the one truth.
 
 import type * as Api from "@origingame/engine";
-import {
-  artSlot, btn, clamp, flags, frame, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, pips, pointer, px,
-  rarityColor, rarityPips, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind,
-} from "./core.ts";
+import { artSlot, btn, clamp, flags, frame, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, pips, pointer, px, rarityColor, rarityPips, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind } from "@origingame/engine/ui-parts/screen";
+import type { GridItem, InventoryCarry, InventoryGridDesc, InventoryGridResult, PaperdollDesc, PaperdollResult, PaperdollSlot, PaperdollStat } from "../types.ts";
 
 // ── the hand: what is carried ───────────────────────────────────────────
 
@@ -85,7 +83,7 @@ interface Box {
   h: number;
 }
 
-function footprintOf(it: Api.GridItem): Box {
+function footprintOf(it: GridItem): Box {
   const w = Math.max(1, it.w ?? 1);
   const h = Math.max(1, it.h ?? 1);
   return it.rotated ? { x: it.x ?? 0, y: it.y ?? 0, w: h, h: w } : { x: it.x ?? 0, y: it.y ?? 0, w, h };
@@ -105,7 +103,7 @@ type Drop = "valid" | "merge" | "swap" | "invalid";
 // ── an item's tile ──────────────────────────────────────────────────────
 
 /** The tile's look: a well in the tier's colour, its art or silhouette, pips, a count, marks and a charge bar. */
-function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { lifted?: boolean; dim?: boolean; lit?: boolean; selected?: boolean; raised?: boolean }): void {
+function tile(it: GridItem, wpx: number, hpx: number, cs: number, opts: { lifted?: boolean; dim?: boolean; lit?: boolean; selected?: boolean; raised?: boolean }): void {
   const tier = rarityColor(it.rarity);
   const base = tier ?? role("lineStrong");
   const r = Math.max(2, Math.round(frame().t.small));
@@ -194,7 +192,7 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
 }
 
 /** What a screen reader says an item is. */
-function itemName(it: Api.GridItem, d: { lockedLabel?: string; unusableLabel?: string }): string {
+function itemName(it: GridItem, d: { lockedLabel?: string; unusableLabel?: string }): string {
   const bits = [it.name ?? it.key];
   if ((it.count ?? 0) >= 2) bits.push(`×${it.count}`);
   if (it.rarity && it.rarity !== "none") bits.push(it.rarity);
@@ -250,7 +248,7 @@ export function verdictMarks(v: Verdict, w: number, h: number, cs: number): void
 }
 
 /** The carried item under the pointer: drawn at the root over everything, lifted and shadowed, with what a drop would do. */
-function ghost(it: Api.GridItem, rot: boolean, count: number, cs: number, gx: number, gy: number, at: { x: number; y: number }, root: Api.UiRect | null, verdict: Verdict | null = null, outside = false): void {
+function ghost(it: GridItem, rot: boolean, count: number, cs: number, gx: number, gy: number, at: { x: number; y: number }, root: Api.UiRect | null, verdict: Verdict | null = null, outside = false): void {
   if (!root) return;
   // Off its grid (over a paperdoll's slot, another grid) it is carried as a one-cell icon centred on the pointer, so
   // what it is over shows round it: the slot's accept or reject, the other grid's footprint.
@@ -300,7 +298,7 @@ export function lockedCell(w: number, h: number): void {
  * A grid inventory (Diablo, Path of Exile, Escape from Tarkov, Resident
  * Evil 4): see `fn inventoryGrid` in crates/og-api/api/ui.ogt.
  */
-export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.InventoryGridResult {
+export function inventoryGrid(id: string, desc: InventoryGridDesc): InventoryGridResult {
   const { touch, viewport } = frame();
   const cols = Math.max(1, desc.columns ?? 10);
   const rows = Math.max(1, desc.rows ?? 6);
@@ -309,7 +307,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
   const cap = desc.capacity && desc.capacity > 0 ? Math.min(desc.capacity, cols * rows) : cols * rows;
   const keys = items.map((i) => i.key ?? "");
   const byKey = new Map(items.map((i) => [i.key ?? "", i]));
-  const out: Mut<Api.InventoryGridResult> = { selected: null, used: null, menu: null, menuAt: { x: 0, y: 0 }, quick: null, move: null, carried: null, hovered: null, hoveredRect: null, refused: false };
+  const out: Mut<InventoryGridResult> = { selected: null, used: null, menu: null, menuAt: { x: 0, y: 0 }, quick: null, move: null, carried: null, hovered: null, hoveredRect: null, refused: false };
   const p = pointer();
   const tick = kit.tick();
 
@@ -348,7 +346,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
   const gridFocused = lastInteraction(`${id}~grid`).focused;
   const carrying = !!own || !!foreign;
   const byFocus = own ? h.byFocus === 1 : !!foreign?.byFocus;
-  const occupant = (x: number, y: number): Api.GridItem | null => items.find((i) => i.key !== own && hits(footprintOf(i), { x, y, w: 1, h: 1 })) ?? null;
+  const occupant = (x: number, y: number): GridItem | null => items.find((i) => i.key !== own && hits(footprintOf(i), { x, y, w: 1, h: 1 })) ?? null;
 
   // The carried footprint's size (turned when carried turned).
   const carrySize = (): { w: number; h: number } => {
@@ -381,7 +379,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
   }
 
   /** Whether the carried item may land at `b`, and how. */
-  const judge = (b: Box): { drop: Drop; other: Api.GridItem | null } => {
+  const judge = (b: Box): { drop: Drop; other: GridItem | null } => {
     if (b.x < 0 || b.y < 0 || b.x + b.w > cols || b.y + b.h > rows) return { drop: "invalid", other: null };
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) if (y * cols + x >= cap) return { drop: "invalid", other: null };
     const under = items.filter((i) => i.key !== own && hits(footprintOf(i), b));
@@ -733,7 +731,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
  * drawn kind, else the kind its key and accepted tags say (a helmet slot
  * a helm, a ring slot a ring), else none (a plain socket, never a letter).
  */
-function slotGlyph(s: Api.PaperdollSlot): SymbolKind | null {
+function slotGlyph(s: PaperdollSlot): SymbolKind | null {
   const words = [s.icon ?? "", s.key ?? "", ...(s.accept ?? [])].join(" ").toLowerCase();
   const kinds: Array<[RegExp, SymbolKind]> = [
     [/helm|head|hat|hood/, "helm"],
@@ -750,7 +748,7 @@ function slotGlyph(s: Api.PaperdollSlot): SymbolKind | null {
 }
 
 /** The hand's report for the other places on the screen. */
-function carryOf(source: string, it: Api.GridItem, h: Hand, p: Api.UiPointer, released: boolean, slot = ""): Api.InventoryCarry {
+function carryOf(source: string, it: GridItem, h: Hand, p: Api.UiPointer, released: boolean, slot = ""): InventoryCarry {
   const f = footprintOf({ ...it, rotated: h.rot === 1 });
   return { key: it.key ?? "", source, slot, tag: it.tag ?? "", w: f.w, h: f.h, rotated: h.rot === 1, count: h.count || it.count || 1, x: p.x, y: p.y, byFocus: h.byFocus === 1, released };
 }
@@ -761,9 +759,9 @@ function carryOf(source: string, it: Api.GridItem, h: Hand, p: Api.UiPointer, re
  * A paperdoll (Diablo IV, Baldur's Gate 3, World of Warcraft): see `fn
  * paperdoll` in crates/og-api/api/ui.ogt.
  */
-export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBuild): Api.PaperdollResult {
+export function paperdoll(id: string, desc: PaperdollDesc, figure: Api.UiBuild): PaperdollResult {
   const { t, phone, touch, viewport } = frame();
-  const out: Mut<Api.PaperdollResult> = { equip: null, selected: null, used: null, carried: null, hovered: null, hoveredRect: null, refused: false };
+  const out: Mut<PaperdollResult> = { equip: null, selected: null, used: null, carried: null, hovered: null, hoveredRect: null, refused: false };
   const slots = desc.slots ?? [];
   const p = pointer();
   const tick = kit.tick();
@@ -775,14 +773,14 @@ export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBui
   const own = h.key ? slotKeys.find((k) => keyHash(`${k}`) === h.key && slots.find((s) => s.key === k)?.item) ?? null : null;
   if (h.key && !own) h.key = 0;
   const carry = own ? null : desc.carry ?? null;
-  const takes = (s: Api.PaperdollSlot, tag: string): boolean => !s.locked && ((s.accept ?? []).length === 0 || (s.accept ?? []).includes(tag));
+  const takes = (s: PaperdollSlot, tag: string): boolean => !s.locked && ((s.accept ?? []).length === 0 || (s.accept ?? []).includes(tag));
 
   // The figure's box and the slots placed around it by fractions of it.
   const aspect = desc.figureAspect && desc.figureAspect > 0 ? desc.figureAspect : 0.62;
   const roomH = viewport.height - viewport.safeArea.top - viewport.safeArea.bottom;
   const bh = viewport.breakpoint === "phonePortrait" ? Math.min(u(400), Math.round(roomH * 0.5)) : desc.stack ? Math.min(u(400), Math.round(roomH * 0.5)) : Math.min(u(460), Math.round(roomH * (phone ? 0.78 : 0.62)));
   const roomW = viewport.width - viewport.safeArea.left - viewport.safeArea.right - u(32);
-  const sizeOf = (s: Api.PaperdollSlot) => Math.max(touch ? 48 : 0, s.size && s.size > 0 ? s.size : u(phone ? 56 : 64));
+  const sizeOf = (s: PaperdollSlot) => Math.max(touch ? 48 : 0, s.size && s.size > 0 ? s.size : u(phone ? 56 : 64));
   const maxSlot = slots.reduce((m, s) => Math.max(m, sizeOf(s)), 0);
   const bw = Math.min(viewport.breakpoint === "phonePortrait" ? roomW : roomW * 0.45, Math.round(bh * aspect) + maxSlot * 2);
   kit.column("Doll", { width: px(bw), gap: u(8), cross: "center" }, () => {
@@ -916,7 +914,7 @@ export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBui
         h.pt = tick;
       }
       const viaPointer = p.released && inside(b, p.x, p.y);
-      const equip = (from: Api.InventoryCarry): void => {
+      const equip = (from: InventoryCarry): void => {
         if (!takes(s, from.tag ?? "")) {
           out.refused = true;
           h.rt = tick;
@@ -1005,7 +1003,7 @@ export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBui
 }
 
 /** A stat's line: its label, its value and, when compared, the change in its own column (never over the value). */
-export function statLine(id: string, s: Api.PaperdollStat, compare: boolean): void {
+export function statLine(id: string, s: PaperdollStat, compare: boolean): void {
   const d = s.delta ?? 0;
   const good = s.lowerIsBetter ? d < 0 : d > 0;
   const tone: Api.ThemeColor = d === 0 ? "inkMuted" : good ? "success" : "danger";

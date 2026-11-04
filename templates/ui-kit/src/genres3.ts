@@ -9,7 +9,8 @@
 import { og } from "@origingame/engine";
 import { art, chromeRoom, L, phone, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { CgEntry, CollectionCard, LoadoutAttachment, LoadoutSlot, LoadoutStat, PhotoControl, PhotoLook, DisplaySettings, Rarity, RouteScene, SettingEntry, SettingKind, Size, World } from "@origingame/engine";
+import type { CgEntry, CollectionCard, PhotoControl, PhotoLook, DisplaySettings, Rarity, RouteScene, SettingEntry, SettingKind, Size, World } from "@origingame/engine";
+import { shooter, type LoadoutAttachment, type LoadoutSlot, type LoadoutStat } from "@origingame/engine/extensions/shooter/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -179,7 +180,7 @@ export function loadoutScreen(): void {
       return { key: f, label: L(`loadout.stat.${f}`), value: (base[f] ?? 0) + delta, delta, max: 100 };
     });
     const sel = SLOTS.find(([k]) => k === lo.slot) ?? SLOTS[0]!;
-    const r = og.ui.loadout("Loadout", {
+    const r = shooter.loadout("Loadout", {
       loadouts: [1, 2, 3, 4, 5].map((n) => L("loadout.tab", { n })),
       loadout: lo.loadout,
       balance: 1250,

@@ -8,7 +8,7 @@ version 1
 #
 # Viewmodel: tabs, tab, used, slots, gold, banked. Events to code: tab
 # (the click wrote tab), depositAll, sortStash, deposit, withdraw and
-# buyTab. Slots: StashGrid and BagGrid each take og.ui.inventoryGrid (the
+# buyTab. Slots: StashGrid and BagGrid each take rpg.inventoryGrid (the
 # two grids move items between them; each answers what moved); Amount
 # takes og.ui.numberStepper for the gold to move.
 name "stash"

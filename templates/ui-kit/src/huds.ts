@@ -7,9 +7,12 @@
 // sets a HUD's preview state for the playtests.
 
 import { og } from "@origingame/engine";
-import type { AbilitySlotDesc, Anchor, KillfeedEntry, Paint, MapMarkerItem, Size, StandingsEntry, Vector3, World } from "@origingame/engine";
+import type { AbilitySlotDesc, Anchor, Paint, MapMarkerItem, Size, Vector3, World } from "@origingame/engine";
 import { chromeRoom, L } from "./patterns.ts";
 import { packGround } from "./ground.ts";
+import { shooter, type KillfeedEntry } from "@origingame/engine/extensions/shooter/index.ts";
+import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
+import { type StandingsEntry } from "@origingame/engine/extensions/racing/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -268,12 +271,12 @@ export function shooterHud(world: World): void {
   void world;
   gameScene(world, "scenes/genre-shooter", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
-  og.ui.lowHealthVignette("Vignette", { health: st.hp / 100, threshold: 0.35, hitAt: st.hitAt >= 0 ? st.hitAt : null });
+  shooter.lowHealthVignette("Vignette", { health: st.hp / 100, threshold: 0.35, hitAt: st.hitAt >= 0 ? st.hitAt : null });
   const hits = [{ angle: 0.9, at: tick - (tick % 150), strength: 0.8 }, { angle: -2.2, at: tick - ((tick + 60) % 150), strength: 0.45 }];
-  og.ui.damageDirection("Hits", { hits, durationMs: 1400 });
+  shooter.damageDirection("Hits", { hits, durationMs: 1400 });
   og.ui.waypoint("Ping", { target: { point: at(0.64, 0.42) }, kind: "ping", label: L("sc.shooter.enemy"), by: "Vex", at: tick - (tick % 300), durationMs: 4000, units: "m" });
   og.ui.waypoint("Objective", { target: { point: at(0.38, 0.47) }, kind: "objective", label: L("sc.shooter.supply") });
-  og.ui.crosshair("Crosshair", { style: "cross", spread: 0.2 + 0.15 * Math.abs(Math.sin(tick / 20)), dot: true, hitAt: tick - (tick % 90) + 10, hit: (tick / 90) % 4 === 3 ? "headshot" : "hit", onTarget: (tick % 90) < 30 });
+  shooter.crosshair("Crosshair", { style: "cross", spread: 0.2 + 0.15 * Math.abs(Math.sin(tick / 20)), dot: true, hitAt: tick - (tick % 90) + 10, hit: (tick / 90) % 4 === 3 ? "headshot" : "hit", onTarget: (tick % 90) < 30 });
   // The compass spans the top between the minimap and the killfeed (as laid last tick), centred, so on a tablet it meets neither.
   const vp = og.ui.frameViewport();
   const mapB = og.ui.bounds("MapHud");
@@ -292,7 +295,7 @@ export function shooterHud(world: World): void {
   ];
   og.ui.minimapView("Map", { texture: hudArt("maps/world"), zoom: 0.45, size: Math.round((small ? 116 : 168) * k), shape: "circle", markers, zone: L("sc.shooter.zone"), north: "", anchor: "topLeft" });
   og.ui.hudTimer("Zone", { seconds: Math.max(0, st.zone - tick / 60), total: 120, mode: "countdown", label: L("sc.shooter.ring"), warnAt: 20, anchor: "topLeft" });
-  if (!portrait) og.ui.killfeed("Feed", { entries: FEED.map((e, i) => ({ ...e, killer: e.local ? L("sc.you") : e.killer ?? "", at: tick - 60 * (i + 1) })), max: 4, durationMs: 60_000, anchor: "topRight" });
+  if (!portrait) shooter.killfeed("Feed", { entries: FEED.map((e, i) => ({ ...e, killer: e.local ? L("sc.you") : e.killer ?? "", at: tick - 60 * (i + 1) })), max: 4, durationMs: 60_000, anchor: "topRight" });
   // On a phone in landscape the kit's chrome takes the bottom start corner (showcases.ts' CHROME): the health stands over it.
   const chrome = small && !portrait ? og.ui.bounds("Back") : null;
   const lift = chrome && chrome.y > vp.height / 2 ? -Math.round(chrome.height + t.space.sm) : 0;
@@ -319,7 +322,7 @@ export function shooterHud(world: World): void {
   } else {
     og.ui.abilityBar("Abilities", { slots: touch ? slots.slice(0, 3) : slots, size: Math.round((small ? 48 : 56) * k), anchor: "bottom" });
   }
-  og.ui.ammoCounter("Ammo", { magazine: st.ammo, magazineMax: 30, reserve: 120, weapon: "Raven", fireMode: L("sc.shooter.auto"), reloading: st.reloading ? ((tick % 90) / 90) : null, reloadLabel: L("sc.shooter.reloading"), reloadHint: L("sc.shooter.reload"), anchor: "bottomRight" });
+  shooter.ammoCounter("Ammo", { magazine: st.ammo, magazineMax: 30, reserve: 120, weapon: "Raven", fireMode: L("sc.shooter.auto"), reloading: st.reloading ? ((tick % 90) / 90) : null, reloadLabel: L("sc.shooter.reloading"), reloadHint: L("sc.shooter.reload"), anchor: "bottomRight" });
   if (touch) {
     og.ui.anchor("Fire", { anchor: "right", margin: m }, () => og.ui.actionButton("Fire", L("sc.shooter.fire"), { primary: true, icon: "bolt", size: 76 }));
   }
@@ -353,7 +356,7 @@ export function manageHud(world: World): void {
   void world;
   gameScene(world, "scenes/genre-management", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
-  og.ui.resourceBar("Resources", {
+  strategy.resourceBar("Resources", {
     items: [
       { key: "gold", icon: "coin", name: L("sc.manage.gold"), amount: 18_420 + Math.floor(tick / 6) * 3, rate: 184 },
       { key: "wood", icon: "leaf", name: L("sc.manage.wood"), amount: 640, rate: 12, capacity: 800 },

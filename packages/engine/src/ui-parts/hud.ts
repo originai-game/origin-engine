@@ -1,0 +1,22 @@
+// @origingame/engine/ui-parts/hud: the helpers the engine's HUD components
+// are written with (parts a style dresses, the frame's tokens and roles,
+// fills, strokes and effects, motion by the tick, HUD placement in the safe
+// area), public for kits (docs/ui.md §17.5). A kit's HUD component imports
+// these instead of engine internals; each is built from og.ui's public
+// members and keeps no state outside the UI's memory, so it behaves the
+// same on the web and native hosts.
+//
+// This file only names them: the implementations stay with the common
+// components that share them. A name here is a contract within a minor
+// version; a rename or a changed signature is a breaking changelog entry.
+
+export {
+  a11y, absolute, anchorOf, apply, arc, artTile, BLACK, box, bp, chip, claimAnnouncement, clamp01, close, countdown, drop, easeOut, edge,
+  ellipseShape, fillDraw, fitLevel, fixed, formatNumber, frame, glow, groups, hudPlace, hudRoom, hueOf, icon, inkOn, inner, innerGlow, keyId, kit,
+  leaf, lit, luminance, minText, mix, msToTicks, now, open, paintRgba, pct, pop, pulse, px, radial, reduced, type Rgba, role, rtl, sel, shapeOf,
+  shrunk, socketRim, solid, sound, spring, springTo, stepSize, stroke, teamColor, text, textScale, ticksToMs, token, trackDraw, ts, tsFit, u, ut,
+  vgrad, WHITE
+} from "../ui/hud/core.ts";
+export { slot, statusGrid } from "../ui/hud/abilities.ts";
+export { statBar } from "../ui/hud/meters.ts";
+export { minimapView, objectiveTracker } from "../ui/hud/nav.ts";

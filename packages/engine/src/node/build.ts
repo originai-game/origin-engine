@@ -46,9 +46,20 @@ const exports = (JSON.parse(readFileSync(join(ENGINE_ROOT, "package.json"), "utf
 /** The file `@origingame/engine[/sub]` names in this package's exports. */
 export function engineFile(specifier: string): string | null {
   const sub = specifier.slice("@origingame/engine".length);
-  const target = exports[sub === "" ? "." : `.${sub}`];
+  const key = sub === "" ? "." : `.${sub}`;
+  const target = exports[key];
   const file = typeof target === "string" ? target : target?.default;
-  return file ? join(ENGINE_ROOT, file) : null;
+  if (file) return join(ENGINE_ROOT, file);
+  // A pattern export (`./extensions/*`): its `*` stands for the rest of the path.
+  for (const [pattern, to] of Object.entries(exports)) {
+    const star = pattern.indexOf("*");
+    const dest = typeof to === "string" ? to : to.default;
+    if (star < 0 || !dest || !key.startsWith(pattern.slice(0, star)) || !key.endsWith(pattern.slice(star + 1))) continue;
+    const rest = key.slice(star, key.length - (pattern.length - star - 1));
+    if (rest.split("/").includes("..")) return null;
+    return join(ENGINE_ROOT, dest.replace("*", rest));
+  }
+  return null;
 }
 
 export interface Bundled {

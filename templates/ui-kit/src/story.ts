@@ -10,6 +10,7 @@
 import { og } from "@origingame/engine";
 import type { DialogueView, QuestView, Size, World } from "@origingame/engine";
 import { art, besideChrome, chromeRoom, L, titleLine } from "./patterns.ts";
+import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -271,7 +272,7 @@ function talk(world: World, id: string, dialogue: string, layout: "cinematic" | 
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetY: top, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom - top - foot), direction: "column" }, () => {
     // Each speaker stands their own figure: the texture loaded for the line's portrait path.
     const figure = v?.speaker.portrait.replace(/^textures\/art\//, "").replace(/\.png$/, "");
-    const r = og.ui.conversation("Talk", { view: v, portrait: art(figure as Parameters<typeof art>[0]), layout, auto: dl.auto, ...words(world) });
+    const r = rpg.conversation("Talk", { view: v, portrait: art(figure as Parameters<typeof art>[0]), layout, auto: dl.auto, ...words(world) });
     if (dl.conv >= 0 && !dl.log) {
       if (r.advanced) og.story.advance(world, dl.conv);
       if (r.chosen !== null) og.story.choose(world, dl.conv, r.chosen);
@@ -332,7 +333,7 @@ export function questsScreen(world: World): void {
   const small = phone();
   const quests: readonly QuestView[] = og.story.quests(world);
   if (qs.hud) {
-    og.ui.questTracker("Tracker", { quests, from: { x: 0, y: 0, z: 0 }, completeLabel: L("q.complete") });
+    rpg.questTracker("Tracker", { quests, from: { x: 0, y: 0, z: 0 }, completeLabel: L("q.complete") });
     return;
   }
   og.ui.anchor("Quests", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.max(t.space.xl, chromeRoom().bottom) } }, () => {
@@ -340,7 +341,7 @@ export function questsScreen(world: World): void {
     og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
       og.ui.label("Title", L("q.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", ...titleLine(chrome) });
     });
-    const r = og.ui.questLog("Log", {
+    const r = rpg.questLog("Log", {
       quests,
       selected: qs.selected,
       tab: qs.tab,

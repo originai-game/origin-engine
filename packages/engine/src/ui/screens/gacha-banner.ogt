@@ -8,7 +8,7 @@ version 1
 #
 # Viewmodel: currency (the purse's amount), rules (the odds lines shown by
 # Details), showRules. Events to code: details (the click toggles
-# showRules), history, topUp (Back pops it). Slots: Banner takes og.ui.gachaBanner
+# showRules), history, topUp (Back pops it). Slots: Banner takes gacha.gachaBanner
 # (the banners as tabs, the art, featured units, timer, pity, the purse and
 # the pull buttons; it answers the pull asked for: code takes the pull and
 # pushes pull-results); RulesTable takes the odds table (og.ui.table) when

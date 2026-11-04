@@ -85,7 +85,7 @@ string "hud.brake" "Brake"
 string "hud.left" "Left"
 string "hud.right" "Right"
 string "hud.unit" "km/h"
-# The racing HUD's words (og.ui.lapTimer, og.ui.standingsTower).
+# The racing HUD's words (racing.lapTimer, racing.standingsTower).
 string "race.position" "Position"
 string "race.lap" "Lap"
 string "race.final" "Final lap"
@@ -99,7 +99,7 @@ string "race.out" "OUT"
 string "race.fastest" "FL"
 string "race.track" "Saltmarsh Ring"
 string "race.you" "You"
-# The RTS HUD's words (og.ui.rtsConsole, og.ui.resourceBar).
+# The RTS HUD's words (strategy.rtsConsole, strategy.resourceBar).
 string "rts.ore" "Ore"
 string "rts.gas" "Gas"
 string "rts.supply" "Supply"

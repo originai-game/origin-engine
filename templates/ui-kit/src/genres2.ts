@@ -9,7 +9,9 @@
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { AbilitySlotDesc, ChartSeries, ChatMessage, SelectedUnit, World, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
+import type { AbilitySlotDesc, ChartSeries, ChatMessage, World, LedgerLine, MapOverlay, PickedColor, Size } from "@origingame/engine";
+import { racing, type GarageCategory, type GaragePart, type GarageStat, type LiveryLayer } from "@origingame/engine/extensions/racing/index.ts";
+import { strategy, type SelectedUnit } from "@origingame/engine/extensions/strategy/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -86,7 +88,7 @@ export function garageScreen(): void {
     const stats: GarageStat[] = Object.keys(BASE).map((f) => ({ key: f, label: L(`garage.stat.${f}`), value: figure(ga.fitted, f), preview: preview ? figure(preview, f) : -1, max: 10 }));
     const now = rating(ga.fitted);
     const layers: LiveryLayer[] = ga.layers.map((l) => ({ key: l.key, name: l.name.startsWith("added") ? L("garage.layer.added", { n: l.name.slice(5) }) : L(`garage.layer.${l.name}`), kind: L(`garage.kind.${l.kind}`), color: l.color, visible: l.visible !== false, locked: !!l.locked }));
-    const r = og.ui.garage("Garage", {
+    const r = racing.garage("Garage", {
       balance: ga.balance,
       categories,
       category: cat,
@@ -421,7 +423,7 @@ export function rtsScreen(): void {
     });
     const slot = (k: string, a: ArtName, action: string, extra: Partial<AbilitySlotDesc> = {}): AbilitySlotDesc => ({ key: k, name: L(`rts.cmd.${k}`), image: art(a), action, ...extra });
     const units: SelectedUnit[] = UNITS.filter(([k]) => rt.selected.includes(k)).map(([k, kind, a, hp]) => ({ key: k, name: L(`rts.unit.${kind}`), kind: L(`rts.kind.${kind}`), image: art(a), health: hp, healthMax: kind === "knight" ? 140 : kind === "archer" ? 70 : 40 }));
-    const r = og.ui.rtsCommands("Console", {
+    const r = strategy.rtsCommands("Console", {
       console: {
         map: { texture: art("scenes/battlefield"), size: 0, shape: "square", markers: [] },
         selection: {

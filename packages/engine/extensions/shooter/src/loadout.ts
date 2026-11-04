@@ -5,15 +5,11 @@
 // the game's: this draws them and reports what was asked.
 
 import type * as Api from "@origingame/engine";
-import {
-  firstRoom,
-  artSlot, clamp, eyebrow, fit, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
-  rememberRoom, role, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut,
-} from "./core.ts";
-import { chevron, rtl } from "../containers/base.ts";
+import { firstRoom, artSlot, clamp, eyebrow, fit, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor, rememberRoom, role, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut, chevron, rtl } from "@origingame/engine/ui-parts/screen";
+import type { LoadoutAttachment, LoadoutDesc, LoadoutResult, LoadoutSlot, LoadoutStat } from "../types.ts";
 
 /** A figure's row: its name, a bar (the attachments' gain lit at its end, or the loss shown past it), the value and the change. */
-function statRow(s: Api.LoadoutStat, compact: boolean, labelW: number): void {
+function statRow(s: LoadoutStat, compact: boolean, labelW: number): void {
   const max = (s.max ?? 0) > 0 ? s.max! : 100;
   const v = s.value ?? 0;
   const d = s.delta ?? 0;
@@ -49,8 +45,8 @@ function statRow(s: Api.LoadoutStat, compact: boolean, labelW: number): void {
 /**
  * A shooter's loadout (Call of Duty, Apex Legends, The Division): see `fn loadout` in crates/og-api/api/ui.ogt.
  */
-export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
-  const out: Mut<Api.LoadoutResult> = { loadout: null, slot: null, attachment: null, remove: null, refused: null };
+export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
+  const out: Mut<LoadoutResult> = { loadout: null, slot: null, attachment: null, remove: null, refused: null };
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const tick = kit.tick();
@@ -132,7 +128,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
   if (portrait) tabs();
 
   // A slot: its eyebrow, its item's name and detail, its art at the end; the selected one rimmed in the focus colour.
-  const slotEntry = (s: Api.LoadoutSlot, tile: boolean): void => {
+  const slotEntry = (s: LoadoutSlot, tile: boolean): void => {
     const k = s.key ?? "";
     const on = !!slot && slot.key === k;
     const ix = lastInteraction(k);
@@ -252,8 +248,8 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
       // The callouts: each a tile of its art, the point's eyebrow and what is on it, laid along its band without overlap.
       if (shown.length > 0 && SW > 0 && aw > 0) {
         const cw = Math.round(Math.min(u(210) * Math.min(1.35, ts), (SW - 2 * u(28)) / Math.max(1, Math.max(top.length, bottom.length)) - u(10)));
-        const at = (a: Api.LoadoutAttachment) => ({ x: ax + (a.x ?? 0.5) * aw, y: ay + (a.y ?? 0.5) * ah });
-        const lay = (list: Api.LoadoutAttachment[]): Map<string, number> => {
+        const at = (a: LoadoutAttachment) => ({ x: ax + (a.x ?? 0.5) * aw, y: ay + (a.y ?? 0.5) * ah });
+        const lay = (list: LoadoutAttachment[]): Map<string, number> => {
           const sorted = [...list].sort((p, q) => (p.x ?? 0) - (q.x ?? 0));
           const xs = sorted.map((a) => clamp(at(a).x - cw / 2, u(8), SW - cw - u(8)));
           for (let i = 1; i < xs.length; i++) xs[i] = Math.max(xs[i]!, xs[i - 1]! + cw + u(10));
@@ -361,7 +357,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
   };
 
   // An attachment's row: its art on a tier-rimmed tile, its name, its tier's band, and a remove button.
-  const attachmentRow = (a: Api.LoadoutAttachment): void => {
+  const attachmentRow = (a: LoadoutAttachment): void => {
     const k = a.key ?? "";
     const on = desc.attachment === k;
     const tier = rarityColor(a.rarity) ?? role("primary");

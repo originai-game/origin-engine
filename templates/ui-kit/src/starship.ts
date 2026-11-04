@@ -11,6 +11,7 @@
 import { og } from "@origingame/engine";
 import type { Size, World } from "@origingame/engine";
 import { chromeRoom, L } from "./patterns.ts";
+import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -138,7 +139,7 @@ const UNITS: ReadonlyArray<{ name: string; art: ArtFile; hostile: boolean }> = [
 ];
 
 /**
- * The turn order (a tactics game's initiative): og.ui.turnOrder's list,
+ * The turn order (a tactics game's initiative): rpg.turnOrder's list,
  * portrait rows read top to bottom with no numbers, the acting ship first on
  * the selected row's rule, enemies marked by a danger stripe on the start
  * edge (mirrored right to left with the row).
@@ -150,7 +151,7 @@ export function turnOrderScreen(): void {
   const pad = small ? t.space.md : t.space.lg;
   og.ui.anchor("TurnOrder", { anchor: small ? "topLeft" : "topRight", margin: m, offsetY: f.top, width: px(w), direction: "column", gap: t.space.sm, padding: all(pad), background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
     og.ui.label("Title", L("turn.title"), { step: "lg", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
-    og.ui.turnOrder("Units", {
+    rpg.turnOrder("Units", {
       style: "list",
       units: UNITS.map((u, i) => ({ key: u.name.toLowerCase(), name: u.name, portrait: art(u.art), team: u.hostile ? 1 : 0, current: i === 0 })),
       // The cut-outs are wide and drawn contained in the portrait: at this size a ship stands about twice the

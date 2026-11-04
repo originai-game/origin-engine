@@ -8,7 +8,7 @@ version 1
 #
 # Viewmodel: count (results in the pull), again (the price of another
 # pull, text), canAgain. Events to code: again, done (also Back once the
-# summary shows). Slots: Sequence takes og.ui.pullSequence (charge, reveal
+# summary shows). Slots: Sequence takes gacha.pullSequence (charge, reveal
 # and summary, its own Skip; it answers when it reaches the summary and
 # when Again or Done is pressed). For a pack opening, the same sequence
 # with cards (art kind card) or og.ui.rewardChoice when the player keeps

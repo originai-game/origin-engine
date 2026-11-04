@@ -8,7 +8,7 @@ version 1
 #
 # Viewmodel: cinematic (letterbox bars on), speaking (a line is up).
 # Events to code: log (push backlog), skip. Slots: Conversation takes
-# og.ui.conversation (fed by og.story.view: the name, the line typing out,
+# rpg.conversation (fed by og.story.view: the name, the line typing out,
 # the choices with their checks and reasons, the timer, the roll, Skip,
 # Log and Auto; it answers the choice and going on); Portrait takes the
 # speaker (art kind bust, or a sceneViewport for a 3D close-up).

@@ -5,11 +5,8 @@
 // token) and hears what the player pressed.
 
 import type * as Api from "@origingame/engine";
-import {
-  accent, artSlot, btn, clamp, fit, flags, pct, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
-  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba, type TimeWords,
-} from "./core.ts";
-import { cornerTag, plainText } from "./rewards.ts";
+import { accent, artSlot, btn, clamp, fit, flags, pct, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips, role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba, type TimeWords, cornerTag, plainText } from "@origingame/engine/ui-parts/screen";
+import type { GachaBannerDesc, GachaBannerResult, PullItem, PullPhase, PullSequenceDesc, PullSequenceResult } from "../types.ts";
 
 const fill = (template: string, v: Record<string, string | number>): string => template.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? `${v[k]}` : m));
 
@@ -38,7 +35,7 @@ const tierInk = (r: Api.Rarity | undefined): Rgba => rarityColor(r) ?? role("pri
  * A gacha banner (Genshin Impact, Honkai: Star Rail, FGO): see
  * `fn gachaBanner` in crates/og-api/api/ui.ogt.
  */
-export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => void): Api.GachaBannerResult {
+export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void): GachaBannerResult {
   const { viewport: vp, t, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   // A short frame (a phone on its side): the featured units drop their second line, the rail narrows.
@@ -46,7 +43,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   const touch = frame().touch;
   // Large text (150 % and over) on a phone: rows that held two things hold one.
   const big = phone && (frame().theme.textScale ?? 1) >= 1.5;
-  const out: Mut<Api.GachaBannerResult> = { pull: 0, short: 0, banner: null, details: false, history: false };
+  const out: Mut<GachaBannerResult> = { pull: 0, short: 0, banner: null, details: false, history: false };
   const tabs = desc.banners ?? [];
   const balance = desc.balance ?? 0;
   const multiN = Math.max(1, desc.multiCount ?? 10);
@@ -351,7 +348,7 @@ function countdownShort(seconds: number, words: TimeWords): string {
 }
 
 /** The banner's words for a time left. */
-const timeWords = (desc: Api.GachaBannerDesc): TimeWords => ({ days: desc.daysLabel, hours: desc.hoursLabel, minutes: desc.minutesLabel });
+const timeWords = (desc: GachaBannerDesc): TimeWords => ({ days: desc.daysLabel, hours: desc.hoursLabel, minutes: desc.minutesLabel });
 
 /** The pity meter: a thin bar toward the guarantee and how many pulls are left. */
 function pityMeter(id: string, pity: number, max: number, label: string): void {
@@ -378,20 +375,20 @@ function pityMeter(id: string, pity: number, max: number, label: string): void {
 // ── the pull ────────────────────────────────────────────────────────────
 
 const CHARGE = 84;
-const PHASES: Api.PullPhase[] = ["idle", "charge", "reveal", "summary"];
+const PHASES: PullPhase[] = ["idle", "charge", "reveal", "summary"];
 
 /**
  * A pull's reveal (Genshin's wish, Star Rail's warp, a pack opening): see
  * `fn pullSequence` in crates/og-api/api/ui.ogt.
  */
-export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSequenceResult {
+export function pullSequence(id: string, desc: PullSequenceDesc): PullSequenceResult {
   const { viewport: vp, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const items = desc.items ?? [];
   const n = items.length;
   const tick = kit.tick();
   const tok = desc.token ?? 0;
-  const out: Mut<Api.PullSequenceResult> = { phase: "idle", index: 0, revealed: null, again: false, done: false };
+  const out: Mut<PullSequenceResult> = { phase: "idle", index: 0, revealed: null, again: false, done: false };
 
   // Where the sequence is: a new token starts it from the charge.
   kit.open(id, { direction: "column", width: px(0), height: px(0) });
@@ -411,7 +408,7 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
     phase = p;
     t0 = tick;
   };
-  const top = items.reduce<Api.PullItem | null>((b, x) => (!b || rarityPips(x.rarity) > rarityPips(b.rarity) ? x : b), null);
+  const top = items.reduce<PullItem | null>((b, x) => (!b || rarityPips(x.rarity) > rarityPips(b.rarity) ? x : b), null);
   const reduced = still();
   if (phase === 1 && (reduced || tick - t0 >= CHARGE)) go(2);
 
@@ -515,7 +512,7 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
 }
 
 /** The charge: a light that gathers in the middle, its colour turning toward the pull's highest tier as it grows. */
-function charge(top: Api.PullItem | null, dt: number, W: number, H: number): void {
+function charge(top: PullItem | null, dt: number, W: number, H: number): void {
   const k = still() ? 1 : clamp(dt / CHARGE, 0, 1);
   const ease = 1 - (1 - k) ** 3;
   const target = tierInk(top?.rarity);
@@ -529,7 +526,7 @@ function charge(top: Api.PullItem | null, dt: number, W: number, H: number): voi
 }
 
 /** One result large: its art, then its name, kind and stars landing one by one, a burst from legendary. */
-function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string, newLabel: string): void {
+function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string, newLabel: string): void {
   const { phone } = frame();
   const ink = tierInk(it.rarity);
   const landscape = W > H;
@@ -633,7 +630,7 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
 }
 
 /** Every result at once, the highest tiers first, then Again and Done. */
-function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: number, H: number, done: (again: boolean) => void): void {
+function summary(items: readonly PullItem[], desc: PullSequenceDesc, W: number, H: number, done: (again: boolean) => void): void {
   const newLabel = desc.newLabel ?? "NEW";
   const { viewport: vp, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";

@@ -1,10 +1,11 @@
-// Drag and drop in the gear screen's backpack (og.ui.inventoryGrid): a
+// Drag and drop in the gear screen's backpack (rpg.inventoryGrid): a
 // press on the healing potions, a move while held to the backpack's last
 // column, sixth row (an empty cell), and a release there moves the stack
 // to that cell; the cell it left is empty and the backpack holds as many
 // items as before.
 import { playtest } from "@origingame/engine/playtest";
 import { SCREEN, demo, ui, type UiElement } from "./lib.ts";
+import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
 
 const CELLS = "Gear/Body/View/Content/Split/Bags/Bag/Cells";
 /** The cell the stack is dropped on: column 9, row 5 (from 0), empty in the kit's backpack. */

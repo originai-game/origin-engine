@@ -13,7 +13,10 @@ import { storyCommand } from "./story.ts";
 import { genreScene, genresCommand, resetGenres } from "./genres.ts";
 import { genres2Command, resetGenres2 } from "./genres2.ts";
 import { genres3Command, resetGenres3 } from "./genres3.ts";
-import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
+import type { CardTarget, HandCard, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
+import { gacha, type PullItem } from "@origingame/engine/extensions/gacha/index.ts";
+import { puzzle } from "@origingame/engine/extensions/puzzle/index.ts";
+import { rpg, type GridItem, type InventoryCarry, type InventoryMove, type PaperdollSlot } from "@origingame/engine/extensions/rpg/index.ts";
 
 /** A fixture the preview changes: its readonly fields writable. */
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -749,7 +752,7 @@ export function gachaScreen(backdrop = 0): void {
   const bleed = small && vp.breakpoint === "phonePortrait";
   og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, ...(bleed ? { offsetX: -sa.left, offsetY: -sa.top } : {}), width: px(bleed ? vp.width : vp.width - sa.left - sa.right), height: px(bleed ? vp.height : vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small && !bleed ? chromeRoom().top : 0, right: 0, bottom: small ? 0 : chromeRoom().bottom } }, () => {
     const keyArt = b.key === "event" ? art("scenes/gacha-moonlit-tide") : null;
-    const res = og.ui.gachaBanner("Banner", {
+    const res = gacha.gachaBanner("Banner", {
       banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh, image: art(BANNER_THUMB[x.key]) })),
       current: b.key,
       title: b.title,
@@ -791,7 +794,7 @@ export function gachaScreen(backdrop = 0): void {
     }
     if (res.short) g.log = `short ${res.short}`;
   });
-  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map(pullWords), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: L("gacha.summonN"), doneLabel: L("gacha.done"), skipLabel: L("gacha.skip"), tapLabel: L("gacha.tap"), continueLabel: L("gacha.continue"), newLabel: L("gacha.new"), currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
+  const seq = gacha.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map(pullWords), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: L("gacha.summonN"), doneLabel: L("gacha.done"), skipLabel: L("gacha.skip"), tapLabel: L("gacha.tap"), continueLabel: L("gacha.continue"), newLabel: L("gacha.new"), currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
   if (seq.again && g.balance >= g.items.length * 160) {
     g.balance -= g.items.length * 160;
     g.token += 1;
@@ -938,7 +941,7 @@ export function gearScreen(): void {
   // Touch has no Shift and no R (a carried item shows its Rotate button): its line says only what a finger does.
   screen("Gear", L("gear.title"), vp.coarsePointer ? L("gear.sub.touch") : L("gear.sub"), () => {
     const body = () => {
-      const doll = og.ui.paperdoll("Doll", {
+      const doll = rpg.paperdoll("Doll", {
         slots: p.slots.map((x) => ({ ...x, label: L(`gear.slot.${(x.key ?? "").replace(/\d$/, "")}`), ...(x.lockedHint ? { lockedHint: L("gear.relicLocked", { level: 30 }) } : {}), ...(x.item ? { item: withArt(x.item) } : {}) })),
         title: "Aria Vell",
         subtitle: L("gear.class", { level: 42 }),
@@ -984,9 +987,9 @@ export function gearScreen(): void {
         const cell = portrait ? { cellSize: Math.max(44, Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - 32) / 8)) } : {};
         const pick = p.pick;
         p.pick = null;
-        const bag = og.ui.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag.map(withArt), label: L("gear.backpack"), ...gridWords(), selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
+        const bag = rpg.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag.map(withArt), label: L("gear.backpack"), ...gridWords(), selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
         og.ui.label("StashTitle", L("gear.stash"), { step: "lg", font: "display", heading: true });
-        const stash = og.ui.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash.map(withArt), label: L("gear.stash"), ...gridWords(), ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
+        const stash = rpg.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash.map(withArt), label: L("gear.stash"), ...gridWords(), ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
         for (const [r, list, other] of [[bag, p.bag, p.stash], [stash, p.stash, p.bag]] as const) {
           if (r.move) {
             const fromSlot = r.move.fromSlot ? p.slots.find((s) => s.key === r.move!.fromSlot) ?? null : null;
@@ -1039,7 +1042,7 @@ export function sagaScreen(): void {
   const sub = small ? og.ui.bounds("SagaHead/Sub") : null;
   const mapTop = sub ? Math.round(sub.y + sub.height + t.space.sm) : 0;
   og.ui.anchor("Saga", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top + mapTop, width: px(vp.width), height: px(vp.height - mapTop), direction: "column" }, () => {
-    const r = og.ui.sagaMap("Map", {
+    const r = puzzle.sagaMap("Map", {
       nodes: SAGA0.map((n) => ({ ...n, ...(n.boss ? { image: art("portraits/cultist") } : {}) })),
       current: s.current,
       avatar: art("portraits/aria-vell"),
@@ -1104,7 +1107,7 @@ export function boardScreen(): void {
   og.ui.anchor("Board", { anchor: "topLeft", margin: 0, width: px(W), height: px(H), direction: portrait ? "column" : "row", align: "center", cross: "center", gap: portrait ? t.space.sm : t.space.xl, padding: { left: t.space.sm, top: portrait ? chromeRoom(t.space.md).top : t.space.lg, right: t.space.sm, bottom: Math.max(t.space.sm, chromeRoom().bottom) } }, () => {
     if (!portrait) panel();
     og.ui.column("Play", { gap: t.space.md, cross: "center" }, () => {
-      og.ui.goalChips("Goals", { goals, label: L("board.goals"), progressLabel: L("board.progress"), doneLabel: L("board.done"), compact: portrait });
+      puzzle.goalChips("Goals", { goals, label: L("board.goals"), progressLabel: L("board.progress"), doneLabel: L("board.done"), compact: portrait });
       if (portrait) og.ui.row("Strip", { gap: t.space.lg, cross: "center" }, () => {
         og.ui.column("Moves", { gap: 0, cross: "center" }, () => {
           og.ui.label("Cap", L("board.moves"), { step: "xs", color: { token: "info" }, nowrap: true });

@@ -10,7 +10,7 @@ version 1
 # to code: tab (the click wrote tab), select (the click wrote selected),
 # buy, sell, buyBack, close. Slots: Compare takes the selected item
 # against what is equipped (og.ui.statCompare, og.ui.tooltipCard); Amount
-# takes og.ui.numberStepper; Bag takes og.ui.inventoryGrid on the Sell tab
+# takes og.ui.numberStepper; Bag takes rpg.inventoryGrid on the Sell tab
 # when the game sells from a grid.
 name "vendor"
 layer menu

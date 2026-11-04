@@ -13,7 +13,7 @@ version 1
 # 1, after), gained, rewards, tab. Events to code: continue, again,
 # replay, tab (the click wrote tab). Slots: Graph takes the match's graphs
 # (og.ui.chart: the gold or score over time; RTS, MOBA, 4X); Scores takes
-# the final scoreboard (og.ui.scoreboard); Celebration takes the level-up
+# the final scoreboard (shooter.scoreboard); Celebration takes the level-up
 # or the grade's flourish (og.ui.celebration, og.ui.numberCounter for the
 # XP cascade); Icon, in each reward, takes the reward's art (the kit's
 # copy: a texture handle bound through a viewmodel number loses its index,

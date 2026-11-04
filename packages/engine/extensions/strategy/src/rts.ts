@@ -1,5 +1,5 @@
-// og.ui.selectionPanel, og.ui.commandCard, og.ui.productionQueue,
-// og.ui.rtsConsole and og.ui.dragSelect: the RTS rows of the genre sheets
+// strategy.selectionPanel, strategy.commandCard, strategy.productionQueue,
+// strategy.rtsConsole and strategy.dragSelect: the RTS rows of the genre sheets
 // (B-rts-hud). Read against StarCraft II's and Age of Empires IV's
 // consoles: one continuous panel along the bottom, divided into zones by
 // hairlines (the minimap, the selection under its control group tabs, the
@@ -14,9 +14,8 @@
 // nothing here draws a glow edge or a bevel of a particular look.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, reduced, role, rtl, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
-import { slot } from "./abilities.ts";
-import { minimapView } from "./nav.ts";
+import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, reduced, role, rtl, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba, slot, minimapView } from "@origingame/engine/ui-parts/hud";
+import type { CommandCardDesc, DragSelectDesc, DragSelectResult, ProductionQueueDesc, ProductionQueueResult, QueueItem, RtsConsoleDesc, RtsConsoleResult, SelectedUnit, SelectionPanelDesc, SelectionPanelResult } from "../types.ts";
 
 /** The console's ground: the HUD chip denser, over a blurred scene, so its zones sit on an even ground. */
 function panelDraw(): Api.DrawDesc {
@@ -61,7 +60,7 @@ function well(r: number): Api.DrawDesc {
 // ── production queue ──────────────────────────────────────────────────
 
 /** The time left on the item being built as its slot prints it: whole seconds under a minute, else m:ss; or paused. */
-function queueTime(desc: Api.ProductionQueueDesc, it: Api.QueueItem): string {
+function queueTime(desc: ProductionQueueDesc, it: QueueItem): string {
   if (desc.paused) return desc.pausedLabel ?? "Paused";
   return (it.remaining ?? 0) < 60 ? String(Math.ceil(it.remaining ?? 0)) : countdown(it.remaining ?? 0, false);
 }
@@ -70,7 +69,7 @@ function queueTime(desc: Api.ProductionQueueDesc, it: Api.QueueItem): string {
  * The queue's row, in place (no panel): the first item with its progress sweeping and seconds left, then the rest,
  * then wells. `from` and `to` draw a range of the slots (a building's zone draws the first one large, the rest after it).
  */
-function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from = 0, to = Infinity, timeInside = true): Api.ProductionQueueResult {
+function queueRow(id: string, desc: ProductionQueueDesc, side: number, from = 0, to = Infinity, timeInside = true): ProductionQueueResult {
   const items = desc.items ?? [];
   const slots = Math.min(to, Math.max(items.length, desc.slots || 5));
   const gap = Math.max(2, u(3));
@@ -129,9 +128,9 @@ function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from 
   return { cancelled };
 }
 
-export function productionQueue(id: string, desc: Api.ProductionQueueDesc = {}): Api.ProductionQueueResult {
+export function productionQueue(id: string, desc: ProductionQueueDesc = {}): ProductionQueueResult {
   const side = u(desc.size || (bp().phone ? 36 : 40));
-  let res: Api.ProductionQueueResult = { cancelled: null };
+  let res: ProductionQueueResult = { cancelled: null };
   const anchor = anchorOf(desc, null);
   hudPlace(id, anchor, (inAnchor) => {
     if (!inAnchor) {
@@ -161,7 +160,7 @@ function tabHeight(): number {
  * edge: a block of square tabs `side` wide, lines of them as tall as the zone holds (a short touch screen, where a
  * row of 44 px tabs above the panel would take the height the minimap needs).
  */
-function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void, panelPath = "", side = 0): void {
+function tabs(desc: SelectionPanelDesc, tabH: number, onClick: (k: string) => void, panelPath = "", side = 0): void {
   const list = desc.groups ?? [];
   if (list.length === 0) return;
   const r = Math.min(shapeOf("hud").radius, u(6));
@@ -231,7 +230,7 @@ function feel(lift: number, sink: number): Pick<Api.ElementProps, "states" | "st
  * One unit's tile: its portrait, a thin health bar under the art (its shield and energy beside it), a gold build line.
  * An option of the selection's listbox, not a button: a focus stop keys and pads reach, never the screen's primary.
  */
-function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Response {
+function tile(u0: SelectedUnit, side: number, focused: boolean): Api.Response {
   const r = Math.min(shapeOf("slot").radius, Math.max(3, side / 9));
   const k = keyId(u0.key ?? u0.name ?? "");
   const max = u0.healthMax ?? 0;
@@ -278,7 +277,7 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
 }
 
 /** The grid of tiles; a selection larger than the grid pages, its last tile counting what is left. */
-function tiles(desc: Api.SelectionPanelDesc, side: number, cols: number, rows: number, focus: string, onClick: (k: string) => void): void {
+function tiles(desc: SelectionPanelDesc, side: number, cols: number, rows: number, focus: string, onClick: (k: string) => void): void {
   const units = desc.units ?? [];
   const per = cols * rows;
   const pages = Math.max(1, Math.ceil(units.length / per));
@@ -304,7 +303,7 @@ function tiles(desc: Api.SelectionPanelDesc, side: number, cols: number, rows: n
  * The card's art inside its frame, never past it beside the info: a picture at the frame's full height cropped to its
  * width (a square picture's middle), or the glyph tile as large as the frame holds, centred in it.
  */
-function portraitArt(un: Api.SelectedUnit, port: number, h: number, hue: Rgba): void {
+function portraitArt(un: SelectedUnit, port: number, h: number, hue: Rgba): void {
   if (!un.image) {
     const side = Math.min(port, h);
     artTile("Art", null, un.icon ?? "", side, hue, absolute({ start: (port - side) / 2, top: (h - side) / 2 }));
@@ -316,7 +315,7 @@ function portraitArt(un: Api.SelectedUnit, port: number, h: number, hue: Rgba): 
 }
 
 /** The focused unit's card: the portrait at full height, then name, type, health numeral over a bar, stats, tags. */
-function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number, w: number, withStats = true): void {
+function unitCard(desc: SelectionPanelDesc, un: SelectedUnit, h: number, w: number, withStats = true): void {
   const tk = frame().t;
   const nameStep = ts(16, true);
   const kindStep = ts(11);
@@ -384,7 +383,7 @@ function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number,
 }
 
 /** A single selection's stats in the grid's zone: label and value pairs in as many columns as fit, the tags at the foot. */
-function statsZone(desc: Api.SelectionPanelDesc, h: number, w: number): void {
+function statsZone(desc: SelectionPanelDesc, h: number, w: number): void {
   const step = ts(12);
   const tagStep = ts(11);
   const stats = desc.stats ?? [];
@@ -423,7 +422,7 @@ function unitLineH(): number {
 }
 
 /** The unit card as one line, for a screen with no room for the card: name, type, health. */
-function unitLine(un: Api.SelectedUnit, w: number): void {
+function unitLine(un: SelectedUnit, w: number): void {
   const max = un.healthMax ?? 0;
   const hp = max > 0 ? clamp01((un.health ?? 0) / max) : 1;
   kit.row("Detail", { gap: u(6), cross: "center", width: px(w), part: sel("SelectionPanel", "detail") }, () => {
@@ -442,7 +441,7 @@ function unitLine(un: Api.SelectedUnit, w: number): void {
  * of a command cell, its sweep over the art and its time under it, its name over a progress bar beside it, then the
  * rest of the queue as smaller slots under them. The building's card stays the zone's one large image.
  */
-function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: number, active: number): Api.ProductionQueueResult {
+function queueZone(desc: ProductionQueueDesc, h: number, w: number, small: number, active: number): ProductionQueueResult {
   const tk = frame().t;
   const items = desc.items ?? [];
   const first = items[0];
@@ -476,7 +475,7 @@ function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: n
 interface SelLayout { side: number; cols: number; rows: number; card: number; compact: boolean; queueSide: number }
 
 /** The selection's zones in place (tiles, a rule, the card with its queue above), with no panel and no tabs. */
-function selectionBody(desc: Api.SelectionPanelDesc, h: number, lay: SelLayout, res: Mut<Api.SelectionPanelResult>): void {
+function selectionBody(desc: SelectionPanelDesc, h: number, lay: SelLayout, res: Mut<SelectionPanelResult>): void {
   const tk = frame().t;
   const units = desc.units ?? [];
   const focus = desc.focus || units[0]?.key || "";
@@ -547,7 +546,7 @@ function selectionBody(desc: Api.SelectionPanelDesc, h: number, lay: SelLayout, 
   }, );
 }
 
-function selLayout(desc: Api.SelectionPanelDesc, h: number, room: number, compact: boolean): SelLayout {
+function selLayout(desc: SelectionPanelDesc, h: number, room: number, compact: boolean): SelLayout {
   const tk = frame().t;
   const rows = Math.max(1, desc.rows || 2);
   const gap = Math.max(2, u(4));
@@ -565,9 +564,9 @@ function selWidth(lay: SelLayout): number {
   return lay.cols * lay.side + (lay.cols - 1) * gap + (lay.compact ? 0 : lay.card + frame().t.md * 2 + 1);
 }
 
-export function selectionPanel(id: string, desc: Api.SelectionPanelDesc = {}): Api.SelectionPanelResult {
+export function selectionPanel(id: string, desc: SelectionPanelDesc = {}): SelectionPanelResult {
   const tk = frame().t;
-  const res: Mut<Api.SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
+  const res: Mut<SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
   const anchor = anchorOf(desc, "bottom");
   const phone = bp().phone;
   const h = u(phone ? 96 : 140);
@@ -590,7 +589,7 @@ export function selectionPanel(id: string, desc: Api.SelectionPanelDesc = {}): A
 // ── command card ──────────────────────────────────────────────────────
 
 /** The command grid's rows: three (StarCraft's 5 × 3) so the card keeps its height as the selection changes, more if the commands need them; `trim` drops trailing empty rows (a phone, where the card stacks). */
-function gridRows(desc: Api.CommandCardDesc, trim = false): number {
+function gridRows(desc: CommandCardDesc, trim = false): number {
   const cmds = desc.commands ?? [];
   const cols = Math.max(1, desc.columns || 5);
   if (!trim) return Math.max(3, Math.ceil(cmds.length / cols));
@@ -604,7 +603,7 @@ function gridRows(desc: Api.CommandCardDesc, trim = false): number {
  * its own while the cursor can still move that way, so the focus leaves the card at its edges; A or Enter issues the
  * command under the cursor. The pointer and a finger press the cells themselves, and a press moves the cursor there.
  */
-function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.AbilityBarResult {
+function cardGrid(desc: CommandCardDesc, cell: number, trim = false): Api.AbilityBarResult {
   const cmds = desc.commands ?? [];
   const cols = Math.max(1, desc.columns || 5);
   const rows = gridRows(desc, trim);
@@ -664,12 +663,12 @@ function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.Ab
   return { clicked, pressed };
 }
 
-function cellSize(desc: Api.CommandCardDesc): number {
+function cellSize(desc: CommandCardDesc): number {
   // A phone's slots are whole touch targets (44 px) whatever size the game asks for.
   return Math.max(bp().phone ? 44 : 0, u(desc.size || (bp().phone ? 44 : 50)));
 }
 
-export function commandCard(id: string, desc: Api.CommandCardDesc = {}): Api.AbilityBarResult {
+export function commandCard(id: string, desc: CommandCardDesc = {}): Api.AbilityBarResult {
   const tk = frame().t;
   let res: Api.AbilityBarResult = { clicked: null, pressed: [] };
   const cell = cellSize(desc);
@@ -683,11 +682,11 @@ export function commandCard(id: string, desc: Api.CommandCardDesc = {}): Api.Abi
 
 // ── the console ───────────────────────────────────────────────────────
 
-export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsConsoleResult {
+export function rtsConsole(id: string, desc: RtsConsoleDesc = {}): RtsConsoleResult {
   const tk = frame().t;
-  const out: Mut<Api.RtsConsoleResult> = { mapClicked: false, clicked: null, group: null, cancelled: null, command: null, pressed: [] };
-  const sd: Api.SelectionPanelDesc = desc.selection ?? {};
-  const cd: Api.CommandCardDesc = desc.commands ?? {};
+  const out: Mut<RtsConsoleResult> = { mapClicked: false, clicked: null, group: null, cancelled: null, command: null, pressed: [] };
+  const sd: SelectionPanelDesc = desc.selection ?? {};
+  const cd: CommandCardDesc = desc.commands ?? {};
   const cell = cellSize(cd);
   const gap = Math.max(2, u(4));
   const cols = Math.max(1, cd.columns || 5);
@@ -757,7 +756,7 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
       out.mapClicked = m.clicked;
     }
   }
-  const sres: Mut<Api.SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
+  const sres: Mut<SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
   hudPlace(id, anchorOf(desc, "bottom"), () => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
       // The tabs stand on the panel's top edge over the selection zone, unless they are seated in it (`side`).
@@ -808,10 +807,10 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
 
 // ── drag selection ────────────────────────────────────────────────────
 
-export function dragSelect(id: string, desc: Api.DragSelectDesc = {}): Api.DragSelectResult {
+export function dragSelect(id: string, desc: DragSelectDesc = {}): DragSelectResult {
   const vp = frame().viewport;
   const band = vp.hud ?? { x: 0, y: 0, width: vp.width, height: vp.height };
-  const res: Mut<Api.DragSelectResult> = { dragging: false, released: false, x: 0, y: 0, width: 0, height: 0 };
+  const res: Mut<DragSelectResult> = { dragging: false, released: false, x: 0, y: 0, width: 0, height: 0 };
   let a: { x: number; y: number } | null = null;
   let b: { x: number; y: number } | null = null;
   if (desc.from && desc.to) {

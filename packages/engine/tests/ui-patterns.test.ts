@@ -10,6 +10,12 @@ import { fileURLToPath } from "node:url";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
+import { gacha, type GachaBannerResult, type PullItem, type PullSequenceResult } from "@origingame/engine/extensions/gacha/index.ts";
+import { puzzle, type SagaMapResult, type SagaNode } from "@origingame/engine/extensions/puzzle/index.ts";
+import { racing, type GarageResult } from "@origingame/engine/extensions/racing/index.ts";
+import { rpg, type ConversationDesc, type ConversationResult, type GridItem, type InventoryCarry, type InventoryGridResult, type InventoryMove, type InventoryPick, type PaperdollEquip } from "@origingame/engine/extensions/rpg/index.ts";
+import { shooter, type LoadoutResult } from "@origingame/engine/extensions/shooter/index.ts";
+import { strategy, type RtsCommandsResult } from "@origingame/engine/extensions/strategy/index.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
@@ -75,7 +81,7 @@ function key(engine: Engine, code: string): void {
 
 // ── inventory grid ──────────────────────────────────────────────────────
 
-const BAG: Api.GridItem[] = [
+const BAG: GridItem[] = [
   { key: "sword", name: "Ashbringer", x: 0, y: 0, w: 1, h: 3, rarity: "legendary", tag: "weapon" },
   { key: "potions", name: "Potion", x: 2, y: 0, count: 6, maxStack: 20, tag: "potion" },
   { key: "potions2", name: "Potion", x: 3, y: 0, count: 4, maxStack: 20, tag: "potion" },
@@ -86,11 +92,11 @@ const BAG: Api.GridItem[] = [
 /** A grid of 8×4 cells of 50 px over BAG, the game applying each move as it should. */
 function bag(rtl = false) {
   const items = BAG.map((i) => ({ ...i }));
-  const moves: Api.InventoryMove[] = [];
-  const results: Api.InventoryGridResult[] = [];
-  let pick: Api.InventoryPick | null = null;
+  const moves: InventoryMove[] = [];
+  const results: InventoryGridResult[] = [];
+  let pick: InventoryPick | null = null;
   const engine = run(() => {
-    const r = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items, label: "Backpack", ...(pick ? { pick } : {}) });
+    const r = rpg.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items, label: "Backpack", ...(pick ? { pick } : {}) });
     pick = null;
     og.ui.button("Below", "Sort", {});
     results.push(r);
@@ -110,7 +116,7 @@ function bag(rtl = false) {
       }
     }
   }, undefined, rtl);
-  return { engine, items, moves, results, setPick: (p: Api.InventoryPick) => (pick = p) };
+  return { engine, items, moves, results, setPick: (p: InventoryPick) => (pick = p) };
 }
 
 /** The point at the centre of cell (cx, cy) of the grid. */
@@ -210,13 +216,13 @@ test("inventoryGrid: Back puts a carried item back where it was", () => {
 test("inventoryGrid: let go outside, the hand is reported released and a paperdoll beside it equips the item", () => {
   // Wrong: a carry that only lands inside its own grid (no equipping by drag), or a slot that takes any tag.
   const items = BAG.map((i) => ({ ...i }));
-  let carry: Api.InventoryCarry | null = null;
-  const equips: Api.PaperdollEquip[] = [];
+  let carry: InventoryCarry | null = null;
+  const equips: PaperdollEquip[] = [];
   let refused = 0;
   const engine = run(() => {
     og.ui.row("Screen", { gap: 32 } as never, () => {
-      const g = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items });
-      const d = og.ui.paperdoll("Doll", {
+      const g = rpg.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items });
+      const d = rpg.paperdoll("Doll", {
         slots: [{ key: "head", label: "Head", accept: ["helmet"], x: 0.5, y: 0.12 }, { key: "hand", label: "Main hand", accept: ["weapon"], x: 0.15, y: 0.5 }],
         title: "Aria", ...(carry ? { carry } : {}),
       }, () => {});
@@ -281,11 +287,11 @@ test("paperdoll: while an item is carried, the slot under it says no in danger, 
   // Wrong: every slot that takes the item glowing the same whether or not it is under it, or a slot that refuses it
   // looking like one that does.
   const items = BAG.map((i) => ({ ...i }));
-  let carry: Api.InventoryCarry | null = null;
+  let carry: InventoryCarry | null = null;
   const engine = run(() => {
     og.ui.row("Screen", { gap: 32 } as never, () => {
-      const g = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items });
-      og.ui.paperdoll("Doll", {
+      const g = rpg.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items });
+      rpg.paperdoll("Doll", {
         slots: [{ key: "head", label: "Head", accept: ["helmet"], x: 0.5, y: 0.12 }, { key: "feet", label: "Feet", accept: ["feet"], x: 0.5, y: 0.85 }],
         ...(carry ? { carry } : {}),
       }, () => {});
@@ -310,7 +316,7 @@ test("long press: an item's menu and a card's inspect are og-ui's recogniser, ti
   const inspects: string[] = [];
   const sys = defineSystem(`UpLong${systems++}`, {}, () => {
     og.ui.anchor("Root", { anchor: "topLeft", direction: "column", padding: { left: 24, top: 24, right: 24, bottom: 24 } } as never, () => {
-      const r = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items: BAG, label: "Backpack" });
+      const r = rpg.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items: BAG, label: "Backpack" });
       if (r.menu) menus.push(r.menu);
     });
     og.ui.anchor("Table", { anchor: "bottom", width: { kind: "fixed", px: 1200 }, direction: "column" } as never, () => {
@@ -338,7 +344,7 @@ test("paperdoll: a compared stat's change is one signed run, sign first, in both
   // Wrong: right to left the sign lands after the number ("48 +"), or a minus set as a hyphen.
   for (const rtl of [false, true]) {
     const e = run(() => {
-      og.ui.paperdoll("Doll", { slots: [], compare: true, stats: [{ label: "Armor", value: "120", delta: 48 }, { label: "Speed", value: "12%", delta: -6, deltaText: "−6%" }] }, () => {});
+      rpg.paperdoll("Doll", { slots: [], compare: true, stats: [{ label: "Armor", value: "120", delta: 48 }, { label: "Speed", value: "12%", delta: -6, deltaText: "−6%" }] }, () => {});
     }, undefined, rtl);
     for (const k of [0, 1]) {
       const mark = byPath(e, `Stat#${k}/Delta/Sign`)!;
@@ -355,7 +361,7 @@ test("paperdoll: an empty slot shows its kind's silhouette, never a letter; a sl
   // Wrong: an empty slot draws the first letter of its name (N, H, R read as debug output), or an off hand that also takes
   // weapons is drawn as a sword.
   const e = run(() => {
-    og.ui.paperdoll("Doll", { slots: [{ key: "neck", label: "Neck", accept: ["amulet"] }, { key: "off", label: "Off hand", accept: ["weapon", "shield"] }, { key: "x", label: "Xyz" }] }, () => {});
+    rpg.paperdoll("Doll", { slots: [{ key: "neck", label: "Neck", accept: ["amulet"] }, { key: "off", label: "Off hand", accept: ["weapon", "shield"] }, { key: "x", label: "Xyz" }] }, () => {});
   });
   expect(byPath(e, "neck/Glyph")).toBeDefined();
   expect(byPath(e, "off/Glyph")).toBeDefined();
@@ -658,9 +664,9 @@ test("rewardChoice: keys walk the rewards and Enter takes the focused one", () =
 
 function banner(balance: number) {
   let current = "event";
-  const results: Api.GachaBannerResult[] = [];
+  const results: GachaBannerResult[] = [];
   const engine = run(() => {
-    const r = og.ui.gachaBanner("Banner", {
+    const r = gacha.gachaBanner("Banner", {
       banners: [{ key: "event", name: "Event" }, { key: "weapon", name: "Weapon" }, { key: "std", name: "Standard" }],
       current, title: "Moonlit Tide", balance, single: 160, multi: 1600, pityMax: 90, pity: 72,
       featured: [{ name: "Aria", stars: 5, rarity: "legendary" }],
@@ -680,7 +686,7 @@ test("gachaBanner: full-bleed content reserves safe area and chrome independentl
     // lastPath is this unrelated element, not the banner opened below.
     og.ui.anchor("Earlier", { anchor: "center", width: { kind: "fixed", px: 30 }, height: { kind: "fixed", px: 30 } }, () => {});
     og.ui.anchor("Bleed", { anchor: "topLeft", offsetY: -47, margin: 0, width: { kind: "fixed", px: 390 }, height: { kind: "fixed", px: 844 } }, () => {
-      og.ui.gachaBanner("Banner", {
+      gacha.gachaBanner("Banner", {
         topInset: 86, title: "MOONLIT TIDE", current: "event",
         banners: [{ key: "event", name: "Moonlit Tide" }, { key: "weapon", name: "Forged Oath" }],
         balance: 1800, single: 160, multi: 1600, pityMax: 90, pity: 72,
@@ -721,7 +727,7 @@ test("gachaBanner: a pull the purse pays is asked for; one it cannot is reported
 test("gachaBanner: the time left is in the game's words, days and hours on the timer, minutes on a tab", () => {
   // Wrong: the English units (3d 5h) under a locale's words, or a tab's minutes in the timer's form.
   const engine = run(() => {
-    og.ui.gachaBanner("Banner", {
+    gacha.gachaBanner("Banner", {
       banners: [{ key: "event", name: "Event", endsIn: 3 * 86400 + 5 * 3600 }, { key: "weapon", name: "Weapon", endsIn: 50 * 60 }],
       current: "event", title: "Moonlit Tide", endsIn: 3 * 86400 + 5 * 3600 + 30,
       daysLabel: "{d}日{h}時間", hoursLabel: "{h}時間{m}分", minutesLabel: "{m}分",
@@ -744,7 +750,7 @@ test("gachaBanner: tabs and the bumpers switch banners, wrapping at the ends", (
   expect(byPath(b.engine, "Tabs/std")!.states).toContain("selected");
 });
 
-const PULL: Api.PullItem[] = [
+const PULL: PullItem[] = [
   { key: "p1", name: "Iron Sword", stars: 3, rarity: "common" },
   { key: "p2", name: "Aria", stars: 5, rarity: "legendary", isNew: true },
   { key: "p3", name: "Bow", stars: 4, rarity: "epic", extra: "+2 Star Shards" },
@@ -752,9 +758,9 @@ const PULL: Api.PullItem[] = [
 
 function pull() {
   let token = 0;
-  const results: Api.PullSequenceResult[] = [];
+  const results: PullSequenceResult[] = [];
   const engine = run(() => {
-    const r = og.ui.pullSequence("Pull", { token, items: PULL, againPrice: 1600 });
+    const r = gacha.pullSequence("Pull", { token, items: PULL, againPrice: 1600 });
     results.push(r);
     if (r.done) token = 0;
   });
@@ -786,7 +792,7 @@ test("pullSequence: a new token charges, then reveals each result in order, then
 test("pullSequence: a unit seen for the first time wears the game's word for new", () => {
   let token = 0;
   const engine = run(() => {
-    og.ui.pullSequence("Pull", { token, items: PULL, againPrice: 1600, newLabel: "新" });
+    gacha.pullSequence("Pull", { token, items: PULL, againPrice: 1600, newLabel: "新" });
   });
   token = 1;
   engine.advance(2);
@@ -831,15 +837,15 @@ test("cardHand: on a phone, a refused drag leaves no card standing; the cursor's
 
 // ── saga map ────────────────────────────────────────────────────────────
 
-const LEVELS: Api.SagaNode[] = Array.from({ length: 30 }, (_, i) => ({
+const LEVELS: SagaNode[] = Array.from({ length: 30 }, (_, i) => ({
   key: `l${i + 1}`, label: `${i + 1}`, stars: i < 20 ? 3 - (i % 3) : 0, locked: i > 20, boss: i === 24,
 }));
 
 function saga(viewport?: Partial<Api.Viewport>) {
-  const results: Api.SagaMapResult[] = [];
+  const results: SagaMapResult[] = [];
   const engine = run(() => {
     og.ui.column("Box", { width: { kind: "fixed", px: viewport ? 360 : 1100 }, height: { kind: "fixed", px: viewport ? 640 : 520 } } as never, () => {
-      results.push(og.ui.sagaMap("Saga", { nodes: LEVELS, current: "l21" }));
+      results.push(puzzle.sagaMap("Saga", { nodes: LEVELS, current: "l21" }));
     });
   }, viewport);
   engine.advance(6);
@@ -898,7 +904,7 @@ test("starBar: a star is earned at its threshold and reported crossed once, not 
 
 test("goalChips: a goal met says done; its count never shows past the need", () => {
   const engine = run(() => {
-    og.ui.goalChips("Goals", { goals: [{ key: "blue", label: "Blue Gems", have: 14, need: 20 }, { key: "ice", label: "Ice", have: 7, need: 6 }] });
+    puzzle.goalChips("Goals", { goals: [{ key: "blue", label: "Blue Gems", have: 14, need: 20 }, { key: "ice", label: "Ice", have: 7, need: 6 }] });
   });
   expect(byPath(engine, "Goals/blue")!.name).toBe("Blue Gems, 14 of 20");
   expect(byPath(engine, "Goals/ice")!.name).toBe("Ice, 6 of 6, Done");
@@ -1156,14 +1162,14 @@ function storyRun(build: (w: Api.World) => void): Engine {
 }
 
 /** The smith's conversation on screen, the game passing the answer on to og.story as it should. */
-function smith(desc: Partial<Api.ConversationDesc> = {}, fake?: (v: Api.DialogueView) => Api.DialogueView) {
+function smith(desc: Partial<ConversationDesc> = {}, fake?: (v: Api.DialogueView) => Api.DialogueView) {
   let conv = -1;
-  const results: Api.ConversationResult[] = [];
+  const results: ConversationResult[] = [];
   const engine = storyRun((w) => {
     if (conv < 0) conv = ok<number>(og.story.start(w, { dialogue: "smith" }));
     const v0 = og.story.view(w, conv);
     const v = v0 && fake ? fake(v0) : v0;
-    const r = og.ui.conversation("Talk", { view: v, ...desc });
+    const r = rpg.conversation("Talk", { view: v, ...desc });
     results.push(r);
     if (r.advanced) og.story.advance(w, conv);
     if (r.chosen !== null) og.story.choose(w, conv, r.chosen);
@@ -1264,7 +1270,7 @@ test("questLog: shows the tracked quest, its hidden objective as ???, and answer
     }
     const qs = og.story.quests(w).map((q) => ({ ...q, objectives: [...q.objectives, { id: "secret", text: "Find the traitor", count: 0, target: 1, done: false, failed: false, optional: false, hidden: true }] }));
     const decoy = { ...qs[0]!, id: "decoy", title: "Decoy", tracked: false };
-    const r = og.ui.questLog("Quests", { quests: [decoy, ...qs] });
+    const r = rpg.questLog("Quests", { quests: [decoy, ...qs] });
     if (r.track) tracks.push(r.track);
   });
   engine.advance(4);
@@ -1284,7 +1290,7 @@ test("questLog: a reward's caption stands in its own row under the tile; a phone
   // Wrong: the name inside the card a style dresses (its frame and notches cut it), or Back a bare glass pane.
   const engine = storyRun((w) => {
     if (og.story.quests(w).length === 0) ok(og.story.startQuest(w, "rescue"));
-    og.ui.questLog("Quests", { quests: og.story.quests(w) });
+    rpg.questLog("Quests", { quests: og.story.quests(w) });
   });
   engine.advance(4);
   const tile = byPath(engine, "Rewards/R#0/Tile")!;
@@ -1307,7 +1313,7 @@ test("questTracker: a tracked quest that completes flashes Complete instead of v
   const engine = storyRun((w) => {
     if (og.story.quests(w).length === 0) ok(og.story.startQuest(w, "rescue"));
     if (done && og.story.quest(w, "rescue")!.status === "active") ok(og.story.completeQuest(w, "rescue"));
-    og.ui.questTracker("Track", { quests: og.story.quests(w), anchor: null });
+    rpg.questTracker("Track", { quests: og.story.quests(w), anchor: null });
   });
   engine.advance(4);
   expect(elements(engine).some((e) => e.path.endsWith("Track/rescue"))).toBeTrue();
@@ -1610,11 +1616,11 @@ test("songSelect: a press on another row selects it, on the selected one plays; 
 
 test("garage: a fitted part is not bought again; a short or locked part is refused, an affordable one bought, an owned one equipped", () => {
   // Wrong: a part dearer than the purse answered as bought, a locked one answered, an owned one sold again.
-  const results: Api.GarageResult[] = [];
+  const results: GarageResult[] = [];
   const st = { selected: "short" };
   const engine = run(() => {
     og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
-      const r = og.ui.garage("Garage", {
+      const r = racing.garage("Garage", {
         title: "Garage",
         balance: 300,
         categories: [{ key: "engine", name: "Engine" }, { key: "paint", name: "Livery", livery: true }],
@@ -1656,7 +1662,7 @@ test("garage: on a phone at 200 % text the selected part scrolls into the list's
   // selected row at all (U8's text200-garage).
   const engine = run(() => {
     // The room a phone's screen leaves it: the safe area less the root's padding.
-    og.ui.column("Box", { width: { kind: "fixed", px: 342 }, height: { kind: "fixed", px: 715 } }, () => og.ui.garage("Garage", {
+    og.ui.column("Box", { width: { kind: "fixed", px: 342 }, height: { kind: "fixed", px: 715 } }, () => racing.garage("Garage", {
       title: "Garage",
       balance: 3000,
       categories: [{ key: "engine", name: "Engine" }],
@@ -1679,10 +1685,10 @@ test("garage: on a phone at 200 % text the selected part scrolls into the list's
 
 test("garage: the livery's layers answer their own eye and order; the first layer cannot go up nor the last down; the next-tab action wraps to the first category", () => {
   // Wrong: the eye or the arrows selecting the row instead, or a first layer answered as moved up.
-  const results: Api.GarageResult[] = [];
+  const results: GarageResult[] = [];
   const engine = run(() => {
     og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
-      results.push(og.ui.garage("Garage", {
+      results.push(racing.garage("Garage", {
         balance: 0,
         categories: [{ key: "engine", name: "Engine" }, { key: "paint", name: "Livery", livery: true }],
         category: "paint",
@@ -1914,11 +1920,11 @@ test("chat: at its foot the log follows a new message; scrolled up, new ones gat
 
 const ACT = (name: string, keys: string[]): Api.UiActionDesc => ({ name, keys, buttons: [], trigger: "press", holdMs: 0, toggle: false, label: name });
 
-function rtsRun(st: { page: string; targeting: string }, results: Api.RtsCommandsResult[]): Engine {
+function rtsRun(st: { page: string; targeting: string }, results: RtsCommandsResult[]): Engine {
   const sys = defineSystem(`RtsCmd${systems++}`, {}, (_q: unknown, _t: unknown, world: Api.World) => {
     for (const a of [ACT("cmdAttack", ["KeyA"]), ACT("cmdStorm", ["KeyS"]), ACT("group1", ["Digit1"]), ACT("group2", ["Digit2"])]) og.ui.defineAction(world, a);
     og.ui.anchor("Root", { anchor: "topLeft", direction: "column" } as never, () => {
-      const r = og.ui.rtsCommands("Rts", {
+      const r = strategy.rtsCommands("Rts", {
         console: {
           selection: { units: [{ key: "u1", name: "Marine", health: 40, healthMax: 45 }, { key: "u2", name: "Marine", health: 45, healthMax: 45 }], groups: [{ key: "g1", label: "1", count: 2 }, { key: "g2", label: "2", count: 0 }], group: "g1" },
           commands: { columns: 5 },
@@ -1944,7 +1950,7 @@ function rtsRun(st: { page: string; targeting: string }, results: Api.RtsCommand
 
 test("rtsCommands: a command naming a page opens it, whose Back returns; a locked command is refused by press or key; Shift queues", () => {
   // Wrong: Build answered as an order, a sub-page with no way back, a locked command fired by its hotkey, or Shift ignored.
-  const results: Api.RtsCommandsResult[] = [];
+  const results: RtsCommandsResult[] = [];
   const st = { page: "", targeting: "" };
   const engine = rtsRun(st, results);
   tapOn(engine, byPath(engine, "Commands/Grid/Row#0/build")!);
@@ -1961,7 +1967,7 @@ test("rtsCommands: a command naming a page opens it, whose Back returns; a locke
 
 test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl sets and Shift adds; the prompt names a command from another page; Back cancels it", () => {
   // Wrong: Ctrl+1 recalling instead of setting, a slow second tap focusing, or Back leaving the targeting order in place.
-  const results: Api.RtsCommandsResult[] = [];
+  const results: RtsCommandsResult[] = [];
   const st = { page: "", targeting: "" };
   const engine = rtsRun(st, results);
   key(engine, "Digit1");
@@ -1972,7 +1978,7 @@ test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl s
   engine.advance(12);
   engine.probe.commands("0:key_down:ShiftLeft;0.05:key_down:Digit2;0.1:key_up:Digit2;0.15:key_up:ShiftLeft");
   engine.advance(12);
-  const got = (k: keyof Api.RtsCommandsResult) => results.filter((r) => r[k]).map((r) => r[k]);
+  const got = (k: keyof RtsCommandsResult) => results.filter((r) => r[k]).map((r) => r[k]);
   expect([got("recall"), got("focus"), got("assign"), got("add")]).toEqual([["g1", "g1"], ["g1"], ["g1"], ["g2"]]);
   st.targeting = "barracks";
   engine.advance(4);
@@ -2031,11 +2037,11 @@ test("photoMode: a tab, a filter tile and the shutter answer; Back while hidden 
 
 test("loadout: a locked slot is refused, not selected; a tab answers its index; Remove answers apart from its row; a callout's dot lands on its point of the art as drawn", () => {
   // Wrong: a locked slot selected, a press on Remove also answered as the row's, or a leader ending off the art (the stage's padding or the contain fit not counted).
-  const results: Api.LoadoutResult[] = [];
+  const results: LoadoutResult[] = [];
   const st = { slot: "primary" };
   const engine = run(() => {
     og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
-      const r = og.ui.loadout("Loadout", {
+      const r = shooter.loadout("Loadout", {
         title: "Loadout",
         loadouts: ["One", "Two", "Three"],
         loadout: 0,

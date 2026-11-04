@@ -7,7 +7,7 @@ version 1
 # encyclopedia beside it.
 #
 # Viewmodel: active (count), done (count). Back pops it. Slots:
-# Log takes og.ui.questLog (the tabs, the list with its new and updated
+# Log takes rpg.questLog (the tabs, the list with its new and updated
 # dots, the detail with objectives, rewards, Track and Show on map; it
 # answers the quest picked, tracked and shown); Map takes a small map of
 # the quest's area when the game has one (og.ui.minimapView).

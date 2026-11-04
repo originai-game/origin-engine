@@ -10,7 +10,7 @@ version 1
 # event (the click wrote event: code opens it), tab, claim (the click
 # wrote claiming: the mission's index), claimAll (Back pops it). Slots: Featured
 # takes the first event's own panel (og.ui.banner, og.ui.carousel of
-# event art); Points takes a points track (og.ui.goalChips,
+# event art); Points takes a points track (puzzle.goalChips,
 # og.ui.progressBar with milestones).
 name "events-hub"
 layer menu

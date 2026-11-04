@@ -10,9 +10,9 @@ version 1
 # two-way), events (marks on the timeline: { at (0 to 1), kind }), camera
 # (as text), live (spectating live: no scrubbing past now). Events to
 # code: play (toggle), slower, faster, seek (the slider wrote at), camera,
-# exit. Slots: Players takes the players to follow (og.ui.partyFrames,
-# og.ui.unitFrame); Overlay takes the spectator's overlays (og.ui.minimapView,
-# og.ui.scoreboard, og.ui.matchStats).
+# exit. Slots: Players takes the players to follow (rpg.partyFrames,
+# rpg.unitFrame); Overlay takes the spectator's overlays (og.ui.minimapView,
+# shooter.scoreboard, og.ui.matchStats).
 name "replay"
 layer hud
 input menu

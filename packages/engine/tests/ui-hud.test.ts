@@ -26,13 +26,17 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
-import type { DrawDesc, KillfeedEntry, World } from "@origingame/engine";
+import type { DrawDesc, World } from "@origingame/engine";
 import { kit as uiKit } from "../src/ui-kit/bind.ts";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { checkFrame, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 import { at, drawsDuring, dump, engineFor, type El } from "./support/ui.ts";
+import { racing } from "@origingame/engine/extensions/racing/index.ts";
+import { rpg } from "@origingame/engine/extensions/rpg/index.ts";
+import { shooter, type KillfeedEntry } from "@origingame/engine/extensions/shooter/index.ts";
+import { strategy } from "@origingame/engine/extensions/strategy/index.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
@@ -169,15 +173,15 @@ test("og.ui.statusGrid: buffs and debuffs in their rows, stacks and time, more t
   expect(at(els, "AurasHud/Auras/Buffs")?.role).toBe("list");
 });
 
-test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in columns of five, an interrupted cast leaves", () => {
+test("rpg.unitFrame, raidFrames and castBar: health and states read, raids in columns of five, an interrupted cast leaves", () => {
   let state: "casting" | "interrupted" = "casting";
   let endedAt = 0;
   let health = 30;
   const e = engineFor("HudFrames", () => {
-    og.ui.unitFrame("Target", { name: "Grull the Ogre", level: "62", health, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
-    og.ui.raidFrames("Raid", { members: Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, name: `Member ${i}`, health: 10 * i, dead: i === 0, role: i % 3 === 0 ? "tank" as const : "damage" as const })) });
-    og.ui.castBar("Cast", { name: "Pyroblast", progress: 0.4, remaining: 2.1, state, stateAt: endedAt, anchor: "bottom" });
-    og.ui.unitFrame("Boss", { name: "Grull the Devourer", level: "??", health: 800_000, healthMax: 1_250_000, shield: 150_000, anchor: "topRight" });
+    rpg.unitFrame("Target", { name: "Grull the Ogre", level: "62", health, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
+    rpg.raidFrames("Raid", { members: Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, name: `Member ${i}`, health: 10 * i, dead: i === 0, role: i % 3 === 0 ? "tank" as const : "damage" as const })) });
+    rpg.castBar("Cast", { name: "Pyroblast", progress: 0.4, remaining: 2.1, state, stateAt: endedAt, anchor: "bottom" });
+    rpg.unitFrame("Boss", { name: "Grull the Devourer", level: "??", health: 800_000, healthMax: 1_250_000, shield: 150_000, anchor: "topRight" });
   });
   e.advance(3);
   let els = dump(e);
@@ -234,11 +238,11 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   expect(at(dump(e), "CastHud/Cast")).toBe(undefined);
 }, LOADED_MS);
 
-test("og.ui.raidFrames: health a bar along a neutral cell's foot under the name; out of range fades the bar, never the name's outline", () => {
+test("rpg.raidFrames: health a bar along a neutral cell's foot under the name; out of range fades the bar, never the name's outline", () => {
   // Wrong: a cell flooded with its health's green (the grid the loudest thing on screen); the name drawn over the
   // fill; an out-of-range cell faded as a whole element, which fades its name's outline with the fill.
   const e = engineFor("HudRaid", () => {
-    og.ui.raidFrames("Raid", { anchor: "left", members: [
+    rpg.raidFrames("Raid", { anchor: "left", members: [
       { key: "full", name: "Aldric", health: 100 },
       { key: "far", name: "Brenna", health: 80, outOfRange: true },
       { key: "dead", name: "Corvin", health: 0, dead: true },
@@ -276,12 +280,12 @@ test("og.ui.raidFrames: health a bar along a neutral cell's foot under the name;
   expect(opacities.filter((o) => o < 1)).toEqual([]);
 }, LOADED_MS);
 
-test("og.ui.crosshair and ammoCounter: a hit marker flashes and leaves; low, empty and an infinite reserve", () => {
+test("shooter.crosshair and ammoCounter: a hit marker flashes and leaves; low, empty and an infinite reserve", () => {
   let hitAt: number | null = null;
   let mag = 7;
   const e = engineFor("HudShooter", () => {
-    og.ui.crosshair("Aim", { spread: 4, hitAt, hit: "headshot" });
-    og.ui.ammoCounter("Ammo", { magazine: mag, magazineMax: 30, reserve: null, weapon: "R-301", reloadHint: "R Reload" });
+    shooter.crosshair("Aim", { spread: 4, hitAt, hit: "headshot" });
+    shooter.ammoCounter("Ammo", { magazine: mag, magazineMax: 30, reserve: null, weapon: "R-301", reloadHint: "R Reload" });
   });
   e.advance(3);
   let els = dump(e);
@@ -411,12 +415,12 @@ test("og.ui.hudTimer and objectiveTracker: tenths in the last ten seconds, steps
   expect(at(dump(e), "ObjHud/Obj/q1")).toBe(undefined);
 });
 
-test("og.ui.killfeed, resourceBar and scoreboard: newest first within max and time, a cap that warns, rows in order", () => {
+test("shooter.killfeed, resourceBar and scoreboard: newest first within max and time, a cap that warns, rows in order", () => {
   const entries = Array.from({ length: 7 }, (_, i) => ({ key: `k${i}`, killer: `P${i}`, victim: `V${i}`, weaponText: "R-301", at: 0, killerTeam: 0, victimTeam: 1, local: i === 6 }));
   const e = engineFor("HudLists", () => {
-    og.ui.killfeed("Feed", { entries, max: 4, durationMs: 1000 });
-    og.ui.resourceBar("Res", { items: [{ key: "min", name: "Minerals", amount: 1250, rate: 12.5 }, { key: "sup", name: "Supply", amount: 190, capacity: 200, rate: 0 }] });
-    og.ui.scoreboard("Board", {
+    shooter.killfeed("Feed", { entries, max: 4, durationMs: 1000 });
+    strategy.resourceBar("Res", { items: [{ key: "min", name: "Minerals", amount: 1250, rate: 12.5 }, { key: "sup", name: "Supply", amount: 190, capacity: 200, rate: 0 }] });
+    shooter.scoreboard("Board", {
       title: "Bind", columns: [{ key: "k", label: "K" }, { key: "d", label: "D" }],
       teams: [{ team: 0, name: "Attackers", score: "7", rows: [{ key: "a", name: "Ana", values: ["12", "4"], local: true, ping: 32 }, { key: "b", name: "Bo", values: ["3", "9"], dead: true, ping: 240 }] }],
     });
@@ -443,9 +447,9 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   const e = engineFor("HudMisc", () => {
     og.ui.comboCounter("Combo", { count, multiplier: 4 });
     og.ui.judgement("Judge", { last: { text: "PERFECT", tier: 0, offsetMs: -12, at: judgeAt } });
-    og.ui.turnOrder("Turns", { units: [{ key: "hero", name: "Hero", current: true }, { key: "imp", name: "Imp", team: 1 }, { key: "mage", name: "Mage", atb: 0.5 }] });
+    rpg.turnOrder("Turns", { units: [{ key: "hero", name: "Hero", current: true }, { key: "imp", name: "Imp", team: 1 }, { key: "mage", name: "Mage", atb: 0.5 }] });
     og.ui.scorebug("Bug", { home: { abbr: "LAL", score: 98 }, away: { abbr: "BOS", score: 101, possession: true }, clock: "2:41", period: "Q4" });
-    og.ui.speedometer("Speedo", { speed: 212, maxSpeed: 300, rpm: 0.92, gear: "5" });
+    racing.speedometer("Speedo", { speed: 212, maxSpeed: 300, rpm: 0.92, gear: "5" });
     og.ui.flightHud("Flight", { speed: 420, altitude: 12500, heading: Math.PI / 2, pitch: 0.1, roll: 0.3 });
   });
   e.advance(3);
@@ -521,7 +525,7 @@ test("og.ui.statBar as pips: n of max lit with a gap between equal pips, its val
   expect(rowMark.height).toBeGreaterThanOrEqual(name.height - 0.5);
 }, LOADED_MS);
 
-test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and selected, an enemy's stripe on the start edge, allies lined up, mirrored right to left", () => {
+test("rpg.turnOrder as a list: rows top to bottom, the acting one first and selected, an enemy's stripe on the start edge, allies lined up, mirrored right to left", () => {
   // Wrong: the list drawn as the strip (no rows, no names), numbers on the rows, an ally's portrait set in where
   // an enemy's stripe would be, the stripe left of the portrait right to left, or a screen reader told neither
   // the side nor who acts.
@@ -531,7 +535,7 @@ test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and se
     { key: "aegis", name: "Aegis" },
     { key: "wasp", name: "Wasp", team: 2, dead: true },
   ];
-  const build = () => og.ui.anchor("Side", { anchor: "topLeft", width: { kind: "fixed", px: 320 } } as never, () => og.ui.turnOrder("Turns", { style: "list", units, nowLabel: "Acting", anchor: null }));
+  const build = () => og.ui.anchor("Side", { anchor: "topLeft", width: { kind: "fixed", px: 320 } } as never, () => rpg.turnOrder("Turns", { style: "list", units, nowLabel: "Acting", anchor: null }));
   const read = (rtl: boolean) => {
     const sys = defineSystem(`HudTurnList${rtl ? "Rtl" : ""}`, {}, () => build());
     const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, rtl ? { root: kit } : {});
@@ -579,15 +583,15 @@ test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and se
   expect(at(r, "Side/Turns/raider/Portrait")!.x).toBeLessThan(stripe.x);
 }, LOADED_MS);
 
-test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, signed gaps, the cut field, the split", () => {
+test("racing.standingsTower, lapTimer, rearView and a minimap's track: order, signed gaps, the cut field, the split", () => {
   let player = 11;
   let delta = 180;
   const e = engineFor("HudRace", () => {
     const entries = Array.from({ length: 14 }, (_, i) => ({ key: `c${i}`, name: `Car ${i}`, gap: i * 0.5, player: i === player, pit: i === 5, out: i === 12 }));
-    og.ui.standingsTower("Tower", { entries, rows: 8 });
-    og.ui.standingsTower("Rel", { entries: entries.slice(0, 4).map((x, i) => ({ ...x, player: i === 2, gap: (i - 2) * 0.4 })), relative: true, anchor: "right" });
-    og.ui.lapTimer("Lap", { position: 2, positionTotal: 8, lap: 3, lapTotal: 3, currentMs: 72384, bestMs: 101226, deltaMs: delta });
-    og.ui.rearView("Mirror", {});
+    racing.standingsTower("Tower", { entries, rows: 8 });
+    racing.standingsTower("Rel", { entries: entries.slice(0, 4).map((x, i) => ({ ...x, player: i === 2, gap: (i - 2) * 0.4 })), relative: true, anchor: "right" });
+    racing.lapTimer("Lap", { position: 2, positionTotal: 8, lap: 3, lapTotal: 3, currentMs: 72384, bestMs: 101226, deltaMs: delta });
+    racing.rearView("Mirror", {});
     og.ui.minimapView("Map", { track: [{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.5 }, { x: 0.5, y: 0.8 }], zoom: 1, anchor: "bottomRight" });
   });
   e.advance(3);
@@ -627,7 +631,7 @@ test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, sig
   expect(states(at(els, "LapHud/Lap")).split).toBe("ahead");
 }, LOADED_MS);
 
-test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selection, a fixed command grid, a queue, the box", () => {
+test("strategy.rtsConsole and dragSelect: four zones side by side, a paged selection, a fixed command grid, a queue, the box", () => {
   let building = false;
   let queued = true;
   let drag: { x: number; y: number } | null = null;
@@ -635,7 +639,7 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   const e = engineFor("HudRts", () => {
     const units = Array.from({ length: 14 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: i === 3 ? 20 : 100, healthMax: 100 }));
     const commands = [{ key: "a", name: "Attack", hotkey: "Q" }, { key: "" }, { key: "s", name: "Stop", hotkey: "S", cooldown: 4, cooldownMax: 8 }, ...Array.from({ length: 4 }, (_, i) => ({ key: `c${i}`, name: `C${i}` }))];
-    og.ui.rtsConsole("Rts", {
+    strategy.rtsConsole("Rts", {
       map: { shape: "square", zoom: 1 },
       selection: {
         units: building ? [{ key: "b", name: "Barracks", health: 900, healthMax: 1000 }] : units, focus: building ? "b" : "u3",
@@ -645,7 +649,7 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
       },
       commands: { commands, columns: 5 },
     });
-    if (drag) box = og.ui.dragSelect("Drag", { from: { x: 100, y: 120 }, to: drag });
+    if (drag) box = strategy.dragSelect("Drag", { from: { x: 100, y: 120 }, to: drag });
   });
   e.advance(4);
   const draws = drawsDuring(() => e.advance(1));
@@ -726,12 +730,12 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Stats/Columns/Col#0/armour/Value")?.text).toBe("1");
 }, LOADED_MS);
 
-test("og.ui.commandCard by keys: the grid is one focus stop whose cursor the arrows walk, Enter issuing the command under it", () => {
+test("strategy.commandCard by keys: the grid is one focus stop whose cursor the arrows walk, Enter issuing the command under it", () => {
   // Wrong: cells no key reaches, or Enter issuing the first command wherever the cursor is.
   const issued: string[] = [];
   let focus = true;
   const e = engineFor("HudCmdKeys", () => {
-    const r = og.ui.commandCard("Cmd", { anchor: null, columns: 3, commands: [{ key: "a", name: "Attack" }, { key: "", name: "" }, { key: "s", name: "Stop" }, { key: "h", name: "Hold" }] });
+    const r = strategy.commandCard("Cmd", { anchor: null, columns: 3, commands: [{ key: "a", name: "Attack" }, { key: "", name: "" }, { key: "s", name: "Stop" }, { key: "h", name: "Hold" }] });
     if (r.clicked) issued.push(r.clicked);
     if (focus) og.ui.setFocus("Cmd/Grid");
     focus = false;
@@ -756,9 +760,9 @@ test("og.ui.commandCard by keys: the grid is one focus stop whose cursor the arr
   expect(at(dump(e), "Cmd/Grid/Cursor")).toBeDefined();
 }, LOADED_MS);
 
-test("og.ui.rtsConsole: a minimap pushed out of a phone held sideways stays in its corner tick after tick", () => {
+test("strategy.rtsConsole: a minimap pushed out of a phone held sideways stays in its corner tick after tick", () => {
   const e = engineFor("HudRtsLand", () => {
-    og.ui.rtsConsole("Rts", {
+    strategy.rtsConsole("Rts", {
       map: { shape: "square", zoom: 1 },
       selection: { units: Array.from({ length: 8 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: 100, healthMax: 100 })), groups: [1, 2, 3, 4, 5].map((n) => ({ key: `g${n}`, label: `${n}`, count: n === 1 ? 8 : 0 })), group: "g1" },
       commands: { commands: [{ key: "a", name: "Attack", hotkey: "Q" }], columns: 5 },
@@ -873,9 +877,9 @@ test("og.ui.scorebug at full time and a radar's pitch: a final chip in place of 
   expect(at(els, "RadarHud/Radar/Bezel/Map/Grid")).toBe(undefined);
 }, LOADED_MS);
 
-test("og.ui.wavePreview and laneKeys: the waves past max fold into dots, the current lit; caps under their lanes, a held one down", () => {
+test("strategy.wavePreview and laneKeys: the waves past max fold into dots, the current lit; caps under their lanes, a held one down", () => {
   const e = engineFor("HudGenres", () => {
-    og.ui.wavePreview("Waves", { current: 8, max: 4, waves: Array.from({ length: 6 }, (_, i) => ({ key: `w${i + 7}`, number: i + 7, name: "Crawlers", count: (i + 1) * 3, boss: i === 4 })) });
+    strategy.wavePreview("Waves", { current: 8, max: 4, waves: Array.from({ length: 6 }, (_, i) => ({ key: `w${i + 7}`, number: i + 7, name: "Crawlers", count: (i + 1) * 3, boss: i === 4 })) });
     og.ui.laneKeys("Lanes", { y: 600, lanes: [{ key: "a", hotkey: "D", x: 500 }, { key: "b", hotkey: "F", x: 640 }, { key: "c", hotkey: "J", x: 780 }], pressed: ["b"] });
   });
   e.advance(4);
@@ -900,11 +904,11 @@ test("components anchored at one point stack in the order built instead of drawi
   const e = engineFor("HudStack", () => {
     og.ui.compass("Compass", { heading: 0 });
     og.ui.hudTimer("Round", { seconds: 42 });
-    og.ui.resourceBar("Res", { items: [{ key: "g", name: "Gold", amount: 10 }] });
+    strategy.resourceBar("Res", { items: [{ key: "g", name: "Gold", amount: 10 }] });
     og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Hold", steps: [{ key: "s", text: "Hold the line" }] }] });
     og.ui.comboCounter("Combo", { count: 12 });
-    og.ui.ammoCounter("Ammo", { magazine: 12, magazineMax: 30 });
-    og.ui.speedometer("Speed", { speed: 120 });
+    shooter.ammoCounter("Ammo", { magazine: 12, magazineMax: 30 });
+    racing.speedometer("Speed", { speed: 120 });
   });
   e.advance(3);
   const els = dump(e);
@@ -935,11 +939,11 @@ test("every corner HUD piece stays inside the safe area at every breakpoint", ()
     const e = engineFor(`HudSafe${name}`, () => {
       og.ui.statBar("HP", { value: 64, label: "HP", showValue: true, anchor: "bottomLeft" });
       og.ui.abilityBar("Bar", { slots: ["q", "w", "e", "r", "d", "f", "g", "h"].map((key) => ({ key, hotkey: key.toUpperCase(), cooldown: 2, cooldownMax: 5 })) });
-      og.ui.ammoCounter("Ammo", { magazine: 18, magazineMax: 30, reserve: 120 });
+      shooter.ammoCounter("Ammo", { magazine: 18, magazineMax: 30, reserve: 120 });
       og.ui.minimapView("Map", { zone: "Docks" });
-      og.ui.killfeed("Feed", { entries: [{ key: "a", killer: "Wraith", victim: "Bloodhound", weaponText: "R-99", at: 0 }] });
+      shooter.killfeed("Feed", { entries: [{ key: "a", killer: "Wraith", victim: "Bloodhound", weaponText: "R-99", at: 0 }] });
       og.ui.compass("Compass", { heading: 1 });
-      og.ui.unitFrame("Me", { name: "Aria", level: "12", health: 80, resource: 40, anchor: "topLeft" });
+      rpg.unitFrame("Me", { name: "Aria", level: "12", health: 80, resource: 40, anchor: "topLeft" });
       og.ui.objectiveTracker("Obj", { quests: [{ key: "q", title: "Reach the extraction point before the storm", steps: [{ key: "s", text: "Hold the zone", progress: 0.4 }] }] });
     }, vp);
     e.advance(3);
@@ -955,13 +959,13 @@ test("every corner HUD piece stays inside the safe area at every breakpoint", ()
   }
 });
 
-test("og.ui.killfeed: lines stamped late in a run are laid out on screen, inside the safe area, newest on top", () => {
+test("shooter.killfeed: lines stamped late in a run are laid out on screen, inside the safe area, newest on top", () => {
   const entries: KillfeedEntry[] = [];
   let push: string[] = [];
   const e = engineFor("HudFeedLate", () => {
     for (const k of push) entries.push({ key: k, killer: "Wraith", killerTeam: 0, victim: "Octane", victimTeam: 1, weaponText: "R-99", at: og.ui.tick() });
     push = [];
-    og.ui.killfeed("Feed", { entries });
+    shooter.killfeed("Feed", { entries });
   }, { ...DESKTOP_SAFE });
   e.advance(500);
   push = ["a"];
@@ -982,12 +986,12 @@ test("og.ui.killfeed: lines stamped late in a run are laid out on screen, inside
   expect(at(els, "FeedHud/Feed/b/Killer")?.text).toBe("Wraith");
 });
 
-test("og.ui.commandCard at 150 % text: a cooling cell's seconds stay clear of its key corner; a charge badge's numeral never under the smallest text", () => {
+test("strategy.commandCard at 150 % text: a cooling cell's seconds stay clear of its key corner; a charge badge's numeral never under the smallest text", () => {
   // Wrong: the seconds centred in a 40 px cell, over the corner key once the text grows; a 16 px badge's 10.6 px digit.
   const PHONE = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
   const e = engineFor("HudCard200", (world) => {
     og.ui.configure(world, { textScale: 1.5 });
-    og.ui.commandCard("Card", { columns: 3, size: 40, commands: [{ key: "q", name: "Stim", hotkey: "Q", cooldown: 12, cooldownMax: 20 }] });
+    strategy.commandCard("Card", { columns: 3, size: 40, commands: [{ key: "q", name: "Stim", hotkey: "Q", cooldown: 12, cooldownMax: 20 }] });
     og.ui.abilityBar("Bar", { size: 56, slots: [{ key: "w", name: "Blink", hotkey: "W", maxCharges: 3, charges: 2 }] });
   }, PHONE);
   e.advance(3);
@@ -1003,13 +1007,13 @@ test("og.ui.commandCard at 150 % text: a cooling cell's seconds stay clear of it
   expect(els.find((x) => x.path.endsWith("/w/Slot/ChargeBadge"))!.width * 0.66).toBeGreaterThanOrEqual(12);
 });
 
-test("og.ui.minimapView and og.ui.speedometer on a phone: north's badge holds a 12 px letter and sits on the rim on purpose; no dial numeral meets the readout", () => {
+test("og.ui.minimapView and racing.speedometer on a phone: north's badge holds a 12 px letter and sits on the rim on purpose; no dial numeral meets the readout", () => {
   // Wrong: a 10.5 px north letter reported over the map, or the dial's lowest numeral 2 px into the speed (a readout
   // top the check measured at 6 % under the hub while the readout sat at 5 %).
   const PHONE = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
   const e = engineFor("HudPhoneNav", () => {
     og.ui.minimapView("Map", { size: 168, zoom: 1, anchor: "topRight", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5 }] });
-    og.ui.speedometer("Speedo", { size: 210, speed: 64, maxSpeed: 240, anchor: "bottomLeft" });
+    racing.speedometer("Speedo", { size: 210, speed: 64, maxSpeed: 240, anchor: "bottomLeft" });
   }, PHONE);
   e.advance(3);
   const els = dump(e);
@@ -1021,12 +1025,12 @@ test("og.ui.minimapView and og.ui.speedometer on a phone: north's badge holds a 
   expect(overlaps.join("; ")).toBe("");
 });
 
-test("og.ui.unitFrame and og.ui.partyFrames: a level badge's figure is never under the smallest text; a status tile's art lies under its stacks on purpose", () => {
+test("rpg.unitFrame and rpg.partyFrames: a level badge's figure is never under the smallest text; a status tile's art lies under its stacks on purpose", () => {
   // Wrong: the badge sized off the portrait alone (a small party frame's 12 px badge, 6.7 px figure; 11.2 px on a large
   // frame), or a tile's stack count reported over its own art.
   const sys = defineSystem("HudLevels", {}, () => {
-    og.ui.unitFrame("Me", { name: "Aria", level: "12", health: 80, size: "large", anchor: "topLeft" } as never);
-    og.ui.partyFrames("Party", { size: "small", anchor: "left", members: [{ key: "a", name: "Bren", level: "47", health: 60 }, { key: "b", name: "Cass", level: "100", health: 90 }] } as never);
+    rpg.unitFrame("Me", { name: "Aria", level: "12", health: 80, size: "large", anchor: "topLeft" } as never);
+    rpg.partyFrames("Party", { size: "small", anchor: "left", members: [{ key: "a", name: "Bren", level: "47", health: 60 }, { key: "b", name: "Cass", level: "100", health: 90 }] } as never);
     og.ui.statusGrid("Auras", { effects: [{ key: "bleed", name: "Bleed", debuff: true, type: "bleed", stacks: 3, remaining: 3.5, duration: 10 }], anchor: "bottomLeft" });
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
@@ -1047,12 +1051,12 @@ test("og.ui.unitFrame and og.ui.partyFrames: a level badge's figure is never und
   expect(overlaps.join("; ")).toBe("");
 });
 
-test("og.ui.speedometer tach: shift lights fill to the shift point and all light there, numbers outside the arc, dropped at 200 % before the readout shrinks, capped at a third of the short side", () => {
+test("racing.speedometer tach: shift lights fill to the shift point and all light there, numbers outside the arc, dropped at 200 % before the readout shrinks, capped at a third of the short side", () => {
   // Wrong: the lights lit by the redline instead of shiftAt, a number laid out inside the arc where it can reach the
   // readout, the speed shrunk to keep the numbers at 200 %, or a dial wider than 34 % of a phone's short side.
   const tachFor = (rpm: number, view: object, textScale = 1) => {
     const sys = defineSystem("HudTach", {}, () => {
-      og.ui.speedometer("Tach", { style: "tach", size: 200, speed: 187, maxSpeed: 300, rpm, redline: 0.85, shiftAt: 0.9, gear: "N", boost: 0.5, anchor: "bottomRight" } as never);
+      racing.speedometer("Tach", { style: "tach", size: 200, speed: 187, maxSpeed: 300, rpm, redline: 0.85, shiftAt: 0.9, gear: "N", boost: 0.5, anchor: "bottomRight" } as never);
     });
     const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
     if (!r.ok) throw new Error(r.reason);
@@ -1106,7 +1110,7 @@ test("og.ui.speedometer tach: shift lights fill to the shift point and all light
   expect(overlaps(p150.frame).join("; ")).toBe("");
 });
 
-test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a checkpoint's split that leaves after 1.5 s, the finish, and wrong way over every other moment", () => {
+test("racing.raceBanner: the countdown's numerals and lights by the second, GO, a checkpoint's split that leaves after 1.5 s, the finish, and wrong way over every other moment", () => {
   // Wrong: a numeral that does not step down each second from `at`, lights lit by the wrong count, GO never green, a
   // split that stays, a minus that is a hyphen, or a moment drawn over a wrong way.
   let desc: Record<string, unknown> = {};
@@ -1115,8 +1119,8 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
   const sys = defineSystem("HudBanner", {}, () => {
     const t = (uiKit as unknown as { tick(): number }).tick();
     if (start < 0) start = t;
-    if (times) og.ui.lapTimer("Times", { show: "times", compact: true, currentMs: 61234, bestMs: 60000, lastMs: 61900, deltaMs: -420, anchor: "top" } as never);
-    og.ui.raceBanner("Banner", { ...desc, at: start } as never);
+    if (times) racing.lapTimer("Times", { show: "times", compact: true, currentMs: 61234, bestMs: 60000, lastMs: 61900, deltaMs: -420, anchor: "top" } as never);
+    racing.raceBanner("Banner", { ...desc, at: start } as never);
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
   if (!r.ok) throw new Error(r.reason);
@@ -1180,7 +1184,7 @@ test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a
   expect(overlaps.join("; ")).toBe("");
 });
 
-test("og.ui.standingsTower relative window: only the cars around the player, kept whole at the front, one each side on a phone, the player's row with its place and no gap", () => {
+test("racing.standingsTower relative window: only the cars around the player, kept whole at the front, one each side on a phone, the player's row with its place and no gap", () => {
   // Wrong: the leaders shown with the window, a window cut short at the front of the field, a phone given two each
   // side, the player's place dropped from its row (the art director's note: show the rank once, not twice), or a gap
   // of its own.
@@ -1188,7 +1192,7 @@ test("og.ui.standingsTower relative window: only the cars around the player, kep
   const PHONE = { width: 844, height: 390, dpr: 3, safeArea: { left: 47, top: 0, right: 34, bottom: 0 }, coarsePointer: true, breakpoint: "phoneLandscape" };
   const tower = (view?: object) => engineFor("HudWindow", () => {
     const entries = Array.from({ length: 14 }, (_, i) => ({ key: `c${i}`, name: `Car ${i}`, gap: (i - player) * 0.5, player: i === player }));
-    og.ui.standingsTower("Tower", { entries, ahead: 2, behind: 2, relative: true } as never);
+    racing.standingsTower("Tower", { entries, ahead: 2, behind: 2, relative: true } as never);
   }, view);
   const ids = (e: ReturnType<typeof tower>) => below(dump(e), "TowerHud/Tower").filter((x) => x.path.split("/").length === 3).map((x) => x.id);
   const e = tower();
@@ -1211,12 +1215,12 @@ test("og.ui.standingsTower relative window: only the cars around the player, kep
   expect(ids(p)).toEqual(["c5", "c6", "c7"]);
 });
 
-test("og.ui.lapTimer: sector pips in their timing colours, gold on the final lap, a purple best split, boxless text on the scene, the head and the times apart", () => {
+test("racing.lapTimer: sector pips in their timing colours, gold on the final lap, a purple best split, boxless text on the scene, the head and the times apart", () => {
   // Wrong: pips missing or all one colour, the final lap's undriven pips not gold, a best split in success, a plate
   // drawn under boxless text (or its text not outlined), or show building the whole block.
   let desc: Record<string, unknown> = {};
   const e = engineFor("HudLapParts", () => {
-    og.ui.lapTimer("Lap", { position: 3, positionTotal: 8, lap: 2, lapTotal: 3, currentMs: 61000, deltaMs: -250, ...desc } as never);
+    racing.lapTimer("Lap", { position: 3, positionTotal: 8, lap: 2, lapTotal: 3, currentMs: 61000, deltaMs: -250, ...desc } as never);
   });
   const draws = () => drawsDuring(() => e.advance(1));
   const pip = (d: Map<string, DrawDesc[]>, k: number) => d.get(`LapHud/Lap/Head/Lap/Sectors/Sector#${k}`)?.at(-1)?.fills?.[0];
@@ -1266,10 +1270,10 @@ test("the racing HUD's arcade look: whole nitro segments that flare when full, a
   let tick = 0;
   const sys = defineSystem("HudArcade", {}, () => {
     tick = (uiKit as unknown as { tick(): number }).tick();
-    og.ui.speedometer("Speedo", { style: "arcade", speed: 143, boost, boostSegments: 3, anchor: "bottomRight" } as never);
-    og.ui.lapTimer("Lap", { position: place, positionTotal: 8, positionText: `${place}rd`, placeBadge: true, show: "head" } as never);
-    og.ui.itemSlot("Item", { item: tex, roulette: tex ? [tex, tex] : [], rollingAt, rollMs: 1000, label: "Shell" } as never);
-    og.ui.driftScore("Drift", drift as never);
+    racing.speedometer("Speedo", { style: "arcade", speed: 143, boost, boostSegments: 3, anchor: "bottomRight" } as never);
+    racing.lapTimer("Lap", { position: place, positionTotal: 8, positionText: `${place}rd`, placeBadge: true, show: "head" } as never);
+    racing.itemSlot("Item", { item: tex, roulette: tex ? [tex, tex] : [], rollingAt, rollMs: 1000, label: "Shell" } as never);
+    racing.driftScore("Drift", drift as never);
   });
   const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
   if (!r.ok) throw new Error(r.reason);

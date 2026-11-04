@@ -10,7 +10,7 @@ version 1
 # tab, stats, materials, canAscend. Events to code: tab (the click wrote
 # tab), levelUp, ascend, previous, next (the neighbour in the roster);
 # Back pops it. Slots: Skills takes the skills (og.ui.abilityBar, og.ui.card with
-# og.ui.tooltipCard); Gear takes og.ui.paperdoll or og.ui.inventoryGrid of
+# og.ui.tooltipCard); Gear takes rpg.paperdoll or rpg.inventoryGrid of
 # its equipment; Ascension takes the ascension's celebration
 # (og.ui.celebration) when it plays.
 name "character-detail"

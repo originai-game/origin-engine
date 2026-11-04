@@ -611,8 +611,15 @@ const dirtyRecords: RecordCopy[] = [];
 /** Calls into game code in progress (systems, commands, facts, start): writes wait for their end. */
 let inGame = 0;
 
-const utf8in = new TextEncoder();
-const utf8out = new TextDecoder();
+// Read from globalThis, not the DOM lib's globals: kits import this module
+// (through @origingame/engine/ui-parts) into games typechecked with lib
+// ES2022 alone, which has no TextEncoder.
+const utf8 = globalThis as unknown as {
+  TextEncoder: new () => { encode(text: string): Uint8Array };
+  TextDecoder: new () => { decode(bytes: Uint8Array): string };
+};
+const utf8in = new utf8.TextEncoder();
+const utf8out = new utf8.TextDecoder();
 
 function forgetRecords(world: number): void {
   records.delete(world);

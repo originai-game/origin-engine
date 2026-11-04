@@ -1,5 +1,5 @@
-// og.ui.crosshair, og.ui.ammoCounter, og.ui.killfeed, og.ui.damageDirection
-// and og.ui.lowHealthVignette: the shooter rows of Appendix C. Read against
+// shooter.crosshair, shooter.ammoCounter, shooter.killfeed, shooter.damageDirection
+// and shooter.lowHealthVignette: the shooter rows of Appendix C. Read against
 // Valorant's and Counter-Strike's crosshair editors (outlined lines round a
 // gap that opens with spread, a T without its top line), Call of Duty's hit
 // markers (four diagonal ticks springing out; larger and coloured for a
@@ -10,10 +10,8 @@
 // sliding in) and Call of Duty's damage wedges and red edges at low health.
 
 import type * as Api from "@origingame/engine";
-import {
-  a11y, absolute, anchorOf, arc, box, chip, clamp01, easeOut, edge, ellipseShape, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit,
-  msToTicks, now, paintRgba, pct, pulse, px, reduced, role, sel, solid, sound, springTo, stroke, teamColor, text, token, ts, u, type Rgba, textScale,
-} from "./core.ts";
+import { a11y, absolute, anchorOf, arc, box, chip, clamp01, easeOut, edge, ellipseShape, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, msToTicks, now, paintRgba, pct, pulse, px, reduced, role, sel, solid, sound, springTo, stroke, teamColor, text, token, ts, u, type Rgba, textScale } from "@origingame/engine/ui-parts/hud";
+import type { AmmoDesc, CrosshairDesc, CrosshairStyle, DamageDirectionDesc, HitKind, KillfeedDesc, LowHealthDesc } from "../types.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -26,8 +24,8 @@ function line(id: string, box: number, a: [number, number], b: [number, number],
   }, absolute({ start: 0, top: 0 }));
 }
 
-export function crosshair(id: string, desc: Api.CrosshairDesc = {}): void {
-  const style: Api.CrosshairStyle = desc.style ?? "cross";
+export function crosshair(id: string, desc: CrosshairDesc = {}): void {
+  const style: CrosshairStyle = desc.style ?? "cross";
   const len = desc.length || 8;
   const th = desc.thickness || 2;
   const gap0 = desc.gap || 6;
@@ -37,7 +35,7 @@ export function crosshair(id: string, desc: Api.CrosshairDesc = {}): void {
   const t = now();
   const hitAt = desc.hitAt ?? null;
   const hitSince = hitAt === null ? 1e9 : t - hitAt;
-  const kind: Api.HitKind = desc.hit ?? "hit";
+  const kind: HitKind = desc.hit ?? "hit";
   const hitMs = kind === "kill" ? 520 : kind === "headshot" ? 320 : 220;
   const hitLive = hitSince >= 0 && hitSince < msToTicks(hitMs);
   const base = desc.color ? paintRgba(desc.color, WHITE) : WHITE;
@@ -94,7 +92,7 @@ export function crosshair(id: string, desc: Api.CrosshairDesc = {}): void {
   });
 }
 
-export function ammoCounter(id: string, desc: Api.AmmoDesc = {}): void {
+export function ammoCounter(id: string, desc: AmmoDesc = {}): void {
   const tk = frame().t;
   const mag = desc.magazine ?? 0;
   const magMax = Math.max(1, desc.magazineMax ?? (mag || 1));
@@ -166,7 +164,7 @@ export function ammoCounter(id: string, desc: Api.AmmoDesc = {}): void {
   });
 }
 
-export function killfeed(id: string, desc: Api.KillfeedDesc = {}): void {
+export function killfeed(id: string, desc: KillfeedDesc = {}): void {
   const tk = frame().t;
   const phone = frame().phone;
   const t = now();
@@ -209,7 +207,7 @@ export function killfeed(id: string, desc: Api.KillfeedDesc = {}): void {
   });
 }
 
-export function damageDirection(id: string, desc: Api.DamageDirectionDesc = {}): void {
+export function damageDirection(id: string, desc: DamageDirectionDesc = {}): void {
   const f = frame();
   const t = now();
   const life = msToTicks(desc.durationMs || 1400);
@@ -238,7 +236,7 @@ export function damageDirection(id: string, desc: Api.DamageDirectionDesc = {}):
   });
 }
 
-export function lowHealthVignette(id: string, desc: Api.LowHealthDesc = {}): void {
+export function lowHealthVignette(id: string, desc: LowHealthDesc = {}): void {
   const hp = clamp01(desc.health ?? 1);
   const threshold = desc.threshold ?? 0.35;
   const color = desc.color ?? { color: { r: 0.62, g: 0.02, b: 0.04 } };
