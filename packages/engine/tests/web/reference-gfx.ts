@@ -22,6 +22,8 @@
 //
 //   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>]]
 //
+// First, every WGSL module the renderer compiles (og_gfx_shader_sources)
+// goes through the browser's own compiler; one it refuses fails the run.
 // A scene with no reference on the tier (scenes::Applies) is listed as
 // not applying, not rendered.
 // --record writes the frames as references/<tier>/ instead of comparing.
@@ -202,6 +204,27 @@ async function page() {
 }
 try {
   let tab = await page();
+  // Every WGSL module the renderer compiles, through the browser's compiler (Tint): naga, which the
+  // gate validates them with natively, misses part of WGSL's uniformity rules, and a module the
+  // browser refuses invalidates every frame that uses it. Not with --scene: a run of chosen scenes.
+  if (!opt("--scene")) {
+    const refused = await tab.eval<Array<{ label: string; messages: string[] }>>(`(async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const out = [];
+      for (const s of JSON.parse(globalThis.__gfx.og_gfx_shader_sources())) {
+        const info = await device.createShaderModule({ label: s.label, code: s.wgsl }).getCompilationInfo();
+        const errors = info.messages.filter((m) => m.type === "error").map((m) => m.lineNum + ":" + m.linePos + ": " + m.message);
+        if (errors.length) out.push({ label: s.label, messages: errors });
+      }
+      device.destroy();
+      return out;
+    })()`);
+    result["shaders"] = refused;
+    if (refused.length > 0) {
+      failures++;
+      for (const r of refused) console.error(`FAIL shader ${r.label} (${tier}): ${r.messages.slice(0, 3).join("; ")}`);
+    } else console.log(`ok   every renderer shader module compiles in the browser (${tier})`);
+  }
   const all = [...(await tab.eval<string[]>("__gfx.og_gfx_scenes()")), ...(await tab.eval<string[]>("__gfx.og_gfx_ui_scenes()"))];
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);

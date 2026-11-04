@@ -656,7 +656,15 @@ fn terrain_debug_color(i: u32) -> vec3<f32> {
 }
 
 fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
+  // Every derivative before the first branch: the views below return early on
+  // per-pixel values (a layer's flags), and WGSL refuses a derivative in control
+  // flow that depends on one (Tint, so the browser, rejects the whole module).
   let vertical = dpdy(in.world);
+  let samples = (in.local.xz - terrain_min()) / terrain_cell();
+  let gx = dpdx(samples);
+  let gy = dpdy(samples);
+  let cell = (in.local.xz - terrain_min()) / (level.camera.z * level.center.z);
+  let edge = abs(fract(cell - 0.5) - 0.5) / max(fwidth(cell), vec2<f32>(1e-5));
   if (frame.light_color.w > 9.5) {
     let pick = pick_layers(in.world, point.normal, point.control);
     let layer = terrain.layers[pick.ids.x];
@@ -673,11 +681,6 @@ fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
     let weights = pow(abs(point.normal), vec3<f32>(4.0));
     return weights / max(dot(weights, vec3<f32>(1.0)), 1e-5);
   }
-  let samples = (in.local.xz - terrain_min()) / terrain_cell();
-  let gx = dpdx(samples);
-  let gy = dpdy(samples);
-  let cell = (in.local.xz - terrain_min()) / (level.camera.z * level.center.z);
-  let edge = abs(fract(cell - 0.5) - 0.5) / max(fwidth(cell), vec2<f32>(1e-5));
   if (frame.light_color.w > 8.5) {
     let resident = resident_from(0u, samples);
     let footprint = max(length(gx), length(gy)) / f32(1u << resident.lvl);

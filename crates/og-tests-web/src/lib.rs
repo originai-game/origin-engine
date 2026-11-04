@@ -73,6 +73,21 @@ mod web {
             .collect()
     }
 
+    /// Every WGSL module the renderer compiles (`og_render::shader_sources`),
+    /// as JSON `[{label, wgsl}]`: reference-gfx.ts hands each to the
+    /// browser's own WGSL compiler, whose uniformity analysis refuses what
+    /// naga's (crates/og-render/tests/shaders.rs) lets through: a derivative
+    /// after a return that depends on a per-pixel value made the whole
+    /// terrain module invalid in Chrome, and every frame with it.
+    #[wasm_bindgen]
+    pub fn og_gfx_shader_sources() -> String {
+        let all: Vec<_> = og_render::shader_sources()
+            .into_iter()
+            .map(|s| serde_json::json!({ "label": s.label, "wgsl": s.wgsl }))
+            .collect();
+        serde_json::Value::from(all).to_string()
+    }
+
     /// The text fonts' cook manifest (`cooked/.cook.ogt` of
     /// crates/og-ui/tests/text-fonts, cooked by the runner).
     #[wasm_bindgen]
