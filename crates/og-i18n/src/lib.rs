@@ -23,6 +23,7 @@
 // Generated (scripts/cldr.ts), one record per line: rustfmt leaves it as written.
 #[rustfmt::skip]
 mod cldr;
+pub mod case;
 pub mod format;
 pub mod locale;
 pub mod message;
@@ -30,6 +31,7 @@ pub mod plural;
 pub mod table;
 pub mod text;
 
+pub use case::to_upper;
 pub use format::{
     DateStyle, TimeStyle, format_compact, format_currency, format_date, format_duration,
     format_locales, format_time,
