@@ -60,6 +60,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::task::{Context, Poll, Waker};
 
 /// The model's weights in the cooked bundle.
@@ -165,6 +166,8 @@ struct Startup {
     first_poll_delay_ms: Option<f64>,
     first_inference_wall_ms: Option<f64>,
     first_inference_poll_ms: f64,
+    first_inference_polls: u32,
+    first_inference_max_poll_gap_ms: f64,
     first_inference_slices: u32,
     first_inference_timed_slices: u32,
     first_inference_gpu_ms: Option<f64>,
@@ -180,6 +183,10 @@ struct Startup {
     before_palette_accepted_frames: u32,
     before_palette_frames_after_readback: u32,
     before_palette_palette_ms: f64,
+    before_palette_max_frames_in_flight: u64,
+    before_palette_gpu_frames: Vec<(u64, f64)>,
+    #[serde(skip)]
+    last_inference_poll_at: Option<f64>,
     #[serde(skip)]
     resident_at: f64,
     #[serde(skip)]
@@ -305,6 +312,52 @@ pub(crate) struct Presenter {
     batches: u64,
     last_batch: (usize, f64),
     errors: Vec<String>,
+    warmup_frames_submitted: u64,
+    warmup_frames_completed: Arc<AtomicU64>,
+}
+
+/// Observe the actual render queue during model warm-up, never the world.
+pub(crate) fn after_frame(
+    p: &mut Presenter,
+    backend: &dyn RenderBackend,
+    gpu: &[og_render::GpuFrame],
+) {
+    let Model::Ready(r) = &mut p.model else {
+        return;
+    };
+    if r.failure.is_some() {
+        return;
+    }
+    // Timestamp readbacks can arrive after the first palette. Keep the
+    // samples submitted during warm-up, not only the ones read back then.
+    let until = r
+        .startup
+        .first_palette_delay_ms
+        .map_or(f64::INFINITY, |delay| {
+            r.startup
+                .inference_finished_at
+                .expect("a generated palette followed inference")
+                + delay
+        });
+    r.startup.before_palette_gpu_frames.extend(
+        gpu.iter()
+            .filter(|f| f.submitted >= r.startup.resident_at && f.submitted <= until)
+            .map(|f| (f.frame, f.passes.iter().map(|p| p.ms()).sum())),
+    );
+    if r.startup.first_palette_delay_ms.is_some() {
+        return;
+    }
+    let Some((_, queue)) = backend.compute() else {
+        return;
+    };
+    p.warmup_frames_submitted += 1;
+    let completed = p.warmup_frames_completed.clone();
+    queue.on_submitted_work_done(move || {
+        completed.fetch_add(1, Ordering::Relaxed);
+    });
+    let pending = p.warmup_frames_submitted - p.warmup_frames_completed.load(Ordering::Relaxed);
+    r.startup.before_palette_max_frames_in_flight =
+        r.startup.before_palette_max_frames_in_flight.max(pending);
 }
 
 impl Presenter {
@@ -626,6 +679,13 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
         r.startup
             .first_poll_delay_ms
             .get_or_insert(start - flight.started);
+        if r.startup.first_inference_wall_ms.is_none() {
+            r.startup.first_inference_polls += 1;
+            if let Some(last) = r.startup.last_inference_poll_at.replace(start) {
+                r.startup.first_inference_max_poll_gap_ms =
+                    r.startup.first_inference_max_poll_gap_ms.max(start - last);
+            }
+        }
         let polled = flight.future.as_mut().poll(&mut cx);
         if r.startup.first_inference_wall_ms.is_none() {
             r.startup.first_inference_poll_ms += now_ms() - start;

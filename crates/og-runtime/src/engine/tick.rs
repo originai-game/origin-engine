@@ -317,6 +317,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             b.render(&rs.scene)?;
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
+            crate::motion::present::after_frame(&mut rs.motion, b.as_ref(), &gpu);
             triangles = b.triangles();
         }
         std::mem::take(&mut rs.notes)
