@@ -1133,9 +1133,17 @@ test("conversation: the line types out by the tick; a press shows it whole befor
   // Said whole at once to a screen reader, never letter by letter.
   expect(said().name).toBe("Brannoc: Steel's not cheap. You've 10 gold.");
   expect(s.results.at(-1)!.revealed).toBeFalse();
+  // Keys and pads reach the press and every tool, not the pointer alone (Auto has no action of its own).
+  const focusable = (end: string) => byPath(s.engine, end)?.states.includes("focusable") ?? false;
+  expect(["Talk/Hit", "Tools/Skip", "Tools/Log", "Tools/Auto"].map(focusable)).toEqual([true, true, true, true]);
   s.tapEl("Talk/Hit");
   expect(s.results.at(-1)!.revealed).toBeTrue();
   expect(s.results.some((r) => r.advanced)).toBeFalse();
+  // The chevron stands after the words, inside the words' box: not under them, not past the caption.
+  const [more, line, words] = ["Words/More", "Words/Line", "Caption/Words"].map((e) => byPath(s.engine, e)!);
+  expect(more.x).toBeGreaterThanOrEqual(line.x + line.width - 0.5);
+  expect(more.x + more.width).toBeLessThanOrEqual(words.x + words.width + 0.5);
+  expect(more.y + more.height).toBeLessThanOrEqual(words.y + words.height + 0.5);
   s.tapEl("Talk/Hit");
   expect(s.results.filter((r) => r.advanced).length).toBe(1);
 });
@@ -1152,6 +1160,9 @@ test("conversation: a choice answers its ChoiceView.index (a hidden one counted)
   const buy = elements(s.engine).find((e) => e.role === "button" && e.name.includes("Buy the sword"))!;
   expect(buy.name).toBe("1, Buy the sword (10 gold), You need 5 more gold.");
   expect(buy.states).toContain("disabled");
+  // The line whole and the choices up, a press on the scene does nothing: the press is disabled, so the pad walks
+  // the choices and not a dead stop.
+  expect(byPath(s.engine, "Talk/Hit")!.states).toContain("disabled");
   const haggle = elements(s.engine).find((e) => e.role === "button" && e.name.includes("Haggle"))!;
   // d20 + 3 against 12: 60 %.
   expect(haggle.name).toBe("2, Charm · 60 %, Haggle");

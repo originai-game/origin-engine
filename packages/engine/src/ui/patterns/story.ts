@@ -49,7 +49,6 @@ function tool(id: string, label: string, action: string, on: boolean | null): bo
     fill: on ? mix(role("panelRaised"), role("ink"), 0.12) : null,
     wash: role("ink"),
     washBy: 0.14,
-    focusable: false,
     gap: u(8),
     // A whole touch target on a touch screen.
     height: { kind: "fit", min: frame().touch ? 44 : 0 },
@@ -172,7 +171,9 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   const ink = role("ink");
 
   // The whole screen is the press that goes on: a layer under everything else.
-  const hit = surface("Hit", { part: "Conversation.hit", cls: "badge", fill: null, washBy: 0, focusable: false, width: grow(), height: grow(), semantics: { role: "button", name: desc.continueLabel ?? "Continue" }, layer: { insets: { start: 0, top: 0, end: 0, bottom: 0 }, z: 0 } }, () => {});
+  // A focus stop for keys and pads too (Enter or A on it goes on, as confirm does anywhere); with choices up
+  // and the line whole, or at the end, a press does nothing, so it is disabled and the pad walks the choices.
+  const hit = surface("Hit", { part: "Conversation.hit", cls: "badge", fill: null, washBy: 0, disabled: v.ended || (waiting && done), width: grow(), height: grow(), semantics: { role: "button", name: desc.continueLabel ?? "Continue" }, layer: { insets: { start: 0, top: 0, end: 0, bottom: 0 }, z: 0 } }, () => {});
   const press = hit.clicked || (!waiting && kit.action("confirm"));
   if (press && !v.ended) {
     if (!done) {
@@ -228,6 +229,9 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   // dark plate there, so the line reads at 4.5:1 on any backdrop (a pale sky left it at 2.3:1).
   const rises = portrait && waiting && done;
   const plated = !box && rises;
+  const moreW = u(14) + u(10);
+  // Read here, beside where it is kept (the UI's memory is the open element's).
+  const wordsRoom = kit.memory(`~c.room.${id}`, 0) || 1e6;
   kit.open("Caption", {
     direction: "column",
     width: px(captionW),
@@ -267,14 +271,23 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   }
   // A narrator's line (no name) reads in muted ink, set apart from what is said aloud.
   const lineInk = named ? ink : mix(ink, role("inkMuted"), 0.5);
-  kit.row("Words", { gap: u(10), cross: "end", width: grow(), align: "start", wrap: false }, () => {
+  // The words scroll inside the room the conversation has (last tick's: its height less the tools, the caption's own
+  // name and padding, and what it stands on): a long line at 200 % on a phone ran up out of the screen's room, under
+  // the game's own buttons, and a spoken line is never cut. The chevron stands in the end padding, so the words do not
+  // reflow when it appears.
+  kit.openScroll("Words", { width: grow(), height: { kind: "fit", max: wordsRoom }, padding: { left: 0, top: 0, right: moreW, bottom: 0 } } as never);
+  {
     // Laid out whole from the first letter (the rest clear), so the words never jump to the next line as they type;
     // whole, one span.
     kit.richText("Line", done ? esc(v.text) : `${esc(chars.slice(0, shown).join(""))}[color=#00000000]${esc(chars.slice(shown).join(""))}[/color]`, { step: lineStep, color: paint(lineInk), align: box ? "start" : "center", maxLines: phone ? 5 : 3, width: grow() } as Api.RichTextDesc);
     kit.props({ states: [{ name: "reveal", states: [vstate("typing"), vstate("shown")], transitions: [] }], state: [{ group: "reveal", state: done ? "shown" : "typing" }] });
     kit.semantics({ role: "status", name: `${v.speaker.name ? `${v.speaker.name}: ` : ""}${v.text}` });
-    if (done && !waiting && !v.ended) more("More", ink);
-  });
+    if (done && !waiting && !v.ended) {
+      more("More", ink);
+      over({ insets: { end: 0, bottom: 0 }, inert: true, z: 1 });
+    }
+  }
+  kit.close();
   kit.close();
   const capBottom = box ? u(phone ? 16 : 28) : u(phone ? 22 : 44);
   // On a phone in portrait with choices, the caption rises over them; else it sits at the foot.
@@ -291,6 +304,10 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   over({ insets: capInsets, z: 2 });
   // The caption's height (last tick's): the plate sits on its top edge and the choices stack above it.
   const capH = kit.bounds(kit.lastPath())?.height ?? u(90);
+  // The words' room next tick: the conversation's height above the caption's foot and below the tools, less what the
+  // caption holds besides its words.
+  const wordsH = kit.bounds(`${base}/Caption/Words`)?.height ?? 0;
+  kit.remember(`~c.room.${id}`, Math.max(u(64), Math.round(H - capInsets.bottom - toolsFoot - (capH - wordsH))));
   if (box && named) {
     // The name on a plate over the box's top edge at the start, half over it.
     kit.row("Plate", { gap: u(10), cross: "center", padding: xy(u(18), u(7)), part: "Conversation.name", partClass: "badge" }, () => {
