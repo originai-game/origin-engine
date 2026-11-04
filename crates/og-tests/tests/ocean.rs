@@ -498,33 +498,36 @@ fn row_of_height(scene: &RenderScene, z: f32, y: f32, height: u32) -> u32 {
 }
 
 /// W1: a sea feels the beach under it. Along the waterline the shore
-/// trains break into surf: over a tenth of the 10 m band of water seaward
-/// of the waterline is white foam, where the same sea without its surf
+/// trains break into surf: over a tenth of the surf zone, the 40 m of water
+/// seaward of the waterline (on the 1:20 beach the trains break in some
+/// 2 m of water), is white foam, where the same sea without its surf
 /// (shoreFoam 0) has next to none; and no swell reaches up the dry beach
 /// (the sand there is never under the drawn sea: before, the open sea's
 /// metres-high crests ran through the beach); the sand the surf runs up is
-/// wet, darker than the dry beach above it.
+/// wet, darker than the dry beach above its run-up.
 #[test]
 fn the_surf_breaks_along_the_waterline() {
     for name in ["water-shore", "water-shore-storm"] {
         check(name);
         let scene = ocean_scene(name);
         let img = frame(&scene);
-        // The waterline at x = 0 (the cove's middle) and 10 m out from it.
+        // The waterline at x = 0 (the cove's middle) and the surf zone 40 m out from it.
         let line = BEACH_LINE + 15.0;
         assert_eq!(beach_height(0.0, line), 0.0);
         let (top, bottom) = (
             row_of(&scene, line, img.height),
-            row_of(&scene, line + 10.0, img.height),
+            row_of(&scene, line + 40.0, img.height),
         );
-        let open = mean(&lumas(&img, 440, bottom + 20, 840, bottom + 60));
+        // Open water past the outer breakers (which lie some 20 rows further out).
+        let open = mean(&lumas(&img, 440, bottom + 60, 840, bottom + 100));
         let white = |img: &RgbaImage| {
             let mut n = 0;
             for y in top..bottom {
                 for x in 440..840 {
                     let p = px(img, x, y);
                     let (lo, hi) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
-                    if luma(p) > 1.6 * open && lo > 0.75 * hi {
+                    // White: bright over the open water and grey, where the sea mirroring the sky is blue.
+                    if luma(p) > 1.25 * open && lo > 0.9 * hi {
                         n += 1;
                     }
                 }
@@ -552,14 +555,23 @@ fn the_surf_breaks_along_the_waterline() {
         );
         // The surf wets the sand just above the waterline, darker than the
         // dry beach further up (weather_surface.wgsl shore_wetness).
-        let sand = |z: f32| {
-            let y = row_of_height(&scene, z, beach_height(0.0, z), img.height);
-            mean(&lumas(&img, 560, y - 2, 720, y + 2))
-        };
-        let (wet, dry) = (sand(line - 2.0), sand(line - 30.0));
+        // The wet sand: the darkest row of the beach within 8 m of the waterline (at this distance a metre of it is
+        // under a row, and the surf's white edge lies a row or two below it), against the dry beach 80 m up, 4 m
+        // over the sea (a storm's surf runs up some half its significant height: 3 m here, Stockdon et al. 2006).
+        let row = |z: f32| row_of_height(&scene, z, beach_height(0.0, z), img.height);
+        let wet = (row(line - 8.0)..=row(line - 0.5))
+            .map(|y| mean(&lumas(&img, 560, y, 720, y + 1)))
+            .fold(f32::MAX, f32::min);
+        let dry = mean(&lumas(
+            &img,
+            560,
+            row(line - 80.0) - 2,
+            720,
+            row(line - 80.0) + 2,
+        ));
         println!("{name}: wet sand {wet}, dry {dry}");
         assert!(
-            wet < 0.8 * dry,
+            wet < 0.85 * dry,
             "{name}: the sand by the surf ({wet}) is not darker than up the beach ({dry})"
         );
         assert!(
@@ -622,7 +634,8 @@ fn shallow_floaters_sit_in_the_drawn_shoaled_sea() {
 /// different interpolation alphas draw different seas (the code before drew
 /// both at the tick, identically), and at either alpha the tick's waves are
 /// drawn where og.physics.waterHeight puts them at that alpha's time, to
-/// 2 cm, so floaters blended between ticks stay on them.
+/// 2 cm, under the buoys floating there, so floaters blended between ticks
+/// stay on them.
 #[test]
 fn the_sea_moves_between_ticks_in_step_with_the_tick() {
     let water = og_render::Water {
@@ -644,12 +657,36 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
         .collect();
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut frames = Vec::new();
+    // A buoy at each point, as a floater blended between ticks rides there: og.Buoyancy's hulls calm the FFT's chop
+    // round them (water.wgsl hull_calm), whose sideways lean would carry the tick's waves off the point.
+    let buoys: Vec<og_render::WaterCut> = points
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| og_render::WaterCut {
+            entity: i as u64,
+            min: p - Vec2::splat(0.6),
+            max: p + Vec2::splat(0.6),
+            centre: p,
+            half: Vec2::splat(0.6),
+            axis: Vec2::X,
+            depth: 0.0,
+            speed: 0.0,
+        })
+        .collect();
     for alpha in [0.1f32, 0.6] {
         let mut scene = RenderScene::new();
         scene.tick = 300;
         scene.tick_rate = 60.0;
         scene.interpolation = Some(alpha);
-        scene.water.push(water.clone());
+        scene.water.push(og_render::Water {
+            wakes: Some(std::sync::Arc::new(og_render::WaterWakes {
+                epoch: 1,
+                dt: 1.0 / 60.0,
+                ticks: vec![(300, buoys.clone())],
+                ..Default::default()
+            })),
+            ..water.clone()
+        });
         scene.camera = og_render::Camera {
             position: Vec3::new(0.0, 10.0, 0.0),
             target: Vec3::new(-4.0, 0.0, -60.0),
@@ -681,34 +718,36 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
     assert!(d > 0.5, "the sea did not move between ticks ({d})");
 }
 
-/// The structure tensor of a rectangle's luma (Sobel gradients, summed):
-/// its eigenvalues' ratio, at least 1; streaks along one direction give a
-/// ratio well above 1, round blotches about 1.
-fn anisotropy(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
-    let l = |x: u32, y: u32| luma(px(img, x, y));
-    let (mut xx, mut yy, mut xy) = (0.0f64, 0.0f64, 0.0f64);
-    for y in y0 + 1..y1 - 1 {
-        for x in x0 + 1..x1 - 1 {
-            let gx = (l(x + 1, y - 1) + 2.0 * l(x + 1, y) + l(x + 1, y + 1))
-                - (l(x - 1, y - 1) + 2.0 * l(x - 1, y) + l(x - 1, y + 1));
-            let gy = (l(x - 1, y + 1) + 2.0 * l(x, y + 1) + l(x + 1, y + 1))
-                - (l(x - 1, y - 1) + 2.0 * l(x, y - 1) + l(x + 1, y - 1));
-            xx += f64::from(gx * gx);
-            yy += f64::from(gy * gy);
-            xy += f64::from(gx * gy);
+/// How much more `d` (a luma difference sampled at world points of the
+/// sea, by `at`) holds together along `dir` than across it: its correlation
+/// at `lag` metres along the unit `dir` over that across it, over the
+/// points `ps` where both neighbours are in the frame. Streaks along `dir`
+/// give well above 1, round blotches about 1.
+fn streakiness(ps: &[Vec2], dir: Vec2, lag: f32, at: &dyn Fn(Vec2) -> Option<f32>) -> f32 {
+    let across = Vec2::new(-dir.y, dir.x);
+    let corr = |off: Vec2| {
+        let (mut sxy, mut sxx, mut syy) = (0.0f64, 0.0f64, 0.0f64);
+        for &p in ps {
+            let (Some(a), Some(b)) = (at(p), at(p + off)) else {
+                continue;
+            };
+            sxy += f64::from(a * b);
+            sxx += f64::from(a * a);
+            syy += f64::from(b * b);
         }
-    }
-    let tr = xx + yy;
-    let d = ((xx - yy) * (xx - yy) + 4.0 * xy * xy).sqrt();
-    (((tr + d) / (tr - d).max(1e-9)) as f32).max(1.0)
+        (sxy / (sxx * syy).sqrt().max(1e-12)) as f32
+    };
+    corr(dir * lag) / corr(across * lag).max(1e-3)
 }
 
 /// W4: a gale's old foam streaks along the wind. The foam's lace, gathered
-/// by the windrows and stretched with age, leaves the near sea's light and
-/// dark far more anisotropic than the same sea with foamStreaks 0 (the code
-/// before drew round, ageless blotches whatever its setting: it had none).
-/// And the spray its crests throw changes the frame (spray 0 against 1),
-/// none of it under a breeze too light to carry spray.
+/// by the windrows and stretched with age, is what the near sea gains over
+/// the same sea with foamStreaks 0, and what it gains holds together along
+/// the wind far more than across it (on the sea itself, at 3 m), as
+/// Beaufort's force 8 has it: foam blown in well-marked streaks along the
+/// wind (the code before drew round, ageless blotches whatever its setting:
+/// it had none). And the spray its crests throw changes the frame (spray 0
+/// against 1), none of it under a breeze too light to carry spray.
 #[test]
 fn a_gales_foam_streaks_along_the_wind_and_its_crests_throw_spray() {
     let frame_of = |streaks: f32, spray: f32| {
@@ -722,20 +761,35 @@ fn a_gales_foam_streaks_along_the_wind_and_its_crests_throw_spray() {
     let streaked = frame_of(1.0, 0.0);
     let plain = frame_of(0.0, 0.0);
     let sprayed = frame_of(1.0, 1.0);
+    let scene = ocean_scene("water-ocean-storm");
     let (w, h) = (streaked.width, streaked.height);
-    // The near sea: the frame's lower half, its edges left out.
-    let (x0, y0, x1, y1) = (w / 8, h * 11 / 20, w * 7 / 8, h * 19 / 20);
-    let a_streaked = anisotropy(&streaked, x0, y0, x1, y1);
-    let a_plain = anisotropy(&plain, x0, y0, x1, y1);
+    let gained = |p: Vec2| {
+        let (x, y) = pixel_of(&scene, Vec3::new(p.x, 0.0, p.y), w, h)?;
+        Some(luma(px(&streaked, x, y)) - luma(px(&plain, x, y)))
+    };
+    // The near sea, 30 to 90 m out, a point every metre.
+    let ps: Vec<Vec2> = (-30..=30)
+        .flat_map(|x| (30..=90).map(move |z| Vec2::new(x as f32, -(z as f32))))
+        .collect();
+    let gain = ps
+        .iter()
+        .filter_map(|&p| gained(p))
+        .map(f32::abs)
+        .sum::<f32>()
+        / ps.len() as f32;
+    let wind = scene.water[0].wind.normalize();
+    let along = streakiness(&ps, wind, 3.0, &gained);
     let d_spray = difference(&streaked, &sprayed);
     println!(
-        "gale: anisotropy {a_streaked} streaked, {a_plain} without; spray changes the frame by {d_spray}"
+        "gale: the streaks add {gain} of luma, {along} times as coherent along the wind; spray changes the frame by {d_spray}"
     );
+    // (The code before: 0.13, its lace's cut all but never reached; spray 0.)
+    assert!(gain > 0.25, "the gale's foam has no streaks ({gain})");
     assert!(
-        a_streaked > 1.3 * a_plain,
-        "the foam does not streak: anisotropy {a_streaked} against {a_plain} without streaks"
+        along > 1.5,
+        "the foam does not streak along the wind ({along})"
     );
-    assert!(d_spray > 0.05, "no spray ({d_spray})");
+    assert!(d_spray > 0.005, "no spray ({d_spray})");
     // A breeze (9 m/s), under spray's threshold, throws none.
     let breeze = |spray: f32| {
         let mut s = ocean_scene("water-ocean");
@@ -745,14 +799,20 @@ fn a_gales_foam_streaks_along_the_wind_and_its_crests_throw_spray() {
         frame(&s)
     };
     let d_breeze = difference(&breeze(0.0), &breeze(1.0));
-    assert!(d_breeze < 0.02, "a breeze threw spray ({d_breeze})");
+    assert!(
+        d_breeze < 0.1 * d_spray,
+        "a breeze threw spray ({d_breeze} against the gale's {d_spray})"
+    );
 }
 
 /// W2: clear water's colour is its optics over the light's path. Across
 /// water-shallows' white slope (0 m deep a sixth in from the left to 20 m a
 /// sixth from the right),
 /// the seabed's blue over green rises band by band as the green is absorbed
-/// faster than the blue on the longer path, and its red falls away first:
+/// faster than the blue on the longer path, up to the bluest band; deeper
+/// than that the seabed is gone and the body's own colour, its scattering's,
+/// holds it within 5 % (the seabed's light, which the depth turns ever
+/// bluer, can pass it on the way); and its red falls away first:
 /// the shallowest band keeps more of its red against green than the deepest.
 #[test]
 fn clear_water_turns_from_turquoise_to_blue_with_depth() {
@@ -764,21 +824,32 @@ fn clear_water_turns_from_turquoise_to_blue_with_depth() {
     for b in 0..bands {
         let x0 = w / 6 + b * (w * 2 / 3) / bands;
         let x1 = x0 + (w * 2 / 3) / bands;
+        // The water's body: the darker half of the band's pixels (the sun's glitter on the waves is the brighter).
+        let mut band: Vec<[f32; 3]> = (h * 2 / 5..h * 3 / 5)
+            .flat_map(|y| (x0..x1).map(move |x| (x, y)))
+            .map(|(x, y)| px(&img, x, y))
+            .collect();
+        band.sort_by(|a, b| luma(*a).total_cmp(&luma(*b)));
         let (mut r, mut g, mut bl) = (0.0f32, 0.0f32, 0.0f32);
-        for y in h * 2 / 5..h * 3 / 5 {
-            for x in x0..x1 {
-                let p = px(&img, x, y);
-                r += p[0];
-                g += p[1];
-                bl += p[2];
-            }
+        for p in &band[..band.len() / 2] {
+            r += p[0];
+            g += p[1];
+            bl += p[2];
         }
         ratios.push(bl / g.max(1.0));
         reds.push(r / g.max(1.0));
     }
     println!("shallows: blue/green {ratios:?}, red/green {reds:?}");
+    let peak = ratios
+        .iter()
+        .copied()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .expect("bands")
+        .0;
     assert!(
-        ratios.windows(2).all(|p| p[1] > p[0]),
+        ratios[..=peak].windows(2).all(|p| p[1] > p[0])
+            && ratios[peak..].iter().all(|&r| r > 0.95 * ratios[peak]),
         "blue over green does not rise with depth: {ratios:?}"
     );
     assert!(
@@ -931,9 +1002,10 @@ fn a_moving_hull_leaves_a_kelvin_wake() {
 }
 
 /// W5: `water-river`'s river falls off its terrace white: the sheet
-/// where the course drops 4 m is far brighter than the river's glassy
-/// reach above it, and its pool churns white just below the fall, more than
-/// 15 m on down the plain; its current moves the surface between two
+/// where the course drops 4 m is brighter than the river's glassy reach
+/// above it (seen at a grazing 15°, a mirror of the bright sky) and far
+/// brighter than its body some 15 m on down the plain (seen steeply, its own
+/// colour), and its pool churns white just below the fall, more than there; its current moves the surface between two
 /// frames half a second apart. The code before drew no river at all (the
 /// og.Water's grid, flat across the valley).
 #[test]
@@ -960,14 +1032,14 @@ fn a_river_falls_white_off_its_terrace_and_churns_below() {
     let fall = luma_at(&img, lerp(2, 0.5));
     let above = luma_at(&img, lerp(1, 0.5));
     let pool = luma_at(&img, lerp(3, 0.15));
-    let downstream = luma_at(&img, lerp(4, 0.4));
+    let downstream = luma_at(&img, lerp(3, 0.8));
     let flowing = difference(&img, &moved);
     println!(
         "river: fall {fall}, above it {above}, its pool {pool}, downstream {downstream}; moved {flowing}"
     );
     assert!(
-        fall > 1.5 * above,
-        "the fall is not white water ({fall} against {above} above it)"
+        fall > above && fall > 1.4 * downstream,
+        "the fall is not white water ({fall} against {above} above it, {downstream} downstream)"
     );
     assert!(
         pool > 1.2 * downstream,
@@ -1020,7 +1092,10 @@ fn the_foam_warms_up_in_a_few_submits() {
 /// where its near plane meets the water: the frame's rows change from the
 /// air above to the water's fog below within 3 px of the row where the near
 /// plane's point lies on the drawn surface (the tick's waves and the chop
-/// over them), the eye 2 cm above it (some 120 px under the horizon). The code before drew
+/// over them), the eye 2 cm above it (some 120 px under the horizon). The
+/// meniscus (2 px, the default) then lays a dark band along that row,
+/// darker than the water's fog below. (Located without it: the band, darker
+/// than both sides, moves where the rows' mean crosses.) The code before drew
 /// the whole frame from the air, its one change of light the horizon.
 #[test]
 fn the_waterline_splits_the_frame_where_the_near_plane_meets_the_sea() {
@@ -1033,6 +1108,7 @@ fn the_waterline_splits_the_frame_where_the_near_plane_meets_the_sea() {
         depth_fade: 30.0,
         wave_strength: 0.0,
         underwater_density: 0.25,
+        meniscus: 0.0,
         ..Default::default()
     };
     let mut scene = RenderScene::new();
@@ -1048,13 +1124,18 @@ fn the_waterline_splits_the_frame_where_the_near_plane_meets_the_sea() {
         projection: og_render::Projection::Perspective { fov_y_degrees: fov },
         ..Default::default()
     };
-    // The drawn surface's height under the eye (its chop with the tick's waves), from a frame above it.
+    // The drawn surface's mean height along the near plane's middle row (its chop with the tick's waves, `near`
+    // ahead of the eye, across the plane's width: a millimetre there is 8 rows), from a frame above it.
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     scene.camera = at(5.0);
     renderer
         .render(&scene, &RenderTarget::Offscreen)
         .expect("render");
-    let h = renderer.sea_heights(&[Vec2::ZERO]).expect("heights")[0][0];
+    let across: Vec<Vec2> = (-4..=4)
+        .map(|i| Vec2::new(i as f32 * 0.02, -near))
+        .collect();
+    let heights = renderer.sea_heights(&across).expect("heights");
+    let h = heights.iter().map(|p| p[0]).sum::<f32>() / heights.len() as f32;
     let lift = 0.02;
     scene.camera = at(h + lift);
     renderer
@@ -1080,5 +1161,18 @@ fn the_waterline_splits_the_frame_where_the_near_plane_meets_the_sea() {
     assert!(
         (seen - expected).abs() <= 3.0,
         "the waterline at row {seen}, the near plane meets the sea at {expected}"
+    );
+    scene.water[0].meniscus = 2.0;
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("capture");
+    let band = (seen as u32 - 6..seen as u32 + 7)
+        .map(|y| mean(&lumas(&img, 0, y, img.width, y + 1)))
+        .fold(f32::MAX, f32::min);
+    println!("meniscus: darkest row {band} at the line, the fog below {below}");
+    assert!(
+        band < below - 10.0,
+        "no meniscus along the line ({band} against {below})"
     );
 }

@@ -352,9 +352,15 @@ fn sea_surf(p: vec2<f32>) -> f32 {
   let breaking = (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(1e-4, sh.amp);
   // The time since the crest passed, as a share of a period (the phase falls as time goes on; the crest at pi/2).
   let age = fract((1.5707963 - sh.phase) / 6.2831853);
-  let trail = exp(-age * 3.5) * smoothstep(0.0, 0.03, age);
-  let wash = (1.0 - smoothstep(0.0, 0.45, sh.depth)) * (0.45 + 0.55 * trail);
-  return water.shore[2].z * sh.inside * clamp(max(breaking * trail, wash), 0.0, 1.0) * step(0.0, sh.depth - 1e-3);
+  // A broken crest runs on inshore as a bore, its face white and the foam it sheds trailing a third of a period behind
+  // it; the inner surf zone holds the foam of the bores before it between them (Basco 1985's bore; the surf zone of a
+  // beach at any moment is white over most of it, its lines brightest just behind each bore).
+  let bore = exp(-age * 2.2) * smoothstep(0.0, 0.03, age);
+  let inner = 1.0 - smoothstep(0.05 * half, 0.25 * half, sh.depth);
+  let surf = breaking * mix(0.25 * inner, 1.0, bore);
+  // The swash: the last bore's water running up and back over the shallowest half metre, all white.
+  let wash = (1.0 - smoothstep(0.0, 0.6, sh.depth)) * (0.75 + 0.25 * bore);
+  return water.shore[2].z * sh.inside * clamp(max(surf, wash), 0.0, 1.0) * step(0.0, sh.depth - 1e-3);
 }
 
 fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
@@ -396,13 +402,40 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   o.mask = max(o.mask, smoothstep(0.35, 0.9, fwl.g) * smoothstep(0.25, 0.6, pat + 0.25) * 0.95);
   // The lace (the levels' a) where the dense cover has gone: a thin web of the finer lace along the streaks, its share
   // of a pixel the lace's own where the pixel spans the web.
-  let lace_amount = clamp(fwl.a - fwl.r, 0.0, 1.0) * water.sea_wind.w;
+  // Only past force 7 (13.9 m/s), where Beaufort's sea first has foam blown in streaks, and well marked by force 8.
+  let lace_amount = clamp(fwl.a - fwl.r, 0.0, 1.0) * water.sea_wind.w * smoothstep(12.0, 18.0, water.sea_wind.z);
+  // The lace's pattern: threads along the wind some 3.5 m apart, meandering with the streak noise sampled slowly both
+  // ways (so each thread holds its line), their edges broken by the finer lace's bubbles, cut where they cover the
+  // share of the surface the lace holds. The threads' triangle wave is uniform on [0, 1], so the cut at 1 - share
+  // covers about that share (a mix of the noise channels, bunched about its mean, was all but never cut).
+  let wl = textureSample(heights, ripple_sampler, ws * vec2<f32>(0.12, 0.014), first + 2u).a;
+  let wm = textureSample(heights, ripple_sampler, ws * vec2<f32>(0.3, 0.11) + 0.37, first + 2u).a;
+  let across_m = dot(p, vec2<f32>(-wd.y, wd.x));
+  let along_m = dot(p, wd);
+  // (An irregular spacing too: a warp across the wind, its slope under the threads' own so each stays one line.)
+  let wi = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.002, across_m * 0.0125) + 0.71, first + 2u).a;
+  let x = across_m / 3.5 + wl * 2.2 + wm * 0.45 + (wi - 0.5) * 0.5;
   let web = textureSample(heights, ripple_sampler, p * 0.53 + water.foam_uv[0].zw, first + 2u).g;
-  let lw = fwidth(web) + 0.03;
-  var lace = smoothstep(0.62 - lw, 0.62 + lw, web * (0.55 + 0.45 * streak)) * smoothstep(0.05, 0.6, lace_amount);
-  lace = mix(lace, lace_amount * 0.4, smoothstep(0.15, 0.4, lw));
-  o.lace = lace * 0.6 * (1.0 - o.mask);
-  o.mask = max(o.mask, lace * 0.6);
+  let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.35;
+  // Each thread its own: some strong, some faint, and broken along the wind into lengths of some tens of metres (the
+  // threads' centres at whole x).
+  let r = spray_rand(spray_hash(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
+  let seg = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.004 + r * 7.0, r * 3.1), first + 2u).a;
+  let lw = fwidth(x) * 2.0 + 0.05;
+  // (Old foam, the whitecaps' residue, lies over two to three times the whitecaps' share: some 20 to 30 % of a gale's
+  // sea against their 10 %, Monahan and O'Muircheartaigh's stage B; the threads' weights and lengths keep 0.3 of it.)
+  let lace_cover = clamp(lace_amount * 3.0, 0.0, 1.0);
+  // (A thread 0.4 of the spacing at most: the streaks are narrow, a metre or so.)
+  let share = 0.4 * lace_cover * clamp(r * 1.6, 0.0, 1.0) * smoothstep(0.42, 0.58, seg);
+  var lace = smoothstep(1.0 - share - lw, 1.0 - share + lw, threads);
+  // Where a pixel spans the threads, the mean of their shares.
+  lace = mix(lace, lace_cover * 0.12, smoothstep(0.15, 0.4, lw));
+  // Ragged, holed by the foam's own sheets and openings (a thread is foam, not paint).
+  lace *= smoothstep(0.3, 0.65, pat);
+  // (None where the lace holds none: the bubbles lift the threads' top past 1, which the cut at 1 would draw.)
+  lace *= smoothstep(0.0, 0.05, lace_cover);
+  o.lace = lace * 0.45 * (1.0 - o.mask);
+  o.mask = max(o.mask, lace * 0.45);
   o.young = fwl.g;
   o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
   return o;
@@ -1272,8 +1305,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
   if (water.waterline.w > 0.5) {
-    // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some three
-    // widths), in patches carried down by the current in two phases as the bank foam; and where the ribbon hangs (its
+    // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some one and
+    // a half widths), in patches carried down by the current in two phases as the bank foam; and where the ribbon hangs (its
     // normal more than some 40 degrees off up: the course falls there) the water is a sheet falling some 7 m/s,
     // streaked along its fall.
     let ft = flow_texel(in.uv);
@@ -1291,7 +1324,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let white_water = smoothstep(0.3, 0.7, streak) * mix(0.55, 1.0, hang);
     let fall_white = hang * white_water;
     let river_white = clamp(max(churned, fall_white), 0.0, 1.0);
-    color = mix(color, water.foam.rgb * lit * mix(0.85, 1.0, white_water), river_white);
+    // White water is a cloud of bubbles and drops: lit through its depth by the sun from any side (wrapped, not Lambert's
+    // cosine, which left a sheet facing away from the sun grey) and by the whole sky.
+    let wrap = (dot(in.normal, l) + 0.6) / 1.6;
+    // (Lambert's 1/pi on the sun's irradiance, as the sea's foam: the river's had none and glowed over the ground.)
+    let white_lit = clamp(wrap, 0.0, 1.0) * frame.light_color.rgb * sun * 0.31831 + vec3<f32>(frame.params.x * 0.6);
+    color = mix(color, water.foam.rgb * white_lit * mix(0.85, 1.0, white_water), river_white);
   }
   if (sea) {
     // A sea's foam, whatever the shore foam's width, web-ocean's (`ocean.js` fs): a matte, diffuse layer over the
@@ -1301,7 +1339,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // the 1/pi, lighting sunlit foam three times too bright.
     // W4: the thin lace an old whitecap leaves is wet, darker than the dry, fresh foam of a crest breaking now.
     let wet = sea_f.lace / max(sea_f.mask, 1e-3);
-    let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles) * mix(1.0, 0.8, wet);
+    let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles) * mix(1.0, 0.65, wet);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
     // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
@@ -1382,17 +1420,35 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let h = spray_hash(seed ^ (u32(i32(n)) * 2654435761u));
   // Its point on the foam level, the one nearest the camera with that uv (the level is toroidal about it).
   let lv = water.foam_levels[pop];
-  let cam = frame.view_pos.xz;
-  let uv = vec2<f32>(spray_rand(h), spray_rand(h + 1u));
+  // The window its slots fall in: the level's square (toroidal, so a point stays where it is in the world while the
+  // window moves, but for those wrapping at its edges, faded there) centred a third of it ahead of the camera, where it
+  // looks (about the camera, two thirds of the slots fell behind it or under the frame).
+  let fwd = frame.view_forward.xz;
+  let ahead = select(vec2<f32>(0.0), fwd / max(length(fwd), 1e-6), dot(fwd, fwd) > 1e-6);
+  let cam = frame.view_pos.xz + ahead * (0.33 * lv.w * 0.9);
   let cam_uv = cam * lv.x + lv.yz;
-  let rest = cam + (fract(uv - cam_uv + 0.5) - 0.5) * lv.w * 0.9;
-  // Only where a crest breaks now, and more where the foam is freshest.
+  // Only where a crest breaks now: where the surface folds (its Jacobian, the whitecaps' own test in sea_foam) or the
+  // foam level's freshest foam was laid. (The level's freshness alone, decaying within a second, rarely held a slot.)
+  // A gale's crests break over a few percent of the sea, so each life tries up to six points for one.
   let first = 3u * u32(water.fft.x);
-  let fw = textureSampleLevel(heights, ripple_sampler, rest * lv.x + lv.yz, first + pop, 0.0);
-  let keep = smoothstep(0.3, 0.85, fw.g) * gust;
-  if (spray_rand(h + 2u) >= keep) { return o; }
-  // Where the drawn surface carries it.
   let ts = lv.w / 256.0;
+  var rest = vec2<f32>(0.0);
+  var edge = 0.0;
+  var keep = 0.0;
+  var found = false;
+  for (var t = 0u; t < 6u && !found; t++) {
+    let ht = h + 16u * t;
+    let off = fract(vec2<f32>(spray_rand(ht), spray_rand(ht + 1u)) - cam_uv + 0.5) - 0.5;
+    rest = cam + off * lv.w * 0.9;
+    edge = 1.0 - smoothstep(0.4, 0.5, max(abs(off.x), abs(off.y)));
+    let fw = textureSampleLevel(heights, ripple_sampler, rest * lv.x + lv.yz, first + pop, 0.0);
+    let jac = ocean_normal(rest, rest, ts, vec2<f32>(0.0), vec2<f32>(0.0)).jac;
+    let breaking = clamp((water.ocean.z - jac) * water.ocean.w, 0.0, 1.0);
+    keep = smoothstep(0.05, 0.5, max(breaking, fw.g)) * gust;
+    found = spray_rand(ht + 2u) < keep;
+  }
+  if (!found) { return o; }
+  // Where the drawn surface carries it.
   let d = ocean_displace(rest, ts);
   let start = vec3<f32>(rest.x, water.model[3].y, rest.y) + d;
   // Thrown off with part of the crest's speed downwind and upwards; drifting towards the wind near the surface.
@@ -1411,11 +1467,13 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   p.y = start.y + (v0.y + g / k) * decay - g * tau / k;
   // The sprite: growing as the spray spreads, fading in as it leaves the crest and out as it settles or falls back.
   let rnd = spray_rand(h + 6u);
-  var size = select(mix(0.1, 0.4, rnd), mix(1.0, 4.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
+  var size = select(mix(0.2, 0.7, rnd), mix(0.6, 2.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
-  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.55, 0.3, pop == 1u) * mix(0.6, 1.0, keep);
+  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.8, 0.35, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
+  // Spray is seen near: past some 60 m (the spume's sheets 150 m) it is a haze over the crests, not sprites.
+  alpha *= 1.0 - smoothstep(select(30.0, 80.0, pop == 1u), select(60.0, 150.0, pop == 1u), dist);
   let scale = length(vec3<f32>(frame.view_proj[0].y, frame.view_proj[1].y, frame.view_proj[2].y));
   let floor_size = 1.5 * dist * 2.0 / max(scale * water.screen.y, 1e-6);
   if (size < floor_size) {

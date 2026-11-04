@@ -131,14 +131,13 @@ pub fn wake_update(scene: &mut RenderScene, frame: u32) {
     let ticks = (frame.saturating_sub(1)..=frame)
         .map(|f| (TICK + u64::from(f), vec![wake_cut(f)]))
         .collect();
-    for w in &mut scene.water {
+    if let Some(w) = scene.water.first_mut() {
         w.wakes = Some(std::sync::Arc::new(og_render::WaterWakes {
             epoch: 1,
             dt: 1.0 / 60.0,
             ticks,
             ..Default::default()
         }));
-        break;
     }
 }
 
@@ -202,7 +201,8 @@ fn river_ground(course: &og_core::river::River, p: Vec2) -> f32 {
 /// (`water-river`): its current turning with its course, slowing to its
 /// banks, the fall's sheet and the white water of its pool.
 fn river(scene: &mut RenderScene) {
-    physical_light(scene, 15.5, PhysicalAtmosphere::EARTH);
+    // Mid-morning: the sun in the east, on the fall's face (it falls east).
+    physical_light(scene, 10.0, PhysicalAtmosphere::EARTH);
     let course =
         og_core::river::River::new(&RIVER_COURSE, RIVER_WIDTH, RIVER_SPEED).expect("a river");
     // The valley: a grid 120 m square at half a metre, its heights the ground's.
@@ -267,16 +267,20 @@ fn river(scene: &mut RenderScene) {
         ..Default::default()
     });
     scene.add_instance(ground, earth, Mat4::IDENTITY);
+    // A clear upland river: green-brown over its bed, dark where deep.
     scene.water.push(Water {
         size: Vec2::splat(size),
+        shallow: Vec3::new(0.22, 0.32, 0.24),
+        deep: Vec3::new(0.03, 0.08, 0.07),
         foam_width: 0.6,
-        depth_fade: 1.6,
+        depth_fade: 2.5,
         river: Some(std::sync::Arc::new(course)),
         ..Default::default()
     });
+    // From the plain below the fall, high enough to see the reach above it.
     scene.camera = Camera {
-        position: Vec3::new(17.0, 6.5, 13.0),
-        target: Vec3::new(-2.0, 1.5, -8.0),
+        position: Vec3::new(18.0, 10.0, 14.0),
+        target: Vec3::new(-6.0, 2.5, -12.0),
         far: 2000.0,
         exposure: Exposure::linear(0.8),
         ..Default::default()

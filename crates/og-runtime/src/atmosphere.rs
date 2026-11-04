@@ -239,11 +239,6 @@ pub(crate) fn derive(
     }
 }
 
-/// og.Fog, og.Sky, og.DayNight, og.Weather, og.Wind, og.Water, og.Water2D,
-/// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
-/// the instances it added (cloth), for per-object motion.
-// Rendering only: drawn lines and fluid volumes.
-#[allow(clippy::disallowed_methods)]
 /// An og.Water's river (og.Water.river: its path sampled every metre or so,
 /// riverWidth and riverSpeed), the one record the tick drifts floaters with
 /// and the renderer draws: made once per path, width and speed (the same
@@ -288,6 +283,11 @@ pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::Riv
     Some(river)
 }
 
+/// og.Fog, og.Sky, og.DayNight, og.Weather, og.Wind, og.Water, og.Water2D,
+/// og.Fluid2D, og.Fluid3D, og.Rope and og.Cloth into `rs.scene`. Returns the keys of
+/// the instances it added (cloth), for per-object motion.
+// Rendering only: drawn lines and fluid volumes.
+#[allow(clippy::disallowed_methods)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     let mut keys = Vec::new();
     let RenderState {

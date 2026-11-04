@@ -270,6 +270,6 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   // a: the lace the cover leaves, decaying slower, thickened where the windrows draw the surface in (and thinned
   // where they part).
   let squeeze = clamp(exp(-rows.z * dt), 0.5, 1.5);
-  let lace = min(max(last.a * exp(-dt * foam.thresholds.z) * squeeze, 0.7 * f), 1.2);
+  let lace = min(max(last.a * exp(-dt * foam.thresholds.z) * squeeze, f), 1.2);
   textureStore(foam_out, id.xy, level, vec4<f32>(f, fresh, age, lace));
 }

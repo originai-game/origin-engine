@@ -306,6 +306,7 @@ impl SeaWakes {
     /// (absolute world xz) at the first; `at` is the surface's centre (frame
     /// xz), `origin` the frame's (absolute world xz) and `scale` the
     /// surface's dynamicWaves.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn update(
         &mut self,
         queue: &wgpu::Queue,
