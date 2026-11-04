@@ -189,7 +189,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// 549687b62089e681 after og.Environment's blurriness, grounded dome and blend fields,
 /// f632ac0f4ad4b88f after T5 made og.Terrain lazy (gone from a world without terrain),
 /// 4bfa6723af539cfe after area 7's Stylise and MaterialStyle fields, and
-/// f54eca0ab51dea44 after area 4 made og.TerrainScatter and og.Wind lazy.
+/// f54eca0ab51dea44 after area 4 made og.TerrainScatter and og.Wind lazy, and
+/// eb172ffc6fb342e9 after UI state version 16 (the touch control holding a finger).
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -202,5 +203,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "f54eca0ab51dea44");
+    assert_eq!(hash(engine), "eb172ffc6fb342e9");
 }

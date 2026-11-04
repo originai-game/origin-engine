@@ -206,9 +206,10 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// after R5 made og.Water lazy, and after og.Environment's blurriness, grounded dome
 /// and blend fields, after T5 made og.Terrain lazy, and after area 7's Stylise
 /// and MaterialStyle fields, and after area 4 made og.TerrainScatter and
-/// og.Wind lazy; R10 leaves it
+/// og.Wind lazy, and after UI state version 16 (the touch control holding
+/// a finger); R10 leaves it
 /// unmoved on either side).
-const PINNED_HASH: &str = "069a9b301b46b92c";
+const PINNED_HASH: &str = "b06efedc18e37fd9";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

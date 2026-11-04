@@ -126,7 +126,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// grounded dome and blend fields (to 82ae1d6124a13be2) and T5's lazy og.Terrain (to
 /// 5017615dce8e0194, gone from a world without terrain) and area 7's Stylise and
 /// MaterialStyle fields (to 4da281adabd646cf) and area 4's lazy og.TerrainScatter and og.Wind
-/// (to 52ef5ac7cfa6538a), each of which moves every raw world hash.
+/// (to 52ef5ac7cfa6538a) and UI state version 16, the touch control holding a finger
+/// (to c950ccbacfe91a63), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -137,7 +138,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "52ef5ac7cfa6538a");
+    assert_eq!(hash(engine), "c950ccbacfe91a63");
 }
 
 #[test]
