@@ -402,7 +402,11 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
     ];
     const LINE: &str = "Slot 42 W";
     let metrics = test_font_metrics().metrics;
-    let theme = *ui_with_font(test_font_metrics()).theme();
+    let mut ui = ui_with_font(test_font_metrics());
+    // Match rich_frame's viewport: its title role uses the landscape
+    // breakpoint, not the desktop ramp returned before begin().
+    ui.begin(InputFrame::default(), Viewport::new(360.0, 120.0));
+    let theme = *ui.theme();
     for (name, step) in steps {
         let (plain, w, h, bg) = rich_frame(LINE, step);
         let (bold, ..) = rich_frame(&format!("[b]{LINE}[/b]"), step);

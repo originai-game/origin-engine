@@ -944,8 +944,6 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
     let mut theme = *ui.theme();
-    // Tight tracking: glyph quads overlap their neighbours.
-    theme.type_ramp.display_md.tracking_em = -0.1;
     if glow {
         theme.art.text_glows[0] = Some(og_ui::style_file::Glow {
             size: 2.0,
@@ -972,7 +970,18 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
                         ui_idi("Title", k as u32),
                         "Wall 42",
                         LabelDesc {
-                            step: Some(t.type_ramp.display_md),
+                            // A shader fixture, independent of the style's
+                            // responsive ramp. Tight tracking overlaps quads.
+                            step: Some(TypeStep {
+                                size: 34.0,
+                                line_height: 38.0,
+                                tracking_em: -0.1,
+                                cjk_line_height: 44.0,
+                                cjk_tracking_em: 0.0,
+                                features: og_ui::shape::Features::NONE,
+                                weight: 400,
+                                uppercase: false,
+                            }),
                             ..LabelDesc::default()
                         },
                     );
