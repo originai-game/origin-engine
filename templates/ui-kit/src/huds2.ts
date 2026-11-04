@@ -46,7 +46,7 @@ export function mobaHud(world: World): void {
   const { t, small, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-moba", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-moba", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.nameplate("Foe", { target: { point: at(0.66, 0.42) }, name: "Morrow", level: "11", reaction: "hostile", health: 0.42, targeted: true });
   og.ui.nameplate("Ally", { target: { point: at(0.34, 0.5) }, name: "Ilsa", level: "12", reaction: "friendly", health: 0.78 });
@@ -104,7 +104,7 @@ export function rpgHud(world: World): void {
   const { t, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-rpg", { x: 0.5, y: 0.55 });
+  gameScene(world, "scenes/genre-rpg", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   const foe = at(portrait ? 0.62 : 0.6, 0.42);
   og.ui.nameplate("Elite", { target: { point: foe }, name: "Gorvane the Hollow", title: L("sc.rpg.elite"), level: "24", reaction: "hostile", unitClass: "elite", health: 0.58 - 0.1 * ((tick % 600) / 600), targeted: true });
@@ -170,7 +170,7 @@ export function mmoHud(world: World): void {
   const { t, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-mmo", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-mmo", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   const buffs: StatusEffect[] = [
     { key: "might", image: hudArt("boons/titan-heart"), name: L("sc.mmo.might"), remaining: 1_740 - tick / 60, duration: 3_600, mine: true },
@@ -230,7 +230,7 @@ export function rogueHud(world: World): void {
   const { t, small, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-roguelike", { x: 0.5, y: 0.55 });
+  gameScene(world, "scenes/genre-roguelike", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   og.ui.nameplate("Foe", { target: { point: at(0.62, 0.46) }, name: "Bone Warden", reaction: "hostile", unitClass: "elite", health: 0.7, targeted: true });
   og.ui.anchor("Player", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.sm }, () => {
@@ -295,7 +295,7 @@ export function tdHud(world: World): void {
   const { t, small, portrait, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-strategy", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-strategy", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.resourceBar("Purse", {
     items: [
@@ -361,7 +361,7 @@ export function rhythmHud(world: World): void {
   const { t, vp, small, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-rhythm", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-rhythm", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   const portrait = vp.breakpoint === "phonePortrait";
   // On a phone on its side the highway narrows so the kit's chrome in the bottom start corner stays clear of it.
@@ -479,7 +479,7 @@ export function fightHud(world: World): void {
   const { t, small, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-fighting", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-fighting", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   const bar = px((small ? 150 : 460) * k);
   og.ui.anchor("Top", { anchor: "top", margin: m, direction: "row", gap: t.space.sm, cross: "start" }, () => {
@@ -527,7 +527,7 @@ export function fightHud(world: World): void {
 export function survivalHud(world: World): void {
   const { t, vp, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
-  gameScene("scenes/genre-survival", { x: 0.5, y: 0.55 });
+  gameScene(world, "scenes/genre-survival", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   og.ui.interactionPrompt(world, "Gather", { target: { point: at(portrait ? 0.62 : 0.58, 0.55) }, action: "interact", verb: L("sc.survival.gather"), name: L("sc.survival.birch"), hold: (tick % 180) / 180 });
   if (!portrait) og.ui.compass("Compass", { heading: 128 + 6 * Math.sin(tick / 120), width: Math.min(Math.round(small ? 280 : 480 * k), vp.width - 360), pois: [{ key: "camp", bearing: 160, distance: 220, kind: "objective", label: L("sc.survival.camp") }, { key: "cave", bearing: 96, distance: 640, kind: "poi" }], units: "m", anchor: "top" });
@@ -571,7 +571,7 @@ export function survivalHud(world: World): void {
 export function horrorHud(world: World): void {
   const { t, small, touch, k, m } = frame();
   og.ui.setNavigation(false);
-  gameScene("scenes/genre-horror", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-horror", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.lowHealthVignette("Vignette", { health: 0.3, threshold: 0.4, hitAt: null });
   og.ui.interactionPrompt(world, "Hide", { target: { point: at(0.3, 0.52) }, action: "interact", verb: L("sc.horror.hide"), name: L("sc.horror.wardrobe") });
@@ -600,7 +600,7 @@ export function horrorHud(world: World): void {
 export function openHud(world: World): void {
   const { t, vp, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
-  gameScene("scenes/genre-openworld", { x: 0.5, y: 0.55 });
+  gameScene(world, "scenes/genre-openworld", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   og.ui.waypoint("Shrine", { target: { point: at(0.7, 0.36) }, kind: "objective", label: L("sc.open.shrine"), units: "m" });
   og.ui.interactionPrompt(world, "Talk", { target: { point: at(portrait ? 0.4 : 0.36, 0.56) }, action: "interact", verb: L("sc.open.talk"), name: "Odile" });

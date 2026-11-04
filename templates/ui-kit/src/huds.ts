@@ -84,15 +84,28 @@ export function frame() {
  * the notch too), sharp: it is the game, not a menu's backdrop. Without
  * the art, the style's backdrop.
  */
-export function gameScene(name: HudArt, focal = { x: 0.5, y: 0.5 }): void {
+export function gameScene(world: World, name: HudArt, focal = { x: 0.5, y: 0.5 }): void {
+  // The game's frame under the whole UI: a screen sprite (under every UI element), so the world's own widgets
+  // (nameplates, prompts, the low-health vignette) and the kit's chrome, built before the page, draw over it. A HUD
+  // anchor here drew over everything built before it. Cover-fit about the focal point (the art is 16:9).
   const vp = og.ui.frameViewport();
-  const sa = vp.safeArea;
   const tex = hudArt(name);
-  og.ui.anchor("Game", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), height: px(vp.height) }, () => {
-    og.ui.column("Picture", { width: grow, height: grow }, () => {});
-    og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal }] : [{ kind: "solid", color: { token: "backdrop" } }] } as never);
-    og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
-  });
+  const art = 16 / 9;
+  const view = vp.width / vp.height;
+  const cw = view < art ? view / art : 1;
+  const ch = view > art ? art / view : 1;
+  const u0 = Math.min(Math.max(focal.x - cw / 2, 0), 1 - cw);
+  const v0 = Math.min(Math.max(focal.y - ch / 2, 0), 1 - ch);
+  og.render.sprite(world, { screen: true, texture: tex, position: { x: 0, y: 0, z: 0 }, anchor: { x: 0, y: 0 }, width: vp.width, height: vp.height, uv: [u0, v0, u0 + cw, v0 + ch], layer: 0, ...(tex ? {} : { color: linear(og.ui.frameTheme().palette["backdrop"] ?? "#000000") }) } as never);
+}
+
+/** A `#rrggbb` palette entry (sRGB as authored) as the linear colour a sprite takes. */
+function linear(hex: string): { r: number; g: number; b: number } {
+  const c = (i: number) => {
+    const v = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) / 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return { r: c(0), g: c(1), b: c(2) };
 }
 
 /**
@@ -154,7 +167,7 @@ export function actionHud(world: World, under = false): boolean {
   og.ui.setNavigation(false);
   // Under a menu (the pause, a tutorial's callout) the HUD shows, without its controls.
   const touch = hasTouch && !under;
-  gameScene("scenes/genre-action", { x: 0.45, y: 0.55 });
+  gameScene(world, "scenes/genre-action", { x: 0.45, y: 0.55 });
   const tick = og.ui.tick();
   // A hit lands every two seconds on the foe ahead: its number thrown up from it, the combo climbing.
   const foe = at(portrait ? 0.68 : 0.62, portrait ? 0.56 : 0.6);
@@ -229,7 +242,7 @@ export function shooterHud(world: World): void {
   const { t, small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-shooter", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-shooter", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.lowHealthVignette("Vignette", { health: st.hp / 100, threshold: 0.35, hitAt: st.hitAt >= 0 ? st.hitAt : null });
   const hits = [{ angle: 0.9, at: tick - (tick % 150), strength: 0.8 }, { angle: -2.2, at: tick - ((tick + 60) % 150), strength: 0.45 }];
@@ -314,7 +327,7 @@ export function manageHud(world: World): void {
   const { t, small, portrait, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-management", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-management", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.resourceBar("Resources", {
     items: [
@@ -407,7 +420,7 @@ export function sportsHud(world: World): void {
   const { t, small, portrait, k, m } = frame();
   og.ui.setNavigation(false);
   void world;
-  gameScene("scenes/genre-sports", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-sports", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   const secs = 67 * 60 + 12 + Math.floor(tick / 60);
   og.ui.scorebug("Bug", { home: { ...HOME, possession: true }, away: AWAY, clock: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`, period: L("sc.sports.half2"), situation: tick % 600 < 300 ? L("sc.sports.corner") : "", anchor: "topLeft" });
@@ -447,7 +460,7 @@ export function sportsHud(world: World): void {
 export function matchFacts(world: World): void {
   const { t, small, k, m } = frame();
   void world;
-  gameScene("scenes/genre-sports", { x: 0.5, y: 0.5 });
+  gameScene(world, "scenes/genre-sports", { x: 0.5, y: 0.5 });
   og.ui.anchor("Facts", { anchor: small ? "top" : "center", margin: m, direction: "column", gap: t.space.md, width: small ? grow : px(640 * k), padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "hud" }, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {
     // The board scrolls where it would reach the kit's chrome at the foot (large text): its room as laid.
     const vp = og.ui.frameViewport();
