@@ -32,24 +32,34 @@ fn f_schlick_roughness(cos_theta: f32, f0: vec3<f32>, roughness: f32) -> vec3<f3
 // sample's position between them, as a hardware comparison sampler with
 // linear filtering would, so edges ramp over one texel instead of stepping.
 // textureLoad and explicit compares give the same result on every backend.
-fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32) -> f32 {
+// `slope` is the receiver plane's depth change per texel
+// ([`receiver_slope`]): each texel is compared against the receiver's own
+// depth there, so a surface tilted from the light does not shadow itself
+// across the kernel.
+fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
   let size = vec2<i32>(textureDimensions(map));
   let p = uv * vec2<f32>(size) - 0.5;
   let base = vec2<i32>(floor(p));
   let f = fract(p);
   var lit: array<f32, 4>;
   for (var i = 0; i < 4; i++) {
-    let at = clamp(base + vec2<i32>(i & 1, i >> 1u), vec2<i32>(0), size - 1);
-    lit[i] = select(0.0, 1.0, ref_depth <= textureLoad(map, at, i32(layer), 0).r);
+    let o = vec2<i32>(i & 1, i >> 1u);
+    let at = clamp(base + o, vec2<i32>(0), size - 1);
+    let r = ref_depth + dot(slope, vec2<f32>(o) - f);
+    lit[i] = select(0.0, 1.0, r <= textureLoad(map, at, i32(layer), 0).r);
   }
   return mix(mix(lit[0], lit[1], f.x), mix(lit[2], lit[3], f.x), f.y);
 }
 
-// A wider PCF for local lights' shadows: the 3x3 bilinear PCFs one texel
-// apart summed, as one pass over the 4x4 texels around uv with separable
-// tent weights (1 - f, 1, 1, f) / 3 per axis. Edges come out soft over
-// about three texels and straight instead of stepping texel by texel.
-fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32) -> f32 {
+// A wider PCF for the lit surfaces' shadows (the sun's cascades and the
+// local lights'): the 3x3 bilinear PCFs one texel apart summed, as one pass
+// over the 4x4 texels around uv with separable tent weights (1 - f, 1, 1,
+// f) / 3 per axis (Castaño's filter for The Witness, as Unity's
+// SampleShadow_ComputeSamples_Tent_5x5). Edges come out soft over about
+// three texels and straight instead of stepping texel by texel; the
+// receiver plane (`slope`, as pcf's) keeps the wider kernel off the
+// surface's own depth.
+fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
   let size = vec2<i32>(textureDimensions(map));
   let p = uv * vec2<f32>(size) - 0.5;
   let base = vec2<i32>(floor(p)) - 1;
@@ -61,11 +71,40 @@ fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f3
     var row = 0.0;
     for (var i = 0; i < 4; i++) {
       let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
-      row += wx[i] * select(0.0, 1.0, ref_depth <= textureLoad(map, at, i32(layer), 0).r);
+      let r = ref_depth + dot(slope, vec2<f32>(f32(i - 1), f32(j - 1)) - f);
+      row += wx[i] * select(0.0, 1.0, r <= textureLoad(map, at, i32(layer), 0).r);
     }
     lit += wy[j] * row;
   }
   return lit / 9.0;
+}
+
+// Receiver-plane depth bias (Isidoro, "Shadow Mapping: GPU-based Tips and
+// Techniques", GDC 2006): the receiver's depth change per shadow texel,
+// from `a` (the sample's uv and reference depth) and `b`, `c` (two points
+// a little way along the surface, projected the same way). Taken from the
+// surface's plane rather than screen derivatives, which these lookups'
+// control flow does not allow. Towards a grazing light the plane runs
+// along the light's rays and the slope grows without bound: it is held to
+// what a light at tan 4 (76 degrees) gives, as PCSS's slope term, and the
+// constant biases cover the rest.
+fn receiver_slope(a: vec3<f32>, b: vec3<f32>, c: vec3<f32>, size: vec2<f32>, n_dot_l: f32) -> vec2<f32> {
+  let d1 = (b.xy - a.xy) * size;
+  let d2 = (c.xy - a.xy) * size;
+  let det = d1.x * d2.y - d1.y * d2.x;
+  if (abs(det) < 1e-12) { return vec2<f32>(0.0); }
+  let z1 = b.z - a.z;
+  let z2 = c.z - a.z;
+  let g = vec2<f32>(z1 * d2.y - z2 * d1.y, z2 * d1.x - z1 * d2.x) / det;
+  let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
+  return g * min(1.0, 4.0 * n_dot_l / max(sin_l, 1e-6));
+}
+
+// Two directions along the plane of normal n.
+fn plane_tangents(n: vec3<f32>) -> array<vec3<f32>, 2> {
+  let k = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.x) > 0.9);
+  let t = normalize(cross(n, k));
+  return array<vec3<f32>, 2>(t, cross(n, t));
 }
 
 // The cascade whose camera slice holds the point (by view depth, the same
@@ -134,7 +173,7 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, penumbra);
-    lit += pcf(cascade_map, uv + o / size, c, ref_depth - slope * length(o));
+    lit += pcf(cascade_map, uv + o / size, c, ref_depth - slope * length(o), vec2<f32>(0.0));
   }
   return lit / f32(PCSS_TAPS);
 }
@@ -143,7 +182,9 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
 // world units scaled by the cascade's texel size (a normal offset growing
 // with the light's angle to the surface, plus a depth bias converted to the
 // cascade's normalized depth), so it holds at any scene scale.
-fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
+// `wide` filters with the tent over the receiver plane; the volumetric
+// march takes the 2x2 PCF, as it averages many samples anyway.
+fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let bias = frame.cascade_bias[c];
   let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
   let offset = p + n * bias.x * (0.25 + sin_l);
@@ -156,7 +197,20 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
   if (frame.shadow.x > 0.0) {
     return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
   }
-  return pcf(cascade_map, uv, c, sp.z - bias.y);
+  if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
+  // The receiver plane, a texel along each tangent (orthographic: exact).
+  let t = plane_tangents(n);
+  let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
+  let sc = frame.cascade_view_proj[c] * vec4<f32>(offset + t[1] * bias.x, 1.0);
+  let size = vec2<f32>(textureDimensions(cascade_map));
+  let slope = receiver_slope(
+    vec3<f32>(uv, sp.z),
+    vec3<f32>(sb.x * 0.5 + 0.5, 0.5 - sb.y * 0.5, sb.z),
+    vec3<f32>(sc.x * 0.5 + 0.5, 0.5 - sc.y * 0.5, sc.z),
+    size,
+    n_dot_l,
+  );
+  return pcf_tent(cascade_map, uv, c, sp.z - bias.y, slope);
 }
 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
@@ -164,15 +218,19 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
 // next one, which covers that band too. Shadows fade out over the last
 // tenth of the shadow distance.
 fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
+  return cascade_shadow_lookup(p, n, n_dot_l, true);
+}
+
+fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let c = cascade_index(p);
   if (c >= CASCADES) { return 1.0; }
-  var shadow = cascade_sample(c, p, n, n_dot_l);
+  var shadow = cascade_sample(c, p, n, n_dot_l, wide);
   if (shadow < 0.0) { return 1.0; }
   let count = u32(frame.light_dir.w);
   let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
   let band = frame.cascade_bias[c].w;
   if (c + 1u < count && depth > band) {
-    var next = cascade_sample(c + 1u, p, n, n_dot_l);
+    var next = cascade_sample(c + 1u, p, n, n_dot_l, wide);
     if (next < 0.0) { next = 1.0; }
     shadow = mix(shadow, next, smoothstep(band, frame.cascade_bias[c].z, depth));
   }
@@ -193,6 +251,26 @@ fn cube_face(d: vec3<f32>) -> u32 {
 // its half of the sphere scaled into 0.9 of the disc (shadow_pass.wgsl
 // draws them).
 const PARABOLOID_SCALE: f32 = 0.9;
+
+// A point on hemisphere `sigma`'s paraboloid (sigma 1 below the light):
+// its uv and stored depth.
+fn paraboloid_uv_ref(light: LocalLight, q: vec3<f32>, sigma: f32) -> vec3<f32> {
+  let to = q - light.position_range.xyz;
+  let l = vec3<f32>(to.x, sigma * to.z, -sigma * to.y);
+  let d = max(length(l), 1e-6);
+  let u = l / d;
+  let ndc = vec2<f32>(-u.x, u.y) * (PARABOLOID_SCALE / (1.0 + u.z));
+  return vec3<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, d * (1.0 - light.cone.w) / light.position_range.w);
+}
+
+// A point seen by local shadow layer `layer` (a spot's or a cube face's):
+// its uv and stored depth (w <= 0: behind the layer's view).
+fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>) -> vec4<f32> {
+  let clip = frame.local_view_proj[layer] * vec4<f32>(q, 1.0);
+  let ndc = clip.xy / clip.w;
+  let r = length(q - light.position_range.xyz) * (1.0 - light.cone.w) / light.position_range.w;
+  return vec4<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, r, clip.w);
+}
 
 // Local shadows store distance / range; the fragment compares its own,
 // filtered with the tent (`local_shadow_lookup`'s `wide`).
@@ -217,30 +295,41 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
   let sin_l = sqrt(1.0 - n_dot_l * n_dot_l);
   let offset = p + n * light.cone.z * dist * (0.25 + sin_l);
   var layer = u32(slot);
+  let size = vec2<f32>(textureDimensions(local_shadow_map));
+  // The receiver plane, about a texel along each tangent (a 90-degree
+  // face's texel at this distance; the plane is what matters, not the step).
+  let t = plane_tangents(n);
+  let h = dist * 2.0 / size.x;
   if (light.color_kind.w < 0.5 && frame.shadow.y > 0.5) {
-    let to = offset - light.position_range.xyz;
-    let below = to.y <= 0.0;
+    let below = offset.y - light.position_range.y <= 0.0;
     let sigma = select(-1.0, 1.0, below);
     layer += select(1u, 0u, below);
-    let l = vec3<f32>(to.x, sigma * to.z, -sigma * to.y);
-    let d = max(length(l), 1e-6);
-    let q = l / d;
-    let ndc = vec2<f32>(-q.x, q.y) * (PARABOLOID_SCALE / (1.0 + q.z));
-    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-    let ref_p = d * (1.0 - light.cone.w) / range;
-    if (wide) { return pcf_tent(local_shadow_map, uv, layer, ref_p); }
-    return pcf(local_shadow_map, uv, layer, ref_p);
+    let a = paraboloid_uv_ref(light, offset, sigma);
+    if (!wide) { return pcf(local_shadow_map, a.xy, layer, a.z, vec2<f32>(0.0)); }
+    let slope = receiver_slope(
+      a,
+      paraboloid_uv_ref(light, offset + t[0] * h, sigma),
+      paraboloid_uv_ref(light, offset + t[1] * h, sigma),
+      size,
+      n_dot_l,
+    );
+    return pcf_tent(local_shadow_map, a.xy, layer, a.z, slope);
   }
   if (light.color_kind.w < 0.5) { layer += cube_face(to_frag); }
-  let clip = frame.local_view_proj[layer] * vec4<f32>(offset, 1.0);
-  if (clip.w <= 0.0) { return 1.0; }
-  let ndc = clip.xy / clip.w;
-  let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+  let a = perspective_uv_ref(light, layer, offset);
+  if (a.w <= 0.0) { return 1.0; }
+  let uv = a.xy;
   if (light.color_kind.w > 0.5 && (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)))) { return 1.0; }
-  let ref_depth = length(offset - light.position_range.xyz) * (1.0 - light.cone.w) / range;
   let at = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
-  if (wide) { return pcf_tent(local_shadow_map, at, layer, ref_depth); }
-  return pcf(local_shadow_map, at, layer, ref_depth);
+  if (!wide) { return pcf(local_shadow_map, at, layer, a.z, vec2<f32>(0.0)); }
+  let slope = receiver_slope(
+    a.xyz,
+    perspective_uv_ref(light, layer, offset + t[0] * h).xyz,
+    perspective_uv_ref(light, layer, offset + t[1] * h).xyz,
+    size,
+    n_dot_l,
+  );
+  return pcf_tent(local_shadow_map, at, layer, a.z, slope);
 }
 
 struct Surface {

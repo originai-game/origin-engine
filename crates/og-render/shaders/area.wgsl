@@ -219,7 +219,7 @@ fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   var lit = 0.0;
   for (var i = 0u; i < 24u; i++) {
     let q = clamp(uv + rect_shadow_tap(i, 24u, turn) * penumbra, vec2<f32>(0.0), vec2<f32>(1.0));
-    lit += pcf(local_shadow_map, q, layer, ref_depth);
+    lit += pcf(local_shadow_map, q, layer, ref_depth, vec2<f32>(0.0));
   }
   return lit / 24.0;
 }

@@ -50,7 +50,7 @@ fn view_ray(uv: vec2<f32>) -> vec3<f32> {
 fn sun_in(p: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   let l = normalize(frame.light_dir.xyz);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, l, 1.0); }
+  if (frame.light_dir.w > 0.5) { shadow = cascade_shadow_lookup(p, l, 1.0, false); }
   return frame.light_color.rgb * shadow * hg_phase(dot(dir, l), vol.scatter.w);
 }
 
