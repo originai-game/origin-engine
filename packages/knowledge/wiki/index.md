@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2385 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2388 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -842,6 +842,8 @@ Field units the docs and Tune use.
 | [`MotionCapabilities`](motion.md#type-MotionCapabilities) | struct | motion | — |
 | [`MotionGoalKind`](motion.md#type-MotionGoalKind) | enum | motion | — |
 | [`MotionGoalKind()`](motion.md#column-MotionGoalKind) | column kind | motion | — |
+| [`MotionPresentationState`](motion.md#type-MotionPresentationState) | enum | motion | — |
+| [`MotionPresentationStatus`](motion.md#type-MotionPresentationStatus) | struct | motion | — |
 | [`MotionStatus`](motion.md#type-MotionStatus) | struct | motion | — |
 | [`MotionToken`](ui.md#type-MotionToken) | enum | ui | — |
 | [`MOTOR_NONE`](physics.md#const-MOTOR_NONE) | constant | physics | — |
@@ -1122,6 +1124,7 @@ Field units the docs and Tune use.
 | [`og.motion.place`](motion.md#fn-place) | function | motion | `og_motion_place` |
 | [`og.motion.pose`](motion.md#fn-pose) | function | motion | `og_motion_pose` |
 | [`og.motion.poses`](motion.md#fn-poses) | function | motion | `og_motion_poses` |
+| [`og.motion.presentation`](motion.md#fn-presentation) | function | motion | `og_motion_presentation` |
 | [`og.motion.react`](motion.md#fn-react) | function | motion | `og_motion_react` |
 | [`og.motion.status`](motion.md#fn-status) | function | motion | `og_motion_status` |
 | [`og.motion.walkTo`](motion.md#fn-walkTo) | function | motion | `og_motion_walk_to` |

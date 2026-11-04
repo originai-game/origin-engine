@@ -56,7 +56,7 @@ use og_motion::library::{Library, POSES};
 use og_motion::soma::{Leg, Planter, Skeleton};
 use og_render::wgpu;
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -150,6 +150,24 @@ struct Ready {
     /// A sliced batch's latency, start to decoded, as the last one not
     /// waited for measured (ms; 500 before one has).
     latency: f64,
+    failure: Option<String>,
+    startup: Startup,
+}
+
+/// Wall-time diagnostics only; none of these clocks enter the world.
+#[derive(Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Startup {
+    compile_ms: Option<f64>,
+    upload_submit_ms: Option<f64>,
+    first_dispatch_delay_ms: Option<f64>,
+    first_inference_wall_ms: Option<f64>,
+    first_inference_poll_ms: f64,
+    first_palette_delay_ms: Option<f64>,
+    #[serde(skip)]
+    resident_at: f64,
+    #[serde(skip)]
+    inference_finished_at: Option<f64>,
 }
 
 #[derive(Default)]
@@ -175,6 +193,7 @@ struct Shown {
     skeleton: u64,
     rig: u64,
     target: Option<(Arc<SkeletonAsset>, HumanoidMap)>,
+    failure: Option<String>,
     last_position: Vec3,
     velocity: Vec3,
     shown: u64,
@@ -229,6 +248,8 @@ pub(crate) struct Presenter {
     /// The palette each agent is drawn with this frame, by entity bits
     /// (`fx::posed_model` takes it in place of og-anim's).
     pub palettes: IdMap<u64, Vec<Mat4>>,
+    /// Only palettes made from generated frames this render, never fallback.
+    generated: BTreeSet<u64>,
     /// og.motion.capabilities asked: load even without an agent.
     wanted: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -246,6 +267,7 @@ impl Presenter {
     pub(crate) fn forget(&mut self) {
         self.agents.clear();
         self.palettes.clear();
+        self.generated.clear();
         self.clock = None;
     }
 }
@@ -316,6 +338,14 @@ fn build(bytes: &[u8], device: wgpu::Device, queue: wgpu::Queue) -> Result<Parts
 }
 
 fn ready(parts: Parts) -> Model {
+    let startup = Startup {
+        #[cfg(not(target_arch = "wasm32"))]
+        compile_ms: Some(parts.gpu.startup_ms.0),
+        #[cfg(not(target_arch = "wasm32"))]
+        upload_submit_ms: Some(parts.gpu.startup_ms.1),
+        resident_at: now_ms(),
+        ..Default::default()
+    };
     Model::Ready(Box::new(Ready {
         rate: parts.gpu.rate(),
         gpu: Some(parts.gpu),
@@ -323,6 +353,8 @@ fn ready(parts: Parts) -> Model {
         flight: None,
         landing: None,
         latency: 500.0,
+        failure: None,
+        startup,
         statics: Arc::new(parts.statics),
         motion: Motion::default(),
         library: parts.library,
@@ -545,7 +577,12 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     // Each poll submits the batch's next slice or polls its readback;
     // blocking (native) runs every slice left and waits for the GPU.
     let (gpu, result) = loop {
-        match flight.future.as_mut().poll(&mut cx) {
+        let start = now_ms();
+        let polled = flight.future.as_mut().poll(&mut cx);
+        if r.startup.first_inference_wall_ms.is_none() {
+            r.startup.first_inference_poll_ms += now_ms() - start;
+        }
+        match polled {
             Poll::Ready(done) => break done,
             Poll::Pending if block && cfg!(not(target_arch = "wasm32")) => {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -555,10 +592,16 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
         }
     };
     let flight = r.flight.take().expect("polled above");
+    if r.startup.first_inference_wall_ms.is_none() {
+        let finished = now_ms();
+        r.startup.first_inference_wall_ms = Some(finished - flight.started);
+        r.startup.inference_finished_at = Some(finished);
+    }
     r.rate = gpu.rate();
     r.gpu = Some(gpu);
     match result {
         Ok((student, local)) => {
+            r.failure = None;
             r.landing = Some(Landing {
                 batch: flight.batch,
                 student,
@@ -570,6 +613,7 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
             });
         }
         Err(e) => {
+            r.failure = Some(e.to_string());
             if errors.len() < 8 {
                 errors.push(e.to_string());
             }
@@ -628,6 +672,10 @@ fn start_flight(r: &mut Ready) {
     };
     let inputs = batch.inputs.clone();
     let statics = r.statics.clone();
+    let started = now_ms();
+    r.startup
+        .first_dispatch_delay_ms
+        .get_or_insert(started - r.startup.resident_at);
     r.flight = Some(Flight {
         future: Box::pin(async move {
             let result = async {
@@ -641,7 +689,7 @@ fn start_flight(r: &mut Ready) {
             (gpu, result)
         }),
         batch,
-        started: now_ms(),
+        started,
     });
 }
 
@@ -854,6 +902,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
     let rs = &mut *rs;
     let p = &mut rs.motion;
     p.palettes.clear();
+    p.generated.clear();
     // The model loads as soon as the bundle declares it (a game that uses
     // og.motion), before any agent needs it.
     if agents.is_empty() && !p.wanted && !declares(eng) {
@@ -896,6 +945,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 skeleton: 0,
                 rig: u64::MAX,
                 target: None,
+                failure: None,
                 last_position: a.position,
                 velocity: Vec3::ZERO,
                 shown: 0,
@@ -913,10 +963,12 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         if s.skeleton != a.skeleton || s.rig != a.settings.rig {
             s.skeleton = a.skeleton;
             s.rig = a.settings.rig;
+            s.failure = None;
             s.target = sys.as_ref().and_then(|sys| {
                 match crate::anim::humanoid_of(eng, sys, a.skeleton, a.settings.rig, "agent") {
                     Ok(target) => Some(target),
                     Err(error) => {
+                        s.failure = Some(error.clone());
                         p.errors.push(format!("agent {}: {error}", a.entity));
                         None
                     }
@@ -1032,11 +1084,41 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         {
             s.shown += 1;
             p.palettes.insert(a.entity, m);
+            p.generated.insert(a.entity);
+            if r.startup.first_palette_delay_ms.is_none() {
+                r.startup.first_palette_delay_ms =
+                    r.startup.inference_finished_at.map(|at| now_ms() - at);
+            }
         }
     }
     start_flight(r);
     (p.batches, p.last_batch) = stats;
     fallback(eng, p, &agents, &goals, sys.as_ref());
+}
+
+impl Presenter {
+    fn presentation(&self, entity: u64) -> Value {
+        let (state, reason) = match &self.model {
+            Model::Unloaded => ("loading", "the model is read at the next frame"),
+            Model::Waiting(why) => ("loading", why.as_str()),
+            Model::Failed(why) => ("failed", why.as_str()),
+            Model::Ready(r) => {
+                let failure = self.agents.get(&entity).and_then(|s| s.failure.as_ref());
+                if let Some(why) = failure.or(r.failure.as_ref()) {
+                    ("failed", why.as_str())
+                } else if self.generated.contains(&entity) {
+                    ("ready", "")
+                } else {
+                    ("warming", "waiting for generated frames and their palette")
+                }
+            }
+        };
+        json!({ "state": state, "reason": reason })
+    }
+}
+
+pub(crate) fn presentation(eng: &Engine, entity: u64) -> Value {
+    eng.render.borrow().motion.presentation(entity)
 }
 
 /// og.motion.capabilities.
@@ -1076,6 +1158,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         .map(|(e, s)| {
             json!({
                 "entity": *e as f64,
+                "presentation": p.presentation(*e),
                 "ahead": ready.map_or(0, |r| r.motion.queued(s.character)),
                 "modelGoals": ready.map_or(0, |r| r.motion.goals(s.character)),
                 "framesShown": s.shown,
@@ -1110,6 +1193,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "batches": p.batches,
         "lastBatch": { "characters": p.last_batch.0, "ms": p.last_batch.1 },
         "frameBudgetMs": FRAME_BUDGET_MS,
+        "startup": ready.map(|r| &r.startup),
         "gpuGflops": ready.map_or(0.0, |r| r.rate),
         "errors": p.errors,
         "agents": agents,
@@ -1131,6 +1215,7 @@ mod tests {
             skeleton: 1,
             rig: 42,
             target: None,
+            failure: None,
             last_position: Vec3::ZERO,
             velocity: Vec3::ZERO,
             shown: 0,
@@ -1144,6 +1229,33 @@ mod tests {
             issued: VecDeque::new(),
             next_id: 0,
         }
+    }
+
+    #[test]
+    fn presentation_reports_load_failure_through_api_and_probe() {
+        use crate::{
+            og_engine_create, og_game_game, og_host_begin_bundle, og_motion_presentation,
+            og_world_insert, og_world_spawn,
+        };
+        og_host_begin_bundle();
+        let game = og_game_game(None);
+        let created: Value = serde_json::from_str(&og_engine_create(game, "{}".into())).unwrap();
+        let world = created["value"].as_u64().unwrap() as u32;
+        let spawned: Value = serde_json::from_str(&og_world_spawn(world, None)).unwrap();
+        let entity = spawned["value"].as_f64().unwrap();
+        let inserted: Value =
+            serde_json::from_str(&og_world_insert(world, entity, AGENT.into(), None)).unwrap();
+        assert_eq!(inserted["ok"], true);
+        let eng = crate::engine::engine(world).unwrap();
+        eng.render.borrow_mut().motion.model = Model::Failed("weights could not be read".into());
+        let expected = json!({"state":"failed", "reason":"weights could not be read"});
+        let answer: Value = serde_json::from_str(&og_motion_presentation(world, entity)).unwrap();
+        assert_eq!(answer["ok"], true);
+        assert_eq!(answer["value"], expected);
+        assert_eq!(
+            super::super::dump(world)["agents"][0]["presentation"],
+            expected
+        );
     }
 
     #[test]

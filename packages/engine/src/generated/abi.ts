@@ -1281,6 +1281,8 @@ export interface HostAbi<A, V> {
   og_motion_status(world: number, entity: number): string;
   /** `og.motion.capabilities` */
   og_motion_capabilities(world: number): string;
+  /** `og.motion.presentation` */
+  og_motion_presentation(world: number, entity: number): string;
   /** `og.motion.poses` */
   og_motion_poses(): string;
 }
@@ -1903,6 +1905,7 @@ export const SYMBOLS: readonly string[] = [
   "og_motion_react",
   "og_motion_status",
   "og_motion_capabilities",
+  "og_motion_presentation",
   "og_motion_poses",
   "og_host_set_dispatcher",
   "og_engine_create",
@@ -2141,6 +2144,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_motion_status(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.motion.status", "entity", entity);
       return abi.og_motion_status(world, entity);
+    },
+    og_motion_presentation(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.motion.presentation", "entity", entity);
+      return abi.og_motion_presentation(world, entity);
     },
   };
 }

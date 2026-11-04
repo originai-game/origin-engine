@@ -11,8 +11,9 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump, og_game_game,
-    og_host_begin_bundle, og_motion_pose, og_motion_status, og_motion_walk_to, og_world_get,
-    og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn, set_hooks,
+    og_host_begin_bundle, og_motion_pose, og_motion_presentation, og_motion_status,
+    og_motion_walk_to, og_world_get, og_world_insert, og_world_restore, og_world_snapshot,
+    og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -93,6 +94,45 @@ fn walk(w: u32, e: f64) {
         e,
         Some(json!({ "pose": "cheer", "duration": 0.5 }).to_string()),
     ));
+}
+
+#[test]
+fn presentation_is_read_only_and_refuses_non_agents() {
+    let (w, e) = start(true);
+    let before = hash(w);
+    let snapshot = og_world_snapshot(w, None);
+    let status = og_motion_status(w, e);
+    let presentation = value(og_motion_presentation(w, e));
+    assert_eq!(presentation["state"], "loading");
+    assert!(!presentation["reason"].as_str().unwrap().is_empty());
+    assert_eq!(hash(w), before);
+    assert_eq!(og_world_snapshot(w, None), snapshot);
+    assert_eq!(og_motion_status(w, e), status);
+    let other = value(og_world_spawn(w, None)).as_f64().unwrap();
+    let refused: Value = serde_json::from_str(&og_motion_presentation(w, other)).unwrap();
+    assert_eq!(refused["ok"], false);
+    let invalid: Value = serde_json::from_str(&og_motion_presentation(u32::MAX, e)).unwrap();
+    assert_eq!(invalid["ok"], false);
+    let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
+        w,
+        "0:dump_motion".into(),
+    ))
+    .unwrap();
+    assert_eq!(scheduled["scheduled"], 1);
+    frames(w, 1);
+    let outputs: Value = serde_json::from_str(&og_runtime::og_engine_take_outputs(w)).unwrap();
+    let dump = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["action"] == "dump_motion")
+        .unwrap();
+    let dump: Value = serde_json::from_str(dump["data"].as_str().unwrap()).unwrap();
+    assert_eq!(dump["agents"][0]["entity"], e);
+    assert_eq!(
+        dump["agents"][0]["presentation"],
+        value(og_motion_presentation(w, e))
+    );
 }
 
 #[test]

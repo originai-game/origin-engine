@@ -1437,7 +1437,26 @@ later.
   cooks them as an optional pack, named in the manifest outside its
   outputs and never in the boot bundle (the owner, 2026-11-02), read and
   uploaded in the background as soon as the bundle loads (the
-  coordinator, 2026-11-02).
+  coordinator, 2026-11-02). `motion.presentation(world, entity)` reports
+  `loading`, `warming`, `ready` or `failed` with a reason on both hosts.
+  Ready means generated frames and their current palette, never an
+  authored fallback. This answer depends on GPU timing: game logic must
+  not branch on it, and no component, goal, tick, snapshot or hash depends
+  on it. The host's page or shell cover may wait for ready or failed while
+  the agent stays in the world warming; there is no per-entity reveal path.
+  `motion.status` remains the deterministic goals; `capabilities.backend`
+  means weight residency, not first-pose readiness.
+  The probe's `dump_motion` reports each agent's `presentation`, including
+  before the model is resident. `model.startup` records wall milliseconds:
+  native pipeline creation (`compileMs`), weight/mask buffer preparation
+  and upload submission (`uploadSubmitMs`, not a completion fence),
+  residency to first batch scheduling (`firstDispatchDelayMs`), first batch
+  scheduling through readback (`firstInferenceWallMs`), time spent polling
+  that batch (`firstInferencePollMs`), and readback to its first generated
+  palette (`firstPaletteDelayMs`, including decode). Inference wall time
+  includes GPU work and inter-frame scheduling; subtracting poll time does
+  not isolate either one. Compile/upload are null on the web; unfinished
+  phases are null. The 3 ms slicing is unchanged.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its

@@ -6,7 +6,7 @@ Generated motion for humanoids: the engine's motion model (a 17.6M-parameter stu
 
 **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
 
-**Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.
+**Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings.
 
 **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
 
@@ -37,6 +37,8 @@ module motion {
 | [`LookAtDesc`](#type-LookAtDesc) | desc struct | A timed look over locomotion: spine, neck and head share the turn, never the hips or legs. An omitted target releases the look over blend seconds. |
 | [`ReactionDesc`](#type-ReactionDesc) | desc struct | An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only. |
 | [`MotionStatus`](#type-MotionStatus) | struct | An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here. |
+| [`MotionPresentationState`](#type-MotionPresentationState) | enum | Presentation progress, dependent on GPU timing, never simulation state. |
+| [`MotionPresentationStatus`](#type-MotionPresentationStatus) | struct | Visual readiness only, outside snapshots and hashes. |
 | [`MotionCapabilities`](#type-MotionCapabilities) | struct | Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it. |
 | [`og.motion.pose`](#fn-pose) | function | Queue a library pose where the character stands, after its other goals. |
 | [`og.motion.place`](#fn-place) | function | Queue a library pose at a place and heading; needs og.MotionAgent.drive (the mover takes the Transform there). |
@@ -47,6 +49,7 @@ module motion {
 | [`og.motion.react`](#fn-react) | function | Replace the authored reaction overlay without discarding locomotion goals. Empty desc releases it. A motion-action asset names a humanoid clip and rig, hold interval and optional head-local hand contact. The hand is solved after the look so it stays on the hood. |
 | [`og.motion.status`](#fn-status) | function | The agent's current goal and queue. |
 | [`og.motion.capabilities`](#fn-capabilities) | function | Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet. |
+| [`og.motion.presentation`](#fn-presentation) | function | Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too. |
 | [`og.motion.poses`](#fn-poses) | function | The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. Fixed by the engine's version, known before the weights are resident, so a goal's pose is checked the same everywhere. |
 
 ## Functions
@@ -81,7 +84,7 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 29989</sub>
+<sub>`api.ogt` line 30003</sub>
 
 <a id="fn-place"></a>
 
@@ -113,7 +116,7 @@ fn place {
 }
 ```
 
-<sub>`api.ogt` line 29997</sub>
+<sub>`api.ogt` line 30011</sub>
 
 <a id="fn-face"></a>
 
@@ -145,7 +148,7 @@ fn face {
 }
 ```
 
-<sub>`api.ogt` line 30005</sub>
+<sub>`api.ogt` line 30019</sub>
 
 <a id="fn-walkTo"></a>
 
@@ -177,7 +180,7 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 30013</sub>
+<sub>`api.ogt` line 30027</sub>
 
 <a id="fn-clear"></a>
 
@@ -207,7 +210,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 30021</sub>
+<sub>`api.ogt` line 30035</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -239,7 +242,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 30028</sub>
+<sub>`api.ogt` line 30042</sub>
 
 <a id="fn-react"></a>
 
@@ -271,7 +274,7 @@ fn react {
 }
 ```
 
-<sub>`api.ogt` line 30036</sub>
+<sub>`api.ogt` line 30050</sub>
 
 <a id="fn-status"></a>
 
@@ -301,7 +304,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 30044</sub>
+<sub>`api.ogt` line 30058</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -329,7 +332,37 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 30051</sub>
+<sub>`api.ogt` line 30065</sub>
+
+<a id="fn-presentation"></a>
+
+### `og.motion.presentation`
+
+Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too.
+
+```ts
+og.motion.presentation(world: World, entity: Entity): Result<MotionPresentationStatus>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | An entity with an og.MotionAgent. |
+
+**Returns** `Result<MotionPresentationStatus>`: Refused for an entity without og.MotionAgent.
+
+Binding symbol `og_motion_presentation` · publish builds: kept
+
+```ogt
+fn presentation {
+  doc "Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too."
+  param world World "The world."
+  param entity Entity "An entity with an og.MotionAgent."
+  returns Result.MotionPresentationStatus "Refused for an entity without og.MotionAgent."
+}
+```
+
+<sub>`api.ogt` line 30071</sub>
 
 <a id="fn-poses"></a>
 
@@ -352,7 +385,7 @@ fn poses {
 }
 ```
 
-<sub>`api.ogt` line 30057</sub>
+<sub>`api.ogt` line 30078</sub>
 
 ## Components, resources and events
 
@@ -730,6 +763,54 @@ struct MotionStatus {
 
 <sub>`api.ogt` line 29961</sub>
 
+<a id="type-MotionPresentationState"></a>
+
+### `MotionPresentationState` (enum)
+
+Presentation progress, dependent on GPU timing, never simulation state.
+
+A string: one of the variants below. The zero value is `"loading"`.
+
+| Variant | Doc |
+|---|---|
+| `"loading"` | Waiting for the model or renderer. |
+| `"warming"` | Weights are resident; this agent has no generated palette yet. |
+| `"ready"` | Generated frames and their palette are ready for the current rendered frame; authored fallback never counts. |
+| `"failed"` | Loading, inference or this agent's retarget failed; reason explains why. |
+
+```ogt
+enum MotionPresentationState {
+  doc "Presentation progress, dependent on GPU timing, never simulation state."
+  variant loading "Waiting for the model or renderer."
+  variant warming "Weights are resident; this agent has no generated palette yet."
+  variant ready "Generated frames and their palette are ready for the current rendered frame; authored fallback never counts."
+  variant failed "Loading, inference or this agent's retarget failed; reason explains why."
+}
+```
+
+<sub>`api.ogt` line 29980</sub>
+
+<a id="type-MotionPresentationStatus"></a>
+
+### `MotionPresentationStatus` (struct)
+
+Visual readiness only, outside snapshots and hashes.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `state` | `MotionPresentationState` | `"loading"` | — | — | — | The agent's presentation progress. |
+| `reason` | `string` | `""` | — | — | — | Why it is loading, warming or failed; empty when ready. |
+
+```ogt
+struct MotionPresentationStatus {
+  doc "Visual readiness only, outside snapshots and hashes."
+  field state MotionPresentationState "The agent's presentation progress."
+  field reason String "Why it is loading, warming or failed; empty when ready."
+}
+```
+
+<sub>`api.ogt` line 29988</sub>
+
 <a id="type-MotionCapabilities"></a>
 
 ### `MotionCapabilities` (struct)
@@ -753,7 +834,7 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 29980</sub>
+<sub>`api.ogt` line 29994</sub>
 
 ## Column kinds
 
