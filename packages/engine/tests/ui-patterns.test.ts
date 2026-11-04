@@ -30,7 +30,7 @@ const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tem
   if (!existsSync(join(kit, "cooked"))) throw new Error(`og cook ${kit} wrote no cooked/`);
 }
 
-type Element = { id: string; parent: string; path: string; kind: string; text: string; role: string; name: string; value: string; states: string[]; disabled: boolean; x: number; y: number; width: number; height: number };
+type Element = { id: string; parent: string; path: string; kind: string; text: string; role: string; name: string; value: string; states: string[]; disabled: boolean; x: number; y: number; width: number; height: number; clipped?: boolean };
 
 // A test here drives hundreds of ticks of a whole screen through the native host (a drag, a reveal, a scroll): 4 to 6 s
 // each on the r41 host, past bun's 5 s default, so which ones timed out varied from run to run. Each is given 20 s, as
@@ -1235,6 +1235,13 @@ test("conversation: on a phone in portrait at 150 % text the caption and its cho
   expect(boxes()).toEqual([tools!, caption!, choices!]);
   expect(caption!.y).toBeGreaterThanOrEqual(tools!.bottom);
   expect(caption!.bottom).toBeLessThanOrEqual(choices!.y);
+  // The stack outgrows its share: it scrolls to its last choice rather than cutting it off.
+  const last = () => byPath(engine, "Choices/List/leave");
+  expect(last()?.clipped ?? true).toBeTrue();
+  const list = byPath(engine, "Choices/List")!;
+  engine.probe.commands(`0:touch_move:${Math.round(list.x + list.width / 2)},${Math.round(list.y + list.height / 2)};0.05:scroll:0,600`);
+  engine.advance(30);
+  expect(last()?.clipped).toBeFalse();
 });
 
 test("conversation: a choice answers its ChoiceView.index (a hidden one counted), a disabled one says why and takes no press", () => {
