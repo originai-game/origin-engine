@@ -240,6 +240,10 @@ export interface WebExtras {
   og_web_display_interval?(engine: number, ms: number): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
+  /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */
+  og_web_upload_budget?(bytes: number): void;
+  /** Fork s63: the textures still drawn from their stand-ins after the last frame. */
+  og_web_textures_deferred?(): number;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
   og_web_render_frame?(engine: number): Uint8Array;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
@@ -333,6 +337,9 @@ const tellLoadFailure = (url: string, e: unknown) => {
     /* no page to tell */
   }
 };
+
+/** Fork s63: the texture bytes one frame uploads at most (4 MB: a 32 MB frame was one 1.3-2.5 s GPU-process task on an RTX 3090). */
+export const UPLOAD_BUDGET = 4 * 1024 * 1024;
 
 /**
  * Fork s61: each boot stage's share of the progress bar, so it does not sit at 100 % once the
@@ -1182,13 +1189,17 @@ export function startWorker(game: GameToken): void {
   };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
+  /** Whether the last frame drew less than the scene: textures still drawn from their stand-ins (s63). */
+  const frameWaits = () => (glueRef?.og_web_textures_deferred?.() ?? 0) > 0;
+  /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when. */
+  let waiting = { frames: 0, since: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
   // Fork s61: a game that draws its loading screen with the page (og-config bootScreen "page") reports its
   // own stages there (`ogBootStage(id, fraction)`: og:stage on the page), and asks whether the frames still
-  // wait for anything before it calls its loading done (`ogBootIdle()`).
+  // wait for textures to upload (s63) before it calls its loading done (`ogBootIdle()`).
   const pageStages = () => {
     const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
     g.ogBootStage = (id, fraction = 0) => self.postMessage({ type: "og-stage", id, fraction });
-    g.ogBootIdle = () => true;
+    g.ogBootIdle = () => !frameWaits();
   };
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
@@ -1198,9 +1209,20 @@ export function startWorker(game: GameToken): void {
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
       relay(answered);
       if (!firstFrame && answered.rendered !== false) {
+        // Fork s63: textures still waiting need frames to upload them: the next one at once, each
+        // its own task; the first frame is the first one drawn whole.
+        if (frameWaits()) {
+          if (!waiting.since) waiting.since = performance.now();
+          waiting.frames++;
+          if (!waiting.again) waiting.again = setTimeout(() => ((waiting.again = 0), present()), 0);
+          flushLog();
+          return;
+        }
+        if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);
         firstFrame = true;
         phase("present");
         self.postMessage(firstFrameMessage());
+        warmBehindGate();
       }
       flushLog();
     } catch (e) {
@@ -1340,6 +1362,8 @@ export function startWorker(game: GameToken): void {
           await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm));
         }
         glueRef = glue;
+        // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
+        glue.og_web_upload_budget?.(UPLOAD_BUDGET);
         phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
@@ -1442,7 +1466,6 @@ export function startWorker(game: GameToken): void {
           }
           phase("settle");
           present();
-          warmBehindGate();
           if (primed && (platformCounter.waiting > 0 || platformCounter.fresh || behindGate.pending() > 0)) {
             void settle(platformCounter, behindGate.advance, { until: at + SETTLE_MS, stop: behindGate.stop, pending: behindGate.pending, drawn: present }).catch((e: unknown) => crash(e instanceof Error ? e.message : String(e)));
           }

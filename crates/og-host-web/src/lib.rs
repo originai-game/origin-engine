@@ -968,6 +968,20 @@ pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
 }
 
+/// Fork s63: the texture bytes a frame uploads at most (0: no limit); a
+/// texture past it is drawn from a stand-in and uploaded by a later frame.
+#[wasm_bindgen]
+pub fn og_web_upload_budget(bytes: f64) {
+    og_render::set_upload_budget(bytes as u64);
+}
+
+/// Fork s63: the textures still drawn from their stand-ins after the last
+/// frame (the Worker draws the first frame again until none is left).
+#[wasm_bindgen]
+pub fn og_web_textures_deferred() -> u32 {
+    og_render::textures_deferred()
+}
+
 /// `og render`'s every-frame capture on the web, as the native host's
 /// `og_node_render_frame` (development only): the display frame drawn last
 /// as RGBA8 rows at the canvas's size, read back without drawing it again
