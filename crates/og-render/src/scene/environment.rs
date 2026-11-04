@@ -268,8 +268,9 @@ pub struct DirectionalLight {
     /// overcast): what is left of the beam then comes from a wide patch of
     /// cloud round the sun, so its shadow softens (PCSS at up to a quarter
     /// metre of penumbra per metre behind the caster) and fades to 0.35 of
-    /// its depth, as the rest of the scattered light reaches the shadow
-    /// too. [`DirectionalLight::cover`] sets it.
+    /// its depth where the sky round the sun is open, as the rest of the
+    /// scattered light reaches the shadow too (under a roof it stays
+    /// shade). [`DirectionalLight::cover`] sets it.
     pub diffusion: f32,
 }
 

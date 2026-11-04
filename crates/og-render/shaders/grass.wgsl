@@ -140,7 +140,10 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) {
-    shadow = cascade_shadow(p, n, n_dot_l);
+    // The 2x2 PCF, not the tent of solid surfaces: a canopy's own
+    // shadows are finer than a texel, and the tent averaged them away (a
+    // flat, bright meadow: grass-near 0.021 rmse off its reference).
+    shadow = cascade_shadow_lookup(p, n, n_dot_l, false);
     // Lit from behind, the light comes through the blades in the way.
     if (backlit) { shadow = max(shadow, grass_transmittance(p)); }
   }

@@ -221,7 +221,26 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
     let o = vogel(i, PCSS_TAPS, penumbra, turn);
     lit += pcf(cascade_map, uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
   }
-  return lit / f32(PCSS_TAPS);
+  lit /= f32(PCSS_TAPS);
+  let fill = frame.shadow.z;
+  if (fill <= 0.0) { return lit; }
+  // The light a cover scatters (frame.shadow.z, at most 0.65 of the beam)
+  // leaves the cloud near-diffuse, multiply scattered: it reaches the
+  // shadow as far as the sky over the receiver is open, read in the map
+  // over a 45-degree cone (the cosine lobe's median angle) round the light:
+  // a disc as wide as the blockers stand above it, the share of its taps
+  // nothing blocks. Under a pole or a plank most of it is open and the
+  // shadow fills in; under a roof, a bridge or at a box's foot it stays
+  // shade (a uniform fill lit the floor under a snowed-in shelter as the
+  // open snow beside it, and floated the shelter).
+  let cone = min((ref_depth - blocker) * depth_range / texel, 4.0 * PCSS_MAX_TEXELS);
+  var open = 0.0;
+  for (var i = 0; i < PCSS_TAPS; i++) {
+    let o = vogel(i, PCSS_TAPS, cone, turn + 1.3);
+    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
+    open += select(0.0, 1.0, textureLoad(cascade_map, at, i32(c), 0).r >= reference - slope * length(o));
+  }
+  return mix(lit, 1.0, fill * open / f32(PCSS_TAPS));
 }
 
 // One cascade's shadow at p (-1: beyond its depth, lit). The bias is in
@@ -265,9 +284,9 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
 // to its far split, `DirectionalLight::cascade_blend`) it fades into the
 // next one, which covers that band too. Shadows fade out over the last
-// tenth of the shadow distance, and by frame.shadow.z everywhere: the share
-// of the sun's light a cloud cover or the weather has scattered across
-// the sky (`DirectionalLight::diffusion`), which reaches the shadow too.
+// tenth of the shadow distance. The light a cloud cover or the weather has
+// scattered (`DirectionalLight::diffusion`, frame.shadow.z) fills them in
+// where the sky round the sun is open ([`pcss`]).
 fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
   return cascade_shadow_lookup(p, n, n_dot_l, true);
 }
@@ -286,7 +305,7 @@ fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -
     shadow = mix(shadow, next, smoothstep(band, frame.cascade_bias[c].z, depth));
   }
   let last = frame.cascade_bias[count - 1u].z;
-  return mix(mix(shadow, 1.0, smoothstep(0.9 * last, last, depth)), 1.0, frame.shadow.z);
+  return mix(shadow, 1.0, smoothstep(0.9 * last, last, depth));
 }
 
 // A point light's cube face (+x, -x, +y, -y, +z, -z) for a direction from it.

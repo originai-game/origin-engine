@@ -128,7 +128,11 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n, n_dot_l); }
+  // The 2x2 PCF, as main drew every scattered copy: copies are mostly
+  // blades and cards, thinner than a texel, and neither closed (they would
+  // stop shadowing themselves) nor smooth enough for the tent, which
+  // averaged their own shadows away (probe-outdoor's meadow went flat).
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow_lookup(in.world, n, n_dot_l, false); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world);
   // Point, spot and rect lights: this fragment's cluster's, or every light
