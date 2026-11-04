@@ -109,6 +109,14 @@ function linear(hex: string): { r: number; g: number; b: number } {
 }
 
 /**
+ * How far an in-world widget (a nameplate, an interaction prompt) shows: the kit's world is the painted frame on the
+ * z = 0 plane, 360 units tall under an orthographic camera 10 units in front of it, so a point at the frame's edge lies
+ * some 370 units from the eye. The widgets' defaults (6 m for a prompt, 80 for a nameplate) are a game's metres and
+ * hid every one off the frame's middle.
+ */
+export const SEEN = 1000;
+
+/**
  * A point on the play surface as the world sees it (the kit's camera is
  * orthographic, 360 units tall, at the origin): x and y as fractions of the
  * surface, from its top left.
@@ -176,7 +184,7 @@ export function actionHud(world: World, under = false): boolean {
     og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: crit ? 248 : 96 + ((tick / 120) % 4) * 7, kind: crit ? "critical" : "normal", seed: tick }] });
   }
   if (st.hitAt === tick) og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: st.crit ? 312 : 120, kind: st.crit ? "critical" : "normal", seed: tick }] });
-  if (!under) og.ui.interactionPrompt(world, "Door", { target: { point: at(portrait ? 0.3 : 0.24, portrait ? 0.5 : 0.52) }, action: "interact", verb: L("sc.action.open"), name: L("sc.action.door") });
+  if (!under) og.ui.interactionPrompt(world, "Door", { maxDistance: SEEN, target: { point: at(portrait ? 0.3 : 0.24, portrait ? 0.5 : 0.52) }, action: "interact", verb: L("sc.action.open"), name: L("sc.action.door") });
 
   og.ui.anchor("Player", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
     og.ui.statBar("Health", { value: st.hp, max: 100, kind: "health", segment: 20, ghost: true, icon: "heart", width: px((small ? 180 : 260) * k), thickness: Math.round(16 * k), name: L("sc.health"), anchor: null });

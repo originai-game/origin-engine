@@ -8,7 +8,7 @@
 import { og } from "@origingame/engine";
 import type { AbilitySlotDesc, Paint, Size, StatusEffect, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
-import { at, frame, gameScene, held, hudArt, pauseButton } from "./huds.ts";
+import { at, frame, gameScene, held, hudArt, pauseButton, SEEN } from "./huds.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -48,9 +48,9 @@ export function mobaHud(world: World): void {
   void world;
   gameScene(world, "scenes/genre-moba", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
-  og.ui.nameplate("Foe", { target: { point: at(0.66, 0.42) }, name: "Morrow", level: "11", reaction: "hostile", health: 0.42, targeted: true });
-  og.ui.nameplate("Ally", { target: { point: at(0.34, 0.5) }, name: "Ilsa", level: "12", reaction: "friendly", health: 0.78 });
-  og.ui.nameplate("Me", { target: { point: at(0.48, 0.58) }, name: L("sc.you"), level: "12", reaction: "self", health: 0.64 });
+  og.ui.nameplate("Foe", { maxDistance: SEEN, target: { point: at(0.66, 0.42) }, name: "Morrow", level: "11", reaction: "hostile", health: 0.42, targeted: true });
+  og.ui.nameplate("Ally", { maxDistance: SEEN, target: { point: at(0.34, 0.5) }, name: "Ilsa", level: "12", reaction: "friendly", health: 0.78 });
+  og.ui.nameplate("Me", { maxDistance: SEEN, target: { point: at(0.48, 0.58) }, name: L("sc.you"), level: "12", reaction: "self", health: 0.64 });
   // On a phone the map takes the start corner and the score the end one, lowered under the map where the two would meet
   // (large text: both as laid last tick); the hero's own plate carries its health.
   const vp0 = og.ui.frameViewport();
@@ -107,7 +107,7 @@ export function rpgHud(world: World): void {
   gameScene(world, "scenes/genre-rpg", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   const foe = at(portrait ? 0.62 : 0.6, 0.42);
-  og.ui.nameplate("Elite", { target: { point: foe }, name: "Gorvane the Hollow", title: L("sc.rpg.elite"), level: "24", reaction: "hostile", unitClass: "elite", health: 0.58 - 0.1 * ((tick % 600) / 600), targeted: true });
+  og.ui.nameplate("Elite", { maxDistance: SEEN, target: { point: foe }, name: "Gorvane the Hollow", title: L("sc.rpg.elite"), level: "24", reaction: "hostile", unitClass: "elite", health: 0.58 - 0.1 * ((tick % 600) / 600), targeted: true });
   if (tick % 90 === 20) og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: 1_240 + (tick % 7) * 31, kind: (tick / 90) % 3 === 2 ? "critical" : "normal", seed: tick }] });
   og.ui.minimapView("Map", { texture: hudArt("maps/world"), size: Math.round((small ? 104 : 164) * k), shape: "circle", zone: L("sc.rpg.zone"), north: "", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5, heading: 30 }, { key: "q", kind: "objective", x: 0.62, y: 0.38 }, { key: "f", kind: "enemy", x: 0.56, y: 0.44 }], anchor: "topRight" });
   if (!touch) {
@@ -232,7 +232,7 @@ export function rogueHud(world: World): void {
   void world;
   gameScene(world, "scenes/genre-roguelike", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
-  og.ui.nameplate("Foe", { target: { point: at(0.62, 0.46) }, name: "Bone Warden", reaction: "hostile", unitClass: "elite", health: 0.7, targeted: true });
+  og.ui.nameplate("Foe", { maxDistance: SEEN, target: { point: at(0.62, 0.46) }, name: "Bone Warden", reaction: "hostile", unitClass: "elite", health: 0.7, targeted: true });
   og.ui.anchor("Player", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.sm }, () => {
     og.ui.statBar("Health", { value: 54, max: 80, kind: "health", ghost: true, showValue: true, width: px((small ? 170 : 240) * k), thickness: Math.round(14 * k), name: L("sc.health"), anchor: null });
     og.ui.statusGrid("Boons", {
@@ -529,7 +529,7 @@ export function survivalHud(world: World): void {
   og.ui.setNavigation(false);
   gameScene(world, "scenes/genre-survival", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
-  og.ui.interactionPrompt(world, "Gather", { target: { point: at(portrait ? 0.62 : 0.58, 0.55) }, action: "interact", verb: L("sc.survival.gather"), name: L("sc.survival.birch"), hold: (tick % 180) / 180 });
+  og.ui.interactionPrompt(world, "Gather", { maxDistance: SEEN, target: { point: at(portrait ? 0.62 : 0.58, 0.55) }, action: "interact", verb: L("sc.survival.gather"), name: L("sc.survival.birch"), hold: (tick % 180) / 180 });
   if (!portrait) og.ui.compass("Compass", { heading: 128 + 6 * Math.sin(tick / 120), width: Math.min(Math.round(small ? 280 : 480 * k), vp.width - 360), pois: [{ key: "camp", bearing: 160, distance: 220, kind: "objective", label: L("sc.survival.camp") }, { key: "cave", bearing: 96, distance: 640, kind: "poi" }], units: "m", anchor: "top" });
   chip("Day", () => {
     og.ui.icon("Weather", "drop", { size: Math.round(18 * k), tint: { token: "info" } } as never);
@@ -574,7 +574,7 @@ export function horrorHud(world: World): void {
   gameScene(world, "scenes/genre-horror", { x: 0.5, y: 0.5 });
   const tick = og.ui.tick();
   og.ui.lowHealthVignette("Vignette", { health: 0.3, threshold: 0.4, hitAt: null });
-  og.ui.interactionPrompt(world, "Hide", { target: { point: at(0.3, 0.52) }, action: "interact", verb: L("sc.horror.hide"), name: L("sc.horror.wardrobe") });
+  og.ui.interactionPrompt(world, "Hide", { maxDistance: SEEN, target: { point: at(0.3, 0.52) }, action: "interact", verb: L("sc.horror.hide"), name: L("sc.horror.wardrobe") });
   // On the HUD's plate, so a pack whose ink is meant for light panels still reads over the dark world.
   og.ui.anchor("Objective", { anchor: "topLeft", margin: m, direction: "column", gap: 2, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.xs }, background: { token: "hud" }, radius: t.radius["panel"] ?? 8, frame: "hud" }, () => {
     og.ui.label("Caption", L("sc.horror.objective"), { step: "sm", font: "display", color: { token: "inkMuted" }, nowrap: true });
@@ -603,7 +603,7 @@ export function openHud(world: World): void {
   gameScene(world, "scenes/genre-openworld", { x: 0.5, y: 0.55 });
   const tick = og.ui.tick();
   og.ui.waypoint("Shrine", { target: { point: at(0.7, 0.36) }, kind: "objective", label: L("sc.open.shrine"), units: "m" });
-  og.ui.interactionPrompt(world, "Talk", { target: { point: at(portrait ? 0.4 : 0.36, 0.56) }, action: "interact", verb: L("sc.open.talk"), name: "Odile" });
+  og.ui.interactionPrompt(world, "Talk", { maxDistance: SEEN, target: { point: at(portrait ? 0.4 : 0.36, 0.56) }, action: "interact", verb: L("sc.open.talk"), name: "Odile" });
   const mapSize = Math.round((small ? 110 : 160) * k);
   if (!portrait) og.ui.compass("Compass", { heading: 62 + 8 * Math.sin(tick / 150), width: Math.min(Math.round(small ? 280 : 520 * k), vp.width - 2 * Math.max(180, mapSize + 2 * m)), pois: [{ key: "shrine", bearing: 80, distance: 418, kind: "objective", label: L("sc.open.shrine") }, { key: "town", bearing: 20, distance: 1_200, kind: "poi" }, { key: "foe", bearing: 110, distance: 60, kind: "enemy" }], units: "m", anchor: "top" });
   chip("Time", () => {
