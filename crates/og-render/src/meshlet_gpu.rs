@@ -1547,6 +1547,12 @@ impl MeshletGpu {
         n
     }
 
+    /// What the device said when it refused the visibility buffer's resolve
+    /// (`vis.rs`): the visibility buffer is off on it from then on.
+    pub fn visibility_buffer_refused(&self) -> Option<&str> {
+        self.vis_buffer.refused()
+    }
+
     /// Draws the camera's soft batches' resolves into `pass` (the camera's
     /// lit pass, or its prepass with `prepass`): one full-screen triangle
     /// each, shading the visibility buffer's pixels of its batch; groups 0

@@ -30373,6 +30373,21 @@
           "type": "boolean",
           "description": "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
         },
+        "visibilityBuffer": {
+          "type": "boolean",
+          "description": "Whether the visibility buffer draws the camera's small clusters of clustered meshes on this device (rasterised in compute, then shaded by one full-screen resolve a batch). False without a renderer and once the device refused the resolve's pipelines (visibilityBufferRefused says why): those clusters then draw on the hardware path like every other cluster, the same surfaces at a higher vertex cost, and the log says so once. Known only after the first frame that draws a clustered mesh: true before."
+        },
+        "visibilityBufferRefused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
+        },
         "world3d": {
           "type": "boolean",
           "description": "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
@@ -30406,6 +30421,8 @@
         "transparency",
         "gpuCrowds",
         "exrDecode",
+        "visibilityBuffer",
+        "visibilityBufferRefused",
         "world3d"
       ],
       "additionalProperties": false

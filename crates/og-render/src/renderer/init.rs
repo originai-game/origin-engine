@@ -24,6 +24,15 @@ impl Renderer {
         &self.pass_ms
     }
 
+    /// What this device said when it refused the visibility buffer's
+    /// resolve pipelines, or `None` (it made them, or no clustered mesh
+    /// has asked for them yet). Once refused, the camera's small clusters
+    /// draw on the hardware meshlet path, as with
+    /// `RenderScene::visibility_buffer` off.
+    pub fn visibility_buffer_refused(&self) -> Option<&str> {
+        self.meshlet.as_ref()?.visibility_buffer_refused()
+    }
+
     /// Why this device times no pass on the GPU (no timestamp queries), or
     /// `None` when it does once a clock is set.
     pub fn gpu_timing_absent(&self) -> Option<&'static str> {

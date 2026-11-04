@@ -199,6 +199,11 @@ impl VisBuffer {
         self.refused.is_none() && self.checks.is_empty()
     }
 
+    /// What the device said when it refused a resolve pipeline, if it did.
+    pub fn refused(&self) -> Option<&str> {
+        self.refused.as_deref()
+    }
+
     /// Rasterises the frame's soft list into `encoder` and makes the
     /// resolve's group.
     pub fn encode(
@@ -441,7 +446,7 @@ mod tests {
                 .as_deref()
                 .is_some_and(|e| e.contains("fs_meshlet_resolve") || e.contains("entry")),
             "{:?}",
-            vis.refused.as_deref()
+            vis.refused()
         );
         // Asked again (a later frame's soft list), it makes none.
         vis.ensure_pipelines(

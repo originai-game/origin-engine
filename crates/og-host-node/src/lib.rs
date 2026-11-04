@@ -585,6 +585,9 @@ impl RenderBackend for OffscreenBackend {
     fn gpu_timing_absent(&self) -> Option<&'static str> {
         self.renderer.gpu_timing_absent()
     }
+    fn visibility_buffer_refused(&self) -> Option<String> {
+        self.renderer.visibility_buffer_refused().map(str::to_owned)
+    }
     fn triangles(&self) -> u64 {
         self.triangles
     }

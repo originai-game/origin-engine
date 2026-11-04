@@ -94,6 +94,12 @@ pub trait RenderBackend {
     fn gpu_timing_absent(&self) -> Option<&'static str> {
         Some("this backend has no GPU passes")
     }
+    /// What the device said when it refused the visibility buffer's
+    /// resolve (og-render's `Renderer::visibility_buffer_refused`), or
+    /// `None`: `RenderCapabilities.visibilityBuffer`.
+    fn visibility_buffer_refused(&self) -> Option<String> {
+        None
+    }
     /// The last frame's main-pass triangles (og-render's
     /// `FrameStats::triangles`): `ProbeTimings.triangles`.
     fn triangles(&self) -> u64 {
