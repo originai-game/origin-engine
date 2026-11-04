@@ -127,6 +127,12 @@ pub struct RenderScene {
     pub tick: u64,
     /// Ticks per second (the fixed step of particles and trails).
     pub tick_rate: f32,
+    /// Real seconds since the host's previous frame (its display's frame
+    /// interval, ticks or none: paused worlds still draw), for what eases
+    /// over seconds of the player's time whatever the frame rate and
+    /// never feeds the tick: a streamed terrain tile's fade-in. Default
+    /// one sixtieth.
+    pub frame_seconds: f32,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
     /// What CPU-simulated particles with collision bounce off (the CPU

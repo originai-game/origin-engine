@@ -636,8 +636,8 @@ pub fn render_ids_from(
 }
 
 /// A terrain's triangles as its clipmap draws them around `eye` (the main
-/// camera's position, `far` its far plane; `terrain.wgsl`
-/// `terrain_grid_vertex` and `terrain_local_vertex`): world positions,
+/// camera's position, `far` its far plane; `terrain_vertex.wgsl`
+/// `terrain_local_vertex`, `terrain::level_vertices`): world positions,
 /// each one's xz in the terrain's space, and indices. `raw` answers the
 /// field's level-0 samples. `lift` raises the copy that many metres along
 /// world y (0: the terrain itself; a grass field's coverage is the surface
@@ -654,8 +654,6 @@ fn terrain_mesh(
 ) -> Option<(Vec<Vec3>, Vec<Vec2>, Vec<u32>)> {
     let clipmap = t.clipmap(layout, eye, far);
     let (cols, rows) = (layout.columns.max(1), layout.rows.max(1));
-    let cell = layout.cell();
-    let lo = -layout.size * 0.5;
     let top = Vec2::new(cols as f32 - 1.0, rows as f32 - 1.0);
     // The finest level's height at field coordinates `s`, bilinear.
     let height = |s: Vec2| -> Option<f32> {
@@ -671,50 +669,17 @@ fn terrain_mesh(
         Some(a + (b - a) * f.y)
     };
     let n = clipmap.ring;
-    let unit = clipmap.unit;
-    let cam = clipmap.camera;
-    let extent = layout.size / unit;
     let (mut positions, mut locals, mut indices) = (Vec::new(), Vec::new(), Vec::new());
-    let mut corners: Vec<Vec3> = Vec::with_capacity(((n + 1) * (n + 1)) as usize);
     for level in &clipmap.levels {
-        let center = Vec2::new(level.center[0] as f32, level.center[1] as f32);
-        let step = level.step as f32;
-        let morph = if level.morph {
-            clipmap.morph_width
-        } else {
-            0.0
-        };
-        corners.clear();
-        for gz in 0..=n {
-            for gx in 0..=n {
-                let g = Vec2::new(gx as f32, gz as f32);
-                let mut c = center + (g - n as f32 * 0.5) * step;
-                if morph > 0.0 {
-                    let d = (c - cam).abs().max_element() / step;
-                    let alpha = ((d - clipmap.morph_start) / morph).clamp(0.0, 1.0);
-                    let odd = g - 2.0 * (g * 0.5).floor();
-                    c -= odd * (step * alpha);
-                }
-                let c = c.clamp(Vec2::ZERO, extent);
-                let xz = lo + c * unit;
-                let y = height(c * unit / cell)?;
-                corners.push(Vec3::new(xz.x, y, xz.y));
-            }
-        }
+        let corners = crate::terrain::level_vertices(&clipmap, level, layout, &height)?;
         let world: Vec<Vec3> = corners
             .iter()
             .map(|p| t.transform.transform_point3(*p) + Vec3::Y * lift)
             .collect();
-        let skip = level
-            .hole
-            .map(|(ox, oz)| (n / 4 + ox..3 * n / 4 + ox, n / 4 + oz..3 * n / 4 + oz));
         let at = |x: u32, z: u32| (z * (n + 1) + x) as usize;
         for z in 0..n {
             for x in 0..n {
-                if skip
-                    .as_ref()
-                    .is_some_and(|(sx, sz)| sx.contains(&x) && sz.contains(&z))
-                {
+                if crate::terrain::in_hole(n, level.hole, x, z) {
                     continue;
                 }
                 let k = [at(x, z), at(x + 1, z), at(x, z + 1), at(x + 1, z + 1)];
@@ -724,15 +689,10 @@ fn terrain_mesh(
                 if outside {
                     continue;
                 }
-                let [p00, p10, p01, p11] = k.map(|i| corners[i]);
-                // The vertex shader's split: the diagonal whose ends differ
-                // less in height (ties: p00 to p11).
-                let tris = if (p00.y - p11.y).abs() > (p10.y - p01.y).abs() {
-                    [k[0], k[2], k[1], k[2], k[3], k[1]]
-                } else {
-                    [k[0], k[2], k[3], k[0], k[3], k[1]]
-                };
-                for i in tris {
+                // The vertex shader's fan: four triangles to the centre,
+                // whose height carries the cell's diagonal.
+                for i in crate::terrain::cell_fan(n, x, z) {
+                    let i = i as usize;
                     indices.push(positions.len() as u32);
                     positions.push(world[i]);
                     locals.push(Vec2::new(corners[i].x, corners[i].z));
@@ -1299,6 +1259,55 @@ mod tests {
             }
         }
         assert_eq!(cracks, 0, "pixels inside the terrain that show nothing");
+    }
+
+    /// As the camera glides, the clipmap's vertices keep their places and
+    /// rise or sink a little each step: the morph moves a corner only in
+    /// height, towards the coarser level's surface, and a cell's diagonal
+    /// moves between its own and its coarser cell's through its centre's
+    /// height, never flipping. (Collapsing odd corners onto their
+    /// neighbours slid them sideways, and a split chosen from morphed
+    /// corners flipped mid-morph: a whole triangle jumped.)
+    #[test]
+    fn the_morph_moves_vertices_only_a_little_up_or_down() {
+        // Rough ground: no two neighbouring cells are planar.
+        let data =
+            field(|x, z| 2.0 * (1.3 * x).sin() * (0.9 * z).cos() + 0.7 * (3.1 * x + 1.7 * z).sin());
+        let layout =
+            crate::TerrainLayout::new(data.size, data.columns, data.rows, 32, None).unwrap();
+        let mut t = crate::Terrain::new(RenderScene::new().add_terrain(data.clone()));
+        t.lod.ring = 16;
+        let raw = |c: u32, r: u32| data.heights.get((r * data.columns + c) as usize).copied();
+        let all = [Vec4::new(0.0, 0.0, 0.0, 1.0); 6];
+        let mesh = |x: f32| {
+            let eye = Vec3::new(x, 10.0, 1.3);
+            let levels = t.clipmap(layout, eye, 500.0).levels;
+            (
+                levels,
+                terrain_mesh(&t, layout, &raw, eye, 500.0, 0.0, &all).unwrap(),
+            )
+        };
+        let (mut compared, mut most) = (0, 0.0f32);
+        let mut before = mesh(0.05);
+        for i in 1..400 {
+            let now = mesh(0.05 + i as f32 * 0.01);
+            // A level that snapped to its next centre is a new grid.
+            if now.0 == before.0 {
+                let (a, b) = (&before.1.0, &now.1.0);
+                assert_eq!(a.len(), b.len());
+                for (p, q) in a.iter().zip(b) {
+                    assert!(
+                        Vec2::new(p.x - q.x, p.z - q.z).length() < 1e-4,
+                        "a vertex slid from {p} to {q}"
+                    );
+                    most = most.max((p.y - q.y).abs());
+                }
+                compared += 1;
+            }
+            before = now;
+        }
+        assert!(compared > 300, "{compared} steps compared");
+        assert!(most < 0.1, "a vertex jumped {most} m in a 1 cm step");
     }
 
     #[test]

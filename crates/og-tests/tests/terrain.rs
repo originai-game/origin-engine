@@ -212,6 +212,58 @@ fn looking_out_from_the_edge_draws_few_terrain_triangles() {
 
 /// Close to the ground the finest levels are drawn; from 4 km above the
 /// island its whole extent fits in a few coarse levels.
+/// A streamed tile fades in over its parent in the same time at any frame
+/// rate (RenderScene::frame_seconds, a fifth of a second a level): at 20
+/// and at 120 frames a second the terrain settles into what the field in
+/// memory draws after about as many seconds. (Twelve frames a fade took six
+/// times longer at 20 than at 120.)
+#[test]
+fn a_streamed_tile_fades_in_over_seconds_at_any_frame_rate() {
+    let data = ts::island();
+    let layout = data.layout(128).expect("layout");
+    let control = og_render::ControlPyramid::new(&layout, data.control.as_ref().unwrap());
+    let heights = data.height_pyramid(&layout);
+    let tile = |i: u32| Arc::new(data.tile(&layout, i, &heights, control.as_ref(), None));
+    let (reference, _) = render(&crack_view(ts::island_scene()));
+    let settle = |frame: f32| -> f32 {
+        let mut streamed = crack_view(ts::island_scene());
+        streamed.frame_seconds = frame;
+        let h = streamed.add_terrain_stream(layout, data.range());
+        streamed.terrains[0].terrain = h;
+        let top = layout.index(layout.levels - 1, 0, 0);
+        streamed.set_terrain_tile(h, top, Some(tile(top)));
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        r.render(&streamed, &RenderTarget::Offscreen)
+            .expect("render");
+        let view = og_render::TerrainView::of(&streamed.camera, 720);
+        let wanted = og_render::terrain_tiles_wanted(
+            &layout,
+            &streamed.terrains[0],
+            data.range(),
+            &view,
+            1000,
+        );
+        for &i in wanted.iter().filter(|i| **i != top) {
+            streamed.set_terrain_tile(h, i, Some(tile(i)));
+        }
+        for n in 1..400 {
+            r.render(&streamed, &RenderTarget::Offscreen)
+                .expect("render");
+            if rmse(&r.read_offscreen().expect("capture"), &reference) < 1e-4 {
+                return n as f32 * frame;
+            }
+        }
+        panic!("at {frame} s a frame the stream never settled");
+    };
+    let slow = settle(1.0 / 20.0);
+    let fast = settle(1.0 / 120.0);
+    assert!(slow > 0.3 && fast > 0.3, "settled in {slow} s and {fast} s");
+    assert!(
+        slow / fast < 1.5,
+        "settled in {slow} s at 20 frames a second, {fast} s at 120"
+    );
+}
+
 #[test]
 fn levels_follow_the_camera() {
     let near = ts::island_view("near");

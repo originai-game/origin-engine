@@ -27,6 +27,19 @@ is one line here, written at the merge that changes
   queries handle negative bearings; sign correction precedes error correction.
   `og ui sheet <pack|kit>` is an on-demand baseline tool, never a gate step.
 
+- **The clipmap morphs in height only, and tiles fade in over seconds
+  (terrain v2, T2).** A clipmap cell is now four triangles fanned around
+  its centre. Near a level's outer edge an odd corner sinks or rises in
+  place to the coarser level's surface under it (CDLOD's midpoint
+  geomorph), and a cell's centre moves from its own diagonal to its
+  coarser cell's. Vertices no longer slide sideways, and a cell's
+  diagonal no longer flips mid-morph. Zero-area triangles along each
+  morphing level's edge close its T-junctions. A peak inside a morph band
+  now sinks smoothly towards the coarser level's surface instead of
+  sliding up to one quad sideways. A streamed tile fades in over 0.2 s of
+  the host's frames (`frame(elapsed)`) instead of 12 frames, so it takes
+  as long at 30 or 144 Hz. Terrain frames move.
+
 - **Terrain collision follows an edit's region (terrain v2, T6).** A
   static SHAPE_HEIGHTFIELD collider over more than 256 cells a side is
   built as one collider per 256-cell chunk, and `og.terrain.edit` and

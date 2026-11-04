@@ -740,7 +740,14 @@ impl TerrainRenderer {
                     && st.fade < 1.0
                     && parent_in
                 {
-                    st.fade = (st.fade + 1.0 / FADE_FRAMES).min(1.0);
+                    // A frame's step, at most a quarter of the fade (a
+                    // hitch does not pop a tile in); the last step's
+                    // rounding is not left short of whole.
+                    let step = (scene.frame_seconds / FADE_SECONDS).clamp(0.0, 0.25);
+                    st.fade += step;
+                    if st.fade >= 1.0 - 1e-4 {
+                        st.fade = 1.0;
+                    }
                 }
             }
             let mut table = vec![0.0f32; MAX_TERRAIN_TILES as usize];
@@ -1005,8 +1012,8 @@ impl TerrainRenderer {
                 level_bytes[at..at + std::mem::size_of::<LevelGpu>()]
                     .copy_from_slice(bytemuck::bytes_of(&g));
                 let ring = match l.hole {
-                    None => &ranges[0],
-                    Some((ox, oz)) => &ranges[1 + (ox + 2 * oz) as usize],
+                    None => &ranges.variants[0],
+                    Some((ox, oz)) => &ranges.variants[1 + (ox + 2 * oz) as usize],
                 };
                 let blocks = level_blocks(l, n, unit, lay.size, (hmin, hmax))
                     .into_iter()
@@ -1038,6 +1045,7 @@ impl TerrainRenderer {
                     center,
                     radius,
                     blocks,
+                    skirt: l.morph.then(|| ranges.skirt.clone()),
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
@@ -1412,7 +1420,7 @@ pub(crate) fn draw_levels(
                 b.at(pass, l.center, l.radius);
             }
             pass.set_bind_group(1, &d.group, &[l.offset]);
-            for r in runs {
+            for r in runs.into_iter().chain(l.skirt.clone()) {
                 triangles += (r.len() / 3) as u64;
                 pass.draw_indexed(r, 0, 0..1);
                 calls += 1;

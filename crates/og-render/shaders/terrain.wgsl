@@ -4,9 +4,9 @@
 // spacing of the one inside it, its centre snapped to twice its spacing
 // so its vertices stay on the terrain's grid. A ring level leaves out the
 // quads the finer level covers (the index buffer has the four hole
-// positions). Near its outer edge a level's odd vertices slide onto the
-// coarser grid (the morph), so where two levels meet both have the same
-// vertices and heights: no cracks and no pops.
+// positions). Near its outer edge a level morphs into the coarser one
+// (terrain_local_vertex), so where two levels meet both draw the same
+// surface: no cracks and no pops.
 //
 // Heights come from the tile pyramid: every vertex reads the finest
 // resident tile at its point (a tile fading in is mixed with its parent,
@@ -201,44 +201,6 @@ fn terrain_height_at(base: u32, s: vec2<f32>) -> f32 {
     if (p.r.slot >= 0.0) { h = mix(slot_height(p.r, p.u), h, o.r.fade); }
   }
   return h;
-}
-
-// A grid corner after morphing and clamping to the terrain.
-fn terrain_grid_vertex(g: vec2<f32>) -> vec3<f32> {
-  let n = u32(level.grid.x);
-  let s = level.center.z;
-  var c = level.center.xy + (g - f32(n) * 0.5) * s;
-  if (level.grid.z > 0.0) {
-    let d = max(abs(c.x - level.camera.x), abs(c.y - level.camera.y)) / s;
-    let alpha = clamp((d - level.grid.y) / level.grid.z, 0.0, 1.0);
-    // Odd vertices collapse onto their even neighbour towards -x and -z:
-    // at alpha 1 the level's triangles are the coarser level's.
-    let odd = g - 2.0 * floor(g * 0.5);
-    c = c - odd * (s * alpha);
-  }
-  let unit = level.camera.z;
-  c = clamp(c, vec2<f32>(0.0), terrain.extent.xy / unit);
-  let xz = terrain_min() + c * unit;
-  let samples = c * unit / terrain_cell();
-  return vec3<f32>(xz.x, terrain_height_at(0u, samples), xz.y);
-}
-
-// Each cell owns six indices so both triangles choose the same diagonal.
-// Match heightfield_zigzag on the CPU, including ties. Comparing morphed
-// corners also makes a collapsed cell use its coarser neighbour's split.
-fn terrain_local_vertex(vi: u32) -> vec3<f32> {
-  let n = u32(level.grid.x);
-  let cell = vi / 6u;
-  let g = vec2f(f32(cell % n), f32(cell / n));
-  let p00 = terrain_grid_vertex(g);
-  let p10 = terrain_grid_vertex(g + vec2f(1.0, 0.0));
-  let p01 = terrain_grid_vertex(g + vec2f(0.0, 1.0));
-  let p11 = terrain_grid_vertex(g + vec2f(1.0, 1.0));
-  var corners = array<vec3f, 6>(p00, p01, p11, p00, p11, p10);
-  if (abs(p00.y - p11.y) > abs(p10.y - p01.y)) {
-    corners = array<vec3f, 6>(p00, p01, p10, p01, p11, p10);
-  }
-  return corners[vi % 6u];
 }
 
 // A point of the terrain's space in the world.
