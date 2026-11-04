@@ -47,7 +47,15 @@ test("a HUD panel over an entity counts in its occlusion: templates/game at tick
   expect(crate.drawn.x).toBeLessThan(right - 40);
   expect(crate.box.x).toBeGreaterThanOrEqual(right - 1);
   expect(crate.point.x).toBeGreaterThanOrEqual(right);
-  expect(crate.occlusion).toBeGreaterThan(0.6);
+  // Its occlusion is the share of what it draws that the panel covers, read from the two boxes rather than a fixed
+  // figure: the panel's width follows the style's title size (phase 0's typography took it from 248 to 220 px, the
+  // crate from 0.86 to 0.56 covered), and a describe that left UI out of occlusion would read 0 here.
+  const ox = Math.max(0, Math.min(right, crate.drawn.x + crate.drawn.width) - Math.max(menu.box.x, crate.drawn.x));
+  const oy = Math.max(0, Math.min(menu.box.y + menu.box.height, crate.drawn.y + crate.drawn.height) - Math.max(menu.box.y, crate.drawn.y));
+  const covered = (ox * oy) / (crate.drawn.width * crate.drawn.height);
+  expect(covered).toBeGreaterThan(0.2);
+  expect(covered).toBeLessThan(0.95);
+  expect(Math.abs(crate.occlusion - covered)).toBeLessThan(0.05);
   // Entities clear of the panel are as the geometry leaves them.
   for (const id of ["trickster", "dropship"]) expect(d.entities.find((e) => e.id === id)!.occlusion).toBe(0);
 }, 120_000);
