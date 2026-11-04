@@ -664,9 +664,9 @@ process.exit(n === "c" ? 1 : 0);
 }
 
 /// `og dev` checks a source change beside the rebuild and never refuses the
-/// reload over it: the reload goes through, its event carries the check
-/// (or `null` while it runs), the `check` event lists the diagnostic, and
-/// `--exit-after` waits for that check to land.
+/// reload over it. An error and its correction each reload with their own
+/// check, including its exact duration, rather than the last check of the
+/// whole session. The fixture releases each reload after its check lands.
 #[test]
 fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     use std::io::{BufRead, BufReader};
@@ -685,10 +685,27 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
         "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`);\n",
     )
     .unwrap();
-    // The game: a reload event each time the watched bundle changes.
+    // The game acknowledges each bundle, then waits for the test to release
+    // its reload after that source's check. No timing race decides which
+    // check is available when the reload is reported.
     std::fs::write(
         engine.join("src/node/run.ts"),
-        "import { statSync } from 'node:fs';\nconst f = process.argv[process.argv.indexOf('--watch') + 1];\nlet m = statSync(f).mtimeMs, n = 0;\nsetInterval(() => { const t = statSync(f).mtimeMs; if (t !== m) { m = t; console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1, report: {}, tick: ++n })); } }, 10);\n",
+        r#"import { statSync, existsSync, readFileSync } from 'node:fs';
+const f = process.argv[process.argv.indexOf('--watch') + 1];
+const release = process.env.RELEASE_RELOAD;
+let m = statSync(f).mtimeMs, bundled = 0, reloaded = 0;
+console.log(JSON.stringify({ event: 'ready' }));
+setInterval(() => {
+  const t = statSync(f).mtimeMs;
+  if (t !== m) {
+    m = t;
+    console.log(JSON.stringify({ event: 'bundled', n: ++bundled }));
+  }
+  if (reloaded < bundled && existsSync(release) && Number(readFileSync(release, 'utf8')) > reloaded) {
+    console.log(JSON.stringify({ event: 'reload', ok: true, latencyMs: 1, report: {}, tick: ++reloaded }));
+  }
+}, 10);
+"#,
     )
     .unwrap();
     let game = dir.join("game");
@@ -700,56 +717,90 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     )
     .unwrap();
     let mut child = og()
-        .args(["dev", "--json", "--exit-after", "1", "--port", "47997"])
+        .args(["dev", "--json", "--exit-after", "2", "--port", "47997"])
         .arg(&game)
         .env("OG_ENGINE_PACKAGE", &engine)
+        .env("RELEASE_RELOAD", dir.join("release"))
         .env_remove("OG_TSRS")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .spawn()
         .unwrap();
     let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
-    let mut next = || -> serde_json::Value {
-        serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap()
-    };
-    // The first bundle's check, then a save with a type error.
-    let first = next();
-    assert_eq!(
-        (first["event"].as_str(), first["ok"].as_bool()),
-        (Some("check"), Some(true)),
-        "{first}"
-    );
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    std::fs::write(
-        game.join("src/main.ts"),
+    let (mut ready, mut checked) = (false, false);
+    while !ready || !checked {
+        let event: serde_json::Value =
+            serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+        ready |= event["event"] == "ready";
+        if event["event"] == "check" {
+            assert_eq!(event["ok"], true, "{event}");
+            checked = true;
+        }
+    }
+    let mut events = Vec::<serde_json::Value>::new();
+    for (i, source) in [
         "export const n: number = \"one\";\nexport default 0;\n",
-    )
-    .unwrap();
-    // A file write can produce more than one watched modification. Read
-    // through shutdown: --exit-after waits for the pending check to land.
-    let events: Vec<serde_json::Value> = lines
-        .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
-        .collect();
+        "export const n: number = 1;\nexport default 0;\n",
+    ]
+    .iter()
+    .enumerate()
+    {
+        // Rename a complete file into place: one source modification per
+        // phase, rather than a truncate and a write observed separately.
+        let staged = dir.join("saved.ts");
+        std::fs::write(&staged, source).unwrap();
+        std::fs::rename(staged, game.join("src/main.ts")).unwrap();
+        let (mut bundled, mut checked) = (false, false);
+        while !bundled || !checked {
+            let event: serde_json::Value =
+                serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+            bundled |= event["event"] == "bundled";
+            checked |= event["event"] == "check";
+            events.push(event);
+        }
+        std::fs::write(dir.join("release"), (i + 1).to_string()).unwrap();
+        loop {
+            let event: serde_json::Value =
+                serde_json::from_str(&lines.next().expect("og dev ended").unwrap()).unwrap();
+            let reloaded = event["event"] == "reload";
+            events.push(event);
+            if reloaded {
+                break;
+            }
+        }
+    }
+    events.extend(lines.map(|line| serde_json::from_str(&line.unwrap()).unwrap()));
     let status = child.wait().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    let reload = events
-        .iter()
-        .find(|event| event["event"] == "reload")
-        .expect("the saved source reloads");
-    let check = events
-        .iter()
-        .rfind(|event| event["event"] == "check")
-        .expect("the saved source is checked before shutdown");
-    assert_eq!(reload["event"], "reload", "{reload}");
-    assert_eq!(reload["ok"], true, "the reload went through: {reload}");
-    assert!(
-        reload["check"].is_null()
-            || reload["check"]
-                == serde_json::json!({ "ok": false, "ms": check["ms"], "errors": 1 }),
-        "{reload}"
-    );
-    assert_eq!(check["event"], "check", "{check}");
-    assert_eq!(check["diagnostics"][0]["code"], 2322, "{check}");
-    assert_eq!(check["diagnostics"][0]["file"], "src/main.ts", "{check}");
+    let mut pending = None;
+    let mut reloads = 0;
+    for event in &events {
+        if event["event"] == "check" {
+            assert!(pending.replace(event).is_none(), "{events:?}");
+            assert_eq!(event["ok"], reloads == 1, "{event}");
+            if reloads == 0 {
+                assert_eq!(event["diagnostics"][0]["code"], 2322, "{event}");
+                assert_eq!(event["diagnostics"][0]["file"], "src/main.ts", "{event}");
+            } else {
+                assert_eq!(event["diagnostics"], serde_json::json!([]), "{event}");
+            }
+        } else if event["event"] == "reload" {
+            let check = pending
+                .take()
+                .expect("each reload has its own landed check");
+            assert_eq!(event["ok"], true, "the reload went through: {event}");
+            assert_eq!(
+                event["check"],
+                serde_json::json!({
+                    "ok": check["ok"], "ms": check["ms"],
+                    "errors": check["diagnostics"].as_array().unwrap().len(),
+                }),
+                "{events:?}"
+            );
+            reloads += 1;
+        }
+    }
+    assert_eq!(reloads, 2, "{events:?}");
+    assert!(pending.is_none(), "{events:?}");
     assert!(status.success(), "{status:?}");
 }
