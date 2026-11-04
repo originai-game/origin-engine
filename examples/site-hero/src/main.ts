@@ -12,7 +12,9 @@
 // Commands (dev builds): `shot:<n>` picks the view (0 the hero framing,
 // 1 a step further back, 2 close on the traveller), `brace:<seconds>`
 // has the traveller brace against the wind, a hand on the hood
-// (og.motion.react with actions/brace.ogt).
+// (og.motion.react with actions/brace.ogt), `cloth:<0|1>` takes the
+// cloak's simulation off or puts it back (a diagnostic: off, the cloak is
+// drawn as skinned).
 //
 //   og run examples/site-hero --size 1920x1080 --commands "6:screenshot:frame0.png;6.1:quit"
 
@@ -29,7 +31,7 @@ export const View = defineResource("View", {
   shot: u32(0, { max: 2, doc: "The view: 0 the hero framing, 1 a step further back, 2 close on the traveller." }),
 });
 
-const scene = { terrain: 0 as unknown as TerrainData, traveller: 0 as unknown as Entity };
+const scene = { terrain: 0 as unknown as TerrainData, traveller: 0 as unknown as Entity, paint: 0 };
 
 const DEG = Math.PI / 180;
 type Quat = { x: number; y: number; z: number; w: number };
@@ -54,7 +56,9 @@ const SHOTS = [
 ];
 const TRAVELLER = { x: 4, z: -3.2 };
 /** The close view: the eye beside the traveller on the meadow side, in front of his left shoulder, looking at his chest. */
-const CLOSE = { dx: 2.8, dz: -2.1, up: 1.4, aim: 1.0, fov: 36 };
+const CLOSE = { dx: 2.8, dz: -2.1, up: 1.4, aim: 1.0, fov: 36, paint: 1 };
+/** The cloak's simulation (og.Garment on mesh 1, split from the body by tools/split-cloak.ts; its freedom is painted in its vertex alpha). */
+const CLOAK = { mesh: 1, maxDistance: 0.25, bending: 0.3, iterations: 6 };
 /** Where the gusts come from (og.Wind blows along +x, +z): the brace faces it. */
 const WIND_FROM = { x: -0.8, y: 0, z: -0.6 };
 
@@ -126,8 +130,8 @@ function start(world: World): void {
   const body = must(world.instantiate(must(og.load.gltf(world, model)), { name: "traveller", position: at }));
   must(world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" }));
   must(world.insert(body, og.MotionAgent, { rig, drive: true }));
-  // The cloak (mesh 1, split from the body by tools/split-cloak.ts) swings in the wind; its freedom is painted in its vertex alpha.
-  must(world.insert(body, og.Garment, { mesh: 1, maxDistance: 0.25, bending: 0.3, iterations: 6 }));
+  // The cloak swings in the wind.
+  must(world.insert(body, og.Garment, CLOAK));
   must(og.motion.face(world, body, { heading: Math.PI + 0.25, duration: 0.1 }));
   must(og.motion.pose(world, body, { pose: "idle", duration: 600 }));
   scene.traveller = body;
@@ -138,11 +142,14 @@ function start(world: World): void {
   cam.near = 0.15;
   cam.far = 60000;
   must(world.resource(og.RenderSettings)).sky = true;
+  scene.paint = must(world.resource(og.Stylise)).paintRadius;
 }
 
-const Frame = defineSystem("Frame", { reads: [View, og.Transform], writes: [og.Camera] }, (_q, _time, world) => {
+const Frame = defineSystem("Frame", { reads: [View, og.Transform], writes: [og.Camera, og.Stylise] }, (_q, _time, world) => {
   const n = must(world.resource(View)).shot;
   const cam = must(world.resource(og.Camera));
+  // Close up, the painterly filter is lighter: at the look's radius it smears the hands and face.
+  must(world.resource(og.Stylise)).paintRadius = n === 2 ? CLOSE.paint : scene.paint;
   if (n === 2) {
     const t = must(world.get(scene.traveller, og.Transform)).position;
     const x = t.x + CLOSE.dx;
@@ -166,6 +173,12 @@ function shot(world: World, args: readonly string[]): void {
   must(world.resource(View)).shot = n;
 }
 
+function cloth(world: World, args: readonly string[]): void {
+  if (args[0] === "0") must(world.remove(scene.traveller, og.Garment));
+  else if (args[0] === "1") must(world.insert(scene.traveller, og.Garment, CLOAK));
+  else throw new Error("write cloth:<0|1>");
+}
+
 function brace(world: World, args: readonly string[]): void {
   const seconds = args.length ? Number(args[0]) : 1.5;
   if (!(seconds >= 0)) throw new Error("write brace:<seconds held>");
@@ -179,10 +192,11 @@ export default og.game({
   resources: [View],
   systems: [Frame],
   start,
-  commands: { shot, brace },
+  commands: { shot, brace, cloth },
   commandHelp: {
     shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
     brace: { usage: "<seconds>", doc: "Brace against the wind, a hand on the hood, held this long (1.5 s if omitted)." },
+    cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
   },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);
