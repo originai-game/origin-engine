@@ -60,6 +60,8 @@ function tabsRow(desc: Api.QuestLogDesc, tab: string, counts: Record<string, num
       selectedFill: mix(role("panelRaised"), role("ink"), 0.1),
       gap: u(8),
       padding: xy(u(14), u(9)),
+      // A whole touch target under a finger: the phone's tabs laid out 42 px tall.
+      height: { kind: "fit", min: frame().touch ? 44 : 0 },
       radius: u(8),
       semantics: { role: "tab", name: `${label} (${counts[key] ?? 0})`, selected: on },
     }, () => {
@@ -122,7 +124,7 @@ function questRow(q: Api.QuestView, selected: boolean, desc: Api.QuestLogDesc, o
     kit.close();
     kit.column("Words", { width: grow(), gap: u(2) }, () => {
       text("Title", q.title, { step: st(16), color: ended ? "inkMuted" : "ink", width: grow(), maxLines: 2, font: "display" });
-      if (q.region) text("Region", q.region, { step: st(13), color: "inkMuted", width: grow(), nowrap: true, ellipsis: true });
+      if (q.region) text("Region", q.region, { step: st(13), color: "inkMuted", width: grow(), maxLines: 2, ellipsis: true });
     });
     kit.column("Marks", { gap: u(6), cross: "end" }, () => {
       if (q.tracked && !ended) symbol("Tracked", "pin", u(16), ink, { label: desc.trackedLabel ?? "Tracked" });
@@ -207,9 +209,12 @@ function questDetail(q: Api.QuestView, desc: Api.QuestLogDesc, out: Mut<Api.Ques
         }
       });
       kit.close();
-      kit.semantics({ role: "checkbox", name: `${o.hidden ? desc.hiddenLabel ?? "???" : o.text}${o.target > 1 && !o.hidden ? `, ${Math.min(o.count, o.target)} of ${o.target}` : ""}${o.optional ? `, ${desc.optionalLabel ?? "Optional"}` : ""}`, checked: o.done, disabled: o.failed });
+      // A line of the list the game ticks, never a box the player can (a checkbox no key or pad could reach): its
+      // state read as its value.
+      kit.semantics({ role: "listitem", name: `${o.hidden ? desc.hiddenLabel ?? "???" : o.text}${o.target > 1 && !o.hidden ? `, ${Math.min(o.count, o.target)} of ${o.target}` : ""}${o.optional ? `, ${desc.optionalLabel ?? "Optional"}` : ""}`, ...(o.done ? { value: desc.completedLabel ?? "Completed" } : o.failed ? { value: desc.failedLabel ?? "Failed" } : {}) });
     }
     kit.close();
+    kit.semantics({ role: "list", name: desc.objectivesLabel ?? "Objectives" });
   }
 
   if (q.rewards.length > 0) {

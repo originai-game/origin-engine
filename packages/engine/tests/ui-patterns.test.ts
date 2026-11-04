@@ -1220,7 +1220,9 @@ test("questLog: shows the tracked quest, its hidden objective as ???, and answer
   });
   engine.advance(4);
   expect(byPath(engine, "Detail/Body/Head/TitleRow/Title")!.text).toBe("The Lost Sword");
-  const objectives = elements(engine).filter((e) => e.role === "checkbox").map((e) => e.name);
+  // Lines of a list the game ticks, not checkboxes the player could press and no pad reaches.
+  const objectives = elements(engine).filter((e) => e.role === "listitem" && e.path.includes("/Objectives/")).map((e) => e.name);
+  expect(elements(engine).some((e) => e.role === "checkbox" && e.path.includes("/Objectives/"))).toBeFalse();
   expect(objectives).toContain("Drive off the wolves (2/3), 2 of 3");
   expect(objectives).toContain("???");
   expect(objectives.some((n) => n.includes("traitor"))).toBeFalse();
