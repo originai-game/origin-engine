@@ -1,0 +1,67 @@
+type timeline
+version 1
+---
+# Skyreach Meadow's cinematic for the site's footage: two shots, 20 s.
+# Play it once og.motion's generated pose is drawn (about 8 s after boot on
+# Metal), so the footage shows the model's performance, not og.anim's
+# fallback pose:
+#   og render examples/site-hero --commands "10:timeline:play:skyreach" \
+#     --from 10 --to 30 --fps 60 --size 3840x2160 --out frames/
+# Positions are in the shot's frame (src/main.ts): the meadow at y about
+# 899, the traveller at (4, 898.9, -3.2), the edge along z = -1.5 - 0.75 x.
+name "Skyreach Meadow"
+duration 20
+# Shot 1 (0 to 10 s): from high on the meadow down to the hero framing, the
+# traveller small against the cloud sea, then his place in it.
+# Shot 2 (10 to 20 s): a cut to beside him; a slow arc past his shoulder
+# while he shields his eyes against a gust, ending on the clouds beyond.
+track camera {
+  key 0 {
+    position -6 903.6 19
+    target 1 899.8 -6
+    fov 46
+  }
+  key 9.99 {
+    position -1 900.62 6.5
+    target 4.2 898.5 -12.8
+    fov 40
+    ease cubicInOut
+  }
+  key 10 {
+    position 7.9 900.6 -2.2
+    target 4 900 -3.2
+    fov 38
+  }
+  key 15 {
+    position 7.2 900.55 -4.6
+    target 4 900.05 -3.3
+    fov 38
+    ease cubicInOut
+  }
+  key 20 {
+    position 6.6 900.7 -5.6
+    target 2.8 900.1 -5.4
+    fov 40
+    ease cubicInOut
+  }
+}
+# The painterly filter lighter close up (as the close view's): at the look's
+# radius it smears the hands.
+track property {
+  field "og.Stylise.paintRadius"
+  key 0 {
+    value 2
+  }
+  key 9.99 {
+    value 2
+  }
+  key 10 {
+    value 1
+  }
+}
+# The brace: held 1.5 s from 11 s (the arm up by about 12.8 s, down by 15.6 s).
+track event {
+  key 11 {
+    do "brace:1.5"
+  }
+}

@@ -152,6 +152,9 @@ function start(world: World): void {
 
 
   buildSky(world, v3(0, 901, 6));
+  // The cinematic (timelines/skyreach.ogt): `timeline:play:skyreach`. Loaded
+  // here so og.timeline holds the records its tracks write.
+  must(og.load.timeline(world, "timelines/skyreach.ogt"));
 
   const cam = must(world.resource(og.Camera));
   cam.near = 0.15;
