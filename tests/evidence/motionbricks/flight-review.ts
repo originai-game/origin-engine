@@ -82,9 +82,9 @@ export default og.game({
       if (!Number.isInteger(index) || index < 0 || index >= cases[selected]!.frames) throw new Error("sample:<index>");
       sample = index; playing = false;
     },
-    view: (world, args) => {
+    review_view: (world, args) => {
       const mode = args[0];
-      if (mode !== "all" && mode !== "raw" && mode !== "aligned" && mode !== "corrected") throw new Error("view:all|raw|aligned|corrected");
+      if (mode !== "all" && mode !== "raw" && mode !== "aligned" && mode !== "corrected") throw new Error("review_view:all|raw|aligned|corrected");
       modes = mode === "all" ? ["raw", "aligned", "corrected"] : [mode]; camera(world);
     },
     play: () => { sample = 0; playing = true; },

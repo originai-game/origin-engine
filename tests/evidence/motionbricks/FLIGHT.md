@@ -265,9 +265,9 @@ bounded.
 
 The integrator independently reran all 20 cases: zero landing failures,
 bitwise reverse/stride-7 replay, maximum lean 4.950173°, contacts as above.
-`MARGIN = 0.01` and `CONE_DEGREES = 4.9` are unchanged. Art must judge the
-near-bound recovery speed and the cone-resting torso before either is tuned
-or motion.jump is unblocked. Hopping/train's four sample/rig reach deficits
+`MARGIN = 0.01` and `CONE_DEGREES = 4.9` are unchanged. The Metal art review
+below accepts these constants for the sampled skeleton experiment only;
+production motion.jump is not thereby unblocked. Hopping/train's four sample/rig reach deficits
 remain plan/model work, not an operator waiver. Integrated palette world-hash
 replay, authored gesture/gaze constraints and leg limits remain separate open
 items; numeric continuity is not a claim that those paths are implemented.
@@ -294,9 +294,29 @@ og run /tmp/flight-review --commands "$(cat /tmp/flight-review/case-08.commands)
 18/19 (standing/train), both rigs: takeoff/apex for CONE_DEGREES, landing−2
 through landing+5 and recovery for MARGIN. Cases 04/05 expose the unwaived
 hopping/train anchor conflicts. Each script shows raw/aligned/corrected side
-by side, then the corrected apex in detail. `view:corrected;play` supports
+by side, then the corrected apex in detail. `review_view:corrected;play` supports
 interactive 30 Hz review. Source-ground-projected root provenance and zero
 original-library training jump windows remain unchanged.
+
+### Metal art verdict, 2026-11-04
+
+The coordinator-appointed reviewer reported ACCEPT for the cone and near-bound
+recovery on exact head `5fbec83e1`, using a fresh native addon and 100 captures
+at 1600×900: cases 00/01, 08/09, 12/13, 18/19 and 04/05. The only fixture fix
+was renaming the reserved engine action `view` to `review_view`; pose data and
+the solve were unchanged. The source generator now carries that fix too.
+
+The review read running/train 20→21→22 (traveller 21→22→23), standing/train
+23→24→29, apex detail and hopping/adaptation 17/18. Its verdict: upright torso
+without a kink, limb return settling toward the source, no sampled pose
+inversion or new contact-side snap. Keep both constants unchanged.
+
+This is not skinned real-time motion, temporal-smoothness or integrated
+controller/vertical-ownership acceptance. Hopping/train 04/05 remains
+UNACCEPTED for its infeasible contacts, with no waiver. No feature code was
+landed by the review. The full capture package and index/log were retained by
+the integrator; representative running/train and standing/train images were
+also inspected here. Review thread: `T-01a1a6bf-597f-72c5-852d-a1f8e4224f96`.
 
 ## motion.jump: vertical ownership must be settled before IDL
 
