@@ -107,6 +107,9 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         // On a phone in portrait three tabs share the row; at large text each takes its own.
         width: portrait ? (big ? grow() : px(Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - u(24) - u(8) * (tabs.length - 1)) / tabs.length))) : px(u(short ? 160 : 200)),
         padding: xy(u(10), u(touch ? 12 : 8)),
+        // A whole touch target on a touch screen, whatever the style's type
+        // makes of its words (one line of jade's and midcore's was 43 px).
+        height: { kind: "fit", min: touch ? 44 : 0 },
         gap: u(10),
         radius: t.control,
         semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
