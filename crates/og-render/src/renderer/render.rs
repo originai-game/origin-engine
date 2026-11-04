@@ -4546,15 +4546,12 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
     }
 }
 
-/// Contact shadows' ray (fxpost.wgsl `fs_contact`, `FxPost::contact` row 3):
-/// 4 cm per metre of view depth and at least 10 cm long (a caster's foot
-/// is a few centimetres of a local light's texels), a hit within a quarter
-/// of the pixel's view depth behind the depth buffer, 16 steps. The
-/// thickness must hold a solid caster seen from its front: the ray under a
-/// 0.8 m box at 4.5 m (shadows-local-contact) passes up to 0.75 m behind
-/// the face the camera sees. A larger thickness darkens more behind thin
-/// foreground silhouettes, within the ray's length of them.
-const CONTACT_PARAMS: [f32; 4] = [0.04, 0.1, 0.25, 16.0];
+/// Contact shadows (fxpost.wgsl `fs_contact`, `FxPost::contact` row 3):
+/// Bend Studio's recommended defaults (third_party/bend-sss): every pixel a
+/// slab 0.5 % of its depth to the far plane thick, an edge where two
+/// neighbours' depths differ by 2 %, a contrast of 4, 60 samples (the
+/// shadow's reach in pixels).
+const CONTACT_PARAMS: [f32; 4] = [0.005, 0.02, 4.0, 60.0];
 
 /// Whether an instance was drawn elsewhere in the previous frame
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's

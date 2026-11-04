@@ -163,9 +163,9 @@ pub(crate) struct FxPostUniform {
     /// (`ScreenSpaceGlobalIllumination::rows`).
     pub gi: [[f32; 4]; 3],
     /// Screen-space contact shadows (fxpost.wgsl `fs_contact`): rows 0 to 2
-    /// the contact lights' view-space positions (w 1: drawn), row 3 the
-    /// ray's length per metre of view depth, its shortest, the thickness per
-    /// metre of length and the steps.
+    /// the contact lights' view-space positions (w 1: drawn), row 3 Bend's
+    /// surface thickness, bilinear threshold, shadow contrast and sample
+    /// count.
     pub contact: [[f32; 4]; 4],
 }
 

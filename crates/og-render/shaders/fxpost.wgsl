@@ -32,9 +32,8 @@ struct FxPost {
   gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
   gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
   // Screen-space contact shadows (fs_contact): rows 0 to 2 the contact
-  // lights' view-space positions (w 1: drawn), row 3 x the ray's length per
-  // metre of view depth, y its shortest, z the thickness a hit may lie
-  // behind the depth per metre of the pixel's view depth, w the steps.
+  // lights' view-space positions (w 1: drawn), row 3 Bend's x surface
+  // thickness, y bilinear threshold, z shadow contrast, w sample count.
   contact: array<vec4<f32>, 4>,
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
@@ -670,16 +669,47 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 // Screen-space contact shadows for the shadowed local lights (frame.rs
-// `contact_lights`): from each pixel a short ray towards each contact
-// light, marched through the prepass depth; where it passes behind a
-// surface (within the thickness), the light is hidden. They resolve what
-// the shadow maps cannot, the centimetres where a caster meets what it
-// stands on, a few texels of a local map at a few metres from the light
-// (the concept of UE's contact shadows and Bend Studio's screen-space
-// shadows, a plain march here). The AO in tex_b (AO's own target, before
-// the contact pass) passes through in r; the lights' masks go to gba
-// (1 lit, 0 hidden), which the lit shaders multiply into their map
-// shadows (lighting.wgsl `local_shadow`).
+// `contact_lights`), ported from Bend Studio's screen-space shadows
+// (Graham Aldridge, SIGGRAPH 2023; bend_sss_gpu.h, Copyright 2023 Sony
+// Interactive Entertainment, Apache-2.0, third_party/bend-sss/). They
+// resolve what the shadow maps cannot, the centimetres where a caster
+// meets what it stands on. The AO in tex_b (AO's own target, before the
+// contact pass) passes through in r; the lights' masks go to gba (1 lit,
+// 0 hidden), which the lit shaders multiply into their map shadows
+// (lighting.wgsl `local_shadow`).
+//
+// Bend's model: from the pixel, one sample per pixel of the line towards
+// the light's screen position, in a depth that is affine along it (Bend's
+// device depth; here 1 / view depth, its reversed-Z form, as the prepass
+// stores view depth). Divided by the distance to the light's position, a
+// light ray becomes a constant, so a sample lies on the pixel's ray when
+// its divided depth equals the pixel's. Every pixel is a slab of
+// `SurfaceThickness` (a fraction of the depth to the far plane) behind its
+// surface: a sample hides the light only when the ray passes through that
+// slab, never because it passes far behind a silhouette. Across the line's
+// minor axis a sample also reads its neighbour and, unless the two differ
+// like an edge (`BilinearThreshold`), casts from the further of them, so a
+// face at a grazing angle is no thinner than its depth's step per pixel.
+// The first samples shadow hard, the rest average in four groups, the last
+// fade out, and a contrast boost sharpens the transition. Bend runs one
+// compute wave per line of pixels to share the samples; this is one
+// fragment per pixel over the same samples. FarDepthValue 0,
+// NearDepthValue above it (z_sign -1), BilinearSamplingOffsetMode false,
+// IgnoreEdgePixels false, UsePrecisionOffset false.
+const CONTACT_HARD_SAMPLES: i32 = 4;
+const CONTACT_FADE_SAMPLES: i32 = 8;
+
+// The prepass's view depth as Bend's depth: 1 / depth with a perspective
+// camera (reversed-Z device depth to a scale, which Bend's fractions of it
+// cancel), and an orthographic camera's affine reversed depth; 0 off the
+// screen (Bend's border colour, the far plane).
+fn contact_depth(px: vec2<i32>, size: vec2<i32>) -> f32 {
+  if (any(px < vec2<i32>(0)) || any(px >= size)) { return 0.0; }
+  let d = textureLoad(tex_depth, px, 0).r;
+  if (fxp.cam.y > 0.5) { return max(1.0 - d / fxp.cam.x, 0.0); }
+  return 1.0 / max(d, 1e-6);
+}
+
 @fragment
 fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -688,42 +718,78 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   var masks = vec3<f32>(1.0);
   let d0 = depth_at(px);
   if (is_sky(d0)) { return vec4<f32>(ao, masks); }
-  let uv = (vec2<f32>(px) + 0.5) * fxp.screen.zw;
-  let p = view_pos(uv, d0);
-  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
-  // A pixel and a half off the surface, so the ray leaves its own pixel.
-  let start = p + n * (1.5 / pixels_per_unit(d0));
-  let params = fxp.contact[3];
   let size = vec2<i32>(textureDimensions(tex_depth));
   let size_f = vec2<f32>(size);
-  let steps = max(i32(params.w), 1);
-  let jitter = ign(in.pos.xy);
+  let texel = prepass_px(px, size);
+  let center = vec2<f32>(texel) + 0.5;
+  let p = view_pos(center / size_f, d0);
+  let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
+  let params = fxp.contact[3];
+  let thickness = params.x;
+  let bilinear_threshold = params.y;
+  let contrast = params.z;
+  let samples = i32(params.w);
+  let start_depth = contact_depth(texel, size);
   for (var i = 0; i < 3; i++) {
     let light = fxp.contact[i];
     if (light.w < 0.5) { continue; }
-    let to = light.xyz - start;
-    let dist = length(to);
-    if (dist < 1e-4 || dot(to, n) <= 0.0) { continue; }
-    let dir = to / dist;
-    let len = min(max(params.x * d0, params.y), 0.9 * dist);
-    let thickness = params.z * d0;
-    var lit = 1.0;
-    for (var k = 0; k < steps; k++) {
-      let t = (f32(k) + jitter) / f32(steps);
-      let q = start + dir * (len * t);
-      let clip = fxp.proj * vec4<f32>(q, 1.0);
-      if (clip.w <= 0.0) { break; }
-      let ndc = clip.xy / clip.w;
-      let quv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-      if (any(quv < vec2<f32>(0.0)) || any(quv > vec2<f32>(1.0))) { break; }
-      let behind = -q.z - depth_tap(quv, size, size_f);
-      if (behind > 0.0 && behind < thickness) {
-        // Fades out over the ray's last quarter, so its reach has no edge.
-        lit = smoothstep(0.75, 1.0, t);
-        break;
+    // A surface facing away from the light takes none of it anyway
+    // (Bend's EarlyOutPixel).
+    if (dot(light.xyz - p, n) <= 0.0) { continue; }
+    // The light's coordinate (bend_sss_cpu.h BuildDispatchList): its
+    // pixel, its depth, and which way the rays run on screen.
+    let clip = fxp.proj * vec4<f32>(light.xyz, 1.0);
+    var w = clip.w;
+    let fp_limit = 0.000002 * 64.0;
+    if (w >= 0.0 && w < fp_limit) { w = fp_limit; } else if (w < 0.0 && w > -fp_limit) { w = -fp_limit; }
+    let light_xy = vec2<f32>((clip.x / w * 0.5 + 0.5) * size_f.x, (clip.y / w * -0.5 + 0.5) * size_f.y);
+    var light_z = 0.0;
+    if (fxp.cam.y > 0.5) {
+      light_z = 1.0 + light.z / fxp.cam.x;
+    } else if (clip.w != 0.0) {
+      light_z = 1.0 / clip.w;
+    }
+    let direction = select(1.0, -1.0, clip.w > 0.0);
+    // The pixel's distance to the light's along the major axis, and one
+    // pixel's step along it away from the light.
+    let rel = center - light_xy;
+    let x_major = abs(rel.x) > abs(rel.y);
+    let s0 = max(abs(rel.x), abs(rel.y));
+    if (s0 < 1.0) { continue; }
+    let step = rel / s0;
+    // WriteScreenSpaceShadow's window: the depth scaled so a slab of
+    // `thickness` is 1, offset by one slab towards the camera.
+    let depth_scale = min(s0 + direction, 1.0 / thickness) * s0 / start_depth;
+    let start = (start_depth - light_z) / s0 * depth_scale + 1.0;
+    var hard = 1.0;
+    var shadow = vec4<f32>(1.0);
+    for (var k = 0; k < samples; k++) {
+      let along = f32(k + 1) * direction;
+      let s = s0 + along;
+      // Past the light's own pixel (Bend stores 1e10: never a hit).
+      if (s <= 0.0) { break; }
+      let pos = center + step * along;
+      let read = vec2<i32>(floor(pos));
+      let minor = select(pos.x, pos.y, x_major);
+      let side = select(-1, 1, fract(minor) - 0.5 > 0.0);
+      let offset = select(vec2<i32>(side, 0), vec2<i32>(0, side), x_major);
+      let dx = contact_depth(read, size);
+      let dy = contact_depth(read + offset, size);
+      let edge = abs(dx - dy) > dx * bilinear_threshold;
+      let shadowing = select(dx - abs(dx - dy), dx, edge);
+      let delta = abs(start - (shadowing - light_z) / s * depth_scale);
+      if (k < CONTACT_HARD_SAMPLES) {
+        hard = min(hard, delta);
+      } else if (k < samples - CONTACT_FADE_SAMPLES) {
+        shadow[k & 3] = min(shadow[k & 3], delta);
+      } else {
+        let fade = f32(k + 1 - (samples - CONTACT_FADE_SAMPLES)) / f32(CONTACT_FADE_SAMPLES + 1) * 0.75;
+        shadow[k & 3] = min(shadow[k & 3], delta + fade);
       }
     }
-    masks[i] = lit;
+    shadow = saturate(shadow * contrast + (1.0 - contrast));
+    hard = saturate(hard * contrast + (1.0 - contrast));
+    masks[i] = min(hard, dot(shadow, vec4<f32>(0.25)));
   }
   return vec4<f32>(ao, masks);
 }

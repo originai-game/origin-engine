@@ -306,10 +306,17 @@ every layer). Nothing feeds back into the simulation.
 at the camera (the shadows' importance: radiance over squared distance,
 ties in scene order) get screen-space contact shadows; every other
 shadowed light keeps its shadow map alone, and rect lights never get them.
-From each pixel a 16-step ray of max(4 cm per metre of view depth, 10 cm)
-marches towards each of those lights through the prepass depth; a sample
-within a quarter of the pixel's view depth behind the depth buffer hides
-the light. The masks share the AO texture (its gba, the AO in r), so they
+The pass is Bend Studio's screen-space shadows (Days Gone; Graham
+Aldridge, SIGGRAPH 2023; `third_party/bend-sss`, Apache-2.0) with its
+recommended settings: from each pixel 60 samples, one per pixel along
+the line towards the light's screen position, compared in a depth that
+is affine along that line, where every pixel is a slab 0.5 % of its depth
+to the far plane thick. A sample hides the light only where the ray passes
+through that slab, so a silhouette in front of a far surface never
+shadows it; the first four samples shadow hard, the rest average in four
+groups, the last eight fade out. It runs as one fragment per pixel
+rather than Bend's compute wave per line of pixels (the same samples,
+not shared). The masks share the AO texture (its gba, the AO in r), so they
 are off with screen-space GI, and only the standard and physical lit
 shaders read them (not terrain, scattered copies, custom lit shaders,
 probe faces, views or planar reflections). They resolve the centimetres
@@ -343,20 +350,29 @@ game with many shadowed point lights, which saves about 0.7 ms a frame
 with it.
 
 **Which faces a pass stores, and which instances cast** (web findings
-#4, wave 13). Every shadow pass culls a front-sided caster's front
-faces, so a closed caster stores its far side and its lit side never
-compares against itself. The paraboloid projection looked down its axis
-with x as is, a mirror image of a perspective camera's, so its triangles
+#4, wave 13; R8). A cascade culls a front-sided caster's front faces, so
+a closed caster stores its far side and its lit side never compares
+against itself. A local light's views store the lit side instead
+(`frame.rs` `LIT_SIDE` mirrors their x, which turns the winding): a
+closed caster standing on a floor stores its base, coplanar with the
+floor, as its far side, and a local map's filter taps, a few centimetres
+wide at a few metres from the light, then read the floor beside its base
+as lit (`local_shadows_touch_their_casters`: 26 % of the light under a
+paraboloid's tent, 5 % under a cube face's). The lit side is as far above
+the floor as the caster is tall; the depth bias grows to a texel (a texel
+and a half in a paraboloid, whose straight edges carry a face's plane a
+little past its curved one) so lit surfaces clear themselves. In wave 13 the paraboloid projection
+looked down its axis with x as is, a mirror image of a perspective camera's, so its triangles
 reached the rasteriser with the opposite winding and the hemispheres
 stored the faces turned towards the light: a light inside a closed
 caster (a lamp's glass box around its own light) was lit by paraboloids
 and dark by cube faces, and a box's top edge drew a curved shadow band
 down its own lit side (the cube frame of `shadows-crypt` against the
-paraboloid one: RMSE 0.0148 before, 0.0036 after). The hemispheres
-mirror x now (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
-`lighting.wgsl` `local_shadow`) and store the far side as the cube
-faces do; `point-shadows-paraboloid` moved by RMSE 0.0021 (contact
-shadows at the spheres' and pillars' feet) and was re-recorded.
+paraboloid one: RMSE 0.0148 before, 0.0036 after); both stored the far
+side from then until R8, and now both store the lit side
+(`shadow_pass.wgsl` `shadow_project` and `local_distance`,
+`lighting.wgsl` `local_shadow_lookup` mirror the hemispheres the same
+way), the band held off by the paraboloid's larger depth bias.
 [`Instance::cast_shadows`] keeps an instance out of every shadow pass
 (the sun's cascades and the local lights' views) while it still
 receives: its instances are runs of their own (`instances.rs`), and the
