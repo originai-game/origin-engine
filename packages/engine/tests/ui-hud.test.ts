@@ -441,6 +441,22 @@ test("shooter.killfeed, resourceBar and scoreboard: newest first within max and 
   expect(below(els, "FeedHud/Feed").length).toBe(0);
 });
 
+test("strategy.resourceBar in the flow folds to the box it is laid in, not to the screen", () => {
+  // Wrong: the fold measured against the screen alone, so a bar in a column narrower than its one line runs past it.
+  const items = [
+    { key: "gold", name: "Gold", icon: "coin", amount: 1240, rate: 14 },
+    { key: "wood", name: "Wood", amount: 860, rate: 9 },
+    { key: "stone", name: "Stone", amount: 310, rate: 4 },
+    { key: "pop", name: "Supply", amount: 46, capacity: 46 },
+  ];
+  const e = engineFor("HudResRoom", () => {
+    og.ui.column("Room", { width: { kind: "fixed", px: 200 } }, () => strategy.resourceBar("Res", { items, anchor: null }));
+  });
+  e.advance(4);
+  const bar = at(dump(e), "Room/Res")!;
+  expect(bar.width).toBeLessThanOrEqual(200.5);
+});
+
 test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud: what each reads", () => {
   let count = 9;
   let judgeAt = 0;

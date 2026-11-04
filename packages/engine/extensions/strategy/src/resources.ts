@@ -9,10 +9,12 @@ import type { ResourceBarDesc, ResourceItem } from "../types.ts";
 export function resourceBar(id: string, desc: ResourceBarDesc = {}): void {
   const tk = frame().t;
   const anchor = anchorOf(desc, "top");
-  const room = hudRoom();
   hudPlace(id, anchor, (inAnchor) => {
-    // Too wide for the screen (a phone), it folds: first each rate under
-    // its amount, then the items wrap onto a second line.
+    // Too wide for its room (a phone's screen; in the flow, the box it is laid
+    // in as of last tick), it folds: first each rate under its amount, then
+    // the items wrap onto a second line.
+    const parent = inAnchor ? null : kit.bounds(kit.openPath());
+    const room = parent && parent.width > 0 ? Math.min(hudRoom(), parent.width) : hudRoom();
     const fit = fitLevel(inAnchor ? `${id}Hud/${id}` : [kit.openPath(), id].filter(Boolean).join("/"), room, 2);
     const pad = fit > 0 ? tk.sm : tk.md;
     box(id, {
