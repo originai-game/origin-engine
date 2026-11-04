@@ -110,8 +110,10 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
         );
         let mask: Vec<_> = beauty
             .pixels
-            .chunks_exact(4)
-            .zip(absent.pixels.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(absent.pixels.as_chunks::<4>().0)
             .enumerate()
             .filter_map(|(i, (a, b))| (difference(a, b) > 48).then_some(i))
             .collect();
