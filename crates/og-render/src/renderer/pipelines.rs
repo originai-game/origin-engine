@@ -284,28 +284,6 @@ pub(crate) fn background_clear(background: &Background) -> wgpu::Color {
     }
 }
 
-/// The faces a shadow caster's pipeline drops in a cascade
-/// (shadow_pass.wgsl `SHADOW_CULL`): front-sided casters keep their back
-/// faces, so a cascade stores a closed caster's far side and its lit side
-/// never compares against itself; back-sided ones their front faces;
-/// double-sided ones (open surfaces) both. A local light's view keeps
-/// every face, its nearest surface of either facing. The pipelines
-/// rasterise both facings, since one pipeline draws a caster into every
-/// pass.
-pub(crate) fn shadow_cull(side: Side) -> wgpu::PipelineCompilationOptions<'static> {
-    const NONE: &[(&str, f64)] = &[("SHADOW_CULL", 0.0)];
-    const FRONT: &[(&str, f64)] = &[("SHADOW_CULL", 1.0)];
-    const BACK: &[(&str, f64)] = &[("SHADOW_CULL", 2.0)];
-    wgpu::PipelineCompilationOptions {
-        constants: match side {
-            Side::Front => FRONT,
-            Side::Back => BACK,
-            Side::Double => NONE,
-        },
-        ..Default::default()
-    }
-}
-
 pub(crate) fn cull_mode(side: Side) -> Option<wgpu::Face> {
     match side {
         Side::Front => Some(wgpu::Face::Back),
@@ -633,9 +611,16 @@ pub(crate) fn shadow_pipeline(
             compilation_options: Default::default(),
             buffers: if skinned { &skin } else { &plain },
         },
-        // Both facings: the fragment drops what a cascade culls
-        // (`shadow_cull`), and a local light's view keeps every face.
+        // Front-sided casters draw back faces only: the stored depth is the
+        // far side of a closed caster, so its lit side never compares
+        // against itself. Back-sided ones draw front faces; double-sided
+        // ones (open surfaces) both.
         primitive: wgpu::PrimitiveState {
+            cull_mode: match side {
+                Side::Front => Some(wgpu::Face::Front),
+                Side::Back => Some(wgpu::Face::Back),
+                Side::Double => None,
+            },
             ..Default::default()
         },
         depth_stencil: Some(wgpu::DepthStencilState {
@@ -654,7 +639,7 @@ pub(crate) fn shadow_pipeline(
                 (false, false) if lean => "fs_lean",
                 (false, false) => "fs",
             }),
-            compilation_options: shadow_cull(side),
+            compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::R32Float,
                 blend: None,
@@ -692,6 +677,11 @@ pub(crate) fn meshlet_shadow_pipeline(
         },
         // As `shadow_pipeline`'s casters.
         primitive: wgpu::PrimitiveState {
+            cull_mode: match side {
+                Side::Front => Some(wgpu::Face::Front),
+                Side::Back => Some(wgpu::Face::Back),
+                Side::Double => None,
+            },
             ..Default::default()
         },
         depth_stencil: Some(wgpu::DepthStencilState {
@@ -705,7 +695,7 @@ pub(crate) fn meshlet_shadow_pipeline(
         fragment: Some(wgpu::FragmentState {
             module,
             entry_point: Some(if full { "fs_dissolve" } else { "fs_lean" }),
-            compilation_options: shadow_cull(side),
+            compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: wgpu::TextureFormat::R32Float,
                 blend: None,

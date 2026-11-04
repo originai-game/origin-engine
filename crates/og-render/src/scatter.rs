@@ -899,14 +899,21 @@ impl ScatterRenderer {
                     compilation_options: Default::default(),
                     buffers: &buffers,
                 },
-                // As shadow.wgsl's casters (`shadow_cull`).
-                primitive: wgpu::PrimitiveState::default(),
+                // As shadow.wgsl's casters: front-sided ones draw back faces.
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: match side {
+                        Side::Front => Some(wgpu::Face::Front),
+                        Side::Back => Some(wgpu::Face::Back),
+                        Side::Double => None,
+                    },
+                    ..Default::default()
+                },
                 depth_stencil: depth(true),
                 multisample: Default::default(),
                 fragment: Some(wgpu::FragmentState {
                     module: &self.shadow_module,
                     entry_point: Some("fs_shadow"),
-                    compilation_options: crate::shadow_cull(side),
+                    compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu::TextureFormat::R32Float,
                         blend: None,

@@ -350,32 +350,30 @@ game with many shadowed point lights, which saves about 0.7 ms a frame
 with it.
 
 **Which faces a pass stores, and which instances cast** (web findings
-#4, wave 13; R8). A cascade culls a front-sided caster's front faces, so
-a closed caster stores its far side and its lit side never compares
-against itself. A local light's views keep both facings and store the
-nearest surface (`shadow_pass.wgsl` `SHADOW_CULL`: the shadow pipelines
-rasterise both facings and drop in a cascade what it culls). A closed
-caster standing on a floor has its far side at its base, level with the
-floor, and a local map's filter taps, a few centimetres wide at a few
-metres from the light, read the floor beside the base as lit
-(`local_shadows_touch_their_casters`: 26 % of the light under a
-paraboloid's tent, 5 % under a cube face's); the nearest surface is as
-far above the floor as the caster is tall, and a light inside a closed
-caster (a lamp's glass) still finds its inner side. The depth bias is a
-texel at the view's centre, 2 tan(fov / 2) / size per metre (a 55°
-spot's 114° view: 1.5 times a cube face's), a texel and a half in a
-paraboloid, whose straight edges carry a face's plane a little past its
-curved one, so lit surfaces clear themselves. In wave 13 the paraboloid
-projection looked down its axis with x as is, a mirror image of a perspective camera's, so its triangles
+#4, wave 13). Every shadow pass culls a front-sided caster's front
+faces, so a closed caster stores its far side and its lit side never
+compares against itself. A local light's biases are therefore small (R8,
+`frame.rs` `local_lights`): a tenth of a texel of depth and a quarter of
+the normal offset, per metre of distance, where a texel spans 2 tan(fov /
+2) / size radians at the view's centre (a 55° spot's 114° view: 1.54 times
+a cube face's). Larger ones read the floor beside a closed caster's base
+as lit through the tent's taps (`local_shadows_touch_their_casters`). A
+local map storing the nearest surface instead (tried in R8) made lit
+surfaces compare against themselves, which striped them under a spot whose
+texels were undersized, lost a lamp's glass around its own light, and in a
+paraboloid brought back the curved band below convex edges described
+next. The paraboloid projection looked down its axis
+with x as is, a mirror image of a perspective camera's, so its triangles
 reached the rasteriser with the opposite winding and the hemispheres
 stored the faces turned towards the light: a light inside a closed
 caster (a lamp's glass box around its own light) was lit by paraboloids
 and dark by cube faces, and a box's top edge drew a curved shadow band
 down its own lit side (the cube frame of `shadows-crypt` against the
 paraboloid one: RMSE 0.0148 before, 0.0036 after). The hemispheres
-mirror x (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
-`lighting.wgsl` `local_shadow`); since R8 every local view keeps both
-facings, the band held off by the paraboloid's larger depth bias.
+mirror x now (`shadow_pass.wgsl` `shadow_project` and `local_distance`,
+`lighting.wgsl` `local_shadow`) and store the far side as the cube
+faces do; `point-shadows-paraboloid` moved by RMSE 0.0021 (contact
+shadows at the spheres' and pillars' feet) and was re-recorded.
 [`Instance::cast_shadows`] keeps an instance out of every shadow pass
 (the sun's cascades and the local lights' views) while it still
 receives: its instances are runs of their own (`instances.rs`), and the

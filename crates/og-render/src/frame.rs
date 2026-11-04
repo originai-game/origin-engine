@@ -755,28 +755,25 @@ pub(crate) fn local_lights(
             }
         };
         // Per metre of distance, in texels of the map (a view's texel spans
-        // 2 tan(fov / 2) / size radians at its centre, 2 / size for a 90°
-        // cube face and 3.1 / size for a 55° spot's 114° view, a
-        // paraboloid's 4 / (scale × size), about 2.2 times a cube face's): the normal offset at a grazing
-        // light, a texel (lighting.wgsl scales it down to a quarter facing
-        // the light), and the depth bias, as a fraction of the distance, a
-        // texel, a texel and a half in a paraboloid. A local map stores the
-        // nearest surface of either facing (shadow_pass.wgsl `SHADOW_CULL`),
-        // so a lit surface compares against itself: half a texel left the
-        // tent's far taps on a floor at 50 to 60° from a paraboloid's light
-        // up to 3 % in its own shadow, and a paraboloid's straight edges,
-        // short of the curved ones the projection gives, carry a face's
-        // plane a little past its edge onto the lit face beside it (a 0.8 m
-        // box's lit faces up to 7 % at a texel, none at a texel and a half).
-        // Larger biases, and the depth bias a fixed fraction of the range,
-        // lifted shadows off their casters' bases.
+        // 2 tan(fov / 2) / size radians at its centre: 2 / size for a 90°
+        // cube face, 3.1 / size for a 55° spot's 114° view; a paraboloid's
+        // 4 / (scale × size), about 2.2 times a cube face's): the normal
+        // offset at a grazing light, a quarter of a texel (lighting.wgsl
+        // scales it down to a quarter of that facing the light), and the
+        // depth bias, a tenth of a texel, as a fraction of the distance. A
+        // local map stores its closed casters' far side, so a lit surface
+        // never compares against itself and needs almost no bias; what bias
+        // there is lifts the shadow off a caster's base, where the far side
+        // meets the floor: a texel of normal offset and half a texel of
+        // depth left the floor 1 to 4 cm beside a box 26 % lit under a
+        // paraboloid's tent (5 % under a cube face's), these 3 % and 0.2 %
+        // (a CPU model of local_shadows_touch_their_casters' scene).
         let texel = if point_paraboloid {
             4.0 / (PARABOLOID_SCALE * shadow_size as f32)
         } else {
             2.0 * half_tan / shadow_size as f32
         };
-        let depth_bias = if point_paraboloid { 1.5 * texel } else { texel };
-        let normal_offset = texel;
+        let (normal_offset, depth_bias) = (0.25 * texel, 0.1 * texel);
         gpu.push(LightGpu {
             position_range: light.position.extend(range).to_array(),
             color_kind: radiance.extend(kind).to_array(),

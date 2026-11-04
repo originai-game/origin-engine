@@ -54,6 +54,48 @@ fn mean(img: &og_render::RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> [f32;
     s.map(|v| v / n)
 }
 
+/// The spot's shadow map leaves a lit face nearly parallel to its light
+/// smooth: the tall block's front face in `baked-cornell` (x 525 to 615,
+/// y 340 to 440 at 1280×720, inside the face from x 492 to 647, clear of
+/// the ball) has no fine dot or checker grid. Measured as the standard
+/// deviation of its grey minus a 3×3 box blur: 0.0005 with the far side
+/// stored, 0.0018 with a local map storing the nearest surface (a texel
+/// grid of self-shadow across the face, the art director's note on R8's
+/// contact head af4f3f27e).
+#[test]
+fn a_lit_face_nearly_parallel_to_a_spot_has_no_texel_grid() {
+    let img = gfx::render("baked-cornell").expect("render").image;
+    let grey = |x: u32, y: u32| {
+        let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
+        (0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32) / 255.0
+    };
+    let mut residual = Vec::new();
+    for y in 340..440 {
+        for x in 525..615 {
+            let mut blur = 0.0;
+            for dy in -1i32..=1 {
+                for dx in -1i32..=1 {
+                    blur += grey((x as i32 + dx) as u32, (y as i32 + dy) as u32);
+                }
+            }
+            residual.push(grey(x, y) - blur / 9.0);
+        }
+    }
+    let n = residual.len() as f32;
+    let mean = residual.iter().sum::<f32>() / n;
+    let sigma = (residual
+        .iter()
+        .map(|r| (r - mean) * (r - mean))
+        .sum::<f32>()
+        / n)
+        .sqrt();
+    println!("the tall block's lit front face: high-pass sigma {sigma:.5}");
+    assert!(
+        sigma < 0.001,
+        "the tall block's lit front face carries a texel grid: high-pass sigma {sigma:.5}"
+    );
+}
+
 /// The bake carries the bounces: the tall block's side facing the red wall
 /// turns red and the ceiling, unlit by the spot under it, is lit; built
 /// unbaked, neither.

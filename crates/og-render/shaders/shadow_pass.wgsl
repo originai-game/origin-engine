@@ -11,23 +11,6 @@ struct ShadowPass {
 };
 @group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
 
-// The faces a caster's pipeline culls in a cascade (pipelines.rs
-// `shadow_cull`): 0 none (double-sided), 1 front faces (front-sided: a
-// cascade stores a closed caster's far side, so its lit side never
-// compares against itself), 2 back faces (back-sided). A local light's
-// views cull nothing and store the nearest surface of either facing: a
-// closed caster standing on a floor has its far side at its base, level
-// with the floor, where a local map's filter taps (a few centimetres at a
-// few metres from the light) read the floor beside it as lit, and a light
-// inside a closed caster (a lamp's glass) sees only its far side. The
-// pipelines rasterise both facings and this drops the culled ones.
-override SHADOW_CULL: u32 = 0u;
-
-// Whether this pass drops a fragment of facing `front`.
-fn shadow_culled(front: bool) -> bool {
-  return shadow_pass.light.w <= 0.0 && ((SHADOW_CULL == 1u && front) || (SHADOW_CULL == 2u && !front));
-}
-
 // How far behind its hemisphere (as a fraction of the distance) a point is
 // still drawn: the map holds up to 96° from the axis.
 const PARABOLOID_MARGIN: f32 = 0.1;
