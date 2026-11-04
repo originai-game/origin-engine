@@ -431,6 +431,7 @@ mod tests {
             streams: vec![stream(0), stream(1)],
             morphs: vec![],
             meshes: None,
+            ..SkinnedModel::default()
         };
         (scene, info, skin)
     }

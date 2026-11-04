@@ -15,6 +15,10 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Model skin diagnostics.** Missing model skin data and incompatible
+  palette counts, joint order or inverse bind matrices warn in the log and
+  appear as `render.skinIssue` in entity probes and dumps. Equivalent rigs
+  from different asset paths remain valid; draw behavior is unchanged.
 - **Terrain diagnostics.** `DebugView` adds `terrain` (projection weights,
   clipmap cells and morph seams), `terrainLayers` (strongest raw layer)
   and `terrainMip` (normal-map mip footprint estimate). `dump_entity`

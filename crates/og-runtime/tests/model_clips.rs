@@ -92,6 +92,13 @@ fn project() -> &'static Path {
         write("models/crate.vox", &vox(&[[3, 3, 3]]));
         let walker = std::fs::read(repo().join("templates/game/assets/models/walker.glb")).unwrap();
         write("models/walker.glb", &walker);
+        write("models/walker-copy.glb", &walker);
+        // Swap two palette slots without changing the GLB chunk lengths.
+        let mut reordered = walker.clone();
+        let needle = b"\"joints\":[1,2";
+        let at = reordered.windows(needle.len()).position(|v| v == needle).unwrap();
+        reordered[at..at + needle.len()].copy_from_slice(b"\"joints\":[2,1");
+        write("models/walker-reordered.glb", &reordered);
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -211,6 +218,96 @@ fn gltf_info_lists_the_clips_of_the_models_anim_blob() {
     assert!(
         names(engine, "models/crate.vox").is_empty(),
         "a static model: no #anim, no clips"
+    );
+}
+
+#[test]
+fn model_skin_issues_are_reported_and_clear_when_the_pair_is_repaired() {
+    let (engine, seen) = engine();
+    let rig = value(og_load_animation(engine, "models/walker.glb".into()));
+    let model = value(og_load_gltf(engine, "models/walker-copy.glb".into(), None));
+    let e = value(og_world_instantiate(engine, model.as_f64().unwrap(), None))
+        .as_f64()
+        .unwrap();
+    let entity = og_ecs::Entity::from_bits(e as u64);
+    let id = format!("#{}.{}", entity.index(), entity.generation());
+    let skeleton = |asset: &Value| {
+        value(og_world_insert(
+            engine,
+            e,
+            "og.Skeleton".into(),
+            Some(json!({"asset": asset}).to_string()),
+        ));
+        value(og_engine_frame(engine, 1000.0 / 60.0));
+    };
+    let issue = || {
+        let dump: Value = serde_json::from_str(&og_runtime::og_engine_probe_dump(
+            engine,
+            Some(json!({"what": "entity", "id": id}).to_string()),
+        ))
+        .unwrap();
+        dump["render"]["skinIssue"].clone()
+    };
+    skeleton(&rig["skeleton"]);
+    assert!(issue()["reason"].as_str().unwrap().contains("not loaded"));
+    assert!(
+        !seen.borrow().instances.is_empty(),
+        "existing static fallback is unchanged"
+    );
+    let log: Value = serde_json::from_str(&og_runtime::og_engine_take_log(engine)).unwrap();
+    assert!(
+        log.as_array().unwrap().iter().any(|l| l["warning"] == true
+            && l["text"]
+                .as_str()
+                .is_some_and(|s| s.contains("model skin data is not loaded"))),
+        "{log}"
+    );
+
+    // Different asset identities with equivalent skins are valid.
+    value(og_load_animation(engine, "models/walker-copy.glb".into()));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    assert!(issue().is_null());
+    assert!(!seen.borrow().skinned.is_empty());
+
+    let other = value(og_load_animation(engine, "models/blob.vox".into()));
+    value(og_runtime::og_world_set(
+        engine,
+        e,
+        "og.Skeleton".into(),
+        json!({"asset": other["skeleton"]}).to_string(),
+    ));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    assert!(
+        issue()["reason"].as_str().unwrap().contains("palette"),
+        "{}",
+        issue()
+    );
+    let reordered = value(og_load_animation(
+        engine,
+        "models/walker-reordered.glb".into(),
+    ));
+    value(og_runtime::og_world_set(
+        engine,
+        e,
+        "og.Skeleton".into(),
+        json!({"asset": reordered["skeleton"]}).to_string(),
+    ));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    assert!(
+        issue()["reason"].as_str().unwrap().contains("joint order"),
+        "{}",
+        issue()
+    );
+    value(og_runtime::og_world_set(
+        engine,
+        e,
+        "og.Skeleton".into(),
+        json!({"asset": rig["skeleton"]}).to_string(),
+    ));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    assert!(
+        issue().is_null(),
+        "stale diagnostics must not survive a repair"
     );
 }
 

@@ -86,6 +86,10 @@
     ],
     "added": [
       {
+        "member": "og.Model runtime skin diagnostics",
+        "summary": "Missing model skin data and incompatible palette counts, joint order or inverse bind matrices warn and appear in probe dumps as render.skinIssue. Equivalent rigs from different asset paths remain valid. Draw behavior and simulation are unchanged."
+      },
+      {
         "member": "DebugView.terrain, terrainLayers, terrainMip; dump_entity terrain diagnostics",
         "summary": "Terrain projection weights, clipmap cells and morph bands, strongest raw layer and normal-map mip footprint estimate. Entity dumps report the renderer's clipmap regions, triangle spacing, seams and material rules. No simulation or default beauty change."
       },

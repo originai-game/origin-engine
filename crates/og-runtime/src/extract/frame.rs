@@ -210,7 +210,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .is_none_or(|s| on(s, "bakedLighting", true));
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
     // Models: posed by og-anim when the entity has a Skeleton.
-    let posed = super::fx::skeletons(world, rs);
+    let posed = super::fx::skeletons(world, rs.draw.fx.skeleton.as_ref(), &mut rs.fx);
     // GPU crowds (og.CrowdAnimation): the world's time of this frame,
     // between ticks on a frame drawn between them.
     let crowds = super::fx::crowds(world, rs);

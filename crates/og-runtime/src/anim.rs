@@ -142,6 +142,7 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
             .trim_end_matches("#anim")
             .to_string(),
         super::fx::SkinnedModel {
+            skeleton: cooked.skeleton.clone(),
             streams: cooked.skin_streams.clone(),
             morphs: cooked.morphs.clone(),
             meshes: None,

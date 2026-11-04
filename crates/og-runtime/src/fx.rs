@@ -132,6 +132,7 @@ pub(crate) struct ModelInfo {
 /// copies of its primitives once made (by primitive; `None`: not skinned).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SkinnedModel {
+    pub skeleton: og_anim::SkeletonAsset,
     pub streams: Vec<og_bundle::runtime::SkinStream>,
     pub morphs: Vec<og_bundle::runtime::MorphTargets>,
     pub meshes: Option<Vec<Option<MeshHandle>>>,
@@ -166,6 +167,9 @@ pub(crate) struct FxState {
     /// Loaded models by asset handle bits, and skin data by model id.
     pub models: IdMap<u64, ModelInfo>,
     pub skins: BTreeMap<String, SkinnedModel>,
+    /// The extracted Skeleton asset per entity, and any current draw issue.
+    pub pose_sources: IdMap<u64, u64>,
+    pub pose_issues: IdMap<u64, Value>,
     /// Looks and palettes (`super::look`).
     pub look: super::look::LookState,
     /// The GI switch of the last quality preset applied while the world
@@ -1125,11 +1129,17 @@ fn skinned_meshes(
 }
 
 /// The entities with og.Skeleton (to draw their models posed).
-pub(crate) fn skeletons(world: &World, rs: &RenderState) -> std::collections::BTreeSet<u64> {
-    rows(world, rs.draw.fx.skeleton.as_ref())
+pub(crate) fn skeletons(
+    world: &World,
+    layout: Option<&Layout>,
+    fx: &mut FxState,
+) -> std::collections::BTreeSet<u64> {
+    fx.pose_issues.clear();
+    fx.pose_sources = rows(world, layout)
         .into_iter()
-        .map(|(e, _)| e)
-        .collect()
+        .map(|(e, v)| (e, v["asset"].as_f64().unwrap_or(0.0) as u64))
+        .collect();
+    fx.pose_sources.keys().copied().collect()
 }
 
 /// One og.Model's own look and shadow flags, carried by each of its
@@ -1168,6 +1178,7 @@ pub(crate) fn posed_model(
         atmo,
         interp,
         motion,
+        notes,
         ..
     } = rs;
     let rs_motion = &motion.palettes;
@@ -1185,6 +1196,39 @@ pub(crate) fn posed_model(
     let Some(info) = fx.models.get(&asset).cloned() else {
         return false;
     };
+    let source = fx.pose_sources.get(&entity).and_then(|&h| anim.skeleton(h));
+    let reason = match fx.skins.get(&info.id) {
+        None => Some("model skin data is not loaded; load its animation asset".to_string()),
+        Some(model) if !model.streams.is_empty() => {
+            match model.skeleton.skins.get(out.skin as usize) {
+                None => Some(format!("model has no skin {}", out.skin)),
+                Some(expected) if expected.joints.len() != matrices.len() => Some(format!(
+                    "model skin {} needs {} joints but the palette has {}",
+                    out.skin, expected.joints.len(), matrices.len(),
+                )),
+                Some(expected) => source.as_ref().and_then(|source| {
+                    let actual = source.skins.get(out.skin as usize)?;
+                    let different_order = expected.joints.iter().zip(&actual.joints).any(|(&a, &b)| {
+                        model.skeleton.nodes[a as usize].name != source.nodes[b as usize].name
+                    });
+                    (expected.inverse_bind != actual.inverse_bind
+                        || different_order)
+                        .then(|| format!("model skin {} and skeleton have different joint order or inverse bind matrices", out.skin))
+                }),
+            }
+        }
+        Some(_) => None,
+    };
+    if let Some(reason) = reason {
+        notes.push(format!("og.Model {} on entity {entity}: {reason}", info.id));
+        fx.pose_issues.insert(
+            entity,
+            serde_json::json!({
+                "model": info.id, "skin": out.skin, "paletteJoints": matrices.len(),
+                "reason": reason,
+            }),
+        );
+    }
     let Some(skin) = fx.skins.get_mut(&info.id) else {
         return false;
     };
