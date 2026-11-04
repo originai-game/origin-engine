@@ -25275,7 +25275,7 @@ export interface DialogueResult {
 }
 
 /**
- * A virtual joystick.
+ * A virtual joystick: one translucent disc of the HUD ground with a rim (part Joystick.base, which a style dresses) and a knob that follows the finger that started on it, the rim lit toward the push while held. A finger sliding onto it from elsewhere does not take it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25289,7 +25289,7 @@ export interface JoystickDesc {
    */
   readonly size?: number;
   /**
-   * The ignored radius; 0 is 0.15.
+   * The ignored radius; 0 is 0.15. Past it the vector is rescaled, rising from 0 at the dead zone's edge to 1 at the base's.
    *
    * @default 0
    * @range 0..1
@@ -25302,6 +25302,12 @@ export interface JoystickDesc {
    * @default null
    */
   readonly customize?: Customize | null;
+  /**
+   * It answers nothing and shows faded (a cutscene, a stun).
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
 }
 
 /** A joystick's vector this tick. */
@@ -25315,7 +25321,7 @@ export interface JoystickResult {
 }
 
 /**
- * A d-pad.
+ * A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, read as one target by the angle of the finger from its centre: eight ways (a diagonal holds both of its arms), nothing in its middle, the held direction lit under its chevron. The thumb rolls between directions without lifting.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25334,6 +25340,12 @@ export interface DpadDesc {
    * @default null
    */
   readonly customize?: Customize | null;
+  /**
+   * It answers nothing and shows faded.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
 }
 
 /** Which arms of a d-pad are held this tick. */
@@ -25349,7 +25361,7 @@ export interface DpadResult {
 }
 
 /**
- * A square touch action button (jump, fire), cornered by the style's control radius.
+ * A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face, flagged primary, pressed and disabled, which a style dresses), its icon on it; a label wider than it with no icon widens it to a capsule instead. A further touch holds it only when it went down on it, so a thumb steering a stick never fires it by sliding over.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25381,7 +25393,7 @@ export interface ActionButtonDesc {
    */
   readonly customize?: Customize | null;
   /**
-   * A disc instead of the control's rounded square (a pedal).
+   * Kept a disc when its label is wider than it (it grows as a disc, a pedal) instead of widening to a capsule; a button with an icon, a short label or a charge is a disc anyway.
    *
    * @default false
    */
@@ -25398,6 +25410,12 @@ export interface ActionButtonDesc {
    * @default "neutral"
    */
   readonly chargeTone?: Tone;
+  /**
+   * It answers nothing and shows faded (out of ammunition, not yet learnt).
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
 }
 
 /**

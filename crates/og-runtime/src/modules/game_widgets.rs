@@ -460,6 +460,7 @@ pub fn og_ui_joystick(id: String, desc: Option<String>) -> String {
                 size: f(&d, "size", 0.0),
                 dead_zone: f(&d, "deadZone", 0.0),
                 customize: customize(&d["customize"]),
+                disabled: d["disabled"].as_bool().unwrap_or(false),
             },
         )
     })
@@ -475,6 +476,7 @@ pub fn og_ui_dpad(id: String, desc: Option<String>) -> String {
             DpadDesc {
                 size: f(&d, "size", 0.0),
                 customize: customize(&d["customize"]),
+                disabled: d["disabled"].as_bool().unwrap_or(false),
             },
         )
     })
@@ -496,6 +498,7 @@ pub fn og_ui_action_button(id: String, text: String, desc: Option<String>) -> St
                 round: d["round"].as_bool().unwrap_or(false),
                 charge: d["charge"].as_f64().map(|v| v as f32),
                 charge_tone: tone(&d["chargeTone"]),
+                disabled: d["disabled"].as_bool().unwrap_or(false),
             },
         )
     });

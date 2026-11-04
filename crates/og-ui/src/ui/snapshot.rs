@@ -266,6 +266,12 @@ impl Ui {
         }
         rect(&mut b, &h.editor);
         u64_(&mut b, h.changed);
+        // The finger each touch control holds (version 16).
+        u32_(&mut b, s.touch_owners.len() as u32);
+        for (k, id) in &s.touch_owners {
+            u64_(&mut b, *k);
+            u32_(&mut b, *id);
+        }
         // The layer stack, its viewmodels and the documents' states.
         text(&mut b, &self.docs_state().to_string());
         b
@@ -322,7 +328,9 @@ impl Ui {
     /// recognisers (the next frame collects them) and no press recognised,
     /// and the state of version 14 with no virtual cursor and no HUD
     /// layouts (a game gives its saved layouts back with
-    /// [`Ui::set_hud_layout`]).
+    /// [`Ui::set_hud_layout`]), and the state of version 15 with no touch
+    /// control holding a finger (a held stick takes its finger again on
+    /// the next frame).
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -345,7 +353,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11..=14 => {
+            11..=15 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -370,7 +378,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 14"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 15"
             ))),
         }
     }
@@ -769,6 +777,13 @@ impl Reader<'_> {
         }
         h.editor = self.rect()?;
         h.changed = self.u64()?;
+        if version < 16 {
+            return Some(s);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            s.touch_owners.insert(k, self.u32()?);
+        }
         Some(s)
     }
 }
@@ -780,6 +795,9 @@ mod tests {
     /// The version 15 block of a state with no virtual cursor and no HUD
     /// layouts, edit mode or targets: its size.
     const V15: usize = 1 + 6 * 4 + 2 * 4 + 4 + 8 + 4 * 4 + 1 + 4 + 7 * 4 + 4 + 4 * 4 + 8;
+
+    /// The version 16 block of a state with no touch control holding a finger.
+    const V16: usize = 4;
 
     /// `b` without the `tail` bytes just before its layer stack.
     fn cut_before_docs(b: &[u8], tail: usize) -> Vec<u8> {
@@ -802,7 +820,7 @@ mod tests {
     /// virtual cursor or HUD layouts without the version 14 and 15 blocks
     /// they take before the layer stack.
     fn without_v14_tail(b: &[u8]) -> Vec<u8> {
-        cut_before_docs(b, 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15)
+        cut_before_docs(b, 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16)
     }
 
     /// A version 11 state block (one focus return) restores once upgraded:
@@ -910,7 +928,7 @@ mod tests {
         ui.state.focus = 5;
         ui.state.tick = 31;
         let saved = ui.save_state();
-        let mut v14 = cut_before_docs(&saved, V15);
+        let mut v14 = cut_before_docs(&saved, V15 + V16);
         v14[..4].copy_from_slice(&14u32.to_le_bytes());
         let mut fresh = Ui::default();
         assert!(
@@ -923,6 +941,23 @@ mod tests {
             .restore_state(&up)
             .expect("the upgraded block restores");
         assert_eq!((fresh.state.focus, fresh.state.tick), (5, 31));
+    }
+
+    /// A version 15 state (no touch control holding a finger) upgrades to
+    /// what this version saves, and restores; a held finger round-trips.
+    #[test]
+    fn a_version_15_state_upgrades_and_touch_owners_round_trip() {
+        let mut ui = Ui::default();
+        ui.state.tick = 12;
+        let saved = ui.save_state();
+        let mut v15 = cut_before_docs(&saved, V16);
+        v15[..4].copy_from_slice(&15u32.to_le_bytes());
+        assert!(Ui::default().restore_state(&v15).is_err());
+        assert_eq!(Ui::upgrade_state(&v15).expect("version 15 upgrades"), saved);
+        ui.state.touch_owners.insert(0xabcd, 3);
+        let mut fresh = Ui::default();
+        fresh.restore_state(&ui.save_state()).expect("restores");
+        assert_eq!(fresh.state.touch_owners.get(&0xabcd), Some(&3));
     }
 
     /// The virtual cursor and every player's HUD layout, the edit mode, a

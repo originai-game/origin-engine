@@ -93,6 +93,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_upgrade),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 15,
+        to: 16,
+        note: "UI phase 1: the finger each touch control holds (a stick keeps the touch that grabbed it)",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,

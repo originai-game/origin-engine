@@ -117,3 +117,68 @@ mod appearance;
 mod controls;
 mod navigation;
 mod scrolling;
+mod touch;
+
+/// Touches as og-input's `og.Pointers` holds them, tick by tick: each
+/// `(id, at)` is down at `at` (landing this tick when it was not held).
+struct Fingers {
+    p: og_input::Pointers,
+}
+
+impl Fingers {
+    fn new() -> Fingers {
+        Fingers {
+            p: og_input::Pointers::default(),
+        }
+    }
+
+    fn event(&mut self, action: og_input::PointerAction, id: u32, at: Vec2) {
+        self.p
+            .apply(&og_input::InjectedInput::Pointer {
+                action,
+                x: at.x,
+                y: at.y,
+                button: og_input::PointerButton::Left,
+                id,
+                movement_x: 0.0,
+                movement_y: 0.0,
+            })
+            .expect("a pointer id under five");
+    }
+
+    /// This tick's frame with the fingers at `at` (each id down there).
+    fn at(&mut self, at: &[(u32, Vec2)]) -> InputFrame {
+        self.p.end_tick();
+        for &(id, pos) in at {
+            let action = if self.p.down(id) {
+                og_input::PointerAction::Move
+            } else {
+                og_input::PointerAction::Down
+            };
+            self.event(action, id, pos);
+        }
+        self.frame()
+    }
+
+    /// This tick's frame with finger `id` lifted.
+    fn lift(&mut self, id: u32) -> InputFrame {
+        self.p.end_tick();
+        let pos = self.p.position(id);
+        self.event(og_input::PointerAction::Up, id, pos);
+        self.frame()
+    }
+
+    /// The UI's frame: pointer 0 is og.Input's pointer.
+    fn frame(&self) -> InputFrame {
+        let p0 = self.p.position(0);
+        InputFrame {
+            pointer: p0,
+            pointer_inside: true,
+            down: self.p.down(0),
+            pressed: self.p.is_pressed(0),
+            released: self.p.is_released(0),
+            pointers: self.p,
+            ..InputFrame::default()
+        }
+    }
+}

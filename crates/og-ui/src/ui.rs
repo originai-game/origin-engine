@@ -304,6 +304,10 @@ pub(crate) struct State {
     pub nav_off: bool,
     /// The stick's held direction (0 none, 1 + Nav index) and since which tick.
     pub stick: (u8, u64),
+    /// The further touch (an og.Pointers id) each touch control holds, by
+    /// key: the finger that went down on it, kept while it is down, so
+    /// another landing on the control never takes it over.
+    pub touch_owners: IdMap<u64, u32>,
     /// Intents queued by `Ui::navigate` for the next frame, each with
     /// whether the focus was on nothing when it was queued (then it only
     /// puts the focus on the first control: `Ui::navigate`).
@@ -507,7 +511,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 15;
+const STATE_VERSION: u32 = 16;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

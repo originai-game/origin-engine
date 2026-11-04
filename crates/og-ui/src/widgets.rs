@@ -384,10 +384,13 @@ pub struct DialogueResponse {
 pub struct JoystickDesc {
     /// The base's diameter; 0: 128 (at least three touch targets).
     pub size: f32,
-    /// Ignored radius as a ratio; 0: 0.15.
+    /// Ignored radius as a ratio; 0: 0.15. Past it the vector is rescaled
+    /// to rise from 0.
     pub dead_zone: f32,
     /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
     pub customize: Option<crate::Customize>,
+    /// Answers nothing and shows faded (a cutscene, a stun).
+    pub disabled: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -405,6 +408,8 @@ pub struct DpadDesc {
     pub size: f32,
     /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
     pub customize: Option<crate::Customize>,
+    /// Answers nothing and shows faded.
+    pub disabled: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -424,7 +429,8 @@ pub struct ActionButtonDesc {
     pub icon: String,
     /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
     pub customize: Option<crate::Customize>,
-    /// A disc instead of the control's rounded square (a pedal).
+    /// Kept a disc when its label is wider than it (it grows as a disc,
+    /// a pedal) instead of widening to a capsule.
     pub round: bool,
     /// A ring inside its edge lit clockwise from the top to this (0 to 1: a
     /// boost's charge, a brake's pressure); it follows the pad's outline,
@@ -432,6 +438,8 @@ pub struct ActionButtonDesc {
     pub charge: Option<f32>,
     /// The lit ring's tone (`Neutral`: the primary's).
     pub charge_tone: Tone,
+    /// Answers nothing and shows faded (out of ammunition, not yet learnt).
+    pub disabled: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
