@@ -1,17 +1,41 @@
 // Every vulkan-cpu frame against metal, for scripts/wave-end.sh: one row per
 // frame with og-tests' figures (outliers over 32/255 per channel, RGB RMSE;
-// templates/fx-showcase/tests/frames.ts's `difference`, the rule the
-// playtests and og-tests judge by) against its metal reference and, when
-// given, against the committed vulkan-cpu one.
+// the rule the playtests and og-tests judge by, as
+// templates/fx-showcase/tests/frames.ts's `difference`) against its metal
+// reference and, when given, against the committed vulkan-cpu one.
 //
 //   bun scripts/frames-vs-metal.ts --out <file.tsv>
 //       --set <name> <frames dir> <metal dir> [<committed vulkan-cpu dir>] ...
 //
 // Prints the table, writes it as TSV to --out, exits 0 (a measurement, not a
 // gate; a frame with no metal counterpart is listed as such).
+//
+// It reads only this checkout: a template's tests/frames.ts imports
+// `@origingame/engine/playtest`, which bun outside `og test` resolves to the
+// template's registry pin (0.7.7 has no `recordReference`), not to
+// packages/engine.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { decodePng, difference } from "../templates/fx-showcase/tests/frames.ts";
+import { decodePng, type Image } from "../packages/engine/src/node/png.ts";
+
+/** Outlier fraction (any channel over 32/255) and RGB RMSE of two equal-size frames. */
+function difference(a: Image, b: Image): { outliers: number; rmse: number } {
+  if (a.width !== b.width || a.height !== b.height) return { outliers: 1, rmse: 1 };
+  let outliers = 0;
+  let sum = 0;
+  const n = a.width * a.height;
+  for (let p = 0; p < n; p++) {
+    let out = false;
+    for (let k = 0; k < 3; k++) {
+      const d = Math.abs(a.rgba[p * 4 + k]! - b.rgba[p * 4 + k]!);
+      if (d > 32) out = true;
+      const f = d / 255;
+      sum += f * f;
+    }
+    if (out) outliers++;
+  }
+  return { outliers: outliers / n, rmse: Math.sqrt(sum / (n * 3)) };
+}
 
 const argv = process.argv.slice(2);
 let out = "";
