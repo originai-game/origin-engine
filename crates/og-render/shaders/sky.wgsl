@@ -415,7 +415,10 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   // Height fog can leave distant cloud visible: taper coverage to the
   // fallback before the hard start>=far exit, with either fog setting.
   let range_fade = 1.0 - smoothstep(far * 0.5, far, start);
-  let fade = select(exp(-start / (far * 0.45)), 1.0, frame.fog_color.w > 0.5);
+  // Interim clear-air aerial perspective, independent of the local Fog
+  // layer. Area 2 (atmosphere/clouds) replaces this existing 27km heuristic
+  // with Hillaire 2020's aerial-perspective LUT; do not retune it here.
+  let fade = exp(-start / (far * 0.45));
   let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
   let behind = mix(color, mean, deck_cover);
   let marched = mix(behind, color * transmittance + scattered, fade);
