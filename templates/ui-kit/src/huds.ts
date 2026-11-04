@@ -117,6 +117,21 @@ function linear(hex: string): { r: number; g: number; b: number } {
 export const SEEN = 1000;
 
 /**
+ * at() for an in-world widget `id` (a prompt, a nameplate): its point moved along the row, as little as needed, so the
+ * widget (as laid last tick, centred on its point) keeps clear of the kit's chrome where that stands on a side edge's
+ * middle (chromeRoom). A game's own HUD keeps its world widgets out of its nav the same way.
+ */
+export function atClear(id: string, fx: number, fy: number): Vector3 {
+  const vp = og.ui.frameViewport();
+  const room = chromeRoom();
+  const half = (og.ui.bounds(`${id}`)?.width ?? 0) / 2 + og.ui.frameTheme().space.sm;
+  let x = fx * vp.width;
+  if (room.left > 0) x = Math.max(x, vp.safeArea.left + room.left + half);
+  if (room.right > 0) x = Math.min(x, vp.width - vp.safeArea.right - room.right - half);
+  return at(x / vp.width, fy);
+}
+
+/**
  * A point on the play surface as the world sees it (the kit's camera is
  * orthographic, 360 units tall, at the origin): x and y as fractions of the
  * surface, from its top left.
@@ -184,7 +199,7 @@ export function actionHud(world: World, under = false): boolean {
     og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: crit ? 248 : 96 + ((tick / 120) % 4) * 7, kind: crit ? "critical" : "normal", seed: tick }] });
   }
   if (st.hitAt === tick) og.ui.damageNumbers("Hits", { hits: [{ position: foe, amount: st.crit ? 312 : 120, kind: st.crit ? "critical" : "normal", seed: tick }] });
-  if (!under) og.ui.interactionPrompt(world, "Door", { maxDistance: SEEN, target: { point: at(portrait ? 0.3 : 0.24, portrait ? 0.5 : 0.52) }, action: "interact", verb: L("sc.action.open"), name: L("sc.action.door") });
+  if (!under) og.ui.interactionPrompt(world, "Door", { maxDistance: SEEN, target: { point: atClear("Door", portrait ? 0.3 : 0.24, portrait ? 0.5 : 0.52) }, action: "interact", verb: L("sc.action.open"), name: L("sc.action.door") });
 
   og.ui.anchor("Player", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
     og.ui.statBar("Health", { value: st.hp, max: 100, kind: "health", segment: 20, ghost: true, icon: "heart", width: px((small ? 180 : 260) * k), thickness: Math.round(16 * k), name: L("sc.health"), anchor: null });

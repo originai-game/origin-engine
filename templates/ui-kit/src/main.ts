@@ -782,9 +782,10 @@ let chromeLook = { look: "", compact: false };
  */
 function compactChrome(label: string, screen: string): boolean {
   const vp = og.ui.frameViewport();
-  // A HUD page's chrome keeps a small footprint at large text on any surface: the HUD is the frame, and the words'
-  // plate would stand over its widgets.
-  if (chromeAnchor(screen) && (og.ui.frameTheme().textScale ?? 1) >= 1.5) return true;
+  // A HUD page's chrome keeps a small footprint at large text on any surface, and under a finger (off a desktop) at any
+  // size: the HUD is the frame, and the words' plate would stand over its widgets. Gallery and the next page are then
+  // one pair of square icon buttons, their words their accessible names (showcaseNext's square button beside it).
+  if (chromeAnchor(screen) && ((og.ui.frameTheme().textScale ?? 1) >= 1.5 || vp.breakpoint !== "desktop")) return true;
   if (vp.breakpoint !== "phonePortrait" && vp.breakpoint !== "phoneLandscape") return false;
   const t = og.ui.frameTheme();
   const look = `${screen}|${label}|${t.textScale ?? 1}|${Math.round(vp.width)}|${t.typeRamp["button"]?.size ?? 0}`;
