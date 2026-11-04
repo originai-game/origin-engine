@@ -263,8 +263,8 @@ impl AtmosphereGpu {
                 // A live sky holds the deck in the image-based light, which the
                 // scene then leaves undimmed (RenderScene::sky_captured): none
                 // of the sky light's dimming for the clouds to undo.
-                // Water must also use that captured light rather than replace
-                // it with the analytical, unfogged cloud-deck approximation.
+                // The sea's foam takes that captured light, not the analytical
+                // deck over it (water.wgsl).
                 a.clouds[4][3] = f32::from(live);
                 if live {
                     a.clouds[4][2] = 1.0;

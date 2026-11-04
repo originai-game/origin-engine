@@ -739,12 +739,11 @@ fn depth_texel(p: vec2<f32>) -> vec2<i32> {
   return min(vec2<i32>(p), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
 }
 
-// The sky mirrored along `r` (`c`, from reflection maps) under the frame's cloud cover:
+// The sky mirrored along `r` (`c`, from the reflection maps, which hold no clouds) under the frame's cloud cover:
 // greyed as the clouds' own ambient is (sky.wgsl clouds_over), and under an overcast the deck itself, brighter
 // overhead than at the horizon (a clear horizon mirrored at the sea's grazing rim drew a white line under a storm).
-// The live sky already captures the clouds and their view fog; only static maps need this approximation.
 fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
-  if (frame.clouds[3].w < 0.5 || frame.clouds[4].w > 0.5) { return c; }
+  if (frame.clouds[3].w < 0.5) { return c; }
   let grey = mix(c, vec3<f32>(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722))), frame.clouds[0].x * 0.7);
   let dk = cloud_deck(r);
   return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
@@ -873,10 +872,10 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let amb_n = ambient_light_level(n, in.world) * frame.params.x;
   // Under a closed cloud deck the light reaches the sea as the deck's own radiance, from the whole sky above (its a:
   // how much of the sky it closes): the foam and the crests take it (below). The sun itself is hidden by the deck
-  // for every surface at its source (Clouds::light). With live sky, amb_up/amb_n already carry the captured deck:
-  // do not replace that irradiance with the analytical, unfogged deck.
-  var deck_up = vec4<f32>(0.0);
-  if (frame.clouds[4].w < 0.5) { deck_up = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)); }
+  // for every surface at its source (Clouds::light). The foam's light under a live sky is the captured deck that
+  // amb_up and amb_n already carry (the analytical deck over it lit the foam twice); the crests keep the deck's.
+  let deck = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
+  let deck_up = select(deck, vec4<f32>(0.0), frame.clouds[4].w > 0.5);
   let sun_e = frame.light_color.rgb * sun;
   if (sea) {
     // web-ocean's body (`ocean.js` fs; the Sea of Thieves talk's subsurface term): light carried through the thin
@@ -898,12 +897,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let l_deck = normalize(vec3<f32>(l.x, 1.0, l.z));
     let vn = max(dot(v, n), 0.0);
     let k_deck = crest * (0.8 * max(dot(n, l_deck), 0.0) + 0.6 * vn * vn) * exp(-dist / 600.0);
-    // Crest transmission is distinct from the foam-dependent ambient terms
-    // above. Keep that lobe under a captured sky, using its irradiance over
-    // pi directly instead of the analytical deck's 1.4 radiance conversion.
-    let crest_light = select(deck_up.rgb * 1.4 * deck_up.a,
-      amb_up * cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a, frame.clouds[4].w > 0.5);
-    deep += SEA_SSS.rgb * crest_light * k_deck;
+    deep += SEA_SSS.rgb * deck.rgb * 1.4 * deck.a * k_deck;
   }
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
