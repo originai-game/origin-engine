@@ -87,7 +87,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
               selected: on,
               selectedFill: mix(role("panelRaised"), role("ink"), 0.12),
               padding: xy(u(phone ? 12 : 16), u(phone ? 6 : 8)),
-              // A whole touch target under a finger (the phone's tabs laid out 30 px tall).
+              // A whole touch target under a finger (the phone's tabs laid out 30 px tall; a short word in a condensed face, under 44 wide).
+              width: { kind: "fit", min: frame().touch ? 44 : 0 },
               height: { kind: "fit", min: frame().touch ? 44 : 0 },
               radius: 999,
               semantics: { role: "tab", name: tb.label ?? k, selected: on },
