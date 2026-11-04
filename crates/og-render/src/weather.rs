@@ -517,10 +517,16 @@ pub fn add_lightning(
                     }
                 })
                 .collect();
-            let mut points = strokeable(points);
+            // A branch fades before its points are thinned, so the thinning
+            // keeps the narrowing end's points (spaced by their own width):
+            // faded after it, the halo's wide strip kept one segment over
+            // its last 30 %, and its width fell along a straight line to a
+            // hard diagonal edge.
+            let mut points = points;
             if gain < 1.0 {
                 taper(&mut points);
             }
+            let points = strokeable(points);
             scene.ribbons.push(crate::Ribbon {
                 points,
                 texture: None,
@@ -538,7 +544,8 @@ pub fn add_lightning(
 }
 
 /// A strip's points with none closer to the last kept than [`STROKE_STEP`]
-/// times its width: a camera-facing strip folds over itself where its
+/// times its width there (the narrower of the segment's two ends, so a
+/// fading end keeps its points): a camera-facing strip folds over itself where its
 /// segments are shorter than it is wide (each point's edge is across the
 /// tangent through its neighbours, which swings at every jag), and the
 /// folds drew a bolt's core and halo as short ticks across the stroke, a
@@ -550,7 +557,9 @@ fn strokeable(points: Vec<crate::RibbonPoint>) -> Vec<crate::RibbonPoint> {
     for (i, p) in points.into_iter().enumerate() {
         match out.last() {
             None => out.push(p),
-            Some(last) if last.position.distance(p.position) >= STROKE_STEP * last.width => {
+            Some(last)
+                if last.position.distance(p.position) >= STROKE_STEP * last.width.min(p.width) =>
+            {
                 out.push(p)
             }
             Some(_) if i + 1 == n => {
@@ -753,9 +762,10 @@ mod lightning_tests {
             for w in p[..p.len() - 1].windows(2) {
                 let len = w[0].position.distance(w[1].position);
                 assert!(
-                    len >= STROKE_STEP * w[0].width - 1e-3,
-                    "{len} vs {}",
-                    w[0].width
+                    len >= STROKE_STEP * w[0].width.min(w[1].width) - 1e-3,
+                    "{len} vs {} {}",
+                    w[0].width,
+                    w[1].width
                 );
             }
         }
@@ -767,6 +777,13 @@ mod lightning_tests {
             assert_eq!(last.width, 0.0);
             assert_eq!(last.color[..3], [0.0; 3]);
             assert!(r.points[1].width > 0.5 * r.points[0].width);
+            // And smoothly: several points over its fading end, the halo's too.
+            let fading = r
+                .points
+                .iter()
+                .filter(|p| p.width < 0.9 * r.points[0].width)
+                .count();
+            assert!(fading >= 4, "{fading} of {} points fade", r.points.len());
         }
         assert_eq!(core.points.last().unwrap().position, at);
     }
