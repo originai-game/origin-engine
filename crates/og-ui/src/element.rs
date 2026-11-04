@@ -1224,18 +1224,38 @@ impl Ui {
         };
         // What of a node a scroll leaves in view: its rectangle cut by every
         // scrolling ancestor's (an element scrolled out of a list overlaps
-        // nothing drawn outside it).
+        // nothing drawn outside it), and by every ancestor that clips its
+        // children to its shape (a map's view larger than its frame draws
+        // only inside the frame).
+        let clips = |j: usize| -> bool {
+            self.draws
+                .get(&j)
+                .or_else(|| self.part_draws.get(&j))
+                .is_some_and(|d| d.clip == crate::paint::Clip::Shape)
+        };
         let shown = |i: usize| -> Rect {
             let mut r = posed(i);
             let mut j = self.nodes[i].parent;
             while j != NONE {
                 let n = &self.nodes[j];
-                if n.el.scroll || n.el.scroll_x {
+                if n.el.scroll || n.el.scroll_x || clips(j) {
                     r = r.intersect(&posed(j));
                 }
                 j = n.parent;
             }
             r
+        };
+        // Drawn at all: an element its own or an ancestor's opacity takes to
+        // nothing (a counter's invisible sizer, holding its widest value's
+        // room) covers nothing.
+        let seen_at_all = |mut j: usize| -> bool {
+            while j != NONE {
+                if self.nodes[j].props.opacity <= 0.0 {
+                    return false;
+                }
+                j = self.nodes[j].parent;
+            }
+            true
         };
         let ancestors = |mut j: usize| {
             let mut set = std::collections::BTreeSet::new();
@@ -1267,13 +1287,18 @@ impl Ui {
         let others: Vec<usize> = order
             .iter()
             .copied()
-            .filter(|&i| i != 0 && !over_layers.contains(&i) && painted(&self.nodes[i]))
+            .filter(|&i| {
+                i != 0 && !over_layers.contains(&i) && painted(&self.nodes[i]) && seen_at_all(i)
+            })
             .collect();
         for &p in &placed {
             let sub: std::collections::BTreeSet<usize> =
                 preorder(&self.nodes, p).into_iter().collect();
             let up = ancestors(p);
-            for &a in sub.iter().filter(|&&a| painted(&self.nodes[a])) {
+            for &a in sub
+                .iter()
+                .filter(|&&a| painted(&self.nodes[a]) && seen_at_all(a))
+            {
                 for &o in &others {
                     if sub.contains(&o) || up.contains(&o) {
                         continue;
@@ -1311,6 +1336,9 @@ impl Ui {
             }
             for (k, &a) in n.children.iter().enumerate() {
                 for &b in &n.children[k + 1..] {
+                    if !seen_at_all(a) || !seen_at_all(b) {
+                        continue;
+                    }
                     let r = shown(a).intersect(&shown(b));
                     if !area(&r) || out.len() >= MAX {
                         continue;

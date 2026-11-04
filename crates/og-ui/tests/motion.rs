@@ -862,6 +862,103 @@ fn an_element_declared_over_everything_is_never_reported() {
 }
 
 #[test]
+fn an_element_its_opacity_hides_overlaps_nothing() {
+    let mut ui = Ui::new(UiDesc::default());
+    // A counter's sizer (its widest value, never seen) under the value
+    // placed over it: only a sizer that shows can be covered.
+    let frame = |ui: &mut Ui, opacity: f32| {
+        ui.begin(InputFrame::default(), vp());
+        ui.open("P", Element::default());
+        boxed(
+            ui,
+            "Sizer",
+            100.0,
+            40.0,
+            Props {
+                opacity,
+                ..Props::default()
+            },
+        );
+        boxed(
+            ui,
+            "Value",
+            80.0,
+            40.0,
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(0.0),
+                    top: Some(0.0),
+                    ..Edges::default()
+                },
+                ..Props::default()
+            },
+        );
+        ui.close();
+        ui.end();
+        ui.frame()
+            .overlaps
+            .iter()
+            .any(|o| o.path == "P/Sizer" || o.other == "P/Sizer")
+    };
+    assert!(frame(&mut ui, 1.0), "a sizer that shows is covered");
+    assert!(!frame(&mut ui, 0.0), "an invisible sizer covers nothing");
+}
+
+#[test]
+fn a_child_its_parent_clips_overlaps_nothing_past_the_parent() {
+    let mut ui = Ui::new(UiDesc::default());
+    // A map's view taller than its frame, a button under the frame: the
+    // frame that clips to its shape draws none of the view over the button.
+    let frame = |ui: &mut Ui, clip: og_ui::paint::Clip| {
+        ui.begin(InputFrame::default(), vp());
+        ui.open(
+            "P",
+            Element {
+                direction: Direction::Column,
+                ..Element::default()
+            },
+        );
+        ui.open("Map", fixed(200.0, 100.0));
+        ui.set_draw(og_ui::paint::ElementDraw {
+            clip,
+            ..Default::default()
+        });
+        boxed(
+            ui,
+            "View",
+            200.0,
+            160.0,
+            Props {
+                position: Position::Absolute,
+                insets: Edges {
+                    start: Some(0.0),
+                    top: Some(0.0),
+                    ..Edges::default()
+                },
+                ..Props::default()
+            },
+        );
+        ui.close();
+        boxed(ui, "Button", 200.0, 40.0, Props::default());
+        ui.close();
+        ui.end();
+        ui.frame()
+            .overlaps
+            .iter()
+            .any(|o| o.path == "P/Map/View" && o.other == "P/Button")
+    };
+    assert!(
+        frame(&mut ui, og_ui::paint::Clip::default()),
+        "unclipped, the view covers the button"
+    );
+    assert!(
+        !frame(&mut ui, og_ui::paint::Clip::Shape),
+        "cut to the frame, it covers nothing past it"
+    );
+}
+
+#[test]
 fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
     let mut ui = Ui::new(UiDesc::default());
     let frame = |ui: &mut Ui, list_h: f32| {
