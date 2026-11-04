@@ -870,7 +870,7 @@ export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium
  * it), the style's part `<part>[<variant>]` with its interaction states, at
  * least 44 CSS px on touch. Answers its response (zero while disabled).
  */
-export function btn(id: string, label: string, d: { variant?: BtnVariant; part?: string; disabled?: boolean; size?: "sm" | "md" | "lg"; width?: Api.Size | null; sym?: SymbolKind; before?: () => void; name?: string; selected?: boolean; raised?: boolean; key?: string } = {}): Api.Response {
+export function btn(id: string, label: string, d: { variant?: BtnVariant; part?: string; disabled?: boolean; size?: "sm" | "md" | "lg"; width?: Api.Size | null; sym?: SymbolKind; before?: () => void; name?: string; selected?: boolean; raised?: boolean; key?: string; onScene?: boolean } = {}): Api.Response {
   const { t, touch } = frame();
   const v = d.variant ?? "secondary";
   const size = d.size ?? "md";
@@ -880,7 +880,9 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   // Disabled, a filled button drops to the muted plate with dim ink: a primary keeping its accent with its label dimmed
   // read as a broken active button (Send with an empty draft, Apply with nothing changed).
   const muted = !!d.disabled && fillRole !== null && fillRole !== "control";
-  const ink = muted ? role("inkMuted") : v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
+  // A plate-less button over a scene or key art (onScene: Details on a banner) takes the scene's ink and separation.
+  const scene = !!d.onScene && fillRole === null && v !== "glass";
+  const ink = muted ? role("inkMuted") : v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(scene ? "sceneInk" : inkRole);
   // Glass: a dark pane the scene shows through with a bright rim, for the second action beside a primary or premium
   // one (Summon ×1, Reroll, Banish): every secondary button at rest wears it, so the pair reads as one family.
   const accentRaised = v === "primary" && !d.disabled && d.selected === undefined;
@@ -922,7 +924,7 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     // On the premium gold the label is set bold: a regular face's thin strokes (a CJK face's most of all) blend into
     // the mid-light gold and read grey, short of the contrast floor, though the ink is near black.
     if (label && v === "premium" && !d.disabled) kit.richText("Label", `[b]${label.replace(/\[/g, "[[")}[/b]`, { step, color: paint(ink), nowrap: true, font: "display" } as Api.RichTextDesc);
-    else if (label) text("Label", label, { step, color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display" });
+    else if (label) text("Label", label, { step, color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display", onScene: scene });
     // The action's binding in a keycap after the label, where there are keys to press (not on a touch screen).
     if (d.key && !touch) {
       kit.open("Key", { direction: "row", align: "center", cross: "center", padding: xy(u(6), 0), height: px(u(size === "lg" ? 24 : 20)), radius: u(4), part: "Pattern.keycap", partClass: "badge" });

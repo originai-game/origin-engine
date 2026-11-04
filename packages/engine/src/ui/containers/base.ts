@@ -363,12 +363,21 @@ export function mark(id: string, kind: "tick" | "cross" | "plus" | "minus" | "do
   kit.close();
 }
 
-/** A label in a role colour: the common call, shorter. */
-export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number; fitMin?: Api.TypeStepName } = {}): void {
-  const color = d.color === undefined ? token("ink") : typeof d.color === "string" ? token(d.color) : paint(d.color);
+/** The ink roles, which text over a scene (onScene) takes in the scene's ink instead. */
+const INKS: ReadonlyMap<string, number> = new Map([["ink", 1], ["inkMuted", 0.82], ["inkFaint", 0.68]]);
+
+/**
+ * A label in a role colour: the common call, shorter. `onScene` is text laid over a scene or key art rather than a
+ * panel (LabelDesc.onScene): the ink roles become the style's sceneInk, at their emphasis, with its sceneShadow
+ * separation, so a light style's dark ink never lands on dark art.
+ */
+export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number; fitMin?: Api.TypeStepName; onScene?: boolean } = {}): void {
+  const scene = d.onScene ? INKS.get(typeof d.color === "string" ? d.color : d.color === undefined ? "ink" : "") : undefined;
+  const color = scene !== undefined ? token("sceneInk", scene) : d.color === undefined ? token("ink") : typeof d.color === "string" ? token(d.color) : paint(d.color);
   kit.label(id, value, {
     step: d.step ?? "body",
     color,
+    ...(d.onScene ? { onScene: true } : {}),
     nowrap: d.nowrap ?? false,
     ellipsis: d.ellipsis ?? false,
     align: d.align ?? "start",

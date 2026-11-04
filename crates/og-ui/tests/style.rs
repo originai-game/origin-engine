@@ -247,6 +247,39 @@ fn a_style_file_names_the_line_that_is_wrong() {
     assert_eq!(file.references(), vec!["styles/test/atlas.png".to_string()]);
 }
 
+/// Scene text left to the fallback reads light on a dark separation in both
+/// schemes: a dark pack's ink and hud plate, a light pack's (dark ink) its
+/// inverse ink and its scrim, never its dark ink over the scene's art.
+#[test]
+fn scene_roles_a_pack_leaves_out_stay_light_over_the_scene() {
+    let dark = parse_style(STYLE).unwrap().theme.palette;
+    assert_eq!((dark.scene_ink, dark.scene_plate), (dark.ink, dark.hud));
+    let light = STYLE
+        .replace("  ink \"#f0f0f0\"", "  ink \"#2b1a4a\"")
+        .replace("  inkInverse \"#18181a\"", "  inkInverse \"#fff4dc\"")
+        .replace("  hud \"#1c1c1ec7\"", "  hud \"#fff4dcf5\"");
+    let light = parse_style(&light).unwrap().theme.palette;
+    assert_eq!(
+        light.scene_ink,
+        Srgba::rgb(0xff, 0xf4, 0xdc),
+        "the inverse ink"
+    );
+    assert_eq!(
+        light.scene_plate, light.scrim,
+        "a dark plate, not the pale hud"
+    );
+    assert_eq!(light.scene_shadow, light.shadow);
+    // A pack's own scene roles win.
+    let own = STYLE.replace(
+        "  gold \"#ffb224\"\n",
+        "  gold \"#ffb224\"\n  sceneInk \"#ff0000\"\n",
+    );
+    assert_eq!(
+        parse_style(&own).unwrap().theme.palette.scene_ink,
+        Srgba::rgb(255, 0, 0)
+    );
+}
+
 /// Ids in a style file resolve relative to the file first, then from
 /// assets/ (lantern-vale FINDINGS #6: a copied pack named
 /// `styles/fantasy/...` and had to be rewritten). Fails if a relative id is

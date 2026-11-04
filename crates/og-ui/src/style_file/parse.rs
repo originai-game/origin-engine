@@ -270,12 +270,16 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     *palette_color(&mut theme.palette, &c.key)
                         .ok_or_else(|| q.err("is not a ThemeColor name"))? = color;
                 }
+                // Text over a scene reads light on its dark separation in
+                // every scheme: a light scheme's (dark ink) scene ink is its
+                // inverse ink, and its plate the scrim, not its pale hud.
+                let light = theme.palette.ink.luminance() < theme.palette.ink_inverse.luminance();
                 let added = [
                     ("selection", "controlStrong"),
                     ("onSelection", "ink"),
                     ("accent", "highlight"),
-                    ("sceneInk", "ink"),
-                    ("scenePlate", "hud"),
+                    ("sceneInk", if light { "inkInverse" } else { "ink" }),
+                    ("scenePlate", if light { "scrim" } else { "hud" }),
                     ("sceneShadow", "shadow"),
                 ];
                 for (name, fallback) in added {

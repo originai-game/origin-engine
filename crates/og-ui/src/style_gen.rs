@@ -454,8 +454,13 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
         selection: control_strong,
         on_selection: ink,
         accent: highlight,
-        scene_ink: ink,
-        scene_plate: panel.fade(0.94),
+        // Over a scene the text is light on a dark plate in either scheme.
+        scene_ink: if dark { ink } else { raised.mix(w, 0.5) },
+        scene_plate: if dark {
+            panel.fade(0.94)
+        } else {
+            ground.mix(k, 0.5).fade(0.7)
+        },
         scene_shadow: shadow,
         focus,
         knob,
