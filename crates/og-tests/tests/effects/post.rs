@@ -982,17 +982,53 @@ fn lens_flare_grows_as_a_lamp_clears_a_pillar() {
     );
 }
 
-/// A source's ghost is a smooth disc, the lens's defocused aperture: at
-/// the art frames' 1280 x 720, along two lines across the clear lamp's
-/// first ghost (along the circle round the frame's centre and at 45° to
-/// it, so stripes at any one angle cross at least one), the light it adds
-/// rises to one peak and falls from it, never dipping more than 1.5 below
-/// the brightest it has reached on the way up or rising more than 1.5 over
-/// the dimmest on the way down: no dark line inside, however wide. With
-/// the starburst on the whole flare its rays striped every ghost, and drawn
-/// at a few quarter-frame texels the texels' rows showed; both are a few
+/// A lamp 20 m off, alone in the dark, high on the right of the frame (uv
+/// 0.85, 0.25 under the default 50° field of view), so its first ghost
+/// lands low on the left, 0.43 of the frame from the centre.
+fn ghost_lamp() -> Vec3 {
+    Vec3::new(11.6, 6.27, -16.0)
+}
+
+fn ghost_lamp_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    fx::terrain(&mut scene, 60.0);
+    scene.lights.push(og_render::Light {
+        position: ghost_lamp(),
+        intensity: 60.0,
+        range: 30.0,
+        ..Default::default()
+    });
+    scene.light.intensity = 0.05;
+    scene.environment.intensity = 0.05;
+    scene.environment.background = Background::Color(Vec3::splat(0.005));
+    scene.post.bloom = Some(og_render::Bloom::default());
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.6, 4.0),
+        target: Vec3::new(0.0, 1.6, -10.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A source's ghost is a smooth disc a few times its source's size, the
+/// lens's defocused aperture: at the art frames' 1280 x 720, along two
+/// lines across the lamp's first ghost (along the circle round the frame's
+/// centre and at 45° to it, so stripes at any one angle cross at least
+/// one), the light it adds rises to one peak and falls from it, never
+/// dipping more than 1.5 below the brightest it has reached on the way up
+/// or rising more than 1.5 over the dimmest on the way down: no dark line
+/// inside, however wide; and 48 pixels out each way it is under a quarter
+/// of its peak: the ghost of a lamp 20 m off is three times its disc (a
+/// radius of 23 pixels), not the sun's 8 % of the height (58). With the
+/// starburst on the whole flare its rays striped every ghost, and drawn at
+/// a few quarter-frame texels the texels' rows showed; both are a few
 /// pixels across at this size, under a 3 x 3 box and a pixel's step, and
 /// were averaged away at the effects tests' 320 x 180 with 2-pixel steps.
+/// The ghost stands well out from the centre: the starburst leaves the
+/// flare whole within 0.3 of the centre (post.wgsl), so a ghost there (the
+/// pillar lamp's, which this test once read) stayed a smooth disc even
+/// under a starburst on the whole flare.
 #[test]
 fn lens_flare_ghosts_are_smooth_discs() {
     let desc = RenderDesc {
@@ -1000,23 +1036,25 @@ fn lens_flare_ghosts_are_smooth_discs() {
         height: 720,
         ..small()
     };
-    let mut on = pillar_lamp_scene(0.6);
+    let mut on = ghost_lamp_scene();
     on.post.lens_flare = Some(LensFlare {
         intensity: 1.0,
         ..Default::default()
     });
-    let mut off = pillar_lamp_scene(0.6);
+    let mut off = ghost_lamp_scene();
     off.post.lens_flare = None;
     let (on, off) = (frame(&desc, &on).0, frame(&desc, &off).0);
     let (w, h) = (on.width, on.height);
-    let (x, y) = project(&pillar_lamp_scene(0.6).camera, w, h, pillar_lamp_at(0.6));
+    let (x, y) = project(&ghost_lamp_scene().camera, w, h, ghost_lamp());
     let (mx, my) = (w - 1 - x.min(w - 1), h - 1 - y.min(h - 1));
     let (dx, dy) = (mx as f32 - w as f32 * 0.5, my as f32 - h as f32 * 0.5);
+    assert!(
+        (dx * dx / (w * w) as f32 + dy * dy / (h * h) as f32).sqrt() > 0.35,
+        "the ghost lands outside the starburst's smooth middle: ({mx}, {my})"
+    );
     let len = (dx * dx + dy * dy).sqrt().max(1.0);
     let (tx, ty) = (-dy / len, dx / len);
     let s = std::f32::consts::FRAC_1_SQRT_2;
-    // The ghost is at least 8 % of the height (57 pixels) in radius, its
-    // flat top 60 % of that: sampled every pixel 32 each way.
     for (name, (ax, ay)) in [
         ("along the circle", (tx, ty)),
         ("at 45 degrees", ((tx - ty) * s, (ty + tx) * s)),
@@ -1027,18 +1065,14 @@ fn lens_flare_ghosts_are_smooth_discs() {
             let r = (cx - 1, cy - 1, cx + 2, cy + 2);
             region(&on, r) - region(&off, r)
         };
-        let profile: Vec<f32> = (-32..=32).map(|i| added(i as f32)).collect();
-        println!("clear lamp's ghost {name}: {profile:?}");
+        let profile: Vec<f32> = (-48..=48).map(|i| added(i as f32)).collect();
+        println!("lamp's ghost {name}: {profile:?}");
         let peak = (0..profile.len())
             .max_by(|&a, &b| profile[a].total_cmp(&profile[b]))
             .unwrap();
         assert!(
             profile[peak] > 6.0,
-            "the clear lamp's ghost shows {name}: {profile:?}"
-        );
-        assert!(
-            (24..=40).contains(&peak),
-            "the ghost peaks near the mirrored pixel {name}: {profile:?}"
+            "the lamp's ghost shows {name}: {profile:?}"
         );
         // Up to the peak from its left, and down from it to the right.
         let mut high = profile[0];
@@ -1057,6 +1091,11 @@ fn lens_flare_ghosts_are_smooth_discs() {
             );
             low = low.min(v);
         }
+        let (first, last) = (profile[0], profile[profile.len() - 1]);
+        assert!(
+            first < 0.25 * profile[peak] && last < 0.25 * profile[peak],
+            "the lamp's ghost is a few times its disc, not sun-sized {name}: {profile:?}"
+        );
     }
 }
 
