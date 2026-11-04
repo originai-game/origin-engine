@@ -213,6 +213,18 @@
       "value": "StyliseSpace"
     },
     {
+      "name": "HalftoneMode",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "HalftoneMode"
+    },
+    {
+      "name": "HalftoneRegion",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "HalftoneRegion"
+    },
+    {
       "name": "Light2DKind",
       "array": "Uint32Array",
       "stride": 1,
@@ -9570,6 +9582,32 @@
           "name": "depthBits",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "ditherSpace",
+          "column": "StyliseSpace",
+          "default": "screen"
+        },
+        {
+          "name": "halftoneMode",
+          "column": "HalftoneMode",
+          "default": "ink"
+        },
+        {
+          "name": "halftoneMisregistration",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "halftoneRegion",
+          "column": "HalftoneRegion",
+          "default": "all"
+        },
+        {
+          "name": "hatchingKeepColor",
+          "column": "bool",
+          "default": false
         }
       ]
     },

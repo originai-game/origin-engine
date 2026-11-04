@@ -39,6 +39,7 @@ fn quantize(posterize: u32) -> Quantize {
         dither: DitherPattern::Bayer4,
         dither_strength: 1.0,
         dither_scale: 1,
+        space: og_render::StyliseSpace::Screen,
     }
 }
 

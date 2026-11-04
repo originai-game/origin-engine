@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2389 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2393 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -627,6 +627,10 @@ Field units the docs and Tune use.
 | [`GridPlace`](ui.md#type-GridPlace) | desc struct | ui | — |
 | [`GridSpec`](ui.md#type-GridSpec) | desc struct | ui | — |
 | [`GroundDesc`](ui.md#type-GroundDesc) | desc struct | ui | — |
+| [`HalftoneMode`](render.md#type-HalftoneMode) | enum | render | — |
+| [`HalftoneMode()`](render.md#column-HalftoneMode) | column kind | render | — |
+| [`HalftoneRegion`](render.md#type-HalftoneRegion) | enum | render | — |
+| [`HalftoneRegion()`](render.md#column-HalftoneRegion) | column kind | render | — |
 | [`HandCard`](ui.md#type-HandCard) | desc struct | ui | — |
 | [`HapticEvent`](ui.md#type-HapticEvent) | struct | ui | — |
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |

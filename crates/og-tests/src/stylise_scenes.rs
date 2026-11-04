@@ -49,8 +49,8 @@
 use glam::{Mat4, Quat, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DepthBands, DirectionalLight, DitherPattern, Exposure,
-    Halftone, Hatching, Ink, MaterialStyle, Paint, Palette, PixelScale, Quantize, RenderScene,
-    Retro3d, StandardMaterial, StyliseSpace, shapes,
+    Halftone, HalftoneMode, HalftoneRegion, Hatching, Ink, MaterialStyle, Paint, Palette,
+    PixelScale, Quantize, RenderScene, Retro3d, StandardMaterial, StyliseSpace, shapes,
 };
 
 /// A 16-colour palette: a dusk ramp from near-black through purples and
@@ -91,6 +91,7 @@ pub fn pixel_scene() -> Result<RenderScene, String> {
         dither: DitherPattern::Bayer4,
         dither_strength: 1.0,
         dither_scale: 1,
+        space: StyliseSpace::Screen,
     });
     Ok(scene)
 }
@@ -109,6 +110,7 @@ pub fn palette_scene() -> Result<RenderScene, String> {
         dither: DitherPattern::BlueNoise,
         dither_strength: 1.0,
         dither_scale: 1,
+        space: StyliseSpace::Screen,
     });
     Ok(scene)
 }
@@ -123,6 +125,7 @@ pub fn print_scene() -> RenderScene {
         color: [0.04, 0.035, 0.03],
         space: StyliseSpace::Screen,
         depth: 0.0,
+        keep_color: false,
     });
     scene.stylise.ink = Some(Ink {
         threshold: 0.12,
@@ -142,6 +145,9 @@ pub fn halftone_scene() -> Result<RenderScene, String> {
         angle_degrees: 30.0,
         color: [0.05, 0.02, 0.08],
         space: StyliseSpace::Screen,
+        mode: HalftoneMode::Ink,
+        misregistration: 0.0,
+        region: HalftoneRegion::All,
     });
     Ok(scene)
 }
@@ -154,6 +160,9 @@ pub fn halftone_surface_scene() -> Result<RenderScene, String> {
         angle_degrees: 30.0,
         color: [0.05, 0.02, 0.08],
         space: StyliseSpace::Surface,
+        mode: HalftoneMode::Ink,
+        misregistration: 0.0,
+        region: HalftoneRegion::All,
     });
     scene.stylise.ink = Some(Ink {
         threshold: 0.4,
@@ -370,6 +379,7 @@ pub fn surface_scene() -> RenderScene {
         color: [0.05, 0.045, 0.04],
         space: StyliseSpace::Surface,
         depth: 0.0,
+        keep_color: false,
     });
     scene.stylise.paint = Some(Paint {
         radius: 0.0,

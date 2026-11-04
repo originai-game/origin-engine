@@ -83,6 +83,10 @@ module render {
 | [`MaterialSurface()`](#column-MaterialSurface) | column kind | A MaterialSurface field: the variant's index. |
 | [`StyliseSpace`](#type-StyliseSpace) | enum | Where Stylise lays a pattern (the paint canvas, the hatching, the halftone). |
 | [`StyliseSpace()`](#column-StyliseSpace) | column kind | A StyliseSpace field: the variant's index. |
+| [`HalftoneMode`](#type-HalftoneMode) | enum | How Stylise.halftone inks the frame. |
+| [`HalftoneMode()`](#column-HalftoneMode) | column kind | A HalftoneMode field: the variant's index. |
+| [`HalftoneRegion`](#type-HalftoneRegion) | enum | Which tones Stylise.halftone prints on. |
+| [`HalftoneRegion()`](#column-HalftoneRegion) | column kind | A HalftoneRegion field: the variant's index. |
 | [`og.Stylise`](#record-Stylise) | resource | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation. |
 | [`og.MaterialStyle`](#record-MaterialStyle) | resource | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls off with distance, and flat facets. Each applies to a material (og.render.standardMaterial or a loaded glTF's) that leaves that field at its own default; a terrain (og.Terrain) takes toon (the built-in three bands, matte) and shadowTint; unlit and shader materials, materials with StandardMaterialDesc.styled false, sprites and the UI are untouched, and toon passes by a material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which keeps its physical shading. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation. |
 | [`LookInfo`](#type-LookInfo) | struct | A loaded look: where it came from and what applying it sets. |
@@ -310,7 +314,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 5644</sub>
+<sub>`api.ogt` line 5680</sub>
 
 <a id="fn-sprite"></a>
 
@@ -340,7 +344,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 5774</sub>
+<sub>`api.ogt` line 5810</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -370,7 +374,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 5969</sub>
+<sub>`api.ogt` line 6005</sub>
 
 <a id="fn-measureText"></a>
 
@@ -400,7 +404,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 5976</sub>
+<sub>`api.ogt` line 6012</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -430,7 +434,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6045</sub>
+<sub>`api.ogt` line 6081</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -460,7 +464,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6052</sub>
+<sub>`api.ogt` line 6088</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -490,7 +494,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6059</sub>
+<sub>`api.ogt` line 6095</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -520,7 +524,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6146</sub>
+<sub>`api.ogt` line 6182</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -552,7 +556,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6153</sub>
+<sub>`api.ogt` line 6189</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -584,7 +588,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6170</sub>
+<sub>`api.ogt` line 6206</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -616,7 +620,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 6178</sub>
+<sub>`api.ogt` line 6214</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -650,7 +654,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 6186</sub>
+<sub>`api.ogt` line 6222</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -680,7 +684,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 6195</sub>
+<sub>`api.ogt` line 6231</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -742,7 +746,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 6202</sub>
+<sub>`api.ogt` line 6238</sub>
 
 <a id="fn-setDisplay"></a>
 
@@ -772,7 +776,7 @@ fn setDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6312</sub>
+<sub>`api.ogt` line 6348</sub>
 
 <a id="fn-resetDisplay"></a>
 
@@ -800,7 +804,7 @@ fn resetDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6319</sub>
+<sub>`api.ogt` line 6355</sub>
 
 <a id="fn-display"></a>
 
@@ -828,7 +832,7 @@ fn display {
 }
 ```
 
-<sub>`api.ogt` line 6325</sub>
+<sub>`api.ogt` line 6361</sub>
 
 <a id="fn-look"></a>
 
@@ -856,7 +860,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 6331</sub>
+<sub>`api.ogt` line 6367</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -884,7 +888,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 6337</sub>
+<sub>`api.ogt` line 6373</sub>
 
 <a id="fn-text"></a>
 
@@ -914,7 +918,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 6343</sub>
+<sub>`api.ogt` line 6379</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -944,7 +948,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6381</sub>
+<sub>`api.ogt` line 6417</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -976,7 +980,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6388</sub>
+<sub>`api.ogt` line 6424</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -1006,7 +1010,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6396</sub>
+<sub>`api.ogt` line 6432</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -1036,7 +1040,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6591</sub>
+<sub>`api.ogt` line 6627</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -1066,7 +1070,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6598</sub>
+<sub>`api.ogt` line 6634</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -1096,7 +1100,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6605</sub>
+<sub>`api.ogt` line 6641</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -1126,7 +1130,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6612</sub>
+<sub>`api.ogt` line 6648</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -1156,7 +1160,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6619</sub>
+<sub>`api.ogt` line 6655</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1186,7 +1190,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6626</sub>
+<sub>`api.ogt` line 6662</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1216,7 +1220,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6633</sub>
+<sub>`api.ogt` line 6669</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1246,7 +1250,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6870</sub>
+<sub>`api.ogt` line 6906</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1276,7 +1280,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6877</sub>
+<sub>`api.ogt` line 6913</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1306,7 +1310,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6884</sub>
+<sub>`api.ogt` line 6920</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1336,7 +1340,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6891</sub>
+<sub>`api.ogt` line 6927</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1366,7 +1370,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6898</sub>
+<sub>`api.ogt` line 6934</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1396,7 +1400,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6905</sub>
+<sub>`api.ogt` line 6941</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1426,7 +1430,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6912</sub>
+<sub>`api.ogt` line 6948</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1456,7 +1460,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6919</sub>
+<sub>`api.ogt` line 6955</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1486,7 +1490,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6926</sub>
+<sub>`api.ogt` line 6962</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1516,7 +1520,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6933</sub>
+<sub>`api.ogt` line 6969</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1546,7 +1550,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 6940</sub>
+<sub>`api.ogt` line 6976</sub>
 
 <a id="fn-lines"></a>
 
@@ -1576,7 +1580,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 6998</sub>
+<sub>`api.ogt` line 7034</sub>
 
 <a id="fn-points"></a>
 
@@ -1606,7 +1610,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 7033</sub>
+<sub>`api.ogt` line 7069</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1638,7 +1642,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 7137</sub>
+<sub>`api.ogt` line 7173</sub>
 
 <a id="fn-light2dAt"></a>
 
@@ -1675,7 +1679,7 @@ fn light2dAt {
 }
 ```
 
-<sub>`api.ogt` line 7145</sub>
+<sub>`api.ogt` line 7181</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1705,7 +1709,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7204</sub>
+<sub>`api.ogt` line 7240</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1739,7 +1743,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 7316</sub>
+<sub>`api.ogt` line 7352</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1767,7 +1771,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 7331</sub>
+<sub>`api.ogt` line 7367</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1795,7 +1799,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7413</sub>
+<sub>`api.ogt` line 7449</sub>
 
 ## Components, resources and events
 
@@ -2848,6 +2852,11 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `vertexSnap` | `number` | `0` | 0 … 16 | — | — | Snap every vertex of the 3D scene to a screen grid this many logical pixels wide, as fixed-point hardware did: geometry jitters by whole steps as it moves; 0 is off. |
 | `affineTexturing` | `number` | `0` | 0 … 1 | `ratio` | — | How far texture coordinates are interpolated without perspective correction: 1 fully affine, so textures warp and swim across large polygons as on early consoles; 0 is off. |
 | `depthBits` | `number` | `0` | 0 … 24 | — | — | Quantise depth to this many bits, for the coarse depth buffers of early 3D (12 to 16 are period-like: distant surfaces fight); 0 keeps full precision. |
+| `ditherSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces about ditherScale pixels across by whole octaves, so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass. |
+| `halftoneMode` | `HalftoneMode` | `"ink"` | — | — | — | How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk). |
+| `halftoneMisregistration` | `number` | `0` | 0 … 8 | — | tunable | With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register. |
+| `halftoneRegion` | `HalftoneRegion` | `"all"` | — | — | — | Which tones the halftone prints on: all, the shade only (Ben-Day dots in the shadows) or the highlights only. |
+| `hatchingKeepColor` | `boolean` | `false` | — | — | — | Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. |
 
 ```ogt
 resource Stylise {
@@ -3041,10 +3050,19 @@ resource Stylise {
     min 0
     max 24
   }
+  field ditherSpace StyliseSpace "Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces about ditherScale pixels across by whole octaves, so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass."
+  field halftoneMode HalftoneMode "How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk)."
+  field halftoneMisregistration f32 "With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register." {
+    min 0
+    max 8
+    tunable true
+  }
+  field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all, the shade only (Ben-Day dots in the shadows) or the highlights only."
+  field hatchingKeepColor bool "Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
 }
 ```
 
-<sub>`api.ogt` line 5067</sub>
+<sub>`api.ogt` line 5094</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -3131,7 +3149,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 5260</sub>
+<sub>`api.ogt` line 5296</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -3176,7 +3194,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 5328</sub>
+<sub>`api.ogt` line 5364</sub>
 
 <a id="record-Light2D"></a>
 
@@ -3251,7 +3269,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 5366</sub>
+<sub>`api.ogt` line 5402</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -3288,7 +3306,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 5415</sub>
+<sub>`api.ogt` line 5451</sub>
 
 <a id="record-LightMask2D"></a>
 
@@ -3311,7 +3329,7 @@ component LightMask2D {
 }
 ```
 
-<sub>`api.ogt` line 5433</sub>
+<sub>`api.ogt` line 5469</sub>
 
 <a id="record-Decal"></a>
 
@@ -3380,7 +3398,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 5440</sub>
+<sub>`api.ogt` line 5476</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -3417,7 +3435,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 5485</sub>
+<sub>`api.ogt` line 5521</sub>
 
 <a id="record-ParticleEvent"></a>
 
@@ -3451,7 +3469,7 @@ event ParticleEvent {
 }
 ```
 
-<sub>`api.ogt` line 5508</sub>
+<sub>`api.ogt` line 5544</sub>
 
 <a id="record-Trail"></a>
 
@@ -3527,7 +3545,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 5522</sub>
+<sub>`api.ogt` line 5558</sub>
 
 <a id="record-Beam"></a>
 
@@ -3594,7 +3612,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 5570</sub>
+<sub>`api.ogt` line 5606</sub>
 
 <a id="record-Sprite"></a>
 
@@ -3748,7 +3766,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 5781</sub>
+<sub>`api.ogt` line 5817</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3796,7 +3814,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 5883</sub>
+<sub>`api.ogt` line 5919</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3849,7 +3867,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 6114</sub>
+<sub>`api.ogt` line 6150</sub>
 
 <a id="record-Lines"></a>
 
@@ -3912,7 +3930,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 7040</sub>
+<sub>`api.ogt` line 7076</sub>
 
 <a id="record-Points"></a>
 
@@ -3966,7 +3984,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 7077</sub>
+<sub>`api.ogt` line 7113</sub>
 
 <a id="record-CameraView"></a>
 
@@ -4073,7 +4091,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 7211</sub>
+<sub>`api.ogt` line 7247</sub>
 
 <a id="record-Mirror"></a>
 
@@ -4118,7 +4136,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 7283</sub>
+<sub>`api.ogt` line 7319</sub>
 
 <a id="record-RectLight"></a>
 
@@ -4168,7 +4186,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7345</sub>
+<sub>`api.ogt` line 7381</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -4202,7 +4220,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7372</sub>
+<sub>`api.ogt` line 7408</sub>
 
 <a id="record-RealtimeLightVolume"></a>
 
@@ -4235,7 +4253,7 @@ component RealtimeLightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7387</sub>
+<sub>`api.ogt` line 7423</sub>
 
 ## Types
 
@@ -5305,6 +5323,54 @@ enum StyliseSpace {
 
 <sub>`api.ogt` line 5053</sub>
 
+<a id="type-HalftoneMode"></a>
+
+### `HalftoneMode` (enum)
+
+How Stylise.halftone inks the frame.
+
+A string: one of the variants below. The zero value is `"ink"`.
+
+| Variant | Doc |
+|---|---|
+| `"ink"` | One ink (halftoneColor) on paper: dots larger where the image is darker. |
+| `"cmyk"` | Four-colour process print: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle (black at halftoneAngle, cyan 30 degrees before it, magenta 30 after, yellow 45 before: 15, 75, 0 and 45 at the default angle), the inks multiplied on white paper, as comics were printed. |
+
+```ogt
+enum HalftoneMode {
+  doc "How Stylise.halftone inks the frame."
+  variant ink "One ink (halftoneColor) on paper: dots larger where the image is darker."
+  variant cmyk "Four-colour process print: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle (black at halftoneAngle, cyan 30 degrees before it, magenta 30 after, yellow 45 before: 15, 75, 0 and 45 at the default angle), the inks multiplied on white paper, as comics were printed."
+}
+```
+
+<sub>`api.ogt` line 5067</sub>
+
+<a id="type-HalftoneRegion"></a>
+
+### `HalftoneRegion` (enum)
+
+Which tones Stylise.halftone prints on.
+
+A string: one of the variants below. The zero value is `"all"`.
+
+| Variant | Doc |
+|---|---|
+| `"all"` | Every tone. |
+| `"shade"` | The shade only: Ben-Day dots in the shadows while lit tones keep their colour (Hi-Fi Rush, Spider-Verse). |
+| `"highlight"` | The highlights only. |
+
+```ogt
+enum HalftoneRegion {
+  doc "Which tones Stylise.halftone prints on."
+  variant all "Every tone."
+  variant shade "The shade only: Ben-Day dots in the shadows while lit tones keep their colour (Hi-Fi Rush, Spider-Verse)."
+  variant highlight "The highlights only."
+}
+```
+
+<sub>`api.ogt` line 5080</sub>
+
 <a id="type-LookInfo"></a>
 
 ### `LookInfo` (struct)
@@ -5334,7 +5400,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5317</sub>
+<sub>`api.ogt` line 5353</sub>
 
 <a id="type-Light2DKind"></a>
 
@@ -5359,7 +5425,7 @@ enum Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5352</sub>
+<sub>`api.ogt` line 5388</sub>
 
 <a id="type-ParticleEventKind"></a>
 
@@ -5384,7 +5450,7 @@ enum ParticleEventKind {
 }
 ```
 
-<sub>`api.ogt` line 5501</sub>
+<sub>`api.ogt` line 5537</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -5424,7 +5490,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 5611</sub>
+<sub>`api.ogt` line 5647</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -5455,7 +5521,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 5632</sub>
+<sub>`api.ogt` line 5668</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -5519,7 +5585,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5651</sub>
+<sub>`api.ogt` line 5687</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -5548,7 +5614,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 5686</sub>
+<sub>`api.ogt` line 5722</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -5571,7 +5637,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 5697</sub>
+<sub>`api.ogt` line 5733</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -5684,7 +5750,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 5704</sub>
+<sub>`api.ogt` line 5740</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -5774,7 +5840,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5910</sub>
+<sub>`api.ogt` line 5946</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -5816,7 +5882,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5983</sub>
+<sub>`api.ogt` line 6019</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -5852,7 +5918,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6006</sub>
+<sub>`api.ogt` line 6042</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -5892,7 +5958,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6024</sub>
+<sub>`api.ogt` line 6060</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -5959,7 +6025,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 6070</sub>
+<sub>`api.ogt` line 6106</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -5982,7 +6048,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6101</sub>
+<sub>`api.ogt` line 6137</sub>
 
 <a id="type-Shader"></a>
 
@@ -5996,7 +6062,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 6161</sub>
+<sub>`api.ogt` line 6197</sub>
 
 <a id="type-FrameCap"></a>
 
@@ -6027,7 +6093,7 @@ enum FrameCap {
 }
 ```
 
-<sub>`api.ogt` line 6224</sub>
+<sub>`api.ogt` line 6260</sub>
 
 <a id="type-PowerPreference"></a>
 
@@ -6050,7 +6116,7 @@ enum PowerPreference {
 }
 ```
 
-<sub>`api.ogt` line 6234</sub>
+<sub>`api.ogt` line 6270</sub>
 
 <a id="type-DisplaySettings"></a>
 
@@ -6111,7 +6177,7 @@ struct DisplaySettings {
 }
 ```
 
-<sub>`api.ogt` line 6240</sub>
+<sub>`api.ogt` line 6276</sub>
 
 <a id="type-GpuMemory"></a>
 
@@ -6148,7 +6214,7 @@ struct GpuMemory {
 }
 ```
 
-<sub>`api.ogt` line 6274</sub>
+<sub>`api.ogt` line 6310</sub>
 
 <a id="type-DisplayInfo"></a>
 
@@ -6195,7 +6261,7 @@ struct DisplayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6293</sub>
+<sub>`api.ogt` line 6329</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -6236,7 +6302,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6352</sub>
+<sub>`api.ogt` line 6388</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -6267,7 +6333,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6368</sub>
+<sub>`api.ogt` line 6404</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -6326,7 +6392,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6403</sub>
+<sub>`api.ogt` line 6439</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -6370,7 +6436,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6439</sub>
+<sub>`api.ogt` line 6475</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -6417,7 +6483,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6463</sub>
+<sub>`api.ogt` line 6499</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -6464,7 +6530,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6490</sub>
+<sub>`api.ogt` line 6526</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -6515,7 +6581,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6517</sub>
+<sub>`api.ogt` line 6553</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -6555,7 +6621,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6547</sub>
+<sub>`api.ogt` line 6583</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -6599,7 +6665,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6568</sub>
+<sub>`api.ogt` line 6604</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -6620,7 +6686,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 6642</sub>
+<sub>`api.ogt` line 6678</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -6657,7 +6723,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6648</sub>
+<sub>`api.ogt` line 6684</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -6730,7 +6796,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6665</sub>
+<sub>`api.ogt` line 6701</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -6778,7 +6844,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6710</sub>
+<sub>`api.ogt` line 6746</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -6822,7 +6888,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6736</sub>
+<sub>`api.ogt` line 6772</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -6862,7 +6928,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6758</sub>
+<sub>`api.ogt` line 6794</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -6885,7 +6951,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 6778</sub>
+<sub>`api.ogt` line 6814</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -6937,7 +7003,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6786</sub>
+<sub>`api.ogt` line 6822</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -6964,7 +7030,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 6813</sub>
+<sub>`api.ogt` line 6849</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -6998,7 +7064,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 6821</sub>
+<sub>`api.ogt` line 6857</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -7023,7 +7089,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 6835</sub>
+<sub>`api.ogt` line 6871</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -7059,7 +7125,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6842</sub>
+<sub>`api.ogt` line 6878</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -7091,7 +7157,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6857</sub>
+<sub>`api.ogt` line 6893</sub>
 
 <a id="type-LineMode"></a>
 
@@ -7116,7 +7182,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 6947</sub>
+<sub>`api.ogt` line 6983</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -7182,7 +7248,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6961</sub>
+<sub>`api.ogt` line 6997</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -7233,7 +7299,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 7005</sub>
+<sub>`api.ogt` line 7041</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -7266,7 +7332,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 7108</sub>
+<sub>`api.ogt` line 7144</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -7301,7 +7367,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 7122</sub>
+<sub>`api.ogt` line 7158</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -7324,7 +7390,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7158</sub>
+<sub>`api.ogt` line 7194</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -7338,7 +7404,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 7171</sub>
+<sub>`api.ogt` line 7207</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -7372,7 +7438,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7180</sub>
+<sub>`api.ogt` line 7216</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -7399,7 +7465,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7195</sub>
+<sub>`api.ogt` line 7231</sub>
 
 <a id="type-Post"></a>
 
@@ -7413,7 +7479,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 7307</sub>
+<sub>`api.ogt` line 7343</sub>
 
 <a id="type-PostError"></a>
 
@@ -7434,7 +7500,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 7325</sub>
+<sub>`api.ogt` line 7361</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -7457,7 +7523,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 7339</sub>
+<sub>`api.ogt` line 7375</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -7490,7 +7556,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7401</sub>
+<sub>`api.ogt` line 7437</sub>
 
 ## Column kinds
 
@@ -7519,6 +7585,8 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-DitherPattern"></a>`DitherPattern` | `DitherPattern` | `Uint32Array` | 1 | A DitherPattern field: the variant's index. |
 | <a id="column-MaterialSurface"></a>`MaterialSurface` | `MaterialSurface` | `Uint32Array` | 1 | A MaterialSurface field: the variant's index. |
 | <a id="column-StyliseSpace"></a>`StyliseSpace` | `StyliseSpace` | `Uint32Array` | 1 | A StyliseSpace field: the variant's index. |
+| <a id="column-HalftoneMode"></a>`HalftoneMode` | `HalftoneMode` | `Uint32Array` | 1 | A HalftoneMode field: the variant's index. |
+| <a id="column-HalftoneRegion"></a>`HalftoneRegion` | `HalftoneRegion` | `Uint32Array` | 1 | A HalftoneRegion field: the variant's index. |
 | <a id="column-Light2DKind"></a>`Light2DKind` | `Light2DKind` | `Uint32Array` | 1 | A Light2DKind field: the variant's index. |
 | <a id="column-ReflectionProbeMode"></a>`ReflectionProbeMode` | `ReflectionProbeMode` | `Uint32Array` | 1 | A ReflectionProbeMode field: the variant's index. |
 | <a id="column-Shader"></a>`Shader` | `Shader` | `Uint32Array` | 2 | A Shader handle field (0 is none): a material shader og.load.shader answered, kept for og.render.shaderMaterial. |
@@ -7759,6 +7827,28 @@ column StyliseSpace {
 <sub>`api.ogt` line 5060</sub>
 
 ```ogt
+column HalftoneMode {
+  doc "A HalftoneMode field: the variant's index."
+  array Uint32Array
+  stride 1
+  value HalftoneMode
+}
+```
+
+<sub>`api.ogt` line 5073</sub>
+
+```ogt
+column HalftoneRegion {
+  doc "A HalftoneRegion field: the variant's index."
+  array Uint32Array
+  stride 1
+  value HalftoneRegion
+}
+```
+
+<sub>`api.ogt` line 5087</sub>
+
+```ogt
 column Light2DKind {
   doc "A Light2DKind field: the variant's index."
   array Uint32Array
@@ -7767,7 +7857,7 @@ column Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5359</sub>
+<sub>`api.ogt` line 5395</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -7778,7 +7868,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6107</sub>
+<sub>`api.ogt` line 6143</sub>
 
 ```ogt
 column Shader {
@@ -7789,7 +7879,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6163</sub>
+<sub>`api.ogt` line 6199</sub>
 
 ```ogt
 column LineMode {
@@ -7800,7 +7890,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 6954</sub>
+<sub>`api.ogt` line 6990</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -7811,7 +7901,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7164</sub>
+<sub>`api.ogt` line 7200</sub>
 
 ```ogt
 column RenderTarget {
@@ -7822,7 +7912,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7173</sub>
+<sub>`api.ogt` line 7209</sub>
 
 ```ogt
 column Post {
@@ -7833,7 +7923,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7309</sub>
+<sub>`api.ogt` line 7345</sub>
 
 ## Constants
 
@@ -7849,28 +7939,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 5483</sub>
+<sub>`api.ogt` line 5519</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 6066</sub>
+<sub>`api.ogt` line 6102</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 6067</sub>
+<sub>`api.ogt` line 6103</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 6068</sub>
+<sub>`api.ogt` line 6104</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 6099</sub>
+<sub>`api.ogt` line 6135</sub>

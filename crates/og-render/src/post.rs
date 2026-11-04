@@ -213,6 +213,13 @@ pub(crate) struct StyliseUniform {
     /// scale that keeps a barrel's farthest corner on the image, zw the
     /// centre.
     pub lens: [f32; 4],
+    /// x: where the dither's cells lie (`StyliseSpace::code`).
+    pub dither_space: [f32; 4],
+    /// x: the halftone's mode (0 one ink, 1 CMYK), y: the plates'
+    /// misregistration in logical pixels, z: the region it prints on (0
+    /// every tone, 1 shade, 2 highlight), w: 1 when hatching keeps the
+    /// colour under its strokes.
+    pub print: [f32; 4],
 }
 
 /// The grid the surface patterns are measured from (metres): a whole
