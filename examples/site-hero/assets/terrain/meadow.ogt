@@ -26,8 +26,13 @@ layer {
   slopeFade 8
 }
 # The cliff's rock, projected three ways, wherever it is steep (control B).
+# Tinted to the authored cliff stack's mean albedo (models/cliff.glb, linear
+# 0.26 0.25 0.15 against rock.png's 0.37 0.35 0.30), so the height field's
+# wall and the stack in front of it read as one warm sandstone cliff rather
+# than a pale grey sheet behind it.
 layer {
   albedo "textures/rock.png"
+  color 0.7 0.72 0.5
   tile 9
   roughness 0.9
   triplanar true
