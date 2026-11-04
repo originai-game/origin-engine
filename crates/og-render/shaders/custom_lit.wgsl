@@ -37,6 +37,23 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: CustomSkinne
 
 @fragment
 fn fs(in: CustomOut) -> @location(0) vec4<f32> {
+  return custom_fragment(in);
+}
+
+// The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
+@fragment
+fn fs_oit(in: CustomOut) -> OitOutput {
+  return oit_weighted(custom_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: CustomOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = custom_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn custom_fragment(in: CustomOut) -> vec4<f32> {
   let v = custom_view(in.world);
   let out = custom_surface(in, v);
   if (custom_cut(out)) { discard; }

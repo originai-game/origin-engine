@@ -72,8 +72,10 @@ fn user_section(shader: &MaterialShader) -> String {
 /// The lit (and prepass) module of a full shader.
 pub(crate) fn lit_source(shader: &MaterialShader, lit: bool) -> String {
     format!(
-        "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
+        "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
         crate::FRAME_WGSL,
+        crate::oit::OIT_WGSL,
+        crate::oit::ARENA_WGSL,
         crate::clusters::wgsl(),
         crate::particles_gpu::NOISE_WGSL,
         crate::MATERIAL_WGSL,
@@ -106,7 +108,8 @@ fn fx_section() -> &'static str {
 /// The shadow casters' module of a full shader.
 pub(crate) fn shadow_source(shader: &MaterialShader) -> String {
     format!(
-        "{}{}{}{}{}{}{}{}{SHADOW_WGSL}",
+        "{}{}{}{}{}{}{}{}{}{SHADOW_WGSL}",
+        crate::oit::OIT_WGSL,
         crate::particles_gpu::NOISE_WGSL,
         crate::MATERIAL_WGSL,
         crate::MATERIAL_MAPS_WGSL,

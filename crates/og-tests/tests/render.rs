@@ -1,5 +1,5 @@
 //! Renderer behaviour read from frames: standard materials (transparency
-//! sorted back to front, double-sided, unlit, a reflected edit reaching the
+//! sorted back to front, or order independent, double-sided, unlit, a reflected edit reaching the
 //! frame), compressed texture formats by tier, the shadow map size and
 //! cascade count, and bounded, cancellable capture.
 
@@ -66,9 +66,18 @@ fn close(actual: [u8; 3], expected: [f32; 3], within: f32) -> bool {
         .all(|(&a, e)| (a as f32 - e).abs() <= within)
 }
 
+/// The linked lists (og-render's oit.rs), which composite a pixel's
+/// fragments exactly, front over back, as sorted blending did.
+fn exact_desc() -> RenderDesc {
+    RenderDesc {
+        transparency: og_render::Transparency::LinkedList,
+        ..scenes::base_desc()
+    }
+}
+
 /// Three half-transparent planes stacked under the camera, submitted nearest
-/// first: drawn back to front, the nearest (red) dominates the blend; drawn
-/// in submission order, the farthest (blue) would.
+/// first: composited front over back, the nearest (red) dominates the
+/// blend; in submission order, the farthest (blue) would.
 #[test]
 fn transparent_draws_are_sorted_back_to_front() {
     let mut scene = flat_scene();
@@ -88,7 +97,7 @@ fn transparent_draws_are_sorted_back_to_front() {
     for (material, height) in [(red, 3.0), (green, 2.0), (blue, 1.0)] {
         scene.add_instance(plane, material, Mat4::from_translation(Vec3::Y * height));
     }
-    let (img, stats) = frame(&scenes::base_desc(), &scene);
+    let (img, stats) = frame(&exact_desc(), &scene);
     let c = center(&img);
     // Blue, then green, then red, each at alpha 0.5 over black.
     let expected = [srgb(0.5), srgb(0.25), srgb(0.125)];
@@ -122,7 +131,7 @@ fn transparent_instances_of_one_material_are_sorted_too() {
     // Red nearer than green, submitted first.
     scene.add_instance(r, glass, Mat4::from_translation(Vec3::Y * 2.0));
     scene.add_instance(g, glass, Mat4::from_translation(Vec3::Y * 1.0));
-    let (img, stats) = frame(&scenes::base_desc(), &scene);
+    let (img, stats) = frame(&exact_desc(), &scene);
     let c = center(&img);
     let expected = [srgb(0.5), srgb(0.25), 0.0];
     assert!(
@@ -130,6 +139,129 @@ fn transparent_instances_of_one_material_are_sorted_too() {
         "centre {c:?}, expected {expected:?}"
     );
     assert_eq!(stats.transparent, 2);
+}
+
+/// Overlapping half-transparent panes for the order-independent acceptance
+/// (og-render's oit.rs): seven at five heights, offset so the middle has
+/// more fragments a pixel than four nodes hold and the rim fewer, and two
+/// at one height (equal depths, told apart by their draws' keys). Unlit,
+/// untonemapped, one sample: the frame is the resolve's colour.
+fn oit_panes(reversed: bool) -> RenderScene {
+    let mut scene = flat_scene();
+    let plane = scene.add_mesh(shapes::plane(2.0, 1.0));
+    let mut panes = vec![
+        (Vec3::new(1.0, 0.2, 0.1), 0.45, Vec3::new(-0.6, 1.0, 0.0)),
+        (Vec3::new(0.1, 0.9, 0.3), 0.35, Vec3::new(0.6, 1.5, 0.0)),
+        (Vec3::new(0.2, 0.3, 1.0), 0.55, Vec3::new(0.0, 2.0, -0.6)),
+        (Vec3::new(0.9, 0.8, 0.1), 0.40, Vec3::new(-0.3, 2.5, 0.3)),
+        // The tie: the same height, overlapping in the middle.
+        (Vec3::new(0.8, 0.1, 0.9), 0.50, Vec3::new(0.3, 2.5, 0.3)),
+        (Vec3::new(0.1, 0.9, 0.9), 0.30, Vec3::new(0.0, 3.0, 0.6)),
+        (Vec3::new(0.95, 0.5, 0.2), 0.60, Vec3::new(0.2, 3.5, -0.2)),
+    ];
+    if reversed {
+        panes.reverse();
+    }
+    for (color, opacity, at) in panes {
+        let m = scene.add_standard_material(StandardMaterial {
+            color,
+            opacity,
+            transparent: 1,
+            unlit: 1,
+            ..Default::default()
+        });
+        scene.add_instance(plane, m, Mat4::from_translation(at));
+    }
+    scene
+}
+
+fn oit_frame(
+    transparency: og_render::Transparency,
+    reversed: bool,
+) -> (RgbaImage, FrameStats, Option<og_render::TransparencyCounts>) {
+    let desc = RenderDesc {
+        transparency,
+        transparency_layers: 4,
+        ..scenes::base_desc()
+    };
+    let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+    assert_eq!(
+        renderer.info().transparency,
+        transparency,
+        "the device keeps the lists"
+    );
+    let stats = renderer
+        .render(&oit_panes(reversed), &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("capture");
+    let counts = renderer
+        .read_transparency_counts()
+        .map(|c| c.expect("the counts read back"));
+    (img, stats, counts)
+}
+
+/// Order-independent transparency's acceptance: the same panes submitted
+/// in reverse. With the linked lists the pixels that overflow their four
+/// nodes are the same set, every fragment is counted alike, and every
+/// other pixel is bit-identical (equal depths ordered by their draws'
+/// keys, never by arrival or colour); the overflowing pixels, and every
+/// pixel in the weighted mode, agree within the half-float rounding of the
+/// weighted sums: at most one 8-bit step a channel.
+#[test]
+fn transparency_does_not_depend_on_submission_order() {
+    use og_render::Transparency;
+    let (a, sa, ca) = oit_frame(Transparency::LinkedList, false);
+    let (b, sb, cb) = oit_frame(Transparency::LinkedList, true);
+    let (ca, cb) = (ca.expect("a list frame"), cb.expect("a list frame"));
+    assert!(sa.transparency_oit && sb.transparency_oit);
+    assert_eq!((sa.transparency_layers, ca.layers), (4, 4));
+    // Every fragment accounted for, alike in both orders.
+    assert_eq!((ca.width, ca.height), (a.width, a.height));
+    assert_eq!(ca.counts, cb.counts, "per-pixel fragment counts");
+    let over = |c: &og_render::TransparencyCounts| -> Vec<usize> {
+        (0..c.counts.len())
+            .filter(|&i| c.counts[i] > c.layers)
+            .collect()
+    };
+    let (oa, ob) = (over(&ca), over(&cb));
+    assert_eq!(oa, ob, "the overflow pixel set");
+    assert_eq!(ca.overflow_pixels as usize, oa.len());
+    assert_eq!(cb.overflow_pixels as usize, ob.len());
+    assert!(!oa.is_empty(), "the middle overflows four nodes");
+    let max_count = *ca.counts.iter().max().unwrap();
+    assert!(max_count >= 6, "up to {max_count} fragments a pixel");
+    let sorted = ca.counts.iter().filter(|&&n| n > 1 && n <= 4).count();
+    assert!(sorted > 1000, "{sorted} sorted pixels of several fragments");
+    let mut differing = 0;
+    let mut worst = 0u8;
+    for i in 0..ca.counts.len() {
+        let (pa, pb) = (&a.pixels[i * 4..i * 4 + 3], &b.pixels[i * 4..i * 4 + 3]);
+        if ca.counts[i] <= ca.layers {
+            differing += usize::from(pa != pb);
+        } else {
+            worst = worst.max(
+                pa.iter()
+                    .zip(pb)
+                    .map(|(x, y)| x.abs_diff(*y))
+                    .max()
+                    .unwrap(),
+            );
+        }
+    }
+    assert_eq!(differing, 0, "sorted pixels differ between the orders");
+    assert!(worst <= 1, "weighted fallback pixels differ by {worst}");
+    // The weighted mode: every pixel within one step.
+    let (wa, swa, none) = oit_frame(Transparency::Weighted, false);
+    assert!(none.is_none() && swa.transparency_oit && swa.transparency_layers == 0);
+    let (wb, ..) = oit_frame(Transparency::Weighted, true);
+    let worst = wa
+        .pixels
+        .iter()
+        .zip(&wb.pixels)
+        .map(|(x, y)| x.abs_diff(*y))
+        .max()
+        .unwrap();
+    assert!(worst <= 1, "weighted pixels differ by {worst}");
 }
 
 /// A reflected edit, as the inspector or Tune makes it (the packed bytes of

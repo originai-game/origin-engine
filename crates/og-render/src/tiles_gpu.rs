@@ -8,8 +8,10 @@ use wgpu::util::DeviceExt;
 
 pub(crate) fn source() -> String {
     format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}{}",
         crate::FRAME_WGSL,
+        crate::oit::OIT_WGSL,
+        crate::oit::ARENA_WGSL,
         crate::LIGHTING_WGSL,
         crate::SPRITE_WGSL,
         wgsl!("tiles.wgsl")

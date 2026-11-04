@@ -16,6 +16,7 @@ use draw_list::DrawListInputs;
 mod draw_sprites;
 
 mod draw_strips;
+use draw_strips::StripPart;
 
 mod draw_glow;
 
@@ -36,6 +37,8 @@ use pass_prepass::PrepassPassInputs;
 mod pass_reflection;
 use pass_reflection::ReflectionPassInputs;
 
+mod pass_oit;
+use pass_oit::BlendedPart;
 mod pass_main;
 use pass_main::MainPassInputs;
 
@@ -591,6 +594,44 @@ impl Renderer {
             }
         }
         let sprite_frame = sprite_frame;
+        // Order-independent transparency (oit.rs): the main camera's
+        // blended meshes, billboards, alpha particles and alpha strips go
+        // to its OIT pass, whose pipelines are made here for every blended
+        // surface of the frame (a debug view keeps the sorted blending:
+        // its channels are not colours to weight).
+        let oit_billboards: Vec<oit::Source> = sprite_frame
+            .billboard_shadows
+            .iter()
+            .chain(sprite_frame.billboards.iter().map(|(_, r)| r))
+            .filter_map(|r| self.oit_billboard(r, scene))
+            .collect();
+        let oit_strips = ribbon_frame
+            .runs
+            .iter()
+            .filter(|r| r.layer.is_none() && r.blend == ParticleBlend::Alpha)
+            .fold((false, false), |(v, p), r| (v || !r.points, p || r.points));
+        let oit_particles = particle_frame.has_oit(scene.camera_layers);
+        // What needs no culling: billboards, particles and strips.
+        let oit_candidates =
+            !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
+        let oit_frame = (scene.debug == DebugView::None
+            && (oit_candidates
+                || batches.iter().any(|b| b.transparent && b.blend)
+                || skinned_batches.iter().any(|b| b.transparent && b.blend)))
+        .then(|| {
+            self.oit
+                .frame_mode(&self.device, &self.queue, self.width, self.height)
+        });
+        if let Some(mode) = oit_frame {
+            self.ensure_oit_pipelines(
+                mode,
+                &batches,
+                &skinned_batches,
+                &oit_billboards,
+                oit_particles,
+                oit_strips,
+            );
+        }
         for run in sprite_frame
             .runs
             .iter()
@@ -1044,6 +1085,16 @@ impl Renderer {
             &sprites::depths(&sprite_frame.billboards),
         );
         culled += blended_culled + skinned_culled;
+        // The OIT pass runs when the main camera draws a blended surface
+        // after culling (`oit_frame` says the frame may).
+        let oit_mode = oit_frame.filter(|_| {
+            blended_list
+                .ranges
+                .iter()
+                .any(|r| batches[r.0 as usize].blend)
+                || skinned_visible.iter().any(|b| b.transparent && b.blend)
+                || oit_candidates
+        });
         // (The GPU culling has one reflection pass: the second slot is culled here.)
         let mut reflection_list = Vec::new();
         let mut reflection_meshlets: Vec<u32> = Vec::new();
@@ -2800,6 +2851,7 @@ impl Renderer {
                     ],
                     object_space,
                     ui_depth: ui_depth && prepass,
+                    oit: oit_mode.map(|m| m == oit::Oit::List),
                 },
                 &self.post,
                 &self.persistent,
@@ -2962,6 +3014,24 @@ impl Renderer {
             taa_history: taa_blend,
             ..Default::default()
         };
+        // Order-independent transparency (oit.rs): this frame's mode, and
+        // the newest overflow count read back from the linked lists.
+        stats.transparency_oit = oit_mode.is_some();
+        if let Some(arena) = self
+            .oit
+            .arena
+            .as_ref()
+            .filter(|_| oit_mode == Some(oit::Oit::List))
+        {
+            stats.transparency_layers = arena.size.nodes_per_pixel;
+            match arena.poll() {
+                Some((frame, pixels)) => {
+                    stats.transparency_fallback_pixels = pixels;
+                    stats.transparency_fallback_lag = (self.frame_index - frame) as u32;
+                }
+                None => stats.transparency_fallback_lag = u32::MAX,
+            }
+        }
         if let Some((lagged, occluder_draws)) = gpu_counts {
             let c = lagged.unwrap_or_default();
             stats.gpu_culling = true;
@@ -3069,8 +3139,50 @@ impl Renderer {
         // environment's prefiltered cube and the probe's in place of the
         // irradiance and prefiltered cubes; per due capture face, the
         // frame's own cubes under the face camera's uniform.
-        let (probe_groups, face_groups) = {
+        // With the linked lists (oit.rs) the OIT pass binds the frame's and
+        // its probes' groups again with the arena at binding 12.
+        let oit_arena = self
+            .oit
+            .frame_list_layout
+            .as_ref()
+            .zip(self.oit.arena.as_ref())
+            .filter(|_| oit_mode == Some(oit::Oit::List));
+        let (probe_groups, face_groups, oit_frame_group, oit_probe_groups) = {
             let ibl = self.ibl.views();
+            let group_in = |layout: &wgpu::BindGroupLayout,
+                            arena: Option<&wgpu::Buffer>,
+                            label: &str,
+                            uniform: wgpu::BindingResource,
+                            a: &wgpu::TextureView,
+                            b: &wgpu::TextureView| {
+                let mut entries = vec![
+                    uniform,
+                    wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
+                    wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                    wgpu::BindingResource::TextureView(a),
+                    wgpu::BindingResource::TextureView(b),
+                    wgpu::BindingResource::TextureView(&ibl.brdf_lut),
+                    wgpu::BindingResource::Sampler(&ibl.sampler),
+                    self.light_buffers[0].as_entire_binding(),
+                    self.light_buffers[1].as_entire_binding(),
+                    self.light_buffers[2].as_entire_binding(),
+                    self.lightmaps.probe_buffer.as_entire_binding(),
+                    self.ltc.as_entire_binding(),
+                ];
+                entries.extend(arena.map(|a| a.as_entire_binding()));
+                bind_group(&self.device, label, layout, &entries)
+            };
+            let oit_frame_group = oit_arena.map(|(layout, arena)| {
+                group_in(
+                    layout,
+                    Some(&arena.buffer),
+                    "frame (oit lists)",
+                    self.frame_buffer.as_entire_binding(),
+                    &ibl.irradiance,
+                    &ibl.prefiltered,
+                )
+            });
+            let mut oit_probe_groups: Vec<wgpu::BindGroup> = Vec::new();
             let group = |k: usize, a: &wgpu::TextureView, b: &wgpu::TextureView| {
                 bind_group(
                     &self.device,
@@ -3106,6 +3218,16 @@ impl Renderer {
                         }
                         (None, None) => unreachable!("a probe without a slot is baked"),
                     };
+                    if let Some((layout, arena)) = oit_arena {
+                        oit_probe_groups.push(group_in(
+                            layout,
+                            Some(&arena.buffer),
+                            "frame (reflection probe, oit lists)",
+                            self.probes.binding(k),
+                            &ibl.prefiltered,
+                            view,
+                        ));
+                    }
                     group(k, &ibl.prefiltered, view)
                 })
                 .collect();
@@ -3113,13 +3235,21 @@ impl Renderer {
             let face_groups: Vec<wgpu::BindGroup> = (0..6 * probe_frame.due.len())
                 .map(|j| group(first + j, &ibl.irradiance, &ibl.prefiltered))
                 .collect();
-            (probe_groups, face_groups)
+            (probe_groups, face_groups, oit_frame_group, oit_probe_groups)
         };
         let probe_binding = (!probe_groups.is_empty()).then_some(probe_select::ProbeGroups {
             boxes: &probe_boxes,
             groups: &probe_groups,
             frame: frame_bind_group,
         });
+        let oit_probe_binding = oit_frame_group
+            .as_ref()
+            .filter(|_| !oit_probe_groups.is_empty())
+            .map(|frame| probe_select::ProbeGroups {
+                boxes: &probe_boxes,
+                groups: &oit_probe_groups,
+                frame,
+            });
         let groups = self.fx_groups.as_ref().expect("made above");
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
@@ -3527,6 +3657,120 @@ impl Renderer {
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
         let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
+        // The blended skinned batches' OIT pipelines (oit.rs), the rest as
+        // `lit_skinned` (not drawn by the OIT pass).
+        let oit_skinned: Vec<&wgpu::RenderPipeline> = match oit_mode {
+            Some(mode) => skinned_visible
+                .iter()
+                .zip(&lit_skinned)
+                .map(|(b, &sorted)| {
+                    let physical = b.physical && physical_fx.is_some();
+                    b.transparent
+                        .then_some(())
+                        .filter(|_| b.blend)
+                        .and_then(|_| {
+                            self.oit_pipeline(Self::oit_lit_source(b, true, physical), mode)
+                        })
+                        .unwrap_or(sorted)
+                })
+                .collect(),
+            None => Vec::new(),
+        };
+        // A part of the main camera's transparent surfaces under OIT
+        // (`BlendedPart`): the transmissive meshes, the blended surfaces
+        // into the OIT pass of its mode, or the billboards it cannot take
+        // (back to front). Returns the draws.
+        let draw_oit_part = |pass: &mut wgpu::RenderPass,
+                             part: BlendedPart,
+                             probes: Option<probe_select::ProbeGroups>|
+         -> u32 {
+            let billboard_runs = |oit: bool| -> Vec<sprites::SpriteRun> {
+                let keep = |r: &sprites::SpriteRun| self.oit_billboard(r, scene).is_some() == oit;
+                let boards: Vec<(f32, sprites::SpriteRun)> = sprite_frame
+                    .billboards
+                    .iter()
+                    .filter(|(_, r)| keep(r))
+                    .copied()
+                    .collect();
+                sprite_frame
+                    .billboard_shadows
+                    .iter()
+                    .filter(|r| keep(r))
+                    .copied()
+                    .chain(sprites::draw_runs_of(&boards))
+                    .collect()
+            };
+            let mode = match part {
+                BlendedPart::Transmissive => None,
+                BlendedPart::Oit(m) => Some(m),
+                BlendedPart::Rest => {
+                    let runs = billboard_runs(false);
+                    if runs.is_empty() {
+                        return 0;
+                    }
+                    let n =
+                        self.frame_draw_sprites(pass, &runs, sprite_fx_group, &[], false, scene);
+                    pass.set_bind_group(2, fx_group, &[]);
+                    return n;
+                }
+            };
+            let part_list = DrawList {
+                ranges: blended_list
+                    .ranges
+                    .iter()
+                    .filter(|r| batches[r.0 as usize].blend == mode.is_some())
+                    .copied()
+                    .collect(),
+                indirect: blended_list.indirect,
+                ..DrawList::default()
+            };
+            self.frame_draw_list(DrawListInputs {
+                pass,
+                list: &part_list,
+                lit: true,
+                current: &mut None,
+                physical_fx,
+                probes,
+                fx: Some(fx_group),
+                batches: &batches,
+                culled_gpu,
+                fx_lean_of: &fx_lean_of,
+                oit: mode,
+            });
+            let mut draws = part_list.ranges.len() as u32;
+            draws += self.frame_draw_skinned(DrawSkinnedInputs {
+                pass,
+                list: &skinned_visible,
+                transparent: true,
+                blended: Some(mode.is_some()),
+                material_group: 1,
+                palette_at: 3,
+                pipelines: if mode.is_some() {
+                    &oit_skinned
+                } else {
+                    &lit_skinned
+                },
+                physical_fx,
+                probes,
+                palette_group,
+                indirect: main_list
+                    .indirect
+                    .filter(|_| skinned_gpu)
+                    .zip(culled_gpu)
+                    .map(|(g, gc)| (gc, g)),
+            });
+            if let Some(mode) = mode {
+                draws += self.frame_draw_oit_billboards(
+                    pass,
+                    &billboard_runs(true),
+                    sprite_fx_group,
+                    mode,
+                    scene,
+                );
+                pass.set_bind_group(2, fx_group, &[]);
+            }
+            draws
+        };
         // Draws a list's ranges. Lit passes switch the pipeline when the
         // batch's (side, blending, effects, shader, physical, lean) changes and
         // bind each batch's material (and, between standard and physical,
@@ -3550,6 +3794,7 @@ impl Renderer {
                 batches: &batches,
                 culled_gpu,
                 fx_lean_of: &fx_lean_of,
+                oit: None,
             })
         };
         // The skinned batches (`transparent`: which of them) with the
@@ -3575,6 +3820,7 @@ impl Renderer {
                 transparent,
                 material_group,
                 palette_at,
+                blended: None,
                 pipelines,
                 physical_fx,
                 probes,
@@ -3592,7 +3838,7 @@ impl Renderer {
         // Trails, ribbons and beams drawn with the 3D scene (layered 2D
         // trails go with the sprites): the main camera's or a view's runs.
         let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
-            self.frame_draw_strips(pass, runs, scene.debug != DebugView::None)
+            self.frame_draw_strips(pass, runs, scene.debug != DebugView::None, StripPart::All)
         };
         // Sprites and text over a camera's scene, in sorted order: the main
         // camera's runs with its effect group and metaball fields, or a
@@ -4254,6 +4500,10 @@ impl Renderer {
                         draw_sprites: &draw_sprites,
                         metaball_groups: &metaball_groups,
                         volumetric_fog,
+                        oit: oit_mode,
+                        oit_frame_group: oit_frame_group.as_ref(),
+                        oit_probe_binding,
+                        draw_oit_part: &draw_oit_part,
                     });
                     // The lit image for the next frame's GI (`gi-write`).
                     if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
@@ -4526,6 +4776,14 @@ impl Renderer {
             self.offscreen_submissions.push_back(_submission);
         }
         self.shadow_cache.submitted();
+        if let Some(arena) = self
+            .oit
+            .arena
+            .as_ref()
+            .filter(|_| oit_mode == Some(oit::Oit::List))
+        {
+            arena.after_submit();
+        }
         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }

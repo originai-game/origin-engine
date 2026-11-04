@@ -117,6 +117,11 @@ pub use ssr::ScreenSpaceReflections;
 mod material;
 mod metaballs;
 mod mips;
+mod oit;
+pub use oit::{
+    DEFAULT_TRANSPARENCY_LAYERS, MAX_TRANSPARENCY_LAYERS, Transparency, TransparencyCounts,
+    weighted_order_bound, weighted_order_codes,
+};
 mod origin;
 mod overlay;
 pub mod particles;
@@ -588,4 +593,10 @@ pub struct Renderer {
     sprite_normals: Option<sprite_normals::SpriteNormals>,
     tiles_gpu: Option<tiles_gpu::Tiles>,
     tiles_gpu_supported: bool,
+    /// Order-independent transparency's mode, arena, resolve and
+    /// pipelines (`oit.rs`).
+    oit: oit::OitState,
+    /// The sprite and strip modules, for their OIT pipelines.
+    sprite_shader: deferred::Module,
+    ribbon_shader: deferred::Module,
 }

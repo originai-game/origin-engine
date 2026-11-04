@@ -157,7 +157,7 @@ pub(crate) struct GpuTrails {
     layout: wgpu::BindGroupLayout,
     /// Made on first use (deferred.rs).
     pub(crate) pipeline: Deferred<wgpu::ComputePipeline>,
-    draw_layout: wgpu::BindGroupLayout,
+    pub(crate) draw_layout: wgpu::BindGroupLayout,
     /// The strip points for `vs_strip` (group 2).
     pub(crate) draw_group: wgpu::BindGroup,
     /// The strip pipelines: additive, alpha.

@@ -24,6 +24,8 @@ struct PhysicalOut {
   @location(7) affine: vec3<f32>,
   // The instance's look (pbr.wgsl InstanceFxIn).
   @location(8) @interpolate(flat) look: vec4<f32>,
+  // pbr.wgsl VertexOut's.
+  @location(9) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
@@ -38,6 +40,7 @@ fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
   p.tangent = o.tangent;
   p.affine = o.affine;
   p.look = o.look;
+  p.oit_key = o.oit_key;
   p.scale = vec3<f32>(length(model[0].xyz), length(model[1].xyz), length(model[2].xyz));
   return p;
 }
@@ -299,6 +302,23 @@ fn fs(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> @location(0
   return physical_fragment(in);
 }
 
+// The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
+@fragment
+fn fs_oit(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  return oit_weighted(physical_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: PhysicalOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
 // The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
 // `fs_physical_lightmap`).
 fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
@@ -482,7 +502,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   var ao_direct = 1.0;  // also scales the emitted light (pbr_fs.wgsl ao_all)
   var bounce = vec3<f32>(0.0);  // screen-space GI's (pbr_fs.wgsl)
-  if (EFFECTS && fx.ao.x > 0.5) {
+  if (EFFECTS && fx.ao.x > 0.5 && !oit_pass) {
     let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
     let ssao_sample = ao_texel.r;
     if (fx.ao.w > 0.5 && fx.ao.w < 1.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }

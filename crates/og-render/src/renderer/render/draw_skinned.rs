@@ -6,6 +6,10 @@ pub(super) struct DrawSkinnedInputs<'a, 'p> {
     pub(super) pass: &'a mut wgpu::RenderPass<'p>,
     pub(super) list: &'a [Batch],
     pub(super) transparent: bool,
+    /// Of the transparent batches, only the blended (`Some(true)`: the
+    /// order-independent pass, oit.rs) or only the transmissive ones
+    /// (`Some(false)`); `None`: both.
+    pub(super) blended: Option<bool>,
     pub(super) material_group: u32,
     pub(super) palette_at: u32,
     pub(super) pipelines: &'a [&'a wgpu::RenderPipeline],
@@ -26,6 +30,7 @@ impl Renderer {
             pass,
             list,
             transparent,
+            blended,
             material_group,
             palette_at,
             pipelines,
@@ -47,7 +52,10 @@ impl Renderer {
         // array-map material with its standard group, and only casters.
         let shadow = palette_at == 2;
         for (k, (batch, pipeline)) in list.iter().zip(pipelines).enumerate() {
-            if batch.transparent != transparent || (shadow && !batch.cast) {
+            if batch.transparent != transparent
+                || (shadow && !batch.cast)
+                || blended.is_some_and(|b| b != batch.blend)
+            {
                 continue;
             }
             let physical = batch.physical && physical_fx.is_some();

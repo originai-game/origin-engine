@@ -5706,6 +5706,13 @@ export type TaaHistory = "bilinear" | "catmullRom";
 export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw" | "terrain" | "terrainLayers" | "terrainMip" | "terrainProjection" | "terrainDensity";
 
 /**
+ * How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved.
+ * - `"weighted"`: Weighted blended order-independent transparency (McGuire and Bavoil 2013): one pass, any order; where several layers of similar alpha overlap they read as their weighted mean rather than strictly front over back. Two submission orders agree within the half-float rounding of the sums (at most one 8-bit step per channel for a few layers).
+ * - `"linkedList"`: Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer.
+ */
+export type Transparency = "weighted" | "linkedList";
+
+/**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -5769,6 +5776,19 @@ export interface RenderOptions {
    * @range 1..2
    */
   readonly planarReflections?: number;
+  /**
+   * How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them.
+   *
+   * @default "weighted"
+   */
+  readonly transparency?: Transparency;
+  /**
+   * With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all.
+   *
+   * @default 0
+   * @range 0..32
+   */
+  readonly transparencyLayers?: number;
   /**
    * A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds.
    *
@@ -9815,6 +9835,10 @@ export interface RenderCapabilities {
    * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead.
    */
   readonly planarReflections: number;
+  /**
+   * What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer.
+   */
+  readonly transparency: Transparency;
   /**
    * Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer.
    */

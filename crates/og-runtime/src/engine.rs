@@ -6,7 +6,7 @@ pub(crate) use creation::assemble;
 pub(crate) use creation::{Assembled, extract_layouts, versioned};
 pub use creation::{
     antialias_name, create, destroy, point_shadows_name, render_desc, render_options,
-    set_render_backend, warm_renderer,
+    set_render_backend, transparency_name, warm_renderer,
 };
 use creation::{boot_scene, err, run_start};
 mod dispatch;

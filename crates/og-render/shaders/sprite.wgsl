@@ -109,6 +109,8 @@ struct SpriteOut {
   @location(7) @interpolate(flat) region: vec4<f32>,         // the uv region: its smallest u and v (xy), its largest (zw)
   @location(8) @interpolate(flat) outline: vec4<f32>,
   @location(9) @interpolate(flat) outline_color: vec4<f32>,
+  // oit.wgsl `oit_key`: the sprite and which of its triangles.
+  @location(10) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 // The instance's uv region as min (xy) and max (zw): a flipped region's
@@ -188,8 +190,11 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
+  let key = oit_key4(s.position_rotation, vec3<f32>(f32(vi / 3u), s.ground.x, s.flash.x));
   if (s.ground.x > 1.5) {
-    return bent_vertex(corners[vi], s);
+    var b = bent_vertex(corners[vi], s);
+    b.oit_key = key;
+    return b;
   }
   let c = corners[vi];
   // A pixel outline grows the quad by its width on every side (in uv, then
@@ -220,6 +225,7 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
   o.region = region_of(s.uv_rect);
   o.outline = s.outline;
   o.outline_color = s.outline_color;
+  o.oit_key = key;
   return o;
 }
 
@@ -311,6 +317,24 @@ fn sprite_color(in: SpriteOut) -> vec4<f32> {
 
 @fragment
 fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
+  return sprite_fragment(in);
+}
+
+// An alpha billboard or its drop shadow in the main camera's
+// order-independent passes (oit.rs), as `fs` shades it.
+@fragment
+fn fs_oit(in: SpriteOut) -> OitOutput {
+  return oit_weighted(sprite_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: SpriteOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = sprite_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn sprite_fragment(in: SpriteOut) -> vec4<f32> {
   var c = sprite_color(in);
   if (in.shadow > 0.5) {
     c.a *= drop_shadow_visible(in.world);
@@ -392,6 +416,23 @@ fn median(r: f32, g: f32, b: f32) -> f32 {
 
 @fragment
 fn fs_msdf(in: SpriteOut) -> @location(0) vec4<f32> {
+  return msdf_fragment(in);
+}
+
+// A billboard's text in the order-independent passes.
+@fragment
+fn fs_msdf_oit(in: SpriteOut) -> OitOutput {
+  return oit_weighted(msdf_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_msdf_oit_list(in: SpriteOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = msdf_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn msdf_fragment(in: SpriteOut) -> vec4<f32> {
   let m = textureSample(sprite_tex, sprite_sampler, in.uv).rgb;
   // The distance range in screen pixels: atlas range scaled by how many
   // screen pixels one atlas pixel covers here.

@@ -31,6 +31,11 @@
 // far where the prepass drew nothing); placeholders without a prepass.
 @group(0) @binding(6) var velocity_tex: texture_2d<f32>;
 @group(0) @binding(7) var view_depth_tex: texture_2d<f32>;
+// The order-independent transparency's revealage (oit.rs): how much of
+// the opaque scene its blended surfaces let through. They have no depth
+// or motion of their own, so under them the history is trusted less: its
+// weight scaled by the revealage (a reactive mask; white without OIT).
+@group(0) @binding(8) var reactive_tex: texture_2d<f32>;
 
 fn to_ycocg(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(
@@ -210,7 +215,8 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
   if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5); }
-  let a = taa.params.x * near;
+  let reveal = clamp(textureLoad(reactive_tex, at, 0).r, 0.0, 1.0);
+  let a = 1.0 - (1.0 - taa.params.x * near) * reveal;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
   return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));

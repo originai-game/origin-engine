@@ -327,7 +327,8 @@ impl Renderer {
         .chain(&self.reflection_fx_buffer)
         .chain(self.reflection_light_buffers.iter().flatten())
         .map(wgpu::Buffer::size)
-        .sum::<u64>();
+        .sum::<u64>()
+            + self.oit.bytes();
         GpuMemory {
             textures: textures.iter().map(|t| t.bytes).sum::<u64>()
                 + self.asset_bytes()

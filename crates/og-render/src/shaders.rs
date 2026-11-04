@@ -84,15 +84,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("view resolve depth", crate::views::resolve_depth_source());
     add("lines", crate::lines::LINES_WGSL.to_string());
     add("sky", crate::sky_source());
-    add(
-        "sprite",
-        format!(
-            "{}{}{}",
-            crate::FRAME_WGSL,
-            crate::LIGHTING_WGSL,
-            crate::SPRITE_WGSL
-        ),
-    );
+    add("sprite", crate::sprite_source());
     // The probe GI's trace and blend (gi_probes.rs).
     add("gi probes trace", crate::gi_probes::trace_source());
     add("gi probes blend", crate::gi_probes::blend_source());
@@ -100,10 +92,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("sprite mesh", crate::sprite_mesh::source());
     add("sprite skin", crate::sprite_skin::source());
     add("tiles", crate::tiles_gpu::source());
-    add(
-        "ribbon",
-        format!("{}{}", crate::FRAME_WGSL, crate::RIBBON_WGSL),
-    );
+    add("ribbon", crate::ribbon_source());
     add(
         "scatter",
         crate::scatter_lit_source(&crate::hooks::default_hooks()),
@@ -206,6 +195,13 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::cull_gpu::hiz_source(true),
     );
     add("occluder depth", crate::cull_gpu::DEPTH_WGSL.to_string());
+    // Order-independent transparency's resolve (oit.rs), each variant.
+    for (msaa, list) in [(false, false), (true, false), (false, true), (true, true)] {
+        add(
+            &format!("oit resolve (msaa {msaa}, lists {list})"),
+            crate::oit::resolve_source(msaa, list),
+        );
+    }
     // The lean lit pipelines' variant of the standard lit module (plain
     // materials, `pbr_lean.wgsl`): `DISCARD` false, no discard.
     for (planars, planar) in planar_variants() {

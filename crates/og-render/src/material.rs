@@ -1165,6 +1165,14 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
             "fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {",
         ),
         (
+            "@fragment",
+            "fs_oit(in: VertexOut, @builtin(front_facing) front_facing: bool) -> OitOutput {",
+        ),
+        (
+            "@fragment",
+            "fs_oit_list(in: VertexOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {",
+        ),
+        (
             "@vertex",
             "vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {",
         ),

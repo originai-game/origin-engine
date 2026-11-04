@@ -111,6 +111,9 @@ impl PostPasses {
                 // (placeholders without a prepass).
                 layout_entry(6, float_texture(false)),
                 layout_entry(7, float_texture(false)),
+                // The OIT revealage, TAA's reactive mask (oit.rs; white,
+                // nothing transparent, without it).
+                layout_entry(8, float_texture(false)),
             ],
         });
         let module = |label: &'static str, body: &str| {

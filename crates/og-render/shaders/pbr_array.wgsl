@@ -72,3 +72,41 @@ fn fs_lightmap_array(in: LightmappedOut, @builtin(front_facing) front_facing: bo
   array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
   return lightmapped_fragment(in);
 }
+
+// The order-independent passes' entries (pbr_fs.wgsl `fs_oit`), of a
+// mesh and of a lightmapped one.
+@fragment
+fn fs_oit(in: VertexOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  array_layers(in.layer);
+  return oit_weighted(lit_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: VertexOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  array_layers(in.layer);
+  let c = lit_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+@fragment
+fn fs_lightmap_array_oit(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
+  return oit_weighted(lightmapped_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_lightmap_array_oit_list(in: LightmappedOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
+  let c = lightmapped_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}

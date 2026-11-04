@@ -16,6 +16,7 @@ struct PhysicalLightmappedOut {
   @location(7) affine: vec3<f32>,
   @location(8) @interpolate(flat) look: vec4<f32>,
   @location(9) lightmap: vec3<f32>,
+  @location(10) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 @vertex
@@ -33,12 +34,34 @@ fn vs_physical_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: Lightmap
   l.affine = p.affine;
   l.look = k.look;
   l.lightmap = m.lightmap;
+  l.oit_key = p.oit_key;
   return l;
 }
 
 @fragment
 fn fs_physical_lightmap(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
   hook_front = select(-1.0, 1.0, front_facing);
+  return physical_lightmapped_fragment(in);
+}
+
+// The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
+@fragment
+fn fs_physical_lightmap_oit(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  return oit_weighted(physical_lightmapped_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_physical_lightmap_oit_list(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_lightmapped_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn physical_lightmapped_fragment(in: PhysicalLightmappedOut) -> vec4<f32> {
   baked_lightmap = lightmap_texel(in.lightmap);
   var p: PhysicalOut;
   p.clip = in.clip;

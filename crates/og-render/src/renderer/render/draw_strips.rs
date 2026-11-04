@@ -2,12 +2,22 @@
 
 use super::*;
 
+/// Which of the main camera's strips a draw takes: every one, the alpha
+/// ones into the OIT pass (oit.rs), or the additive ones after its resolve.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum StripPart {
+    All,
+    Oit(oit::Oit),
+    Additive,
+}
+
 impl Renderer {
     pub(super) fn frame_draw_strips(
         &self,
         pass: &mut wgpu::RenderPass,
         runs: &[ribbons::RibbonRun],
         diagnostic: bool,
+        part: StripPart,
     ) -> u32 {
         let mut draws = 0;
         for run in runs.iter().filter(|r| r.layer.is_none()) {
@@ -16,8 +26,27 @@ impl Renderer {
             } else {
                 run.blend
             };
+            let alpha = blend == ParticleBlend::Alpha;
+            let pipeline = match part {
+                StripPart::All => None,
+                StripPart::Additive if alpha => continue,
+                StripPart::Additive => None,
+                StripPart::Oit(_) if !alpha => continue,
+                StripPart::Oit(mode) => {
+                    let source = if run.points && self.gpu_trails.is_some() {
+                        oit::Source::Strip
+                    } else {
+                        oit::Source::Ribbon
+                    };
+                    match self.oit_pipeline(source, mode) {
+                        Some(p) => Some(p),
+                        None => continue,
+                    }
+                }
+            };
             self.draw_strip_run(
                 pass,
+                pipeline,
                 blend as u8,
                 run.texture,
                 run.points,
@@ -32,9 +61,12 @@ impl Renderer {
     /// One run of strips (`RibbonRun`, or a layered 2D trail's
     /// `RunSource::Strip`): from the strip points (`points`, faced in the
     /// vertex shader; group 2 is theirs) or the strip vertices.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_strip_run(
         &self,
         pass: &mut wgpu::RenderPass,
+        // An OIT pipeline in place of the run's own (oit.rs).
+        pipeline: Option<&wgpu::RenderPipeline>,
         blend: u8,
         texture: Option<TextureHandle>,
         points: bool,
@@ -43,9 +75,10 @@ impl Renderer {
     ) {
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
         let gpu = self.gpu_trails.as_ref().filter(|_| points);
-        pass.set_pipeline(match gpu {
-            Some(g) => &g.pipelines[alpha],
-            None => &self.ribbon_pipelines[alpha],
+        pass.set_pipeline(match (pipeline, gpu) {
+            (Some(p), _) => p,
+            (None, Some(g)) => &g.pipelines[alpha],
+            (None, None) => &self.ribbon_pipelines[alpha],
         });
         pass.set_bind_group(
             1,

@@ -227,6 +227,18 @@ pub struct RenderDesc {
     /// take an effect group without it ([`RenderInfo::planar_reflections`]
     /// says what the renderer was made with).
     pub planar_reflections: u32,
+    /// How the main camera's blended surfaces are composited: weighted
+    /// blended order-independent transparency (the default), or the
+    /// per-pixel linked lists where the device can write storage from
+    /// fragment shaders ([`RenderInfo::transparency`] says which). See
+    /// `oit.rs`.
+    pub transparency: Transparency,
+    /// With the linked lists: the fragments a pixel keeps and sorts
+    /// exactly (0: [`DEFAULT_TRANSPARENCY_LAYERS`], at most
+    /// [`MAX_TRANSPARENCY_LAYERS`]), as far as the device's largest storage
+    /// buffer holds them for every pixel; a pixel with more is resolved
+    /// weighted ([`FrameStats::transparency_fallback_pixels`]).
+    pub transparency_layers: u32,
     /// Ask the adapter for the low-power GPU (a laptop's integrated one)
     /// instead of the high-performance one: the player's power preference
     /// (og.render.setDisplay's `powerPreference`), which only a new
@@ -294,6 +306,8 @@ impl Default for RenderDesc {
             taa_sharpen: 0.0,
             volumetric: None,
             planar_reflections: 1,
+            transparency: Transparency::Weighted,
+            transparency_layers: 0,
             low_power: false,
             timestamps: false,
         }
@@ -372,6 +386,10 @@ pub struct RenderInfo {
     /// [`RenderDesc::planar_reflections`] clamped to 1 to
     /// [`MAX_PLANAR_REFLECTIONS`], 0 without the 3D world ([`WORLD_3D`]).
     pub planar_reflections: u32,
+    /// What [`RenderDesc::transparency`] resolved to: the linked lists only
+    /// where the device writes storage from fragment shaders and has room
+    /// for the arena's binding beside the lit pipelines' own.
+    pub transparency: Transparency,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters
@@ -606,6 +624,44 @@ pub struct FrameStats {
     /// frame with [`RenderScene::camera_cut`] (a camera cut), a resize, a new scene, a change of the stylisation's
     /// primitives ([`Stylise::chain_bits`]), and without TAA.
     pub taa_history: bool,
+    /// Whether the main camera's blended surfaces were drawn order
+    /// independently this frame (`oit.rs`): false when it drew none.
+    pub transparency_oit: bool,
+    /// The fragments each pixel kept this frame in the linked lists (the
+    /// arena at this frame's size), 0 when they did not run (weighted).
+    pub transparency_layers: u32,
+    /// Pixels whose blended fragments outnumbered their nodes and were
+    /// resolved weighted, as counted on the GPU for the newest frame read
+    /// back, `transparency_fallback_lag` frames old (`u32::MAX`: none read
+    /// yet). 0 without the linked lists.
+    pub transparency_fallback_pixels: u32,
+    pub transparency_fallback_lag: u32,
+}
+
+/// A frame's order-independent transparency, as the hosts keep it for the
+/// render dump ([`FrameStats::transparency`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TransparencyStats {
+    /// [`FrameStats::transparency_oit`].
+    pub oit: bool,
+    /// [`FrameStats::transparency_layers`].
+    pub layers: u32,
+    /// [`FrameStats::transparency_fallback_pixels`].
+    pub fallback_pixels: u32,
+    /// [`FrameStats::transparency_fallback_lag`].
+    pub fallback_lag: u32,
+}
+
+impl FrameStats {
+    /// The frame's order-independent transparency counts.
+    pub fn transparency(&self) -> TransparencyStats {
+        TransparencyStats {
+            oit: self.transparency_oit,
+            layers: self.transparency_layers,
+            fallback_pixels: self.transparency_fallback_pixels,
+            fallback_lag: self.transparency_fallback_lag,
+        }
+    }
 }
 
 /// An RGBA8 frame, rows top to bottom.

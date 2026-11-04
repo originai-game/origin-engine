@@ -1036,6 +1036,8 @@ mod canvas {
         pending: Vec<Pending>,
         /// The last frame's `FrameStats::triangles`.
         triangles: u64,
+        /// The last frame's `FrameStats::transparency`.
+        transparency: og_render::TransparencyStats,
         /// Display frames drawn so far.
         drawn: u64,
         /// The readback of the last display frame (`og render`'s
@@ -1171,6 +1173,7 @@ mod canvas {
             match self.renderer.render(scene, &RenderTarget::Surface) {
                 Ok(s) => {
                     self.triangles = s.triangles;
+                    self.transparency = s.transparency();
                 }
                 // Neither case submitted a frame: recover or wait for visibility.
                 Err(og_render::RenderError::DeviceLost(_))
@@ -1222,6 +1225,9 @@ mod canvas {
         }
         fn triangles(&self) -> u64 {
             self.triangles
+        }
+        fn transparency(&self) -> og_render::TransparencyStats {
+            self.transparency
         }
         fn post_errors(&self, scene: &RenderScene) -> Vec<(u32, String)> {
             self.renderer
@@ -1377,6 +1383,7 @@ mod canvas {
                 drawn: 0,
                 kept: None,
                 triangles: 0,
+                transparency: Default::default(),
                 canvas: canvas_kept,
                 losses: 0,
                 recovering: false,

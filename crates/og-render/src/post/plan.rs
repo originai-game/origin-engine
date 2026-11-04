@@ -291,6 +291,11 @@ pub(crate) struct GraphConfig {
     /// The overlay reads the prepass's view depth (UI occluders and mass
     /// elements, after every pass): `lindepth` lives to the frame's end.
     pub ui_depth: bool,
+    /// The main pass draws its blended surfaces order independently
+    /// (oit.rs) into `oit.accum` and `oit.reveal`, which TAA reads as its
+    /// reactive mask; `Some(true)`: with the linked lists, whose resolve
+    /// reads the depth.
+    pub oit: Option<bool>,
 }
 
 /// The target the AO passes end in: `ao`, or with contact shadows
@@ -462,11 +467,21 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         );
     }
     let smaa_t2x = passes.contains(&FramePass::SmaaResolve);
-    let depth_usage = if (cfg.taa || smaa_t2x) && !msaa {
+    let depth_usage = if ((cfg.taa || smaa_t2x) && !msaa) || cfg.oit == Some(true) {
         attach_bind
     } else {
         wgpu::TextureUsages::RENDER_ATTACHMENT
     };
+    if cfg.oit.is_some() {
+        g.transient(
+            "oit.accum",
+            desc(w, h, crate::oit::ACCUM_FORMAT, cfg.samples, attach_bind),
+        )
+        .transient(
+            "oit.reveal",
+            desc(w, h, crate::oit::REVEAL_FORMAT, cfg.samples, attach_bind),
+        );
+    }
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
     if cfg.taa {
         g.import("history-read").import("history-write");
@@ -827,6 +842,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if gi_copy {
                     writes.push("gi-write");
                 }
+                if cfg.oit.is_some() {
+                    writes.extend(["oit.accum", "oit.reveal"]);
+                }
                 g.pass(name, &reads, &writes)
             }
             FramePass::Glow => g.pass(name, &[], &["glow"]),
@@ -838,16 +856,17 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &["hdr.outline"],
             ),
             // With a prepass TAA binds its velocity and view depth.
-            FramePass::Taa if prepass => g.pass(
-                name,
-                &[names.main, "depth", "history-read", "gbuffer", "lindepth"],
-                &["history-write"],
-            ),
-            FramePass::Taa => g.pass(
-                name,
-                &[names.main, "depth", "history-read"],
-                &["history-write"],
-            ),
+            // The OIT revealage is its reactive mask (taa.wgsl).
+            FramePass::Taa => {
+                let mut reads = vec![names.main, "depth", "history-read"];
+                if prepass {
+                    reads.extend(["gbuffer", "lindepth"]);
+                }
+                if cfg.oit.is_some() {
+                    reads.push("oit.reveal");
+                }
+                g.pass(name, &reads, &["history-write"])
+            }
             FramePass::TaaSharpen if prepass => g.pass(
                 name,
                 &["history-write", "depth", "gbuffer", "lindepth"],
@@ -1021,6 +1040,48 @@ mod tests {
             reflection: [None, None],
             object_space: false,
             ui_depth: false,
+            oit: None,
+        }
+    }
+
+    /// The OIT targets are the main pass's, and TAA reads the revealage
+    /// after it as its reactive mask, so it lives until TAA; the linked
+    /// lists' resolve binds the depth.
+    #[test]
+    fn oit_revealage_lives_until_taa() {
+        let passes = [FramePass::Main, FramePass::Taa, FramePass::Tonemap];
+        for list in [false, true] {
+            let config = GraphConfig {
+                oit: Some(list),
+                ..cfg(true, false)
+            };
+            let plan = build_graph(&passes, &config).compile().unwrap();
+            let names = plan.ordered_names();
+            let at = |name| names.iter().position(|&n| n == name).unwrap();
+            assert_eq!(
+                plan.lifetime("oit.reveal").unwrap(),
+                (at("main"), at("taa"))
+            );
+            assert_eq!(
+                plan.lifetime("oit.accum").unwrap(),
+                (at("main"), at("main"))
+            );
+        }
+        let plan = build_graph(&passes, &cfg(true, false)).compile().unwrap();
+        assert!(plan.slot("oit.reveal").is_none());
+        // Without TAA the depth is bound only for the lists' resolve.
+        let passes = [FramePass::Main, FramePass::Tonemap];
+        for (oit, bound) in [(None, false), (Some(false), false), (Some(true), true)] {
+            let config = GraphConfig {
+                oit,
+                ..cfg(false, false)
+            };
+            let plan = build_graph(&passes, &config).compile().unwrap();
+            let depth = &plan.physical()[plan.slot("depth").unwrap()];
+            assert_eq!(
+                depth.usage.contains(wgpu::TextureUsages::TEXTURE_BINDING),
+                bound
+            );
         }
     }
 

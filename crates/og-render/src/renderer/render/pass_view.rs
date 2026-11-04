@@ -258,6 +258,7 @@ impl Renderer {
                     group,
                     p.layers,
                     false,
+                    particles_gpu::ParticlePart::All,
                     |t: Option<TextureHandle>| match t {
                         None => white,
                         Some(t) => groups[t.index()].as_ref().expect("made before the pass"),

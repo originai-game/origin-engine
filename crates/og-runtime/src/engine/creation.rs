@@ -687,6 +687,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         pass_ms: Vec::new(),
         gpu_ms: Vec::new(),
         triangles: 0,
+        transparency: Default::default(),
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
         log: a
             .warnings
@@ -895,8 +896,8 @@ pub fn render_options(id: u32) -> Value {
 }
 
 /// `base` with the game's RenderOptions applied (GameDesc.render):
-/// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen and
-/// planarReflections. Both
+/// antialias, shadowMapSize, pointShadows, taaHistory, taaSharpen,
+/// planarReflections, transparency and transparencyLayers. Both
 /// hosts create their renderer from it, so the options mean the same on
 /// each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
@@ -932,6 +933,13 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
     desc.planar_reflections = options["planarReflections"].as_u64().map_or(1, |n| {
         n.clamp(1, u64::from(og_render::MAX_PLANAR_REFLECTIONS)) as u32
     });
+    desc.transparency = match options["transparency"].as_str() {
+        Some("linkedList") => og_render::Transparency::LinkedList,
+        _ => og_render::Transparency::Weighted,
+    };
+    desc.transparency_layers = options["transparencyLayers"].as_u64().map_or(0, |n| {
+        n.min(u64::from(og_render::MAX_TRANSPARENCY_LAYERS)) as u32
+    });
     // og.motion times its compute slices where the adapter can (its
     // `Gpu::set_frame_budget`): a publish build asks only for a game whose
     // bundle declares the model.
@@ -948,6 +956,14 @@ pub fn antialias_name(a: og_render::Antialias) -> &'static str {
         og_render::Antialias::Smaa => "smaa",
         og_render::Antialias::SmaaT2x => "smaaT2x",
         og_render::Antialias::Off | og_render::Antialias::Tier => "off",
+    }
+}
+
+/// og-render's Transparency by its IDL name (RenderCapabilities.transparency).
+pub fn transparency_name(t: og_render::Transparency) -> &'static str {
+    match t {
+        og_render::Transparency::Weighted => "weighted",
+        og_render::Transparency::LinkedList => "linkedList",
     }
 }
 

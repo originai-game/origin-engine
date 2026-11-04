@@ -4337,6 +4337,7 @@
         "PointShadows",
         "TaaHistory",
         "DebugView",
+        "Transparency",
         "RenderOptions",
         "FoliageDesc",
         "StandardMaterialDesc",
@@ -26064,6 +26065,20 @@
         "terrainDensity": "Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB. Each linear channel is d/(1+d), where d is base-level texels per vertical screen pixel; 0.5 means one texel per pixel. Density is measured before projection weighting; a missing albedo shows the unsupported checker."
       }
     },
+    "Transparency": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved.",
+      "type": "string",
+      "enum": [
+        "weighted",
+        "linkedList"
+      ],
+      "x-og-variants": {
+        "weighted": "Weighted blended order-independent transparency (McGuire and Bavoil 2013): one pass, any order; where several layers of similar alpha overlap they read as their weighted mean rather than strictly front over back. Two submission orders agree within the half-float rounding of the sums (at most one 8-bit step per channel for a few layers).",
+        "linkedList": "Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer."
+      }
+    },
     "RenderOptions": {
       "x-og-kind": "desc",
       "x-og-module": "render",
@@ -26125,6 +26140,20 @@
           "default": 1,
           "minimum": 1,
           "maximum": 2
+        },
+        "transparency": {
+          "$ref": "#/$defs/Transparency",
+          "description": "How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them.",
+          "default": "weighted"
+        },
+        "transparencyLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
         },
         "debugView": {
           "$ref": "#/$defs/DebugView",
@@ -30802,6 +30831,10 @@
           "maximum": 4294967295,
           "description": "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
         },
+        "transparency": {
+          "$ref": "#/$defs/Transparency",
+          "description": "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
+        },
         "exrDecode": {
           "type": "boolean",
           "description": "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
@@ -30835,6 +30868,7 @@
         "gpuTimestamps",
         "spriteAnisotropy",
         "planarReflections",
+        "transparency",
         "exrDecode",
         "world3d"
       ],

@@ -1,6 +1,7 @@
 //! Shared shader sources and effect layouts.
 
 use super::*;
+use crate::oit::{ARENA_WGSL, OIT_WGSL};
 
 /// The frame group (frame.wgsl), with the light volumes' buffer and the
 /// probe GI's sampling that `ambient_light` reads (gi_probes.rs).
@@ -52,7 +53,7 @@ const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) 
 /// by the AO on its own; three.js's post AO (FogShader) darkened every pixel,
 /// unlit water included, and a shader can now do the same.
 const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
-  if (fx.ao.x < 0.5) { return 1.0; }
+  if (fx.ao.x < 0.5 || oit_pass) { return 1.0; }
   let c = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
   let ndc = c.xy / max(c.w, 1e-4);
   return textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0).r;
@@ -62,11 +63,13 @@ const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
 // g, b or a): a contact light's shadow slot carries a quarter, a half or
 // three quarters past its layer (render.rs). 1 for every other light, in a
 // reflection probe's face (no clusters: the mask is the camera's) and
-// where the AO texture is the white placeholder (views, reflections).
+// where the AO texture is the white placeholder (views, reflections), and
+// for a blended surface in the order-independent passes (oit.wgsl
+// `oit_pass`), which the opaque surface's mask behind it would darken.
 fn contact_shadow(light: LocalLight, p: vec3<f32>) -> f32 {
   let w = light.direction_slot.w;
   let c = i32(round(fract(max(w, 0.0)) * 4.0)) - 1;
-  if (c < 0 || frame.cluster.x <= 0.0) { return 1.0; }
+  if (c < 0 || frame.cluster.x <= 0.0 || oit_pass) { return 1.0; }
   let clip = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
   let ndc = clip.xy / max(clip.w, 1e-4);
   let m = textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0);
@@ -107,7 +110,7 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
 /// else it is [`PLANAR_STUB`].
 pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),
@@ -120,7 +123,7 @@ pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
 /// with the physical material group and fragment shader.
 pub(crate) fn physical_source(hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),
@@ -206,6 +209,18 @@ pub(crate) const MATERIAL_MAPS_WGSL: &str = wgsl!("material_maps.wgsl");
 pub(crate) const MATERIAL_DISSOLVE_WGSL: &str = wgsl!("material_dissolve.wgsl");
 const MATERIAL_PHYSICAL_WGSL: &str = wgsl!("material_physical.wgsl");
 pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
+
+/// The sprite pass's module: the frame, OIT's fragment code (alpha
+/// billboards join the main camera's order-independent passes, oit.rs),
+/// the lighting and the sprites.
+pub(crate) fn sprite_source() -> String {
+    format!("{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}")
+}
+
+/// The strips' module (alpha strips join the order-independent passes).
+pub(crate) fn ribbon_source() -> String {
+    format!("{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{RIBBON_WGSL}")
+}
 
 /// The shadow pass slot of the weather occlusion map (weather.rs
 /// `shelter_view`), after the cascades' and the local faces'.

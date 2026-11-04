@@ -46,7 +46,7 @@ impl Renderer {
                 continue;
             }
             if let RunSource::Strip(blend, texture, points) = source {
-                self.draw_strip_run(pass, blend, texture, points, run.first, run.count);
+                self.draw_strip_run(pass, None, blend, texture, points, run.first, run.count);
                 draws += 1;
                 // The sprite pipeline and its groups again.
                 pass.set_bind_group(2, fx, &[]);

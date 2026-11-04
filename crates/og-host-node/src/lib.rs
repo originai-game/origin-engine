@@ -479,6 +479,8 @@ struct OffscreenBackend {
     tier: String,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
+    /// The last frame's `FrameStats::transparency`.
+    transparency: og_render::TransparencyStats,
     /// Devices lost and the renderer made again on a new one.
     losses: u32,
     /// Why the last capture or frame read failed (`RenderBackend::capture_error`).
@@ -500,6 +502,7 @@ impl OffscreenBackend {
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {
                 self.triangles = s.triangles;
+                self.transparency = s.transparency();
             })
             .map_err(|e| e.to_string())
     }
@@ -581,6 +584,9 @@ impl RenderBackend for OffscreenBackend {
     }
     fn triangles(&self) -> u64 {
         self.triangles
+    }
+    fn transparency(&self) -> og_render::TransparencyStats {
+        self.transparency
     }
     fn read_reflection_probe(&self, id: u64) -> Option<Result<og_render::ProbeCapture, String>> {
         self.renderer.read_reflection_probe(id)
@@ -712,6 +718,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     renderer,
                     tier: tier.clone(),
                     triangles: 0,
+                    transparency: Default::default(),
                     losses: 0,
                     capture_error: None,
                     #[cfg(any(target_os = "macos", target_os = "linux", windows))]

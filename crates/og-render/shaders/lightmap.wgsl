@@ -18,6 +18,7 @@ struct LightmappedOut {
   @location(6) affine: vec3<f32>,
   @location(7) lightmap: vec3<f32>,
   @location(8) @interpolate(flat) look: vec4<f32>,
+  @location(9) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 @vertex
@@ -34,6 +35,7 @@ fn vs_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> Li
   l.affine = o.affine;
   l.lightmap = m.lightmap;
   l.look = k.look;
+  l.oit_key = o.oit_key;
   return l;
 }
 
@@ -42,7 +44,8 @@ fn vs_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> Li
 @vertex
 fn vs_lightmap_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> LightmappedOut {
   let n = oct_decode(v.normal);
-  let p = lit_place(instance_matrix(i.m0, i.m1, i.m2, i.m3), v.position.xyz, n, vec2<f32>(0.0), v.color);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  let p = lit_place(model, v.position.xyz, n, vec2<f32>(0.0), v.color);
   var l: LightmappedOut;
   l.clip = p.clip;
   l.world_pos = p.world;
@@ -54,6 +57,7 @@ fn vs_lightmap_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn, m: Li
   l.affine = vec3<f32>(0.0);
   l.lightmap = m.lightmap;
   l.look = k.look;
+  l.oit_key = oit_key(model, v.position.xyz);
   return l;
 }
 
@@ -77,4 +81,21 @@ fn lightmapped_fragment(in: LightmappedOut) -> vec4<f32> {
 fn fs_lightmap(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
   hook_front = select(-1.0, 1.0, front_facing);
   return lightmapped_fragment(in);
+}
+
+// The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
+@fragment
+fn fs_lightmap_oit(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  return oit_weighted(lightmapped_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_lightmap_oit_list(in: LightmappedOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lightmapped_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
 }

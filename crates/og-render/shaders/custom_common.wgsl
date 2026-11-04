@@ -171,6 +171,8 @@ struct CustomOut {
   @location(3) color: vec4<f32>,
   @location(4) local: vec3<f32>,
   @location(5) data: vec4<f32>,
+  // oit.wgsl `oit_key` (the linked lists' equal-depth order).
+  @location(6) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 fn custom_input(v: CustomVertexIn) -> VertexInput {
@@ -195,6 +197,7 @@ fn custom_place(v: VertexInput, model: mat4x4<f32>) -> CustomOut {
   r.color = o.color;
   r.local = v.position;
   r.data = o.data;
+  r.oit_key = oit_key(model, v.position);
   return r;
 }
 

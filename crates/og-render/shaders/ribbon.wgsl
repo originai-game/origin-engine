@@ -24,6 +24,8 @@ struct RibbonOut {
   @location(1) color: vec4<f32>,
   @location(2) textured: f32,
   @location(3) world: vec3<f32>,
+  // oit.wgsl `oit_key`: the strip's segment (its provoking vertex's).
+  @location(4) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 @vertex
@@ -34,6 +36,7 @@ fn vs(r: RibbonIn) -> RibbonOut {
   o.color = r.color;
   o.textured = r.extra.y;
   o.world = r.position_v.xyz;
+  o.oit_key = oit_key4(r.position_v, r.color.rgb);
   return o;
 }
 
@@ -86,6 +89,8 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
     to_eye = strip_dir(frame.view_pos.xyz - p.position, -forward);
   }
   let side = strip_dir(cross(tangent, to_eye), vec3<f32>(0.0, 1.0, 0.0)) * (p.width * 0.5);
+  let start = strip_points[seg];
+  o.oit_key = oit_key4(vec4<f32>(start.position, start.u), vec3<f32>(f32(k / 3u), start.width, 0.0));
   let world = p.position + select(-side, side, plus);
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.uv = vec2<f32>(p.u, select(0.0, 1.0, plus));
@@ -97,6 +102,23 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
 
 @fragment
 fn fs(in: RibbonOut) -> @location(0) vec4<f32> {
+  return ribbon_fragment(in);
+}
+
+// An alpha strip in the main camera's order-independent passes (oit.rs).
+@fragment
+fn fs_oit(in: RibbonOut) -> OitOutput {
+  return oit_weighted(ribbon_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: RibbonOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = ribbon_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
   let tex = textureSample(ribbon_tex, ribbon_sampler, in.uv);
   var c = in.color;
   if (in.textured > 0.5) {

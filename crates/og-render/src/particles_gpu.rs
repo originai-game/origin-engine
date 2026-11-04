@@ -371,7 +371,7 @@ pub(crate) struct ParticleRenderer {
     )>,
     pub draw_layout: wgpu::BindGroupLayout,
     draw: HashMap<(ParticleBlend, u32, DrawKind), wgpu::RenderPipeline>,
-    draw_module: crate::deferred::Module,
+    pub(crate) draw_module: crate::deferred::Module,
     draw_pl: wgpu::PipelineLayout,
     emitter_buffer: wgpu::Buffer,
     pub view_buffer: wgpu::Buffer,
@@ -1397,8 +1397,8 @@ impl ParticleRenderer {
         let _ = HDR_FORMAT;
     }
 
-    /// Draws the frame's 3D systems on a camera's layers (`mask`), far to
-    /// near. `distort`: the group carries the pass's scene copy, so its
+    /// Draws the frame's 3D systems on a camera's layers (`mask`) that
+    /// `part` selects, far to near. `distort`: the group carries the pass's scene copy, so its
     /// distortion systems draw (elsewhere they are left out). `mesh`: a
     /// mesh's f32 vertices, indices and index count. Returns the draws.
     #[allow(clippy::too_many_arguments)]
@@ -1410,6 +1410,7 @@ impl ParticleRenderer {
         group: &wgpu::BindGroup,
         mask: u32,
         distort: bool,
+        part: ParticlePart<'_>,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
         mesh: impl Fn(crate::MeshHandle) -> Option<(&'b wgpu::Buffer, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
@@ -1418,6 +1419,7 @@ impl ParticleRenderer {
             s.layers & mask != 0
                 && s.kind != DrawKind::Sprite
                 && (distort || s.kind != DrawKind::Distort)
+                && part.draws(s)
         }) {
             let Some(state) = self.systems.get(&s.id) else {
                 continue;
@@ -1427,7 +1429,10 @@ impl ParticleRenderer {
                 None if s.gpu => &state.gpu.as_ref().expect("gpu system").buffer,
                 None => state.upload.as_ref().expect("uploaded"),
             };
-            let Some(pipeline) = self.draw.get(&(s.blend, samples, s.kind)) else {
+            let Some(pipeline) = (match part {
+                ParticlePart::Oit(p) => Some(p),
+                _ => self.draw.get(&(s.blend, samples, s.kind)),
+            }) else {
                 continue;
             };
             pass.set_pipeline(pipeline);
@@ -1480,6 +1485,49 @@ impl ParticleRenderer {
         drop(data);
         staging.unmap();
         Some(slots)
+    }
+}
+
+/// Which of a camera's 3D systems a draw takes. The main camera's
+/// order-independent passes (`oit.rs`) split them: debris before the
+/// blended surfaces (it writes depth, and they test against it), alpha
+/// billboards among them, additive and distortion billboards after their
+/// resolve.
+#[derive(Clone, Copy)]
+pub(crate) enum ParticlePart<'a> {
+    /// Every system, in one place (no OIT).
+    All,
+    /// Mesh systems (debris).
+    Before,
+    /// Alpha billboards, with the OIT pipeline given.
+    Oit(&'a wgpu::RenderPipeline),
+    /// Additive and distortion billboards.
+    After,
+}
+
+impl ParticlePart<'_> {
+    fn draws(self, s: &FrameSystem) -> bool {
+        match self {
+            ParticlePart::All => true,
+            ParticlePart::Before => s.kind == DrawKind::Mesh,
+            ParticlePart::Oit(_) => in_oit(s),
+            ParticlePart::After => s.kind != DrawKind::Mesh && !in_oit(s),
+        }
+    }
+}
+
+/// Whether a system's particles join the order-independent passes.
+fn in_oit(s: &FrameSystem) -> bool {
+    s.kind == DrawKind::Billboard && s.blend == ParticleBlend::Alpha
+}
+
+impl ParticleFrame {
+    /// Whether a camera on `mask` draws a system that joins the
+    /// order-independent passes.
+    pub fn has_oit(&self, mask: u32) -> bool {
+        self.systems
+            .iter()
+            .any(|s| s.layers & mask != 0 && in_oit(s))
     }
 }
 
@@ -1608,5 +1656,9 @@ pub(crate) fn sim_source() -> String {
 /// The particle draw module after the frame group, the light tables and
 /// the lighting (`fluid_shared_source`: lit particles).
 pub(crate) fn draw_source(frame_wgsl: &str) -> String {
-    format!("{frame_wgsl}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}")
+    format!(
+        "{frame_wgsl}{}{}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}",
+        crate::oit::OIT_WGSL,
+        crate::oit::ARENA_WGSL
+    )
 }

@@ -227,7 +227,15 @@ impl FrameGraph {
         // objects with (placeholders without a prepass: `TaaUniform::still.y` 0).
         let taa_velocity = self.try_view("gbuffer").unwrap_or(&passes.black);
         let taa_depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
-        let temporal_group = |current: &wgpu::TextureView, previous: &wgpu::TextureView| {
+        // The OIT revealage TAA trusts its history less under (taa.wgsl);
+        // white for the passes that do not weigh it.
+        let reveal = self
+            .try_view("oit.reveal")
+            .filter(|_| taa)
+            .unwrap_or(&passes.white);
+        let temporal_group = |current: &wgpu::TextureView,
+                              previous: &wgpu::TextureView,
+                              reactive: &wgpu::TextureView| {
             group(
                 "temporal resolve",
                 &passes.taa_layout,
@@ -240,15 +248,17 @@ impl FrameGraph {
                     wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                     tex(taa_velocity),
                     tex(taa_depth),
+                    tex(reactive),
                 ],
             )
         };
-        let taa_groups = history
-            .map(|h| [0usize, 1].map(|slot| temporal_group(self.view(names.main), &h[1 - slot])));
+        let taa_groups = history.map(|h| {
+            [0usize, 1].map(|slot| temporal_group(self.view(names.main), &h[1 - slot], reveal))
+        });
         let smaa_resolve = persistent
             .smaa_history
             .as_ref()
-            .map(|h| [0usize, 1].map(|slot| temporal_group(&h[slot], &h[1 - slot])));
+            .map(|h| [0usize, 1].map(|slot| temporal_group(&h[slot], &h[1 - slot], &passes.white)));
         // The sharpening reads what TAA wrote this frame (as both images).
         let taa_sharpen = history.filter(|_| has(FramePass::TaaSharpen)).map(|h| {
             [0usize, 1].map(|slot| {
@@ -264,6 +274,7 @@ impl FrameGraph {
                         wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                         tex(taa_velocity),
                         tex(taa_depth),
+                        tex(&passes.white),
                     ],
                 )
             })

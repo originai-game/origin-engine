@@ -58,6 +58,26 @@ fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) 
   return lit_fragment(in);
 }
 
+// A blended material in the main camera's order-independent passes
+// (oit.rs): the weighted targets, and with the linked lists its pixel's
+// nodes too. The screen-space AO and contact shadows are the opaque
+// surface's behind it, so they are left out (OIT_PASS).
+@fragment
+fn fs_oit(in: VertexOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  return oit_weighted(lit_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: VertexOut, @builtin(front_facing) front_facing: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lit_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
 // The lit shading of a fragment (`fs`, and `fs_lean`).
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
@@ -331,7 +351,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // Screen-space GI's bounce (ssgi.rs: the AO texture's gba with `ao.w`), the light a diffuse surface receives
   // from what the screen shows around it; the material's AO and the shadow darkness keep their share of it.
   var bounce = vec3<f32>(0.0);
-  if (EFFECTS && fx.ao.x > 0.5) {
+  if (EFFECTS && fx.ao.x > 0.5 && !oit_pass) {
     // Screen-space ambient occlusion, likewise; `ao.z` lets it reach the direct and local light too, and moves the
     // image-based light to the same floor (0.35, as three.js-era post AO: the whole colour × mix(0.35, 1, ao)).
     let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);

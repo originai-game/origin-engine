@@ -31,6 +31,7 @@ module render {
 | [`PointShadows`](#type-PointShadows) | enum | How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved. |
 | [`TaaHistory`](#type-TaaHistory) | enum | How TAA resamples its history each frame, as og-render's TaaHistory. |
 | [`DebugView`](#type-DebugView) | enum | What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame; the lit image's views (cascades, ao, albedo, iblDiffuse, iblSpecular, direct, aoDepth, aoRaw) draw in place of the lit image instead, for looking at one term of the lighting. Streams add views as they add what to show. |
+| [`Transparency`](#type-Transparency) | enum | How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved. |
 | [`RenderOptions`](#type-RenderOptions) | desc struct | How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer. |
 | [`FoliageDesc`](#type-FoliageDesc) | desc struct | Leaf lighting. Zero keeps ordinary opaque-surface lighting; this does not enable glass transmission or change alpha coverage. |
 | [`StandardMaterialDesc`](#type-StandardMaterialDesc) | desc struct | A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names. |
@@ -255,7 +256,7 @@ fn snap {
 }
 ```
 
-<sub>`api.ogt` line 4442</sub>
+<sub>`api.ogt` line 4454</sub>
 
 <a id="fn-snapCamera"></a>
 
@@ -283,7 +284,7 @@ fn snapCamera {
 }
 ```
 
-<sub>`api.ogt` line 4449</sub>
+<sub>`api.ogt` line 4461</sub>
 
 <a id="fn-ribbon"></a>
 
@@ -313,7 +314,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 5735</sub>
+<sub>`api.ogt` line 5747</sub>
 
 <a id="fn-sprite"></a>
 
@@ -343,7 +344,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 5865</sub>
+<sub>`api.ogt` line 5877</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -373,7 +374,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 6060</sub>
+<sub>`api.ogt` line 6072</sub>
 
 <a id="fn-measureText"></a>
 
@@ -403,7 +404,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 6067</sub>
+<sub>`api.ogt` line 6079</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -433,7 +434,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6136</sub>
+<sub>`api.ogt` line 6148</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -463,7 +464,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6143</sub>
+<sub>`api.ogt` line 6155</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -493,7 +494,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6150</sub>
+<sub>`api.ogt` line 6162</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -523,7 +524,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6237</sub>
+<sub>`api.ogt` line 6250</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -555,7 +556,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6244</sub>
+<sub>`api.ogt` line 6257</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -587,7 +588,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6261</sub>
+<sub>`api.ogt` line 6274</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -619,7 +620,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 6269</sub>
+<sub>`api.ogt` line 6282</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -653,7 +654,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 6277</sub>
+<sub>`api.ogt` line 6290</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -683,7 +684,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 6286</sub>
+<sub>`api.ogt` line 6299</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -745,7 +746,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 6293</sub>
+<sub>`api.ogt` line 6306</sub>
 
 <a id="fn-setDisplay"></a>
 
@@ -775,7 +776,7 @@ fn setDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6403</sub>
+<sub>`api.ogt` line 6416</sub>
 
 <a id="fn-resetDisplay"></a>
 
@@ -803,7 +804,7 @@ fn resetDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6410</sub>
+<sub>`api.ogt` line 6423</sub>
 
 <a id="fn-display"></a>
 
@@ -831,7 +832,7 @@ fn display {
 }
 ```
 
-<sub>`api.ogt` line 6416</sub>
+<sub>`api.ogt` line 6429</sub>
 
 <a id="fn-look"></a>
 
@@ -859,7 +860,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 6422</sub>
+<sub>`api.ogt` line 6435</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -887,7 +888,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 6428</sub>
+<sub>`api.ogt` line 6441</sub>
 
 <a id="fn-text"></a>
 
@@ -917,7 +918,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 6434</sub>
+<sub>`api.ogt` line 6447</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -947,7 +948,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6472</sub>
+<sub>`api.ogt` line 6485</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -979,7 +980,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6479</sub>
+<sub>`api.ogt` line 6492</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -1009,7 +1010,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6487</sub>
+<sub>`api.ogt` line 6500</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -1039,7 +1040,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6682</sub>
+<sub>`api.ogt` line 6695</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -1069,7 +1070,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6689</sub>
+<sub>`api.ogt` line 6702</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -1099,7 +1100,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6696</sub>
+<sub>`api.ogt` line 6709</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -1129,7 +1130,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6703</sub>
+<sub>`api.ogt` line 6716</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -1159,7 +1160,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6710</sub>
+<sub>`api.ogt` line 6723</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1189,7 +1190,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6717</sub>
+<sub>`api.ogt` line 6730</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1219,7 +1220,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6724</sub>
+<sub>`api.ogt` line 6737</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1249,7 +1250,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6961</sub>
+<sub>`api.ogt` line 6974</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1279,7 +1280,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6968</sub>
+<sub>`api.ogt` line 6981</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1309,7 +1310,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6975</sub>
+<sub>`api.ogt` line 6988</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1339,7 +1340,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6982</sub>
+<sub>`api.ogt` line 6995</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1369,7 +1370,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6989</sub>
+<sub>`api.ogt` line 7002</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1399,7 +1400,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6996</sub>
+<sub>`api.ogt` line 7009</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1429,7 +1430,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 7003</sub>
+<sub>`api.ogt` line 7016</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1459,7 +1460,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 7010</sub>
+<sub>`api.ogt` line 7023</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1489,7 +1490,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 7017</sub>
+<sub>`api.ogt` line 7030</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1519,7 +1520,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 7024</sub>
+<sub>`api.ogt` line 7037</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1549,7 +1550,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 7031</sub>
+<sub>`api.ogt` line 7044</sub>
 
 <a id="fn-lines"></a>
 
@@ -1579,7 +1580,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 7089</sub>
+<sub>`api.ogt` line 7102</sub>
 
 <a id="fn-points"></a>
 
@@ -1609,7 +1610,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 7124</sub>
+<sub>`api.ogt` line 7137</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1641,7 +1642,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 7228</sub>
+<sub>`api.ogt` line 7241</sub>
 
 <a id="fn-light2dAt"></a>
 
@@ -1678,7 +1679,7 @@ fn light2dAt {
 }
 ```
 
-<sub>`api.ogt` line 7236</sub>
+<sub>`api.ogt` line 7249</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1708,7 +1709,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7295</sub>
+<sub>`api.ogt` line 7308</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1742,7 +1743,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 7407</sub>
+<sub>`api.ogt` line 7420</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1770,7 +1771,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 7422</sub>
+<sub>`api.ogt` line 7435</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1798,7 +1799,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7504</sub>
+<sub>`api.ogt` line 7517</sub>
 
 ## Components, resources and events
 
@@ -1856,7 +1857,7 @@ component Mesh {
 }
 ```
 
-<sub>`api.ogt` line 4124</sub>
+<sub>`api.ogt` line 4136</sub>
 
 <a id="record-DirectionalLight"></a>
 
@@ -1939,7 +1940,7 @@ component DirectionalLight {
 }
 ```
 
-<sub>`api.ogt` line 4154</sub>
+<sub>`api.ogt` line 4166</sub>
 
 <a id="record-PointLight"></a>
 
@@ -1982,7 +1983,7 @@ component PointLight {
 }
 ```
 
-<sub>`api.ogt` line 4209</sub>
+<sub>`api.ogt` line 4221</sub>
 
 <a id="record-SpotLight"></a>
 
@@ -2036,7 +2037,7 @@ component SpotLight {
 }
 ```
 
-<sub>`api.ogt` line 4230</sub>
+<sub>`api.ogt` line 4242</sub>
 
 <a id="record-RenderSettings"></a>
 
@@ -2207,7 +2208,7 @@ resource RenderSettings {
 }
 ```
 
-<sub>`api.ogt` line 4313</sub>
+<sub>`api.ogt` line 4325</sub>
 
 <a id="record-Interpolation"></a>
 
@@ -2228,7 +2229,7 @@ component Interpolation {
 }
 ```
 
-<sub>`api.ogt` line 4437</sub>
+<sub>`api.ogt` line 4449</sub>
 
 <a id="record-Environment"></a>
 
@@ -2317,7 +2318,7 @@ resource Environment {
 }
 ```
 
-<sub>`api.ogt` line 4482</sub>
+<sub>`api.ogt` line 4494</sub>
 
 <a id="record-PostEffects"></a>
 
@@ -2726,7 +2727,7 @@ resource PostEffects {
 }
 ```
 
-<sub>`api.ogt` line 4645</sub>
+<sub>`api.ogt` line 4657</sub>
 
 <a id="record-LensFlare"></a>
 
@@ -2816,7 +2817,7 @@ resource LensFlare {
 }
 ```
 
-<sub>`api.ogt` line 4960</sub>
+<sub>`api.ogt` line 4972</sub>
 
 <a id="record-GlobalIllumination"></a>
 
@@ -2902,7 +2903,7 @@ resource GlobalIllumination {
 }
 ```
 
-<sub>`api.ogt` line 5035</sub>
+<sub>`api.ogt` line 5047</sub>
 
 <a id="record-Stylise"></a>
 
@@ -3157,7 +3158,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 5158</sub>
+<sub>`api.ogt` line 5170</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -3244,7 +3245,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 5351</sub>
+<sub>`api.ogt` line 5363</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -3289,7 +3290,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 5419</sub>
+<sub>`api.ogt` line 5431</sub>
 
 <a id="record-Light2D"></a>
 
@@ -3364,7 +3365,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 5457</sub>
+<sub>`api.ogt` line 5469</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -3401,7 +3402,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 5506</sub>
+<sub>`api.ogt` line 5518</sub>
 
 <a id="record-LightMask2D"></a>
 
@@ -3424,7 +3425,7 @@ component LightMask2D {
 }
 ```
 
-<sub>`api.ogt` line 5524</sub>
+<sub>`api.ogt` line 5536</sub>
 
 <a id="record-Decal"></a>
 
@@ -3493,7 +3494,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 5531</sub>
+<sub>`api.ogt` line 5543</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -3530,7 +3531,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 5576</sub>
+<sub>`api.ogt` line 5588</sub>
 
 <a id="record-ParticleEvent"></a>
 
@@ -3564,7 +3565,7 @@ event ParticleEvent {
 }
 ```
 
-<sub>`api.ogt` line 5599</sub>
+<sub>`api.ogt` line 5611</sub>
 
 <a id="record-Trail"></a>
 
@@ -3640,7 +3641,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 5613</sub>
+<sub>`api.ogt` line 5625</sub>
 
 <a id="record-Beam"></a>
 
@@ -3707,7 +3708,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 5661</sub>
+<sub>`api.ogt` line 5673</sub>
 
 <a id="record-Sprite"></a>
 
@@ -3861,7 +3862,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 5872</sub>
+<sub>`api.ogt` line 5884</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3909,7 +3910,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 5974</sub>
+<sub>`api.ogt` line 5986</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3962,7 +3963,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 6205</sub>
+<sub>`api.ogt` line 6218</sub>
 
 <a id="record-Lines"></a>
 
@@ -4025,7 +4026,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 7131</sub>
+<sub>`api.ogt` line 7144</sub>
 
 <a id="record-Points"></a>
 
@@ -4079,7 +4080,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 7168</sub>
+<sub>`api.ogt` line 7181</sub>
 
 <a id="record-CameraView"></a>
 
@@ -4186,7 +4187,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 7302</sub>
+<sub>`api.ogt` line 7315</sub>
 
 <a id="record-Mirror"></a>
 
@@ -4231,7 +4232,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 7374</sub>
+<sub>`api.ogt` line 7387</sub>
 
 <a id="record-RectLight"></a>
 
@@ -4281,7 +4282,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7436</sub>
+<sub>`api.ogt` line 7449</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -4315,7 +4316,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7463</sub>
+<sub>`api.ogt` line 7476</sub>
 
 <a id="record-RealtimeLightVolume"></a>
 
@@ -4348,7 +4349,7 @@ component RealtimeLightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7478</sub>
+<sub>`api.ogt` line 7491</sub>
 
 ## Types
 
@@ -4584,6 +4585,29 @@ enum DebugView {
 
 <sub>`api.ogt` line 3846</sub>
 
+<a id="type-Transparency"></a>
+
+### `Transparency` (enum)
+
+How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved.
+
+A string: one of the variants below. The zero value is `"weighted"`.
+
+| Variant | Doc |
+|---|---|
+| `"weighted"` | Weighted blended order-independent transparency (McGuire and Bavoil 2013): one pass, any order; where several layers of similar alpha overlap they read as their weighted mean rather than strictly front over back. Two submission orders agree within the half-float rounding of the sums (at most one 8-bit step per channel for a few layers). |
+| `"linkedList"` | Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer. |
+
+```ogt
+enum Transparency {
+  doc "How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved."
+  variant weighted "Weighted blended order-independent transparency (McGuire and Bavoil 2013): one pass, any order; where several layers of similar alpha overlap they read as their weighted mean rather than strictly front over back. Two submission orders agree within the half-float rounding of the sums (at most one 8-bit step per channel for a few layers)."
+  variant linkedList "Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer."
+}
+```
+
+<sub>`api.ogt` line 3868</sub>
+
 <a id="type-RenderOptions"></a>
 
 ### `RenderOptions` (desc struct)
@@ -4603,6 +4627,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `taaHistory` | `TaaHistory` | `"bilinear"` | — | — | — | With TAA: how the history is resampled. |
 | `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range. |
 | `planarReflections` | `number` | `1` | 1 … 2 | — | — | How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with. |
+| `transparency` | `Transparency` | `"weighted"` | — | — | — | How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them. |
+| `transparencyLayers` | `number` | `0` | 0 … 32 | — | — | With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all. |
 | `debugView` | `DebugView` | `"none"` | — | — | — | A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds. |
 
 ```ogt
@@ -4630,11 +4656,17 @@ struct RenderOptions {
     min 1
     max 2
   }
+  field transparency Transparency "How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them."
+  field transparencyLayers u32 "With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all." {
+    default 0
+    min 0
+    max 32
+  }
   field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
 }
 ```
 
-<sub>`api.ogt` line 3868</sub>
+<sub>`api.ogt` line 3874</sub>
 
 <a id="type-FoliageDesc"></a>
 
@@ -4664,7 +4696,7 @@ struct FoliageDesc {
 }
 ```
 
-<sub>`api.ogt` line 3895</sub>
+<sub>`api.ogt` line 3907</sub>
 
 <a id="type-StandardMaterialDesc"></a>
 
@@ -4988,7 +5020,7 @@ struct StandardMaterialDesc {
 }
 ```
 
-<sub>`api.ogt` line 3908</sub>
+<sub>`api.ogt` line 3920</sub>
 
 <a id="type-ToneMapping"></a>
 
@@ -5015,7 +5047,7 @@ enum ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 4262</sub>
+<sub>`api.ogt` line 4274</sub>
 
 <a id="type-GraphicsQuality"></a>
 
@@ -5040,7 +5072,7 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>`api.ogt` line 4277</sub>
+<sub>`api.ogt` line 4289</sub>
 
 <a id="type-AoResolutionSetting"></a>
 
@@ -5065,7 +5097,7 @@ enum AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 4284</sub>
+<sub>`api.ogt` line 4296</sub>
 
 <a id="type-QualityPreset"></a>
 
@@ -5092,7 +5124,7 @@ enum QualityPreset {
 }
 ```
 
-<sub>`api.ogt` line 4298</sub>
+<sub>`api.ogt` line 4310</sub>
 
 <a id="type-Lut"></a>
 
@@ -5106,7 +5138,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Lut "A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file)."
 ```
 
-<sub>`api.ogt` line 4457</sub>
+<sub>`api.ogt` line 4469</sub>
 
 <a id="type-EnvironmentMap"></a>
 
@@ -5120,7 +5152,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EnvironmentMap "A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images)."
 ```
 
-<sub>`api.ogt` line 4458</sub>
+<sub>`api.ogt` line 4470</sub>
 
 <a id="type-ParticleEmitter"></a>
 
@@ -5134,7 +5166,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ParticleEmitter "A particle emitter asset for ParticleSystem.emitter, from og.load.emitter (an `.ogt` of `type particles`)."
 ```
 
-<sub>`api.ogt` line 4459</sub>
+<sub>`api.ogt` line 4471</sub>
 
 <a id="type-AoMethod"></a>
 
@@ -5161,7 +5193,7 @@ enum AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 4549</sub>
+<sub>`api.ogt` line 4561</sub>
 
 <a id="type-AoResolution"></a>
 
@@ -5184,7 +5216,7 @@ enum AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 4564</sub>
+<sub>`api.ogt` line 4576</sub>
 
 <a id="type-DofQuality"></a>
 
@@ -5207,7 +5239,7 @@ enum DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 4577</sub>
+<sub>`api.ogt` line 4589</sub>
 
 <a id="type-ScreenBlur"></a>
 
@@ -5234,7 +5266,7 @@ enum ScreenBlur {
 }
 ```
 
-<sub>`api.ogt` line 4590</sub>
+<sub>`api.ogt` line 4602</sub>
 
 <a id="type-SpriteBlend"></a>
 
@@ -5257,7 +5289,7 @@ enum SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 4605</sub>
+<sub>`api.ogt` line 4617</sub>
 
 <a id="type-SpriteFacing"></a>
 
@@ -5282,7 +5314,7 @@ enum SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 4618</sub>
+<sub>`api.ogt` line 4630</sub>
 
 <a id="type-StripBlend"></a>
 
@@ -5305,7 +5337,7 @@ enum StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 4632</sub>
+<sub>`api.ogt` line 4644</sub>
 
 <a id="type-GiMethod"></a>
 
@@ -5330,7 +5362,7 @@ enum GiMethod {
 }
 ```
 
-<sub>`api.ogt` line 5021</sub>
+<sub>`api.ogt` line 5033</sub>
 
 <a id="type-Palette"></a>
 
@@ -5344,7 +5376,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 5095</sub>
+<sub>`api.ogt` line 5107</sub>
 
 <a id="type-Look"></a>
 
@@ -5358,7 +5390,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 5096</sub>
+<sub>`api.ogt` line 5108</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -5389,7 +5421,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5112</sub>
+<sub>`api.ogt` line 5124</sub>
 
 <a id="type-MaterialSurface"></a>
 
@@ -5416,7 +5448,7 @@ enum MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 5129</sub>
+<sub>`api.ogt` line 5141</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -5441,7 +5473,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 5144</sub>
+<sub>`api.ogt` line 5156</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -5472,7 +5504,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5408</sub>
+<sub>`api.ogt` line 5420</sub>
 
 <a id="type-Light2DKind"></a>
 
@@ -5497,7 +5529,7 @@ enum Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5443</sub>
+<sub>`api.ogt` line 5455</sub>
 
 <a id="type-ParticleEventKind"></a>
 
@@ -5522,7 +5554,7 @@ enum ParticleEventKind {
 }
 ```
 
-<sub>`api.ogt` line 5592</sub>
+<sub>`api.ogt` line 5604</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -5562,7 +5594,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 5702</sub>
+<sub>`api.ogt` line 5714</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -5593,7 +5625,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 5723</sub>
+<sub>`api.ogt` line 5735</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -5657,7 +5689,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5742</sub>
+<sub>`api.ogt` line 5754</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -5686,7 +5718,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 5777</sub>
+<sub>`api.ogt` line 5789</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -5709,7 +5741,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 5788</sub>
+<sub>`api.ogt` line 5800</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -5822,7 +5854,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 5795</sub>
+<sub>`api.ogt` line 5807</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -5912,7 +5944,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 6001</sub>
+<sub>`api.ogt` line 6013</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -5954,7 +5986,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6074</sub>
+<sub>`api.ogt` line 6086</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -5990,7 +6022,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6097</sub>
+<sub>`api.ogt` line 6109</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -6030,7 +6062,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6115</sub>
+<sub>`api.ogt` line 6127</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -6063,6 +6095,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | `gpuTimestamps` | `boolean` | `false` | — | — | — | Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true. |
 | `spriteAnisotropy` | `number` | `0` | — | — | — | The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners. |
 | `planarReflections` | `number` | `0` | — | — | — | How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead. |
+| `transparency` | `Transparency` | `"weighted"` | — | — | — | What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer. |
 | `exrDecode` | `boolean` | `false` | — | — | — | Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer. |
 | `world3d` | `boolean` | `false` | — | — | — | Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host. |
 
@@ -6092,12 +6125,13 @@ struct RenderCapabilities {
   field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
   field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
   field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
+  field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
   field exrDecode bool "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
   field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
 }
 ```
 
-<sub>`api.ogt` line 6161</sub>
+<sub>`api.ogt` line 6173</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -6120,7 +6154,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6192</sub>
+<sub>`api.ogt` line 6205</sub>
 
 <a id="type-Shader"></a>
 
@@ -6134,7 +6168,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 6252</sub>
+<sub>`api.ogt` line 6265</sub>
 
 <a id="type-FrameCap"></a>
 
@@ -6165,7 +6199,7 @@ enum FrameCap {
 }
 ```
 
-<sub>`api.ogt` line 6315</sub>
+<sub>`api.ogt` line 6328</sub>
 
 <a id="type-PowerPreference"></a>
 
@@ -6188,7 +6222,7 @@ enum PowerPreference {
 }
 ```
 
-<sub>`api.ogt` line 6325</sub>
+<sub>`api.ogt` line 6338</sub>
 
 <a id="type-DisplaySettings"></a>
 
@@ -6249,7 +6283,7 @@ struct DisplaySettings {
 }
 ```
 
-<sub>`api.ogt` line 6331</sub>
+<sub>`api.ogt` line 6344</sub>
 
 <a id="type-GpuMemory"></a>
 
@@ -6286,7 +6320,7 @@ struct GpuMemory {
 }
 ```
 
-<sub>`api.ogt` line 6365</sub>
+<sub>`api.ogt` line 6378</sub>
 
 <a id="type-DisplayInfo"></a>
 
@@ -6333,7 +6367,7 @@ struct DisplayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6384</sub>
+<sub>`api.ogt` line 6397</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -6374,7 +6408,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6443</sub>
+<sub>`api.ogt` line 6456</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -6405,7 +6439,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6459</sub>
+<sub>`api.ogt` line 6472</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -6464,7 +6498,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6494</sub>
+<sub>`api.ogt` line 6507</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -6508,7 +6542,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6530</sub>
+<sub>`api.ogt` line 6543</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -6555,7 +6589,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6554</sub>
+<sub>`api.ogt` line 6567</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -6602,7 +6636,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6581</sub>
+<sub>`api.ogt` line 6594</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -6653,7 +6687,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6608</sub>
+<sub>`api.ogt` line 6621</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -6693,7 +6727,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6638</sub>
+<sub>`api.ogt` line 6651</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -6737,7 +6771,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6659</sub>
+<sub>`api.ogt` line 6672</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -6758,7 +6792,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 6733</sub>
+<sub>`api.ogt` line 6746</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -6795,7 +6829,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6739</sub>
+<sub>`api.ogt` line 6752</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -6868,7 +6902,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6756</sub>
+<sub>`api.ogt` line 6769</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -6916,7 +6950,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6801</sub>
+<sub>`api.ogt` line 6814</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -6960,7 +6994,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6827</sub>
+<sub>`api.ogt` line 6840</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -7000,7 +7034,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6849</sub>
+<sub>`api.ogt` line 6862</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -7023,7 +7057,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 6869</sub>
+<sub>`api.ogt` line 6882</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -7075,7 +7109,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6877</sub>
+<sub>`api.ogt` line 6890</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -7102,7 +7136,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 6904</sub>
+<sub>`api.ogt` line 6917</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -7136,7 +7170,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 6912</sub>
+<sub>`api.ogt` line 6925</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -7161,7 +7195,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 6926</sub>
+<sub>`api.ogt` line 6939</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -7197,7 +7231,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6933</sub>
+<sub>`api.ogt` line 6946</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -7229,7 +7263,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6948</sub>
+<sub>`api.ogt` line 6961</sub>
 
 <a id="type-LineMode"></a>
 
@@ -7254,7 +7288,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7038</sub>
+<sub>`api.ogt` line 7051</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -7320,7 +7354,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 7052</sub>
+<sub>`api.ogt` line 7065</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -7371,7 +7405,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 7096</sub>
+<sub>`api.ogt` line 7109</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -7404,7 +7438,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 7199</sub>
+<sub>`api.ogt` line 7212</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -7439,7 +7473,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 7213</sub>
+<sub>`api.ogt` line 7226</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -7462,7 +7496,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7249</sub>
+<sub>`api.ogt` line 7262</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -7476,7 +7510,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 7262</sub>
+<sub>`api.ogt` line 7275</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -7510,7 +7544,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7271</sub>
+<sub>`api.ogt` line 7284</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -7537,7 +7571,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7286</sub>
+<sub>`api.ogt` line 7299</sub>
 
 <a id="type-Post"></a>
 
@@ -7551,7 +7585,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 7398</sub>
+<sub>`api.ogt` line 7411</sub>
 
 <a id="type-PostError"></a>
 
@@ -7572,7 +7606,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 7416</sub>
+<sub>`api.ogt` line 7429</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -7595,7 +7629,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 7430</sub>
+<sub>`api.ogt` line 7443</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -7628,7 +7662,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7492</sub>
+<sub>`api.ogt` line 7505</sub>
 
 ## Column kinds
 
@@ -7697,7 +7731,7 @@ column ToneMapping {
 }
 ```
 
-<sub>`api.ogt` line 4270</sub>
+<sub>`api.ogt` line 4282</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -7708,7 +7742,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>`api.ogt` line 4291</sub>
+<sub>`api.ogt` line 4303</sub>
 
 ```ogt
 column QualityPreset {
@@ -7719,7 +7753,7 @@ column QualityPreset {
 }
 ```
 
-<sub>`api.ogt` line 4306</sub>
+<sub>`api.ogt` line 4318</sub>
 
 ```ogt
 column Texture {
@@ -7730,7 +7764,7 @@ column Texture {
 }
 ```
 
-<sub>`api.ogt` line 4461</sub>
+<sub>`api.ogt` line 4473</sub>
 
 ```ogt
 column Lut {
@@ -7741,7 +7775,7 @@ column Lut {
 }
 ```
 
-<sub>`api.ogt` line 4468</sub>
+<sub>`api.ogt` line 4480</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -7752,7 +7786,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>`api.ogt` line 4475</sub>
+<sub>`api.ogt` line 4487</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -7763,7 +7797,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>`api.ogt` line 4542</sub>
+<sub>`api.ogt` line 4554</sub>
 
 ```ogt
 column AoMethod {
@@ -7774,7 +7808,7 @@ column AoMethod {
 }
 ```
 
-<sub>`api.ogt` line 4557</sub>
+<sub>`api.ogt` line 4569</sub>
 
 ```ogt
 column AoResolution {
@@ -7785,7 +7819,7 @@ column AoResolution {
 }
 ```
 
-<sub>`api.ogt` line 4570</sub>
+<sub>`api.ogt` line 4582</sub>
 
 ```ogt
 column DofQuality {
@@ -7796,7 +7830,7 @@ column DofQuality {
 }
 ```
 
-<sub>`api.ogt` line 4583</sub>
+<sub>`api.ogt` line 4595</sub>
 
 ```ogt
 column ScreenBlur {
@@ -7807,7 +7841,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>`api.ogt` line 4598</sub>
+<sub>`api.ogt` line 4610</sub>
 
 ```ogt
 column SpriteBlend {
@@ -7818,7 +7852,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>`api.ogt` line 4611</sub>
+<sub>`api.ogt` line 4623</sub>
 
 ```ogt
 column SpriteFacing {
@@ -7829,7 +7863,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>`api.ogt` line 4625</sub>
+<sub>`api.ogt` line 4637</sub>
 
 ```ogt
 column StripBlend {
@@ -7840,7 +7874,7 @@ column StripBlend {
 }
 ```
 
-<sub>`api.ogt` line 4638</sub>
+<sub>`api.ogt` line 4650</sub>
 
 ```ogt
 column GiMethod {
@@ -7851,7 +7885,7 @@ column GiMethod {
 }
 ```
 
-<sub>`api.ogt` line 5028</sub>
+<sub>`api.ogt` line 5040</sub>
 
 ```ogt
 column Palette {
@@ -7862,7 +7896,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 5098</sub>
+<sub>`api.ogt` line 5110</sub>
 
 ```ogt
 column Look {
@@ -7873,7 +7907,7 @@ column Look {
 }
 ```
 
-<sub>`api.ogt` line 5105</sub>
+<sub>`api.ogt` line 5117</sub>
 
 ```ogt
 column DitherPattern {
@@ -7884,7 +7918,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5122</sub>
+<sub>`api.ogt` line 5134</sub>
 
 ```ogt
 column MaterialSurface {
@@ -7895,7 +7929,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 5137</sub>
+<sub>`api.ogt` line 5149</sub>
 
 ```ogt
 column StyliseSpace {
@@ -7906,7 +7940,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 5151</sub>
+<sub>`api.ogt` line 5163</sub>
 
 ```ogt
 column Light2DKind {
@@ -7917,7 +7951,7 @@ column Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5450</sub>
+<sub>`api.ogt` line 5462</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -7928,7 +7962,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6198</sub>
+<sub>`api.ogt` line 6211</sub>
 
 ```ogt
 column Shader {
@@ -7939,7 +7973,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6254</sub>
+<sub>`api.ogt` line 6267</sub>
 
 ```ogt
 column LineMode {
@@ -7950,7 +7984,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7045</sub>
+<sub>`api.ogt` line 7058</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -7961,7 +7995,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7255</sub>
+<sub>`api.ogt` line 7268</sub>
 
 ```ogt
 column RenderTarget {
@@ -7972,7 +8006,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7264</sub>
+<sub>`api.ogt` line 7277</sub>
 
 ```ogt
 column Post {
@@ -7983,7 +8017,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7400</sub>
+<sub>`api.ogt` line 7413</sub>
 
 ## Constants
 
@@ -7999,28 +8033,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 5574</sub>
+<sub>`api.ogt` line 5586</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 6157</sub>
+<sub>`api.ogt` line 6169</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 6158</sub>
+<sub>`api.ogt` line 6170</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 6159</sub>
+<sub>`api.ogt` line 6171</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 6190</sub>
+<sub>`api.ogt` line 6203</sub>

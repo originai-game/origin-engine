@@ -763,6 +763,56 @@ impl Lightmaps {
     pub fn pipeline(&self, family: Family, key: LitKey) -> Option<&wgpu::RenderPipeline> {
         self.pipelines.get(&(family, key))
     }
+
+    /// The pages' group layout (group 3 of every lightmapped pipeline).
+    pub fn pages_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.layout
+    }
+
+    /// The order-independent variant (oit.rs) of `family`'s blended
+    /// pipeline for (`side`, `effects`), over `layout` (the frame group
+    /// of `mode`, the family's material and effect groups, the pages).
+    #[allow(clippy::too_many_arguments)]
+    pub fn oit_pipeline(
+        device: &wgpu::Device,
+        family: Family,
+        layout: &wgpu::PipelineLayout,
+        module: &wgpu::ShaderModule,
+        (side, effects): (Side, bool),
+        samples: u32,
+        mode: crate::oit::Oit,
+    ) -> wgpu::RenderPipeline {
+        let vertices = if family == Family::Compact {
+            crate::compact::LEAN_LAYOUT
+        } else {
+            crate::VERTEX_LAYOUT
+        };
+        let buffers = [
+            Some(vertices),
+            Some(crate::INSTANCE_LAYOUT),
+            Some(LIGHTMAP_LAYOUT),
+        ];
+        let (vs, fs) = family.entries();
+        crate::oit::pipeline(
+            device,
+            &[("EFFECTS", effects as u32 as f64)],
+            crate::HdrPipeline {
+                alpha_to_coverage: false,
+                label: "lit lightmapped",
+                layout,
+                module,
+                vs,
+                fs,
+                buffers: &buffers,
+                cull: crate::cull_mode(side),
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::Less,
+                blend: None,
+                samples,
+            },
+            mode,
+        )
+    }
 }
 
 #[cfg(test)]

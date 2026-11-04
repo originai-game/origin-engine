@@ -138,7 +138,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick)".into(),
         },
         0,
         move |_world, _args| {
@@ -157,6 +157,17 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "debugView": super::geometry::current_view(&rs),
                 "debugCoverage": super::geometry::debug_coverage(super::geometry::current_view(&rs)),
                 "lodLevels": &levels[..last],
+                // RenderOptions.transparency's frame: the pixels whose
+                // fragments outnumbered their nodes and were resolved
+                // weighted, as last read back from the GPU (`fallbackLag`
+                // frames old, null before the first).
+                "transparency": {
+                    "oit": st.transparency.oit,
+                    "layers": st.transparency.layers,
+                    "fallbackPixels": st.transparency.fallback_pixels,
+                    "fallbackLag": (st.transparency.fallback_lag != u32::MAX)
+                        .then_some(st.transparency.fallback_lag),
+                },
                 // The fraction of the way from the tick before the last to
                 // the last the frame was drawn at (RenderSettings.interpolate),
                 // null when it was drawn at the tick.

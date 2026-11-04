@@ -299,6 +299,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     let mut passes = Vec::new();
     let mut gpu = Vec::new();
     let mut triangles = 0;
+    let mut transparency = og_render::TransparencyStats::default();
     let notes = {
         let world = eng.world()?;
         let mut rs = eng.render.borrow_mut();
@@ -318,6 +319,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
             triangles = b.triangles();
+            transparency = b.transparency();
         }
         std::mem::take(&mut rs.notes)
     };
@@ -334,6 +336,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     }
     st.pass_ms = passes;
     st.triangles = triangles;
+    st.transparency = transparency;
     for n in notes {
         if st.ui_warned.insert(n.clone()) {
             st.log

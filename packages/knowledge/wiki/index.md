@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2392 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2393 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -2405,6 +2405,7 @@ Field units the docs and Tune use.
 | [`Transition`](ui.md#type-Transition) | union | ui | — |
 | [`TransitionDesc`](ui.md#type-TransitionDesc) | desc struct | ui | — |
 | [`TransitionKind`](ui.md#type-TransitionKind) | enum | ui | — |
+| [`Transparency`](render.md#type-Transparency) | enum | render | — |
 | [`TreeDesc`](ui.md#type-TreeDesc) | desc struct | ui | — |
 | [`TreeItem`](ui.md#type-TreeItem) | desc struct | ui | — |
 | [`TreeResult`](ui.md#type-TreeResult) | struct | ui | — |

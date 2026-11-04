@@ -241,6 +241,7 @@ impl GpuSprites {
 }
 
 /// Consecutive instances drawn with one bind group and one pipeline.
+#[derive(Clone, Copy)]
 pub(crate) struct SpriteRun {
     pub source: RunSource,
     pub first: u32,

@@ -145,6 +145,15 @@ impl Renderer {
         Some(probes::read_back(&self.device, &self.queue, slot).map(|l| (slot.size, l)))
     }
 
+    /// The linked lists' fragment counts of the last frame (blocking;
+    /// tests): `None` when the frame drew no linked lists
+    /// ([`RenderInfo::transparency`], [`FrameStats::transparency_layers`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn read_transparency_counts(&self) -> Option<Result<crate::TransparencyCounts, String>> {
+        let arena = self.oit.arena.as_ref()?;
+        Some(arena.read_counts(&self.device, &self.queue))
+    }
+
     /// Forgets the TAA history: the next frame starts from its own samples
     /// (call it on a camera cut).
     pub fn reset_history(&mut self) {

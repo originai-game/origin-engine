@@ -94,6 +94,11 @@ pub trait RenderBackend {
     fn triangles(&self) -> u64 {
         0
     }
+    /// The last frame's order-independent transparency (og-render's
+    /// `FrameStats::transparency`): the render dump's `transparency`.
+    fn transparency(&self) -> og_render::TransparencyStats {
+        og_render::TransparencyStats::default()
+    }
     /// Reflection probe `id`'s capture read back (og-render's
     /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.
     fn read_reflection_probe(&self, _id: u64) -> Option<Result<og_render::ProbeCapture, String>> {

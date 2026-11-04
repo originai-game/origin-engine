@@ -241,6 +241,7 @@ impl Renderer {
             } else {
                 0
             },
+            transparency: Transparency::Weighted,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -283,27 +284,39 @@ impl Renderer {
 
         // Layouts.
         let [lights_entry, table_entry, refs_entry] = clusters::layout_entries();
+        let frame_entries = [
+            uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+            texture_entry(1, false, wgpu::TextureViewDimension::D2Array),
+            texture_entry(2, false, wgpu::TextureViewDimension::D2Array),
+            texture_entry(3, true, wgpu::TextureViewDimension::Cube),
+            texture_entry(4, true, wgpu::TextureViewDimension::Cube),
+            tex2d(5),
+            sampler_entry(6, wgpu::SamplerBindingType::Filtering),
+            // The local lights and their clusters: buffers, so the lit
+            // pipelines keep their sixteen texture slots.
+            lights_entry,
+            table_entry,
+            refs_entry,
+            // Baked light volumes and the rect lights' LTC table
+            // (lightmap.rs, area.rs): buffers, as the light tables.
+            lightmap::probe_layout_entry(),
+            area::ltc_layout_entry(),
+        ];
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
-            entries: &[
-                uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
-                texture_entry(1, false, wgpu::TextureViewDimension::D2Array),
-                texture_entry(2, false, wgpu::TextureViewDimension::D2Array),
-                texture_entry(3, true, wgpu::TextureViewDimension::Cube),
-                texture_entry(4, true, wgpu::TextureViewDimension::Cube),
-                tex2d(5),
-                sampler_entry(6, wgpu::SamplerBindingType::Filtering),
-                // The local lights and their clusters: buffers, so the lit
-                // pipelines keep their sixteen texture slots.
-                lights_entry,
-                table_entry,
-                refs_entry,
-                // Baked light volumes and the rect lights' LTC table
-                // (lightmap.rs, area.rs): buffers, as the light tables.
-                lightmap::probe_layout_entry(),
-                area::ltc_layout_entry(),
-            ],
+            entries: &frame_entries,
         });
+        // Order-independent transparency (oit.rs): the linked lists where
+        // the device can keep them, sized against its own limits.
+        let oit = oit::OitState::new(
+            &device,
+            desc.transparency,
+            desc.transparency_layers,
+            adapter.get_downlevel_capabilities().flags,
+            &device.limits(),
+            &frame_entries,
+        );
+        info.transparency = oit.mode;
         // The sky cube, bound by the sky pass alone: in the frame group it
         // would take a texture slot from every lit pipeline, which have
         // sixteen (the downlevel limits the device is asked for).
@@ -528,13 +541,8 @@ impl Renderer {
             lit_source_with(&hooks::default_hooks(), planar),
         );
         let sky_shader = deferred::module(&device, "sky", sky_source());
-        let sprite_shader = deferred::module(
-            &device,
-            "sprite",
-            format!("{FRAME_WGSL}{LIGHTING_WGSL}{SPRITE_WGSL}"),
-        );
-        let ribbon_shader =
-            deferred::module(&device, "ribbon", format!("{FRAME_WGSL}{RIBBON_WGSL}"));
+        let sprite_shader = deferred::module(&device, "sprite", sprite_source());
+        let ribbon_shader = deferred::module(&device, "ribbon", ribbon_source());
         let shadow_shader =
             deferred::module(&device, "shadow", shadow_source(&hooks::default_hooks()));
         let pipeline_layout = |label: &str, layouts: &[&wgpu::BindGroupLayout]| {
@@ -1084,6 +1092,9 @@ impl Renderer {
                 adapter.get_downlevel_capabilities().flags,
             ),
             sprite_normals: None,
+            oit,
+            sprite_shader,
+            ribbon_shader,
             tiles_gpu: None,
             tiles_gpu_supported: tiles_gpu::Tiles::supported(
                 adapter.get_downlevel_capabilities().flags,

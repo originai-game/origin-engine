@@ -275,6 +275,7 @@ impl RenderBackend for Device {
             volumetric_lights: 64,
             sprite_anisotropy: 1,
             planar_reflections: 1,
+            transparency: og_render::Transparency::Weighted,
         })
     }
     fn render(&mut self, _: &RenderScene) -> Result<(), String> {

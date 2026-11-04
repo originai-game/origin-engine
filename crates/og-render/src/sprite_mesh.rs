@@ -291,8 +291,10 @@ impl SpriteMeshRenderer {
 /// The module's source as the renderer compiles it.
 pub(crate) fn source() -> String {
     format!(
-        "{}{}{}{SPRITE_MESH_WGSL}",
+        "{}{}{}{}{}{SPRITE_MESH_WGSL}",
         crate::FRAME_WGSL,
+        crate::oit::OIT_WGSL,
+        crate::oit::ARENA_WGSL,
         crate::LIGHTING_WGSL,
         crate::SPRITE_WGSL
     )

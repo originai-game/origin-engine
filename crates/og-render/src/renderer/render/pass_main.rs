@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
+pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
     pub(super) scene: &'a RenderScene,
     pub(super) water_draws: &'a [water::WaterDraw],
     pub(super) fluid_frame: &'a Option<fluid3d::Fluid3dFrame>,
@@ -41,6 +41,14 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) draw_sprites: &'a F6,
     pub(super) metaball_groups: &'a [wgpu::BindGroup],
     pub(super) volumetric_fog: Option<VolumetricFog>,
+    /// The blended surfaces' order-independent pass (oit.rs), or `None`:
+    /// sorted back to front.
+    pub(super) oit: Option<oit::Oit>,
+    /// The linked lists' frame group (binding 12, the arena) and their
+    /// reflection probes' groups likewise.
+    pub(super) oit_frame_group: Option<&'a wgpu::BindGroup>,
+    pub(super) oit_probe_binding: Option<probe_select::ProbeGroups<'a>>,
+    pub(super) draw_oit_part: &'a F7,
 }
 
 impl Renderer {
@@ -108,6 +116,10 @@ impl Renderer {
             draw_sprites,
             metaball_groups,
             volumetric_fog,
+            oit,
+            oit_frame_group,
+            oit_probe_binding,
+            draw_oit_part,
         }: MainPassInputs<
             '_,
             impl Fn(
@@ -149,6 +161,7 @@ impl Renderer {
                 &[wgpu::BindGroup],
                 bool,
             ) -> u32,
+            impl Fn(&mut wgpu::RenderPass, BlendedPart, Option<probe_select::ProbeGroups>) -> u32,
         >,
     ) {
         let clear = match scene.environment.background {
@@ -173,12 +186,15 @@ impl Renderer {
             || fluid_frame.is_some()
             || transmission_view.is_some()
             || particle_frame.distortion;
-        let begin = |encoder: &mut crate::Encoder, first: bool| {
+        // Each part of the pass stores what a later part loads again: the
+        // part before the water's copy, and the parts before the OIT pass
+        // and its resolve (`keep`).
+        let begin = |encoder: &mut crate::Encoder, first: bool, keep: bool, label: &'static str| {
             let (view, resolve_target, store) = if msaa {
                 (
                     self.graph.view("hdr-msaa"),
                     Some(hdr),
-                    if first && split {
+                    if keep {
                         wgpu::StoreOp::Store
                     } else {
                         wgpu::StoreOp::Discard
@@ -189,7 +205,7 @@ impl Renderer {
             };
             encoder
                 .begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(if first { "main" } else { "main (after water)" }),
+                    label: Some(label),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view,
                         depth_slice: None,
@@ -212,7 +228,7 @@ impl Renderer {
                                 wgpu::LoadOp::Load
                             },
                             // TAA and T2x reproject through the depth.
-                            store: if taa || (first && split) {
+                            store: if taa || keep {
                                 wgpu::StoreOp::Store
                             } else {
                                 wgpu::StoreOp::Discard
@@ -226,7 +242,7 @@ impl Renderer {
                 })
                 .forget_lifetime()
         };
-        let mut pass = begin(encoder, true);
+        let mut pass = begin(encoder, true, split || oit.is_some(), "main");
         pass.set_bind_group(0, frame_bind_group, &[]);
         pass.set_bind_group(2, fx_group, &[]);
         draw_list(
@@ -342,7 +358,7 @@ impl Renderer {
                 );
                 self.mips.record_chain(encoder, chain);
             }
-            pass = begin(encoder, false);
+            pass = begin(encoder, false, oit.is_some(), "main (after water)");
             pass.set_bind_group(0, frame_bind_group, &[]);
             // Each surface and the fluids with their reflection probe (probe_select.rs).
             let mut binder = probe_select::Binder::new(probe_binding);
@@ -355,40 +371,21 @@ impl Renderer {
                 binder.reset(&mut pass);
             }
         }
-        // Transparent meshes and the billboards among them, back
-        // to front over the opaque scene.
-        pass.set_bind_group(2, fx_group, &[]);
-        stats.draw_calls += draw_blended(
-            &mut pass,
-            blended_list,
-            (&sprite_frame.billboards, &sprite_frame.billboard_shadows),
-            (fx_group, sprite_fx_group),
-            physical_fx,
-            probe_binding,
-            false,
-        );
-        stats.draw_calls += draw_skinned(
-            &mut pass,
-            skinned_visible,
-            true,
-            1,
-            3,
-            lit_skinned,
-            physical_fx,
-            probe_binding,
-            main_list.indirect,
-        );
         // Particles, far systems first.
-        if let Some(group) = particle_group {
+        let particles = |pass: &mut wgpu::RenderPass, part: particles_gpu::ParticlePart| {
+            let Some(group) = particle_group else {
+                return 0;
+            };
             let groups = &self.cache.sprite_groups;
             let white = &self.white_sprite_group;
-            stats.draw_calls += self.particles.draw(
-                &mut pass,
+            self.particles.draw(
+                pass,
                 particle_frame,
                 self.samples,
                 group,
                 scene.camera_layers,
                 true,
+                part,
                 |t: Option<TextureHandle>| match t {
                     None => white,
                     Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
@@ -400,10 +397,124 @@ impl Renderer {
                         .filter(|g| g.full)
                         .map(|g| (&g.vertices, &g.indices, g.index_count))
                 },
-            );
+            )
+        };
+        let diagnostic = scene.debug != DebugView::None;
+        match oit {
+            None => {
+                // Transparent meshes and the billboards among them, back
+                // to front over the opaque scene.
+                pass.set_bind_group(2, fx_group, &[]);
+                stats.draw_calls += draw_blended(
+                    &mut pass,
+                    blended_list,
+                    (&sprite_frame.billboards, &sprite_frame.billboard_shadows),
+                    (fx_group, sprite_fx_group),
+                    physical_fx,
+                    probe_binding,
+                    false,
+                );
+                stats.draw_calls += draw_skinned(
+                    &mut pass,
+                    skinned_visible,
+                    true,
+                    1,
+                    3,
+                    lit_skinned,
+                    physical_fx,
+                    probe_binding,
+                    main_list.indirect,
+                );
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::All);
+                // Trails, ribbons and beams (layered 2D trails go with the sprites).
+                stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
+            }
+            Some(mode) => {
+                // The transmissive meshes (depth written, the scene copy
+                // refracted) and the debris (depth written) first: the
+                // blended surfaces test against them.
+                pass.set_bind_group(2, fx_group, &[]);
+                stats.draw_calls +=
+                    draw_oit_part(&mut pass, BlendedPart::Transmissive, probe_binding);
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before);
+                drop(pass);
+                // The blended surfaces in any order into the weighted
+                // targets (and the arena's nodes), against the depth.
+                let arena = self.oit.arena.as_ref().filter(|_| mode == oit::Oit::List);
+                if let Some(a) = arena {
+                    a.clear(encoder);
+                }
+                let target = |name, clear: f64| {
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: self.graph.view(name),
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: clear,
+                                g: clear,
+                                b: clear,
+                                a: clear,
+                            }),
+                            // Read by the resolve (and TAA), never
+                            // resolved: each sample's own sums.
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })
+                };
+                let mut oit_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("main (oit)"),
+                    color_attachments: &[target("oit.accum", 0.0), target("oit.reveal", 1.0)],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: self.graph.view("depth"),
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                let (frame_group, probes) = match (mode, oit_frame_group) {
+                    (oit::Oit::List, Some(g)) => (g, oit_probe_binding),
+                    _ => (frame_bind_group, probe_binding),
+                };
+                oit_pass.set_bind_group(0, frame_group, &[]);
+                oit_pass.set_bind_group(2, fx_group, &[]);
+                stats.draw_calls += draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
+                if let Some(p) = self.oit_pipeline(oit::Source::Particles, mode) {
+                    stats.draw_calls +=
+                        particles(&mut oit_pass, particles_gpu::ParticlePart::Oit(p));
+                }
+                stats.draw_calls += self.frame_draw_strips(
+                    &mut oit_pass,
+                    &ribbon_frame.runs,
+                    diagnostic,
+                    StripPart::Oit(mode),
+                );
+                drop(oit_pass);
+                if let Some(a) = arena {
+                    a.copy_count(encoder, self.frame_index);
+                }
+                stats.draw_calls += self.encode_oit_resolve(encoder, mode);
+                // Over the resolved scene: the billboards the OIT pass
+                // cannot take, back to front, then what adds light (it is
+                // never weighted down) and what bends the scene.
+                pass = begin(encoder, false, false, "main (after oit)");
+                pass.set_bind_group(0, frame_bind_group, &[]);
+                pass.set_bind_group(2, fx_group, &[]);
+                stats.draw_calls += draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::After);
+                stats.draw_calls += self.frame_draw_strips(
+                    &mut pass,
+                    &ribbon_frame.runs,
+                    diagnostic,
+                    StripPart::Additive,
+                );
+            }
         }
-        // Trails, ribbons and beams (layered 2D trails go with the sprites).
-        stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
         // Lines, points and wireframes (lines.rs), with their own group 0.
         let n = self
             .lines

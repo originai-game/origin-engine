@@ -13,6 +13,9 @@ pub(super) struct DrawListInputs<'a, 'p, F0> {
     pub(super) batches: &'a [Batch],
     pub(super) culled_gpu: Option<&'a cull_gpu::GpuCulling>,
     pub(super) fx_lean_of: &'a F0,
+    /// The main camera's order-independent pass (oit.rs) this list's
+    /// blended batches draw into, with their OIT pipelines.
+    pub(super) oit: Option<oit::Oit>,
 }
 
 impl Renderer {
@@ -29,6 +32,7 @@ impl Renderer {
             batches,
             culled_gpu,
             fx_lean_of,
+            oit,
         }: DrawListInputs<'_, '_, impl Fn(&wgpu::BindGroup) -> Option<&'r wgpu::BindGroup>>,
     ) {
         let mut shadow_key: Option<(ShadowKey, Option<usize>, bool, bool)> = None;
@@ -60,10 +64,14 @@ impl Renderer {
                     batch.compact,
                     batch.array,
                 );
+                let oit = oit.filter(|_| batch.blend);
                 let lightmap = Self::lightmap_family(&self.lightmaps, batch, physical)
-                    .and_then(|f| {
-                        self.lightmaps
-                            .pipeline(f, (batch.side, batch.blend, batch.effects))
+                    .and_then(|f| match oit {
+                        Some(m) => self
+                            .oit_pipeline(oit::Source::Lightmap(f, batch.side, batch.effects), m),
+                        None => self
+                            .lightmaps
+                            .pipeline(f, (batch.side, batch.blend, batch.effects)),
                     })
                     .zip(self.lightmaps.group(batch.mesh))
                     // Where the planar reflection takes a slot, a pass
@@ -80,7 +88,12 @@ impl Renderer {
                     }
                     *current = None;
                 } else if *current != Some(key) {
-                    pass.set_pipeline(self.lit_pipeline_of(batch, false, physical));
+                    pass.set_pipeline(match oit {
+                        Some(m) => self
+                            .oit_pipeline(Self::oit_lit_source(batch, false, physical), m)
+                            .expect("made by ensure_oit_pipelines"),
+                        None => self.lit_pipeline_of(batch, false, physical),
+                    });
                     *current = Some(key);
                 }
                 match (lightmapped && !physical, lean, fx) {

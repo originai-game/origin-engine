@@ -39,6 +39,8 @@ struct ParticleOut {
   // from the centre at 0.5): its lit normal (`ball_normal`). `local` is
   // the corner before the rotation, which the texture and the round dot use.
   @location(6) facing: vec2<f32>,
+  // oit.wgsl `oit_key`: the particle and which of its triangles.
+  @location(7) @interpolate(flat) oit_key: vec2<u32>,
 };
 
 @vertex
@@ -52,6 +54,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, -0.5), vec2<f32>(0.5, 0.5),
     vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5), vec2<f32>(-0.5, 0.5));
   let c = corners[vi];
+  o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 0.0));
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
   let size = p.misc.x * size_curve(emitter, t);
@@ -249,6 +252,23 @@ fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
+  return particle_fragment(in);
+}
+
+// An alpha system in the main camera's order-independent passes (oit.rs).
+@fragment
+fn fs_oit(in: ParticleOut) -> OitOutput {
+  return oit_weighted(particle_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_oit_list(in: ParticleOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = particle_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
   var c = in.color;
   if (emitter.sheet2.y > 0.5) {

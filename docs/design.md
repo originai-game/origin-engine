@@ -567,6 +567,15 @@ not supported, and no feature adds a CPU fallback for one. Developer
 tooling keeps running without a GPU (the owner, 2026-11-02): the logic
 tests in orbs and CI, and the probe's CPU description of a frame.
 
+- Order-independent transparency for the main camera's blended surfaces
+  (`oit.rs`, `RenderOptions.transparency`): weighted blended (McGuire and
+  Bavoil 2013) by default; per-pixel lists as the high tier, one packed
+  atomic arena at group 0 binding 12 with a fixed node budget a pixel,
+  sized against the device's own limits, every fragment also weighted and
+  a pixel past its budget resolved whole as weighted and counted (stats,
+  `dump_render`). Resolved per MSAA sample before TAA, whose history
+  weight the revealage lowers (a reactive mask). Additive effects, 2D
+  sprites, text, the UI and secondary cameras keep their order.
 - Forward+ (clustered), with a depth-normal prepass when an effect reads
   depth or normals (on every frame it cost the 20,000-sphere field two
   thirds of its frame and bought nothing: `tests/evidence/P4/perf/prepass.md`);
