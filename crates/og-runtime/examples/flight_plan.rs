@@ -6,6 +6,10 @@ use og_motion::contract::Pose;
 use serde::Deserialize;
 use serde_json::json;
 
+// Same 97% onset as ozz's two-bone sample. This is a soft reach preference,
+// never permission to move a contact or enlarge the existing pelvis allowance.
+const SOFT_REACH: f32 = 0.97;
+
 /// Production supplies controller position/yaw at 30 Hz. This experiment uses
 /// the source hips projected onto Y=0, explicitly not a source elevation track.
 #[derive(Clone, Copy, Deserialize)]
@@ -125,13 +129,89 @@ fn roots(skeleton: &SkeletonAsset, map: &HumanoidMap, poses: &[Vec<Trs>]) -> Vec
         .collect()
 }
 
+/// Diagnostic alternative, not accepted root placement: a rate-limited,
+/// critically damped correction necessarily leaves a residual against the plan.
+/// Integrate once at 30 Hz, then evaluate quadratic segments at absolute age.
+/// Velocity is continuous; acceleration can change only at sample boundaries.
+struct BoundedAlignment(Vec<(Vec4, Vec4)>);
+
+impl BoundedAlignment {
+    const SPEED: f32 = 1.0;
+    const ACCEL: f32 = 6.0;
+    const ANGULAR_SPEED: f32 = std::f32::consts::FRAC_PI_2;
+    const ANGULAR_ACCEL: f32 = std::f32::consts::TAU;
+
+    fn new(generated: &[Root], planned: &[Root]) -> Self {
+        assert_eq!(generated.len(), planned.len());
+        let mut states: Vec<(Vec4, Vec4)> = Vec::with_capacity(generated.len());
+        let mut angle = 0.0;
+        // Diagnostic 0.2 s response time, longer than a single sample. These
+        // experimental rate caps are not replacements for acceptance bounds.
+        let omega = 10.0;
+        for (from, to) in generated.iter().zip(planned) {
+            angle += wrapped(to.yaw - from.yaw - angle);
+            let target = Vec3::new(
+                to.position[0] - from.position[0],
+                0.0,
+                to.position[2] - from.position[2],
+            )
+            .extend(angle);
+            let Some(&(position, velocity)) = states.last() else {
+                states.push((target, Vec4::ZERO));
+                continue;
+            };
+            let cap = |v: Vec4, linear: f32, angular: f32| {
+                v.truncate()
+                    .clamp_length_max(linear)
+                    .extend(v.w.clamp(-angular, angular))
+            };
+            let accel = cap(
+                (target - position) * (omega * omega) - velocity * (2.0 * omega),
+                Self::ACCEL,
+                Self::ANGULAR_ACCEL,
+            );
+            let next_velocity = cap(velocity + accel / 30.0, Self::SPEED, Self::ANGULAR_SPEED);
+            states.push((position + (velocity + next_velocity) / 60.0, next_velocity));
+        }
+        Self(states)
+    }
+
+    fn at(&self, sample: f32) -> Vec4 {
+        assert!(sample >= 0.0 && sample <= (self.0.len() - 1) as f32);
+        let i = (sample as usize).min(self.0.len() - 2);
+        let seconds = (sample - i as f32) / 30.0;
+        let (position, velocity) = self.0[i];
+        let accel = (self.0[i + 1].1 - velocity) * 30.0;
+        position + velocity * seconds + accel * (0.5 * seconds * seconds)
+    }
+
+    fn place(&self, sample: f32, root: Trs) -> Trs {
+        let offset = self.at(sample);
+        let turn = og_core::math::quat_from_axis_angle(Vec3::Y, offset.w);
+        Trs {
+            // Rotate around the hips, not the world origin: speed caps must
+            // not depend on where the fixture was placed in the world.
+            translation: root.translation + offset.truncate(),
+            rotation: og_anim::unit(turn * root.rotation),
+            ..root
+        }
+    }
+}
+
 fn aligned(
     skeleton: &SkeletonAsset,
     map: &HumanoidMap,
     base: &[Vec<Trs>],
     plan: &Plan,
+    bounded: bool,
 ) -> Vec<Vec<Trs>> {
-    let alignment = RootAlignment::new(&roots(skeleton, map, base), &plan.root);
+    let generated = roots(skeleton, map, base);
+    let alignment = RootAlignment::new(&generated, &plan.root);
+    let limited = bounded.then(|| BoundedAlignment::new(&generated, &plan.root));
+    let place = |sample, root| match &limited {
+        Some(curve) => curve.place(sample, root),
+        None => alignment.place(sample, root),
+    };
     let hips = map.node("hips").unwrap() as usize;
     let parent = skeleton.nodes[hips].parent;
     let output: Vec<_> = base
@@ -140,7 +220,7 @@ fn aligned(
         .map(|(t, p)| {
             let mut pose = p.clone();
             let world = skeleton.model_space(p);
-            let placed = alignment.place(t as f32, world[hips]);
+            let placed = place(t as f32, world[hips]);
             let parent = if parent == NONE {
                 Trs::IDENTITY
             } else {
@@ -153,7 +233,7 @@ fn aligned(
         .collect();
     for t in (0..base.len()).rev().chain((0..base.len()).step_by(7)) {
         let world = skeleton.model_space(&base[t]);
-        let placed = alignment.place(t as f32, world[hips]);
+        let placed = place(t as f32, world[hips]);
         let parent = if parent == NONE {
             Trs::IDENTITY
         } else {
@@ -409,7 +489,8 @@ fn plant(
                 }
             });
         let Some(contact) = contact else {
-            targets.push((chain, generated.translation, generated.rotation));
+            // A free generated foot is a soft pose, not a world-space anchor.
+            // Let it follow pelvis compensation without changing its joints.
             continue;
         };
         // Approach the authored landing anchor during flight, before the hard
@@ -437,6 +518,7 @@ fn plant(
                 .translation
                 .lerp(Vec3::from_array(contact.anchor) * scale, w),
             generated.rotation,
+            (contact.begin..contact.end).contains(&sample),
         ));
     }
     // Pelvis height is the slack variable. Each leg gives an interval of
@@ -447,9 +529,16 @@ fn plant(
         + (world[leg[2]].translation - world[leg[1]].translation).length();
     let existing = world[hips as usize].translation.y - base_world[hips as usize].translation.y;
     let (mut low, mut high) = (-0.25 * leg_length - existing, 0.10 * leg_length - existing);
-    for &(chain, target, _) in &targets {
+    let has_contact = targets.iter().any(|(_, _, _, hard)| *hard);
+    for &(chain, target, _, hard) in &targets {
+        if has_contact && !hard {
+            continue;
+        }
         let [a, b, c] = chain.map(|n| world[n as usize].translation);
-        let reach = (b - a).length() + (c - b).length() - 0.00001;
+        // Prefer enough pelvis compensation that a planted foot stays outside
+        // the soft zone. When that cannot fit inside the existing allowance,
+        // keep the bound and report the remaining original-anchor error.
+        let reach = ((b - a).length() + (c - b).length()) * SOFT_REACH - 0.00001;
         let d = a - target;
         let square = reach * reach - d.x * d.x - d.z * d.z;
         if square < 0.0 {
@@ -474,15 +563,25 @@ fn plant(
             / world[parent as usize].scale
     };
     pose[hips as usize].translation += delta;
-    for (chain, target, orientation) in targets {
+    for (chain, target, orientation, _) in targets {
         let pole = skeleton.model_space(pose)[chain[0] as usize].translation
             + Vec3::new(
                 og_core::math::sin(plan.heading),
                 0.0,
                 og_core::math::cos(plan.heading),
             ) * leg_length;
-        let result = og_anim::two_bone(skeleton, pose, &chain, target, Some(pole), 1.0, &[]);
-        conflicts += usize::from(!result.reachable);
+        let world = skeleton.model_space(pose);
+        let [a, b, c] = chain.map(|n| world[n as usize].translation);
+        let reach = a.distance(b) + b.distance(c);
+        let distance = a.distance(target);
+        let soft_distance = og_anim::soft_ik_distance(distance, reach, reach * (1.0 - SOFT_REACH));
+        let soft_target = if distance > 0.0 {
+            a + (target - a) * (soft_distance / distance)
+        } else {
+            target
+        };
+        let result = og_anim::two_bone(skeleton, pose, &chain, soft_target, Some(pole), 1.0, &[]);
+        conflicts += usize::from(!result.reachable || distance - soft_distance > 0.00001);
         let world = skeleton.model_space(pose);
         pose[chain[2] as usize].rotation =
             world[chain[1] as usize].rotation.conjugate() * orientation;
@@ -496,6 +595,53 @@ fn plant(
             assert_eq!(a.translation, b.translation);
         }
         assert_eq!(a.scale, b.scale);
+    }
+    conflicts
+}
+
+/// Conditional geometric lower bound: keep the solved torso/root orientation,
+/// allow the entire remaining pelvis budget, and even allow a straight leg.
+/// Positive error cannot be removed by this vertical-slack two-bone solve.
+/// This is not a proof over other allowed torso orientations or leg limits.
+fn contact_reach_conflicts(
+    skeleton: &SkeletonAsset,
+    map: &HumanoidMap,
+    poses: &[Vec<Trs>],
+    base: &[Vec<Trs>],
+    plan: &Plan,
+) -> Vec<serde_json::Value> {
+    let hips = map.node("hips").unwrap() as usize;
+    let left = ["leftUpperLeg", "leftLowerLeg", "leftFoot"].map(|b| map.node(b).unwrap() as usize);
+    let mut conflicts = Vec::new();
+    for contact in &plan.contacts {
+        let side = if contact.foot == 24 { "left" } else { "right" };
+        let chain = ["UpperLeg", "LowerLeg", "Foot"]
+            .map(|b| map.node(&format!("{side}{b}")).unwrap() as usize);
+        for sample in contact.begin..contact.end {
+            let world = skeleton.model_space(&poses[sample]);
+            let original = skeleton.model_space(&base[sample]);
+            let budget_length = world[left[0]]
+                .translation
+                .distance(world[left[1]].translation)
+                + world[left[1]]
+                    .translation
+                    .distance(world[left[2]].translation);
+            let [a, b, c] = chain.map(|i| world[i].translation);
+            let reach = a.distance(b) + b.distance(c);
+            let d = a - Vec3::from_array(contact.anchor);
+            let existing = world[hips].translation.y - original[hips].translation.y;
+            let best_dy = (-d.y).clamp(
+                -0.25 * budget_length - existing,
+                0.10 * budget_length - existing,
+            );
+            let minimum_error = ((d + Vec3::Y * best_dy).length() - reach).max(0.0);
+            if minimum_error > 0.00001 {
+                conflicts.push(json!({"sample":sample, "seconds":sample as f32/30.0,
+                    "foot":side, "minimum_error_m":minimum_error, "reach_m":reach,
+                    "existing_pelvis_offset_m":existing, "best_additional_pelvis_offset_m":best_dy,
+                    "scope":"Fixed solved torso; full existing vertical slack and straight-leg reach; no softening or leg-limit penalty"}));
+            }
+        }
     }
     conflicts
 }
@@ -630,12 +776,31 @@ fn evaluate(
     base: &[Vec<Trs>],
     plan: &Plan,
     rig: &str,
+    bounded: bool,
 ) -> serde_json::Value {
     // Keep the original raw-root baseline and its continuity bound. Neither
     // re-rooting nor a later solve may relax that recorded acceptance bound.
     let before = measure(skeleton, map, base, plan, 1.0);
-    let placed = aligned(skeleton, map, base, plan);
+    let placed = aligned(skeleton, map, base, plan, bounded);
+    let mut residual = drift(&roots(skeleton, map, &placed), &plan.root);
+    for key in ["horizontal_max", "yaw_absolute_max"] {
+        residual[key].as_object_mut().unwrap().remove("vertical_m");
+    }
+    let root_residual = json!({
+        "horizontal_max":residual["horizontal_max"],
+        "yaw_absolute_max":residual["yaw_absolute_max"],
+        "scope":"Horizontal/yaw tracking only; ground-projected plan has no vertical reference"});
     let aligned_base = measure(skeleton, map, &placed, plan, 1.0);
+    let trace = |poses: &[Vec<Trs>]| {
+        let start = plan.landing.saturating_sub(3);
+        let end = (plan.landing + 2).min(poses.len() - 1);
+        (start..=end).map(|t| {
+            let world = skeleton.model_space(&poses[t]);
+            json!({"sample":t, "positions":world.iter().map(|p| p.translation.to_array()).collect::<Vec<_>>()})
+        }).collect::<Vec<_>>()
+    };
+    let raw_root_trace = trace(base);
+    let aligned_trace = trace(&placed);
     let base = &placed;
     let mut conflicts = 0;
     let raw: Vec<_> = base
@@ -648,6 +813,10 @@ fn evaluate(
         })
         .collect();
     let mut corrected = inertialize(&raw, base, plan, raw.len() - 1);
+    let solved_measure = measure(skeleton, map, &raw, plan, 1.0);
+    let inertial_measure = measure(skeleton, map, &corrected, plan, 1.0);
+    let solved_trace = trace(&raw);
+    let inertial_trace = trace(&corrected);
     // Upright posture has priority over the soft inertial residual. Keeping
     // this constrained chain on its C1 target also preserves torso joint limits.
     let mut torso = vec![map.node("head").unwrap()];
@@ -682,8 +851,15 @@ fn evaluate(
         })
         .fold(0.0_f32, f32::max);
     json!({"group": plan.group, "clip": plan.clip, "rig": rig,
+        "alignment_root_residual":root_residual,
+        "contact_reach_conflicts":contact_reach_conflicts(skeleton, map, &corrected, base, plan),
         "frames": base.len(), "conflicts": conflicts,
         "base": before, "aligned_base": aligned_base, "corrected": after, "pelvis_max_offset_m": pelvis_offset,
+        "landing_diagnostics": {
+            "joints":skeleton.nodes.iter().map(|n| &n.name).collect::<Vec<_>>(),
+            "solve":solved_measure, "inertialize":inertial_measure,
+            "raw_root":raw_root_trace, "aligned":aligned_trace,
+            "solved":solved_trace, "inertialized":inertial_trace, "projected":trace(&corrected)},
         "landing_step_bound_m": before["landing_max_step_m"],
         "landing_step_pass": after["landing_max_step_m"].as_f64().unwrap() <= before["landing_max_step_m"].as_f64().unwrap()+0.00001,
         "seek_replay_sparse_equal": true})
@@ -822,6 +998,7 @@ fn hash_replay() -> serde_json::Value {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+    let bounded = args.get(5).is_some_and(|arg| arg == "--bounded-alignment");
     let input: Input = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
     let bundle = og_motion::Bundle::from_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
     let soma = og_motion::soma::Skeleton::from_bundle(&bundle).unwrap();
@@ -870,7 +1047,7 @@ fn main() {
                 })
             })
             .collect();
-        let mut result = evaluate(&skeleton, &map, &base, &recording.plan, "soma");
+        let mut result = evaluate(&skeleton, &map, &base, &recording.plan, "soma", bounded);
         result["model_root_drift_soma"] = model_drift.clone();
         results.push(result);
         let clip = og_motion::soma::clip("recorded", &skeleton, &base);
@@ -921,17 +1098,30 @@ fn main() {
             anchor.y += to - from * output.scale;
             contact.anchor = anchor.to_array();
         }
-        let mut result = evaluate(&target, &target_map, &retargeted, &plan, "meshy-traveller");
+        let mut result = evaluate(
+            &target,
+            &target_map,
+            &retargeted,
+            &plan,
+            "meshy-traveller",
+            bounded,
+        );
         result["model_root_drift_soma"] = model_drift;
         results.push(result);
     }
     println!(
         "{}",
         json!({"plan_sha256": input.plan_sha256, "results": results,
+        "bounded_alignment_experiment":bounded,
+        "bounded_alignment_caps":{"translation_m_s":BoundedAlignment::SPEED,
+            "translation_m_s2":BoundedAlignment::ACCEL,
+            "yaw_rad_s":BoundedAlignment::ANGULAR_SPEED,
+            "yaw_rad_s2":BoundedAlignment::ANGULAR_ACCEL},
         "root_provenance":"Ground-projected source hips [x,0,z] and source yaw stand in for controller root; generated pelvis Y unchanged. Horizontal/yaw correction only.",
         "original_library_training_jump_windows":0,
         "world_replay": hash_replay(),
-        "limitations": ["Prototype palette not integrated", "Gesture priority and leg limits pending",
+        "limitations": ["Prototype palette not integrated", "Approved gesture precedence and leg limits not yet implemented",
+            "Bounded alignment leaves an explicit hard root conflict; it is diagnostic only",
             "Controller-owned vertical arc treatment remains open before motion.jump IDL",
             "C1 correction does not imply bounded discrete joint steps"]})
     );
@@ -940,6 +1130,107 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_free_leg_does_not_override_a_planned_contact() {
+        let node = |name: &str, parent, position| og_anim::SkeletonNode {
+            name: name.into(),
+            parent,
+            mesh: NONE,
+            rest: Trs::new(position, Quat::IDENTITY, Vec3::ONE),
+        };
+        let rig = SkeletonAsset {
+            nodes: vec![
+                node("hips", NONE, Vec3::Y),
+                node("leftUpperLeg", 0, Vec3::X * 0.15),
+                node("leftLowerLeg", 1, Vec3::Y * -0.45),
+                node("leftFoot", 2, Vec3::Y * -0.45),
+                node("rightUpperLeg", 0, Vec3::X * -0.15),
+                node("rightLowerLeg", 4, Vec3::Y * -0.45),
+                node("rightFoot", 5, Vec3::Y * -0.45),
+            ],
+            ..Default::default()
+        };
+        let map = HumanoidMap::with_scheme(&rig, "unity").unwrap();
+        let mut base = rig.rest_pose();
+        base[4].rotation = Quat::from_rotation_x(std::f32::consts::PI);
+        let plan = Plan {
+            group: vec![],
+            clip: "free-leg-priority".into(),
+            takeoff: 1,
+            apex: 2,
+            landing: 3,
+            recovery: 6,
+            up: [0.0, 1.0, 0.0],
+            heading: 0.0,
+            contacts: vec![Contact {
+                foot: 24,
+                begin: 3,
+                end: 6,
+                anchor: [0.15, 0.0, 0.0],
+            }],
+            root: vec![],
+        };
+        let mut pose = base.clone();
+        plant(&rig, &mut pose, &base, &map, &plan, 3, 1.0);
+        let world = rig.model_space(&pose);
+        assert!(world[3].translation.distance(Vec3::X * 0.15) < 1e-5);
+        assert_eq!(&pose[4..], &base[4..], "free leg retains its internal pose");
+        assert!(
+            world[0].translation.y >= 0.775,
+            "unchanged pelvis allowance"
+        );
+    }
+
+    #[test]
+    fn bounded_alignment_limits_motion_but_reports_a_root_residual() {
+        let generated = vec![
+            Root {
+                position: [0.0, 1.3, 0.0],
+                yaw: 0.0
+            };
+            31
+        ];
+        let mut planned = generated.clone();
+        for root in &mut planned[1..] {
+            root.position = [10.0, 0.0, -4.0];
+            root.yaw = 2.0;
+        }
+        let curve = BoundedAlignment::new(&generated, &planned);
+        let root = Trs::new(Vec3::new(0.0, 1.3, 0.0), Quat::IDENTITY, Vec3::ONE);
+        let point = |sample| curve.place(sample, root).translation;
+        // The first interval saturates acceleration, not position or speed.
+        let first = Vec3::new(10.0, 0.0, -4.0).normalize() * (3.0 / 900.0);
+        assert!((point(1.0) - point(0.0) - first).length() < 1e-6);
+        assert!(
+            (rotation_vector(curve.place(1.0, root).rotation).y - std::f32::consts::PI / 900.0)
+                .abs()
+                < 1e-6
+        );
+        assert!(point(30.0).distance(Vec3::new(10.0, 1.3, -4.0)) > 9.0);
+        for i in 1..30 {
+            let s = i as f32;
+            let eps = 0.01;
+            let left = (point(s) - point(s - eps)) * (30.0 / eps);
+            let right = (point(s + eps) - point(s)) * (30.0 / eps);
+            assert!((left - right).length() < 0.005, "C1 at {s}");
+        }
+        let values: Vec<_> = (0..=300).map(|i| curve.at(i as f32 / 10.0)).collect();
+        let velocity: Vec<_> = values.windows(2).map(|p| (p[1] - p[0]) * 300.0).collect();
+        for v in &velocity {
+            assert!(v.truncate().length() <= BoundedAlignment::SPEED + 0.001);
+            assert!(v.w.abs() <= BoundedAlignment::ANGULAR_SPEED + 0.001);
+        }
+        for v in velocity.windows(2) {
+            let a = (v[1] - v[0]) * 300.0;
+            assert!(a.truncate().length() <= BoundedAlignment::ACCEL + 0.1);
+            assert!(a.w.abs() <= BoundedAlignment::ANGULAR_ACCEL + 0.1);
+        }
+        for i in (0..=300).rev().chain((0..=300).step_by(7)) {
+            assert_eq!(curve.at(i as f32 / 10.0), values[i]);
+            assert_eq!(curve.place(i as f32 / 10.0, root).translation.y, 1.3);
+        }
+    }
 
     #[test]
     fn alignment_places_root_without_changing_height_or_internal_pose() {

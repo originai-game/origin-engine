@@ -149,6 +149,31 @@ fn tip_error(skeleton: &SkeletonAsset, pose: &[Trs], tip: u32, target: Vec3) -> 
     (model[tip as usize].translation - target).length()
 }
 
+/// Andy Nicholas's softened reach for a two-bone chain. `softness` is the
+/// distance before full `reach` at which the endpoint starts falling behind
+/// the target; zero disables softening. All inputs are finite/nonnegative and
+/// softness must not exceed reach. Bone lengths are never changed.
+///
+/// This is a target adjustment, NOT contact satisfaction: measure any final
+/// error against the original target. A hard planted foot needs pelvis
+/// compensation within its allowed slack, or an explicit constraint conflict.
+///
+/// Adapted from ozz-animation's MIT SoftenTarget (744eb9d99f606eda), itself
+/// citing Nicholas (softimageblog.com/archives/108). Uses the exponential law
+/// rather than ozz's rational approximation so onset has unit slope (C1).
+/// See third_party/ozz-animation/LICENSE.md and SOFT-IK.md for provenance.
+pub fn soft_ik_distance(distance: f32, reach: f32, softness: f32) -> f32 {
+    debug_assert!(distance.is_finite() && distance >= 0.0);
+    debug_assert!(reach.is_finite() && reach >= 0.0);
+    debug_assert!(softness.is_finite() && softness >= 0.0 && softness <= reach);
+    let onset = reach - softness;
+    if softness == 0.0 || distance <= onset {
+        distance
+    } else {
+        onset + softness * (1.0 - og_core::math::exp(-(distance - onset) / softness))
+    }
+}
+
 /// The analytic two-bone solve of `chain` (three nodes: upper, middle,
 /// tip) towards `target`, bending towards `pole` (model space; `None` keeps
 /// the current bend plane). An unreachable target straightens the chain

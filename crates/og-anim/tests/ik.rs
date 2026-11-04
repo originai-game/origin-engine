@@ -104,6 +104,65 @@ fn two_bone_clamps_an_unreachable_target() {
 }
 
 #[test]
+fn soft_reach_is_c1_and_two_bone_keeps_lengths_without_claiming_contact() {
+    let rig = skeleton();
+    let rest = rig.rest_pose();
+    let model = rig.model_space(&rest);
+    let hip = model[HIP_L as usize].translation;
+    let pole = hip + Vec3::Z;
+    // Asymmetric target direction distinguishes scalar distance from world Y.
+    let direction = Vec3::new(0.2, -1.0, 0.3).normalize();
+    for distance in [0.0, 0.7, 0.809, 0.81, 0.811, 0.9, 1.2] {
+        let softened = soft_ik_distance(distance, 0.9, 0.09);
+        let expected = if distance <= 0.81 {
+            distance as f64
+        } else {
+            0.81 + 0.09 * (1.0 - (-((distance as f64 - 0.81) / 0.09)).exp())
+        };
+        assert!((softened as f64 - expected).abs() < 1e-6);
+        assert_eq!(soft_ik_distance(distance, 0.9, 0.0), distance);
+        if distance < 0.7 {
+            continue;
+        }
+        let mut pose = rest.clone();
+        let adjusted = hip + direction * softened;
+        let original = hip + direction * distance;
+        let result = two_bone(
+            &rig,
+            &mut pose,
+            &[HIP_L, KNEE_L, FOOT_L],
+            adjusted,
+            Some(pole),
+            1.0,
+            &[],
+        );
+        let p = rig.model_space(&pose);
+        let knee = p[KNEE_L as usize].translation;
+        let foot = p[FOOT_L as usize].translation;
+        assert!(result.reachable && foot.distance(adjusted) < 1e-5);
+        assert!((hip.distance(knee) - 0.45).abs() < 1e-5);
+        assert!((knee.distance(foot) - 0.45).abs() < 1e-5);
+        assert!((foot.distance(original) - (distance - softened)).abs() < 1e-5);
+        if distance >= 0.9 {
+            assert!(
+                foot.distance(original) > 0.03,
+                "soft target is not a hard contact"
+            );
+            assert!(
+                hip.distance(foot) < 0.9,
+                "do not straighten or stretch the leg"
+            );
+        }
+    }
+    let h = 0.0001;
+    let f = |x| soft_ik_distance(x, 0.9, 0.09);
+    let left = (f(0.81) - f(0.81 - h)) / h;
+    let right = (f(0.81 + h) - f(0.81)) / h;
+    assert!((left - 1.0).abs() < 0.003 && (right - 1.0).abs() < 0.003);
+    assert!((left - right).abs() < 0.003);
+}
+
+#[test]
 fn world_targets_are_taken_into_the_skeletons_frame() {
     let at = Transform {
         position: Vec3::new(4.0, 0.5, -2.0),

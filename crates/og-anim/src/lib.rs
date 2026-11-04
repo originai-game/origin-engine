@@ -52,7 +52,7 @@ pub use graph::{
     Condition, GraphAsset, Interrupt, Layer, LayerMode, MaskEntry, Motion, MotionNode, Op, State,
     Transition,
 };
-pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, two_bone};
+pub use ik::{IkResult, chain as ik_chain, fabrik, look_at, soft_ik_distance, two_bone};
 pub use pose::{Pose, sample, stepped};
 pub use retarget::{
     FootPlants, HUMAN_BONE_COUNT, HUMAN_BONES, HumanoidMap, PLANT_HEIGHT, RetargetOptions,
