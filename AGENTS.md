@@ -263,7 +263,9 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   them. GPU work takes a GPU slot (`og_gpu_acquire` in `scripts/lock.sh`,
   three at once on macrunner by default, `OG_GPU_SLOTS`); frame-time and
   perf measurements, wave-end and the full gate take every slot
-  (`og_gpu_acquire_all`); nobody runs the full gate, `--all`, wasm builds
+  (`og_gpu_acquire_all`), one acquisition per scene or run, never one
+  held across a chain of them, so queued single slots get in between
+  (it lets the single waiters queued before it go first); nobody runs the full gate, `--all`, wasm builds
   or web-reference beside others. Long-running
   threads are retired and replaced by fresh ones before their context
   fills. macrunner carries two landing sessions
