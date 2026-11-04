@@ -46,10 +46,24 @@ fn layer_texel() -> vec2<f32> {
   return 1.0 / max(layer_params.rect.zw, vec2<f32>(1.0));
 }
 
+// A lattice point's value in [0, 1), from integer operations only: PCG
+// nested per axis, `pcg(x + pcg(y))`. The float hash this replaces
+// (`fract(p * vec2(123.34, 456.21))`, a dot and `fract(q.x * q.y)`) kept the
+// last bits of products that each GPU's compiler fuses and rounds its own
+// way, so a dissolve's cells differed between DX12 and Metal (ui-layers,
+// studio-win 2026-11-05). Mixing the axes with one XOR before a single PCG
+// left the dissolve with thin vertical slivers; nesting keeps the blobs.
+// Every caller passes whole numbers (the value noise's lattice, the
+// glitch's slice and tick), so `p` is read as its integer cell.
 fn hash12(p: vec2<f32>) -> f32 {
-  var q = fract(p * vec2<f32>(123.34, 456.21));
-  q += dot(q, q + 45.32);
-  return fract(q.x * q.y);
+  let c = bitcast<vec2<u32>>(vec2<i32>(floor(p)));
+  return f32(ui_pcg(c.x + ui_pcg(c.y)) >> 8u) / 16777216.0;
+}
+
+fn ui_pcg(v: u32) -> u32 {
+  let state = v * 747796405u + 2891336453u;
+  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+  return (word >> 22u) ^ word;
 }
 
 // Smooth value noise, 0..1.
