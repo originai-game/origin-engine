@@ -532,7 +532,7 @@ fn hemisphere(position: Vec3, range: f32, axis: Vec3) -> Frustum {
     Frustum(planes)
 }
 
-fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
+pub(crate) fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
     let outer = angle_degrees.clamp(0.1, 89.0).to_radians();
     let inner = outer * (1.0 - penumbra.clamp(0.0, 1.0));
     (outer.cos(), inner.cos())

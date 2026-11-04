@@ -1,0 +1,254 @@
+// Lens flare (PostEffects.lensFlare, lens_flare.rs). Prepended by
+// fullscreen.wgsl. Every pass binds the same layout; slots a pass does
+// not use hold placeholders.
+//
+// The screen-space flare is Filament's (google/filament 5ce4cbf19,
+// filament/src/materials/flare/flare.mat, Apache-2.0,
+// third_party/lens-flare/filament/), itself after John Chapman's "Screen
+// Space Lens Flare" (2017). Its ghosts mirror the bright parts of the
+// bloom chain's first level through the centre of the frame, and its halo
+// is a ring of them warped outwards, both with chromatic aberration. It
+// is drawn at a quarter of the frame and blurred by Filament's 9-tap
+// separable Gaussian (PostProcessManager.cpp gaussianBlurPass, kernel
+// width 9, sigma 10/6). The tone curve then adds it under Filament's
+// starburst mask (post.wgsl `starburst`).
+//
+// The sun and the brightest lights also flare as sources of their own:
+// each is a disc of its radiance, fed to the same ghost and halo taps
+// and scaled by how much of it the depth shows. That fraction comes from
+// a grid of view-depth samples around the light's position on screen, on
+// the GPU with no readback (`fs_flare_occlusion`), as Wicked Engine's
+// lens flare finds it (turanszkij/WickedEngine e8be9c773,
+// WickedEngine/shaders/lensFlareVS.hlsl, MIT,
+// third_party/lens-flare/wicked/). Around each source the bloom taps that
+// show it (the sky round the sun, a lamp's own bulb) are masked out, so
+// it flares once, through its own disc and occlusion.
+//
+// Units: the flare leaves here exposed exactly once, as bloom.0 is (the
+// prefilter multiplies by the exposure), so the tone curve adds it as it
+// adds bloom, without exposing it again. The bloom taps are already
+// exposed; a light's disc is its unexposed radiance (`colors`) times
+// `flare_exposure()`, the same exposure the prefilter read.
+
+const FLARE_LIGHTS: u32 = 8u;
+
+struct Flare {
+  size: vec4<f32>,      // xy: this pass's target size, z: the frame's aspect (w / h), w: 1 / aspect
+  ghosts: vec4<f32>,    // x: count, y: spacing, z: threshold, w: chromatic aberration (uv)
+  halo: vec4<f32>,      // x: radius, y: thickness (0: none), z: threshold, w: the sky's view depth (the camera's far plane)
+  exposure: vec4<f32>,  // as post.wgsl Post.exposure
+  meter: vec4<f32>,     // x: exposure compensation, y: the lights (0 to FLARE_LIGHTS)
+  mask: vec4<f32>,      // the bloom taps masked round a source that show it, in its disc's radii: x the sun's, y a light's
+  // Each light: xy its uv, z the view depth a sample must reach to see
+  // it (below 0: the sky, for the sun), w its disc's radius (height units).
+  lights: array<vec4<f32>, 8>,
+  // rgb: the light's radiance as seen, unexposed (flare_tap exposes it),
+  // w: its flare's gain.
+  colors: array<vec4<f32>, 8>,
+};
+@group(0) @binding(0) var<uniform> flare: Flare;
+@group(0) @binding(1) var flare_linear: sampler;
+@group(0) @binding(2) var flare_source: texture_2d<f32>;      // bloom.0, or the flare being blurred
+@group(0) @binding(3) var flare_depth: texture_2d<f32>;       // the prepass view depth
+@group(0) @binding(4) var flare_luminance: texture_2d<f32>;   // the metered or adapted exposure
+@group(0) @binding(5) var flare_visibility: texture_2d<f32>;  // flare.vis: each light's visible fraction
+
+// post.wgsl `exposure`, from this pass's copy of the Post rows.
+fn flare_exposure() -> f32 {
+  if (flare.exposure.y > 1.5) {
+    return exp2(textureLoad(flare_luminance, vec2<i32>(0), 0).r);
+  }
+  if (flare.exposure.y > 0.5) {
+    let avg = textureLoad(flare_luminance, vec2<i32>(0), 0).r;
+    return exp2(clamp(log2(0.18) - avg + flare.meter.x, flare.exposure.z, flare.exposure.w));
+  }
+  return exp2(flare.exposure.x);
+}
+
+fn flare_view_depth(uv: vec2<f32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(flare_depth));
+  let p = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1);
+  return textureLoad(flare_depth, p, 0).r;
+}
+
+fn flare_is_sky(d: f32) -> bool {
+  return d >= flare.halo.w * 0.999;
+}
+
+// Distance in units of the frame's height.
+fn flare_distance(a: vec2<f32>, b: vec2<f32>) -> f32 {
+  return length((a - b) * vec2<f32>(flare.size.z, 1.0));
+}
+
+// Whether a sample of view depth `d` shows a light that needs `z` (below 0:
+// the sky).
+fn flare_sees(d: f32, z: f32) -> bool {
+  return select(d >= z, flare_is_sky(d), z < 0.0);
+}
+
+// One light's visible fraction (Wicked's lensFlareVS: the depth samples
+// at or behind the light, of a grid around it), into texel x of flare.vis:
+// a 9 x 9 grid over its disc, samples off the frame not counted.
+@fragment
+fn fs_flare_occlusion(in: VsOut) -> @location(0) vec4<f32> {
+  let i = u32(in.pos.x);
+  if (i >= u32(flare.meter.y)) { return vec4<f32>(0.0); }
+  let light = flare.lights[i];
+  let size = vec2<f32>(textureDimensions(flare_depth));
+  let center = light.xy * size;
+  // The radius in depth texels (height units times the height), at
+  // least one texel so a far light reads its own pixel's neighbours.
+  let r = max(light.w * size.y, 1.0);
+  var samples = 0.0;
+  var visible = 0.0;
+  for (var y = 0; y < 9; y++) {
+    for (var x = 0; x < 9; x++) {
+      let o = vec2<f32>(f32(x), f32(y)) / 4.0 - 1.0;
+      if (dot(o, o) > 1.0) { continue; }
+      let p = center + o * r;
+      if (any(p < vec2<f32>(0.0)) || any(p >= size)) { continue; }
+      let d = textureLoad(flare_depth, vec2<i32>(p), 0).r;
+      samples += 1.0;
+      visible += select(0.0, 1.0, flare_sees(d, light.z));
+    }
+  }
+  return vec4<f32>(visible / max(samples, 1.0), 0.0, 0.0, 1.0);
+}
+
+// The bloom chain's first level at `uv`, masked out where it shows one of
+// the sources near it (the sky round the sun, a lamp's bulb): the
+// source's own disc replaces it.
+fn flare_screen(uv: vec2<f32>) -> vec3<f32> {
+  let n = min(u32(flare.meter.y), FLARE_LIGHTS);
+  if (n > 0u) {
+    let d = flare_view_depth(uv);
+    for (var i = 0u; i < n; i++) {
+      let light = flare.lights[i];
+      let radii = select(flare.mask.y, flare.mask.x, light.z < 0.0);
+      if (flare_distance(uv, light.xy) < flare_radius(i) * radii && flare_sees(d, light.z)) {
+        return vec3<f32>(0.0);
+      }
+    }
+  }
+  return textureSampleLevel(flare_source, flare_linear, uv, 0.0).rgb;
+}
+
+// Light `i`'s disc's radius (height units): at least one texel of this
+// pass's target (a far lamp's disc is under a pixel, which the bloom
+// chain's downsample would have spread over a texel too).
+fn flare_radius(i: u32) -> f32 {
+  return max(flare.lights[i].w, 1.0 / flare.size.y);
+}
+
+// Light `i`'s disc at `p`: 1 inside, falling to 0 at its radius.
+fn flare_disc(p: vec2<f32>, i: u32) -> f32 {
+  let r = flare_radius(i);
+  return 1.0 - smoothstep(0.5 * r, r, flare_distance(p, flare.lights[i].xy));
+}
+
+// flare.mat `sampleColor` thresholded: the bloom level's red, green and
+// blue `offset` apart along the line to the centre, each over `threshold`
+// and clamped to 1; then each light's disc the same way, times what the
+// depth shows of it and its gain, so a partly hidden light's ghosts fade
+// rather than staying clamped at full.
+fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
+  // (Filament: avoids a division by zero in normalize.)
+  let offset = normalize(vec2<f32>(0.5001) - uv) * flare.ghosts.w;
+  let screen = vec3<f32>(
+    flare_screen(uv + offset).r,
+    flare_screen(uv).g,
+    flare_screen(uv - offset).b);
+  var c = clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0));
+  let n = u32(flare.meter.y);
+  if (n == 0u) { return c; }
+  let exposure = flare_exposure();
+  for (var i = 0u; i < min(n, FLARE_LIGHTS); i++) {
+    let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
+    if (seen <= 0.0) { continue; }
+    let disc = vec3<f32>(flare_disc(uv + offset, i), flare_disc(uv, i), flare_disc(uv - offset, i));
+    let l = flare.colors[i].rgb * exposure * disc;
+    c += clamp(l - threshold, vec3<f32>(0.0), vec3<f32>(1.0)) * seen;
+  }
+  return c;
+}
+
+// flare.mat `smoothstep01` and `ring`.
+fn flare_smoothstep01(t: f32) -> f32 {
+  return t * t * (3.0 - 2.0 * t);
+}
+
+fn flare_ring(x: f32, c: f32, r: f32) -> f32 {
+  return 1.0 - flare_smoothstep01(min(abs(x - c) / r, 1.0));
+}
+
+// flare.mat `ghosts`: taps along the line through the centre, wrapped.
+fn flare_ghosts(vertex_uv: vec2<f32>) -> vec3<f32> {
+  let uv = 1.0 - vertex_uv;
+  let v = (0.5 - uv) * flare.ghosts.y;
+  var color = vec3<f32>(0.0);
+  for (var i = 0.0; i < flare.ghosts.x; i += 1.0) {
+    color += flare_tap(fract(uv + v * i), flare.ghosts.z);
+  }
+  return color;
+}
+
+// flare.mat `halo`: the frame warped outwards by a fixed length, kept on
+// a ring (round whatever the aspect).
+fn flare_halo(uv: vec2<f32>) -> vec3<f32> {
+  let aspect = vec2<f32>(flare.size.z, flare.size.w);
+  var v = vec2<f32>(0.5001) - uv;
+  v.x *= aspect.x;
+  v = normalize(v);
+  v.x *= aspect.y;
+  let s = flare_tap(uv + v * flare.halo.x, flare.halo.z);
+  let uv_weight = (uv - vec2<f32>(0.5, 0.0)) * vec2<f32>(aspect.x, 1.0) + vec2<f32>(0.5, 0.0);
+  let d = distance(uv_weight, vec2<f32>(0.5));
+  return s * flare_ring(d, flare.halo.x, flare.halo.y);
+}
+
+// flare.mat `postProcess`: the ghosts and the halo at a quarter of the frame.
+@fragment
+fn fs_flare(in: VsOut) -> @location(0) vec4<f32> {
+  var color = vec3<f32>(0.0);
+  if (flare.ghosts.x > 0.0) {
+    color += flare_ghosts(in.uv);
+  }
+  if (flare.halo.y > 0.0) {
+    color += flare_halo(in.uv);
+  }
+  return vec4<f32>(color, 1.0);
+}
+
+// separableGaussianBlur.fs with gaussianBlurPass's coefficients for
+// kernel width 9, sigma 10/6: the centre tap and two bilinear pairs each
+// side, each pair two texels' Gaussian weights at their weighted offset.
+fn flare_blur(uv: vec2<f32>, axis: vec2<f32>) -> vec3<f32> {
+  let sigma = 10.0 / 6.0;
+  let alpha = 1.0 / (2.0 * sigma * sigma);
+  var sum = textureSampleLevel(flare_source, flare_linear, uv, 0.0).rgb;
+  var total = 1.0;
+  for (var i = 1; i < 3; i++) {
+    let x0 = f32(i * 2 - 1);
+    let x1 = f32(i * 2);
+    let k0 = exp(-alpha * x0 * x0);
+    let k1 = exp(-alpha * x1 * x1);
+    let k = k0 + k1;
+    let o = axis * (x0 + k1 / k);
+    sum += (textureSampleLevel(flare_source, flare_linear, uv + o, 0.0).rgb
+      + textureSampleLevel(flare_source, flare_linear, uv - o, 0.0).rgb) * k;
+    total += 2.0 * k;
+  }
+  return sum / total;
+}
+
+@fragment
+fn fs_flare_blur_x(in: VsOut) -> @location(0) vec4<f32> {
+  let texel = 1.0 / vec2<f32>(textureDimensions(flare_source));
+  return vec4<f32>(flare_blur(in.uv, vec2<f32>(texel.x, 0.0)), 1.0);
+}
+
+@fragment
+fn fs_flare_blur_y(in: VsOut) -> @location(0) vec4<f32> {
+  let texel = 1.0 / vec2<f32>(textureDimensions(flare_source));
+  return vec4<f32>(flare_blur(in.uv, vec2<f32>(0.0, texel.y)), 1.0);
+}

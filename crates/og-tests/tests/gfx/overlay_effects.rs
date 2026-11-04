@@ -802,6 +802,21 @@ fn god_rays_match_their_reference() {
 }
 
 #[test]
+fn lens_flare_at_noon_matches_its_reference() {
+    check("flare-noon");
+}
+
+#[test]
+fn lens_flare_at_an_edge_matches_its_reference() {
+    check("flare-edge");
+}
+
+#[test]
+fn lens_flare_of_lamps_matches_its_reference() {
+    check("flare-lights");
+}
+
+#[test]
 fn motion_blur_matches_its_reference() {
     check("motion-blur");
 }

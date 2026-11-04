@@ -27,6 +27,12 @@ impl PostPasses {
                 items.push(p);
             }
         }
+        items.extend([
+            &self.flare.occlusion as &dyn crate::deferred::Warm,
+            &self.flare.flare,
+            &self.flare.blur_x,
+            &self.flare.blur_y,
+        ]);
         crate::deferred::warm_one(&items)
     }
 
@@ -63,6 +69,8 @@ impl PostPasses {
                     },
                 ),
                 layout_entry(6, float_texture(true)),
+                // The lens flare (`flare.rs`), black without one.
+                layout_entry(7, float_texture(true)),
             ],
         });
         let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -421,6 +429,7 @@ impl PostPasses {
             fx_buffer: uniform("fx post", std::mem::size_of::<FxPostUniform>()),
             fx_after_buffer: uniform("fx post after taa", std::mem::size_of::<FxPostUniform>()),
             fx,
+            flare: FlarePasses::new(device),
             source_layout,
             post_layout,
             taa_layout,
@@ -592,24 +601,12 @@ impl PostPasses {
         self.adjusted_lut.as_ref().map(|(_, _, view)| view)
     }
 
-    /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
-    /// chain; `god_rays`: their texture is added; `untonemapped`: the lit
-    /// image's alpha is the fraction of each pixel to tone map (sprites
-    /// drawn untonemapped lowered it); `tick` seeds the grain.
-    #[allow(clippy::too_many_arguments)]
-    pub fn write_uniform(
-        &self,
-        queue: &wgpu::Queue,
-        exposure: Exposure,
-        post: &PostEffects,
-        glow: bool,
-        god_rays: bool,
-        untonemapped: bool,
-        tick: u64,
-        width: u32,
-    ) {
+    /// The post uniform's exposure row (`Post.exposure` in post.wgsl: the
+    /// manual EV, the mode, the metered range) and the compensation, which
+    /// the flare passes read as well.
+    pub fn exposure_rows(exposure: Exposure) -> ([f32; 4], f32) {
         let adapted = exposure.adaptation().is_some();
-        let (exposure, compensation) = match exposure {
+        match exposure {
             Exposure::Manual { ev } => ([ev, 0.0, 0.0, 0.0], 0.0),
             Exposure::Auto {
                 compensation,
@@ -625,7 +622,29 @@ impl PostPasses {
                 ],
                 compensation,
             ),
-        };
+        }
+    }
+
+    /// Writes the post uniform. `glow`: the glow buffer feeds the bloom
+    /// chain; `god_rays`: their texture is added; `untonemapped`: the lit
+    /// image's alpha is the fraction of each pixel to tone map (sprites
+    /// drawn untonemapped lowered it); `tick` seeds the grain; `flare`:
+    /// the lens flare's passes run, with the starburst's turn with the
+    /// camera.
+    #[allow(clippy::too_many_arguments)]
+    pub fn write_uniform(
+        &self,
+        queue: &wgpu::Queue,
+        exposure: Exposure,
+        post: &PostEffects,
+        glow: bool,
+        god_rays: bool,
+        untonemapped: bool,
+        tick: u64,
+        width: u32,
+        flare: Option<(&crate::LensFlare, f32)>,
+    ) {
+        let (exposure, compensation) = Self::exposure_rows(exposure);
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
         let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
             // UnrealBloomPass: the mips are stored weighted, so the top
@@ -649,8 +668,16 @@ impl PostPasses {
                 None => [b.threshold, b.knee, b.intensity, compensation],
             },
             (None, Some(g)) => [1.0, 0.5, g.intensity.max(0.0), compensation],
+            // The lens flare alone reads the chain's first level: the lit
+            // image unthresholded (the flare's own thresholds decide), and
+            // the tone curve adds none of it as bloom.
+            (None, None) if flare.is_some() => [0.0, 0.0, 0.0, compensation],
             (None, None) => [1.0, 0.5, 0.0, compensation],
         };
+        // The lit image feeds the chain with bloom, or for the flare alone
+        // (with the 2D glow and no bloom, the flare reads the glow).
+        let lit_feeds =
+            lit_bloom.is_some() || (flare.is_some() && post.glow.filter(|_| glow).is_none());
         let tonemap = match post.tonemap {
             Tonemap::Aces => 0.0,
             Tonemap::None => 1.0,
@@ -675,12 +702,7 @@ impl PostPasses {
             hdr: self.hdr,
             exposure,
             bloom,
-            mode: [
-                tonemap,
-                1.0,
-                lit_bloom.is_some() as u32 as f32,
-                glow as u32 as f32,
-            ],
+            mode: [tonemap, 1.0, lit_feeds as u32 as f32, glow as u32 as f32],
             grade: [
                 // The adjusted table carries the grading at its intensity.
                 if post.adjust().is_some() {
@@ -715,6 +737,9 @@ impl PostPasses {
                 ],
                 _ => [0.0; 4],
             },
+            flare: flare.map_or([0.0; 4], |(f, turn)| {
+                [f.intensity.max(0.0), f.starburst as u32 as f32, turn, 0.0]
+            }),
         };
         queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
     }

@@ -7362,6 +7362,95 @@ export interface PostEffects {
    */
   godRaysThreshold: number;
   /**
+   * Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also flare as discs of their own radiance, each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not.
+   */
+  lensFlare: boolean;
+  /**
+   * How much of the flare is added (Filament adds its flare at its bloom strength, 0.1).
+   *
+   * @default 0.1
+   * @range 0..
+   * @tunable
+   */
+  lensFlareIntensity: number;
+  /**
+   * Ghosts per bright spot, along the line through the centre of the frame; 0 is none.
+   *
+   * @default 4
+   * @range 0..16
+   */
+  lensFlareGhosts: number;
+  /**
+   * How far apart the ghosts are, as a fraction of the way to the centre.
+   *
+   * @default 0.6
+   * @range 0..1
+   * @tunable
+   */
+  lensFlareGhostSpacing: number;
+  /**
+   * The exposed brightness above which a spot casts ghosts (each ghost clamps at 1, display white).
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  lensFlareGhostThreshold: number;
+  /**
+   * The halo ring's radius, as a fraction of the frame's height.
+   *
+   * @default 0.4
+   * @range 0..0.5
+   * @tunable
+   */
+  lensFlareHaloRadius: number;
+  /**
+   * The halo ring's thickness, as a fraction of the frame's height; 0 is no halo.
+   *
+   * @default 0.1
+   * @range 0..
+   * @tunable
+   */
+  lensFlareHaloThickness: number;
+  /**
+   * The exposed brightness above which a spot feeds the halo.
+   *
+   * @default 10
+   * @range 0..
+   * @tunable
+   */
+  lensFlareHaloThreshold: number;
+  /**
+   * How far the flare's red and blue split along the line to the centre, as a fraction of the frame.
+   *
+   * @default 0.005
+   * @range 0..
+   * @tunable
+   */
+  lensFlareChromaticAberration: number;
+  /**
+   * Filament's starburst: the flare streaked by an angular pattern round the centre of the frame that turns as the camera turns.
+   *
+   * @default true
+   */
+  lensFlareStarburst: boolean;
+  /**
+   * The sun's own flare: a disc of the sun's size in the sky (0.27 degrees without a drawn disc), weighted by the share of it the depth shows as sky; the sky round it is kept out of the screen-space ghosts, so the sun flares once. 0 is none (no ghosts of the sun at all); 1 lets its ghosts reach full strength.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  lensFlareSun: number;
+  /**
+   * The point and spot lights' own flares: each a 0.2 m disc of the light's radiance at its position (a spot only seen from inside its cone), hidden where the depth lies more than 0.2 m in front of it; its own bulb is kept out of the screen-space ghosts, so it flares once. 0 is none (no ghosts of those lights at all).
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  lensFlareLights: number;
+  /**
    * Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom.
    */
   glow: boolean;
@@ -52903,7 +52992,7 @@ export declare namespace og {
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation.
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping, and lens distortion bends the result; the UI and screen-space sprites (the overlay) come after all of it.
    */
-  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly screenBlur: FieldSpec<"ScreenBlur">; readonly screenBlurStrength: FieldSpec<"f32">; readonly screenBlurCenter: FieldSpec<"Vector2">; readonly screenBlurAngle: FieldSpec<"f32">; readonly screenBlurSamples: FieldSpec<"u32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
+  const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly screenBlur: FieldSpec<"ScreenBlur">; readonly screenBlurStrength: FieldSpec<"f32">; readonly screenBlurCenter: FieldSpec<"Vector2">; readonly screenBlurAngle: FieldSpec<"f32">; readonly screenBlurSamples: FieldSpec<"u32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly lensFlare: FieldSpec<"bool">; readonly lensFlareIntensity: FieldSpec<"f32">; readonly lensFlareGhosts: FieldSpec<"u32">; readonly lensFlareGhostSpacing: FieldSpec<"f32">; readonly lensFlareGhostThreshold: FieldSpec<"f32">; readonly lensFlareHaloRadius: FieldSpec<"f32">; readonly lensFlareHaloThickness: FieldSpec<"f32">; readonly lensFlareHaloThreshold: FieldSpec<"f32">; readonly lensFlareChromaticAberration: FieldSpec<"f32">; readonly lensFlareStarburst: FieldSpec<"bool">; readonly lensFlareSun: FieldSpec<"f32">; readonly lensFlareLights: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
   /**
    * Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
    */

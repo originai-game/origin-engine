@@ -8985,6 +8985,75 @@
           "default": 2
         },
         {
+          "name": "lensFlare",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "lensFlareIntensity",
+          "column": "f32",
+          "default": 0.1,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareGhosts",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "lensFlareGhostSpacing",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareGhostThreshold",
+          "column": "f32",
+          "default": 10,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareHaloRadius",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareHaloThickness",
+          "column": "f32",
+          "default": 0.1,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareHaloThreshold",
+          "column": "f32",
+          "default": 10,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareChromaticAberration",
+          "column": "f32",
+          "default": 0.005,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareStarburst",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "lensFlareSun",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "lensFlareLights",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
           "name": "glow",
           "column": "bool",
           "default": false

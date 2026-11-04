@@ -13,10 +13,10 @@ use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
     AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
     ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
-    JointPalette, LensDistortion, Light2d, Light2dKind, Lighting2d, MeshHandle, MorphTargets,
-    MotionBlur, Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenBlur,
-    ScreenBlurKind, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle, TrailStyleHandle,
-    Vignette,
+    JointPalette, LensDistortion, LensFlare, Light2d, Light2dKind, Lighting2d, MeshHandle,
+    MorphTargets, MotionBlur, Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv,
+    ScreenBlur, ScreenBlurKind, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle,
+    TrailStyleHandle, Vignette,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -338,6 +338,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.depth_of_field = None;
     post.motion_blur = None;
     post.god_rays = None;
+    post.lens_flare = None;
     post.ssr = None;
     post.gi = None;
     post.glow = None;
@@ -421,6 +422,22 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 tint: color(&p["godRaysTint"], Vec3::ONE),
                 samples: u(&p, "godRaysSamples", 48),
                 threshold: f(&p, "godRaysThreshold", 2.0),
+            });
+        }
+        if on(&p, "lensFlare", false) {
+            let d = LensFlare::default();
+            post.lens_flare = Some(LensFlare {
+                intensity: f(&p, "lensFlareIntensity", d.intensity),
+                ghosts: u(&p, "lensFlareGhosts", d.ghosts),
+                ghost_spacing: f(&p, "lensFlareGhostSpacing", d.ghost_spacing),
+                ghost_threshold: f(&p, "lensFlareGhostThreshold", d.ghost_threshold),
+                halo_radius: f(&p, "lensFlareHaloRadius", d.halo_radius),
+                halo_thickness: f(&p, "lensFlareHaloThickness", d.halo_thickness),
+                halo_threshold: f(&p, "lensFlareHaloThreshold", d.halo_threshold),
+                chromatic_aberration: f(&p, "lensFlareChromaticAberration", d.chromatic_aberration),
+                starburst: on(&p, "lensFlareStarburst", d.starburst),
+                sun: f(&p, "lensFlareSun", d.sun),
+                lights: f(&p, "lensFlareLights", d.lights),
             });
         }
         if on(&p, "ssr", false) {

@@ -82,6 +82,16 @@ pub(crate) enum FramePass {
     BloomDown(u32),
     /// Bloom level `i + 1` added onto `i`.
     BloomUp(u32),
+    /// Lens flare (`post/flare.rs`): each flaring light's visible fraction
+    /// from the prepass depth (`flare.vis`).
+    FlareOcclusion,
+    /// Its ghosts and halo, from `bloom.0` before the upsamples add onto it
+    /// and the lights' discs, into `flare.raw` (a quarter of the frame).
+    Flare,
+    /// Its 9-tap Gaussian across (`flare.x`), then down (`flare`, which the
+    /// tonemap adds).
+    FlareBlurX,
+    FlareBlurY,
     /// Flat colour bands by depth over the lit image (`stylise.rs`).
     DepthBands,
     Tonemap,
@@ -148,6 +158,10 @@ impl FramePass {
                 | FramePass::BloomPrefilter
                 | FramePass::BloomDown(_)
                 | FramePass::BloomUp(_)
+                | FramePass::FlareOcclusion
+                | FramePass::Flare
+                | FramePass::FlareBlurX
+                | FramePass::FlareBlurY
                 | FramePass::Tonemap
                 | FramePass::Paint
                 | FramePass::Lines
@@ -201,6 +215,10 @@ impl FramePass {
             FramePass::BloomPrefilter => "bloom-prefilter".into(),
             FramePass::BloomDown(i) => format!("bloom-down.{i}"),
             FramePass::BloomUp(i) => format!("bloom-up.{i}"),
+            FramePass::FlareOcclusion => "flare-occlusion".into(),
+            FramePass::Flare => "flare".into(),
+            FramePass::FlareBlurX => "flare-blur-x".into(),
+            FramePass::FlareBlurY => "flare-blur-y".into(),
             FramePass::Tonemap => "tonemap".into(),
             FramePass::DepthBands => "depth-bands".into(),
             FramePass::Paint => "paint".into(),
@@ -638,6 +656,18 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
         );
     }
+    if has(FramePass::Flare) {
+        let (fw, fh) = flare_size(cfg.post);
+        for name in ["flare.raw", "flare.x", "flare"] {
+            g.transient(name, desc(fw, fh, FLARE_FORMAT, 1, attach_bind));
+        }
+    }
+    if has(FramePass::FlareOcclusion) {
+        g.transient(
+            "flare.vis",
+            desc(FLARE_LIGHTS as u32, 1, FLARE_VIS_FORMAT, 1, attach_bind),
+        );
+    }
     let names = lit_names(passes);
     let aa = names.aa.unwrap_or("history-write");
     let after_dof = names.after_dof.unwrap_or("history-write");
@@ -863,6 +893,24 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::BloomDown(i) => g.pass(name, &[&bloom_name(i)], &[&bloom_name(i + 1)]),
             FramePass::BloomUp(i) => g.pass(name, &[&bloom_name(i + 1)], &[&bloom_name(i)]),
+            FramePass::FlareOcclusion => g.pass(name, &["lindepth"], &["flare.vis"]),
+            // Declared before the upsamples, so the last of them (onto
+            // `bloom.0`) waits for it.
+            FramePass::Flare => {
+                let mut reads = vec!["bloom.0"];
+                if prepass {
+                    reads.push("lindepth");
+                }
+                if auto {
+                    reads.push(&lum);
+                }
+                if has(FramePass::FlareOcclusion) {
+                    reads.push("flare.vis");
+                }
+                g.pass(name, &reads, &["flare.raw"])
+            }
+            FramePass::FlareBlurX => g.pass(name, &["flare.raw"], &["flare.x"]),
+            FramePass::FlareBlurY => g.pass(name, &["flare.x"], &["flare"]),
             FramePass::Tonemap => {
                 let mut reads = vec![lit];
                 if auto {
@@ -873,6 +921,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::GodRaysBlur) {
                     reads.push("god.blur");
+                }
+                if has(FramePass::FlareBlurY) {
+                    reads.push("flare");
                 }
                 if cfg.ui_depth && prepass {
                     reads.push("lindepth");
@@ -1115,6 +1166,58 @@ mod tests {
                 plan.physical()[weights].format,
                 wgpu::TextureFormat::Rgba8Unorm
             );
+        }
+    }
+
+    /// The lens flare reads `bloom.0` after the prefilter wrote it and
+    /// before the last upsample adds onto it, with bloom's downsamples and
+    /// upsamples or without them; its targets are a quarter of the frame
+    /// after TAA (the output's under TAAU), and the tonemap reads the
+    /// blurred one.
+    #[test]
+    fn lens_flare_reads_the_first_bloom_level_before_the_upsamples() {
+        for (bloom, taa) in [(true, false), (false, false), (true, true), (false, true)] {
+            let mut passes = vec![FramePass::Prepass, FramePass::Main];
+            if taa {
+                passes.push(FramePass::Taa);
+            }
+            passes.extend([
+                FramePass::BloomPrefilter,
+                FramePass::FlareOcclusion,
+                FramePass::Flare,
+                FramePass::FlareBlurX,
+                FramePass::FlareBlurY,
+            ]);
+            if bloom {
+                passes.extend([FramePass::BloomDown(0), FramePass::BloomUp(0)]);
+            }
+            passes.push(FramePass::Tonemap);
+            let mut config = cfg(taa, false);
+            // TAAU: the frame after TAA twice the scene's.
+            config.post = if taa { (128, 64) } else { (64, 32) };
+            let plan = build_graph(&passes, &config)
+                .compile()
+                .unwrap_or_else(|e| panic!("bloom {bloom} taa {taa}: {e}"));
+            let names = plan.ordered_names();
+            let at = |name| names.iter().position(|&n| n == name).unwrap();
+            assert!(at("bloom-prefilter") < at("flare"));
+            assert!(at("flare-occlusion") < at("flare"));
+            assert!(at("flare") < at("flare-blur-x"));
+            assert!(at("flare-blur-x") < at("flare-blur-y"));
+            assert!(at("flare-blur-y") < at("tonemap"));
+            if bloom {
+                assert!(at("flare") < at("bloom-up.0"), "{names:?}");
+            }
+            assert_eq!(plan.lifetime("flare").unwrap().1, at("tonemap"));
+            assert_eq!(plan.lifetime("flare.vis").unwrap().1, at("flare"));
+            let (pw, ph) = config.post;
+            for name in ["flare.raw", "flare.x", "flare"] {
+                let d = &plan.physical()[plan.slot(name).unwrap()];
+                assert_eq!((d.width, d.height), (pw / 4, ph / 4), "{name}");
+                assert_eq!(d.format, FLARE_FORMAT);
+            }
+            let vis = &plan.physical()[plan.slot("flare.vis").unwrap()];
+            assert_eq!((vis.width, vis.height), (FLARE_LIGHTS as u32, 1));
         }
     }
 

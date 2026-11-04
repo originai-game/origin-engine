@@ -27887,6 +27887,90 @@
           "default": 2,
           "minimum": 0
         },
+        "lensFlare": {
+          "type": "boolean",
+          "description": "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also flare as discs of their own radiance, each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not.",
+          "default": false
+        },
+        "lensFlareIntensity": {
+          "type": "number",
+          "description": "How much of the flare is added (Filament adds its flare at its bloom strength, 0.1).",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareGhosts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ghosts per bright spot, along the line through the centre of the frame; 0 is none.",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 16
+        },
+        "lensFlareGhostSpacing": {
+          "type": "number",
+          "description": "How far apart the ghosts are, as a fraction of the way to the centre.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "lensFlareGhostThreshold": {
+          "type": "number",
+          "description": "The exposed brightness above which a spot casts ghosts (each ghost clamps at 1, display white).",
+          "default": 10,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareHaloRadius": {
+          "type": "number",
+          "description": "The halo ring's radius, as a fraction of the frame's height.",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 0.5,
+          "x-og-tunable": true
+        },
+        "lensFlareHaloThickness": {
+          "type": "number",
+          "description": "The halo ring's thickness, as a fraction of the frame's height; 0 is no halo.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareHaloThreshold": {
+          "type": "number",
+          "description": "The exposed brightness above which a spot feeds the halo.",
+          "default": 10,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareChromaticAberration": {
+          "type": "number",
+          "description": "How far the flare's red and blue split along the line to the centre, as a fraction of the frame.",
+          "default": 0.005,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareStarburst": {
+          "type": "boolean",
+          "description": "Filament's starburst: the flare streaked by an angular pattern round the centre of the frame that turns as the camera turns.",
+          "default": true
+        },
+        "lensFlareSun": {
+          "type": "number",
+          "description": "The sun's own flare: a disc of the sun's size in the sky (0.27 degrees without a drawn disc), weighted by the share of it the depth shows as sky; the sky round it is kept out of the screen-space ghosts, so the sun flares once. 0 is none (no ghosts of the sun at all); 1 lets its ghosts reach full strength.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "lensFlareLights": {
+          "type": "number",
+          "description": "The point and spot lights' own flares: each a 0.2 m disc of the light's radiance at its position (a spot only seen from inside its cone), hidden where the depth lies more than 0.2 m in front of it; its own bulb is kept out of the screen-space ghosts, so it flares once. 0 is none (no ghosts of those lights at all).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
         "glow": {
           "type": "boolean",
           "description": "Order-independent 2D glow: sprites with SpriteDesc.glow (and 2D particles with a glow) are blurred and added back, with or without bloom.",

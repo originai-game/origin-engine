@@ -838,6 +838,187 @@ fn every_effect_pass_together_under_taa() {
     );
 }
 
+/// The lens flare at full strength and without the starburst, so a ghost's
+/// brightness reads as its source's visible share.
+fn flare_probe(scene: &mut RenderScene) {
+    scene.post.lens_flare = Some(LensFlare {
+        intensity: 1.0,
+        starburst: false,
+        ..Default::default()
+    });
+}
+
+/// The mean luma the flare adds (`on` less `off`) in a square of 13 pixels
+/// round the mirror of the pixel `source` projects to through the frame's
+/// centre: where its first ghost lands (Filament samples the ghosts from
+/// `1 - uv`).
+fn ghost_gain(on: &RgbaImage, off: &RgbaImage, cam: &Camera, source: Vec3) -> f32 {
+    let (w, h) = (on.width, on.height);
+    let (x, y) = project(cam, w, h, source);
+    let (mx, my) = (w - 1 - x.min(w - 1), h - 1 - y.min(h - 1));
+    let r = (
+        mx.saturating_sub(6),
+        my.saturating_sub(6),
+        (mx + 7).min(w),
+        (my + 7).min(h),
+    );
+    region(on, r) - region(off, r)
+}
+
+/// A frame of the scene `build` makes with the probe's flare and one
+/// without any.
+fn flare_pair(desc: &RenderDesc, build: impl Fn() -> RenderScene) -> (RgbaImage, RgbaImage) {
+    let mut on = build();
+    flare_probe(&mut on);
+    let mut off = build();
+    off.post.lens_flare = None;
+    (frame(desc, &on).0, frame(desc, &off).0)
+}
+
+/// The sun's flare follows how much of its disc the depth shows: sinking
+/// behind a wall's top edge, its ghost fades monotonically from full to
+/// nothing, half of it at the edge. Without the occlusion (a ghost of the
+/// sun's direction whatever stands in front, or the sun's sky pixels
+/// ghosting with the wall over them clamped at full) the hidden sun would
+/// still flare.
+#[test]
+fn lens_flare_fades_as_the_sun_sinks_behind_a_wall() {
+    let desc = small();
+    let gains: Vec<f32> = [0.36f32, 0.32, 0.30, 0.28, 0.24]
+        .into_iter()
+        .map(|elevation| {
+            let scene = fx::flare_edge_scene(elevation);
+            let (on, off) = flare_pair(&desc, || fx::flare_edge_scene(elevation));
+            let sun = scene.camera.position
+                + Vec3::new(0.0, elevation, -1.0).normalize() * scene.camera.far * 0.5;
+            ghost_gain(&on, &off, &scene.camera, sun)
+        })
+        .collect();
+    println!("sun ghost gain, sinking behind the wall: {gains:?}");
+    assert!(gains[0] > 6.0, "the visible sun flares: {gains:?}");
+    for pair in gains.windows(2) {
+        assert!(
+            pair[1] <= pair[0] + 0.5,
+            "the flare fades monotonically: {gains:?}"
+        );
+    }
+    assert!(
+        gains[2] < 0.8 * gains[0] && gains[2] > gains[4] + 1.0,
+        "half the disc, part of the flare: {gains:?}"
+    );
+    assert!(gains[4].abs() < 0.5, "the hidden sun casts none: {gains:?}");
+}
+
+/// A lamp moving out from behind a pillar: its flare grows monotonically
+/// from nothing as more of its disc clears the pillar's edge (the visible
+/// share from the depth, the light 14 m away and the pillar 8 m).
+#[test]
+fn lens_flare_grows_as_a_lamp_clears_a_pillar() {
+    let desc = small();
+    let lamp_at = |x: f32| Vec3::new(x, 2.4, -10.0);
+    let scene_with = |x: f32| {
+        let mut scene = RenderScene::new();
+        fx::terrain(&mut scene, 60.0);
+        let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 6.0, 0.4)));
+        let stone = scene.add_material(Material {
+            base_color: [0.5, 0.48, 0.45, 1.0],
+            roughness: 0.9,
+            ..Default::default()
+        });
+        // Its right edge on x = 0 at z = -4.
+        scene.add_instance(
+            pillar,
+            stone,
+            Mat4::from_translation(Vec3::new(-0.5, 3.0, -4.0)),
+        );
+        scene.lights.push(og_render::Light {
+            position: lamp_at(x),
+            intensity: 30.0,
+            range: 30.0,
+            ..Default::default()
+        });
+        scene.light.intensity = 0.05;
+        scene.environment.intensity = 0.05;
+        scene.environment.background = Background::Color(Vec3::splat(0.005));
+        scene.post.bloom = Some(og_render::Bloom::default());
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 1.6, 4.0),
+            target: Vec3::new(-1.5, 1.4, -10.0),
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+        scene
+    };
+    // Its disc (0.2 m) clears the pillar's edge fully past x = 0.2.
+    let gains: Vec<f32> = [-0.6f32, -0.15, 0.0, 0.15, 0.6]
+        .into_iter()
+        .map(|x| {
+            let scene = scene_with(x);
+            let (on, off) = flare_pair(&desc, || scene_with(x));
+            ghost_gain(&on, &off, &scene.camera, lamp_at(x))
+        })
+        .collect();
+    println!("lamp ghost gain, clearing the pillar: {gains:?}");
+    assert!(
+        gains[0].abs() < 0.5,
+        "the hidden lamp casts none: {gains:?}"
+    );
+    for pair in gains.windows(2) {
+        assert!(
+            pair[1] + 0.5 >= pair[0],
+            "the flare grows monotonically: {gains:?}"
+        );
+    }
+    assert!(gains[4] > 6.0, "the clear lamp flares: {gains:?}");
+    assert!(
+        gains[2] > gains[0] + 1.0 && gains[2] < 0.8 * gains[4],
+        "half the disc, part of the flare: {gains:?}"
+    );
+}
+
+/// Under TAA a camera turning onto the sun draws its ghost where a camera
+/// held still there draws it: the flare is made after TAA from sources
+/// placed without the jitter, so it never trails or shakes with the
+/// history.
+#[test]
+fn lens_flare_ghosts_do_not_trail_under_taa() {
+    let desc = RenderDesc {
+        antialias: og_render::Antialias::Taa,
+        ..small()
+    };
+    let scene = fx::flare_edge_scene(0.36);
+    let target = scene.camera.target;
+    let turn = move |s: &mut RenderScene, f: u32| {
+        s.camera.target = target + Vec3::new(0.06 * (5.0 - f as f32), 0.0, 0.0);
+    };
+    let hold = |_: &mut RenderScene, _: u32| {};
+    let gain = |moving: bool| {
+        let (mut on, mut off) = (fx::flare_edge_scene(0.36), fx::flare_edge_scene(0.36));
+        flare_probe(&mut on);
+        off.post.lens_flare = None;
+        let (on, ..) = if moving {
+            run(&desc, &mut on, 6, turn)
+        } else {
+            run(&desc, &mut on, 6, hold)
+        };
+        let (off, ..) = if moving {
+            run(&desc, &mut off, 6, turn)
+        } else {
+            run(&desc, &mut off, 6, hold)
+        };
+        let sun =
+            scene.camera.position + Vec3::new(0.0, 0.36, -1.0).normalize() * scene.camera.far * 0.5;
+        ghost_gain(&on, &off, &scene.camera, sun)
+    };
+    let (moving, still) = (gain(true), gain(false));
+    println!("sun ghost gain under TAA: turning {moving}, held {still}");
+    assert!(still > 6.0, "the held camera's sun flares: {still}");
+    assert!(
+        (moving - still).abs() < 0.1 * still,
+        "the turning camera's ghost is where the held one's is: {moving} vs {still}"
+    );
+}
+
 /// God rays brighten the shafts between columns; with the sun behind the
 /// camera nothing changes.
 #[test]

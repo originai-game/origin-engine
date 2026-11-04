@@ -573,6 +573,8 @@ pub struct PostEffects {
     pub depth_of_field: Option<DepthOfField>,
     pub motion_blur: Option<MotionBlur>,
     pub god_rays: Option<GodRays>,
+    /// Lens flare after bloom (`None`: off, no pass recorded).
+    pub lens_flare: Option<crate::LensFlare>,
     /// The 2D glow buffer (sprites with [`SpriteFx::glow`]).
     pub glow: Option<Glow>,
     pub color_grading: Option<ColorGrading>,

@@ -1,15 +1,17 @@
 //! After the main pass: outlines, TAA (and its sharpening), depth of field,
 //! motion blur, god rays, auto-exposure metering, bloom (and the 2D glow),
 //! the tonemap with grading, vignette, chromatic aberration, grain and
-//! flash, and FXAA after it; before it, the ambient occlusion over the
+//! flash, and FXAA after it; the lens flare after bloom (`flare.rs`); before it, the ambient occlusion over the
 //! depth-normal prepass. Also the size-dependent targets they and the main
 //! pass draw into, as render graph targets.
 
+mod flare;
 mod graph;
 mod passes;
 mod plan;
 mod smaa;
 mod targets;
+pub(crate) use flare::*;
 pub(crate) use graph::*;
 pub(crate) use plan::*;
 pub(crate) use targets::*;
@@ -97,6 +99,9 @@ struct PostUniform {
     extra: [f32; 4],
     unreal: [f32; 4],
     hdr: [f32; 4],
+    /// The lens flare (`flare.rs`): x its intensity (0: off), y 1 with the
+    /// starburst, z the starburst's turn with the camera.
+    flare: [f32; 4],
 }
 
 /// `struct Adapt` in exposure.wgsl.
@@ -428,6 +433,8 @@ pub(crate) struct PostPasses {
     /// same but sized to the post chain's frame, the output's under TAAU.
     pub fx_after_buffer: wgpu::Buffer,
     fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>>,
+    /// The lens flare's passes (`flare.rs`).
+    pub flare: FlarePasses,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -573,6 +580,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("hdr transfer", crate::hdr::TRANSFER),
         ("stylise", STYLISE_WGSL),
         ("fx post", fx.as_str()),
+        ("lens flare", FLARE_WGSL),
     ]
     .into_iter()
     .map(|(label, body)| (label, fullscreen_source(body)))

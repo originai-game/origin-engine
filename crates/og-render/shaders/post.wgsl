@@ -18,6 +18,7 @@ struct Post {
   extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites), z: 1 with sharpening, w: its strength
   unreal: vec4<f32>,    // x: 1 for three.js UnrealBloomPass bloom, y: its radius, z: the first bloom level's width, w: the contrast its high pass sees
   hdr: vec4<f32>,       // peak / paper white (0 SDR), LPM scale/bias, paper white nits
+  flare: vec4<f32>,     // the lens flare (lens_flare.wgsl): x intensity (0 off), y 1 with the starburst, z its turn with the camera
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
@@ -26,6 +27,7 @@ struct Post {
 @group(0) @binding(4) var bloom_tex: texture_2d<f32>;
 @group(0) @binding(5) var grade_lut: texture_3d<f32>;
 @group(0) @binding(6) var god_rays: texture_2d<f32>;
+@group(0) @binding(7) var flare_tex: texture_2d<f32>;
 
 fn exposure() -> f32 {
   if (post.exposure.y > 1.5) {
@@ -108,7 +110,41 @@ fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
   return mix(clamp(lit.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), curved, clamp(lit.a, 0.0, 1.0));
 }
 
-// The lit image exposed, with bloom and god rays, through the tone curve.
+// Filament's starburst (colorGrading.mat `starburst`, google/filament
+// 5ce4cbf19, Apache-2.0, third_party/lens-flare/filament/): the flare
+// modulated by two copies of a random 256-texel row, read by the angle
+// round the centre and turned in opposite directions with the camera, and
+// left whole near the centre. Procedural here, no texture or asset:
+// Filament fills its R8 row with 0.5 + 0.5 x uniform random values once
+// and samples it linearly, repeating; `starburst_row` is that row's
+// linear read, its values the engine's own hash (`grain_hash`).
+fn starburst_row(u: f32) -> f32 {
+  let x = u * 256.0 - 0.5;
+  let i = floor(x);
+  let a = 0.5 + 0.5 * grain_hash(vec2<u32>(u32(i32(i) & 255), 0u), 0x5eedu);
+  let b = 0.5 + 0.5 * grain_hash(vec2<u32>(u32((i32(i) + 1) & 255), 0u), 0x5eedu);
+  return mix(a, b, x - i);
+}
+
+// Filament's acosFastPositive (common_math.glsl), which its starburst
+// reads the angle with.
+fn acos_fast_positive(x: f32) -> f32 {
+  let p = -0.1565827 * x + 1.570796;
+  return p * sqrt(1.0 - x);
+}
+
+fn starburst(uv: vec2<f32>) -> f32 {
+  if (post.flare.y < 0.5) { return 1.0; }
+  let offset = post.flare.z;
+  let center = uv - vec2<f32>(0.5001);
+  let d = length(center);
+  let radial = acos_fast_positive(center.x / d);
+  let mask = starburst_row(fract(radial + offset)) * starburst_row(fract(radial - offset * 0.5));
+  return clamp(mask + (1.0 - smoothstep(0.0, 0.3, d)), 0.0, 1.0);
+}
+
+// The lit image exposed, with bloom, the lens flare and god rays, through
+// the tone curve (the HDR output's too).
 fn curve(uv: vec2<f32>) -> vec3<f32> {
   var lit: vec3<f32>;
   if (post.vignette.w > 0.0) {
@@ -125,6 +161,10 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   var c = lit * exposure();
   if (post.bloom.z > 0.0) {
     c += textureSampleLevel(bloom_tex, linear_sampler, uv, 0.0).rgb * post.bloom.z;
+  }
+  // Exposed already, as bloom is (lens_flare.wgsl).
+  if (post.flare.x > 0.0) {
+    c += textureSampleLevel(flare_tex, linear_sampler, uv, 0.0).rgb * (post.flare.x * starburst(uv));
   }
   if (post.extra.x > 0.5) {
     c += textureSampleLevel(god_rays, linear_sampler, uv, 0.0).rgb * exposure();

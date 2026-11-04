@@ -275,6 +275,44 @@ impl AtmosphereGpu {
         a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];
         a
     }
+
+    /// The share of `p`'s light the fog lets through to a perspective eye at
+    /// `eye`: 1 less frame.wgsl `fog_amount(p)`'s amount (1 without fog).
+    pub(crate) fn fog_clear(&self, eye: Vec3, p: Vec3) -> f32 {
+        if self.fog_color[3] < 0.5 {
+            return 1.0;
+        }
+        let to = p - eye;
+        let d = to.length();
+        let fd = self.fog_distance;
+        let mut clear = (-fd[0] * (d - fd[1]).max(0.0)).exp();
+        if fd[2] > fd[1] {
+            clear *= 1.0 - ((d - fd[1]) / (fd[2] - fd[1])).clamp(0.0, 1.0);
+        }
+        let fh = self.fog_height;
+        if fh[2] > 0.0 {
+            let k = fh[1];
+            let base = fh[2] * (-k * (eye.y - fh[0])).exp();
+            let column = if (k * to.y).abs() > 1e-4 {
+                base * (1.0 - (-k * to.y).exp()) / (k * to.y) * d
+            } else {
+                base * d
+            };
+            clear *= (-column.max(0.0)).exp();
+        }
+        1.0 - (1.0 - clear).min(fd[3])
+    }
+
+    /// The share of the sky at `dir` the fog leaves (sky.wgsl `sky_fog`:
+    /// the fog 5 km out, times the fog's sky amount): what the fog leaves
+    /// of the sun's disc.
+    pub(crate) fn sky_fog_clear(&self, eye: Vec3, dir: Vec3) -> f32 {
+        if self.fog_color[3] < 0.5 {
+            return 1.0;
+        }
+        let amount = 1.0 - self.fog_clear(eye, eye + dir * 5000.0);
+        1.0 - amount * self.fog_height[3]
+    }
 }
 
 /// What a time of day looks like: the sun (or at night the moon) as the

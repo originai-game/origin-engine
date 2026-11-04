@@ -199,6 +199,11 @@ impl Renderer {
         let motion_blur = post_fx.motion_blur;
         let screen_blur = post_fx.screen_blur.filter(|b| b.strength != 0.0);
         let god_rays = post_fx.god_rays;
+        // Lens flare (post/flare.rs), after bloom. The sun's and the
+        // lights' own flares, seen by a perspective 3D camera, read the
+        // prepass depth for their occlusion.
+        let lens_flare = post_fx.lens_flare.filter(|f| f.intensity > 0.0);
+        let flare_sources_on = WORLD_3D && !cam.orthographic && lens_flare.is_some();
         let fluids_3d = WORLD_3D && scene.fluids_3d.iter().any(|f| !f.particles.is_empty());
         let depth_bands = scene.stylise.depth_bands.filter(|b| b.count >= 2);
         // Ink or hatching on depth edges reads the prepass in the lines
@@ -230,6 +235,7 @@ impl Renderer {
             || dof.is_some()
             || motion_blur.is_some()
             || god_rays.is_some()
+            || flare_sources_on
             || particle_frame.needs_depth
             // Water and 3D fluids read the depth below them.
             || !scene_water.is_empty()
@@ -2237,6 +2243,68 @@ impl Renderer {
         let sun_front = sun_clip.w > 0.0 && to_light.dot(cam.forward) > 0.0;
         let sun_fade = (2.0 - sun_ndc.abs().max_element()).clamp(0.0, 1.0);
         let god_visible = god_rays.is_some() && sun_front && sun_fade > 0.0;
+        // The lens flare's sources, placed with the unjittered camera, and
+        // its passes' uniform; its starburst turns with the camera's
+        // forward axis (Filament: the sum of the view matrix's third
+        // column).
+        let flare_turn = cam.view.z_axis.truncate().dot(Vec3::ONE);
+        if let Some(f) = &lens_flare {
+            let sources = if flare_sources_on {
+                let look = scene
+                    .environment
+                    .sky
+                    .look
+                    .as_ref()
+                    .unwrap_or(&SkyLook::DEFAULT);
+                // The drawn sun: the procedural sky's, the sky cube's when
+                // it is the procedural one, else the light's direction
+                // with no disc.
+                let (direction, radius_degrees) = match scene.environment.background {
+                    Background::Procedural { sun_direction, .. } => (sun_direction, look.sun_size),
+                    Background::Sky if scene.environment_map.is_none() => {
+                        (scene.environment.sky.sun_direction, look.sun_size)
+                    }
+                    _ => (to_light, 0.0),
+                };
+                let atmosphere = &uniform.atmosphere;
+                post::flare_sources(
+                    f,
+                    &post::FlareCamera {
+                        view: cam.view,
+                        view_proj: cam.view_proj,
+                        eye: camera.position,
+                        forward: cam.forward,
+                        focal: cam.proj.y_axis.y,
+                        far: camera.far,
+                    },
+                    aspect,
+                    // Clouds are already in the light (`Clouds::light_scene`);
+                    // the fog's share of the sky towards the sun is not.
+                    // A cumulus passing over the disc (sky.wgsl
+                    // `clouds_march`) is not seen: its transmittance at the
+                    // sun is never stored (R4's follow-up).
+                    Some(post::FlareSun {
+                        direction,
+                        irradiance: light.color * light.intensity,
+                        radius_degrees,
+                        fog_clear: atmosphere.sky_fog_clear(camera.position, direction),
+                    }),
+                    &scene.lights,
+                    &|p| atmosphere.fog_clear(camera.position, p),
+                )
+            } else {
+                post::FlareSources::default()
+            };
+            let u = post::flare_uniform(
+                f,
+                &sources,
+                post::PostPasses::exposure_rows(camera.exposure),
+                self.history_size(),
+                camera.far,
+            );
+            self.queue
+                .write_buffer(&self.post.flare.buffer, 0, bytemuck::bytes_of(&u));
+        }
         self.post.write_uniform(
             &self.queue,
             camera.exposure,
@@ -2246,6 +2314,7 @@ impl Renderer {
             sprite_frame.untonemapped,
             scene.tick,
             self.history_size().0,
+            lens_flare.as_ref().map(|f| (f, flare_turn)),
         );
         if camera.exposure.adaptation().is_some() {
             self.post.advance_exposure(
@@ -2514,10 +2583,25 @@ impl Renderer {
                 passes.push(FramePass::Adapt);
             }
         }
+        // The lens flare reads the chain's first level before the
+        // upsamples add onto it: with bloom off, the prefilter runs for it
+        // alone.
+        if bloom || lens_flare.is_some() {
+            passes.push(FramePass::BloomPrefilter);
+        }
+        if lens_flare.is_some() {
+            if flare_sources_on {
+                passes.push(FramePass::FlareOcclusion);
+            }
+            passes.extend([
+                FramePass::Flare,
+                FramePass::FlareBlurX,
+                FramePass::FlareBlurY,
+            ]);
+        }
         if bloom {
             let (pw, ph) = self.history_size();
             let levels = post::bloom_levels(pw, ph);
-            passes.push(FramePass::BloomPrefilter);
             passes.extend((0..levels - 1).map(FramePass::BloomDown));
             passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
         }

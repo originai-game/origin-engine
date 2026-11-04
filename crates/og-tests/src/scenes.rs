@@ -65,6 +65,9 @@ pub const SCENES: &[&str] = &[
     "dof-low",
     "dof-high",
     "god-rays",
+    "flare-noon",
+    "flare-edge",
+    "flare-lights",
     "motion-blur",
     "stylised",
     "skinning",
@@ -809,6 +812,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "god-rays" => |g, _| {
             g.scene = fx::god_rays_scene();
+            Ok(())
+        },
+        // Lens flare: a sun almost overhead seen past the roofs, a low sun
+        // half behind a wall's edge, and lamps at night (one half behind a
+        // pillar, a spot aimed at the camera).
+        "flare-noon" => |g, _| {
+            g.scene = fx::flare_noon_scene();
+            Ok(())
+        },
+        "flare-edge" => |g, _| {
+            g.scene = fx::flare_edge_scene(0.3);
+            Ok(())
+        },
+        "flare-lights" => |g, _| {
+            g.scene = fx::flare_lights_scene();
             Ok(())
         },
         "motion-blur" => |g, _| {

@@ -194,6 +194,63 @@ impl Default for GodRays {
     }
 }
 
+/// Lens flare (`post/flare.rs`, `lens_flare.wgsl`): Filament's screen-space
+/// flare (after John Chapman), whose ghosts and halo mirror the bright
+/// parts of the bloom chain's first level through the centre of the frame
+/// with chromatic aberration, blurred and added before the tone curve under
+/// a starburst. The sun and the most important point and spot lights at the
+/// camera flare as disc sources of their own radiance too, each weighted by
+/// how much of it the prepass depth shows (Wicked Engine's occlusion grid,
+/// on the GPU). Runs after bloom, at a quarter of the frame after TAA, in
+/// exposed light, so the exposure and an HDR output apply to it as to bloom.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LensFlare {
+    /// How much of the flare is added (Filament adds its flare at the bloom
+    /// strength, 0.1 by default).
+    pub intensity: f32,
+    /// Ghosts per bright spot, along the line through the centre (0: none).
+    pub ghosts: u32,
+    /// The ghosts' spacing as a fraction of the way to the centre (0..1).
+    pub ghost_spacing: f32,
+    /// The exposed brightness a ghost starts above (each tap then clamps at
+    /// 1).
+    pub ghost_threshold: f32,
+    /// The halo's radius as a fraction of the frame's height (0..0.5).
+    pub halo_radius: f32,
+    /// The halo ring's thickness as a fraction of the height (0: none).
+    pub halo_thickness: f32,
+    /// The exposed brightness the halo starts above.
+    pub halo_threshold: f32,
+    /// How far red and blue split along the line to the centre (uv).
+    pub chromatic_aberration: f32,
+    /// Filament's starburst: the flare modulated by an angular pattern
+    /// round the centre that turns with the camera.
+    pub starburst: bool,
+    /// The sun's own flare (0: none); 1 lets its ghosts reach full strength.
+    pub sun: f32,
+    /// The point and spot lights' own flares (0: none).
+    pub lights: f32,
+}
+
+impl Default for LensFlare {
+    /// Filament's `BloomOptions` defaults, its strength as the intensity.
+    fn default() -> Self {
+        LensFlare {
+            intensity: 0.1,
+            ghosts: 4,
+            ghost_spacing: 0.6,
+            ghost_threshold: 10.0,
+            halo_radius: 0.4,
+            halo_thickness: 0.1,
+            halo_threshold: 10.0,
+            chromatic_aberration: 0.005,
+            starburst: true,
+            sun: 1.0,
+            lights: 1.0,
+        }
+    }
+}
+
 /// Order-independent glow for emissive sprites (2D): sprites with
 /// [`SpriteFx::glow`] (and 2D particles with a glow) are also added into a
 /// glow buffer, whatever covers them, which the bloom chain blurs and adds

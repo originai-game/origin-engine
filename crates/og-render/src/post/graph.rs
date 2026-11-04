@@ -18,6 +18,8 @@ struct Bindings {
     up: Vec<wgpu::BindGroup>,
     post: [wgpu::BindGroup; 2],
     fx: HashMap<FramePass, [wgpu::BindGroup; 2]>,
+    /// The lens flare's passes (`flare.rs`).
+    flare: HashMap<FramePass, [wgpu::BindGroup; 2]>,
 }
 
 /// The frame's render graph: the compiled plan for the current pass list,
@@ -404,21 +406,36 @@ impl FrameGraph {
         } else {
             &passes.black
         };
+        let flare_view = if has(FramePass::FlareBlurY) {
+            self.view("flare")
+        } else {
+            &passes.black
+        };
+        // Only the tonemap reads the flare: the bloom passes bind black
+        // there, so no texture they render into can be one they hold.
+        let post_group_with = |label: &str,
+                               src: &wgpu::TextureView,
+                               bloom: &wgpu::TextureView,
+                               slot: usize,
+                               flare: &wgpu::TextureView| {
+            group(
+                label,
+                &passes.post_layout,
+                &[
+                    tex(src),
+                    sampler.clone(),
+                    passes.post_buffer.as_entire_binding(),
+                    tex(lum(slot)),
+                    tex(bloom),
+                    tex(lut),
+                    tex(god),
+                    tex(flare),
+                ],
+            )
+        };
         let post_group =
             |label: &str, src: &wgpu::TextureView, bloom: &wgpu::TextureView, slot: usize| {
-                group(
-                    label,
-                    &passes.post_layout,
-                    &[
-                        tex(src),
-                        sampler.clone(),
-                        passes.post_buffer.as_entire_binding(),
-                        tex(lum(slot)),
-                        tex(bloom),
-                        tex(lut),
-                        tex(god),
-                    ],
-                )
+                post_group_with(label, src, bloom, slot, &passes.black)
             };
         let bloom = has(FramePass::BloomPrefilter);
         let bloom_count = frame
@@ -450,7 +467,8 @@ impl FrameGraph {
         } else {
             &passes.black
         };
-        let post = [0, 1].map(|slot| post_group("post", source(slot), bloom_top, slot));
+        let post =
+            [0, 1].map(|slot| post_group_with("post", source(slot), bloom_top, slot, flare_view));
 
         // The effect passes: (a, depth, gbuffer, b) per slot.
         let depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
@@ -527,7 +545,41 @@ impl FrameGraph {
             };
             fx.insert(p, groups);
         }
+        // The lens flare's passes: (source, view depth, exposure,
+        // visibility) per slot, placeholders where a pass reads none.
+        let mut flare = HashMap::new();
+        let flare_group = |src: &wgpu::TextureView, vis: &wgpu::TextureView, slot: usize| {
+            group(
+                "lens flare",
+                &passes.flare.layout,
+                &[
+                    passes.flare.buffer.as_entire_binding(),
+                    sampler.clone(),
+                    tex(src),
+                    tex(depth),
+                    tex(lum(slot)),
+                    tex(vis),
+                ],
+            )
+        };
+        for (p, src) in [
+            (FramePass::FlareOcclusion, None),
+            (FramePass::Flare, Some("bloom.0")),
+            (FramePass::FlareBlurX, Some("flare.raw")),
+            (FramePass::FlareBlurY, Some("flare.x")),
+        ] {
+            if has(p) {
+                let src = src.map_or(black, |n| self.view(n));
+                // The occlusion pass writes the visibility the others read.
+                let vis = match p {
+                    FramePass::FlareOcclusion => black,
+                    _ => self.try_view("flare.vis").unwrap_or(black),
+                };
+                flare.insert(p, [0, 1].map(|slot| flare_group(src, vis, slot)));
+            }
+        }
         Bindings {
+            flare,
             taa: taa_groups,
             smaa_resolve,
             taa_sharpen,
@@ -593,6 +645,24 @@ impl FrameGraph {
                 clear,
                 &passes.fx[entry],
                 &b.fx[&pass][slot],
+            );
+            return 1;
+        }
+        let flare = match pass {
+            FramePass::FlareOcclusion => Some((&passes.flare.occlusion, "flare.vis")),
+            FramePass::Flare => Some((&passes.flare.flare, "flare.raw")),
+            FramePass::FlareBlurX => Some((&passes.flare.blur_x, "flare.x")),
+            FramePass::FlareBlurY => Some((&passes.flare.blur_y, "flare")),
+            _ => None,
+        };
+        if let Some((pipeline, target)) = flare {
+            fullscreen_pass(
+                encoder,
+                &pass.name(),
+                self.view(target),
+                clear,
+                pipeline,
+                &b.flare[&pass][slot],
             );
             return 1;
         }
@@ -809,7 +879,11 @@ impl FrameGraph {
             | FramePass::Main
             | FramePass::DepthBands
             | FramePass::Ssr
-            | FramePass::Glow => 0,
+            | FramePass::Glow
+            | FramePass::FlareOcclusion
+            | FramePass::Flare
+            | FramePass::FlareBlurX
+            | FramePass::FlareBlurY => 0,
         }
     }
 }

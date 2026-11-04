@@ -24,6 +24,17 @@ is one line here, written at the merge that changes
 - **Breaking: insert ranges.** `world.insert` now refuses values outside
   reflected min/max on both hosts, before mutation or deferred insertion.
   Fix out-of-range component initializers; ordinary field writes are unchanged.
+- **Lens flare.** `PostEffects.lensFlare` (off by default) adds Filament's
+  screen-space flare (ghosts, a halo with chromatic aberration and a
+  starburst) after bloom, plus the sun's and up to seven point and spot
+  lights' own flares, each weighted by its visibility in the prepass depth
+  on the GPU. It is added in exposed light before the tone curve, so HDR
+  output applies to it too. New `PostEffects` members: `lensFlare`,
+  `lensFlareIntensity`, `lensFlareGhosts`, `lensFlareGhostSpacing`,
+  `lensFlareGhostThreshold`, `lensFlareHaloRadius`,
+  `lensFlareHaloThickness`, `lensFlareHaloThreshold`,
+  `lensFlareChromaticAberration`, `lensFlareStarburst`, `lensFlareSun` and
+  `lensFlareLights`.
 - **Terrain projection diagnostics.** `terrainProjection` shows the dominant
   raw layer's unobscured XYZ weights; `terrainDensity` shows its per-axis
   vertical albedo texel footprints. Entity dumps document their units.

@@ -11,12 +11,12 @@ use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Bloom, Burst, Camera, ChromaticAberration,
     ColorAdjust, ColorCurve, ColorGrading, ColorLut, ColorSpace, Curve, Decal, DepthOfField,
     DirectionalLight, DofQuality, EmitterHandle, EmitterShape, Environment, Exposure, FilmGrain,
-    Glow, GodRays, Instance, InstanceFx, JointPalette, Light, Light2d, LightKind, Lighting2d,
-    Material, MeshData, Mips, MotionBlur, Occluder2d, Outline, ParticleAlign, ParticleBlend,
-    ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender, ParticleSystem,
-    ProceduralSky, RenderScene, Ribbon, RibbonPoint, RibbonUv, SheetMode, SimulationSpace,
-    SkinData, SkinnedInstance, Sprite, SpriteFx, SpriteSheet, StandardMaterial, Text, TextureData,
-    TextureHandle, Tonemap, Trail, TrailStyle, Vertex, Vignette, shapes,
+    Glow, GodRays, Instance, InstanceFx, JointPalette, LensFlare, Light, Light2d, LightKind,
+    Lighting2d, Material, MeshData, Mips, MotionBlur, Occluder2d, Outline, ParticleAlign,
+    ParticleBlend, ParticleCollision, ParticleEmitter, ParticleNoise, ParticleRender,
+    ParticleSystem, ProceduralSky, RenderScene, Ribbon, RibbonPoint, RibbonUv, SheetMode,
+    SimulationSpace, SkinData, SkinnedInstance, Sprite, SpriteFx, SpriteSheet, StandardMaterial,
+    Text, TextureData, TextureHandle, Tonemap, Trail, TrailStyle, Vertex, Vignette, shapes,
 };
 
 mod models;

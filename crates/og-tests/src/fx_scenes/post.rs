@@ -506,6 +506,181 @@ pub fn god_rays_scene() -> RenderScene {
 }
 
 // ---------------------------------------------------------------------------
+// Lens flare.
+// ---------------------------------------------------------------------------
+
+fn flare_sky(scene: &mut RenderScene, sun: Vec3, color: Vec3, intensity: f32) {
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        color,
+        intensity,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: sun,
+            sun_color: color,
+            look: None,
+        },
+        intensity: 0.45,
+        background: Background::Sky,
+        ..Environment::default()
+    };
+    scene.post.bloom = Some(Bloom::default());
+    scene.post.lens_flare = Some(LensFlare::default());
+}
+
+/// A courtyard at noon, the camera on the ground looking up past the roofs
+/// at a sun almost overhead: its ghosts and halo cross the frame.
+pub fn flare_noon_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 120.0);
+    let block = scene.add_mesh(shapes::cuboid(Vec3::new(6.0, 14.0, 6.0)));
+    let stone = scene.add_material(Material {
+        base_color: [0.72, 0.68, 0.62, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    for (x, z) in [(-9.0, -12.0), (9.0, -12.0), (-11.0, 2.0), (11.0, 2.0)] {
+        scene.add_instance(block, stone, Mat4::from_translation(Vec3::new(x, 7.0, z)));
+    }
+    flare_sky(
+        &mut scene,
+        Vec3::new(0.12, 1.0, -0.35),
+        Vec3::new(1.0, 0.96, 0.9),
+        3.0,
+    );
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.7, 6.0),
+        target: Vec3::new(0.4, 12.0, -3.0),
+        exposure: Exposure::linear(0.6),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A low sun at `elevation` (the slope of its direction) behind the top
+/// edge of a long wall, the camera turned to the right of it: at 0.3 the
+/// edge crosses the middle of the sun's disc, so half of it is seen.
+pub fn flare_edge_scene(elevation: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 120.0);
+    // The wall's front face 17.5 m from the eye, its top edge on the line
+    // from the eye at slope 0.3.
+    let (eye, front) = (Vec3::new(0.0, 1.7, 8.0), -9.5);
+    let top = eye.y + (eye.z - front) * 0.3;
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(40.0, top, 1.0)));
+    let stone = scene.add_material(Material {
+        base_color: [0.6, 0.56, 0.5, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(
+        wall,
+        stone,
+        Mat4::from_translation(Vec3::new(0.0, top * 0.5, front - 0.5)),
+    );
+    flare_sky(
+        &mut scene,
+        Vec3::new(0.0, elevation, -1.0),
+        Vec3::new(1.0, 0.82, 0.6),
+        2.5,
+    );
+    scene.camera = Camera {
+        position: eye,
+        target: eye + Vec3::new(0.35, 0.22, -1.0),
+        exposure: Exposure::linear(0.7),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A night street: lamps with glowing bulbs at different distances, one
+/// half behind a pillar, and a spot shining at the camera; the sun below
+/// the horizon. Each flares through its own disc, the hidden part of the
+/// half-hidden one excluded.
+pub fn flare_lights_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 80.0);
+    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 4.0, 0.5)));
+    let bulb = scene.add_mesh(shapes::sphere(16, 12));
+    let stone = scene.add_material(Material {
+        base_color: [0.5, 0.48, 0.45, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    let lamp = |c: Vec3| Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: (c * 40.0).to_array(),
+        ..Default::default()
+    };
+    let lamps = [
+        (Vec3::new(-4.0, 2.6, -6.0), Vec3::new(1.0, 0.8, 0.55)),
+        (Vec3::new(-1.2, 2.4, -12.0), Vec3::new(1.0, 0.75, 0.5)),
+        (Vec3::new(2.2, 2.6, -9.0), Vec3::new(0.7, 0.85, 1.0)),
+        (Vec3::new(5.5, 3.0, -16.0), Vec3::new(1.0, 0.6, 0.35)),
+    ];
+    for (p, c) in lamps {
+        let m = scene.add_material(lamp(c));
+        scene.add_instance(
+            bulb,
+            m,
+            Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(0.12)),
+        );
+        scene.lights.push(Light {
+            position: p,
+            color: c,
+            intensity: 30.0,
+            range: 20.0,
+            ..Default::default()
+        });
+    }
+    // A pillar hiding the left half of the third lamp from the eye.
+    let eye = Vec3::new(0.0, 1.6, 4.0);
+    let hidden = lamps[2].0;
+    let at = eye + (hidden - eye) * (4.0 / (eye.z - hidden.z));
+    scene.add_instance(
+        pillar,
+        stone,
+        Mat4::from_translation(Vec3::new(at.x - 0.25, 2.0, at.z)),
+    );
+    // A spot low on the right, aimed at the camera.
+    let spot = Vec3::new(3.5, 0.8, -5.0);
+    scene.lights.push(Light {
+        kind: LightKind::Spot {
+            direction: (eye - spot).normalize(),
+            angle_degrees: 25.0,
+            penumbra: 0.3,
+        },
+        position: spot,
+        color: Vec3::new(1.0, 0.95, 0.85),
+        intensity: 60.0,
+        range: 25.0,
+        ..Default::default()
+    });
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, -0.4, -0.5),
+        color: Vec3::new(0.4, 0.5, 0.8),
+        intensity: 0.05,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        intensity: 0.05,
+        background: Background::Color(Vec3::new(0.004, 0.006, 0.014)),
+        ..Environment::default()
+    };
+    scene.post.bloom = Some(Bloom::default());
+    scene.post.lens_flare = Some(LensFlare::default());
+    scene.camera = Camera {
+        position: eye,
+        target: Vec3::new(0.6, 2.0, -10.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+// ---------------------------------------------------------------------------
 // Motion blur.
 // ---------------------------------------------------------------------------
 
