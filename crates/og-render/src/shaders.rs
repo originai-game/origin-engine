@@ -45,6 +45,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     }
     add("physical", crate::physical_source(&hooks));
     add("simulation surface", crate::surface::WGSL.to_string());
+    add("garment draw", crate::garment_gpu::WGSL.to_string());
     add(
         "meshlet cull",
         crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),

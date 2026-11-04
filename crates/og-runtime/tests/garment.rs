@@ -105,7 +105,7 @@ impl RenderBackend for Recorder {
                         .skin(i.mesh)
                         .is_some_and(|s| s.weights.iter().all(|w| *w == [0.0; 4]));
                     s.deformed
-                        .push((v.positions.len(), n == v.positions.len() && weightless));
+                        .push((v.vertex_count(), n == v.vertex_count() && weightless));
                 }
                 None => s.plain += 1,
             }

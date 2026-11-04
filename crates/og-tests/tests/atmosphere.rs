@@ -582,6 +582,10 @@ fn a_replaced_mesh_draws_its_new_shape() {
             .render(&s, &RenderTarget::Offscreen)
             .expect("surface render");
         assert_eq!(stats.triangles, triangles);
+        assert!(
+            stats.prepass_draws > 0,
+            "vertex-only motion needs TAA vectors"
+        );
         assert_eq!(s.mesh(mesh), Some(&coarse));
         let image = r.read_offscreen().expect("surface capture");
         assert!(lit(&image, if x < 0.0 { 420 } else { 860 }));

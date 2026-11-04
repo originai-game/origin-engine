@@ -36,6 +36,51 @@ impl RenderBackend for Recorder {
         if let Some(p) = scene.joint_palettes.first() {
             *self.0.borrow_mut() = p.matrices.clone();
         }
+        // The garment must take the same procedural palette as the body,
+        // without pre-evaluating its points on the CPU during extraction.
+        assert!(
+            !scene.deformed_vertices.is_empty(),
+            "motion agent's garment was lost"
+        );
+        assert_eq!(
+            scene.previous_deformed_vertices.len(),
+            scene.deformed_vertices.len(),
+            "motion blur without TAA must retain garment history"
+        );
+        assert_eq!(
+            scene.previous_joint_palettes.len(),
+            scene.joint_palettes.len()
+        );
+        for instance in &scene.skinned_instances {
+            let Some(d) = instance.deformed else { continue };
+            let draw = &scene.deformed_vertices[d as usize];
+            let garment = draw.garment.as_ref().expect("deferred garment pose");
+            assert!(draw.positions.is_empty() && draw.normals.is_empty());
+            assert_eq!(
+                *garment.palette,
+                scene.joint_palettes[instance.palette as usize].matrices
+            );
+            // Pinned cloth has zero offsets: the fallback must reproduce
+            // the body's normalized skin blend, including procedural turns.
+            let vertices = draw.evaluated();
+            for (p, &(point, _)) in vertices.positions.iter().zip(&garment.topology.vertices) {
+                let i = point as usize;
+                let (joints, weights) = garment.topology.skin[i];
+                let total: f32 = weights.iter().sum();
+                let rest = garment.topology.rest[i];
+                let mut want = rest;
+                if total >= 1e-6 {
+                    want = og_core::glam::Vec3::ZERO;
+                    for (j, w) in joints.into_iter().zip(weights) {
+                        want += garment.palette[j as usize].transform_point3(rest) * (w / total);
+                    }
+                }
+                assert!(
+                    (*p - want).length() < 1e-4,
+                    "garment did not follow the motion palette"
+                );
+            }
+        }
         Ok(())
     }
     fn capture(
@@ -91,9 +136,18 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
     for (name, desc) in [
         ("og.Skeleton", json!({"asset":anim["skeleton"]})),
         ("og.MotionAgent", json!({"drive":true})),
+        (
+            "og.Garment",
+            json!({"mesh":0,"maxDistance":0,"gravityScale":0}),
+        ),
     ] {
         value(og_world_insert(w, e, name.into(), Some(desc.to_string())));
     }
+    value(og_engine_write_resource(
+        w,
+        "og.PostEffects".into(),
+        json!({"motionBlur":true}).to_string(),
+    ));
     let drawn = Rc::new(RefCell::new(Vec::new()));
     set_render_backend(w, Some(Box::new(Recorder(drawn.clone())))).unwrap();
     frames(w, 1);

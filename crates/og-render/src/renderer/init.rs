@@ -581,6 +581,9 @@ impl Renderer {
         let surfaces =
             ribbons_gpu::GpuTrails::supported(adapter.get_downlevel_capabilities().flags)
                 .then(|| surface::SurfacePipelines::new(&device));
+        let garments = surfaces
+            .as_ref()
+            .map(|_| crate::garment_gpu::Pipelines::new(&device));
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
@@ -1005,6 +1008,7 @@ impl Renderer {
             trails: ribbons::Trails::default(),
             gpu_trails,
             surfaces,
+            garments,
             prev_view_proj: None,
             previous_time: None,
             previous_wind: None,

@@ -112,7 +112,7 @@ impl Renderer {
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
         let taa_on = self.info.antialias == Antialias::Taa;
-        let skinned_motion = if taa_on {
+        let skinned_motion = if taa_on || scene.post.motion_blur.is_some() {
             skin::append_previous(
                 &scene.joint_palettes,
                 &scene.previous_joint_palettes,
@@ -211,7 +211,7 @@ impl Renderer {
             // culling and the meshlet path carry the previous transforms
             // too: cull_gpu.rs `previous`).
             || (taa_on
-                && (skinned_motion == Some(true) || skinned.baked_moved || objects_moved(scene)));
+                && (skinned_motion == Some(true) || batches.iter().any(|b| b.simulated) || !skinned.garments.is_empty() || skinned.baked_moved || objects_moved(scene)));
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -3253,6 +3253,22 @@ impl Renderer {
                 if let Some(surface) = &mesh.surface {
                     pipelines.encode(&mut encoder, surface, &mesh.vertices, scene.camera_cut);
                 }
+            }
+        }
+        if let Some(pipelines) = &self.garments {
+            if !skinned.garments.is_empty() {
+                pipelines.encode(
+                    &self.device,
+                    &self.queue,
+                    &mut encoder,
+                    &mut self.cache.garments,
+                    scene,
+                    &skinned.garments,
+                    self.palette.buffer(),
+                    skinned_motion.map(|_| joints_drawn),
+                );
+            } else {
+                self.cache.garments.clear();
             }
         }
         // The grass's blades, generated before every pass that draws them.

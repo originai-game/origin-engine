@@ -423,6 +423,7 @@ fn deformed_vertices_replace_the_mesh() {
                         })
                         .collect(),
                     normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
+                    garment: None,
                 });
                 let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
                 inst.deformed = Some(0);
@@ -452,6 +453,72 @@ fn deformed_vertices_replace_the_mesh() {
     };
     println!("top row: rest {}, stretched {}", top(&rest), top(&tall));
     assert!(top(&tall) + 10 < top(&rest));
+    // The compute path must draw the same skin, offsets and gathered normals
+    // as the CPU fallback, including saved positions on the second TAA frame.
+    let topology = std::sync::Arc::new(og_render::GarmentTopology {
+        rest: mesh
+            .vertices
+            .iter()
+            .map(|v| Vec3::from(v.position))
+            .collect(),
+        normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
+        skin: vec![([0, 1, 0, 0], [0.25, 0.75, 0., 0.]); n],
+        triangles: mesh.indices.as_chunks::<3>().0.to_vec(),
+        vertices: (0..n).map(|i| (i as u32, 1.)).collect(),
+    });
+    for antialias in [og_render::Antialias::Taa, og_render::Antialias::Off] {
+        let mut taa = desc;
+        taa.antialias = antialias;
+        let mut gpu = Renderer::new_blocking(&taa).expect("compute garment");
+        let mut cpu = Renderer::new_blocking(&taa).expect("reference garment");
+        let mut scene = build(Some(0.));
+        scene.post.motion_blur = Some(MotionBlur::default());
+        let mut previous = None::<og_render::GarmentDeformation>;
+        for step in 0..3 {
+            let world = Mat4::from_translation(Vec3::new(step as f32 * 0.2, 0., 0.));
+            let garment = og_render::GarmentDeformation {
+                key: (1, 0),
+                topology: topology.clone(),
+                palette: std::sync::Arc::new(vec![
+                    Mat4::IDENTITY,
+                    Mat4::from_rotation_z(0.1 * step as f32),
+                ]),
+                points: std::sync::Arc::new(
+                    mesh.vertices
+                        .iter()
+                        .map(|v| Vec3::new(1., v.position[1] * 0.15 + 2., 0.03 * step as f32 - 3.))
+                        .collect(),
+                ),
+                targets: std::sync::Arc::new(vec![Vec3::new(1., 2., -3.); n]),
+                world,
+                output_transform: Mat4::IDENTITY,
+            };
+            let mut before = previous.clone().unwrap_or_else(|| garment.clone());
+            before.output_transform = world.inverse() * before.world;
+            scene.skinned_instances[0].transform = world;
+            scene.previous_joint_palettes = scene.joint_palettes.clone();
+            scene.previous_deformed_vertices = vec![before.evaluate()];
+            scene.deformed_vertices[0] = og_render::DeformedVertices {
+                garment: Some(garment.clone()),
+                ..Default::default()
+            };
+            let stats = gpu
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("compute garment frame");
+            assert!(stats.prepass_draws > 0);
+            let computed = gpu.read_offscreen().unwrap();
+            scene.deformed_vertices[0] = garment.evaluate();
+            cpu.render(&scene, &RenderTarget::Offscreen)
+                .expect("fallback reference frame");
+            let reference = cpu.read_offscreen().unwrap();
+            let d = differing(&computed, &reference, 4.);
+            assert!(
+                d < 40,
+                "garment frame {step}: compute differs from fallback at {d} pixels"
+            );
+            previous = Some(garment);
+        }
+    }
     // A count that does not match the mesh is refused.
     let mut bad = build(Some(0.0));
     bad.deformed_vertices[0].positions.pop();

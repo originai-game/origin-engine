@@ -15,6 +15,11 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Garment draw compute.** Per-frame skinning, simulated offsets and welded
+  normals run in compute, including `og.motion`'s generated palette. Previous
+  drawn positions stay on the GPU for TAA and motion blur; devices without
+  compute or vertex storage keep the CPU draw fallback. The CPU solver,
+  bind-pose constraints, queries and saved state are unchanged.
 - **Cloth and soft-body draw surfaces.** Compute builds area-weighted normals
   and a Phong-tessellated surface, with previous fine positions for TAA and
   motion blur. `DisplaySettings.clothSubdivisions` selects 1–8 segments per

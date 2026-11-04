@@ -288,6 +288,7 @@ pub(crate) struct SceneCache {
     pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     pub(crate) surface_prepass_pipelines:
         HashMap<(Option<usize>, Side, bool), wgpu::RenderPipeline>,
+    pub(crate) garments: HashMap<(u64, usize), crate::garment_gpu::Mesh>,
     /// The physical lit shader with a material shader, made when a physical
     /// material first uses it, and its pipelines by (shader, key).
     pub(crate) physical_shaders: HashMap<usize, wgpu::ShaderModule>,
@@ -433,6 +434,8 @@ pub(crate) struct FxGroups {
 /// for shadows), each entry's widened world bounds, and the joint matrices.
 pub(crate) struct SkinnedFrame {
     pub(crate) batches: Vec<Batch>,
+    /// Deferred garment index and its first deformation palette slot.
+    pub(crate) garments: Vec<(u32, u32)>,
     pub(crate) data: Vec<skin::SkinnedInstanceGpu>,
     pub(crate) spheres: Vec<(Vec3, f32)>,
     /// The palette buffer's current section: the joints, then the weight

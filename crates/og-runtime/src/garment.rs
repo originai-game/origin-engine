@@ -47,6 +47,7 @@ pub(crate) struct Weld {
     pub side: Vec<Vec<f32>>,
     /// Per primitive: its copy with no skin weights, made when first drawn.
     pub zero: Vec<Option<MeshHandle>>,
+    pub draw: Vec<std::sync::Arc<og_render::GarmentTopology>>,
 }
 
 /// The garment state the system and the drawing share (in the render
@@ -100,6 +101,7 @@ pub(crate) fn weld(
         normal: Vec::new(),
         side: Vec::new(),
         zero: vec![None; prims.len()],
+        draw: Vec::new(),
     };
     for &p in &prims {
         let data = scene.mesh(scene.mesh_handle(info.base + p)?)?;
@@ -139,6 +141,20 @@ pub(crate) fn weld(
     }
     rig.check().ok()?;
     w.rig = rig;
+    w.draw = w
+        .point_of
+        .iter()
+        .zip(&w.side)
+        .map(|(of, side)| {
+            std::sync::Arc::new(og_render::GarmentTopology {
+                rest: w.rig.rest.clone(),
+                normals: w.normal.clone(),
+                skin: w.skin.clone(),
+                triangles: w.rig.triangles.clone(),
+                vertices: of.iter().copied().zip(side.iter().copied()).collect(),
+            })
+        })
+        .collect();
     Some(w)
 }
 
@@ -168,27 +184,6 @@ pub(crate) fn pose(w: &Weld, palette: &[Mat4]) -> (Vec<Vec3>, Vec<Vec3>) {
         normals.push(m.transform_vector3(*n).normalize_or_zero());
     }
     (points, normals)
-}
-
-/// Each point's normal from the triangles around it at `points`, facing
-/// as its rest normal does (both sides of a two-sided garment welded into
-/// one point add up instead of cancelling).
-fn normals(w: &Weld, points: &[Vec3]) -> Vec<Vec3> {
-    let rest = &w.rig.rest;
-    let mut acc = vec![Vec3::ZERO; points.len()];
-    for &[a, b, c] in &w.rig.triangles {
-        let (a, b, c) = (a as usize, b as usize, c as usize);
-        let f = (points[b] - points[a]).cross(points[c] - points[a]);
-        let f0 = (rest[b] - rest[a]).cross(rest[c] - rest[a]);
-        for k in [a, b, c] {
-            let s = if f0.dot(w.normal[k]) < 0.0 { -1.0 } else { 1.0 };
-            acc[k] += f * s;
-        }
-    }
-    acc.iter()
-        .zip(&w.normal)
-        .map(|(n, r)| n.try_normalize().unwrap_or(*r))
-        .collect()
 }
 
 /// The system that poses every og.Garment by its model's skin each tick
@@ -346,14 +341,9 @@ pub(crate) fn deformed(
     if sim.points.len() != n || sim.targets.len() != n {
         return out;
     }
-    let inverse = world.inverse();
-    let (now, _) = pose(w, palette);
-    let points: Vec<Vec3> = now
-        .iter()
-        .zip(sim.points.iter().zip(&sim.targets))
-        .map(|(x, (s, t))| *x + inverse.transform_vector3(*s - *t))
-        .collect();
-    let normals = normals(w, &points);
+    let palette = std::sync::Arc::new(palette.to_vec());
+    let points = std::sync::Arc::new(sim.points.to_vec());
+    let targets = std::sync::Arc::new(sim.targets.to_vec());
     for (k, &p) in w.prims.iter().enumerate() {
         let zero = match w.zero[k] {
             Some(h) => h,
@@ -377,14 +367,17 @@ pub(crate) fn deformed(
                 h
             }
         };
-        let of = &w.point_of[k];
         let vertices = og_render::DeformedVertices {
-            positions: of.iter().map(|&i| points[i as usize]).collect(),
-            normals: of
-                .iter()
-                .zip(&w.side[k])
-                .map(|(&i, s)| normals[i as usize] * *s)
-                .collect(),
+            garment: Some(og_render::GarmentDeformation {
+                key: (entity, p),
+                topology: w.draw[k].clone(),
+                palette: palette.clone(),
+                points: points.clone(),
+                targets: targets.clone(),
+                world,
+                output_transform: Mat4::IDENTITY,
+            }),
+            ..Default::default()
         };
         out.insert(p, (zero, vertices));
     }
@@ -524,7 +517,19 @@ mod tests {
         // The offsets: the weld is what the drawing maps through.
         let (rest, _) = pose(&w, &palette);
         assert_eq!(rest, w.rig.rest);
-        let n = normals(&w, &rest);
-        assert!(n.iter().all(|n| (*n - Vec3::Z).length() < 1e-5), "{n:?}");
+        let drawn = og_render::GarmentDeformation {
+            key: (1, 0),
+            topology: w.draw[0].clone(),
+            palette: std::sync::Arc::new(palette.to_vec()),
+            points: std::sync::Arc::new(rest.iter().map(|p| *p + Vec3::Z * 0.2).collect()),
+            targets: std::sync::Arc::new(rest.clone()),
+            world: Mat4::IDENTITY,
+            output_transform: Mat4::IDENTITY,
+        }
+        .evaluate();
+        for (p, &point) in drawn.positions.iter().zip(&w.point_of[0]) {
+            assert!((*p - rest[point as usize] - Vec3::Z * 0.2).length() < 1e-5);
+        }
+        assert!(drawn.normals.iter().all(|n| (*n - Vec3::Z).length() < 1e-5));
     }
 }

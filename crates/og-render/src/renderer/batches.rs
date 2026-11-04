@@ -647,6 +647,7 @@ impl Renderer {
     ) -> Result<SkinnedFrame, RenderError> {
         let mut offsets = Vec::with_capacity(scene.joint_palettes.len());
         let mut matrices = Vec::new();
+        let mut garments = Vec::new();
         for p in &scene.joint_palettes {
             offsets.push((matrices.len() as u32, p.matrices.len() as u32));
             matrices.extend(p.matrices.iter().map(|m| m.to_cols_array_2d()));
@@ -767,7 +768,7 @@ impl Renderer {
         let mut spheres = Vec::with_capacity(order.len());
         let mut previous_slots = Vec::new();
         let mut baked_moved = false;
-        let taa = self.info.antialias == Antialias::Taa;
+        let taa = self.info.antialias == Antialias::Taa || scene.post.motion_blur.is_some();
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
@@ -838,7 +839,7 @@ impl Renderer {
                 let before = &scene.baked_clips[b.previous_clip as usize];
                 let (pk, pt) = before.at(b.previous_frame);
                 let then = self.palette.baked_offset(b.previous_clip) + pk * before.joints as usize;
-                // Only TAA reads it: without, a crowd costs its clips alone.
+                // Motion effects read it; otherwise a crowd costs its clips alone.
                 let mut transform_at = 0;
                 if taa {
                     transform_at = matrices.len() + 1;
@@ -890,7 +891,7 @@ impl Renderer {
                     )));
                 };
                 let n = scene.mesh(s.mesh).map_or(0, |m| m.vertices.len());
-                if now.positions.len() != n || now.normals.len() != n {
+                if now.vertex_count() != n || (now.garment.is_none() && now.normals.len() != n) {
                     return Err(RenderError::InvalidData(format!(
                         "skinned instance {i}: {} deformed positions and {} normals for a mesh of {n} vertices",
                         now.positions.len(),
@@ -898,17 +899,23 @@ impl Renderer {
                     )));
                 }
                 deformed_at = (matrices.len() + 1) as f32;
-                matrices.extend(skin::deformed_slots(now));
                 let before = scene
                     .previous_deformed_vertices
                     .get(d as usize)
                     .filter(|b| {
                         scene.previous_deformed_vertices.len() == scene.deformed_vertices.len()
-                            && b.positions.len() == n
-                            && b.normals.len() == n
+                            && b.vertex_count() == n
+                            && (b.garment.is_some() || b.normals.len() == n)
                     })
                     .unwrap_or(now);
-                previous_slots.extend(skin::deformed_slots(before));
+                if self.garments.is_some() && now.garment.is_some() {
+                    garments.push((d, matrices.len() as u32));
+                    matrices.resize(matrices.len() + n.div_ceil(2), [[0.; 4]; 4]);
+                    previous_slots.resize(previous_slots.len() + n.div_ceil(2), [[0.; 4]; 4]);
+                } else {
+                    matrices.extend(skin::deformed_slots(now));
+                    previous_slots.extend(skin::deformed_slots(before));
+                }
             }
             data.push(skin::SkinnedInstanceGpu {
                 transform: instances::gpu_columns(&s.transform),
@@ -939,6 +946,7 @@ impl Renderer {
         }
         Ok(SkinnedFrame {
             batches,
+            garments,
             data,
             spheres,
             matrices,

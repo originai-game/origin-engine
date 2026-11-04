@@ -272,6 +272,12 @@ impl Renderer {
         let meshes = self.cache.meshes.iter().map(mesh_bytes).sum::<u64>()
             + self
                 .cache
+                .garments
+                .values()
+                .map(crate::garment_gpu::Mesh::bytes)
+                .sum::<u64>()
+            + self
+                .cache
                 .skins
                 .iter()
                 .flatten()

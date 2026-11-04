@@ -143,11 +143,14 @@ mod scatter;
 mod scene;
 mod shaders;
 pub use shaders::{ShaderSource, shader_sources};
+mod garment;
+mod garment_gpu;
 pub mod ocean_fft;
 mod shadow_cache;
 mod shadows;
 pub mod shapes;
 mod skin;
+pub use garment::{GarmentDeformation, GarmentTopology};
 mod sky_physical;
 mod sprite_array;
 mod sprite_mesh;
@@ -478,6 +481,7 @@ pub struct Renderer {
     /// storage in the vertex stage, and `trails` builds them on the CPU).
     gpu_trails: Option<ribbons_gpu::GpuTrails>,
     surfaces: Option<surface::SurfacePipelines>,
+    garments: Option<garment_gpu::Pipelines>,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
     /// The last drawn clock, including frames with no simulation tick.

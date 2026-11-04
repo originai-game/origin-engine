@@ -309,11 +309,30 @@ pub struct BakedPose {
 pub struct DeformedVertices {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
+    /// Deferred garment draw work; positions/normals remain empty until the
+    /// renderer chooses compute or the coarse CPU fallback.
+    pub garment: Option<crate::GarmentDeformation>,
+}
+
+impl DeformedVertices {
+    pub fn vertex_count(&self) -> usize {
+        self.garment
+            .as_ref()
+            .map_or(self.positions.len(), |g| g.topology.vertices.len())
+    }
+
+    pub fn evaluated(&self) -> std::borrow::Cow<'_, Self> {
+        self.garment.as_ref().map_or_else(
+            || std::borrow::Cow::Borrowed(self),
+            |g| std::borrow::Cow::Owned(g.evaluate()),
+        )
+    }
 }
 
 /// The palette slots of a deformed instance's vertices: two to a slot
 /// (position, normal; position, normal), the module's layout.
 pub(crate) fn deformed_slots(d: &DeformedVertices) -> Vec<[[f32; 4]; 4]> {
+    let d = d.evaluated();
     let mut slots = vec![[[0.0; 4]; 4]; d.positions.len().div_ceil(2)];
     for (v, (p, n)) in d.positions.iter().zip(&d.normals).enumerate() {
         let s = &mut slots[v / 2];
@@ -491,6 +510,10 @@ pub(crate) struct GpuPalette {
 }
 
 impl GpuPalette {
+    pub(crate) fn buffer(&self) -> &wgpu::Buffer {
+        self.palette.buffer.as_ref().expect("palette uploaded")
+    }
+
     pub fn new() -> GpuPalette {
         GpuPalette {
             palette: Vec4Array::new(),
@@ -771,6 +794,7 @@ mod motion_tests {
             normals: (0..3)
                 .map(|v| Vec3::new(0.0, 0.0, v as f32 + 0.5))
                 .collect(),
+            garment: None,
         };
         let slots = deformed_slots(&d);
         assert_eq!(slots.len(), 2);

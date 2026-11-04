@@ -198,9 +198,8 @@ pub(crate) struct FxState {
     /// This frame's `deformed_vertices` entries' (entity, primitive) and
     /// instance transform, in their order.
     pub deformed_keys: Vec<((u64, usize), Mat4)>,
-    /// The last frame's garment vertices by (entity, primitive), in the
-    /// world: TAA's motion of a swinging garment.
-    pub drawn_deformed: BTreeMap<(u64, usize), Vec<Vec3>>,
+    /// Last frame's draw inputs and transform, retained without CPU re-skinning.
+    pub drawn_deformed: BTreeMap<(u64, usize), (Mat4, og_render::DeformedVertices)>,
     /// Clips baked for og.CrowdAnimation, by (skeleton, skin, clip, rate
     /// bits): their index in `RenderScene::baked_clips`, its frames and
     /// the clip's seconds.
@@ -1510,13 +1509,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
         fx.drawn_deformed.clear();
         return;
     }
-    if taa {
-        joints(scene, atmo, fx);
-    } else {
-        fx.drawn_joints.clear();
-        fx.drawn_weights.clear();
-        fx.drawn_deformed.clear();
-    }
+    joints(scene, atmo, fx);
     if !interp.display && !taa {
         return;
     }
@@ -1612,33 +1605,33 @@ fn joints(
         })
         .collect();
     fx.drawn_weights = weights;
-    // Each garment's vertices the frame before, in this frame's instance
-    // space (its own where it was not drawn then), and this frame's kept
-    // in the world.
+    // Retain the draw inputs, not CPU-skinned vertices. The fallback evaluates
+    // the saved pose in this frame's instance space; compute keeps GPU history.
     let mut drawn = BTreeMap::new();
     scene.previous_deformed_vertices = scene
         .deformed_vertices
         .iter()
         .zip(&fx.deformed_keys)
         .map(|(d, &(key, world))| {
-            let now: Vec<Vec3> = d
-                .positions
-                .iter()
-                .map(|p| world.transform_point3(*p))
-                .collect();
             let before = fx
                 .drawn_deformed
                 .get(&key)
-                .filter(|b| b.len() == now.len())
-                .map(|b| {
-                    let inverse = world.inverse();
-                    og_render::DeformedVertices {
-                        positions: b.iter().map(|p| inverse.transform_point3(*p)).collect(),
-                        normals: d.normals.clone(),
+                .filter(|(_, b)| b.vertex_count() == d.vertex_count())
+                .map(|(old_world, b)| {
+                    let transform = world.inverse() * *old_world;
+                    let mut before = b.clone();
+                    if let Some(g) = &mut before.garment {
+                        g.output_transform = transform;
+                    } else {
+                        before
+                            .positions
+                            .iter_mut()
+                            .for_each(|p| *p = transform.transform_point3(*p));
                     }
+                    before
                 })
                 .unwrap_or_else(|| d.clone());
-            drawn.insert(key, now);
+            drawn.insert(key, (world, d.clone()));
             before
         })
         .collect();
