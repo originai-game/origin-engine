@@ -1138,6 +1138,16 @@ committed `references/` frames and `tests/evidence/` images where they are
 (by key; nothing moved), the perf baselines and golden replays, and
 macrunner's reported gate, size and replay figures.
 
+**Generated assets** (owner, 2026-11-04). Everything generated for the engine
+and its scenes (Meshy motions and models, training libraries and checkpoints
+worth keeping) is kept for later model runs in a second private bucket,
+`origin-generated-assets` (same project and endpoint, versioned, encrypted).
+The same user may put, get and list there, never delete; a put must send
+`x-amz-server-side-encryption: AES256`. Layout (its `README.md` holds it):
+`meshy/motion/<operation-id>/clip.fbx` with `task.json` (prompt, Meshy task
+ID, gateway media ID, bytes, sha256) under the original operation ID,
+`meshy/model/<operation-id>/…`, `training/<run>/…`, `scenes/<scene>/…`.
+
 Withdrawn work never enters the archive (the owner, 2026-11-02). `add`, and
 so any backfill built on it, refuses a file or `--source` under a
 `rejected/` directory, where a thread keeps a concept it was told not to
