@@ -178,7 +178,8 @@ export function withSettleDumps(commands: string): string {
 /**
  * States of a pack the art director approved one by one, beyond its screens:
  * each a gear frame after its commands, on the desktop, composed into
- * kit-style-<name>-states.png. Fantasy's and scifi's selected bag cells
+ * kit-style-<name>-states.png (a phone's, PHONE_STYLE_STATES, into
+ * kit-style-<name>-phone-states.png). Fantasy's and scifi's selected bag cells
  * (2026-11-04): the selection, not the tier rim, is a selected cell's one
  * and brightest edge, for a rare (the helm) and a legendary (the greatsword),
  * at 100 and 150 % text; the idle frame is the unselected side of each pair
@@ -188,7 +189,8 @@ export function withSettleDumps(commands: string): string {
 export interface StyleState {
   name: string;
   commands: readonly string[];
-  selected: string;
+  /** The bag item the frame's dump must show selected, and the only one ("" none); unset: not a bag state. */
+  selected?: string;
 }
 
 export const STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEntries(
@@ -199,6 +201,21 @@ export const STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEn
       { name: `state-gear-rare-${scale}`, commands: ["pat:select:helm"], selected: "helm" },
       { name: `state-gear-legendary-${scale}`, commands: ["pat:select:greatsword"], selected: "greatsword" },
     ]),
+  ]),
+);
+
+/**
+ * The phone's states, composed into kit-style-<name>-phone-states.png at
+ * the phone's own DPR (the surface's 390×844@3): the horror HUD at 100 and
+ * 150 % text in scifi, storybook and fantasy (art, 2026-11-04: the world
+ * prompt's name over the scene in the scheme's light ink, its gap above the
+ * chip, the d-pad clear of the battery). The phone sheet's own cells are at
+ * 100 % only.
+ */
+export const PHONE_STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEntries(
+  ["scifi", "storybook", "fantasy"].map((style) => [
+    style,
+    ["100", "150"].map((scale) => ({ name: `state-horror-${scale}`, commands: [`demo:text:${scale}`, "show:horrorHud"] })),
   ]),
 );
 
@@ -224,7 +241,7 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
   const script = framesScript(0.5, STYLE_SETTLE);
   const files = script.files.filter((f) => f !== "gallery.png");
   const name = `kit-style-${style}${surface.suffix}.png`;
-  const states = on === "desktop" ? (STYLE_STATES[style] ?? []) : [];
+  const states = (on === "desktop" ? STYLE_STATES : PHONE_STYLE_STATES)[style] ?? [];
   // The states start once the toasts the screens queued are gone: each stays its 3200 ms (og-ui's ToastDesc
   // default) and leaves on the pack's motion (under a second in every pack); the screens' frames end sooner.
   const toasted = Math.max(0, ...[...script.commands.matchAll(/(?:^|;)([\d.]+):toast:/g)].map((m) => Number(m[1]) + 3.2 + 1.0));
@@ -244,13 +261,14 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
       sheetCheck(run, t, files, name, surface, style);
       // Each state shows its selection and no other, read from the dump at its frame's tick.
       for (const st of states) {
+        if (st.selected === undefined) continue;
         const shown = run
           .json<{ elements: Array<{ path?: string; states?: string[] }> }>(`${st.name}.settle.json`)
           .elements.filter((e) => /\/Bag\/Cells\/[^/]+$/.test(e.path ?? "") && (e.states ?? []).includes("selected"))
           .map((e) => e.path!.split("/").pop()!);
         t.equal(shown.join(","), st.selected, `${style} ${st.name} has ${st.selected || "nothing"} selected in the bag`);
       }
-      if (extra.files.length > 0) sheetCheck(run, t, extra.files, `kit-style-${style}-states.png`, surface, `${style} states`);
+      if (extra.files.length > 0) sheetCheck(run, t, extra.files, `kit-style-${style}${surface.suffix}-states.png`, surface, `${style}${surface.suffix} states`);
     },
   });
 }
