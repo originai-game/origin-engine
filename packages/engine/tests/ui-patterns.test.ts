@@ -13,6 +13,7 @@ import { ogBin } from "./support/og-bin.ts";
 import { gacha, type GachaBannerResult, type PullItem, type PullSequenceResult } from "@origingame/engine/extensions/gacha/index.ts";
 import { puzzle, type SagaMapResult, type SagaNode } from "@origingame/engine/extensions/puzzle/index.ts";
 import { racing, type GarageResult } from "@origingame/engine/extensions/racing/index.ts";
+import { conversation as keeperLine } from "@origingame/engine/extensions/rpg/fixtures/party.ts";
 import { rpg, type ConversationDesc, type ConversationResult, type GridItem, type InventoryCarry, type InventoryGridResult, type InventoryMove, type InventoryPick, type PaperdollEquip } from "@origingame/engine/extensions/rpg/index.ts";
 import { shooter, type LoadoutResult } from "@origingame/engine/extensions/shooter/index.ts";
 import { strategy, type RtsCommandsResult } from "@origingame/engine/extensions/strategy/index.ts";
@@ -1201,6 +1202,22 @@ test("conversation: the line types out by the tick; a press shows it whole befor
   expect(more.y + more.height).toBeLessThanOrEqual(words.y + words.height + 0.5);
   s.tapEl("Talk/Hit");
   expect(s.results.filter((r) => r.advanced).length).toBe(1);
+});
+
+test("conversation: on a phone in portrait at 150 % text the caption and its choices settle, clear of the tools and of each other", () => {
+  // Wrong: the stack sized from the caption's last height and the caption from the stack's, so they trade room
+  // every tick and never settle, the caption over the tools or the choices.
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 342 }, height: { kind: "fixed", px: 715 } }, () => rpg.conversation("Talk", { view: keeperLine(), charsPerSecond: 0 }));
+  }, { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } });
+  og.ui.configure(engine.world, { textScale: 1.5 });
+  engine.advance(120);
+  const boxes = () => ["Talk/Tools", "Talk/Caption", "Talk/Choices"].map((p) => byPath(engine, p)!).map((e) => ({ y: e.y, bottom: e.y + e.height }));
+  const [tools, caption, choices] = boxes();
+  engine.advance(1);
+  expect(boxes()).toEqual([tools!, caption!, choices!]);
+  expect(caption!.y).toBeGreaterThanOrEqual(tools!.bottom);
+  expect(caption!.bottom).toBeLessThanOrEqual(choices!.y);
 });
 
 test("conversation: a choice answers its ChoiceView.index (a hidden one counted), a disabled one says why and takes no press", () => {

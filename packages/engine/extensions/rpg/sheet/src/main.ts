@@ -50,8 +50,8 @@ function frames(): void {
       if (!phone()) rpg.raidFrames("Raid", raid());
     });
   });
-  // The tracked quests over the game, as a HUD shows them.
-  rpg.questTracker("Tracker", { quests: QUESTS.filter((q) => q.status === "active"), max: 2, anchor: phone() ? "bottomRight" : "right" });
+  // The tracked quests over the game, as a HUD shows them (a phone's HUD has no room beside the party for them).
+  if (!phone()) rpg.questTracker("Tracker", { quests: QUESTS.filter((q) => q.status === "active"), max: 2, anchor: "right" });
 }
 
 const BUILD: Record<(typeof PAGES)[number], () => void> = {

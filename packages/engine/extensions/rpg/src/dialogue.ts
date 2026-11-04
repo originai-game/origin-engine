@@ -322,8 +322,10 @@ export function conversation(id: string, desc: ConversationDesc): ConversationRe
     const above = capInsets.bottom + capH + u(box ? 36 : 24);
     // The timer's row and the gap over it, grown with the text size.
     const timerH = v.timer ? Math.round(u(38) * ts) : 0;
-    // In portrait the caption stands on the stack, so the stack leaves it its height and the tools theirs.
-    const room = portrait ? Math.max(u(120), H - capBottom - capH - u(16) - toolsFoot - timerH) : Math.max(u(120), H - above - toolsFoot - timerH);
+    // In portrait the caption stands on the stack: the stack takes at most a fixed share of the room under the tools
+    // (the screen's alone, so it settles at once) and the caption the rest, its words scrolling past it. Sizing the stack
+    // from the caption's last height and the caption from the stack's made each chase the other, never settling.
+    const room = portrait ? Math.max(u(120), Math.round((H - capBottom - u(16) - toolsFoot) * 0.55) - timerH) : Math.max(u(120), H - above - toolsFoot - timerH);
     kit.openScroll("List", { width: grow(), height: { kind: "fit", max: room }, gap: u(8), padding: xy(0, 0) } as never);
     const isPad = /^(xbox|ps|switch|pad)\./.test((kit.frameGlyph("confirm") as Api.UiGlyph | null)?.icon ?? "");
     choices.forEach((c, i) => {
