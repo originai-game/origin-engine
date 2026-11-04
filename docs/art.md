@@ -258,11 +258,15 @@ their zero value:
 - **Camera presets** from `ArtCamera`: the main camera's projection,
   angle and field of view default to the contract; `pixelPerfect` snaps
   the 2D camera (today's `Stylise.pixelSnap` path).
-- **The anime-cel frame.** In the showcase's `looks-anime-cel-3d`
-  reference the spheres show no cel bands and no outline although the
-  preset sets `toon true` and `outlineWidth 2.5`; find out whether the
-  material style reaches the showcase's materials (a fix, or the station
-  sets `styled false`), and record the frame.
+- **The anime-cel frame (closed 2026-11-04).** The finding (no cel bands
+  and no outline on the showcase's `looks-anime-cel-3d` spheres) came
+  from a 480×270 thumbnail: the Metal frame (`ed80ae436`) shows two-tone
+  bands and the 2.5 px outline on every matte material, so for matte it
+  was never broken. What still keeps the frame from reading as anime is
+  the toon model and the textures, not the plumbing: metals never band,
+  ambient and IBL stay smooth, band edges alias (the toon model work of
+  the stylisation plan), and linear mesh textures kept their photographic
+  colours (closed by §2.3's palette limits on every colour texture).
 
 ### 2.5 Check: the style measured
 
