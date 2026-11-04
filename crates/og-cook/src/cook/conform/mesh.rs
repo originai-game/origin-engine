@@ -171,7 +171,7 @@ pub struct Conform {
 pub const DEFAULT_MESH_TEXTURE: &str = "conformed as a mesh texture (no model claims it; a HUD or UI image takes `conform ui` in its import settings)";
 
 /// Moves painted mesh textures' stamps when the paint steps change.
-const PAINT_VERSION: u32 = 1;
+const PAINT_VERSION: u32 = 2;
 
 /// What an output the contract leaves as it was reports.
 pub const UNCHANGED: &str = "meets the contract as it is";
