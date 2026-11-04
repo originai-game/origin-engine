@@ -75,6 +75,11 @@ if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 
   echo "build.sh: the gate has built here, so this is the OG_GATE=1 build (dev addon and og, the gate's wasm); OG_RELEASE=1 sh scripts/build.sh builds release" >&2
   OG_GATE=1
 fi
+# A development cook needs the same pinned weights as a packaged engine.
+# Native-only release jobs ship only the platform binary, not engine assets.
+if [ "$native_only" != 1 ] || [ "${OG_GATE:-}" = 1 ]; then
+  bun "$here/scripts/motion-model.ts" ensure
+fi
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
 # --linux-x64 on a Linux x86_64 host: the zigbuild below (glibc 2.31) is the
 # one native build; the host's own would be the same addon against the

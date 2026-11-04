@@ -112,21 +112,8 @@ for pack in "$here"/../../templates/styles/*/; do
 done
 [ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
-# cook (og-cook's motion.rs) for a project that uses og.motion: the file
-# OG_MOTION_MODEL names, else the copy already in motion/, else the pinned
-# file fetched from the bucket (scripts/motion-model.ts, motion.json's key);
-# whichever it is must be the file motion.json pins. The copy is ignored by Git.
-want="$(bun -e 'console.log(require(process.argv[1]).sha256)' "$here/motion.json")"
-model="${OG_MOTION_MODEL:-$here/motion/model.safetensors}"
-if [ -z "${OG_MOTION_MODEL:-}" ] && { [ ! -f "$model" ] || [ "$(sum "$model")" != "$want" ]; }; then
-  mkdir -p "$here/motion"
-  bun "$here/scripts/motion-model.ts" fetch "$model" || { echo "pack: no og.motion model: motion/model.safetensors is missing or stale and the bucket fetch failed; set OG_MOTION_MODEL to og-motion-train's weights/engine/model.safetensors or the showcase bucket's S3 keys" >&2; exit 1; }
-fi
-[ -f "$model" ] || { echo "pack: OG_MOTION_MODEL names $model, which does not exist" >&2; exit 1; }
-got="$(sum "$model")"
-[ "$got" = "$want" ] || { echo "pack: $model has sha256 $got, but motion.json pins $want: not the model this engine ships" >&2; exit 1; }
-mkdir -p "$here/motion"
-[ "$model" -ef "$here/motion/model.safetensors" ] || cp "$model" "$here/motion/model.safetensors"
+# cook (og-cook's motion.rs). Use the same pin check as development builds.
+bun "$here/scripts/motion-model.ts" ensure
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

@@ -1075,9 +1075,18 @@ owner's choice of 2026-11-02 over Cloudflare R2), under
 `sha256/<2 hex>/<sha256>.<ext>`, so a file is stored once however often it
 is added. The same bucket holds og.motion's weights, which `packages/engine`
 ships, under `motion/<sha256>.safetensors`: `packages/engine/motion.json`
-pins the file, `pack.sh` fetches it with the same S3 user when neither
-`OG_MOTION_MODEL` nor `motion/` holds it, and refuses a file whose sha
-differs (`packages/engine/scripts/motion-model.ts fetch|upload`). Git holds only
+pins the file. Development builds (including `OG_GATE=1 --native`) and
+`pack.sh` run `bun packages/engine/scripts/motion-model.ts ensure`: reuse a
+verified local copy, copy and verify `OG_MOTION_MODEL`, or fetch the pin with
+the same S3 user. A missing or stale model whose fetch fails stops the build,
+rather than letting motion scenes silently draw og.anim poses. Native-only
+release jobs package binaries, not these assets, and do not fetch them.
+Before running scenes with a bare `cargo build` binary, run `ensure` explicitly;
+Cargo does not fetch runtime assets. A fresh checkout/CI needs the S3 credentials
+or a pinned local file. `bun packages/engine/scripts/motion-model.ts verify`
+always reads the remote key and checks its size and SHA, even if a local copy
+exists; run it when changing the pin to catch an absent or corrupt upload.
+`fetch <out>` and `upload <file>` remain available. Git holds only
 `showcase/manifest.jsonl`, one JSON entry per line:
 
 | Field | What it is |

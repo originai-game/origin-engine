@@ -5,16 +5,19 @@
 //
 //   bun scripts/motion-model.ts fetch <out>    download the pinned file to <out>, checked against its sha
 //   bun scripts/motion-model.ts upload <file>  put <file> in the bucket, refused unless it is the pinned file
+//   bun scripts/motion-model.ts ensure         install the pin in the package, reusing a verified local copy
+//   bun scripts/motion-model.ts verify         read and verify the remote pin, even with a local copy
 //
 // Credentials: OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY (the
 // showcase bucket's S3 user); OG_SHOWCASE_BUCKET, OG_SHOWCASE_S3_ENDPOINT and
 // OG_SHOWCASE_S3_REGION override the bucket, endpoint and region.
 import { createHash } from "node:crypto";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const pin = JSON.parse(readFileSync(join(fileURLToPath(new URL("..", import.meta.url)), "motion.json"), "utf8")) as { sha256: string; bytes: number; key: string };
+const pkg = fileURLToPath(new URL("..", import.meta.url));
+const pin = JSON.parse(readFileSync(join(pkg, "motion.json"), "utf8")) as { file: string; sha256: string; bytes: number; key: string };
 
 function fail(message: string): never {
   console.error(`motion-model: ${message}`);
@@ -49,8 +52,7 @@ function check(bytes: Uint8Array, what: string): void {
   if (bytes.length !== pin.bytes || sha !== pin.sha256) fail(`${what} is ${bytes.length} bytes, sha256 ${sha}; motion.json pins ${pin.bytes} bytes, sha256 ${pin.sha256}`);
 }
 
-const [command, path] = process.argv.slice(2);
-if (command === "fetch" && path) {
+async function remote(): Promise<Uint8Array> {
   let bytes: Uint8Array;
   try {
     bytes = new Uint8Array(await client().file(pin.key).arrayBuffer());
@@ -58,8 +60,35 @@ if (command === "fetch" && path) {
     fail(`could not read ${pin.key} from the bucket: ${(e as { code?: string }).code ?? e}`);
   }
   check(bytes, pin.key);
+  return bytes;
+}
+
+function install(path: string, bytes: Uint8Array): void {
+  mkdirSync(dirname(path), { recursive: true });
   writeFileSync(`${path}.part`, bytes);
   renameSync(`${path}.part`, path);
+}
+
+const [command, path] = process.argv.slice(2);
+if (command === "fetch" && path) {
+  install(path, await remote());
+} else if (command === "verify") {
+  await remote();
+  console.log(`motion-model: verified remote ${pin.key} (${pin.bytes} bytes)`);
+} else if (command === "ensure") {
+  const destination = join(pkg, pin.file);
+  const override = process.env.OG_MOTION_MODEL;
+  if (override) {
+    const bytes = new Uint8Array(readFileSync(override));
+    check(bytes, override);
+    install(destination, bytes);
+  } else {
+    const bytes = existsSync(destination) ? new Uint8Array(readFileSync(destination)) : undefined;
+    if (!bytes || bytes.length !== pin.bytes || createHash("sha256").update(bytes).digest("hex") !== pin.sha256) {
+      install(destination, await remote());
+    }
+  }
+  console.log(`motion-model: pinned weights ready at ${destination}`);
 } else if (command === "upload" && path) {
   const bytes = new Uint8Array(readFileSync(path));
   check(bytes, path);
@@ -71,5 +100,5 @@ if (command === "fetch" && path) {
     console.log(`motion-model: uploaded ${pin.key} (${pin.bytes} bytes)`);
   }
 } else {
-  fail("usage: bun scripts/motion-model.ts fetch <out> | upload <file>");
+  fail("usage: bun scripts/motion-model.ts ensure | verify | fetch <out> | upload <file>");
 }
