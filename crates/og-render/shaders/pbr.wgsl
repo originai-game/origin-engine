@@ -411,6 +411,10 @@ override EFFECTS: bool = true;
 // before it shades (pbr_fs.wgsl toon_edges), 0 for hard steps.
 var<private> toon_aa: f32 = 0.0;
 
+// A toon metal's reflection bands (pbr_fs.wgsl toon_metal_bands): what
+// its own colour's band is times, 1 for every other material.
+var<private> toon_metal: f32 = 1.0;
+
 // A toon step at `edge`: 0 below, 1 above, over toon_aa (hard without).
 fn toon_step(x: f32, edge: f32) -> f32 {
   if (toon_aa <= 0.0) { return select(0.0, 1.0, x > edge); }
@@ -442,8 +446,9 @@ fn toon_ramp(x: f32) -> f32 {
 }
 
 // Cel-shaded light: the ramp on the colour and a toon highlight. A metal
-// bands as a dielectric does, in its own colour (f0): the PBR diffuse's
-// (1 - metallic) would leave it only its reflection, which never bands.
+// bands as a dielectric does, in its own colour (f0) times its
+// reflection's bands (toon_metal): the PBR diffuse's (1 - metallic) would
+// leave it only its reflection, black where the scene has none.
 // The highlight is a band of the Blinn-Phong lobe, as large as the
 // roughness makes it, anti-aliased, in f0's colour at the lobe's
 // normalised peak, shadowed.
@@ -455,7 +460,7 @@ fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32)
   let lobe = pow(max(dot(n, h), 0.0), shine) * shadow * select(0.0, 1.0, n_dot_l > 0.0);
   let spec = toon_step(lobe, 0.5);
   let peak = min((shine + 2.0) / 8.0, 4.0);
-  let kd = mix(s.albedo, s.f0, s.metallic) / PI;
+  let kd = mix(s.albedo, s.f0 * toon_metal, s.metallic) / PI;
   return kd * band + s.f0 * spec * peak * mix(1.0 - s.roughness, 1.0, s.metallic);
 }
 
