@@ -364,6 +364,51 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
         .collect()
 }
 
+/// The side branches of strike number `strike`'s bolt ([`lightning_bolt`]):
+/// one or two channels leaving the main one in its upper two thirds,
+/// heading down and outwards for a sixth to a quarter of the bolt's height,
+/// each jagged by midpoint displacement and thinning to its tip, as
+/// (point, width) pairs (the same strike, the same branches).
+pub fn lightning_branches(at: Vec3, top: f32, strike: u32) -> Vec<Vec<(Vec3, f32)>> {
+    let main = lightning_bolt(at, top, strike);
+    let mut state = strike.wrapping_mul(0x85eb_ca6b) ^ 0x4252_4e43 | 1;
+    let mut unit = move || {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        state as f32 / u32::MAX as f32
+    };
+    let height = top - at.y;
+    let count = 1 + (unit() > 0.4) as usize;
+    (0..count)
+        .map(|_| {
+            let i = ((0.12 + 0.5 * unit()) * (main.len() - 1) as f32) as usize;
+            let (from, width) = main[i];
+            let angle = unit() * std::f32::consts::TAU;
+            let reach = height * (0.16 + 0.09 * unit());
+            let to = from + Vec3::new(angle.cos() * reach * 0.6, -reach, angle.sin() * reach * 0.6);
+            let mut pts = vec![from, to];
+            let mut jag = reach * 0.25;
+            for _ in 0..4 {
+                let mut next = Vec::with_capacity(pts.len() * 2);
+                for pair in pts.windows(2) {
+                    let d = Vec3::new(unit() * 2.0 - 1.0, 0.0, unit() * 2.0 - 1.0) * jag;
+                    next.push(pair[0]);
+                    next.push((pair[0] + pair[1]) * 0.5 + d);
+                }
+                next.push(to);
+                pts = next;
+                jag *= 0.55;
+            }
+            let n = (pts.len() - 1) as f32;
+            pts.into_iter()
+                .enumerate()
+                .map(|(k, p)| (p, width * (0.7 - 0.5 * k as f32 / n)))
+                .collect()
+        })
+        .collect()
+}
+
 /// A lightning strike `seconds` after it struck `at`, from a cloud base at
 /// height `top`, added to `scene` (nothing from 0.6 s): the double flash
 /// brightens the sky's light and turns the scene's directional light to
@@ -371,8 +416,11 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
 /// has them) glow from inside 150 m over the cloud base above the strike
 /// ([`crate::Clouds::flash`]), a bright blue-white light hangs 100 m over
 /// the strike, lighting the ground with a falloff from it, and for 0.35 s
-/// the bolt of strike number `strike` ([`lightning_bolt`]) is drawn as an
-/// additive strip that blooms.
+/// the bolt of strike number `strike` ([`lightning_bolt`], with its
+/// [`lightning_branches`]) is drawn as additive strips: a white core at
+/// least [`BOLT_CORE`] of the view's height across wherever it is, so it
+/// never thins to an aliased line, inside a violet-white halo four times as
+/// wide that the bloom spreads; the branches dimmer.
 pub fn add_lightning(
     scene: &mut crate::RenderScene,
     at: Vec3,
@@ -414,24 +462,55 @@ pub fn add_lightning(
         cast_shadows: false,
     });
     if seconds < 0.35 {
+        // The core's least width at each point: BOLT_CORE of the view's
+        // height at its distance (a vertical field of view's tangent).
+        let fov = match scene.camera.projection {
+            crate::Projection::Perspective { fov_y_degrees } => fov_y_degrees.to_radians(),
+            _ => 1.0,
+        };
+        let eye = scene.camera.position;
+        let span = 2.0 * (fov * 0.5).tan() * BOLT_CORE;
         // Bright enough to bloom, not so bright the bloom and its
         // reflection burn a white column across the frame.
-        let c = [0.8 + 2.0 * flash, 0.9 + 2.3 * flash, 1.4 + 3.2 * flash, 1.0];
-        scene.ribbons.push(crate::Ribbon {
-            points: lightning_bolt(at, top, strike)
-                .into_iter()
-                .map(|(position, width)| crate::RibbonPoint {
-                    position,
-                    width,
-                    color: c,
-                })
-                .collect(),
-            texture: None,
-            uv: crate::RibbonUv::Stretch,
-            blend: ParticleBlend::Additive,
-        });
+        let core = [
+            0.9 + 2.2 * flash,
+            0.95 + 2.4 * flash,
+            1.2 + 2.8 * flash,
+            1.0,
+        ];
+        let halo = [
+            0.3 + 0.5 * flash,
+            0.28 + 0.5 * flash,
+            0.5 + 0.9 * flash,
+            1.0,
+        ];
+        let mut strip = |pts: &[(Vec3, f32)], gain: f32, scale: f32, c: [f32; 4]| {
+            scene.ribbons.push(crate::Ribbon {
+                points: pts
+                    .iter()
+                    .map(|&(position, width)| crate::RibbonPoint {
+                        position,
+                        width: width.max(span * position.distance(eye)) * scale,
+                        color: [c[0] * gain, c[1] * gain, c[2] * gain, 1.0],
+                    })
+                    .collect(),
+                texture: None,
+                uv: crate::RibbonUv::Stretch,
+                blend: ParticleBlend::Additive,
+            });
+        };
+        let main = lightning_bolt(at, top, strike);
+        let branches = lightning_branches(at, top, strike);
+        for (pts, gain) in std::iter::once((&main, 1.0)).chain(branches.iter().map(|b| (b, 0.6))) {
+            strip(pts, gain, 4.0, halo);
+            strip(pts, gain, 1.0, core);
+        }
     }
 }
+
+/// The least width of a bolt's white core, as a share of the view's height
+/// (3 pixels of 720): [`add_lightning`].
+pub const BOLT_CORE: f32 = 3.0 / 720.0;
 
 /// How far above and below the camera the shelter map reaches, in metres
 /// along the fall.
@@ -524,6 +603,39 @@ mod lightning_tests {
         assert_eq!(a.len(), 65);
         assert_eq!(a, lightning_bolt(at, 602.0, 3));
         assert_ne!(a, lightning_bolt(at, 602.0, 4));
+        // One or two branches, leaving the channel and running down from it,
+        // the same for the same strike.
+        let b = lightning_branches(at, 602.0, 3);
+        assert!((1..=2).contains(&b.len()));
+        for br in &b {
+            assert!(a.iter().any(|p| p.0 == br[0].0));
+            let (start, end) = (br[0].0, br.last().unwrap().0);
+            assert!(end.y < start.y - 600.0 * 0.15, "{start} {end}");
+            assert!(end.y > at.y);
+        }
+        assert_eq!(b, lightning_branches(at, 602.0, 3));
+    }
+
+    /// The bolt's core stays BOLT_CORE of the view wide however far off,
+    /// with a halo four times it around it: at 1.5 km under a 60° view the
+    /// core is some 3 pixels of 720, not the 1.5 its own width gives.
+    #[test]
+    fn a_far_bolt_keeps_a_core_and_a_halo() {
+        let mut scene = crate::RenderScene::new();
+        scene.camera.projection = crate::Projection::Perspective {
+            fov_y_degrees: 60.0,
+        };
+        scene.camera.position = Vec3::new(0.0, 2.0, 0.0);
+        let at = Vec3::new(-150.0, 0.0, -1500.0);
+        add_lightning(&mut scene, at, 900.0, 3, 0.03);
+        assert!(scene.ribbons.len() >= 4, "{}", scene.ribbons.len());
+        let (halo, core) = (&scene.ribbons[0], &scene.ribbons[1]);
+        let p = core.points.last().unwrap();
+        let px = p.width
+            / (2.0 * (30f32).to_radians().tan() * p.position.distance(scene.camera.position))
+            * 720.0;
+        assert!((2.9..4.0).contains(&px), "{px} px");
+        assert!((halo.points[0].width / core.points[0].width - 4.0).abs() < 1e-4);
     }
 
     /// The shelter view moves by whole cells only, looks along the fall,

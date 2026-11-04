@@ -653,8 +653,15 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     let overcast = frame(&sky_scene("clouds-overcast"));
     let top = px(&overcast, 640, 30);
     assert!(top[2] - top[0] < 25.0, "overcast is grey: {top:?}");
+    // Darker on the ground at the same exposure (the overcast's camera
+    // opens up for the hidden sun, as a meter would).
+    let level = {
+        let mut s = sky_scene("clouds-overcast");
+        s.camera.exposure = sky_scene("clouds-fair").camera.exposure;
+        frame(&s)
+    };
     assert!(
-        mean(&overcast, 400, 560, 880, 700) < mean(&fair, 400, 560, 880, 700),
+        mean(&level, 400, 560, 880, 700) < mean(&fair, 400, 560, 880, 700),
         "and darker on the ground"
     );
     let sunset = frame(&sky_scene("clouds-sunset"));

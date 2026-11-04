@@ -140,6 +140,14 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
 /// does, the camera tilted up to the sky.
 fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     clouds.light_scene(&mut scene);
+    // A camera opens up under a deck that hides the sun by day, as a
+    // photographer's meter does (1.5 stops for a closed overcast at noon,
+    // as the deck closes over 0.6 to 0.95 cover): at the clear sky's
+    // exposure a noon overcast read as dusk (its sky 0.32 in sRGB).
+    let t = ((clouds.coverage - 0.6) / 0.35).clamp(0.0, 1.0);
+    if scene.environment.sky.sun_direction.y > 0.0 {
+        scene = exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t));
+    }
     scene.clouds = Some(clouds);
     scene.camera.target += Vec3::Y * 14.0;
     scene

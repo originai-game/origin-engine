@@ -265,8 +265,9 @@ pub use views::{MirrorQuad, View, ViewTarget};
 pub use volumetric::{FROXELS, RAYMARCH_LIGHTS, RAYMARCH_STEPS, VolumetricFog, VolumetricMethod};
 pub use water::{WAKE_TICKS, Water, Water2d, WaterCut, WaterHeights, WaterWakes};
 pub use weather::{
-    SurfaceWeather, WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW,
-    WeatherLook, add_lightning, lightning_bolt, lightning_flash, weather,
+    BOLT_CORE, SurfaceWeather, WEATHER_DUST, WEATHER_MIST, WEATHER_NONE, WEATHER_RAIN,
+    WEATHER_SNOW, WeatherLook, add_lightning, lightning_bolt, lightning_branches, lightning_flash,
+    weather,
 };
 /// The wgpu this crate is built on, for hosts that create surfaces or pass views.
 pub use wgpu;
