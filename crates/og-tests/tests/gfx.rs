@@ -518,3 +518,85 @@ fn the_device_msaa_caps_the_qualitys() {
         );
     }
 }
+
+/// The trickster's facing, for the art director's axis check (not a
+/// reference test: run it by name with `--ignored`). Two unposed
+/// tricksters, as `og_render::gltf::load_glb` places them (skinned mesh
+/// nodes at their bind pose, glTF's rule), at yaw 0 (left, x -1.2) and yaw
+/// 180° (right, x 1.2), each over an axis gizmo at its feet: +X red, +Y
+/// green, +Z blue, 0.9 m, a ball on each tip. The camera looks from +Z.
+/// Also prints which way the toes point in the mesh's own vertices.
+#[test]
+#[ignore]
+fn trickster_axis_check() {
+    let model = og_render::gltf::load_glb(&og_tests::scenes::asset("trickster.glb").unwrap())
+        .expect("trickster.glb");
+    // The toes: the lowest 8 % of the vertices, against the whole model's centre.
+    let all: Vec<Vec3> = model
+        .primitives
+        .iter()
+        .flat_map(|p| p.mesh.vertices.iter().map(|v| Vec3::from(v.position)))
+        .collect();
+    let height = model.max.y - model.min.y;
+    let centre = (model.min + model.max) * 0.5;
+    let feet: Vec<Vec3> = all
+        .iter()
+        .copied()
+        .filter(|p| p.y < model.min.y + 0.08 * height)
+        .collect();
+    let toes = feet.iter().copied().sum::<Vec3>() / feet.len() as f32 - centre;
+    println!(
+        "trickster: bounds {} .. {}, feet centroid minus centre {toes} (x/z: the toes point along the larger)",
+        model.min, model.max
+    );
+    let mut scene = RenderScene::new();
+    let ground = scene.add_mesh(shapes::plane(20.0, 1.0));
+    let grey = scene.add_material(Material {
+        base_color: [0.5, 0.5, 0.5, 1.0],
+        ..Default::default()
+    });
+    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    let parts = model.add_to(&mut scene);
+    let rod = |axis: Vec3| {
+        let size = Vec3::splat(0.04) + axis * 0.86;
+        shapes::cuboid(size)
+    };
+    let colours = [
+        (Vec3::X, [0.9, 0.05, 0.05, 1.0]),
+        (Vec3::Y, [0.05, 0.8, 0.05, 1.0]),
+        (Vec3::Z, [0.1, 0.2, 0.95, 1.0]),
+    ];
+    let tip = scene.add_mesh(shapes::sphere(12, 8));
+    let lift = -model.min.y;
+    for (x, yaw) in [(-1.2f32, 0.0f32), (1.2, std::f32::consts::PI)] {
+        parts.instance(
+            &mut scene,
+            Mat4::from_translation(Vec3::new(x, lift, 0.0)) * Mat4::from_rotation_y(yaw),
+        );
+        for (axis, colour) in colours {
+            let mesh = scene.add_mesh(rod(axis));
+            let m = scene.add_material(Material {
+                base_color: colour,
+                ..Default::default()
+            });
+            let at = Vec3::new(x, 0.02, 0.0);
+            scene.add_instance(mesh, m, Mat4::from_translation(at + axis * 0.45));
+            scene.add_instance(
+                tip,
+                m,
+                Mat4::from_translation(at + axis * 0.9) * Mat4::from_scale(Vec3::splat(0.07)),
+            );
+        }
+    }
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.8, 4.2),
+        target: Vec3::new(0.0, 0.6, 0.0),
+        ..Default::default()
+    };
+    let desc = scenes::base_desc();
+    let (img, _) = frame(&desc, &scene, 1);
+    let path = out_dir().join("trickster-axis.png");
+    std::fs::create_dir_all(out_dir()).unwrap();
+    gfx::save_png(&path, &img).unwrap();
+    println!("saved {}", path.display());
+}
