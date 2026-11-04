@@ -138,6 +138,13 @@ is one line here, written at the merge that changes
   terrain file takes the same keys per layer. All default to 0: a terrain
   that does not set them draws as before. The terrain prepass now reads only
   the layers' weights and heights for its roughness, never their normal maps.
+- **Several kinds of blade per grass field, painted maps, no popping
+  (G4).** og.Grass gains `types` (up to three more og.GrassType kinds:
+  height, width, curve, colours, share; each clump grows one), `typeMap`,
+  `densityMap` and `heightMap` over the terrain's extent. Blades are now
+  cubic Bezier curves (Ghost of Tsushima's stem, midpoint and tip), and a
+  blade about to be thinned out shrinks to nothing first instead of
+  popping. New members, compatible; grass frames move slightly.
 - **Grass trample (G3).** Where compute runs, a camera-centred 64 m
   trample map (0.25 m cells) records where `og.GrassPusher` capsules
   stand; grass blades under them are pressed down and away, and

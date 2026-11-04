@@ -1367,6 +1367,7 @@ impl Renderer {
                     trample: self.trample.grid(),
                 },
                 &view_frustum,
+                &|h| textures.get(h.index()).map(|t| &t.view),
             )
         };
         let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);

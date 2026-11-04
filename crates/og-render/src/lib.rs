@@ -218,7 +218,7 @@ pub use environment::{
 };
 pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};
-pub use grass::{DistanceLod, Grass, GrassDraw};
+pub use grass::{DistanceLod, Grass, GrassDraw, GrassType};
 #[cfg(not(target_arch = "wasm32"))]
 pub use headless::render_to_rgba;
 pub use hooks::{

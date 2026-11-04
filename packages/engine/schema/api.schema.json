@@ -19116,6 +19116,7 @@
         "TerrainStamp",
         "TerrainScatter",
         "Grass",
+        "GrassType",
         "GrassPusher",
         "TerrainInfo",
         "TerrainSampleDesc",
@@ -83680,6 +83681,92 @@
           "minimum": 0,
           "maximum": 120,
           "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 3,
+          "description": "Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped.",
+          "default": []
+        },
+        "typeMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share.",
+          "default": 0
+        },
+        "densityMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none.",
+          "default": 0
+        },
+        "heightMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "GrassType": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's.",
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "number",
+          "description": "The tallest blade of this kind.",
+          "default": 0.45,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "width": {
+          "type": "number",
+          "description": "A blade's width at its root.",
+          "default": 0.012,
+          "minimum": 0,
+          "maximum": 0.5,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "curve": {
+          "type": "number",
+          "description": "How far its blades droop along their length: 0 straight, 1 arching over.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "baseColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The roots' colour (linear).",
+          "default": {
+            "r": 0.04,
+            "g": 0.085,
+            "b": 0.024
+          }
+        },
+        "tipColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The tips' colour (linear): a flower's petals.",
+          "default": {
+            "r": 0.235,
+            "g": 0.39,
+            "b": 0.11
+          }
+        },
+        "share": {
+          "type": "number",
+          "description": "How many clumps grow this kind for each one of the field's own, where no typeMap says.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 100,
           "x-og-tunable": true
         }
       },

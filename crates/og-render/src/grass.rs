@@ -109,6 +109,43 @@ pub struct Grass {
     pub seed: u32,
     /// Seconds trampled blades take to stand again (`trample.rs`).
     pub recovery: f32,
+    /// Up to three more kinds of blade among the field's own (its height,
+    /// width, curve and colours are the first): each clump grows one.
+    pub types: [Option<GrassType>; 3],
+    /// Where `types` grow (red, green and blue the shares of the first,
+    /// second and third; the rest the field's own kind), over the
+    /// terrain's extent as its control map; `None`: by their shares.
+    pub type_map: Option<crate::TextureHandle>,
+    /// Multiply the density and the height (their red channels), laid
+    /// out as `type_map`.
+    pub density_map: Option<crate::TextureHandle>,
+    pub height_map: Option<crate::TextureHandle>,
+}
+
+/// Another kind of blade in a [`Grass`] field: its shape and colours.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GrassType {
+    pub height: f32,
+    pub width: f32,
+    pub curve: f32,
+    pub base_color: Vec3,
+    pub tip_color: Vec3,
+    /// Clumps of this kind per clump of the field's own, without a type map.
+    pub share: f32,
+}
+
+impl Default for GrassType {
+    fn default() -> Self {
+        let g = Grass::default();
+        GrassType {
+            height: g.height,
+            width: g.width,
+            curve: g.curve,
+            base_color: g.base_color,
+            tip_color: g.tip_color,
+            share: 1.0,
+        }
+    }
 }
 
 impl Default for Grass {
@@ -140,6 +177,10 @@ impl Default for Grass {
             cast_shadows: false,
             seed: 1,
             recovery: 4.0,
+            types: [None; 3],
+            type_map: None,
+            density_map: None,
+            height_map: None,
         }
     }
 }
@@ -154,6 +195,25 @@ pub struct GrassDraw {
 }
 
 impl Grass {
+    /// The field's kinds of blade, its own first: (height, width, share).
+    fn kinds(&self) -> [Option<(f32, f32, f32)>; 4] {
+        let mut out = [Some((self.height, self.width, 1.0)), None, None, None];
+        for (k, t) in self.types.iter().enumerate() {
+            out[k + 1] = t.map(|t| (t.height.max(0.0), t.width.max(0.0), t.share.max(0.0)));
+        }
+        out
+    }
+
+    /// The tallest blade of any kind (m).
+    pub fn tallest(&self) -> f32 {
+        self.kinds().iter().flatten().fold(0.0, |a, k| a.max(k.0))
+    }
+
+    /// The widest root of any kind (m).
+    pub fn widest(&self) -> f32 {
+        self.kinds().iter().flatten().fold(0.0, |a, k| a.max(k.1))
+    }
+
     fn usable(&self) -> bool {
         self.density > 0.0
             && self.distance > 0.0
@@ -364,7 +424,7 @@ pub fn plan(g: &Grass, v: &PlanView) -> Plan {
     let n = (v.size / layout.chunk).ceil();
     let lo = ((eye - reach) / layout.chunk).floor().max(Vec2::ZERO);
     let hi = ((eye + reach) / layout.chunk).ceil().min(n).max(Vec2::ZERO);
-    let tall = g.height * (1.0 + g.lean.abs() + g.clump_lean.abs());
+    let tall = g.tallest() * (1.0 + g.lean.abs() + g.clump_lean.abs());
     let cells = layout.tiles_per_side * layout.tiles_per_side;
     let mut chunks: Vec<(f32, u32, u32, f32)> = Vec::new();
     for cz in lo.y as u32..hi.y as u32 {
@@ -519,6 +579,8 @@ struct GenGpu {
     motion: [f32; 4],
     counts: [u32; 4],
     trample: [f32; 4],
+    kinds: [[f32; 4]; 4],
+    maps: [f32; 4],
     wind: WindFieldGpu,
 }
 
@@ -539,7 +601,45 @@ struct DrawGpu {
     dry_color: [f32; 4],
     variation: [f32; 4],
     rows: [u32; 4],
+    kinds: [[f32; 4]; 8],
     wind: WindFieldGpu,
+}
+
+/// A field's kinds as `GrassGen.kinds` holds them: height, width, where
+/// its share ends (summed in order over the kinds the field has) and
+/// whether it has it.
+fn kinds_gen(g: &Grass) -> [[f32; 4]; 4] {
+    let kinds = g.kinds();
+    let total: f32 = kinds.iter().flatten().map(|k| k.2).sum();
+    let mut run = 0.0;
+    std::array::from_fn(|i| match kinds[i] {
+        Some((h, w, share)) => {
+            run += share;
+            let end = if total > 0.0 { run / total } else { 1.0 };
+            [h, w, if i == 3 { 1.0 } else { end }, 1.0]
+        }
+        None => [0.0, 0.0, if total > 0.0 { run / total } else { 1.0 }, 0.0],
+    })
+}
+
+/// A field's kinds as `GrassUniform.kinds` holds them: roots' colour and
+/// curve, then tips' colour, the field's own first.
+fn kinds_draw(g: &Grass) -> [[f32; 4]; 8] {
+    let own = GrassType {
+        height: g.height,
+        width: g.width,
+        curve: g.curve,
+        base_color: g.base_color,
+        tip_color: g.tip_color,
+        share: 1.0,
+    };
+    let mut out = [[0.0; 4]; 8];
+    for (k, t) in std::iter::once(Some(own)).chain(g.types).enumerate() {
+        let t = t.unwrap_or(own);
+        out[2 * k] = t.base_color.extend(t.curve.clamp(0.0, 1.0)).to_array();
+        out[2 * k + 1] = t.tip_color.extend(0.0).to_array();
+    }
+    out
 }
 
 /// A field's look as `GrassUniform` holds it: `base_color`, `tip_color`,
@@ -640,6 +740,8 @@ struct FieldGpu {
 /// group generation binds), its slices and whether it casts.
 pub(crate) struct GrassField {
     slot: usize,
+    /// Its maps (generation group 2).
+    maps: wgpu::BindGroup,
     terrain_draw: usize,
     arrayed: bool,
     slices: u32,
@@ -694,6 +796,11 @@ pub(crate) struct GrassView<'a> {
 /// Generates and draws [`GrassDraw`]s.
 pub(crate) struct GrassRenderer {
     gen_layout: wgpu::BindGroupLayout,
+    /// The generation's group 2: a field's type, density and height maps
+    /// and their sampler; `white` stands in for a map a field lacks.
+    maps_layout: wgpu::BindGroupLayout,
+    white: wgpu::TextureView,
+    map_sampler: wgpu::Sampler,
     draw_layout: wgpu::BindGroupLayout,
     /// The simulated wind field's lean (`wind_field.rs`) and the trample map.
     wind_field: wgpu::TextureView,
@@ -715,7 +822,11 @@ pub(crate) struct GrassRenderer {
 }
 
 impl GrassRenderer {
-    pub(crate) fn new(device: &wgpu::Device, p: GrassPipelines) -> GrassRenderer {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        p: GrassPipelines,
+    ) -> GrassRenderer {
         use wgpu::util::DeviceExt;
         let entry = |binding, visibility, ty| wgpu::BindGroupLayoutEntry {
             binding,
@@ -764,6 +875,52 @@ impl GrassRenderer {
                 ),
             ],
         });
+        let map = wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        };
+        let maps_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("grass maps"),
+            entries: &[
+                entry(0, cs, map),
+                entry(1, cs, map),
+                entry(2, cs, map),
+                entry(
+                    3,
+                    cs,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ),
+            ],
+        });
+        let white = device
+            .create_texture_with_data(
+                queue,
+                &wgpu::TextureDescriptor {
+                    label: Some("grass no map"),
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                },
+                wgpu::util::TextureDataOrder::LayerMajor,
+                &[255; 4],
+            )
+            .create_view(&Default::default());
+        let map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("grass maps"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            ..Default::default()
+        });
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("grass"),
             entries: &[
@@ -793,6 +950,9 @@ impl GrassRenderer {
             prepass_layout: pl("grass prepass", &[p.frame_layout, &draw_layout]),
             shadow_layout: pl("grass shadow", &[p.shadow_layout, &draw_layout]),
             gen_layout,
+            maps_layout,
+            white,
+            map_sampler,
             draw_layout,
             wind_field: p.wind_field,
             trample: p.trample,
@@ -924,7 +1084,11 @@ impl GrassRenderer {
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grass generate"),
-            bind_group_layouts: &[Some(&self.gen_layout), Some(terrain_layout)],
+            bind_group_layouts: &[
+                Some(&self.gen_layout),
+                Some(terrain_layout),
+                Some(&self.maps_layout),
+            ],
             immediate_size: 0,
         });
         ["evaluate", "scan", "compact"].map(|entry| {
@@ -1049,7 +1213,7 @@ impl GrassRenderer {
     /// Plans this frame's fields over the drawn terrains and writes their
     /// uniforms and slices.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn prepare(
+    pub(crate) fn prepare<'t>(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -1058,6 +1222,7 @@ impl GrassRenderer {
         terrain_draws: &[crate::terrain::TerrainDraw],
         view: GrassView,
         frustum: &crate::frame::Frustum,
+        textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) -> GrassFrame {
         let mut frame = GrassFrame::default();
         let previous = self.last_tick.unwrap_or(scene.tick);
@@ -1099,7 +1264,7 @@ impl GrassRenderer {
             }
             let cast = g.cast_shadows && scene.light.cast_shadows && sun_on;
             // With its shadow: the box swept along the sun's reach.
-            let shadow = reach * g.height * f32::from(u8::from(cast));
+            let shadow = reach * g.tallest() * f32::from(u8::from(cast));
             let visible = |lo: Vec3, hi: Vec3| {
                 frustum.intersects_box(lo.min(lo + shadow), hi.max(hi + shadow))
             };
@@ -1123,7 +1288,7 @@ impl GrassRenderer {
             let along = horizontal_scale(t.transform);
             let layout = FieldLayout::new(&g, along);
             let lod = DistanceLod::for_radius(g.distance);
-            let extent = g.distance + g.height * 4.0 + CHUNK;
+            let extent = g.distance + g.tallest() * 4.0 + CHUNK;
             let origin = view.camera.extend(extent).to_array();
             let planes = frustum.planes();
             let generator = GenGpu {
@@ -1150,7 +1315,7 @@ impl GrassRenderer {
                 ],
                 chunk: [layout.chunk, g.layer as f32, seed_bits(g.seed), lod.widest],
                 shape: [
-                    g.height,
+                    g.tallest(),
                     g.height_variation.clamp(0.0, 1.0),
                     g.lean,
                     g.clump_lean,
@@ -1159,7 +1324,7 @@ impl GrassRenderer {
                     g.clump_size.max(0.05) / along,
                     g.tufts.clamp(0.0, 1.0),
                     HEIGHT_RANGE,
-                    g.width,
+                    g.widest(),
                 ],
                 shadow: reach.extend(f32::from(u8::from(cast))).to_array(),
                 motion: [
@@ -1169,6 +1334,13 @@ impl GrassRenderer {
                     g.recovery.max(0.0),
                 ],
                 trample: view.trample,
+                kinds: kinds_gen(&g),
+                maps: [
+                    f32::from(u8::from(g.type_map.is_some())),
+                    f32::from(u8::from(g.density_map.is_some())),
+                    f32::from(u8::from(g.height_map.is_some())),
+                    0.0,
+                ],
                 counts: [
                     slices.len() as u32,
                     f.blade_cap,
@@ -1189,8 +1361,8 @@ impl GrassRenderer {
                 limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, 0.55],
                 sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
                 shape: [
-                    g.height,
-                    g.width,
+                    g.tallest(),
+                    g.widest(),
                     g.curve.clamp(0.0, 1.0),
                     g.flutter.max(0.0),
                 ],
@@ -1199,13 +1371,39 @@ impl GrassRenderer {
                 dry_color,
                 variation,
                 rows: [lod_rows[0], lod_rows[1], lod_rows[2], 0],
+                kinds: kinds_draw(&g),
                 wind,
             };
             queue.write_buffer(&f.generator, 0, bytemuck::bytes_of(&generator));
             queue.write_buffer(&f.draw, 0, bytemuck::bytes_of(&draw));
             queue.write_buffer(&f.slices, 0, bytemuck::cast_slice(&slices));
+            let view_of =
+                |m: Option<crate::TextureHandle>| m.and_then(textures).unwrap_or(&self.white);
+            let maps = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("grass maps"),
+                layout: &self.maps_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(view_of(g.type_map)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(view_of(g.density_map)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(view_of(g.height_map)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::Sampler(&self.map_sampler),
+                    },
+                ],
+            });
             frame.fields.push(GrassField {
                 slot,
+                maps,
                 terrain_draw: k,
                 arrayed: td.arrayed,
                 slices: slices.len() as u32,
@@ -1239,6 +1437,7 @@ impl GrassRenderer {
             let f = &self.fields[field.slot];
             pass.set_bind_group(0, &f.gen_group, &[]);
             pass.set_bind_group(1, &terrain_draws[field.terrain_draw].group, &[0]);
+            pass.set_bind_group(2, &field.maps, &[]);
             pass.set_pipeline(evaluate);
             pass.dispatch_workgroups(field.slices, 1, 1);
             pass.set_pipeline(scan);
@@ -1449,6 +1648,41 @@ mod tests {
         );
     }
 
+    /// A field's kinds split the clumps by their shares in order, the
+    /// field's own first: a missing kind takes none and the last bound is
+    /// always 1, so every clump grows a kind the field has.
+    #[test]
+    fn the_kinds_split_the_clumps_by_their_shares() {
+        let reeds = GrassType {
+            height: 1.6,
+            width: 0.02,
+            share: 3.0,
+            ..Default::default()
+        };
+        let g = Grass {
+            types: [
+                Some(reeds),
+                None,
+                Some(GrassType {
+                    share: 0.0,
+                    ..reeds
+                }),
+            ],
+            ..Default::default()
+        };
+        let k = kinds_gen(&g);
+        let bounds: Vec<f32> = k.iter().map(|r| r[2]).collect();
+        assert_eq!(bounds, vec![0.25, 1.0, 1.0, 1.0]);
+        assert_eq!(k.map(|r| r[3]), [1.0, 1.0, 0.0, 1.0]);
+        assert_eq!((k[1][0], k[1][1]), (1.6, 0.02));
+        assert_eq!(g.tallest(), 1.6);
+        assert_eq!(g.widest(), 0.02);
+        let d = kinds_draw(&g);
+        assert_eq!(d[2][3], reeds.curve);
+        // A missing kind draws as the field's own, never black.
+        assert_eq!(d[4], d[0]);
+    }
+
     /// Each uniform the grass writes has the layout its shader reads
     /// (naga's offsets of the WGSL struct against the Rust one's), and
     /// the look's values land where the shader reads them: translucency
@@ -1492,14 +1726,14 @@ mod tests {
             &lit_source(),
             "GrassUniform",
             fields!(DrawGpu: view_proj, prev_view_proj, eye, forward, origin, limits, sun, shape,
-                base_color, tip_color, dry_color, variation, rows, wind),
+                base_color, tip_color, dry_color, variation, rows, kinds, wind),
             size_of::<DrawGpu>(),
         );
         check(
             &generate_source(false),
             "GrassGen",
             fields!(GenGpu: planes, eye, origin, lod, lod_density, field, chunk, shape, clump,
-                shadow, motion, counts, trample, wind),
+                shadow, motion, counts, trample, kinds, maps, wind),
             size_of::<GenGpu>(),
         );
         check(

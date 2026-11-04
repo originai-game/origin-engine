@@ -894,6 +894,7 @@ impl Renderer {
         );
         let grass = grass::GrassRenderer::new(
             &device,
+            &queue,
             grass::GrassPipelines {
                 frame_layout: &frame_layout,
                 shadow_layout: &shadow_bind_layout,

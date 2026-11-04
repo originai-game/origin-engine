@@ -50503,6 +50503,79 @@ export interface Grass {
    * @tunable
    */
   recovery: number;
+  /**
+   * Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped.
+   *
+   * @capacity 3 elements (List.Entity.3): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  types: readonly Entity[];
+  /**
+   * Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share.
+   */
+  typeMap: Texture;
+  /**
+   * Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none.
+   */
+  densityMap: Texture;
+  /**
+   * Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none.
+   */
+  heightMap: Texture;
+}
+
+/**
+ * Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's.
+ *
+ * The value of the `GrassType` component (token `og.GrassType`).
+ */
+export interface GrassType {
+  /**
+   * The tallest blade of this kind.
+   *
+   * @default 0.45
+   * @range 0..4
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * A blade's width at its root.
+   *
+   * @default 0.012
+   * @range 0..0.5
+   * @unit m (metres)
+   * @tunable
+   */
+  width: number;
+  /**
+   * How far its blades droop along their length: 0 straight, 1 arching over.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  curve: number;
+  /**
+   * The roots' colour (linear).
+   *
+   * @default { r: 0.04, g: 0.085, b: 0.024 }
+   */
+  baseColor: Color;
+  /**
+   * The tips' colour (linear): a flower's petals.
+   *
+   * @default { r: 0.235, g: 0.39, b: 0.11 }
+   */
+  tipColor: Color;
+  /**
+   * How many clumps grow this kind for each one of the field's own, where no typeMap says.
+   *
+   * @default 1
+   * @range 0..100
+   * @tunable
+   */
+  share: number;
 }
 
 /**
@@ -58320,7 +58393,11 @@ export declare namespace og {
   /**
    * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
    */
-  const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32">; readonly recovery: FieldSpec<"f32"> }, Grass>;
+  const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32">; readonly recovery: FieldSpec<"f32">; readonly types: ListSpec<"Entity">; readonly typeMap: FieldSpec<"Texture">; readonly densityMap: FieldSpec<"Texture">; readonly heightMap: FieldSpec<"Texture"> }, Grass>;
+  /**
+   * Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's.
+   */
+  const GrassType: ComponentType<{ readonly height: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly share: FieldSpec<"f32"> }, GrassType>;
   /**
    * Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
    */

@@ -44,6 +44,11 @@ struct GrassGen {
   motion: vec4<f32>,    // x: sway, y: stiffness, z: the plan's share of the table's blades, w: the trample's recovery (s)
   counts: vec4<u32>,    // x: slices, y: blades the instance buffer holds, z: rows of LOD 0, w: LOD 1's and 2's (8 bits each)
   trample: vec4<f32>,   // the trample map (trample.rs): its min corner (x, z from the frame's origin), cell (m), cells a side (0: none)
+  // Per kind of blade, the field's own first (grass.rs Grass::kinds): x its
+  // tallest (m), y its root width (m), z where its share ends in [0, 1]
+  // (shares summed in order), w 1 when the field has it.
+  kinds: array<vec4<f32>, 4>,
+  maps: vec4<f32>,      // 1 where the field has x a type map, y a density map, z a height map
   wind: WindField,
 };
 
@@ -64,6 +69,39 @@ struct GrassGen {
 @group(0) @binding(7) var wind_tex: texture_2d<f32>;
 // The trample map (trample.rs; wind_lean.wgsl vegetation_trample).
 @group(0) @binding(8) var trample_tex: texture_2d<f32>;
+// The field's maps over the terrain's extent (Grass.typeMap, densityMap,
+// heightMap; white without), sampled linearly.
+@group(2) @binding(0) var grass_type_map: texture_2d<f32>;
+@group(2) @binding(1) var grass_density_map: texture_2d<f32>;
+@group(2) @binding(2) var grass_height_map: texture_2d<f32>;
+@group(2) @binding(3) var grass_map_sampler: sampler;
+
+// The kind of blade a clump whose own value is `u` (in [0, 1)) grows at
+// map point `uv`: by the type map's shares there, else by the kinds'.
+fn grass_kind(u: f32, uv: vec2<f32>) -> u32 {
+  var bounds = vec4<f32>(gen.kinds[0].z, gen.kinds[1].z, gen.kinds[2].z, gen.kinds[3].z);
+  if (gen.maps.x > 0.5) {
+    let m = textureSampleLevel(grass_type_map, grass_map_sampler, uv, 0.0).rgb
+      * vec3<f32>(gen.kinds[1].w, gen.kinds[2].w, gen.kinds[3].w);
+    let sum = m.r + m.g + m.b;
+    let shares = select(m, m / sum, sum > 1.0);
+    let own = 1.0 - (shares.r + shares.g + shares.b);
+    bounds = vec4<f32>(own, own + shares.r, own + shares.r + shares.g, 1.0);
+  }
+  if (u < bounds.x) { return 0u; }
+  if (u < bounds.y) { return 1u; }
+  if (u < bounds.z) { return 2u; }
+  return 3u;
+}
+
+// How much a candidate of rank `rank` below `keep` stands: blades about to
+// be dropped shrink to nothing first, over a band below the threshold that
+// closes as every candidate is kept, so the field thins without popping.
+fn grass_emerge(rank: f32, keep: f32) -> f32 {
+  let band = min(0.2 * keep, 1.0 - keep);
+  if (band <= 1e-6) { return 1.0; }
+  return smoothstep(0.0, 1.0, (keep - rank) / band);
+}
 
 fn grass_visible(center: vec3<f32>, radius: f32) -> bool {
   for (var i = 0; i < 6; i++) {
@@ -169,12 +207,20 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
     d = distance(root, gen.eye.xyz);
     falloff *= grass_falloff(d);
   }
-  let keep = clamp(gen.field.y * grass_layer_weight(root, normal, maps.control) * falloff / gen.field.x, 0.0, 1.0);
+  let uv = rel / terrain.extent.xy;
+  var painted = 1.0;
+  if (gen.maps.y > 0.5) { painted = textureSampleLevel(grass_density_map, grass_map_sampler, uv, 0.0).r; }
+  let keep = clamp(gen.field.y * grass_layer_weight(root, normal, maps.control) * painted * falloff / gen.field.x, 0.0, 1.0);
   if (rank >= keep) { return none; }
 
   let seed = wind_hash2(cell_hash, point);
+  // Each clump grows one kind of blade.
+  let kind = grass_kind(fract(clump.x * 5.0 + clump.y * 11.0 + 0.37), uv);
+  let k = gen.kinds[kind];
+  var scaled = k.x * grass_emerge(rank, keep);
+  if (gen.maps.z > 0.5) { scaled *= textureSampleLevel(grass_height_map, grass_map_sampler, uv, 0.0).r; }
   // Blades of a clump share most of their height.
-  var tall = gen.shape.x * (1.0 - gen.shape.y * mix(wind_unit(wind_hash(seed ^ 0x68u)), clump.y, 0.6));
+  var tall = scaled * (1.0 - gen.shape.y * mix(wind_unit(wind_hash(seed ^ 0x68u)), clump.y, 0.6));
   // Over the last fade the survivors also shorten, so the field's edge
   // sinks into the ground's colour rather than ending on a line.
   let edge = gen.lod.w * gen.lod_density.w;
@@ -190,10 +236,11 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   var b: GrassBlade;
   b.root = root;
   b.lod = 0u;
+  b.kind = kind;
   if (gen.eye.w < 0.5) { b.lod = grass_lod(d, wind_unit(wind_hash(seed ^ 0x10du))); }
   b.facing = wind_unit(wind_hash(seed ^ 0x66u));
   b.height = tall / max(gen.shape.x, 1e-3);
-  let width = gen.clump.w * (0.75 + 0.5 * wind_unit(wind_hash(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
+  let width = k.y * (0.75 + 0.5 * wind_unit(wind_hash(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
   b.width = width / (GRASS_WIDTH_RANGE * max(gen.clump.w, 1e-5));
   b.seed = wind_unit(wind_hash(seed ^ 0x5eu));
   b.clump = clump.x;

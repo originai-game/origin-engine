@@ -140,9 +140,9 @@ fn grass_unpack_bend(bits: u32) -> vec2<f32> {
 // x the root's x and z (16 bits each, within `extent` of the frame's
 // instance origin), y its height (16 bits, within `range`), its facing and
 // seed (8 each), z its height and width (shares of the field's tallest and
-// of GRASS_WIDTH_RANGE times its width, 8 each), its clump's tint (8) and
-// its level of detail (2: 3 is no blade), w its bend now and last frame
-// (grass_pack_bend, x and z).
+// of GRASS_WIDTH_RANGE times its width, 8 each), its clump's tint (8), its
+// level of detail (2: 3 is no blade) and its kind (2: grass.rs
+// Grass::kinds), w its bend now and last frame (grass_pack_bend, x and z).
 struct GrassBlade {
   root: vec3<f32>,
   facing: f32,
@@ -151,6 +151,7 @@ struct GrassBlade {
   seed: f32,
   clump: f32,
   lod: u32,
+  kind: u32,
   bend: vec2<f32>,
   previous_bend: vec2<f32>,
 };
@@ -171,7 +172,7 @@ fn grass_pack(b: GrassBlade, origin: vec4<f32>, range: f32) -> vec4<u32> {
   return vec4<u32>(
     x | (z << 16u),
     y | (facing << 16u) | (seed << 24u),
-    grass_q(b.height, 255.0) | (grass_q(b.width, 255.0) << 8u) | (grass_q(b.clump, 255.0) << 16u) | ((b.lod & 3u) << 24u),
+    grass_q(b.height, 255.0) | (grass_q(b.width, 255.0) << 8u) | (grass_q(b.clump, 255.0) << 16u) | ((b.lod & 3u) << 24u) | ((b.kind & 3u) << 26u),
     grass_pack_bend(b.bend.x, b.previous_bend.x) | (grass_pack_bend(b.bend.y, b.previous_bend.y) << 16u),
   );
 }
@@ -189,6 +190,7 @@ fn grass_unpack(words: vec4<u32>, origin: vec4<f32>, range: f32) -> GrassBlade {
   b.width = f32((words.z >> 8u) & 0xffu) / 255.0;
   b.clump = f32((words.z >> 16u) & 0xffu) / 255.0;
   b.lod = (words.z >> 24u) & 3u;
+  b.kind = (words.z >> 26u) & 3u;
   let bx = grass_unpack_bend(words.w & 0xffffu);
   let bz = grass_unpack_bend(words.w >> 16u);
   b.bend = vec2<f32>(bx.x, bz.x);
@@ -196,27 +198,47 @@ fn grass_unpack(words: vec4<u32>, origin: vec4<f32>, range: f32) -> GrassBlade {
   return b;
 }
 
-// The three control points of a blade `height` tall whose tip is offset
+// The four control points of a blade `height` tall whose tip is offset
 // by `offset` (a share of its height, world x and z), drooping by `droop`
-// (0..1), relative to its root: a quadratic Bézier whose length stays the
-// blade's (two passes scaling it by its length's estimate).
-fn grass_curve(height: f32, offset: vec2<f32>, droop_wanted: f32) -> array<vec3<f32>, 3> {
+// (0..1), relative to its root: a cubic Bezier as Ghost of Tsushima's
+// blades (Wohllaib, *Procedural Grass in Ghost of Tsushima*, GDC 2021):
+// the stem rises from the root, the midpoint control carries the tilt
+// and the arch, and the tip lands where the bend puts it, the curve
+// scaled so its length stays the blade's (Gravesen's length estimate for
+// a cubic, the mean of its chord and its control polygon, twice).
+fn grass_curve(height: f32, offset: vec2<f32>, droop_wanted: f32) -> array<vec3<f32>, 4> {
   let wanted = offset * height;
   let leaning = dot(wanted, wanted) > 1e-12;
   let droop = select(0.0, droop_wanted, leaning);
   let horizontal = min(length(wanted) + droop * 0.7 * height, height * 0.95);
-  let side = select(vec2<f32>(0.0), normalize(wanted) * horizontal, horizontal > 1e-6 && leaning);
-  let p0 = vec3<f32>(0.0);
-  var p2 = vec3<f32>(side.x, sqrt(max(height * height - horizontal * horizontal, 0.0)) * (1.0 - 0.7 * droop), side.y);
+  let dir = select(vec2<f32>(0.0), normalize(wanted), horizontal > 1e-6 && leaning);
   let ratio = horizontal / max(height, 1e-6);
-  var p1 = vec3<f32>(0.0, height * max(1.0 - ratio, 0.05 * max(ratio, 1.0)), 0.0);
-  p1.y += (height * 0.9 - p1.y) * min(droop * 2.0, 1.0);
+  let p0 = vec3<f32>(0.0);
+  var p3 = vec3<f32>(dir.x * horizontal, sqrt(max(height * height - horizontal * horizontal, 0.0)) * (1.0 - 0.7 * droop), dir.y * horizontal);
+  // The stem: straight up a third of the blade, leaning a little.
+  var p1 = vec3<f32>(dir.x * horizontal * 0.05, height * 0.33, dir.y * horizontal * 0.05);
+  // The midpoint control: most of the lean, high enough for the arch.
+  let arch = mix(height * max(0.72 * (1.0 - 0.5 * ratio), 0.3), height * 0.95, min(droop * 2.0, 1.0));
+  var p2 = vec3<f32>(dir.x * horizontal * 0.6, arch, dir.y * horizontal * 0.6);
   for (var i = 0; i < 2; i++) {
-    let chord = distance(p2, p0);
-    let polygon = distance(p1, p0) + distance(p2, p1);
-    let scale = height / max((2.0 * chord + polygon) / 3.0, 1e-6);
-    p1 = p0 + (p1 - p0) * scale;
-    p2 = p1 + (p2 - p1) * scale;
+    let chord = distance(p3, p0);
+    let polygon = distance(p1, p0) + distance(p2, p1) + distance(p3, p2);
+    let scale = height / max((chord + polygon) * 0.5, 1e-6);
+    p1 *= scale;
+    p2 *= scale;
+    p3 *= scale;
   }
-  return array<vec3<f32>, 3>(p0, p1, p2);
+  return array<vec3<f32>, 4>(p0, p1, p2, p3);
+}
+
+// The point of cubic `c` at `t`.
+fn grass_curve_point(c: array<vec3<f32>, 4>, t: f32) -> vec3<f32> {
+  let u = 1.0 - t;
+  return c[0] * (u * u * u) + c[1] * (3.0 * u * u * t) + c[2] * (3.0 * u * t * t) + c[3] * (t * t * t);
+}
+
+// The (unnormalised) tangent of cubic `c` at `t`.
+fn grass_curve_tangent(c: array<vec3<f32>, 4>, t: f32) -> vec3<f32> {
+  let u = 1.0 - t;
+  return (c[1] - c[0]) * (3.0 * u * u) + (c[2] - c[1]) * (6.0 * u * t) + (c[3] - c[2]) * (3.0 * t * t);
 }

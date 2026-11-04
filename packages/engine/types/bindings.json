@@ -7110,11 +7110,82 @@
           "column": "f32",
           "default": 4,
           "tunable": true
+        },
+        {
+          "name": "types",
+          "column": "Entity",
+          "list": 3,
+          "default": []
+        },
+        {
+          "name": "typeMap",
+          "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "densityMap",
+          "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "heightMap",
+          "column": "Texture",
+          "default": 0
         }
       ]
     },
     {
       "id": 89,
+      "name": "GrassType",
+      "schema": "og.GrassType",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 0.45,
+          "tunable": true
+        },
+        {
+          "name": "width",
+          "column": "f32",
+          "default": 0.012,
+          "tunable": true
+        },
+        {
+          "name": "curve",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "baseColor",
+          "column": "Color",
+          "default": {
+            "r": 0.04,
+            "g": 0.085,
+            "b": 0.024
+          }
+        },
+        {
+          "name": "tipColor",
+          "column": "Color",
+          "default": {
+            "r": 0.235,
+            "g": 0.39,
+            "b": 0.11
+          }
+        },
+        {
+          "name": "share",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 90,
       "name": "GrassPusher",
       "schema": "og.GrassPusher",
       "module": "terrain",
@@ -7140,7 +7211,7 @@
       ]
     },
     {
-      "id": 90,
+      "id": 91,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -7193,7 +7264,7 @@
       ]
     },
     {
-      "id": 91,
+      "id": 92,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -7211,7 +7282,7 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -7225,7 +7296,7 @@
       ]
     },
     {
-      "id": 93,
+      "id": 94,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -7277,7 +7348,7 @@
       ]
     },
     {
-      "id": 94,
+      "id": 95,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -7331,7 +7402,7 @@
       ]
     },
     {
-      "id": 95,
+      "id": 96,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -7365,7 +7436,7 @@
       ]
     },
     {
-      "id": 96,
+      "id": 97,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -7409,7 +7480,7 @@
       ]
     },
     {
-      "id": 97,
+      "id": 98,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
