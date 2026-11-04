@@ -22,6 +22,84 @@ const GROUND: u64 = 7;
 const HULL: u64 = 8;
 const TERRAIN: u64 = 9;
 
+#[test]
+fn controller_stack_joint_and_vehicle_replay_every_tick_after_restore() {
+    let (mut w, _physics) = world(Physics::default(), 11);
+    enable_lazy(&mut w);
+    floor(&mut w);
+    let character = w
+        .spawn((
+            at(-8.0, 1.0, 0.0),
+            Collider::capsule(0.4, 1.0),
+            CharacterController {
+                movement: Vec3::X * 2.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    for i in 0..4 {
+        spawn_body(
+            &mut w,
+            at(0.0, 0.5 + i as f32 * 1.02, 0.0),
+            RigidBody::dynamic(),
+            Collider::cuboid(Vec3::ONE),
+        );
+    }
+    let bob = spawn_body(
+        &mut w,
+        at(5.0, 5.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.2),
+    );
+    w.insert(
+        bob,
+        Joint {
+            kind: JOINT_REVOLUTE,
+            anchor: -Vec3::X,
+            other_anchor: Vec3::new(4.0, 5.0, 0.0),
+            axis: Vec3::Z,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let car = spawn_body(
+        &mut w,
+        at(8.0, 1.2, -5.0),
+        RigidBody {
+            mass: 1000.0,
+            ..RigidBody::dynamic()
+        },
+        Collider::cuboid(Vec3::new(1.8, 0.6, 4.0)),
+    );
+    w.insert(
+        car,
+        Vehicle {
+            throttle: 0.4,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    run(&mut w, 60);
+    assert!(w.get::<CharacterController>(character).unwrap().grounded);
+    assert!(w.get::<Vehicle>(car).unwrap().contacts > 0);
+    let saved = w.snapshot();
+    let saved_hash = w.world_hash();
+    let mut expected = Vec::new();
+    for _ in 61..=120 {
+        w.step().unwrap();
+        expected.push((w.world_hash(), w.snapshot()));
+    }
+    // Restore into the already advanced simulation, not just a fresh world.
+    w.restore(&saved).unwrap();
+    assert_eq!(w.world_hash(), saved_hash);
+    assert_eq!(w.snapshot(), saved);
+    for (i, (hash, bytes)) in expected.into_iter().enumerate() {
+        w.step().unwrap();
+        assert_eq!(w.world_hash(), hash, "tick {}", i + 61);
+        assert_eq!(w.snapshot(), bytes, "tick {}", i + 61);
+    }
+}
+
 /// A rolling 120 m square of 60 × 60 cells: 7,200 triangles.
 // Test reference values: libm checks the result, never the tick.
 #[allow(clippy::disallowed_methods)]

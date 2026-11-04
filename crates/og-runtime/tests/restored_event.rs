@@ -99,3 +99,89 @@ fn the_tick_after_a_restore_reads_og_world_restored_once() {
     assert_eq!(seen[1], (11, json!([])), "once");
     assert_eq!(seen[2], (12, json!([])));
 }
+
+#[test]
+fn controller_save_load_differs_only_by_the_restore_notification() {
+    use og_ecs::SnapshotEdit;
+    use og_runtime::{og_motion_walk_to, og_world_insert, og_world_spawn, save_snapshot_bytes};
+
+    fn snapshot(e: u32) -> (String, Vec<u8>) {
+        let text = value(og_world_snapshot(e, None))
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let bytes = save_snapshot_bytes(&text).unwrap();
+        (text, bytes)
+    }
+
+    set_hooks(Rc::new(Watch(Rc::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({"seed": 11}).to_string()));
+    let w = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let actor = value(og_world_spawn(w, None)).as_f64().unwrap();
+    for (name, desc) in [
+        ("og.Transform", json!({"position":{"x":0,"y":1,"z":0}})),
+        ("og.MotionAgent", json!({"drive":true})),
+        ("og.Collider", json!({"shape":2,"radius":0.4,"height":1})),
+        ("og.CharacterController", json!({})),
+    ] {
+        value(og_world_insert(
+            w,
+            actor,
+            name.into(),
+            Some(desc.to_string()),
+        ));
+    }
+    let floor = value(og_world_spawn(w, None)).as_f64().unwrap();
+    for (name, desc) in [
+        ("og.Transform", json!({"position":{"x":0,"y":-0.5,"z":0}})),
+        (
+            "og.Collider",
+            json!({"shape":0,"size":{"x":20,"y":1,"z":20}}),
+        ),
+    ] {
+        value(og_world_insert(
+            w,
+            floor,
+            name.into(),
+            Some(desc.to_string()),
+        ));
+    }
+    value(og_motion_walk_to(
+        w,
+        actor,
+        Some(json!({"position":{"x":2.8,"y":0,"z":0}}).to_string()),
+    ));
+    run_to(w, 60);
+    let (save, saved_bytes) = snapshot(w);
+    let saved_hash = hash(w);
+    let mut expected = Vec::new();
+    for tick in 61..=120 {
+        run_to(w, tick);
+        expected.push((hash(w), snapshot(w).1));
+    }
+    value(og_world_restore(w, save, None));
+    assert_eq!(hash(w), saved_hash);
+    assert_eq!(snapshot(w).1, saved_bytes);
+    for (i, (expected_hash, bytes)) in expected.into_iter().enumerate() {
+        run_to(w, 61 + i as u32);
+        let actual = snapshot(w).1;
+        if i == 0 {
+            // Save/load adds an observable event; rollback deliberately does not.
+            // Compare every remaining byte, including opaque physics state blocks.
+            assert_ne!(hash(w), expected_hash);
+            let mut before = SnapshotEdit::from_bytes(&bytes).unwrap();
+            let mut after = SnapshotEdit::from_bytes(&actual).unwrap();
+            assert!(!before.has_events("og.WorldRestored"));
+            assert!(after.has_events("og.WorldRestored"));
+            for edit in [&mut before, &mut after] {
+                edit.replace_types(&["og.WorldRestored"], Vec::new())
+                    .unwrap();
+            }
+            assert_eq!(after.to_bytes(), before.to_bytes());
+        } else {
+            assert_eq!(hash(w), expected_hash, "tick {}", i + 61);
+            assert_eq!(actual, bytes, "tick {}", i + 61);
+        }
+    }
+}
