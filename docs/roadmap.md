@@ -153,7 +153,7 @@ After R, as the plan's final stage:
 
 **Paused (the owner, 2026-11-03, holding the cap at 8):** the introduction site, [T-01a1a06d](https://ampcode.com/threads/T-01a1a06d-d946-751e-9eb1-fb73ee1a3538), branch `site` at f9302d39a, pushed and not deployed; it deploys only once the features it shows are done. A fresh thread resumes it once these arrive: site-hero's scene build (then confirm `game.custom.hero.*` from a real publish build), studio-win's per-scene perf and the cold first load on the real host, site-motion in `public/live/motion`, U8's accepted UI showcases in place of the interim og-ui frames, final media for the 45 `check.ts --final` blockers, a stronger characters poster, and the UI grid controls' spacing under the nav.
 
-Deferred: the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
+Deferred: UI text scale at 200 % (the owner, 2026-11-04: the bar, the kit cells and the player setting stop at 150 % for now; 200 % returns as its own batch), the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
 The rows below are the previous threads, kept for their history.
 
 

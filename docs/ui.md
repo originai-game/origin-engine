@@ -884,7 +884,9 @@ Measured by the perf lane on the reference machines (metal, DX12):
 The accessibility tree, its ARIA mirror and reduced motion and transparency
 stay, and the bar rises to the Xbox Accessibility Guidelines:
 
-- text scale to 200 % without loss of content; minimum text 18 px at 1080p
+- text scale to 150 % without loss of content (200 % deferred to a later
+  batch, the owner 2026-11-04; the player's text-size setting tops out at
+  150 % until then); minimum text 18 px at 1080p
   on desktop and phone-equivalent sizes on touch, for menus, body text and
   controls. A dense HUD (strategy, MMO, simulation readouts) may declare
   its text dense (`ElementProps.dense` on the readouts' group) and go
@@ -928,7 +930,7 @@ the gate is loosened. The bar:
   its genre, and a screen that reads as a prototype beside them is held.
 - Every changed screen is read at desktop 1920×1080, tablet, phone
   portrait 390×844 and phone landscape, in every built-in style, and under
-  the pseudo-locale, a CJK locale, a right-to-left locale and 200 % text.
+  the pseudo-locale, a CJK locale, a right-to-left locale and 150 % text (200 % deferred, §15.2).
 - `og ui check` reports nothing. A declared overlap is not a way to merge
   a known defect: the kit's Gallery overlap is fixed, not carried.
 - Every interactive part is captured idle, hovered, pressed, focused and
@@ -1136,7 +1138,7 @@ each with the element paths and the prop to change:
 
 - overlap not declared (§6.2), across breakpoints and locales;
 - text clipped or truncated without ellipsis and a tooltip; overflow under
-  the pseudo-locale and at 200 % text;
+  the pseudo-locale and at 150 % text (200 % deferred, §15.2);
 - elements outside the safe area or under the shell's covered region;
 - touch targets under 44 CSS px on a coarse pointer;
 - contrast: an error only for live text under 3:1 on pixels (7:1 in the
