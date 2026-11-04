@@ -1,0 +1,76 @@
+  fn dataList {
+    doc "A virtualised list with its empty, loading and error states."
+    host false
+    param id String "Its id."
+    param desc DataListDesc "Count, size, selection and state."
+    param build UiItemBuild "Builds a row's content by its index."
+    returns DataListResult
+  }
+
+  fn dataGrid {
+    doc "A virtualised grid of cells with its empty, loading and error states."
+    host false
+    param id String "Its id."
+    param desc DataGridDesc "Count, cell size, selection and state."
+    param build UiItemBuild "Builds a cell's content by its index."
+    returns DataListResult
+  }
+
+  fn table {
+    doc "A sortable, filterable table; only the rows in view are built, so 10,000 rows and more stay within budget."
+    host false
+    param id String "Its id."
+    param desc TableDesc "Rows, columns, the sort and the filter."
+    returns TableResult
+  }
+
+  fn tree {
+    doc "A tree of expandable items, virtualised."
+    host false
+    param id String "Its id."
+    param desc TreeDesc "Items and the open ones."
+    returns TreeResult
+  }
+
+  fn nodeGraph {
+    doc "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts."
+    doc "Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark."
+    doc "Parts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out."
+    host false
+    param id String "Its id."
+    param desc NodeGraphDesc "Nodes, links and the zoom."
+    returns NodeGraphResult
+  }
+
+  fn chart {
+    doc "A line, area, bar, radar, pie or donut chart."
+    host false
+    param id String "Its id."
+    param desc ChartDesc "The kind, the series and the categories."
+    returns ChartResult
+  }
+
+  fn keyValueRows {
+    doc "Key-value rows: labels at the start, values at the end."
+    host false
+    param id String "Its id."
+    param desc KeyValueRowsDesc "The rows."
+    returns Void
+  }
+
+  fn statCompare {
+    doc "Stat-compare rows: current, new and the signed change with its mark."
+    host false
+    param id String "Its id."
+    param desc StatCompareDesc "The stats."
+    returns Void
+  }
+
+  fn calendar {
+    doc "A month grid of days."
+    host false
+    param id String "Its id."
+    param desc CalendarDesc "The month, today, the selection and marks."
+    returns CalendarResult
+  }
+

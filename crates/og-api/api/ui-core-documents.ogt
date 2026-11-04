@@ -1,0 +1,246 @@
+  # ── documents, layers and actions (docs/ui.md §8, §9, §10, §16) ─────────
+
+  struct UiDocEvent {
+    doc "Something a document did (docs/ui.md §10.2): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
+    field mount String "The document's mount: the screen's name, or a component instance's path."
+    field path String "The element's path."
+    field kind String "click, changed, select, emit, action, set or back."
+    field name String "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
+    field value Json "The new value (changed, set), the row's index (select); null otherwise."
+  }
+
+  struct UiDocResponse {
+    doc "What mounting a document answers: its events this tick (and, for a screen, those of its builds code did not see), its root's path, and for a component its props after its two-way writes."
+    field path String "Its root's path; empty when it was not built."
+    field events List.UiDocEvent "Its events."
+    field props Json "A component's props after its writes (a screen's viewmodel is og.ui.screenVm's)."
+  }
+
+  struct UiLayer {
+    doc "A layer of the stack (docs/ui.md §8.1), as its screen declares it."
+    field serial u32 "Its number, unique for the UI's life: what push answered."
+    field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
+    field kind String "hud, menu, modal, popover, toast, tooltip or system."
+    field input String "game (input reaches gameplay), menu (input stays in the UI) or all."
+    field capture bool "It takes the pointer on its gaps too."
+    field pause bool "The game pauses while it is on the stack."
+    field under String "What happens to the layers under it: none, dim, blur or hide."
+    field back String "What Back does: pop, none or `emit <event>`."
+    field focus String "Where focus starts, a path below its root (empty: its first control)."
+    field remember bool "Focus returns where it was when it is the top again."
+    field top bool "It is the top layer."
+    field hidden bool "A layer above hides it: it is not built."
+    field inert bool "A menu layer above takes its input."
+  }
+
+  enum UiActionTrigger {
+    doc "When a UI action fires."
+    variant press "When a binding goes down."
+    variant release "When it comes up."
+    variant hold "When it has been held holdMs."
+  }
+
+  struct UiActionDesc {
+    doc "A named UI action (docs/ui.md §8.2) bound to og-input's controls: a component asks for an action, not a key."
+    field name String "Its name: confirm, back, tabNext, tabPrev, details, or the game's own."
+    field keys List.String "Key codes (KeyboardEvent.code: `Enter`, `KeyE`)."
+    field buttons List.String "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`)."
+    field trigger UiActionTrigger "When it fires."
+    field holdMs f32 "How long a hold is (0: 500)." {
+      unit ms
+    }
+    field toggle bool "A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between."
+    field label String "What it says when no document gives it a hint."
+    field action String "A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons." {
+      optional true
+    }
+  }
+
+  enum UiDevice {
+    doc "The device a glyph set is for: the one the player used last."
+    variant keyboardMouse "Keyboard and mouse."
+    variant xbox "An Xbox pad."
+    variant playstation "A PlayStation pad."
+    variant switch "A Nintendo Switch pad (south is B)."
+    variant gamepad "A generic standard-mapping pad."
+    variant touch "A touch screen."
+  }
+
+  struct UiGlyph {
+    doc "An action's control on the device used last."
+    field icon String "The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`."
+    field text String "The text that names it: `Enter`, `A`, `×`."
+    field device UiDevice "The device it is for."
+  }
+
+  struct UiActionHint {
+    doc "One entry of the action bar: an action the top layer accepts, its hint and glyph."
+    field action String "The action."
+    field hint String "What it does here (the document's `actions` line, else its label)."
+    field icon String "Its glyph's icon."
+    field text String "Its glyph's text."
+    field hold bool "It is a hold."
+  }
+
+  fn screen {
+    doc "Mount a screen document (`type screen`, loaded with og.load.document) as a layer of the stack, pushed when it is not on it, with its viewmodel for this tick, and build it here: code fills its slots after this call (og.ui.openSlot). Its bindings read the viewmodel every tick, a Capitalised root (`Wallet.gold`) the resource as of the last tick; two-way controls write into it (each write is a `set` event). Layers code does not mount are built at the frame's end with the viewmodel they have."
+    param name String "The screen's name (its `name` line)."
+    param vm Json "Its viewmodel: an object (null keeps the one it has)." {
+      optional true
+    }
+    returns UiDocResponse
+  }
+
+  fn component {
+    doc "Mount a component document (`type component`) here, inside whatever is open: its props are its viewmodel, its two-way writes come back in the answer's props."
+    param id String "The instance's root id."
+    param name String "The component's name."
+    param props Json "Its props: an object." {
+      optional true
+    }
+    returns UiDocResponse
+  }
+
+  fn openSlot {
+    doc "Open a document's slot (a `slot` element built this tick) so code fills it; its children follow until og.ui.close. False when no such slot was built this tick."
+    param path String "Its full path, or `<screen>/<slot id>`."
+    returns bool
+  }
+
+  fn push {
+    doc "Push a screen onto the layer stack (docs/ui.md §8.1); the layer under it remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
+    param world World "The world."
+    param screen String "The screen's name."
+    param vm Json "Its viewmodel (null: its document's first fixture, else an empty object)." {
+      optional true
+    }
+    returns Result.u32 "The layer's serial. Refused for a name no screen document has."
+  }
+
+  fn pop {
+    doc "Pop the top layer; the one under it takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
+    param world World "The world."
+    returns String
+  }
+
+  fn replace {
+    doc "Replace the top layer with a screen."
+    param world World "The world."
+    param screen String "The screen's name."
+    param vm Json "Its viewmodel." {
+      optional true
+    }
+    returns Result.u32 "The new layer's serial."
+  }
+
+  fn clear {
+    doc "Empty the layer stack."
+    param world World "The world."
+    returns Void
+  }
+
+  fn layers {
+    doc "The layer stack, bottom first."
+    param world World "The world."
+    returns List.UiLayer
+  }
+
+  fn screenVm {
+    doc "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack."
+    param world World "The world."
+    param screen String "The screen's name."
+    returns Json
+  }
+
+  fn docEvents {
+    doc "Take the events of documents built where code did not see them (layers built at the frame's end); og.ui.screen answers its own."
+    param world World "The world."
+    returns List.UiDocEvent
+  }
+
+  fn gameInput {
+    doc "Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick."
+    param world World "The world."
+    returns bool
+  }
+
+  fn paused {
+    doc "A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had."
+    param world World "The world."
+    returns bool
+  }
+
+  fn defineAction {
+    doc "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default."
+    param world World "The world."
+    param desc UiActionDesc "The action."
+    returns Result.Void
+  }
+
+  fn action {
+    doc "The action fired this tick (a document's `on action` fires on the top layer that takes input)."
+    param name String "The action."
+    returns bool
+  }
+
+  fn actionHeld {
+    doc "A hold action is held past its hold, or its toggle is on."
+    param name String "The action."
+    returns bool
+  }
+
+  fn glyph {
+    doc "An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device."
+    param world World "The world."
+    param action String "The action."
+    returns Option.UiGlyph
+  }
+
+  fn frameGlyph {
+    doc "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built."
+    param action String "The action."
+    returns Option.UiGlyph
+  }
+
+  fn device {
+    doc "The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer."
+    param world World "The world."
+    returns UiDevice
+  }
+
+  fn setDevice {
+    doc "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on."
+    param world World "The world."
+    param device UiDevice "The device."
+    returns Void
+  }
+
+  fn actionBar {
+    doc "What an action bar component reads: the actions the top layer's document lists (`actions { confirm \"Buy\" }`), each with its hint and its glyph on the device used last."
+    param world World "The world."
+    returns List.UiActionHint
+  }
+
+  fn documentSchema {
+    doc "The reflected schema documents are validated against (docs/ui.md §10): every element kind and every prop, with its value type, the kinds it applies to and whether a control writes it back."
+    returns Json
+  }
+
+  fn setProp {
+    doc "Set a prop of a document element live (Tune, the probe's ui:set): presentation only, over the document's own line until og.ui.saveEdits writes it into the file. The value is written as the document's line would be (`token primary`, `grow`, `bind gold compact`)."
+    param world World "The world."
+    param path String "The element's full path."
+    param prop String "The prop (og.ui.documentSchema)."
+    param value String "Its value as a document line writes it."
+    returns Result.Void "Refused for an unknown prop or a value it does not take."
+  }
+
+  fn saveEdits {
+    doc "Write the live edits into their documents' `.ogt` files under the project's assets (each edited element's line of that prop replaced, or one added; every other line kept), as save_scene writes scenes; the documents take the new text at once. Answers the files written."
+    param world World "The world."
+    returns Result.List.String "Refused on a host with no project directory, or a write that fails."
+  }
+}
+
+# ── systems ───────────────────────────────────────────────────────────────
+

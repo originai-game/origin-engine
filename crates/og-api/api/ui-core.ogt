@@ -1,0 +1,2025 @@
+module ui {
+  skill og-ui
+  doc "The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it."
+  doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
+  doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
+
+  enum Direction {
+    doc "Which way a container lays out its children."
+    variant row "Left to right."
+    variant column "Top to bottom."
+  }
+
+  enum Align {
+    doc "Where children sit along the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant spaceBetween "The free space split evenly between children."
+  }
+
+  enum Cross {
+    doc "Where children sit across the main axis."
+    variant start "At the start."
+    variant center "Centred."
+    variant end "At the end."
+    variant stretch "Stretched to the container's inner size."
+    variant baseline "In a row, children share their first text baseline (rows of mixed type sizes); a column treats it as start."
+  }
+
+  enum TextAlign {
+    doc "How the lines of a label align."
+    variant start "To the start (left)."
+    variant center "Centred."
+    variant end "To the end (right)."
+  }
+
+  enum FontRole {
+    doc "Which configured font text uses; display and mono fall back to body, rounded to display, then body."
+    variant body "The body font."
+    variant display "The display font."
+    variant mono "The monospaced font."
+    variant rounded "The rounded font, for levels and scores."
+  }
+
+  enum ButtonVariant {
+    doc "Button roles: how the style draws each."
+    variant secondary "A neutral fill (the default)."
+    variant primary "The primary action: one per screen."
+    variant quiet "Text until hovered."
+    variant danger "A destructive action: danger ink on the danger tint."
+    variant ghost "Clear inside a strong outline until hovered: a second action beside a primary that still reads as a button."
+  }
+
+  enum ControlSize {
+    doc "Control heights from the density (h-control-sm, -md, -lg)."
+    variant medium "The medium control height."
+    variant small "The small control height."
+    variant large "The large control height."
+  }
+
+  enum Scheme {
+    doc "The palette: games run on a stage, so dark is the default."
+    variant dark "The dark palette."
+    variant light "The light palette."
+  }
+
+  enum DensityMode {
+    doc "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise."
+    variant auto "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise."
+    variant mouse "A mouse and keyboard: the tightest controls."
+    variant pad "A gamepad across a room: larger controls, rows and gutters that read from a couch."
+    variant touch "A finger: every control at least 44 CSS px."
+  }
+
+  enum ThemeColor {
+    doc "A colour role of the UI style in effect (the game's style, or the default style before it picks one)."
+    variant backdrop "The screen behind the UI where nothing else is."
+    variant well "A recessed ground inside a panel: wells, map frames, empty slots."
+    variant panel "Panels and cards."
+    variant panelHover "A panel under the pointer."
+    variant panelRaised "Dialogs, menus and tooltips."
+    variant line "Hairlines and frames."
+    variant lineStrong "Stronger frames: high contrast, map borders, scrollbars."
+    variant ink "The main ink."
+    variant inkMuted "Secondary ink: captions, keys, inactive tabs."
+    variant inkFaint "The faintest ink that still reads: placeholders, hints."
+    variant inkInverse "Ink on a ground of ink (a selected chip)."
+    variant control "Neutral control fills: secondary buttons, tracks, fields."
+    variant controlStrong "A neutral control hovered or pressed; selection."
+    variant primary "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret."
+    variant primaryHover "primary hovered."
+    variant primaryActive "primary pressed."
+    variant onPrimary "Ink on primary."
+    variant primarySoft "A translucent wash of primary."
+    variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
+    variant focus "The focus ring of key and pad navigation."
+    variant knob "Slider and switch knobs."
+    variant hud "HUD capsules over the game (scores, timers, toasts)."
+    variant scrim "Behind a dialog."
+    variant shadow "Drop shadows."
+    variant sheen "A skeleton's passing sheen."
+    variant success "Success."
+    variant warn "Warnings."
+    variant danger "Danger and errors."
+    variant info "Information."
+    variant health "A health meter."
+    variant mana "A mana meter."
+    variant xp "An experience meter."
+    variant gold "Currency: coins, gold, prices that can be paid."
+  }
+
+  enum TypeStepName {
+    doc "A step of the style's type ramp."
+    variant body "The default step."
+    variant xs "A step of the ramp."
+    variant meta "A step of the ramp."
+    variant caption "A step of the ramp."
+    variant sm "A step of the ramp."
+    variant reading "A step of the ramp."
+    variant base "A step of the ramp."
+    variant lg "A step of the ramp."
+    variant xl "A step of the ramp."
+    variant xl2 "A step of the ramp."
+    variant xl3 "A step of the ramp."
+    variant xl4 "A step of the ramp."
+    variant xl5 "A step of the ramp."
+    variant xl6 "A step of the ramp."
+    variant xl7 "A step of the ramp."
+    variant xl8 "A step of the ramp."
+    variant displaySm "A step of the ramp."
+    variant displayMd "A step of the ramp."
+    variant displayLg "A step of the ramp."
+    variant displayXl "A step of the ramp."
+    variant displayXl2 "A step of the ramp."
+  }
+
+  struct SizeRange {
+    doc "The bounds of a fit or grow size."
+    field min f32 "The smallest size." {
+      optional true
+      unit cssPx
+    }
+    field max f32 "The largest size; absent is unbounded." {
+      optional true
+      unit cssPx
+    }
+  }
+
+  struct FixedSize {
+    doc "A fixed size."
+    field px f32 "The size." {
+      unit cssPx
+    }
+  }
+
+  struct PercentSize {
+    doc "A size relative to the parent."
+    field fraction f32 "The fraction of the parent's inner size." {
+      unit ratio
+    }
+  }
+
+  union Size {
+    doc "A size along one axis. Absent (null) is fit: the content's size."
+    tag kind
+    case fit SizeRange "The content's size, within the range."
+    case grow SizeRange "The content's size, then a share of the parent's free space, within the range."
+    case fixed FixedSize "Exactly this size."
+    case percent PercentSize "A fraction of the parent's inner size."
+  }
+
+  struct Insets {
+    doc "Padding or margins on four sides."
+    field left f32 "The left side." {
+      unit cssPx
+    }
+    field top f32 "The top side." {
+      unit cssPx
+    }
+    field right f32 "The right side." {
+      unit cssPx
+    }
+    field bottom f32 "The bottom side." {
+      unit cssPx
+    }
+  }
+
+  struct Paint {
+    doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
+    desc true
+    field token Option.ThemeColor "A semantic colour of the theme."
+    field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
+    field color Option.Color "An sRGB colour as authored, when no token or role is given."
+    field alpha f32 "The opacity." {
+      default 1
+      min 0
+      max 1
+    }
+  }
+
+  struct ArrowClaim {
+    doc "Which arrows a focused element claims (ElementDesc.arrows); none by default."
+    desc true
+    field left bool "Left steps it."
+    field right bool "Right steps it."
+    field up bool "Up steps it."
+    field down bool "Down steps it."
+  }
+
+  struct ElementDesc {
+    doc "A container: its layout and its look."
+    desc true
+    field direction Direction "Which way it lays out its children."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside its edges."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field wrap bool "Break a row into lines at its inner width."
+    field scroll bool "Scroll its content vertically and clip it."
+    field scrollX bool "Scroll its content horizontally and clip it (with scroll: both ways)."
+    field interactive bool "Report a Response from close(), as a button does."
+    field focusable bool "With interactive: keys and pads reach it (a card, a menu item, a component's tab), it takes the focus ring, and Enter, Space and the pad's A press it, as a button. Its role is button unless og.ui.semantics gives another."
+    field adjustable bool "With focusable: Left and Right (a pad's left and right) are its own while it has the focus: they step it (Response.adjust) instead of moving the focus, as a slider's do (a menu row opening its submenu, a carousel, a divider)."
+    field arrows ArrowClaim "With focusable: the arrows (a pad's d-pad and stick) it claims one by one while it has the focus: each steps it (Response.adjust for Left and Right, Response.adjustY for Up and Down) instead of moving the focus. A grid's own cursor (an inventory, a level map) claims the ones that keep it inside, so the focus leaves it at its edges."
+    field ownRing bool "With focusable: the component draws its own focus (a hand rings its focused card, a grid its cursor cell) while Response.ring says the ring is up; og-ui draws no ring around the element."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field frame Option.StylePart "The style frame its background takes (a HUD element, a card); null is a plain fill. Without a style the fill is drawn either way."
+    field part Option.String "The part its style dresses it as, a selector with its variant, state and attributes (`ShopCard.frame[rarity=epic][selected]`): the style's most specific matching `dress` blocks draw it, and a part the style does not dress draws from the tokens (docs/ui.md §12.3). Overrides frame; null keeps frame's."
+    field partClass Option.String "The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class."
+    field aspect f32 "Width over height (0: none): with the height left to fit, it is as tall as its laid-out width over this; with a fixed height and the width left to fit, as wide as the height times it." {
+      min 0
+    }
+  }
+
+  struct LabelDesc {
+    doc "How a label draws its text."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+    field heading bool "A heading: a style with a flourish frames it."
+    field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
+    field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
+    field fitMin Option.TypeStepName "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing."
+  }
+
+  struct ButtonDesc {
+    doc "A button's look."
+    desc true
+    field variant ButtonVariant "The look."
+    field size ControlSize "The control height."
+    field disabled bool "Neutral and inert."
+    field width Option.Size "Its width; null fits the label."
+    field autofocus bool "Take the focus when it appears (it was not on screen the tick before) and no dialog is open: what opens takes the focus (og-ui §4), so a menu's first item answers Enter and the pad's A from its first tick."
+    field square bool "A square of the control height with no side padding: an icon button or a one-glyph label (`+`). Overrides width."
+  }
+
+  struct PanelDesc {
+    doc "A card: panel, the panel radius, padded and spaced by the style."
+    desc true
+    field row bool "Lay children left to right (the default is top to bottom)."
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Option.Insets "Space inside; null is space.lg on every side."
+    field gap Option.f32 "Space between children; null is space.md."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null is panel."
+  }
+
+  enum ScrollAxes {
+    doc "Which ways a scroll container scrolls."
+    variant vertical "Up and down (the default)."
+    variant horizontal "Left and right."
+    variant both "Both ways."
+  }
+
+  struct ScrollDesc {
+    doc "A scroll container: the wheel (both axes, deltaX and deltaY) or a drag scrolls it, and a released drag keeps its momentum, slowing over motion.spring.momentum's response (none under reduced motion); it clips its content; a scrollbar on each scrolling axis shows the position, and a press on one grabs and drags it. Nested containers hand off: what the innermost under the pointer cannot take (it reached its end, or does not scroll that way) goes to the one around it."
+    desc true
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field padding Insets "Space inside."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field axes ScrollAxes "Which ways it scrolls."
+    field hideBars bool "Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus."
+    field fade f32 "How far the content fades into `fadeInto` over an edge where more of it lies beyond, as strong as the content past that edge reaches this length (a log's top row cut mid-glyph reads as \"there is more\"); 0 draws no fade." {
+      unit cssPx
+      min 0
+    }
+    field fadeInto Option.ThemeColor "The surface the content fades into; null is panel."
+  }
+
+  struct ImageDesc {
+    doc "A texture region, or a solid rectangle without a texture."
+    desc true
+    field texture Option.Texture "The texture; null draws a solid rectangle of the tint."
+    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field tint Option.Paint "Multiplies the texture; null is white."
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height; null fits."
+    field aspect f32 "Width over height (0: none): with the height left to fit, the image is as tall as its laid-out width over this (a growing column keeps a picture's proportions); with a fixed height and the width left to fit, as wide as the height times it." {
+      min 0
+    }
+    field label String "What a screen reader calls it (and the probe's text): a picture that means something (a portrait, a star earned) names it in the game's words; empty is decoration."
+  }
+
+  struct ZoomViewDesc {
+    doc "A zoomable picture (a map, an artwork): what it shows and its zoom limits."
+    desc true
+    field texture Option.Texture "The picture; null draws a solid rectangle of the tint."
+    field uv Option.Array.f32.4 "The picture's region, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field tint Option.Paint "Multiplies the texture; null is white."
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height; null fits."
+    field aspect f32 "Width over height (0: none), as ImageDesc.aspect." {
+      min 0
+    }
+    field minZoom f32 "The least zoom; 0 is 1 (the whole picture)." {
+      min 0
+    }
+    field maxZoom f32 "The most zoom; 0 is 4." {
+      min 0
+    }
+  }
+
+  struct ZoomResult {
+    doc "Where a zoom view is."
+    field zoom f32 "Its zoom: 1 shows the whole picture, 2 half of it each way."
+    field centerX f32 "The middle of what it shows, as a fraction of the picture's width (0.5 at rest)."
+    field centerY f32 "The middle of what it shows, as a fraction of the picture's height (0.5 at rest)."
+  }
+
+  struct ProgressDesc {
+    doc "A progress bar."
+    desc true
+    field width Option.Size "Its width; null grows into the free space."
+  }
+
+  struct SliderDesc {
+    doc "A slider's range and width."
+    desc true
+    field min f32 "The smallest value; min equal to max (the zero value) means 0 to 1."
+    field max f32 "The largest value."
+    field step f32 "Snap to multiples of step from min; 0 is continuous." {
+      min 0
+    }
+    field width Option.Size "Its width; null grows."
+  }
+
+  struct FieldDesc {
+    doc "A one-line text field."
+    desc true
+    field placeholder String "Shown, dimmed, while the field is empty."
+    field width Option.Size "Its width; null grows."
+    field maxChars u32 "The most characters it takes; 0 is no limit."
+    field invalid bool "Its text is wrong (a form's error): its frame is dressed `Field.frame[invalid]` and, undressed, takes the danger outline."
+    field bare bool "No frame and no focus ring of its own, a small inset: a component frames it (an input with an icon and a clear button) and shows its focus."
+  }
+
+  struct TextAreaDesc {
+    doc "A multi-line text area."
+    desc true
+    field placeholder String "Shown, dimmed, while the area is empty."
+    field width Option.Size "Its width; null grows."
+    field rows u32 "Lines shown at once; 0 is 4. More scroll."
+    field maxChars u32 "The most characters it takes, line breaks included; 0 is no limit."
+    field invalid bool "Its text is wrong: its frame is dressed `Field.frame[invalid]`."
+    field bare bool "No frame and no focus ring of its own: a component frames it."
+  }
+
+  struct Response {
+    doc "What happened to an element this tick. Edges (clicked, changed, submitted) are true for exactly one tick."
+    field hovered bool "The pointer is over it and no other element holds the press."
+    field pressed bool "The press that started on it is still held."
+    field clicked bool "Pressed and released inside it."
+    field changed bool "Its value changed (slider, toggle, text field)."
+    field focused bool "It has focus: a text field being edited, or the control keyboard and gamepad navigation landed on."
+    field submitted bool "Enter was pressed in it (text field)."
+    field dropped Option.u32 "A list row or grid cell a press started on was released over this one: that row's or cell's index (drag and drop)."
+    field pad Option.u32 "The gamepad (0 to 3) whose A pressed it this tick; null when the pointer or the keyboard did. Pads 1 to 3 press only while og.ui.setPlayers allows them (local multiplayer)."
+    field focusedBy u32 "Bit k: pad k's focus is on it (bit 0 is the shared focus of the pointer, the keyboard and pad 0; bits 1 to 3 the other players' pads)."
+    field adjust i32 "An adjustable element's (ElementDesc.adjustable) Left and Right this tick while it has the focus: +1 for each press of Right, -1 for Left (the screen's directions; a right-to-left screen reads Left as forward); 0 otherwise."
+    field adjustY i32 "An element claiming Up and Down (ElementDesc.arrows) this tick while it has the focus: +1 for each press of Down, -1 for Up; 0 otherwise."
+    field ring bool "The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted)."
+    field tapped bool "Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it."
+    field doubleTapped bool "The second tap of its double tap landed this tick."
+    field longPressed bool "Its long press fired this tick; the press it took clicks and taps nothing when released."
+    field longPress f32 "How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held." {
+      unit ratio
+    }
+  }
+
+  struct SliderResult {
+    doc "A slider's response and its value after this tick's input."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep in game state and pass back next tick."
+  }
+
+  struct ToggleResult {
+    doc "A toggle's response and its state after this tick's input."
+    field response Response "What happened to it."
+    field on bool "The state, to keep in game state and pass back next tick."
+  }
+
+  struct FieldResult {
+    doc "A text field's response and its text after this tick's input."
+    field response Response "What happened to it."
+    field value String "The text, to keep in game state and pass back next tick."
+  }
+
+  struct Viewport {
+    doc "The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit."
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+    field dpr f32 "Device pixels per CSS pixel; rectangles snap to device pixels." {
+      default 1
+    }
+    field safeArea Insets "The device's unsafe margins (notch, home indicator); the root pads by them."
+    field coarsePointer bool "A touch screen or another coarse pointer."
+    field reducedMotion bool "The page prefers reduced motion (prefers-reduced-motion: reduce, from the web shell): the UI's theme only fades, whatever UiDesc.reducedMotion says. Omitted is false." {
+      optional true
+    }
+    field highContrast bool "The page prefers more contrast (prefers-contrast: more, from the web shell): the UI's theme is the high-contrast one, whatever UiDesc.contrast says. Omitted is false." {
+      optional true
+    }
+    field reducedTransparency bool "The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false." {
+      optional true
+    }
+    field macKeys bool "Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false." {
+      optional true
+    }
+    field covered UiRect "Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). Anchored groups keep out of it, moved along the edge they sit on (a top-left group to its right), so the HUD templates never draw under it; a game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back." {
+      optional true
+    }
+    field breakpoint Breakpoint "Its size class: phone portrait or landscape, tablet, desktop."
+    field hud UiRect "The HUD band (read only): the safe area at most UiDesc.hudMaxAspect times its height wide, centred, where anchored groups and toasts lay out; a component that places itself (a HUD of the game's own) reads it so it sits with them on an ultrawide. Ignored where a host passes a viewport in." {
+      optional true
+    }
+  }
+
+  struct UiDesc {
+    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the game's primary colour, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+    desc true
+    field scheme Scheme "The palette."
+    field density DensityMode "The control sizes."
+    field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
+    field displayFont Option.Font "The display font; null uses the body font."
+    field monoFont Option.Font "The monospaced font; null uses the body font."
+    field roundedFont Option.Font "The rounded font (levels and scores); null uses the display font, then the body font."
+    field fallbackFonts List.Font "Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts."
+    field contrast Contrast "Standard or high contrast. The page's prefers-contrast: more takes high contrast too (Viewport.highContrast)."
+    field primaryColor Option.Color "An sRGB colour as the game's primary (its hover, pressed and soft tones derived from it, the ink on it whichever of ink and inkInverse reads better); null keeps the style's."
+    field reducedMotion bool "Transitions only fade; sheens stop. The page's prefers-reduced-motion turns it on too (Viewport.reducedMotion)."
+    field textScale f32 "The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §15.2 holds every screen to 1.5, 200 % deferred." {
+      default 1
+      min 1
+      max 2
+      unit ratio
+    }
+    field unitScale f32 "The og-ui unit in CSS px (docs/ui.md §15.2): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size)." {
+      default 0
+      min 0
+      max 2
+      unit ratio
+    }
+    field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
+    field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
+    field images List.UiInlineImage "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours."
+    field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
+    field hudMaxAspect f32 "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect." {
+      default 2.3333
+      min 0
+    }
+    field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent, for prototypes only (og build --publish refuses a game in it)."
+    field sounds Option.UiSounds "Sounds for UI events (they win over the style's)."
+  }
+
+  struct UiSounds {
+    doc "Sounds the UI plays through og-audio (the ui bus) on its events; null is silent."
+    desc true
+    field hover Option.Sound "The pointer reaches a control, or keyboard or gamepad focus moves to one."
+    field press Option.Sound "A control is pressed: by the pointer, Enter, Space or the gamepad's A."
+    field open Option.Sound "A dialog opens."
+    field close Option.Sound "A dialog closes."
+    field success Option.Sound "A success toast."
+    field error Option.Sound "A refused press or a danger toast."
+  }
+
+  enum StylePart {
+    doc "An element class a style dresses with a nine-slice frame."
+    variant panel "Dialogs and screen panels."
+    variant card "Cards."
+    variant button "Buttons (with hover, pressed and disabled states)."
+    variant field "Text fields."
+    variant slot "Inventory and grid cells."
+    variant tooltip "Tooltips."
+    variant hud "HUD elements over the game (counters, timers) and toasts."
+    variant track "A progress bar's track."
+  }
+
+  struct TypeStep {
+    doc "One step of the type ramp."
+    field size f32 "The font size." {
+      unit cssPx
+    }
+    field lineHeight f32 "The leading of Latin text." {
+      unit cssPx
+    }
+    field trackingEm f32 "Latin tracking, in em."
+    field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
+      unit cssPx
+    }
+    field features List.String "The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults."
+  }
+
+  struct ControlSizes {
+    doc "The control, row and header heights and the gutter of the density in effect."
+    field controlSm f32 "A small control's height." {
+      unit cssPx
+    }
+    field controlMd f32 "A control's height." {
+      unit cssPx
+    }
+    field controlLg f32 "A large control's height." {
+      unit cssPx
+    }
+    field gutter f32 "The gutter." {
+      unit cssPx
+    }
+    field header f32 "The header height." {
+      unit cssPx
+    }
+    field row f32 "The row height." {
+      unit cssPx
+    }
+    field section f32 "The section spacing." {
+      unit cssPx
+    }
+  }
+
+  struct UiTheme {
+    doc "The style values the UI draws with, read-only."
+    field scheme Scheme "The palette in use."
+    field palette Map.String "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+    field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
+    field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
+    field typeRamp Map.TypeStep "Each TypeStepName's step."
+    field sizes ControlSizes "The control sizes of the density in effect."
+    field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+    field style String "The configured style's name; empty for the default style."
+    field styleVersion u32 "The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §12.1); 2 for a version-2 style and the default style."
+    field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
+    field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+    field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
+    field unit f32 "The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it."
+    field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+    field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+  }
+
+  callback UiBuild {
+    doc "Builds a container's children: ui calls made inside it nest under the container."
+  }
+
+  fn configure {
+    doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
+    param world World "The world whose UI is configured."
+    param desc UiDesc "The fields to change; the others keep their values."
+    returns Result.Void "Refused for a dead font or style, or a desc that is not an object."
+  }
+
+  fn viewport {
+    doc "This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §15.2: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports."
+    param world World "The world."
+    returns Viewport
+  }
+
+  fn theme {
+    doc "The style values the UI draws with."
+    param world World "The world."
+    returns UiTheme
+  }
+
+  fn open {
+    doc "Open a container; the calls until its close() build its children."
+    param id String "Its id, unique among its siblings."
+    param desc ElementDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openPanel {
+    doc "Open a card, closed by close(): og.ui.panel without the callback."
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    returns Void
+  }
+
+  fn openScroll {
+    doc "Open a vertical scroll container, closed by close(): og.ui.scroll without the callback."
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    returns Void
+  }
+
+  fn close {
+    doc "Close the open container."
+    returns Response "Its response, for an interactive container; the zero response otherwise."
+  }
+
+  fn row {
+    doc "A row built by `build`: open(id, {...desc, direction: row}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is row."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive row."
+  }
+
+  fn column {
+    doc "A column built by `build`: open(id, {...desc, direction: column}), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ElementDesc "Its layout and look; direction is column."
+    param build UiBuild "Makes its children."
+    returns Response "Its response, for an interactive column."
+  }
+
+  fn panel {
+    doc "A card built by `build`: openPanel(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc PanelDesc "Its layout and look."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn scroll {
+    doc "A vertical scroll container built by `build`: openScroll(id, desc), build(), close()."
+    host false
+    param id String "Its id."
+    param desc ScrollDesc "Its size and spacing."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  struct RichTextDesc {
+    doc "How a rich text paragraph draws: its defaults, which its markup's spans override."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How the lines align."
+    field nowrap bool "Keep to one line (breaking only at `\\n`)."
+    field width Option.Size "Its width; null fits the text."
+    field font FontRole "Which font."
+  }
+
+  struct RichTextResult {
+    doc "What a rich text's links did this tick."
+    field response Response "Its links together: hovered while one is, clicked when one was."
+    field link Option.String "The link clicked this tick: its `[link=…]` id."
+    field hovered Option.String "The link under the pointer."
+  }
+
+  fn richText {
+    doc "A paragraph of inline spans from markup, for a string-table message (og.i18n.t) so a translation carries its own emphasis: `[b]bold[/b]` (thickened in the distance field as far as it reaches, plus a second copy one device pixel right), `[color=danger]` or `[color=#ff8800]` (a ThemeColor follows the style), `[size=xl]` (a TypeStepName), `[font=mono]`, `[icon=coin]` (a cell of the icon atlas, one em), `[link=shop]Open the shop[/link]` (accent ink, underlined, focusable by keys and pads; a child element `<id>/shop` of kind link for the probe) and per-glyph motion `[wave]`, `[shake]`, `[pulse]` (by the tick; still under reduced motion). `[[` is a literal bracket. Lines break between the spans' words (a word restyled mid-way stays whole), each as tall as its tallest span on one baseline. Markup it cannot read shows as text and logs a warning."
+    param id String "Its id."
+    param markup String "The markup."
+    param desc RichTextDesc "Defaults for its spans: type step, ink, alignment, wrapping, width and font."
+    returns RichTextResult
+  }
+
+  fn label {
+    doc "MSDF text that wraps at its width (word breaks; between CJK characters under kinsoku, katakana words kept whole; long words between characters) unless nowrap. The probe reads its text."
+    param id String "Its id."
+    param text String "The text."
+    param desc LabelDesc "Type step, ink, alignment, wrapping, width and font."
+    returns Void
+  }
+
+  fn button {
+    doc "A button with a label; `clicked` is a press and a release inside it. The probe reads its label."
+    param id String "Its id."
+    param text String "The label."
+    param desc ButtonDesc "Variant, size, disabled and width."
+    returns Response
+  }
+
+  fn image {
+    doc "A texture region, or a solid rectangle; with ImageDesc.aspect, a fitting side follows the other."
+    param id String "Its id."
+    param desc ImageDesc "Texture, region, tint, size and aspect ratio."
+    returns Void
+  }
+
+  fn zoomView {
+    doc "A zoomable picture (a map, an artwork): two fingers pinch it to zoom about their centre and pan it as they move (og.Pointers), the wheel zooms about the pointer, a drag pans; Tab or a pad focuses it, and then + (= and the keypad's) and - zoom it about its centre, 0 fits it again and the arrows pan it a tenth of its size. It stays on its picture and within its zoom limits; its zoom and centre are UI state (snapshots carry them). Two fingers over a scroll container scroll it the same way, and fling it as they lift. The probe reads its zoom as its value."
+    param id String "Its id."
+    param desc ZoomViewDesc "The picture, its size and zoom limits."
+    returns ZoomResult
+  }
+
+  fn progress {
+    doc "A track filled to a fraction."
+    param id String "Its id."
+    param value f32 "How full it is, from 0 to 1."
+    param desc ProgressDesc "Its width."
+    returns Void
+  }
+
+  fn slider {
+    doc "A track with a fill and a thumb: a press anywhere on it sets the value and dragging follows. Pass back the value it answers next tick."
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc SliderDesc "Range, step and width."
+    returns SliderResult
+  }
+
+  fn toggle {
+    doc "A switch with a label; a click flips it. Pass back the state it answers next tick. The probe reads its label."
+    param id String "Its id."
+    param on bool "The state from game state."
+    param label String "The label."
+    returns ToggleResult
+  }
+
+  fn textField {
+    doc "One line of text: a press focuses it with the caret at the press, a drag selects (and scrolls the text past the field's ends), a double click selects a word and a triple click everything; typed text (og.input's TextInput events: the page's typing, the probe's type: and commit:; until a world has had one, a printable key pressed types its US-layout character, and after it keys only edit) replaces the selection at the caret; Backspace, Delete, arrows, Home and End edit, Shift with them selects, Alt or Ctrl with them moves or deletes by words (Ctrl with Home and End: the text's ends); Ctrl or Cmd with A selects all, with C copies and with X cuts (the page's clipboard, through the shell), with Z undoes and with Shift+Z or Y redoes (a history of 100 steps per field, typing undone a word at a time; a text the game sets starts it again); an input method's composition shows underlined at the caret until it commits; Enter submits and leaves, Escape leaves. The text scrolls to keep the caret in view and the caret blinks by the tick (steady under reduced motion). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc FieldDesc "Placeholder, width and length limit."
+    returns FieldResult
+  }
+
+  fn textArea {
+    doc "Several lines of text: textField's editing, with Enter starting a new line, Up and Down moving between lines and Home and End to a line's ends, a triple click selecting the line between its breaks, the text wrapped between words at the area's width and scrolled to keep the caret's line in view (a drag above or below the area scrolls it, faster the further out). Pass back the text it answers next tick. The probe reads its text, or the placeholder while empty."
+    param id String "Its id."
+    param value String "The text from game state."
+    param desc TextAreaDesc "Placeholder, width, rows and length limit."
+    returns FieldResult
+  }
+
+  fn tooltip {
+    doc "A tooltip for the element just built: shown below it (above without room) once the pointer has rested on it for the slow motion duration, drawn over everything. The probe reads its text."
+    param text String "The text."
+    returns Void
+  }
+
+  fn idi {
+    doc "The id of the index-th of several siblings of one name: `idi(\"Slot\", 3)` is `Slot#3`."
+    host false
+    param name String "The name."
+    param index u32 "The index."
+    returns String
+  }
+
+  # ── the game widget set ─────────────────────────────────────────────────
+
+  enum Anchor {
+    doc "A point of the safe area an anchored group sits at."
+    variant topLeft "The top left corner."
+    variant top "The middle of the top edge."
+    variant topRight "The top right corner."
+    variant left "The middle of the left edge."
+    variant center "The centre."
+    variant right "The middle of the right edge."
+    variant bottomLeft "The bottom left corner."
+    variant bottom "The middle of the bottom edge."
+    variant bottomRight "The bottom right corner."
+  }
+
+  enum TransitionKind {
+    doc "How a transition moves its content in and out. Under reduced motion every kind only fades."
+    variant fade "Opacity only."
+    variant slideUp "Rises into place from below."
+    variant slideDown "Drops into place from above."
+    variant slideLeft "Enters from the right."
+    variant slideRight "Enters from the left."
+    variant scale "Grows from slightly smaller around its centre."
+    variant pop "Springs up from smaller around its centre, overshoots and settles."
+    variant glitch "Tears in: the content draws through the glitch material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration; as deterministic as every frame (from the element's id and the tick-counted UI clock). A style sets its strength (`enter glitch 0.8`)."
+  }
+
+  enum Tone {
+    doc "A status tone of badges, toasts and map markers."
+    variant neutral "Neutral: control fill and muted ink."
+    variant success "Success."
+    variant warn "Warning (orange)."
+    variant danger "Danger."
+    variant info "Information."
+    variant primary "The game's identity: the primary's soft wash and highlight ink."
+    variant inverse "Neutral emphasis: ink fill, inverse ink."
+  }
+
+  enum MeterKind {
+    doc "What a meter measures, which sets its colour."
+    variant health "health; warn under 30 %, danger under 15 %."
+    variant mana "mana."
+    variant xp "xp."
+    variant primary "primary."
+  }
+
+  enum Breakpoint {
+    doc "The play surface's size class."
+    variant desktop "1024 CSS px wide or more, the shorter side 600 or more."
+    variant tablet "The shorter side 600 or more, under 1024 wide."
+    variant phoneLandscape "The shorter side under 600, wider than tall."
+    variant phonePortrait "The shorter side under 600, taller than wide."
+  }
+
+  enum Contrast {
+    doc "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour)."
+    variant standard "The style's palette as it is."
+    variant high "Stronger inks, fills and edges."
+  }
+
+  enum NavIntent {
+    doc "A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give."
+    variant up "Up."
+    variant down "Down."
+    variant left "Left."
+    variant right "Right."
+    variant next "The next control in reading order (Tab)."
+    variant prev "The previous one (Shift+Tab)."
+    variant activate "Press the focused control (Enter, Space, A)."
+    variant back "Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B)."
+  }
+
+  struct UiRect {
+    doc "A rectangle of the play surface."
+    field x f32 "Its left edge." {
+      unit cssPx
+    }
+    field y f32 "Its top edge." {
+      unit cssPx
+    }
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+  }
+
+  struct IconAtlasDesc {
+    doc "The icon atlas: a texture of equal cells in a grid, named in reading order, or an icon set cooked like a font (font)."
+    desc true
+    field font Option.Font "An icon set from og.load.font (an `.ogt` of `type icons` naming SVGs, such as the UI kit's iconoir set): its icons are distance-field glyphs, crisp at any size and tinted by their ink, named by the set; texture, columns, rows and names are then not used."
+    field texture Option.Texture "The atlas texture, from og.load.texture."
+    field columns u32 "Cells across." {
+      default 1
+      min 1
+    }
+    field rows u32 "Cells down." {
+      default 1
+      min 1
+    }
+    field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+  }
+
+  struct UiInlineImage {
+    doc "A picture rich text draws inline by name ([img=<name>])."
+    desc true
+    field name String "The name markup gives it."
+    field texture Option.Texture "The texture, from og.load.texture; null leaves the name unregistered."
+    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field aspect f32 "Width over height of the region as drawn; 0 is square." {
+      min 0
+    }
+  }
+
+  struct AnchorDesc {
+    doc "An anchored group: a layer at a point of the safe area, over the tree (HUD corners, a centred title, a bar of touch controls)."
+    desc true
+    field anchor Anchor "Where it sits."
+    field margin Option.f32 "The inset from the safe area's edges, the same on every edge: a margin wide enough to keep a top-left HUD over a centred portrait play field also pushes it that far down (use offsetX for the sideways shift, or a width); null is the density's gutter."
+    field offsetX f32 "Moves it right after placing." {
+      unit cssPx
+    }
+    field offsetY f32 "Moves it down after placing." {
+      unit cssPx
+    }
+    field direction Direction "Which way it lays out its children."
+    field gap f32 "Space between children." {
+      unit cssPx
+    }
+    field padding Insets "Space inside its edges."
+    field align Align "Where children sit along the main axis."
+    field cross Cross "Where children sit across it."
+    field background Option.Paint "Its fill; null draws none."
+    field radius f32 "Corner radius." {
+      unit cssPx
+    }
+    field width Option.Size "Its width; null fits the content."
+    field height Option.Size "Its height; null fits the content."
+    field over bool "Draw over dialogs and spotlights (a tutorial callout, a dragged item); the default draws under them."
+    field tooltip bool "Draw in the tooltip layer, over every other layer including the toast stack and over groups: a card the player opened (og.ui.tooltipCard)."
+    field avoid bool "Step clear of the other anchored groups and the host's control, to the nearest free place on the safe area: a popup placed at a point (a drift score over the car) that must not cover the map or the tower."
+    field frame Option.StylePart "The style frame its background takes; null is the panel's."
+    field instant bool "Shown settled the first time it is built: no style entrance or stagger, its controls answering at once. For the screen a game opens on while it is that: the web draws it behind the play gate, where an entrance would stay part-way until the tap."
+  }
+
+  struct TransitionDesc {
+    doc "How a transition moves, timed in ticks from the style's motion."
+    desc true
+    field kind TransitionKind "The movement."
+    field durationMs f32 "How long entering and leaving take; 0 is motion.duration.base (240 ms)." {
+      unit ms
+      min 0
+    }
+    field distance f32 "How far slides travel; 0 is space.xl." {
+      unit cssPx
+      min 0
+    }
+    field instant bool "Shown at once the first time it is built (no entrance)."
+  }
+
+  struct Presence {
+    doc "Where a transition or dialog is this tick."
+    field visible bool "Build its content: shown, entering or leaving."
+    field progress f32 "0 gone, 1 settled." {
+      unit ratio
+    }
+    field entering bool "Moving in."
+    field leaving bool "Moving out."
+  }
+
+  struct ModalDesc {
+    doc "A dialog: a scrim over everything and a centred panel. Focus moves in and stays while it is the topmost; Back and the backdrop dismiss it unless locked."
+    desc true
+    field title String "A title over the content, set in the style's heading type role (its step and face); empty is none."
+    field width Option.Size "The panel's width; null is 420 CSS px, at most the surface less its gutters."
+    field locked bool "Back and the backdrop do not dismiss it (a choice must be made)."
+    field ignoreBackdrop bool "A press on the backdrop does not dismiss it."
+    field transition Option.TransitionKind "How it enters and leaves; null is scale."
+    field backdrop Option.Paint "The backdrop's fill; null is scrim."
+    field bare bool "No panel: the content sits centred on the backdrop (full-screen menus, loading)."
+  }
+
+  struct ModalResult {
+    doc "A dialog's answer this tick."
+    field visible bool "Build its content (open, or leaving)."
+    field dismissed bool "Back or a press on the backdrop asked to close it: set your open flag false."
+  }
+
+  struct SpotlightDesc {
+    doc "A spotlight: the surface dimmed except a hole around a target."
+    desc true
+    field padding f32 "Room around the target; 0 is space.sm." {
+      unit cssPx
+      min 0
+    }
+  }
+
+  struct ListDesc {
+    doc "A virtualised list: only the rows in view (and one more each side) are built, fillers keep the scroll range of every row."
+    desc true
+    field count u32 "How many rows there are."
+    field rowHeight f32 "Every row's height; 0 is the density's row height." {
+      unit cssPx
+      min 0
+    }
+    field gap f32 "Space between rows." {
+      unit cssPx
+    }
+    field width Option.Size "Its width; null fits."
+    field height Option.Size "Its height (it scrolls inside); null grows."
+    field padding Insets "Space inside."
+    field selected Option.u32 "The selected row (controlStrong), for og.ui.list."
+  }
+
+  struct ListRange {
+    doc "The rows (or cells) to build this tick: first up to, not including, last."
+    field first u32 "The first index."
+    field last u32 "One past the last index."
+  }
+
+  struct ListResult {
+    doc "What happened in a list or grid this tick."
+    field clicked Option.u32 "The row or cell pressed (or activated) this tick."
+    field dropFrom Option.u32 "A drag and drop ended: the index it started on."
+    field dropTo Option.u32 "And the index it was released over."
+  }
+
+  struct GridDesc {
+    doc "A virtualised grid of equal cells (inventories, level select), scrolling vertically."
+    desc true
+    field count u32 "How many cells there are."
+    field cellWidth f32 "A cell's width; 0 is 64 (never under the 44 px touch target). With columns set and a width other than fit, the cells share the grid's width instead, as wide as it allows (never under the touch target), and keep their height." {
+      unit cssPx
+      min 0
+    }
+    field cellHeight f32 "A cell's height; 0 is its width." {
+      unit cssPx
+      min 0
+    }
+    field columns u32 "Cells across, exactly, whatever the width: a fit grid is that many cells of cellWidth, any other the cells share; 0 is as many cells of cellWidth as fit."
+    field gap f32 "Space between cells; 0 is space.sm." {
+      unit cssPx
+      min 0
+    }
+    field width Option.Size "Its width; null fits (exactly the columns when columns is set)."
+    field height Option.Size "Its height; null grows."
+    field padding Insets "Space inside."
+    field selected Option.u32 "The selected cell, for og.ui.grid."
+  }
+
+  struct TabsDesc {
+    doc "A segmented control of tabs."
+    desc true
+    field fill bool "Equal segments across the width."
+    field width Option.Size "Its width; null fits (grows with fill)."
+    field label String "What a screen reader calls the row of tabs (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct ChoiceResult {
+    doc "A choice control's response and the chosen index after this tick's input."
+    field response Response "What happened to it; changed when the choice moved."
+    field selected u32 "The chosen index, to keep in game state and pass back next tick."
+  }
+
+  struct SelectDesc {
+    doc "A select: a trigger that opens a menu of options."
+    desc true
+    field placeholder String "Shown while nothing is chosen."
+    field width Option.Size "Its width; null grows from 160."
+    field disabled bool "Neutral and inert."
+    field label String "What a screen reader calls it (its accessible name; the chosen option is its value), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct StepperDesc {
+    doc "A number stepper's range, step and digits."
+    desc true
+    field min f32 "The smallest value; min equal to max (the zero value) is unbounded."
+    field max f32 "The largest value."
+    field step f32 "How much a press changes it; 0 is 1." {
+      min 0
+    }
+    field decimals u32 "Digits after the point." {
+      max 6
+    }
+  }
+
+  struct StepperResult {
+    doc "A stepper's response and value after this tick's input."
+    field response Response "What happened to it."
+    field value f32 "The value, to keep in game state and pass back next tick."
+  }
+
+  struct RadioDesc {
+    doc "How a radio group lays out, and its name."
+    desc true
+    field horizontal bool "Options in a row (the default is a column)."
+    field label String "What a screen reader calls the group (its accessible name), never drawn; empty is its id. A localised game passes its string table's."
+  }
+
+  struct CheckListResult {
+    doc "A checkbox list's response and values after this tick's input."
+    field response Response "What happened to it; changed when any box flipped."
+    field values List.bool "The values, to keep in game state and pass back next tick."
+  }
+
+  struct ToastDesc {
+    doc "A toast's tone and time."
+    desc true
+    field tone Tone "Its tone: a dot of the tone's colour before the text."
+    field durationMs f32 "How long it stays; 0 is 3200 ms (6000 for danger)." {
+      unit ms
+      min 0
+    }
+  }
+
+  struct ChipDesc {
+    doc "A chip's state."
+    desc true
+    field selected bool "Selected: inverted to ink."
+    field disabled bool "Neutral and inert."
+  }
+
+  struct MeterDesc {
+    doc "A meter: a track with a fill that animates its changes by the tick."
+    desc true
+    field kind MeterKind "What it measures, which sets its colour."
+    field color Option.Paint "A colour of your own instead of the kind's."
+    field label String "Text inside the bar (such as `75 / 100`); empty is none."
+    field width Option.Size "Its width; null grows."
+    field height f32 "Its height; 0 is space.md, or the caption's line with a label." {
+      unit cssPx
+      min 0
+    }
+    field segments u32 "Notches dividing it into this many parts; 0 or 1 is none."
+  }
+
+  struct CooldownDesc {
+    doc "A cooldown ring's size and centre."
+    desc true
+    field size f32 "Its diameter; 0 is 56 (never under 44)." {
+      unit cssPx
+      min 0
+    }
+    field label String "Text in the middle (a key, seconds left); empty is none."
+    field icon String "An icon of the atlas in the middle, by name; empty is none."
+  }
+
+  struct IconDesc {
+    doc "An icon's size, ink and name."
+    desc true
+    field size f32 "Its size; 0 is 24." {
+      unit cssPx
+      min 0
+    }
+    field tint Option.Paint "Its ink; null is ink."
+    field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
+  }
+
+  struct MapMarker {
+    doc "A marker on a mini-map."
+    desc true
+    field x f32 "Across the map, 0 to 1." {
+      unit ratio
+    }
+    field y f32 "Down the map, 0 to 1." {
+      unit ratio
+    }
+    field tone Tone "Its colour; neutral is the stage ink."
+    field player bool "The player: the primary, larger, ringed."
+  }
+
+  struct MinimapDesc {
+    doc "A mini-map frame."
+    desc true
+    field texture Option.Texture "The map; null is the stage colour."
+    field uv Option.Array.f32.4 "The region of the map shown, [u0, v0, u1, v1]; null is the whole texture."
+    field size f32 "Its side; 0 is 160." {
+      unit cssPx
+      min 0
+    }
+    field markers List.MapMarker "Markers over the map."
+    field label String "A zone name under it; empty is none."
+  }
+
+  struct DialogueDesc {
+    doc "A dialogue box: a portrait slot, the speaker and the line typed out by the tick."
+    desc true
+    field speaker String "Who speaks (primary ink)."
+    field text String "The line. A new text starts typing again."
+    field portrait Option.Texture "A portrait texture; null is the speaker's initial."
+    field portraitUv Option.Array.f32.4 "The portrait's region of the texture; null is the whole texture."
+    field portraitIcon String "A portrait from the icon atlas by name, when no texture is given; empty is the speaker's initial."
+    field charsPerSecond f32 "Typing speed; 0 is 40." {
+      min 0
+    }
+    field portraitRight bool "The portrait on the right."
+  }
+
+  struct DialogueResult {
+    doc "A dialogue box's answer this tick."
+    field shown u32 "Characters shown."
+    field done bool "The whole line is shown."
+    field advanced bool "Pressed (or activated) while done: show the next line."
+  }
+
+  struct JoystickDesc {
+    doc "A virtual joystick."
+    desc true
+    field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
+      unit cssPx
+      min 0
+    }
+    field deadZone f32 "The ignored radius; 0 is 0.15." {
+      unit ratio
+      min 0
+      max 1
+    }
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
+  }
+
+  struct JoystickResult {
+    doc "A joystick's vector this tick."
+    field x f32 "-1 left to 1 right; 0 inside the dead zone."
+    field y f32 "-1 up to 1 down; 0 inside the dead zone."
+    field active bool "A press that started on it is held."
+  }
+
+  struct DpadDesc {
+    doc "A d-pad."
+    desc true
+    field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
+      unit cssPx
+      min 0
+    }
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
+  }
+
+  struct DpadResult {
+    doc "Which arms of a d-pad are held this tick."
+    field up bool "Up is held."
+    field down bool "Down is held."
+    field left bool "Left is held."
+    field right bool "Right is held."
+  }
+
+  struct ActionButtonDesc {
+    doc "A square touch action button (jump, fire), cornered by the style's control radius."
+    desc true
+    field size f32 "Its side; 0 is 64 (never under 44)." {
+      unit cssPx
+      min 0
+    }
+    field primary bool "The primary button (one per screen)."
+    field icon String "An icon of the atlas by name, instead of the label; empty is the label."
+    field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
+    field round bool "A disc instead of the control's rounded square (a pedal)."
+    field charge Option.f32 "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring."
+    field chargeTone Tone "The lit ring's tone; neutral is the primary's."
+  }
+
+  struct SkeletonDesc {
+    doc "A skeleton: the neutral fill standing in for content that is loading."
+    desc true
+    field width Option.Size "Its width; null grows."
+    field height f32 "A line's height; 0 is the body size." {
+      unit cssPx
+      min 0
+    }
+    field lines u32 "Stacked lines; 0 or 1 is one, the last of several is shorter."
+  }
+
+  callback UiItemBuild {
+    doc "Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it."
+    param index u32 "Its index."
+  }
+
+  fn breakpoint {
+    doc "The size class of the play surface of the frame being built (desktop outside a frame)."
+    returns Breakpoint
+  }
+
+  struct UiPointer {
+    doc "The primary pointer as the UI reads it this tick."
+    field x f32 "Its x from the surface's left." {
+      unit cssPx
+    }
+    field y f32 "Its y from the surface's top." {
+      unit cssPx
+    }
+    field inside bool "It is over the surface: false for a mouse that left it, or a touch screen with no finger down."
+    field down bool "Its button or finger is down."
+    field pressed bool "Its button or finger went down this tick: where a drag a component runs itself (an inventory's item, a card) starts."
+    field released bool "Its button or finger came up this tick: where such a drag ends."
+    field shift bool "A Shift key is held (a split stack, a quick transfer, a range of a list)."
+    field ctrl bool "A Control key is held."
+    field alt bool "An Alt (Option) key is held."
+  }
+
+  fn framePointer {
+    doc "The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts."
+    returns UiPointer
+  }
+
+  fn frameCursor {
+    doc "The pointer's shape the last frame resolved (never auto): the cursor set on what the press holds or the pointer is over, or around it, else its kind's. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer."
+    returns Cursor
+  }
+
+  fn frameViewport {
+    doc "The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI."
+    returns Viewport
+  }
+
+  fn hasIcon {
+    doc "Whether the icon atlas has an icon of this name (components draw a fallback otherwise)."
+    param name String "The icon's name."
+    returns bool
+  }
+
+  fn seconds {
+    doc "The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock)."
+    returns f64
+  }
+
+  fn lastPath {
+    doc "The full path of the element built just before (a container just closed, or a widget), as og.ui.bounds, og.ui.gesture, og.ui.forceState and the probe name it: a component reads its own parts' rectangles and gestures by it. Empty when nothing was built before it."
+    returns String
+  }
+
+  fn setFocus {
+    doc "Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is."
+    param path String "The element's full path (og.ui.lastPath, og.ui.focus)."
+    returns Void
+  }
+
+  fn scrollIntoView {
+    doc "Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container."
+    param path String "The control's full path (og.ui.lastPath, og.ui.focus)."
+    param center bool "Centre it in the view, as far as the range allows; false scrolls by the least that shows it."
+    returns Void
+  }
+
+  fn frameDirection {
+    doc "The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself."
+    returns String
+  }
+
+  fn frameTheme {
+    doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns)."
+    returns UiTheme
+  }
+
+  fn openAnchor {
+    doc "Open an anchored group, closed by close(): og.ui.anchor without the callback."
+    param id String "Its id; the probe path is the id alone."
+    param desc AnchorDesc "Where it sits and how it lays out."
+    returns Void
+  }
+
+  fn anchor {
+    doc "An anchored group built by `build`: a layer at a point of the safe area, over the tree, for HUD corners and touch controls."
+    host false
+    param id String "Its id."
+    param desc AnchorDesc "Where it sits and how it lays out."
+    param build UiBuild "Makes its children."
+    returns Void
+  }
+
+  fn openTransition {
+    doc "Open a transition container (a column), closed by close(); build its children only while the answer is visible: it stays visible while it leaves. Its content takes no input while it moves."
+    param id String "Its id."
+    param show bool "Whether it should be shown."
+    param desc TransitionDesc "How it moves."
+    returns Presence
+  }
+
+  fn transition {
+    doc "Content that enters and leaves: fade, slide or scale by the tick from the style's motion. `build` runs while it is visible."
+    host false
+    param id String "Its id."
+    param show bool "Whether it should be shown."
+    param desc TransitionDesc "How it moves."
+    param build UiBuild "Makes its content."
+    returns Presence
+  }
+
+  fn openModal {
+    doc "Open a dialog, closed by closeModal(); build its content only while the answer is visible. The probe sees the backdrop as `<id>` and the panel as `<id>/Panel`."
+    param id String "Its id."
+    param open bool "Whether it should be open."
+    param desc ModalDesc "Title, width and dismissal rules."
+    returns ModalResult
+  }
+
+  fn closeModal {
+    doc "Close a dialog opened with openModal (its panel and backdrop)."
+    returns Void
+  }
+
+  fn modal {
+    doc "A dialog built by `build` while visible: scrim, centred panel, focus kept inside, Back and the backdrop dismiss it unless locked. Set your open flag false on `dismissed`."
+    host false
+    param id String "Its id."
+    param open bool "Whether it should be open."
+    param desc ModalDesc "Title, width and dismissal rules."
+    param build UiBuild "Makes its content."
+    returns ModalResult
+  }
+
+  fn spotlight {
+    doc "A spotlight over everything (a tutorial step): the scrim on four sides of the hole, a primary edge around it. Presses on the dimmed parts stop there (clicked); presses in the hole reach what is under it. Shades are `<id>/Top`, `Left`, `Right`, `Bottom`; the hole is `<id>/Hole`."
+    param id String "Its id."
+    param hole Option.UiRect "The rectangle to leave lit, as og.ui.bounds answers; null dims everything."
+    param desc SpotlightDesc "Room around the hole."
+    returns Response
+  }
+
+  fn bounds {
+    doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
+    param path String "The id or path."
+    returns Option.UiRect
+  }
+
+  struct ScrollState {
+    doc "A scroll container as the last frame laid it out (og.ui.scrollState)."
+    field offsetX f32 "How far its content is scrolled right." {
+      unit cssPx
+    }
+    field offsetY f32 "How far its content is scrolled down." {
+      unit cssPx
+    }
+    field viewWidth f32 "Its view's width, inside its padding." {
+      unit cssPx
+    }
+    field viewHeight f32 "Its view's height, inside its padding." {
+      unit cssPx
+    }
+    field contentWidth f32 "Its whole content's width, unclipped (the view's on an axis it does not scroll)." {
+      unit cssPx
+    }
+    field contentHeight f32 "Its whole content's height, unclipped." {
+      unit cssPx
+    }
+  }
+
+  fn scrollState {
+    doc "A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container."
+    param path String "Its full path."
+    returns Option.ScrollState
+  }
+
+  fn openList {
+    doc "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList()."
+    param id String "Its id."
+    param desc ListDesc "Row count and size."
+    returns ListRange
+  }
+
+  fn openGrid {
+    doc "Open a virtualised grid and learn which cells to build: gridItem(i) and close() for each, then closeList()."
+    param id String "Its id."
+    param desc GridDesc "Cell count, size and columns."
+    returns ListRange
+  }
+
+  fn listItem {
+    doc "Open row `index` of the open list (`Row#index`): selectable and focusable; its content follows until close(). A press that started on one row and is released on this one answers `dropped`."
+    param index u32 "Its index."
+    param selected bool "Drawn selected (controlStrong)."
+    returns Response
+  }
+
+  fn gridItem {
+    doc "Open cell `index` of the open grid (`Cell#index`): a slot on control, focusable; its content follows until close(). Drops answer `dropped` as listItem's."
+    param index u32 "Its index."
+    param selected bool "Drawn selected (controlStrong with a primary bar)."
+    returns Response
+  }
+
+  fn closeList {
+    doc "Close a list or grid opened with openList or openGrid."
+    returns Response
+  }
+
+  fn dragging {
+    doc "The row or cell a held press started on in the list or grid of this id (built under the same parent): a drag in progress, to draw what is dragged under the pointer."
+    param id String "The list's or grid's id."
+    returns Option.u32
+  }
+
+  fn list {
+    doc "A virtualised list built by `build(index)` for the rows in view."
+    host false
+    param id String "Its id."
+    param desc ListDesc "Row count, size and the selected row."
+    param build UiItemBuild "Makes one row's content."
+    returns ListResult
+  }
+
+  fn grid {
+    doc "A virtualised grid built by `build(index)` for the cells in view."
+    host false
+    param id String "Its id."
+    param desc GridDesc "Cell count, size, columns and the selected cell."
+    param build UiItemBuild "Makes one cell's content."
+    returns ListResult
+  }
+
+  fn tabs {
+    doc "A segmented control: a neutral track, the chosen tab on the thumb. Tabs are `Tab#i` and the probe reads their labels."
+    param id String "Its id."
+    param items List.String "The tab labels."
+    param selected u32 "The chosen index from game state."
+    param desc TabsDesc "Fill and width."
+    returns ChoiceResult
+  }
+
+  fn select {
+    doc "A select: a field-like trigger with the chosen label and a chevron; a press or Activate opens its menu `<id>.menu` (options `Option#i`) under it, a focus scope; choosing closes it with changed. Back or a press outside closes it."
+    param id String "Its id."
+    param options List.String "The option labels."
+    param selected u32 "The chosen index from game state."
+    param desc SelectDesc "Placeholder, width, disabled."
+    returns ChoiceResult
+  }
+
+  fn stepper {
+    doc "A number stepper: `Dec`, `Value`, `Inc`. The buttons step within the range; Left and Right step it while a button is focused; a screen reader's increment and decrement on the stepper itself (its spinbutton, which the web shell mirrors as an adjustable range) step it too."
+    param id String "Its id."
+    param value f32 "The value from game state."
+    param desc StepperDesc "Range, step and digits."
+    returns StepperResult
+  }
+
+  fn radio {
+    doc "A radio group of `Option#i` rows: a ring, filled primary when chosen, and a label."
+    param id String "Its id."
+    param options List.String "The option labels."
+    param selected u32 "The chosen index from game state."
+    param desc RadioDesc "Row or column."
+    returns ChoiceResult
+  }
+
+  fn checkbox {
+    doc "A checkbox with a label; a press flips it."
+    param id String "Its id."
+    param on bool "The state from game state."
+    param label String "The label."
+    returns ToggleResult
+  }
+
+  fn checkboxList {
+    doc "Checkboxes in a column (`Option#i`)."
+    param id String "Its id."
+    param labels List.String "The labels."
+    param values List.bool "The states from game state."
+    returns CheckListResult
+  }
+
+  fn chip {
+    doc "A chip: a control-filled tag; selected inverts to ink. For filters and tags."
+    param id String "Its id."
+    param text String "The label."
+    param desc ChipDesc "Selected and disabled."
+    returns Response
+  }
+
+  fn badge {
+    doc "A badge: a small status tag in its tone."
+    param id String "Its id."
+    param text String "The label (a count, a word)."
+    param tone Tone "Its tone."
+    returns Void
+  }
+
+  fn divider {
+    doc "A hairline in the border colour across its parent."
+    param id String "Its id."
+    param vertical bool "Stand it up (in a row)."
+    returns Void
+  }
+
+  fn spacer {
+    doc "Empty space."
+    param id String "Its id."
+    param size Option.Size "Its size along both axes; null grows into the free space."
+    returns Void
+  }
+
+  fn keyValue {
+    doc "A key (inkMuted) and its value (ink, at the end) on one row: stats, settings summaries, receipts."
+    param id String "Its id."
+    param key String "The key."
+    param value String "The value."
+    param mono bool "The value in the monospaced font (prices, ids)."
+    returns Void
+  }
+
+  fn skeleton {
+    doc "A skeleton: the neutral fill standing in for content that is loading, with a sheen that passes every 1.6 s (still under reduced motion)."
+    param id String "Its id."
+    param desc SkeletonDesc "Width, line height and lines."
+    returns Void
+  }
+
+  fn spinner {
+    doc "A loading spinner: eight dots around a circle, the bright one turning by the tick."
+    param id String "Its id."
+    param size f32 "Its diameter in CSS px; 0 is the small control height."
+    returns Void
+  }
+
+  fn icon {
+    doc "An icon of the atlas (UiDesc.icons) by name: a texture cell, or an icon set's distance-field glyph fitted to its square; an unknown name draws an empty slot and warns. Rich text takes the same icons inline with `[icon=name]`. The probe reads the name."
+    param id String "Its id."
+    param name String "The icon's name."
+    param desc IconDesc "Size and ink."
+    returns Void
+  }
+
+  fn meter {
+    doc "A health, mana or xp bar. A drop shows at once and leaves a pale trail that follows after a beat; a rise grows into place with a ghost of the target; both by the tick."
+    param id String "Its id."
+    param value f32 "The current value."
+    param max f32 "The full value."
+    param desc MeterDesc "Kind, label, size and notches."
+    returns Void
+  }
+
+  fn cooldown {
+    doc "A cooldown: a disc whose primary ring fills clockwise from the top as it runs out, bright and full when ready, a label or icon in the middle. A press reports clicked (ready or not)."
+    param id String "Its id."
+    param remaining f32 "How much of the cooldown is left, 0 to 1: 1 just used, 0 ready."
+    param desc CooldownDesc "Size, label and icon."
+    returns Response
+  }
+
+  fn minimap {
+    doc "A mini-map frame: the map in a lineStrong frame, markers as dots (the player primary and ringed), an N mark and a zone label."
+    param id String "Its id."
+    param desc MinimapDesc "Map, markers and label."
+    returns Void
+  }
+
+  fn dialogue {
+    doc "A dialogue box: a portrait slot, the speaker in primary ink and the line typed out by the tick. A press or Activate while typing shows the whole line; once shown it answers advanced. The line is `<id>/Body/Line` and the probe reads what is shown."
+    param id String "Its id."
+    param desc DialogueDesc "Speaker, text, portrait and speed."
+    returns DialogueResult
+  }
+
+  fn joystick {
+    doc "A virtual joystick: a base and a knob that follows a press that started on it. It keeps the finger that grabbed it (any of og.Pointers), so another finger can hold an action button at the same time."
+    param id String "Its id."
+    param desc JoystickDesc "Size and dead zone."
+    returns JoystickResult
+  }
+
+  fn dpad {
+    doc "A d-pad of four arms (`Up`, `Down`, `Left`, `Right`), each at least 44 CSS px."
+    param id String "Its id."
+    param desc DpadDesc "Its size."
+    returns DpadResult
+  }
+
+  fn actionButton {
+    doc "A square touch action button, cornered by the style's control radius: pressed while held (jump, fire), clicked on a tap; at least 44 CSS px."
+    param id String "Its id."
+    param text String "Its label (and what the probe reads)."
+    param desc ActionButtonDesc "Size, primary and icon."
+    returns Response
+  }
+
+  fn toast {
+    doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+    param world World "The world whose UI shows it."
+    param text String "The message: a few words."
+    param desc ToastDesc "Tone and time."
+    returns u32 "Its id, for dismissToast."
+  }
+
+  fn dismissToast {
+    doc "Start a toast's exit."
+    param world World "The world."
+    param toastId u32 "The id toast() answered."
+    returns Void
+  }
+
+  fn navigate {
+    doc "Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control."
+    param world World "The world."
+    param intent NavIntent "The intent."
+    returns Void
+  }
+
+  fn back {
+    doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through."
+    returns bool
+  }
+
+  fn setPlayers {
+    doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
+    param count u32 "Players, 1 to 4 (clamped)."
+    returns Void
+  }
+
+  struct VirtualCursorDesc {
+    doc "A pad's virtual cursor (docs/ui.md §8.3). The zero value moves at 900 units a second, takes a quarter second from a fine start to full speed, has a half-strength magnet and scrolls 1200 units a second."
+    desc true
+    field speed f32 "Units a second at full tilt; 0 is 900." {
+      unit cssPx
+      min 0
+    }
+    field accel f32 "Milliseconds a held stick takes from a third of its speed to all of it, for fine aim first; 0 is 250, negative is none." {
+      unit ms
+    }
+    field magnet f32 "0 to 1: how much it slows over a control and, once the stick rests, pulls to the control's centre; 0 is 0.5, negative is none." {
+      max 1
+    }
+    field scroll f32 "Units a second the right stick scrolls under it at full tilt; 0 is 1200, negative leaves the right stick to the game." {
+      unit cssPx
+    }
+  }
+
+  fn setVirtualCursor {
+    doc "A pad's virtual cursor, for a screen built for the pointer (a map, a shop grid, a strategy HUD) played on a pad: pad 0's left stick moves it instead of the focus, slowing and sticking over controls; its A presses where it points as the mouse's button does (drags, sliders and long presses work); its right stick scrolls under it. The style draws it and the system cursor hides (og.ui.frameCursor answers none). The real pointer moving hides it and the stick shows it again. Declare it every tick the screen shows; it takes effect from the next tick. Null turns it off."
+    param desc Option.VirtualCursorDesc "How it moves; null is none."
+    returns Void
+  }
+
+  struct VirtualCursor {
+    doc "Where a pad's virtual cursor is."
+    field x f32 "Its x, from the surface's left." {
+      unit cssPx
+    }
+    field y f32 "Its y, from the surface's top." {
+      unit cssPx
+    }
+    field shown bool "It is shown: the stick moved it since the real pointer last moved."
+  }
+
+  fn virtualCursor {
+    doc "The virtual cursor as the last frame left it; null when none is declared."
+    returns Option.VirtualCursor
+  }
+
+  struct HudPlacement {
+    doc "Where the player put a customisable element: moved from its laid-out place, scaled about its centre and faded."
+    field x f32 "Moved right." {
+      unit cssPx
+    }
+    field y f32 "Moved down." {
+      unit cssPx
+    }
+    field scale f32 "Its scale (1: as laid out)." {
+      unit ratio
+    }
+    field opacity f32 "Its opacity (1: opaque)." {
+      unit ratio
+    }
+  }
+
+  struct HudEdit {
+    doc "The HUD edit mode as the last frame left it."
+    field on bool "The edit mode is on."
+    field player u32 "The player whose layout the screen shows and edits."
+    field selected String "The key of the element being edited; empty for none."
+    field placement HudPlacement "Its placement."
+    field keys List.String "The customisable elements on screen, in drawing order."
+    field changed bool "The player changed the layout this tick (a move ended, a step, a reset): the time to save og.ui.hudLayout in the game's settings."
+  }
+
+  fn setHudEdit {
+    doc "Turns the HUD edit mode on or off (docs/ui.md §8.4; kept until changed). While it is on, elements with ElementProps.customize stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. Build og.ui.hudLayoutEditor for steps, Next, Reset and Done."
+    param on bool "On or off."
+    returns Void
+  }
+
+  fn setHudPlayer {
+    doc "Whose layout this screen shows and edits, 0 to 3 (0 by default; kept until changed): each player of a shared screen keeps a layout of their own."
+    param player u32 "The player (clamped to 3)."
+    returns Void
+  }
+
+  fn hudEdit {
+    doc "The HUD edit mode as the last frame left it."
+    returns HudEdit
+  }
+
+  fn hudLayout {
+    doc "A player's HUD layout as JSON, for the game's settings: each moved, scaled or faded element's key with its x, y, scale and opacity. Save it when HudEdit.changed says so; give it back with og.ui.setHudLayout on the next run."
+    param player u32 "The player, 0 to 3."
+    returns String
+  }
+
+  fn setHudLayout {
+    doc "Gives a player's HUD layout back (og.ui.hudLayout's JSON; `{}` resets it). Answers false and leaves the layout as it was when it does not read (the reason is in the frame's warnings)."
+    param player u32 "The player, 0 to 3."
+    param layout String "The layout's JSON."
+    returns bool
+  }
+
+  fn hudSelect {
+    doc "Selects an element to edit by its key (empty: none)."
+    param key String "Its key."
+    returns Void
+  }
+
+  fn hudStep {
+    doc "Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits."
+    param scale i32 "The size step."
+    param opacity i32 "The opacity step."
+    returns Void
+  }
+
+  fn hudReset {
+    doc "Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one."
+    param key String "Its key, empty or `*`."
+    returns Void
+  }
+
+  struct HudEditorDesc {
+    doc "The HUD edit mode's panel; empty labels take English ones (pass the locale's)."
+    desc true
+    field title String "Its title; empty is Edit HUD."
+    field sizeLabel String "The size steps' label; empty is Size."
+    field opacityLabel String "The opacity steps' label; empty is Opacity."
+    field nextLabel String "Next's label; empty is Next."
+    field resetLabel String "Reset's label; empty is Reset."
+    field doneLabel String "Done's label; empty is Done."
+  }
+
+  struct HudEditorResult {
+    doc "What the HUD editor's buttons did this tick."
+    field done bool "Done was pressed: the edit mode is off from the next tick."
+    field changed bool "A step or a reset changed the layout this tick."
+  }
+
+  fn hudLayoutEditor {
+    doc "The HUD edit mode's panel (docs/ui.md §8.4): the selected element's key, size and opacity steps, Next (the next element: how keys and pads choose one), Reset (the selected one, or all with none selected) and Done, which turns the edit mode off. Build it where it fits, while og.ui.hudEdit().on; presses on it edit nothing behind it. Its children are `Title`, `Selected`, `Size/Less`, `Size/More`, `Opacity/Less`, `Opacity/More`, `Actions/Next`, `Actions/Reset`, `Actions/Done`."
+    param id String "Its id."
+    param desc HudEditorDesc "Its labels."
+    returns HudEditorResult
+  }
+
+  fn focus {
+    doc "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none."
+    param pad u32 "The pad, 0 to 3; past 3 answers empty."
+    returns String
+  }
+
+  struct A11yNode {
+    doc "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out)."
+    field path String "Its path, as touch_move_to and og.ui.focus name it."
+    field parent String "The path of the nearest node above it in the tree; empty at the top."
+    field role String "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, dialog, tooltip, separator, group."
+    field name String "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
+    field description String "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
+    field value String "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
+    field states List.String "Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view)."
+    field valueMin Option.f32 "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
+    field valueMax Option.f32 "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
+    field valueNow Option.f32 "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
+    field x f32 "Left edge of the whole element." {
+      unit cssPx
+    }
+    field y f32 "Top edge of the whole element." {
+      unit cssPx
+    }
+    field width f32 "Width." {
+      unit cssPx
+    }
+    field height f32 "Height." {
+      unit cssPx
+    }
+  }
+
+  struct A11yTree {
+    doc "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on."
+    field nodes List.A11yNode "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
+    field focusOrder List.String "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
+    field focused String "The path keyboard and pad 0's focus is on; empty for none."
+  }
+
+  fn a11y {
+    doc "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements."
+    returns A11yTree
+  }
+
+  fn feedback {
+    doc "Play a UI event's feedback from the style (docs/ui.md §7.8): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing."
+    param event String "The event's name."
+    param rise f32 "A rising cascade's step, 0 to 1, walking the set's pitch range up (a counter's ticks); below 0 picks the pitch at random."
+    returns Void
+  }
+
+  fn setHaptics {
+    doc "The player's haptic strength (a settings screen's vibration slider or switch): 0 turns the UI's haptics off, 1 (the default) plays the style's patterns as set; between scales them. The web shell rumbles the gamepad and vibrates a phone; the native host rumbles its pad."
+    param intensity f32 "0 to 1 (clamped)."
+    returns Void
+  }
+
+  fn setNavigation {
+    doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
+    param on bool "On or off."
+    returns Void
+  }
+
+  fn memory {
+    doc "A number the UI keeps for an id under the open element (a component's tab, a count-up's start tick), in snapshots like the rest of the UI state. Read it every tick it is used: an unused memory is dropped."
+    param id String "The id, unique among its siblings' memories."
+    param initial f64 "Its value the first time."
+    returns f64
+  }
+
+  fn remember {
+    doc "Set a number memory (see memory)."
+    param id String "The id."
+    param value f64 "The value."
+    returns Void
+  }
+
+  fn tick {
+    doc "Frames the UI has built: its clock, for animations by the tick."
+    returns u32
+  }
+
+  struct CounterDesc {
+    doc "A number that counts to its value."
+    desc true
+    field step Option.TypeStepName "The type step; null is body."
+    field font FontRole "Which font: mono (the numeric role) for counts in a row, display for a big score."
+    field color Option.Paint "The ink; null is ink."
+    field align TextAlign "How it aligns in its width."
+    field width Option.Size "Its width; null fits the text."
+    field durationMs f32 "How long a change takes to count; 0 is 900 ms." {
+      unit ms
+      min 0
+    }
+    field from Option.f64 "Where the first count starts; null starts at the value (no count)."
+    field decimals u32 "Digits after the point."
+    field prefix String "Text before the number."
+    field suffix String "Text after the number."
+  }
+
+  fn counter {
+    doc "A number label that counts (ease-out cubic, by the tick) from where it was to the value each time the value changes, grouped with commas; a style with motion.pop bumps it when it lands. Scores, currency, rewards."
+    param id String "Its id."
+    param value f64 "The value to count to."
+    param desc CounterDesc "Look, duration, start and format."
+    returns f64 "The number shown this tick."
+  }
+
+  struct BurstDesc {
+    doc "Rays and sparks thrown from an element."
+    desc true
+    field count u32 "Rays; 0 is 8."
+    field color Option.Paint "Their ink; null is the primary."
+    field radius f32 "How far they fly from the element's centre; 0 is 1.4 times its size." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long they fly; 0 is motion.duration.slow plus base." {
+      unit ms
+      min 0
+    }
+    field delayMs f32 "Wait this long after the element first appears." {
+      unit ms
+      min 0
+    }
+  }
+
+  fn burst {
+    doc "Throw rays and sparks from the element built just before (a star landing, a reward), once, from when it first appears. Off under reduced motion."
+    param desc BurstDesc "Count, ink, reach and timing."
+    returns Void
+  }
+
+  struct ShakeDesc {
+    doc "A shake of an element: three sideways swings decaying to rest."
+    desc true
+    field amount f32 "The first swing; 0 is the style's motion.shake, else 6." {
+      unit cssPx
+      min 0
+    }
+    field durationMs f32 "How long it takes to come to rest; 0 is motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field sound bool "Also play the style's error sound, as a refused press does."
+  }
+
+  fn shake {
+    doc "Shake the element built just before, from this tick (a wrong answer, a locked door, a refused purchase): call it once, on the tick it happens; the element swings and comes to rest by itself, and snapshots carry it. Still under reduced motion. A refused press on a disabled button already shakes when the style's motion.shake is set."
+    param desc ShakeDesc "Amount, duration and sound."
+    returns Void
+  }
+
+  enum ScreenWipe {
+    doc "How a screen transition covers the old screen and reveals the new one."
+    variant fade "The cover fades in and out."
+    variant wipe "An edge sweeps across."
+    variant iris "A circle closes on the centre and opens again."
+    variant dissolve "Cells appear in a fixed scattered order."
+    variant slide "A sheet slides over and away."
+  }
+
+  enum WipeSide {
+    doc "Where a wipe or a slide comes from."
+    variant left "From the left."
+    variant right "From the right."
+    variant top "From the top."
+    variant bottom "From the bottom."
+  }
+
+  struct ScreenTransitionDesc {
+    doc "How a screen transition looks."
+    desc true
+    field kind ScreenWipe "The movement."
+    field durationMs f32 "Cover and reveal together; 0 is twice motion.duration.slow." {
+      unit ms
+      min 0
+    }
+    field color Option.Paint "The cover's colour (the texture's tint); null is backdrop."
+    field texture Option.Texture "A texture stretched over the surface as the cover; null is the flat colour."
+    field from WipeSide "Where a wipe or a slide comes from."
+  }
+
+  struct ScreenTransitionResult {
+    doc "Where a screen transition is this tick."
+    field shown String "The screen to build this tick: the old one until the cover closes, then the new one."
+    field covering bool "The cover is closing over the old screen."
+    field revealing bool "The cover is opening on the new screen."
+    field cover f32 "How much of the surface is covered, 0 to 1." {
+      unit ratio
+    }
+  }
+
+  fn screenTransition {
+    doc "A transition between game screens drawn over the whole frame (through the overlay, over every other UI layer). Pass the screen the game wants every tick and build the one it answers: when the wanted screen changes the cover closes over the old screen for half the duration, the answer switches, and the cover opens on the new one. Deterministic by the tick; snapshots carry it; under reduced motion every kind is a fade."
+    param id String "Its id."
+    param screen String "The screen the game wants now."
+    param desc ScreenTransitionDesc "Kind, duration, colour or texture, side."
+    returns ScreenTransitionResult
+  }
+
+  fn previewViewport {
+    doc "Lay the UI out for another play surface (a phone in portrait at 3x, a notch) until cleared with null: for headless previews and playtests of responsive layouts. Render at width x dpr by height x dpr (`og run --size`)."
+    param world World "The world."
+    param viewport Option.Viewport "The surface to lay out for; null returns to the host's."
+    returns Void
+  }
+

@@ -1,0 +1,148 @@
+  fn card {
+    doc "A card over a body the game builds. Answers its response (clicked when interactive)."
+    doc "Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left."
+    doc "Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost and media, the disc at <id>/Media/Cost/Text; with a cost and no media, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected."
+    host false
+    param id String "Its id."
+    param desc CardDesc "Variant, media, titles and state."
+    param build UiBuild "Builds its body."
+    returns Response
+  }
+
+  fn scrollArea {
+    doc "A scroll container whose content fades out at an edge where more lies beyond."
+    host false
+    param id String "Its id."
+    param desc ScrollAreaDesc "Axes, size and fades."
+    param build UiBuild "Builds its content."
+    returns Void
+  }
+
+  fn accordion {
+    doc "Sections whose headers open and close their bodies; the sections under one move on the panel spring."
+    host false
+    param id String "Its id."
+    param desc AccordionDesc "Sections and the open ones."
+    param build UiItemBuild "Builds an open section's body by its index."
+    returns AccordionResult
+  }
+
+  fn splitView {
+    doc "Two panes with a divider a drag moves and a press of the focused divider steps."
+    host false
+    param id String "Its id."
+    param desc SplitViewDesc "Direction, ratio and limits."
+    param start UiBuild "Builds the start pane."
+    param end UiBuild "Builds the end pane."
+    returns SplitResult
+  }
+
+  fn dialog {
+    doc "A dialog on the modal layer: tone mark, message, body and actions."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc DialogDesc "Title, message, tone and actions."
+    param build UiBuild "Builds its body under the message."
+    returns DialogResult
+  }
+
+  fn confirm {
+    doc "A confirmation dialog: the message, Cancel and the action (danger when it cannot be undone)."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc ConfirmationDesc "Message and labels."
+    returns ConfirmResult
+  }
+
+  fn popover {
+    doc "A popover beside an element with an arrow at it; Back or a press outside dismisses it."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc PopoverDesc "The element, the side and the size."
+    param build UiBuild "Builds its content."
+    returns PopoverResult
+  }
+
+  fn menu {
+    doc "A menu of commands, checks, radios, separators, headers and submenus, hanging from an element or at a point. A submenu opens beside its row; where none fits beside the menu (a phone) it drills in, its rows replacing the menu's under a back row, and Back goes up a level."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc MenuDesc "Entries and where it hangs."
+    returns MenuChoice
+  }
+
+  fn contextMenu {
+    doc "A menu at a point: where a right press or a long press happened."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param at Vector2 "The point, CSS px."
+    param desc MenuDesc "Entries."
+    returns MenuChoice
+  }
+
+  fn sheet {
+    doc "A sheet sliding in from the bottom (resting at detents, dragged) or a side."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc SheetDesc "Edge, detents and title."
+    param build UiBuild "Builds its body."
+    returns SheetResult
+  }
+
+  fn tabBar {
+    doc "Tabs with a sliding indicator and bumpers over the panel of the selected one."
+    host false
+    param id String "Its id."
+    param desc TabBarDesc "Tabs and the selected one."
+    param build UiItemBuild "Builds the selected tab's panel by its index."
+    returns TabBarResult
+  }
+
+  fn carousel {
+    doc "Pages a drag or a flick moves, snapping to a page, with arrows and dots."
+    host false
+    param id String "Its id."
+    param desc CarouselDesc "Count, the current page and options."
+    param build UiItemBuild "Builds a page by its index (the current one and two each side)."
+    returns CarouselResult
+  }
+
+  fn breadcrumbs {
+    doc "The path to where the player is, collapsing its middle into a menu when long."
+    host false
+    param id String "Its id."
+    param desc BreadcrumbsDesc "The crumbs."
+    returns BreadcrumbsResult
+  }
+
+  fn pagination {
+    doc "Previous, next and the pages around the current one."
+    host false
+    param id String "Its id."
+    param desc PaginationDesc "Pages and the current one."
+    returns PageResult
+  }
+
+  fn actionHints {
+    doc "The action bar: each action the top layer accepts as its glyph and hint; on touch, buttons."
+    host false
+    param id String "Its id."
+    param desc ActionHintsDesc "The hints and the edge."
+    returns ActionHintsResult
+  }
+
+  fn radialMenu {
+    doc "A radial wheel chosen by where the pointer or a stick points. A slice's cost sits under its label, in the danger hue while it cannot be paid; with the labels hidden (a small wheel, a large text size), the centre shows the aimed slice's cost under its name."
+    host false
+    param id String "Its id."
+    param open bool "Whether it is open."
+    param desc RadialDesc "Slices, aim and release."
+    returns RadialResult
+  }
+
