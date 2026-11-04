@@ -230,6 +230,8 @@ pub(crate) struct ModelLods {
     pub parts: Vec<Vec<(MeshHandle, f32)>>,
     pub center: Vec3,
     pub radius: f32,
+    /// Raw primitive meshes paired with their placed, model-space scatter mesh.
+    pub scatter_meshes: Vec<(MeshHandle, MeshHandle)>,
     /// The model's impostor and its error: the level after the parts'
     /// coarsest (`og_render::Impostor`).
     pub impostor: Option<(og_render::Impostor, f32)>,
@@ -762,6 +764,7 @@ mod tests {
             parts: vec![vec![(mesh, 0.03), (mesh, 0.12)], vec![(mesh, 0.02)]],
             center: Vec3::ZERO,
             radius: 1.0,
+            scatter_meshes: Vec::new(),
             impostor: Some((impostor, 0.05)),
         };
         // 5 cm: finer than level 2 (12 cm), which it replaces; drawn once

@@ -6109,6 +6109,7 @@
         "Style",
         "LoadStatus",
         "GltfDesc",
+        "GltfPart",
         "GltfInfo",
         "BundleInfo",
         "FontInfo",
@@ -33110,6 +33111,32 @@
       },
       "additionalProperties": false
     },
+    "GltfPart": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts.",
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "Mesh-local geometry; transform places it in model space."
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "This part's material."
+        },
+        "transform": {
+          "$ref": "#/$defs/Matrix4",
+          "description": "Primitive-to-model placement, including node ancestors and instance transforms, or the skinned node's bind placement."
+        }
+      },
+      "required": [
+        "geometry",
+        "material",
+        "transform"
+      ],
+      "additionalProperties": false
+    },
     "GltfInfo": {
       "x-og-kind": "struct",
       "x-og-module": "load",
@@ -33127,7 +33154,14 @@
           "items": {
             "$ref": "#/$defs/Geometry"
           },
-          "description": "Its geometries, in glTF mesh-primitive order."
+          "description": "Mesh-local geometries, without node placement. Use parts to read each placement in model space."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GltfPart"
+          },
+          "description": "Placed primitives in the default scene, in draw order."
         },
         "materials": {
           "type": "array",
@@ -33160,6 +33194,7 @@
       "required": [
         "scenes",
         "geometries",
+        "parts",
         "materials",
         "variants",
         "lights",
@@ -82900,7 +82935,7 @@
         },
         "geometry": {
           "$ref": "#/$defs/Geometry",
-          "description": "The mesh, its origin at its root.",
+          "description": "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space.",
           "default": 0
         },
         "material": {
@@ -82987,7 +83022,7 @@
         },
         "impostor": {
           "$ref": "#/$defs/Asset",
-          "description": "A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance.",
+          "description": "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.",
           "default": 0
         },
         "impostorDistance": {

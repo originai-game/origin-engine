@@ -11932,12 +11932,30 @@ export interface GltfDesc {
   readonly receiveShadow?: boolean;
 }
 
+/**
+ * One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts.
+ */
+export interface GltfPart {
+  /** Mesh-local geometry; transform places it in model space. */
+  readonly geometry: Geometry;
+  /** This part's material. */
+  readonly material: Material;
+  /**
+   * Primitive-to-model placement, including node ancestors and instance transforms, or the skinned node's bind placement.
+   */
+  readonly transform: Matrix4;
+}
+
 /** What a loaded glTF holds. */
 export interface GltfInfo {
   /** How many scenes it has. */
   readonly scenes: number;
-  /** Its geometries, in glTF mesh-primitive order. */
+  /**
+   * Mesh-local geometries, without node placement. Use parts to read each placement in model space.
+   */
   readonly geometries: readonly Geometry[];
+  /** Placed primitives in the default scene, in draw order. */
+  readonly parts: readonly GltfPart[];
   /** Its materials, in glTF order, then the default material. */
   readonly materials: readonly Material[];
   /**
@@ -49867,7 +49885,9 @@ export interface Terrain {
 export interface TerrainScatter {
   /** The terrain (og.terrain.load's TerrainInfo.data). */
   data: TerrainData;
-  /** The mesh, its origin at its root. */
+  /**
+   * The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space.
+   */
   geometry: Geometry;
   /** Its material. */
   material: Material;
@@ -49948,7 +49968,7 @@ export interface TerrainScatter {
    */
   sway: number;
   /**
-   * A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance.
+   * A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.
    */
   impostor: Asset;
   /**

@@ -128,3 +128,22 @@ fn far_copies_draw_as_the_impostor() {
     let e = rmse(&cards, &meshes);
     assert!(e < 0.05, "cards vs meshes: rmse {e}");
 }
+
+#[test]
+fn copies_inside_the_impostor_band_draw_without_holes() {
+    // The terrain spans +/-24 m, seen from z=26: every copy lies inside
+    // 72 m (the start of an 80 m switch's crossfade). Both renders must
+    // therefore keep every mesh pixel, in the prepass and lit pass alike.
+    let (with, _) = render(&is::impostor_scatter_scene(80.0));
+    let (without, _) = render(&is::impostor_scatter_scene(0.0));
+    let changed = with
+        .pixels
+        .iter()
+        .zip(&without.pixels)
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        changed, 0,
+        "enabling far impostors must not change near copies"
+    );
+}

@@ -284,6 +284,7 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
 pub(crate) struct TerrainState {
     pub loaded: Vec<LoadedTerrain>,
     pub by_id: BTreeMap<String, usize>,
+    pub scatter_issues: BTreeMap<u64, String>,
     pub streamer: super::terrain_stream::Streamer,
     /// Every wanted tile decoded and shown each frame (no streaming).
     pub resident: bool,
@@ -1131,6 +1132,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // og.TerrainScatter: copies over the drawn terrain of the same data,
     // placed and drawn by the renderer.
     rs.scene.scatters.clear();
+    rs.terrain.scatter_issues.clear();
     let layout = rs.draw.scatter.clone();
     for (e, v) in rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
@@ -1152,6 +1154,32 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         ) else {
             continue;
         };
+        let model = v["impostor"].as_f64().unwrap_or(0.0) as u64;
+        let lods = rs.model_lods.get(&model);
+        let impostor = lods.and_then(|l| l.impostor.map(|i| i.0));
+        let mesh = lods
+            .and_then(|l| l.scatter_meshes.iter().find(|p| p.0 == mesh))
+            .map_or(mesh, |p| p.1);
+        if let Some(card) = impostor {
+            let Some((min, max)) = rs.scene.mesh(mesh).and_then(|m| m.bounds()) else {
+                continue;
+            };
+            let center = (min + max) * 0.5;
+            let radius = ((max - min) * 0.5).length().max(1e-3);
+            // Cooked positions are quantized to 16 bits; compare bounds in model space.
+            let tolerance = card.radius * 1e-4;
+            if center.distance(card.center) > tolerance || (radius - card.radius).abs() > tolerance
+            {
+                let issue = format!(
+                    "geometry bounds (center {center:?}, radius {radius}) differ from impostor bounds (center {:?}, radius {}); use geometry from the same complete model",
+                    card.center, card.radius
+                );
+                rs.notes
+                    .push(format!("og.TerrainScatter on entity {e}: {issue}"));
+                rs.terrain.scatter_issues.insert(e, issue);
+                continue;
+            }
+        }
         rs.scene.scatters.push(og_render::ScatterDraw {
             terrain,
             mesh,
@@ -1167,11 +1195,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 sway: f(&v, "sway", 1.0),
             },
             cast_shadows: on(&v, "castShadows", true),
-            // The far copies' impostor: the named model's (og-render's `impostor`).
-            impostor: rs
-                .model_lods
-                .get(&(v["impostor"].as_f64().unwrap_or(0.0) as u64))
-                .and_then(|l| l.impostor.map(|i| i.0)),
+            impostor,
             impostor_distance: f(&v, "impostorDistance", 0.0),
         });
     }

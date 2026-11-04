@@ -36,6 +36,7 @@ module load {
 | [`Style()`](#column-Style) | column kind | A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure. |
 | [`LoadStatus`](#type-LoadStatus) | enum | Where a load is. |
 | [`GltfDesc`](#type-GltfDesc) | desc struct | How to load a glTF, as three.js GLTFLoader options where they apply. |
+| [`GltfPart`](#type-GltfPart) | struct | One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts. |
 | [`GltfInfo`](#type-GltfInfo) | struct | What a loaded glTF holds. |
 | [`BundleInfo`](#type-BundleInfo) | struct | An open cooked bundle. |
 | [`FontInfo`](#type-FontInfo) | struct | A loaded font's metrics, in em units unless stated. |
@@ -127,7 +128,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 7775</sub>
+<sub>`api.ogt` line 7783</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -157,7 +158,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7782</sub>
+<sub>`api.ogt` line 7790</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -185,7 +186,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 7789</sub>
+<sub>`api.ogt` line 7797</sub>
 
 <a id="fn-gltf"></a>
 
@@ -220,7 +221,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 7795</sub>
+<sub>`api.ogt` line 7803</sub>
 
 <a id="fn-scene"></a>
 
@@ -250,7 +251,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 7804</sub>
+<sub>`api.ogt` line 7812</sub>
 
 <a id="fn-prefab"></a>
 
@@ -280,7 +281,7 @@ fn prefab {
 }
 ```
 
-<sub>`api.ogt` line 7811</sub>
+<sub>`api.ogt` line 7819</sub>
 
 <a id="fn-font"></a>
 
@@ -310,7 +311,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 7831</sub>
+<sub>`api.ogt` line 7839</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -340,7 +341,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7838</sub>
+<sub>`api.ogt` line 7846</sub>
 
 <a id="fn-sound"></a>
 
@@ -373,7 +374,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 7845</sub>
+<sub>`api.ogt` line 7853</sub>
 
 <a id="fn-lut"></a>
 
@@ -403,7 +404,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 7853</sub>
+<sub>`api.ogt` line 7861</sub>
 
 <a id="fn-environment"></a>
 
@@ -433,7 +434,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 7860</sub>
+<sub>`api.ogt` line 7868</sub>
 
 <a id="fn-emitter"></a>
 
@@ -463,7 +464,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 7867</sub>
+<sub>`api.ogt` line 7875</sub>
 
 <a id="fn-shader"></a>
 
@@ -493,7 +494,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 7874</sub>
+<sub>`api.ogt` line 7882</sub>
 
 <a id="fn-post"></a>
 
@@ -523,7 +524,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 7881</sub>
+<sub>`api.ogt` line 7889</sub>
 
 <a id="fn-vector"></a>
 
@@ -553,7 +554,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 7888</sub>
+<sub>`api.ogt` line 7896</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -583,7 +584,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 7895</sub>
+<sub>`api.ogt` line 7903</sub>
 
 <a id="fn-texture"></a>
 
@@ -616,7 +617,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 7902</sub>
+<sub>`api.ogt` line 7910</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -649,7 +650,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 7910</sub>
+<sub>`api.ogt` line 7918</sub>
 
 <a id="fn-style"></a>
 
@@ -679,7 +680,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 7918</sub>
+<sub>`api.ogt` line 7926</sub>
 
 <a id="fn-document"></a>
 
@@ -709,7 +710,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 7925</sub>
+<sub>`api.ogt` line 7933</sub>
 
 <a id="fn-look"></a>
 
@@ -739,7 +740,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 7932</sub>
+<sub>`api.ogt` line 7940</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -769,7 +770,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 7939</sub>
+<sub>`api.ogt` line 7947</sub>
 
 <a id="fn-palette"></a>
 
@@ -799,7 +800,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 7946</sub>
+<sub>`api.ogt` line 7954</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -829,7 +830,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7953</sub>
+<sub>`api.ogt` line 7961</sub>
 
 <a id="fn-status"></a>
 
@@ -859,7 +860,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 7960</sub>
+<sub>`api.ogt` line 7968</sub>
 
 <a id="fn-error"></a>
 
@@ -889,7 +890,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 7967</sub>
+<sub>`api.ogt` line 7975</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -919,7 +920,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7974</sub>
+<sub>`api.ogt` line 7982</sub>
 
 <a id="fn-animation"></a>
 
@@ -952,7 +953,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 7981</sub>
+<sub>`api.ogt` line 7989</sub>
 
 <a id="fn-rig"></a>
 
@@ -982,7 +983,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 7989</sub>
+<sub>`api.ogt` line 7997</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -1012,7 +1013,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 7996</sub>
+<sub>`api.ogt` line 8004</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -1042,7 +1043,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 8003</sub>
+<sub>`api.ogt` line 8011</sub>
 
 <a id="fn-video"></a>
 
@@ -1072,7 +1073,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 8010</sub>
+<sub>`api.ogt` line 8018</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1102,7 +1103,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 8017</sub>
+<sub>`api.ogt` line 8025</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1132,7 +1133,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 8024</sub>
+<sub>`api.ogt` line 8032</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1162,7 +1163,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 8031</sub>
+<sub>`api.ogt` line 8039</sub>
 
 <a id="fn-imageData"></a>
 
@@ -1199,7 +1200,7 @@ fn imageData {
 }
 ```
 
-<sub>`api.ogt` line 8116</sub>
+<sub>`api.ogt` line 8124</sub>
 
 <a id="fn-gltfData"></a>
 
@@ -1239,7 +1240,7 @@ fn gltfData {
 }
 ```
 
-<sub>`api.ogt` line 8126</sub>
+<sub>`api.ogt` line 8134</sub>
 
 <a id="fn-environmentData"></a>
 
@@ -1276,7 +1277,7 @@ fn environmentData {
 }
 ```
 
-<sub>`api.ogt` line 8137</sub>
+<sub>`api.ogt` line 8145</sub>
 
 <a id="fn-environmentInfo"></a>
 
@@ -1306,7 +1307,7 @@ fn environmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8147</sub>
+<sub>`api.ogt` line 8155</sub>
 
 <a id="fn-release"></a>
 
@@ -1336,7 +1337,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 8154</sub>
+<sub>`api.ogt` line 8162</sub>
 
 <a id="fn-imageInfo"></a>
 
@@ -1366,7 +1367,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8161</sub>
+<sub>`api.ogt` line 8169</sub>
 
 <a id="fn-completions"></a>
 
@@ -1394,7 +1395,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 8168</sub>
+<sub>`api.ogt` line 8176</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1424,7 +1425,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 8174</sub>
+<sub>`api.ogt` line 8182</sub>
 
 ## Components, resources and events
 
@@ -1501,7 +1502,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 7729</sub>
+<sub>`api.ogt` line 7737</sub>
 
 <a id="record-PrefabLink"></a>
 
@@ -1532,7 +1533,7 @@ component PrefabLink {
 }
 ```
 
-<sub>`api.ogt` line 7818</sub>
+<sub>`api.ogt` line 7826</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1555,7 +1556,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 8181</sub>
+<sub>`api.ogt` line 8189</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1580,7 +1581,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 8187</sub>
+<sub>`api.ogt` line 8195</sub>
 
 ## Types
 
@@ -1709,6 +1710,29 @@ struct GltfDesc {
 
 <sub>`api.ogt` line 7664</sub>
 
+<a id="type-GltfPart"></a>
+
+### `GltfPart` (struct)
+
+One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `geometry` | `Geometry` | `0` | — | — | — | Mesh-local geometry; transform places it in model space. |
+| `material` | `Material` | `0` | — | — | — | This part's material. |
+| `transform` | `Matrix4` | `{ elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] }` | — | — | — | Primitive-to-model placement, including node ancestors and instance transforms, or the skinned node's bind placement. |
+
+```ogt
+struct GltfPart {
+  doc "One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts."
+  field geometry Geometry "Mesh-local geometry; transform places it in model space."
+  field material Material "This part's material."
+  field transform Matrix4 "Primitive-to-model placement, including node ancestors and instance transforms, or the skinned node's bind placement."
+}
+```
+
+<sub>`api.ogt` line 7676</sub>
+
 <a id="type-GltfInfo"></a>
 
 ### `GltfInfo` (struct)
@@ -1718,7 +1742,8 @@ What a loaded glTF holds.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scenes` | `number` | `0` | — | — | — | How many scenes it has. |
-| `geometries` | `readonly Geometry[]` | `[]` | — | — | — | Its geometries, in glTF mesh-primitive order. |
+| `geometries` | `readonly Geometry[]` | `[]` | — | — | — | Mesh-local geometries, without node placement. Use parts to read each placement in model space. |
+| `parts` | `readonly GltfPart[]` | `[]` | — | — | — | Placed primitives in the default scene, in draw order. |
 | `materials` | `readonly Material[]` | `[]` | — | — | — | Its materials, in glTF order, then the default material. |
 | `variants` | `readonly string[]` | `[]` | — | — | — | Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants. |
 | `lights` | `number` | `0` | — | — | — | How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra). |
@@ -1728,7 +1753,8 @@ What a loaded glTF holds.
 struct GltfInfo {
   doc "What a loaded glTF holds."
   field scenes u32 "How many scenes it has."
-  field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
+  field geometries List.Geometry "Mesh-local geometries, without node placement. Use parts to read each placement in model space."
+  field parts List.GltfPart "Placed primitives in the default scene, in draw order."
   field materials List.Material "Its materials, in glTF order, then the default material."
   field variants List.String "Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants."
   field lights u32 "How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra)."
@@ -1736,7 +1762,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7676</sub>
+<sub>`api.ogt` line 7683</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1759,7 +1785,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7686</sub>
+<sub>`api.ogt` line 7694</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1792,7 +1818,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7693</sub>
+<sub>`api.ogt` line 7701</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1823,7 +1849,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7705</sub>
+<sub>`api.ogt` line 7713</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1854,7 +1880,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 7718</sub>
+<sub>`api.ogt` line 7726</sub>
 
 <a id="type-LoadBudget"></a>
 
@@ -1894,7 +1920,7 @@ struct LoadBudget {
 }
 ```
 
-<sub>`api.ogt` line 8038</sub>
+<sub>`api.ogt` line 8046</sub>
 
 <a id="type-ImageKind"></a>
 
@@ -1919,7 +1945,7 @@ enum ImageKind {
 }
 ```
 
-<sub>`api.ogt` line 8059</sub>
+<sub>`api.ogt` line 8067</sub>
 
 <a id="type-GltfDataDesc"></a>
 
@@ -1941,7 +1967,7 @@ struct GltfDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8066</sub>
+<sub>`api.ogt` line 8074</sub>
 
 <a id="type-ImageDataDesc"></a>
 
@@ -1965,7 +1991,7 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8072</sub>
+<sub>`api.ogt` line 8080</sub>
 
 <a id="type-EnvironmentDataDesc"></a>
 
@@ -1996,7 +2022,7 @@ struct EnvironmentDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8079</sub>
+<sub>`api.ogt` line 8087</sub>
 
 <a id="type-EnvironmentInfo"></a>
 
@@ -2021,7 +2047,7 @@ struct EnvironmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8092</sub>
+<sub>`api.ogt` line 8100</sub>
 
 <a id="type-ImageInfo"></a>
 
@@ -2044,7 +2070,7 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8100</sub>
+<sub>`api.ogt` line 8108</sub>
 
 <a id="type-LoadCompletion"></a>
 
@@ -2069,7 +2095,7 @@ struct LoadCompletion {
 }
 ```
 
-<sub>`api.ogt` line 8107</sub>
+<sub>`api.ogt` line 8115</sub>
 
 ## Column kinds
 

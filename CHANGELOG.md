@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
+  geometry, material and primitive-to-model matrix; `geometries` remains
+  mesh-local. TerrainScatter applies the named impostor model's placements
+  to its geometry, so node-scaled meshes and their cards agree at every
+  distance. Mismatched bounds skip the scatter with a runtime warning and
+  `render.scatterIssue` in the entity dump. Render-only; no simulation pins change.
 - **Breaking: insert ranges.** `world.insert` now refuses values outside
   reflected min/max on both hosts, before mutation or deferred insertion.
   Fix out-of-range component initializers; ordinary field writes are unchanged.

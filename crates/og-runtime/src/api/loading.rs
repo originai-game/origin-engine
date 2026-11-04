@@ -263,14 +263,25 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 materials,
                 variants,
                 lights,
-            } => Ok(json!({
+            } => {
+                let rs = eng.render.borrow();
+                let parts = rs.models.get(&(asset as u64)).into_iter().flatten().map(|(mesh, material, transform)| {
+                    json!({
+                        "geometry": assets::handle(rs.geometries.iter().position(|m| m == mesh).expect("registered model geometry")) as f64,
+                        "material": assets::handle(rs.materials.iter().position(|m| m == material).expect("registered model material")) as f64,
+                        "transform": {"elements": transform.to_cols_array()},
+                    })
+                }).collect::<Vec<_>>();
+                Ok(json!({
                 "variants": variants,
                 "lights": lights.len(),
                 "scenes": scenes,
                 "geometries": geometries.iter().map(|g| *g as f64).collect::<Vec<_>>(),
+                "parts": parts,
                 "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
                 "animations": clip_names(&a, &e.path)?,
-            })),
+                }))
+            }
             // An uncooked load (og.load.gltfData) on its way, or failed.
             Payload::Uncooked => match &e.status {
                 assets::Status::Failed(r) => Err(r.clone()),

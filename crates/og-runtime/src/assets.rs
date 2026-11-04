@@ -504,6 +504,54 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     insert_model(eng, &id, group, model, &textures, impostor, into, true).map(|(i, _)| i)
 }
 
+/// Place each primitive in the same model space used by its impostor bake.
+fn scatter_meshes(
+    scene: &mut og_render::RenderScene,
+    parts: &super::extract::Parts,
+) -> Vec<(og_render::MeshHandle, og_render::MeshHandle)> {
+    let mut out = Vec::new();
+    for &(mesh, _, _) in parts {
+        if out.iter().any(|&(source, _)| source == mesh) {
+            continue;
+        }
+        let placements: Vec<_> = parts.iter().filter(|p| p.0 == mesh).map(|p| p.2).collect();
+        if placements == [glam::Mat4::IDENTITY] {
+            out.push((mesh, mesh));
+            continue;
+        }
+        let source = scene.mesh(mesh).expect("loaded model mesh");
+        let mut placed = og_render::MeshData {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+        };
+        for transform in placements {
+            let normal = glam::Mat3::from_mat4(transform).inverse().transpose();
+            let mirrored = transform.determinant() < 0.0;
+            let base = placed.vertices.len() as u32;
+            placed.vertices.extend(source.vertices.iter().map(|v| {
+                let mut v = *v;
+                v.position = transform.transform_point3(v.position.into()).to_array();
+                v.normal = (normal * glam::Vec3::from(v.normal))
+                    .normalize_or_zero()
+                    .to_array();
+                let tangent = glam::Vec4::from(v.tangent);
+                v.tangent = transform
+                    .transform_vector3(tangent.truncate())
+                    .normalize_or_zero()
+                    .extend(if mirrored { -tangent.w } else { tangent.w })
+                    .to_array();
+                v
+            }));
+            for &[a, b, c] in source.indices.as_chunks::<3>().0 {
+                let triangle = if mirrored { [a, c, b] } else { [a, b, c] };
+                placed.indices.extend(triangle.map(|i| i + base));
+            }
+        }
+        out.push((mesh, scene.add_mesh(placed)));
+    }
+    out
+}
+
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
 /// order) to the renderer as asset `id`: a new asset, or `into` an existing
 /// index. A cooked model is `registered` under its path (og.load.gltf of it
@@ -544,6 +592,11 @@ pub(crate) fn insert_model(
         rs.decoded.ids.insert(*h, t.id.clone());
     }
     let texture_handles = parts.textures.clone();
+    let scatter_meshes = if impostor.is_some() {
+        scatter_meshes(&mut rs.scene, &parts.parts)
+    } else {
+        Vec::new()
+    };
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
     // mesh, so the first og.render.raycast builds nothing.
     for (p, prim) in model.primitives.iter().enumerate() {
@@ -607,6 +660,7 @@ pub(crate) fn insert_model(
                     parts,
                     center: (model.min + model.max) * 0.5,
                     radius: ((model.max - model.min) * 0.5).length().max(1e-3),
+                    scatter_meshes,
                     impostor,
                 }
             })

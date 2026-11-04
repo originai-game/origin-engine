@@ -96,6 +96,9 @@ impl Capture for RuntimeCapture {
         if let Some(issue) = rs.fx.pose_issues.get(&entity.to_bits()) {
             out.insert("skinIssue".into(), issue.clone());
         }
+        if let Some(issue) = rs.terrain.scatter_issues.get(&entity.to_bits()) {
+            out.insert("scatterIssue".into(), json!(issue));
+        }
         if let Some(terrain) = super::terrain::dump_render(&rs, entity.to_bits()) {
             out.insert("terrain".into(), terrain);
         }

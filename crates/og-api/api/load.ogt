@@ -64,10 +64,18 @@ module load {
     }
   }
 
+  struct GltfPart {
+    doc "One placed primitive in the model's default scene. Repeated nodes and instances produce separate parts."
+    field geometry Geometry "Mesh-local geometry; transform places it in model space."
+    field material Material "This part's material."
+    field transform Matrix4 "Primitive-to-model placement, including node ancestors and instance transforms, or the skinned node's bind placement."
+  }
+
   struct GltfInfo {
     doc "What a loaded glTF holds."
     field scenes u32 "How many scenes it has."
-    field geometries List.Geometry "Its geometries, in glTF mesh-primitive order."
+    field geometries List.Geometry "Mesh-local geometries, without node placement. Use parts to read each placement in model space."
+    field parts List.GltfPart "Placed primitives in the default scene, in draw order."
     field materials List.Material "Its materials, in glTF order, then the default material."
     field variants List.String "Its material variants' names (KHR_materials_variants), in glTF order: og.Model.variant draws an instance with one, by its index here. Empty for a model without variants."
     field lights u32 "How many punctual lights it has (KHR_lights_punctual) in its default scene: world.instantiate and a scene's `model` line spawn each as a child entity of the model's, with an og.PointLight, og.SpotLight or og.DirectionalLight at its node's place (glTF's candela as the radiance at one metre, its range as distance, a light of infinite range ending where its radiance falls to 0.01, a spot's outer cone as angle and 1 - inner / outer as penumbra)."
@@ -584,4 +592,3 @@ module load {
 }
 
 # ── physics ───────────────────────────────────────────────────────────────
-
