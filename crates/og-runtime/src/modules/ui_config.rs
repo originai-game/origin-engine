@@ -189,17 +189,22 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             .ui
             .clone()
             .ok_or("this engine has no UI")?;
-        let icons = &d["icons"];
-        let atlas = if icons.is_object() {
+        // A game's atlas (`icons`), else the style's; under either, the
+        // set that draws the names it lacks (`fallbackIcons`).
+        let atlas_of = |field: &str| -> Result<Option<IconAtlas>, String> {
+            let icons = &d[field];
+            if !icons.is_object() {
+                return Ok(None);
+            }
             let texture = match icons["texture"].as_f64() {
                 Some(t) => {
                     let rs = eng.render.borrow();
                     let i = super::assets::index_of(t)
-                        .ok_or_else(|| format!("icons.texture: {t} is not a texture"))?;
+                        .ok_or_else(|| format!("{field}.texture: {t} is not a texture"))?;
                     Some(
                         *rs.textures
                             .get(i)
-                            .ok_or_else(|| format!("icons.texture: texture {t} is not alive"))?,
+                            .ok_or_else(|| format!("{field}.texture: texture {t} is not alive"))?,
                     )
                 }
                 None => None,
@@ -209,24 +214,24 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             let set = match icons["font"].as_f64() {
                 Some(h) => {
                     let i = super::assets::index_of(h)
-                        .ok_or_else(|| format!("icons.font: {h} is not a font"))?;
+                        .ok_or_else(|| format!("{field}.font: {h} is not a font"))?;
                     let names = eng
                         .assets
                         .borrow()
                         .fonts
                         .get(i)
                         .map(|f| f.icons.clone())
-                        .ok_or_else(|| format!("icons.font: font {h} is not alive"))?;
+                        .ok_or_else(|| format!("{field}.font: font {h} is not alive"))?;
                     if names.is_empty() {
                         return Err(format!(
-                            "icons.font: font {h} is not an icon set (cook SVGs with an .ogt of `type icons`)"
+                            "{field}.font: font {h} is not an icon set (cook SVGs with an .ogt of `type icons`)"
                         ));
                     }
                     Some((ui_font(&eng, h)?, names))
                 }
                 None => None,
             };
-            match set {
+            Ok(Some(match set {
                 Some((font, names)) => IconAtlas {
                     font: Some(font),
                     names,
@@ -244,21 +249,27 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                                 .collect()
                         })
                         .unwrap_or_default(),
-                    font: None,
+                    ..IconAtlas::default()
                 },
-            }
-        } else if let Some((file, _, _, Some(texture), _, _)) = &style {
-            let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
-            IconAtlas {
-                texture: Some(*texture),
-                columns,
-                rows,
-                names,
-                font: None,
-            }
-        } else {
-            IconAtlas::default()
+            }))
         };
+        let mut atlas = match atlas_of("icons")? {
+            Some(atlas) => atlas,
+            None => match &style {
+                Some((file, _, _, Some(texture), _, _)) => {
+                    let (_, columns, rows, names) = file.icons.clone().unwrap_or_default();
+                    IconAtlas {
+                        texture: Some(*texture),
+                        columns,
+                        rows,
+                        names,
+                        ..IconAtlas::default()
+                    }
+                }
+                _ => IconAtlas::default(),
+            },
+        };
+        atlas.fallback = atlas_of("fallbackIcons")?.map(Box::new);
         // Pictures rich text draws inline by name ([img=…]).
         let mut images = std::collections::BTreeMap::new();
         for im in d["images"].as_array().into_iter().flatten() {

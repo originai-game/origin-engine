@@ -282,7 +282,7 @@ pub(crate) fn palette_icons(
     art: &ArtFrame,
     overlay: &mut og_render::Overlay,
     (sprites, texts, shapes): (usize, usize, usize),
-    icons: (Option<TextureHandle>, &[og_render::FontHandle]),
+    icons: (&[TextureHandle], &[og_render::FontHandle]),
 ) {
     if art.strict.is_empty() {
         return;
@@ -292,7 +292,7 @@ pub(crate) fn palette_icons(
         c[..3].copy_from_slice(&rgb);
     };
     for s in &mut overlay.sprites[sprites..] {
-        if s.texture.is_some() && s.texture == icons.0 {
+        if s.texture.is_some_and(|t| icons.0.contains(&t)) {
             to(&mut s.color);
         }
     }
@@ -303,7 +303,7 @@ pub(crate) fn palette_icons(
     }
     for s in &mut overlay.ui.shapes[shapes..] {
         if let og_render::UiPaint::Image(im) = &mut s.paint
-            && Some(im.texture) == icons.0
+            && icons.0.contains(&im.texture)
         {
             to(&mut im.tint);
         }

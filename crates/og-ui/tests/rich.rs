@@ -39,7 +39,7 @@ fn rich_ui() -> Ui {
         columns: 2,
         rows: 1,
         names: vec!["coin".into(), "star".into()],
-        font: None,
+        ..IconAtlas::default()
     });
     ui
 }
@@ -534,7 +534,7 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         columns: 2,
         rows: 1,
         names: vec!["coin".into(), "ps.cross".into()],
-        font: None,
+        ..IconAtlas::default()
     });
     ui.set_images(
         [(

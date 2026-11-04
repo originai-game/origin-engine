@@ -47350,6 +47350,18 @@
           "description": "The icon atlas og.ui.icon draws from; null takes the style's.",
           "default": null
         },
+        "fallbackIcons": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IconAtlasDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. og.ui.icon, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.",
+          "default": null
+        },
         "images": {
           "type": "array",
           "items": {

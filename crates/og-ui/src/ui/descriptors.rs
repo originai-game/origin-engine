@@ -610,6 +610,18 @@ pub struct IconAtlas {
     pub names: Vec<String>,
     /// An icon set: its MTSDF font (`texture` is then unused).
     pub font: Option<crate::text::UiFont>,
+    /// The atlas that draws the names this one lacks (`UiDesc.fallbackIcons`):
+    /// a game's whole set under a style pack's few painted icons.
+    pub fallback: Option<Box<IconAtlas>>,
+}
+
+/// Where an icon of the atlas is drawn from ([`IconAtlas::find`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum IconCell {
+    /// An icon set's distance-field glyph.
+    Glyph(og_render::FontHandle, char),
+    /// A cell of a texture grid, `[u0, v0, u1, v1]`.
+    Image(TextureHandle, [f32; 4]),
 }
 
 /// A picture rich text draws inline by name (`[img=<name>]`): a texture
@@ -647,6 +659,21 @@ impl IconAtlas {
     pub fn glyph(&self, index: u32) -> Option<(og_render::FontHandle, char)> {
         let f = self.font.as_ref()?.handle?;
         Some((f, char::from_u32(ICON_PUA + index)?))
+    }
+
+    /// The icon named `name`: from this atlas where it draws one, else
+    /// from its fallback's.
+    pub fn find(&self, name: &str) -> Option<IconCell> {
+        let own = self.index_of(name).and_then(|k| match self.glyph(k) {
+            Some((font, ch)) => Some(IconCell::Glyph(font, ch)),
+            None => self.texture.map(|t| IconCell::Image(t, self.uv(k))),
+        });
+        own.or_else(|| self.fallback.as_deref()?.find(name))
+    }
+
+    /// This atlas and the fallbacks under it, top first.
+    pub fn layers(&self) -> impl Iterator<Item = &IconAtlas> {
+        std::iter::successors(Some(self), |a| a.fallback.as_deref())
     }
 }
 

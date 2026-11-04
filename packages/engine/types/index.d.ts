@@ -23975,6 +23975,12 @@ export interface UiDesc {
    */
   readonly icons?: IconAtlasDesc | null;
   /**
+   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. og.ui.icon, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.
+   *
+   * @default null
+   */
+  readonly fallbackIcons?: IconAtlasDesc | null;
+  /**
    * Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours.
    *
    * @default []

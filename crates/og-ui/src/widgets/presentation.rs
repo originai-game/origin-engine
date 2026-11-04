@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::IconCell;
 
 impl Ui {
     /// A chip: a capsule on `control`; selected, it inverts to `ink` (in a
@@ -344,25 +345,10 @@ impl Ui {
                 )
             }))
         {
-            match self.icons.index_of(name).map(|k| (k, self.icons.glyph(k))) {
-                Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
-                    frame: Frame::FULL,
-                    font,
-                    ch,
-                    color: tint,
-                }),
-                Some((k, None)) => {
-                    if let Some(texture) = self.icons.texture {
-                        self.nodes[i].shapes.push(Shape::Image {
-                            frame: Frame::FULL,
-                            texture,
-                            uv: self.icons.uv(k),
-                            color: tint,
-                        });
-                    }
-                }
+            match self.icon_shape(name, Frame::FULL, tint) {
+                Some(shape) => self.nodes[i].shapes.push(shape),
                 None => self.warnings.push(format!(
-                    "icon '{name}' is not in the icon atlas; pass its name in the atlas's names"
+                    "icon '{name}' is in neither the icon atlas nor UiDesc.fallbackIcons; add it to one of them"
                 )),
             }
         }
@@ -522,28 +508,10 @@ impl Ui {
                 ..Frame::default()
             };
             let ink = t.palette.ink_faint;
-            match self
-                .icons
-                .index_of(ph.icon)
-                .map(|k| (k, self.icons.glyph(k)))
-            {
-                Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
-                    frame,
-                    font,
-                    ch,
-                    color: ink,
-                }),
-                Some((k, None)) if self.icons.texture.is_some() => {
-                    let uv = self.icons.uv(k);
-                    self.nodes[i].shapes.push(Shape::Image {
-                        frame,
-                        texture: self.icons.texture.expect("checked"),
-                        uv,
-                        color: ink,
-                    })
-                }
+            match self.icon_shape(ph.icon, frame, ink) {
+                Some(shape) => self.nodes[i].shapes.push(shape),
                 // No icon set: a disc, the shape of a subject.
-                _ => self.nodes[i].shapes.push(Shape::Rect {
+                None => self.nodes[i].shapes.push(Shape::Rect {
                     frame,
                     radius: 9999.0,
                     color: ink.fade(0.5),
@@ -577,24 +545,23 @@ impl Ui {
 
     /// Whether the icon atlas has an icon of this name.
     pub fn has_icon(&self, name: &str) -> bool {
-        self.icons.is_drawn() && self.icons.index_of(name).is_some()
+        self.icons.find(name).is_some()
     }
 
     pub(super) fn icon_shape(&self, name: &str, frame: Frame, color: Srgba) -> Option<Shape> {
-        let k = self.icons.index_of(name)?;
-        if let Some((font, ch)) = self.icons.glyph(k) {
-            return Some(Shape::Glyph {
+        Some(match self.icons.find(name)? {
+            IconCell::Glyph(font, ch) => Shape::Glyph {
                 frame,
                 font,
                 ch,
                 color,
-            });
-        }
-        Some(Shape::Image {
-            frame,
-            texture: self.icons.texture?,
-            uv: self.icons.uv(k),
-            color,
+            },
+            IconCell::Image(texture, uv) => Shape::Image {
+                frame,
+                texture,
+                uv,
+                color,
+            },
         })
     }
 }

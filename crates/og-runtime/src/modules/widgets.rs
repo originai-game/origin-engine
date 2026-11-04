@@ -412,18 +412,19 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     // distance field the cook leaves as it is, so its tint is moved to
     // the palette here.
     let icons = ui.icons();
+    let icon_textures: Vec<og_render::TextureHandle> =
+        icons.layers().filter_map(|a| a.texture).collect();
     let icon_fonts: Vec<og_render::FontHandle> = icons
-        .font
-        .as_ref()
-        .and_then(|f| f.handle)
-        .map(|h| rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]))
-        .unwrap_or_default();
+        .layers()
+        .filter_map(|a| a.font.as_ref().and_then(|f| f.handle))
+        .flat_map(|h| rs.ui_pages.get(&h).cloned().unwrap_or_else(|| vec![h]))
+        .collect();
     if let Some(overlay) = rs.scene.overlay.as_mut() {
         super::art::palette_icons(
             &rs.art.frame,
             overlay,
             (first_sprite, first_text, first_shape),
-            (icons.texture, &icon_fonts),
+            (&icon_textures, &icon_fonts),
         );
     }
 }

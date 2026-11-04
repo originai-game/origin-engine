@@ -485,6 +485,78 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
+/// A style pack paints a few icons; the game's whole set
+/// (`UiDesc.fallbackIcons`) draws the names the pack lacks, in `icon` and
+/// in rich text, and never replaces a name the pack painted.
+#[test]
+fn a_fallback_set_draws_the_icons_a_pack_lacks() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut scene = og_render::RenderScene::new();
+    let set = add_test_font(&mut scene);
+    let font = set.handle.expect("the test font draws");
+    let painted = scene.add_texture(og_render::TextureData {
+        width: 2,
+        height: 2,
+        rgba: vec![255; 16],
+        color_space: og_render::ColorSpace::Srgb,
+        mips: og_render::Mips::None,
+    });
+    ui.set_icons(IconAtlas {
+        texture: Some(painted),
+        columns: 2,
+        rows: 1,
+        names: vec!["coin".into(), "star".into()],
+        fallback: Some(Box::new(IconAtlas {
+            font: Some(set),
+            names: vec!["star".into(), "settings".into(), "bell".into()],
+            ..IconAtlas::default()
+        })),
+        ..IconAtlas::default()
+    });
+    assert!(ui.has_icon("bell") && ui.has_icon("coin") && !ui.has_icon("moon"));
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.icon("Star", "star", IconDesc::default());
+        ui.icon("Bell", "bell", IconDesc::default());
+        ui.rich_text("Line", "Ring [icon=settings]", RichTextDesc::default());
+        ui.end();
+    }
+    let items = &ui.frame().items;
+    let images: Vec<[f32; 4]> = items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Image {
+                texture: Some(t),
+                uv,
+                ..
+            } if *t == painted => Some(*uv),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        images,
+        vec![[0.5, 0.0, 1.0, 1.0]],
+        "star keeps the pack's cell"
+    );
+    let glyphs: Vec<String> = items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Text { text, font: f, .. }
+                if *f == font && text.chars().all(|c| c >= '\u{E000}') =>
+            {
+                Some(text.clone())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        glyphs,
+        vec!["\u{E002}".to_string(), "\u{E001}".to_string()],
+        "bell and the inline settings from the fallback set"
+    );
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
 /// Kestrel-stair FINDINGS #15: a grid lays out exactly `columns` cells a
 /// row, whatever its width: a fit grid that many cells of the asked width,
 /// a growing one with the cells sharing its width (wider than asked, or

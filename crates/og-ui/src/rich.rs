@@ -22,8 +22,8 @@ use crate::ui::{Response, Ui};
 /// unit on the baseline.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Atom {
-    /// A cell of the icon atlas, one em square, in the span's ink.
-    Icon(u32),
+    /// An icon of the atlas, one em square, in the span's ink.
+    Icon(crate::ui::IconCell),
     /// A registered picture, one em tall at its aspect, in its own colours.
     Image(crate::ui::InlineImage),
     /// A key's name on a cap (an action's glyph with no icon).
@@ -543,7 +543,7 @@ impl Ui {
             });
             let mut text = s.text.clone();
             let atom = if let Some(name) = &s.icon {
-                match self.icons.index_of(name).filter(|_| self.icons.is_drawn()) {
+                match self.icons.find(name) {
                     Some(k) => Some(Atom::Icon(k)),
                     None => {
                         self.warnings
@@ -567,11 +567,7 @@ impl Ui {
                 match self.glyph(name) {
                     Some(g) => {
                         text = g.text.clone();
-                        match self
-                            .icons
-                            .index_of(&g.icon)
-                            .filter(|_| self.icons.is_drawn())
-                        {
+                        match self.icons.find(&g.icon) {
                             Some(k) => Some(Atom::Icon(k)),
                             None if !g.text.is_empty() => Some(Atom::Cap(g.text)),
                             None => continue,
@@ -833,34 +829,37 @@ impl Ui {
                 }
                 continue;
             }
-            if let Some(Atom::Icon(cell)) = s.atom {
+            if let Some(Atom::Icon(cell)) = &s.atom {
                 let side = s.step.size * n.scale;
-                if let Some((font, ch)) = self.icons.glyph(cell) {
-                    // An icon set's glyph: its em square where a cell would be.
-                    let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);
-                    cmds.push(DrawCmd::Text {
-                        x,
-                        baseline: top + side,
-                        size: side,
-                        text: ch.to_string(),
-                        color: color.fade(alpha).linear(),
-                        font,
-                        bounds: Rect::new(x, top, side, side),
-                        clip,
-                        tracking: 0.0,
-                        weight: 0.0,
-                        glow: None,
-                        placements: Vec::new(),
-                    });
-                } else if let Some(tex) = self.icons.texture {
-                    cmds.push(DrawCmd::Image {
-                        rect: Rect::new(r.x + side * 0.05, baseline - side * 0.85, side, side)
-                            .snapped(dpr),
-                        texture: Some(tex),
-                        uv: self.icons.uv(cell),
-                        color: color.fade(alpha).linear(),
-                        clip,
-                    });
+                match *cell {
+                    crate::ui::IconCell::Glyph(font, ch) => {
+                        // An icon set's glyph: its em square where a cell would be.
+                        let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);
+                        cmds.push(DrawCmd::Text {
+                            x,
+                            baseline: top + side,
+                            size: side,
+                            text: ch.to_string(),
+                            color: color.fade(alpha).linear(),
+                            font,
+                            bounds: Rect::new(x, top, side, side),
+                            clip,
+                            tracking: 0.0,
+                            weight: 0.0,
+                            glow: None,
+                            placements: Vec::new(),
+                        });
+                    }
+                    crate::ui::IconCell::Image(tex, uv) => {
+                        cmds.push(DrawCmd::Image {
+                            rect: Rect::new(r.x + side * 0.05, baseline - side * 0.85, side, side)
+                                .snapped(dpr),
+                            texture: Some(tex),
+                            uv,
+                            color: color.fade(alpha).linear(),
+                            clip,
+                        });
+                    }
                 }
                 continue;
             }

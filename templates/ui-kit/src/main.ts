@@ -489,6 +489,8 @@ function applyTheme(world: World, d: DemoState): void {
     // as ICONS names them too); a style pack's own icons on its screens but
     // the materials one; the PNG grid only if the set did not load.
     icons: d.iconSet && (d.iconoir || !style) ? { font: d.iconSet as never } : style ? null : d.icons ? { texture: d.icons as never, columns: 8, rows: 4, names: ICONS } : {},
+    // Under a pack, the names its atlas does not paint (a bell, a map pin) from the iconoir set.
+    fallbackIcons: d.iconSet && style && !d.iconoir ? { font: d.iconSet as never } : null,
     sounds: d.sounds ? sounds : null,
   });
 }
