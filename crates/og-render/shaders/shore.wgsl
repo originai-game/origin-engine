@@ -54,8 +54,14 @@ struct Shoal {
 
 const OPEN_SEA: Shoal = Shoal(0.0, 0.0, 1.0, 0.0, 0.0, vec2<f32>(0.0), 0.0);
 
+// tanh(x) for x >= 0 that holds for any x: Metal's fast-math tanh overflows to NaN past x of some 40 (e^{2x} / e^{2x}),
+// and a short wave over deep water has k d in the hundreds; tanh(15) is 1 to within 2e-13.
+fn tanh_pos(x: f32) -> f32 {
+  return tanh(min(x, 15.0));
+}
+
 fn shoal_keep(k: f32, sh: Shoal) -> f32 {
-  return (1.0 + (tanh(k * sh.depth) - 1.0) * sh.inside) * sh.cap;
+  return (1.0 + (tanh_pos(k * sh.depth) - 1.0) * sh.inside) * sh.cap;
 }
 
 fn shoaling(p: vec2<f32>) -> Shoal {

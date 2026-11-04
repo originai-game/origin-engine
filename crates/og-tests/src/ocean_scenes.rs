@@ -21,6 +21,9 @@ pub const OCEAN_SCENES: &[&str] = &[
     "water-ocean-night",
     "water-shore",
     "water-shore-storm",
+    "water-shallows",
+    "water-wake",
+    "water-river",
 ];
 
 /// The sea's tick (a minute and a half in, at 60 a second).
@@ -85,6 +88,248 @@ fn metered(eye: Vec3, compensation: f32) -> Camera {
         },
         ..Default::default()
     }
+}
+
+/// `water-wake`'s boat: its half extents (m; a 2.4 by 6 m hull, 1 m
+/// deep), its draft, its speed along -z (m/s) and the frames it runs (one
+/// tick each: 5 s).
+pub const WAKE_HALF: Vec3 = Vec3::new(1.2, 0.5, 3.0);
+pub const WAKE_DRAFT: f32 = 0.5;
+pub const WAKE_SPEED: f32 = 5.0;
+pub const WAKE_FRAMES: u32 = 300;
+
+/// Where `water-wake`'s boat is `frame` ticks in (its centre, frame xz):
+/// from z = 10 towards -z at [`WAKE_SPEED`].
+pub fn wake_boat(frame: u32) -> Vec2 {
+    Vec2::new(0.0, 10.0 - WAKE_SPEED * frame as f32 / 60.0)
+}
+
+/// The boat's footprint `frame` ticks in, as og.Buoyancy's step records it.
+fn wake_cut(frame: u32) -> og_render::WaterCut {
+    let centre = wake_boat(frame);
+    let half = Vec2::new(WAKE_HALF.x, WAKE_HALF.z);
+    og_render::WaterCut {
+        entity: 1,
+        min: centre - half,
+        max: centre + half,
+        centre,
+        half,
+        axis: Vec2::X,
+        depth: WAKE_DRAFT,
+        speed: 0.0,
+    }
+}
+
+/// `water-wake`'s update: the tick, the boat's hull and the cuts of the
+/// last two ticks.
+pub fn wake_update(scene: &mut RenderScene, frame: u32) {
+    scene.tick = TICK + u64::from(frame);
+    let at = wake_boat(frame);
+    if let Some(boat) = scene.instances.first_mut() {
+        boat.transform = Mat4::from_translation(Vec3::new(at.x, WAKE_HALF.y - WAKE_DRAFT, at.y));
+    }
+    let ticks = (frame.saturating_sub(1)..=frame)
+        .map(|f| (TICK + u64::from(f), vec![wake_cut(f)]))
+        .collect();
+    for w in &mut scene.water {
+        w.wakes = Some(std::sync::Arc::new(og_render::WaterWakes {
+            epoch: 1,
+            dt: 1.0 / 60.0,
+            ticks,
+            ..Default::default()
+        }));
+        break;
+    }
+}
+
+/// A boat running at 5 m/s over a light breeze's sea (`water-wake`, before
+/// [`wake_update`]): its bow wave, its Kelvin wake and the foam along its
+/// sides, seen from behind and above.
+fn wake(scene: &mut RenderScene) {
+    physical_light(scene, 14.0, PhysicalAtmosphere::EARTH);
+    let hull = scene.add_mesh(shapes::cuboid(WAKE_HALF * 2.0));
+    let paint = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.55, 0.12, 0.08),
+        roughness: 0.6,
+        ..Default::default()
+    });
+    scene.add_instance(hull, paint, Mat4::IDENTITY);
+    scene.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
+    sea_haze(scene);
+    scene.camera = Camera {
+        position: Vec3::new(9.0, 16.0, 22.0),
+        target: Vec3::new(0.0, 0.0, -6.0),
+        far: 5000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    wake_update(scene, 0);
+}
+
+/// `water-river`'s course: along a terrace 4 m up, over its edge in a
+/// 4 m fall, then on across the plain below (frame xz and the water's level).
+pub const RIVER_COURSE: [Vec3; 6] = [
+    Vec3::new(-40.0, 4.0, -38.0),
+    Vec3::new(-18.0, 4.0, -20.0),
+    Vec3::new(-0.5, 4.0, -8.0),
+    Vec3::new(0.5, 0.0, -7.5),
+    Vec3::new(14.0, 0.0, 4.0),
+    Vec3::new(40.0, 0.0, 16.0),
+];
+pub const RIVER_WIDTH: f32 = 7.0;
+pub const RIVER_SPEED: f32 = 1.8;
+
+/// The ground of `water-river`'s valley at frame point `p` (xz): the
+/// river's bed 1.2 m under its level mid-stream, its banks rising to half a
+/// metre over it a couple of metres past its edge, and the level of the
+/// course's nearest point beyond (the terrace and the plain, a cliff where
+/// the river falls).
+fn river_ground(course: &og_core::river::River, p: Vec2) -> f32 {
+    let Some(at) = course.at(p) else {
+        return -1.0;
+    };
+    let s = at.across.abs() * 100.0;
+    let half = RIVER_WIDTH * 0.5;
+    let bank = (s - (half - 1.5)) / 3.5;
+    let t = bank.clamp(0.0, 1.0);
+    let rise = t * t * (3.0 - 2.0 * t);
+    let hills =
+        0.4 * ((p.x * 0.11).sin() * (p.y * 0.07).cos()) * ((s - half - 3.0) / 10.0).clamp(0.0, 1.0);
+    at.level - 1.2 + 1.7 * rise + hills
+}
+
+/// A river down a terrace into a waterfall and on across the plain
+/// (`water-river`): its current turning with its course, slowing to its
+/// banks, the fall's sheet and the white water of its pool.
+fn river(scene: &mut RenderScene) {
+    physical_light(scene, 15.5, PhysicalAtmosphere::EARTH);
+    let course =
+        og_core::river::River::new(&RIVER_COURSE, RIVER_WIDTH, RIVER_SPEED).expect("a river");
+    // The valley: a grid 120 m square at half a metre, its heights the ground's.
+    // (The course run on 100 m past either end, so the ground there follows its nearest level too.)
+    let mut long = RIVER_COURSE.to_vec();
+    let (a, b) = (RIVER_COURSE[0], RIVER_COURSE[1]);
+    long.insert(
+        0,
+        a + (a - b).normalize() * 100.0 * Vec3::new(1.0, 0.0, 1.0),
+    );
+    let (y, z) = (
+        RIVER_COURSE[RIVER_COURSE.len() - 1],
+        RIVER_COURSE[RIVER_COURSE.len() - 2],
+    );
+    long.push(y + (y - z).normalize() * 100.0 * Vec3::new(1.0, 0.0, 1.0));
+    let wide = og_core::river::River::new(&long, 200.0, 0.0).expect("a course");
+    let (n, size) = (241usize, 120.0f32);
+    let cell = size / (n - 1) as f32;
+    let height = |i: usize, j: usize| {
+        river_ground(
+            &wide,
+            Vec2::new(-size * 0.5 + i as f32 * cell, -size * 0.5 + j as f32 * cell),
+        )
+    };
+    let mut vertices = Vec::with_capacity(n * n);
+    for j in 0..n {
+        for i in 0..n {
+            let (l, r) = (
+                height(i.saturating_sub(1), j),
+                height((i + 1).min(n - 1), j),
+            );
+            let (d, u) = (
+                height(i, j.saturating_sub(1)),
+                height(i, (j + 1).min(n - 1)),
+            );
+            let normal = Vec3::new(l - r, 2.0 * cell, d - u).normalize();
+            vertices.push(og_render::Vertex {
+                position: [
+                    -size * 0.5 + i as f32 * cell,
+                    height(i, j),
+                    -size * 0.5 + j as f32 * cell,
+                ],
+                normal: normal.to_array(),
+                uv: [i as f32 * cell * 0.25, j as f32 * cell * 0.25],
+                color: [1.0; 4],
+                tangent: [0.0; 4],
+            });
+        }
+    }
+    let mut indices = Vec::with_capacity(6 * (n - 1) * (n - 1));
+    for j in 0..(n - 1) as u32 {
+        for i in 0..(n - 1) as u32 {
+            let a = j * n as u32 + i;
+            let (b, c, d) = (a + 1, a + n as u32, a + n as u32 + 1);
+            indices.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+    let ground = scene.add_mesh(og_render::MeshData { vertices, indices });
+    let earth = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.26, 0.3, 0.16),
+        roughness: 0.92,
+        ..Default::default()
+    });
+    scene.add_instance(ground, earth, Mat4::IDENTITY);
+    scene.water.push(Water {
+        size: Vec2::splat(size),
+        foam_width: 0.6,
+        depth_fade: 1.6,
+        river: Some(std::sync::Arc::new(course)),
+        ..Default::default()
+    });
+    scene.camera = Camera {
+        position: Vec3::new(17.0, 6.5, 13.0),
+        target: Vec3::new(-2.0, 1.5, -8.0),
+        far: 2000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+}
+
+/// Clear sea water over a white slope (`water-shallows`): the seabed's
+/// depth under the surface at frame x (m), from 0 at x = -[`SHALLOWS_HALF`]
+/// to 20 at +[`SHALLOWS_HALF`].
+pub fn shallows_depth(x: f32) -> f32 {
+    ((x + SHALLOWS_HALF) / (2.0 * SHALLOWS_HALF) * 20.0).max(0.0)
+}
+
+/// Half the width of `water-shallows`' slope across the frame (m).
+pub const SHALLOWS_HALF: f32 = 12.0;
+
+fn shallows(scene: &mut RenderScene) {
+    let slope = (20.0f32 / (2.0 * SHALLOWS_HALF)).atan();
+    let bed = scene.add_mesh(shapes::plane(200.0, 1.0));
+    let white = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.8),
+        roughness: 0.95,
+        ..Default::default()
+    });
+    // Tilted about z, down to the right; its height at x = 0 is -10 m.
+    scene.add_instance(
+        bed,
+        white,
+        Mat4::from_translation(Vec3::new(0.0, -10.0, 0.0)) * Mat4::from_rotation_z(-slope),
+    );
+    // A light breeze's sea (4 m/s) over it, not endless: its waves focus
+    // the sun into caustics on the slope (the waves' own, og.Water.caustics).
+    scene.water.push(Water {
+        size: Vec2::splat(200.0),
+        segments: 256,
+        wind: Vec2::new(1.5, -3.7),
+        choppiness: 0.5,
+        caustics: 1.0,
+        foam_width: 0.0,
+        wave_strength: 0.0,
+        // Clear ocean water: pure water's absorption (Pope & Fry 1997 at
+        // about 650, 550 and 450 nm) and a little scattering by particles.
+        absorption: Vec3::new(0.34, 0.057, 0.0092),
+        scattering: Vec3::new(0.01, 0.015, 0.025),
+        ..Default::default()
+    });
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 22.0, 0.5),
+        target: Vec3::ZERO,
+        far: 1000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
 }
 
 /// The scene called `name` of [`OCEAN_SCENES`].
@@ -158,6 +403,18 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             };
         }
         "water-flow-map" => flow_map_scene(&mut scene, true),
+        // W2: clear sea water (og.Water.absorption and scattering) over a
+        // white seabed sloping from the waterline on the left to 20 m deep on
+        // the right, seen from 22 m above in the late morning: the light
+        // through it goes from the sand's own to turquoise to deep blue as
+        // the red, then the green, is absorbed on the way down and back,
+        // and the waves' caustics play over the shallows.
+        "water-shallows" => {
+            physical_light(&mut scene, 10.5, earth);
+            shallows(&mut scene);
+        }
+        "water-wake" => wake(&mut scene),
+        "water-river" => river(&mut scene),
         // A gale building at dusk (the sun some 5° under the horizon) under a
         // closing deck, seen as the breeze's frame is, metered: the sea as
         // dark as the dim sky it mirrors, its body lit only by the dusk.

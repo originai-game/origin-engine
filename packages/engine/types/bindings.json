@@ -4543,6 +4543,23 @@
           "default": 0
         },
         {
+          "name": "river",
+          "column": "Path",
+          "default": 0
+        },
+        {
+          "name": "riverWidth",
+          "column": "f32",
+          "default": 6,
+          "tunable": true
+        },
+        {
+          "name": "riverSpeed",
+          "column": "f32",
+          "default": 1.5,
+          "tunable": true
+        },
+        {
           "name": "segments",
           "column": "u32",
           "default": 64
@@ -4570,6 +4587,24 @@
           "column": "f32",
           "default": 2.5,
           "tunable": true
+        },
+        {
+          "name": "absorption",
+          "column": "Color",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        {
+          "name": "scattering",
+          "column": "Color",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
         },
         {
           "name": "opacity",
@@ -4749,6 +4784,30 @@
         },
         {
           "name": "shoreFoam",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "foamStreaks",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "meniscus",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "dynamicWaves",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "spray",
           "column": "f32",
           "default": 1,
           "tunable": true

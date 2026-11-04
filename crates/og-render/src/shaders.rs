@@ -138,6 +138,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     for (label, wgsl) in crate::ocean_fft::sources() {
         add(label, wgsl);
     }
+    {
+        let (label, wgsl) = crate::water::caustics_source();
+        add(label, wgsl);
+    }
     add(
         "metaballs",
         crate::metaballs::metaballs_source(crate::FRAME_WGSL),
@@ -184,6 +188,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::aurora::FOOTPRINT_WGSL.to_string(),
     );
     add("water ripples", crate::water_ripples::WGSL.to_string());
+    add("sea wakes", crate::sea_wakes::WGSL.to_string());
     add("trails", crate::ribbons_gpu::WGSL.to_string());
     add("probe grid", crate::probe_grid::PROBE_GRID_WGSL.to_string());
     add("particle sprites", crate::particles_gpu::sprites_source());

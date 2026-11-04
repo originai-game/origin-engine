@@ -285,6 +285,7 @@ mod stylise;
 mod stylise_object;
 mod surface;
 pub use surface::SimulationSurface;
+mod sea_wakes;
 mod targets;
 mod terrain;
 mod terrain_error;
@@ -299,6 +300,7 @@ mod views;
 mod volumetric;
 mod water;
 mod water_ripples;
+mod water_river;
 mod weather;
 mod wind;
 
@@ -558,6 +560,8 @@ pub struct Renderer {
     lightmaps: lightmap::Lightmaps,
     /// The rect lights' LTC table (frame binding 11).
     ltc: wgpu::Buffer,
+    /// A sea's caustics grid (W2, `water::caustic_buffer`), in the frame group.
+    caustic_grid: wgpu::Buffer,
     /// Light cookies in the local shadow array's last layers.
     cookies: area::Cookies,
     /// Volumetric fog (made on first use).

@@ -101,6 +101,12 @@ pub struct Water {
     pub deep: Vec3,
     /// The depth (m) over which water turns from shallow to deep.
     pub depth_fade: f32,
+    /// W2: what the water absorbs and scatters of each colour per metre
+    /// (1/m): with either set, the body is physical (Beer–Lambert over the
+    /// light's path, single scattering of the sun and sky) and `shallow`,
+    /// `deep`, `depth_fade` and `opacity` are unused. Zero: those.
+    pub absorption: Vec3,
+    pub scattering: Vec3,
     /// How opaque deep water gets (0: clear, 1: the deep colour).
     pub opacity: f32,
     /// Linear foam colour.
@@ -181,6 +187,19 @@ pub struct Water {
     /// How far its crests lean and sharpen, 0 (round swell) to 1 (the most
     /// that never folds), whitecaps foaming where they bunch.
     pub choppiness: f32,
+    /// W4: how strongly the sea's ageing foam is drawn into streaks along
+    /// the wind (its lace gathered into windrows; 0: none).
+    pub foam_streaks: f32,
+    /// W4: how much spray its breaking crests throw (0: none).
+    pub spray: f32,
+    /// W3: how high the waves its og.Buoyancy hulls raise are drawn (their
+    /// bow waves, Kelvin wakes and contact foam; 0: none, not simulated).
+    pub dynamic_waves: f32,
+    /// W6: where the camera's near plane crosses the surface, the width
+    /// (px) of the meniscus line drawn along the waterline between the air
+    /// above and the water's fog below (0: the line alone, no meniscus;
+    /// below 0: no waterline, the whole frame above or under as the eye is).
+    pub meniscus: f32,
     /// R5: the sea reaches the horizon all round the camera (its waves stay
     /// where they are in the world), not only its `size` rectangle.
     pub endless: bool,
@@ -189,6 +208,13 @@ pub struct Water {
     /// (`water_ripples.rs`); on a sea it calms the FFT's chop under each
     /// og.Buoyancy hull (the tick floats none on it). `None`: neither.
     pub wakes: Option<Arc<WaterWakes>>,
+    /// W5: the water is a river along this course (`og_core::river`: the
+    /// centreline in the frame, its width and speed): drawn as a ribbon
+    /// over it in place of the `size` grid, its flow map the current, which
+    /// slows to the banks and turns with the course; where the course drops
+    /// steeper than 45 degrees the water falls. The tick drifts floaters
+    /// with the same current.
+    pub river: Option<Arc<og_core::river::River>>,
     /// W1: the seabed under the sea (og.Water.seabed): the waves shoal and
     /// break over it and the shore trains roll in, as the tick floats bodies
     /// on them (og-physics' `WaterBody::shore`). `None`: the open sea.
@@ -242,8 +268,15 @@ impl Default for Water {
             wind: Vec2::ZERO,
             swell: 1.0,
             choppiness: 0.6,
+            absorption: Vec3::ZERO,
+            scattering: Vec3::ZERO,
+            foam_streaks: 1.0,
+            spray: 1.0,
+            dynamic_waves: 1.0,
+            meniscus: 2.0,
             endless: false,
             wakes: None,
+            river: None,
             shore: None,
         }
     }
@@ -326,7 +359,7 @@ struct WaterGpu {
     /// lean d.z, k lean, unused) ([`ocean_gpu`]).
     ocean: [f32; 4],
     /// The sea's wind: xy its direction in the frame's xz, z its speed
-    /// (m/s), w unused. Its foam streaks lie along it.
+    /// (m/s), w how strongly its foam streaks along it (`foam_streaks`).
     sea_wind: [f32; 4],
     /// The sea's clipmap ([`clipmap`]): x its levels, y cells along a
     /// level's edge, z the horizon ring's radius (m), w 1 when endless.
@@ -338,7 +371,7 @@ struct WaterGpu {
     inverse: [[f32; 4]; 4],
     /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y the hulls in
     /// it ([`hulls`]), z the slope variance finer than the finest cascade,
-    /// w unused.
+    /// w the sea's significant height (m; its crests' subsurface light).
     fft: [f32; 4],
     /// Per cascade: one over its tile (1/m), its uv at the frame's origin
     /// (whole tiles dropped), its tile (m).
@@ -357,6 +390,93 @@ struct WaterGpu {
     /// the frame's xz, its cell, 1 with one; its columns and rows, the
     /// trains' wavenumber and amplitude; their phase now, the surf's foam.
     shore: [[f32; 4]; 3],
+    /// W4: the sea's spray ([`spray_gpu`]).
+    spray: [f32; 4],
+    /// W2: the water's absorption and scattering per metre (rgb; w 1 when
+    /// either is set: the physical body).
+    optics: [[f32; 4]; 2],
+    /// W6: x 1 when the near plane crosses this surface ([`waterline`]),
+    /// y the underwater fog's density, z the meniscus's width (px); w 1 for
+    /// a river (W5: its fronts turn with its flow, and it falls).
+    waterline: [f32; 4],
+    /// W3: the hulls' wakes ([`crate::sea_wakes`]): xy the square's centre
+    /// (frame xz), z one over its side (1/m), w 1 with them.
+    wake: [f32; 4],
+}
+
+/// W2: a sea's caustics grid (`shaders/water_caustics.wgsl`, lighting.wgsl
+/// `wave_caustics`): [`CAUSTIC_RES`]² texels of [`CAUSTIC_TEXEL`] metres
+/// about the camera, each the drawn surface's Hessian in one word.
+/// (16 KB, the downlevel limit of a uniform binding the renderer asks for.)
+pub(crate) const CAUSTIC_RES: u32 = 64;
+pub(crate) const CAUSTIC_TEXEL: f64 = 0.4;
+
+/// The grid's buffer, a uniform in the frame group (bound in every frame
+/// group, written by [`WaterRenderer::prepare`]'s caustics pass).
+pub(crate) fn caustic_buffer(device: &wgpu::Device) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("water caustics"),
+        size: u64::from(CAUSTIC_RES * CAUSTIC_RES) * 4,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    })
+}
+
+pub(crate) fn caustic_layout_entry() -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding: 12,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        },
+        count: None,
+    }
+}
+
+/// The caustics grid about the camera at `eye` (frame) in a scene whose
+/// frame's zero lies at `origin`: its texel (0, 0)'s centre in the frame's
+/// xz, snapped to whole texels of the absolute world (so the grid does not
+/// swim as the camera moves), the texel, the texels along an edge.
+pub(crate) fn caustic_grid(eye: Vec3, origin: Vec3) -> [f32; 4] {
+    let at = |e: f32, o: f32| {
+        let abs = f64::from(e) + f64::from(o);
+        let first = ((abs / CAUSTIC_TEXEL).floor() - f64::from(CAUSTIC_RES / 2)) * CAUSTIC_TEXEL;
+        (first - f64::from(o)) as f32
+    };
+    [
+        at(eye.x, origin.x),
+        at(eye.z, origin.z),
+        CAUSTIC_TEXEL as f32,
+        CAUSTIC_RES as f32,
+    ]
+}
+
+/// The spray's droplet slots per population (`SPRAY_SLOTS` in
+/// water.wgsl): the fine droplets, then the spume.
+const SPRAY_SLOTS: u32 = 4096;
+/// The water's clocks fold over this many seconds (f64 here, so a long
+/// game keeps its precision in the shader's f32): a whole number of every
+/// period they drive (the bank foam's 8 s), so the fold does not show.
+const SPRAY_FOLD: f64 = 4096.0;
+
+/// [`WaterGpu::spray`] of `water` at the tick's `seconds`: how much (0
+/// without a sea), its clock, the slots of each population drawn (half on
+/// the low tier); w the water's clock folded the same way, for every
+/// surface (its bank foam's two phases: f32 seconds lose their precision
+/// in a long session).
+fn spray_gpu(water: &Water, sea: bool, seconds: f64, quality: &crate::RenderQuality) -> [f32; 4] {
+    let clock = seconds.rem_euclid(SPRAY_FOLD) as f32;
+    if !sea || water.spray <= 0.0 {
+        return [0.0, 0.0, 0.0, clock];
+    }
+    let slots = if sea_tier(quality).1 < 3 {
+        SPRAY_SLOTS / 2
+    } else {
+        SPRAY_SLOTS
+    };
+    [water.spray, clock, slots as f32, clock]
 }
 
 /// [`WaterGpu::shore`] of `water` at the tick's `seconds`.
@@ -899,6 +1019,12 @@ pub(crate) struct WaterRenderer {
     pub(crate) pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
     /// For surfaces drawn over a mesh ([`Water::mesh`]).
     pub(crate) mesh_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    /// A sea's spray (W4: `vs_spray`, `fs_spray`), premultiplied over the
+    /// water, tested against its depth and writing none.
+    spray_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    /// W6: the waterline (`vs_waterline`, `fs_waterline`), a full-screen
+    /// triangle premultiplied over the frame, untested.
+    waterline_pipeline: crate::deferred::Sampled<wgpu::RenderPipeline>,
     /// The surfaces' view depth for the screen AO (`fs_ao_depth`; grid, mesh): into an R32 copy of the prepass
     /// depth, tested against the prepass, writing no depth.
     ao_depth_pipelines: crate::deferred::Deferred<[wgpu::RenderPipeline; 2]>,
@@ -924,6 +1050,170 @@ pub(crate) struct WaterRenderer {
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     module: crate::deferred::Module,
     last_sea: Option<wgpu::BindGroup>,
+    /// W2: the sea's caustics pass, made with the first sea with caustics.
+    caustics: Option<CausticsPass>,
+    /// W3: the sea's hulls' wakes, made with the first sea with hulls in
+    /// it, and the square's centre (frame xz) this frame when they ran.
+    wakes: Option<crate::sea_wakes::SeaWakes>,
+    wake_centre: Option<Vec2>,
+    /// What a surface without wakes binds there (one calm texel).
+    no_wake: wgpu::TextureView,
+    /// W5: the rivers' ribbons of this frame's surfaces.
+    rivers: Vec<crate::water_river::RiverMesh>,
+    /// What the last [`WaterRenderer::prepare`] submitted ahead of the
+    /// frame, and the foam steps it recorded ([`FrameStats::water_submits`]).
+    pub(crate) submitted: (u32, u32),
+}
+
+/// `CausticParams` in water_caustics.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct CausticsGpu {
+    grid: [f32; 4],
+    sea: [f32; 4],
+    cascades: [[f32; 4]; 3],
+    bands: [f32; 4],
+}
+
+/// W2: the pass that writes a sea's curvature into the caustics grid
+/// (`shaders/water_caustics.wgsl`).
+struct CausticsPass {
+    pipeline: wgpu::ComputePipeline,
+    layout: wgpu::BindGroupLayout,
+    uniform: wgpu::Buffer,
+    sampler: wgpu::Sampler,
+}
+
+const CAUSTICS_WGSL: &str = wgsl3d!("water_caustics.wgsl");
+
+/// This module's own WGSL, for the shader check.
+pub fn caustics_source() -> (&'static str, String) {
+    ("water caustics", CAUSTICS_WGSL.to_string())
+}
+
+impl CausticsPass {
+    fn new(device: &wgpu::Device) -> CausticsPass {
+        let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty,
+            count: None,
+        };
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("water caustics"),
+            entries: &[
+                entry(
+                    0,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
+                entry(
+                    1,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                ),
+                entry(
+                    2,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ),
+                entry(
+                    3,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
+            ],
+        });
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("water caustics"),
+            source: wgpu::ShaderSource::Wgsl(CAUSTICS_WGSL.into()),
+        });
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("water caustics"),
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
+        });
+        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("water caustics"),
+            layout: Some(&pl),
+            module: &module,
+            entry_point: Some("main"),
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("water caustics"),
+            size: std::mem::size_of::<CausticsGpu>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        // The cascades tile.
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("water caustics"),
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            ..Default::default()
+        });
+        CausticsPass {
+            pipeline,
+            layout,
+            uniform,
+            sampler,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn encode(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        fields: &wgpu::TextureView,
+        params: &CausticsGpu,
+        out: &wgpu::Buffer,
+    ) {
+        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(params));
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("water caustics"),
+            layout: &self.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(fields),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: out.as_entire_binding(),
+                },
+            ],
+        });
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("water caustics"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &group, &[]);
+        pass.dispatch_workgroups(CAUSTIC_RES / 8, CAUSTIC_RES / 8, 1);
+    }
 }
 
 /// What the FFT sea's spectrum was built for and what the water's uniforms
@@ -948,6 +1238,10 @@ struct FftSea {
 pub(crate) struct WaterDraw {
     group: wgpu::BindGroup,
     vertices: u32,
+    /// The spray's sprites after it (W4; 0: none).
+    spray: u32,
+    /// W6: the waterline pass after it (the near plane crosses it).
+    waterline: bool,
     /// The surface's world bounding sphere (its reflection probe: probe_select.rs).
     bounds: (Vec3, f32),
     /// Its mesh's vertex and index buffers and index count.
@@ -957,7 +1251,7 @@ pub(crate) struct WaterDraw {
 impl WaterRenderer {
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.pipeline, &self.mesh_pipeline])
+        crate::deferred::warm_one(&[&self.pipeline, &self.mesh_pipeline, &self.spray_pipeline])
     }
 
     pub(crate) fn new(
@@ -1035,6 +1329,19 @@ impl WaterRenderer {
                         .union(wgpu::ShaderStages::COMPUTE),
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                // W3: the sea's hulls' wakes (sea_wakes.rs; one calm texel without), read by the vertices and the
+                // height probe too.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 11,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
+                        .union(wgpu::ShaderStages::COMPUTE),
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: false,
                     },
@@ -1118,6 +1425,46 @@ impl WaterRenderer {
                 })
             })
         };
+        let spray_pipeline = crate::deferred_hdr(
+            device,
+            &pl,
+            module.clone(),
+            samples,
+            move |layout, module| crate::HdrPipeline {
+                alpha_to_coverage: false,
+                label: "water spray",
+                layout,
+                module,
+                vs: "vs_spray",
+                fs: "fs_spray",
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::Less,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                samples,
+            },
+        );
+        let waterline_pipeline = crate::deferred_hdr(
+            device,
+            &pl,
+            module.clone(),
+            samples,
+            move |layout, module| crate::HdrPipeline {
+                alpha_to_coverage: false,
+                label: "water waterline",
+                layout,
+                module,
+                vs: "vs_waterline",
+                fs: "fs_waterline",
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::Always,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                samples,
+            },
+        );
         let pipeline = crate::deferred_hdr(device, &pl, module, samples, move |layout, module| {
             crate::HdrPipeline {
                 alpha_to_coverage: false,
@@ -1153,6 +1500,22 @@ impl WaterRenderer {
             ..Default::default()
         });
         let flat = height_texture(device, 1).1;
+        let no_wake = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("water no wake"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba16Float,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&Default::default());
         let no_shore = {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("water no shore"),
@@ -1177,6 +1540,8 @@ impl WaterRenderer {
             layout,
             pipeline,
             mesh_pipeline,
+            spray_pipeline,
+            waterline_pipeline,
             ao_depth_pipelines,
             sampler,
             flat,
@@ -1186,6 +1551,12 @@ impl WaterRenderer {
             fft: None,
             module: probe_module,
             last_sea: None,
+            submitted: (0, 0),
+            wakes: None,
+            wake_centre: None,
+            rivers: Vec::new(),
+            no_wake,
+            caustics: None,
         }
     }
 
@@ -1211,6 +1582,7 @@ impl WaterRenderer {
         camera: &crate::Camera,
         quality: &crate::RenderQuality,
         fallback: &wgpu::TextureView,
+        caustic_grid: &wgpu::Buffer,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
         ) -> Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
@@ -1243,15 +1615,52 @@ impl WaterRenderer {
                 self.shores.push((f.clone(), view));
             }
         }
+        // W5: the rivers' ribbons, each built once for its course and frame.
+        self.rivers.retain(|m| {
+            waters
+                .iter()
+                .any(|w| w.river.as_ref().is_some_and(|r| m.fits(r, w.transform)))
+        });
+        for w in waters {
+            if let Some(r) = &w.river
+                && !self.rivers.iter().any(|m| m.fits(r, w.transform))
+            {
+                self.rivers.push(crate::water_river::RiverMesh::new(
+                    device,
+                    queue,
+                    r.clone(),
+                    w.transform,
+                ));
+            }
+        }
         let (sea_segments, sea_cascades) = sea_tier(quality);
-        let sea = self.fft_sea(device, queue, waters, sea_cascades, seconds, camera, origin);
+        self.submitted = (0, 0);
+        self.wake_centre = None;
+        let sea = self.fft_sea(
+            device,
+            queue,
+            waters,
+            sea_cascades,
+            seconds,
+            camera,
+            origin,
+            caustic_grid,
+        );
         let levels = clipmap(camera.position, origin, sea_segments);
+        let line = waterline(waters, camera, seconds, origin);
         let mut draws = Vec::with_capacity(waters.len());
         self.last_sea = None;
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.iter().find(|(i, _)| *i == index).map(|(_, v)| *v);
             let segments = grid_segments(water);
-            let mesh = water.mesh.and_then(mesh_buffers);
+            let river = water
+                .river
+                .as_ref()
+                .and_then(|r| self.rivers.iter().find(|m| m.fits(r, water.transform)));
+            let mesh = water
+                .mesh
+                .and_then(mesh_buffers)
+                .or_else(|| river.map(|m| (m.vertices.clone(), m.indices.clone(), m.count)));
             let field = height_field(water).filter(|_| mesh.is_none());
             if let Some(f) = field {
                 if slot
@@ -1296,18 +1705,25 @@ impl WaterRenderer {
                     }
                     let ripples = slot.ripples.as_mut().expect("made above");
                     ripples.update(device, queue, pipes, wakes);
+                    self.submitted.0 += 1;
                 }
                 _ => slot.ripples = None,
             }
             let shore_view = shore_view(&self.shores, &self.no_shore, water);
             let normal_view = water.normal_map.and_then(textures);
-            let flow_view = water.flow_map.and_then(textures);
+            // A river's flow map is its current, its length the river's speed.
+            let flow_view = match river {
+                Some(m) => Some(&m.flow),
+                None => water.flow_map.and_then(textures),
+            };
             // With a flow map the flow's length is the speed: three.js'
             // flowSpeed 0.03 for a zero flow.
-            let flow = if flow_view.is_some() && water.flow.length_squared() < 1e-12 {
-                Vec2::new(0.03, 0.0)
-            } else {
-                water.flow
+            let flow = match river {
+                Some(m) => Vec2::new(m.river.speed.max(1e-3), 0.0),
+                None if flow_view.is_some() && water.flow.length_squared() < 1e-12 => {
+                    Vec2::new(0.03, 0.0)
+                }
+                None => water.flow,
             };
             let (mut ocean, swell) = ocean_gpu(water, seconds, origin);
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
@@ -1377,7 +1793,7 @@ impl WaterRenderer {
                 ocean,
                 sea_wind: {
                     let d = water.wind.normalize_or_zero();
-                    [d.x, d.y, water.wind.length() * ocean[0], 0.0]
+                    [d.x, d.y, water.wind.length() * ocean[0], water.foam_streaks]
                 },
                 clip: [
                     CLIP_LEVELS as f32,
@@ -1392,7 +1808,7 @@ impl WaterRenderer {
                         f.tiles.iter().filter(|t| **t > 0.0).count() as f32,
                         hull_count as f32,
                         f.tail,
-                        0.0,
+                        self::ocean(water).map_or(0.0, |o| o.significant_height()),
                     ],
                     None => [0.0; 4],
                 },
@@ -1409,6 +1825,30 @@ impl WaterRenderer {
                 foam_uv: foam_uv(origin, water.wind, seconds),
                 swell,
                 shore: shore_gpu(water, seconds),
+                spray: spray_gpu(water, drawn_sea.is_some(), seconds, quality),
+                waterline: [
+                    f32::from(line == Some(index)),
+                    water.underwater_density.max(0.0),
+                    water.meniscus.max(0.0),
+                    f32::from(river.is_some()),
+                ],
+                wake: match self.wake_centre {
+                    Some(c) if drawn_sea.is_some() && water.dynamic_waves > 0.0 => {
+                        let side = crate::sea_wakes::SIDE as f32 * crate::sea_wakes::CELL;
+                        [c.x, c.y, 1.0 / side, 1.0]
+                    }
+                    _ => [0.0; 4],
+                },
+                optics: {
+                    let on = f32::from(
+                        water.absorption.max_element() > 0.0
+                            || water.scattering.max_element() > 0.0,
+                    );
+                    [
+                        water.absorption.max(Vec3::ZERO).extend(on).to_array(),
+                        water.scattering.max(Vec3::ZERO).extend(on).to_array(),
+                    ]
+                },
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
@@ -1417,6 +1857,10 @@ impl WaterRenderer {
             // mirroring what the probe sees from its point.
             slot.face = gpu;
             slot.face.extra[1] = 0.0;
+            let wake_view = match &self.wakes {
+                Some(w) if gpu.wake[3] > 0.5 => &w.view,
+                _ => &self.no_wake,
+            };
             let heights = match (&slot.ripples, &slot.heights, field, &self.fft) {
                 (_, _, _, Some((fft, _))) if drawn_sea.is_some() => &fft.view,
                 (Some(r), _, Some(_), _) => &r.view,
@@ -1475,6 +1919,10 @@ impl WaterRenderer {
                         binding: 10,
                         resource: wgpu::BindingResource::TextureView(shore_view),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 11,
+                        resource: wgpu::BindingResource::TextureView(wake_view),
+                    },
                 ],
             });
             if drawn_sea.is_some() && self.last_sea.is_none() {
@@ -1491,6 +1939,12 @@ impl WaterRenderer {
                 },
                 bounds: (water.transform.transform_point3(Vec3::ZERO), radius),
                 mesh,
+                spray: if gpu.spray[0] > 0.0 {
+                    2 * SPRAY_SLOTS
+                } else {
+                    0
+                },
+                waterline: line == Some(index),
             });
         }
         draws
@@ -1552,6 +2006,10 @@ impl WaterRenderer {
                     tex(white),
                     tex(water.flow_map.and_then(textures).unwrap_or(white)),
                     tex(shore_view(&self.shores, &self.no_shore, water)),
+                    tex(match &self.wakes {
+                        Some(w) if face.wake[3] > 0.5 => &w.view,
+                        _ => &self.no_wake,
+                    }),
                 ];
                 let entries: Vec<wgpu::BindGroupEntry> = entries
                     .into_iter()
@@ -1578,6 +2036,9 @@ impl WaterRenderer {
                         grid_segments(water) * grid_segments(water) * 6
                     },
                     mesh: None,
+                    // The spray is the camera's alone (its droplets are about the view), as the waterline is.
+                    spray: 0,
+                    waterline: false,
                     bounds: (
                         water.transform.transform_point3(Vec3::ZERO),
                         water.transform.transform_vector3(half).length(),
@@ -1602,6 +2063,7 @@ impl WaterRenderer {
         seconds: f64,
         camera: &crate::Camera,
         origin: Vec3,
+        caustic_grid: &wgpu::Buffer,
     ) -> Option<FftSea> {
         use crate::ocean_fft::FftOcean;
         let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
@@ -1645,9 +2107,10 @@ impl WaterRenderer {
             wind: water.wind,
             thresholds: info.foam.laid,
             gain: FOAM_GAIN,
+            streaks: water.foam_streaks,
         };
         let world = |v: Vec3| glam::DVec2::new(f64::from(v.x), f64::from(v.z));
-        fft.advance(
+        let steps = fft.advance(
             device,
             queue,
             &mut encoder,
@@ -1660,7 +2123,48 @@ impl WaterRenderer {
                 shore_gpu(water, at)
             }),
         );
+        // W3: the hulls' wakes, stepped to this frame's tick in the same submit.
+        if let Some(wakes) = water
+            .wakes
+            .as_deref()
+            .filter(|_| water.dynamic_waves > 0.0 && self.compute)
+        {
+            let pass = self
+                .wakes
+                .get_or_insert_with(|| crate::sea_wakes::SeaWakes::new(device));
+            pass.update(
+                queue,
+                &mut encoder,
+                wakes,
+                world(camera.position) + world(origin),
+                Vec2::new(centre.x, centre.z),
+                world(origin),
+                water.dynamic_waves,
+            );
+            self.wake_centre = Some(pass.centre(world(origin)));
+        }
+        // W2: the sea's curvature about the camera, for the caustics under it.
+        if water.caustics > 0.0 && self.compute {
+            let pass = self
+                .caustics
+                .get_or_insert_with(|| CausticsPass::new(device));
+            let params = CausticsGpu {
+                grid: self::caustic_grid(camera.position, origin),
+                sea: [fft.cascades() as f32, tick_even_cell(water), 0.0, 0.0],
+                cascades: cascade_uv(Some(info), origin),
+                bands: info.bands,
+            };
+            pass.encode(
+                device,
+                queue,
+                &mut encoder,
+                &fft.view,
+                &params,
+                caustic_grid,
+            );
+        }
         queue.submit([encoder.finish()]);
+        self.submitted = (self.submitted.0 + 1, steps as u32);
         Some(info)
     }
 
@@ -1812,7 +2316,22 @@ impl WaterRenderer {
             }
         }
         probes.reset(pass);
-        draws.len() as u32
+        // The spray over every surface (it lies in front of the water it leaves).
+        let mut calls = draws.len() as u32;
+        for d in draws.iter().filter(|d| d.spray > 0) {
+            pass.set_pipeline(&self.spray_pipeline);
+            pass.set_bind_group(1, &d.group, &[]);
+            pass.draw(0..6, 0..d.spray);
+            calls += 1;
+        }
+        // The waterline over all of it.
+        for d in draws.iter().filter(|d| d.waterline) {
+            pass.set_pipeline(&self.waterline_pipeline);
+            pass.set_bind_group(1, &d.group, &[]);
+            pass.draw(0..3, 0..1);
+            calls += 1;
+        }
+        calls
     }
 }
 
@@ -1898,6 +2417,54 @@ fn local_height(water: &Water, local: Vec2) -> f32 {
     lo + (hi - lo) * t.y
 }
 
+/// The surface's height (world y) at world point `at` (xz) as the tick
+/// floats bodies on it: its plane and height field, and over a sea its
+/// waves and seabed at `seconds` (the scene's `origin` places them).
+fn surface_height(w: &Water, at: Vec2, seconds: f64, origin: Vec3) -> f32 {
+    let local = w
+        .transform
+        .inverse()
+        .transform_point3(Vec3::new(at.x, 0.0, at.y));
+    let plane = w
+        .transform
+        .transform_point3(Vec3::new(local.x, 0.0, local.z))
+        .y;
+    let sea = ocean(w).map_or(0.0, |sea| {
+        let a = glam::DVec2::new(f64::from(at.x + origin.x), f64::from(at.y + origin.z));
+        sea.surface_near(a, seconds, tick_cell(w, at), coast(w, origin).as_ref())
+            .height
+    });
+    plane + local_height(w, Vec2::new(local.x, local.z)) + sea
+}
+
+/// W6: the surface the camera's near plane crosses, if any, among those
+/// with an underwater view: the eye within the near plane's reach of the
+/// surface over it (its half diagonal, at most about twice `near` for a
+/// field of view up to 90° at 16:9, and over a sea half its significant
+/// height more: the drawn chop the tick's waves leave out), inside the
+/// surface's extent. The frame
+/// then draws with the air's fog, and the waterline pass fogs what lies
+/// under the surface pixel by pixel, the line between them its meniscus.
+pub(crate) fn waterline(
+    waters: &[Water],
+    camera: &crate::Camera,
+    seconds: f64,
+    origin: Vec3,
+) -> Option<usize> {
+    let eye = camera.position;
+    waters.iter().position(|w| {
+        let reach =
+            2.1 * camera.near.max(1e-3) + ocean(w).map_or(0.0, |o| 0.5 * o.significant_height());
+        if w.underwater_density.is_nan() || w.underwater_density <= 0.0 || w.meniscus < 0.0 {
+            return false;
+        }
+        let local = w.transform.inverse().transform_point3(eye);
+        local.x.abs() <= w.size.x * 0.5
+            && local.z.abs() <= w.size.y * 0.5
+            && (eye.y - surface_height(w, Vec2::new(eye.x, eye.z), seconds, origin)).abs() < reach
+    })
+}
+
 /// The surface the camera at `eye` is below (inside its extent, under its
 /// waves), if any, among those with an underwater view.
 /// `seconds` and the scene's `origin` place the sea's waves ([`Water::wind`]).
@@ -1941,12 +2508,33 @@ pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
 /// rectangle; then the two cell layers at the scene's `origin`, each its
 /// whole cells and the rest, so the pattern stays put when it moves:
 /// `origin.rs`); zero without one. Then the wet shore ([`shore_wet`]).
-pub(crate) fn caustics(waters: &[Water], origin: Vec3) -> [[f32; 4]; 6] {
+pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 6] {
     let mut rows = [[0.0; 4]; 6];
     [rows[4], rows[5]] = shore_wet(waters);
     let Some(w) = waters.iter().find(|w| w.caustics > 0.0) else {
         return rows;
     };
+    // W2: under a sea its waves' own, from the caustics grid.
+    if ocean(w).is_some() {
+        let (_, at) = plane(w);
+        let h = w.size * 0.5;
+        let c = w.transform.w_axis;
+        let (lo, hi) = if w.endless {
+            (Vec2::splat(-1e9), Vec2::splat(1e9))
+        } else {
+            (
+                Vec2::new(c.x - h.x, c.z - h.y),
+                Vec2::new(c.x + h.x, c.z + h.y),
+            )
+        };
+        rows[..4].copy_from_slice(&[
+            [at.y, w.caustics, 0.0, 0.05],
+            [lo.x, lo.y, hi.x, hi.y],
+            caustic_grid(eye, origin),
+            [0.0, 0.0, 0.0, 1.0],
+        ]);
+        return rows;
+    }
     let (_, at) = plane(w);
     let mut lo = Vec2::splat(f32::MAX);
     let mut hi = Vec2::splat(f32::MIN);
@@ -2468,6 +3056,36 @@ mod tests {
     /// half the sea's significant height times the trains' strength, over
     /// its seabed's rectangle in the frame, which moves with the frame's
     /// render origin as the field does; none without a seabed.
+    /// W5: the clock the water's bank foam drifts by keeps a millisecond
+    /// after 10⁶ s (twelve days) of tick time, and runs on smoothly across
+    /// its fold: f32 seconds, which the foam read before, step by 1/16 s
+    /// there, which drew the drifting patches jumping.
+    #[test]
+    fn the_waters_clock_keeps_its_precision_in_a_long_session() {
+        let water = Water::default();
+        let q = crate::RenderQuality::default();
+        let at = |s: f64| spray_gpu(&water, false, s, &q)[3];
+        let t: f64 = 1.0e6 + 0.123_456;
+        let exact = t.rem_euclid(SPRAY_FOLD);
+        assert!(
+            (f64::from(at(t)) - exact).abs() < 1e-3,
+            "{} against {exact}",
+            at(t)
+        );
+        assert!(
+            (f64::from(t as f32) - t).abs() > 1e-3,
+            "f32 seconds would hold it too"
+        );
+        // Across the fold the bank foam's 8 s phase runs on.
+        let phase = |s: f64| (f64::from(at(s)) / 8.0).fract();
+        let before = phase(SPRAY_FOLD * 300.0 - 0.01);
+        let after = phase(SPRAY_FOLD * 300.0 + 0.01);
+        assert!(
+            ((after - before).rem_euclid(1.0) - 0.0025).abs() < 1e-3,
+            "{before} to {after}"
+        );
+    }
+
     #[test]
     fn a_seabed_wets_the_shore_its_surf_runs_up() {
         let depth: Vec<f32> = (0..16 * 8).map(|i| 5.0 - (i % 16) as f32).collect();
@@ -2480,7 +3098,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(
-            caustics(std::slice::from_ref(&sea), Vec3::ZERO)[4],
+            caustics(std::slice::from_ref(&sea), Vec3::ZERO, Vec3::ZERO)[4],
             [0.0; 4]
         );
         let hs = ocean(&sea).unwrap().significant_height();
@@ -2491,7 +3109,7 @@ mod tests {
             field,
             foam: 1.0,
         });
-        let rows = caustics(&[beach], Vec3::ZERO);
+        let rows = caustics(&[beach], Vec3::ZERO, Vec3::ZERO);
         assert_eq!(rows[4][0], 1.5);
         assert!((rows[4][1] - 0.5 * hs).abs() < 1e-4, "{:?}", rows[4]);
         assert!(rows[4][2] > 0.0);

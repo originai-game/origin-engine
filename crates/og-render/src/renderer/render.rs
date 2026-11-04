@@ -2286,7 +2286,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
-            caustics: water::caustics(scene_water, scene.origin),
+            caustics: water::caustics(scene_water, scene.origin, scene.camera.position),
             shadow: {
                 let (softness, fill) = light.shadow_softness_and_fill();
                 [
@@ -3391,6 +3391,7 @@ impl Renderer {
                     self.light_buffers[2].as_entire_binding(),
                     self.lightmaps.probe_buffer.as_entire_binding(),
                     self.ltc.as_entire_binding(),
+                    self.caustic_grid.as_entire_binding(),
                 ];
                 entries.extend(arena.map(|a| a.as_entire_binding()));
                 bind_group(&self.device, label, layout, &entries)
@@ -3424,6 +3425,7 @@ impl Renderer {
                         self.light_buffers[2].as_entire_binding(),
                         self.lightmaps.probe_buffer.as_entire_binding(),
                         self.ltc.as_entire_binding(),
+                        self.caustic_grid.as_entire_binding(),
                     ],
                 )
             };
@@ -3555,6 +3557,7 @@ impl Renderer {
                 &scene.camera,
                 &scene.quality,
                 &self.post.white,
+                &self.caustic_grid,
                 &|h| {
                     self.cache
                         .meshes
@@ -3566,6 +3569,9 @@ impl Renderer {
             ),
             _ => Vec::new(),
         };
+        if !water_draws.is_empty() {
+            (stats.water_submits, stats.foam_steps) = self.water.submitted;
+        }
         // The water as each due capture's faces draw it, through the face's
         // copy and over its depth (water.rs `face_draws`).
         let face_water: Vec<Vec<water::WaterDraw>> = if water_draws.is_empty() {
@@ -4656,6 +4662,7 @@ impl Renderer {
                                 self.light_buffers[2].as_entire_binding(),
                                 self.lightmaps.probe_buffer.as_entire_binding(),
                                 self.ltc.as_entire_binding(),
+                                self.caustic_grid.as_entire_binding(),
                             ],
                         )
                     };

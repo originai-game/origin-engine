@@ -53,12 +53,16 @@ impl Renderer {
         // Water: the surface the camera is under (its fog replaces the
         // frame's), and the one drawn with a planar reflection (the camera
         // mirrored in it, clipped at the surface by an oblique near plane).
+        // W6: where the near plane crosses a surface the frame is the air's,
+        // the waterline pass fogging what lies under it (water.rs).
+        let line = water::waterline(scene_water, &camera, water::seconds(scene), scene.origin);
         let under = water::underwater(
             scene_water,
             camera.position,
             water::seconds(scene),
             scene.origin,
-        );
+        )
+        .filter(|_| line.is_none());
         // Volumetric fog replaces the plain fog (volumetric.rs): above
         // water, for a perspective camera, where the quality lets it.
         let volumetric_fog = scene.volumetric_fog.filter(|_| {

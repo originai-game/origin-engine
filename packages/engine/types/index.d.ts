@@ -16824,6 +16824,28 @@ export interface Water {
    */
   geometry: Geometry;
   /**
+   * A river along this path (og.path.create or og.path.find; its points where the water runs, their height the water's level): the water is a ribbon riverWidth across down the course, drawn in place of the size grid, its current riverSpeed mid-stream along the path, turning with it and slowing to nothing at the banks; an og.Buoyancy body in it drifts with that current and floats at its level (computed in the tick, the same on every run). Where the course drops steeper than 45 degrees the water falls, a sheet streaked white, and the pool below it churns white for some three widths. 0: none.
+   */
+  river: Path;
+  /**
+   * The river's width across.
+   *
+   * @default 6
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  riverWidth: number;
+  /**
+   * The river's current mid-stream; it slows to nothing at the banks.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  riverSpeed: number;
+  /**
    * Grid cells per side (the height field's detail).
    *
    * @default 64
@@ -16851,6 +16873,18 @@ export interface Water {
    * @tunable
    */
   depthFade: number;
+  /**
+   * How much of each colour the water absorbs per metre of light's path through it (1/m; pure sea water about 0.45 0.07 0.03, the red gone in a few metres). With absorption or scattering set, the water's body is physical: what lies below is dimmed by the path the light takes down to it and back up to the eye, and the water scatters the sun and sky it lets in back out, so shallows over sand turn turquoise and deep water dark blue-green by themselves; shallow, deep, depthFade and opacity are then unused. 0 0 0 with scattering 0 0 0: shallow and deep.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  absorption: Color;
+  /**
+   * How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  scattering: Color;
   /**
    * How opaque deep water gets.
    *
@@ -17066,6 +17100,41 @@ export interface Water {
    * @tunable
    */
   shoreFoam: number;
+  /**
+   * How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): a whitecap's dense foam bursts within seconds and leaves a thin lace that lasts some ten seconds, which the surface's convergence along the wind (Langmuir circulation, about 1 % of the wind's speed) gathers into windrows. Rendering only.
+   *
+   * @default 1
+   * @range 0..4
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  foamStreaks: number;
+  /**
+   * Where the camera's near plane crosses the surface (a camera bobbing at the waterline), the width in pixels of the meniscus drawn along the line between the air above and the water's fog below it, each pixel under the surface or not as the waves are there (as og.physics.waterHeight puts them); 0: the line with no meniscus; below 0: no waterline, the whole frame above or under the water as the eye is. Needs underwaterDensity.
+   *
+   * @default 2
+   * @range -1..16
+   * @tunable
+   */
+  meniscus: number;
+  /**
+   * How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft, and as it moves it throws a bow wave and leaves a Kelvin wake (the 19.5 degree wedge of transverse and diverging waves deep water makes behind any moving body), with foam where those crests break and along its sides, all running at deep water's own speeds within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves and never sees these.
+   *
+   * @default 1
+   * @range 0..4
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  dynamicWaves: number;
+  /**
+   * How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them.
+   *
+   * @default 1
+   * @range 0..4
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  spray: number;
 }
 
 /**
@@ -49856,7 +49925,7 @@ export declare namespace og {
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly river: FieldSpec<"Path">; readonly riverWidth: FieldSpec<"f32">; readonly riverSpeed: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly absorption: FieldSpec<"Color">; readonly scattering: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32">; readonly foamStreaks: FieldSpec<"f32">; readonly meniscus: FieldSpec<"f32">; readonly dynamicWaves: FieldSpec<"f32">; readonly spray: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */

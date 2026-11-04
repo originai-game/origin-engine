@@ -37836,6 +37836,27 @@
           "description": "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights.",
           "default": 0
         },
+        "river": {
+          "$ref": "#/$defs/Path",
+          "description": "A river along this path (og.path.create or og.path.find; its points where the water runs, their height the water's level): the water is a ribbon riverWidth across down the course, drawn in place of the size grid, its current riverSpeed mid-stream along the path, turning with it and slowing to nothing at the banks; an og.Buoyancy body in it drifts with that current and floats at its level (computed in the tick, the same on every run). Where the course drops steeper than 45 degrees the water falls, a sheet streaked white, and the pool below it churns white for some three widths. 0: none.",
+          "default": 0
+        },
+        "riverWidth": {
+          "type": "number",
+          "description": "The river's width across.",
+          "default": 6,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "riverSpeed": {
+          "type": "number",
+          "description": "The river's current mid-stream; it slows to nothing at the banks.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
         "segments": {
           "type": "integer",
           "minimum": 0,
@@ -37870,6 +37891,24 @@
           "minimum": 0.01,
           "x-og-unit": "m",
           "x-og-tunable": true
+        },
+        "absorption": {
+          "$ref": "#/$defs/Color",
+          "description": "How much of each colour the water absorbs per metre of light's path through it (1/m; pure sea water about 0.45 0.07 0.03, the red gone in a few metres). With absorption or scattering set, the water's body is physical: what lies below is dimmed by the path the light takes down to it and back up to the eye, and the water scatters the sun and sky it lets in back out, so shallows over sand turn turquoise and deep water dark blue-green by themselves; shallow, deep, depthFade and opacity are then unused. 0 0 0 with scattering 0 0 0: shallow and deep.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "scattering": {
+          "$ref": "#/$defs/Color",
+          "description": "How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
         },
         "opacity": {
           "type": "number",
@@ -38097,6 +38136,41 @@
           "default": 1,
           "minimum": 0,
           "maximum": 2,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "foamStreaks": {
+          "type": "number",
+          "description": "How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): a whitecap's dense foam bursts within seconds and leaves a thin lace that lasts some ten seconds, which the surface's convergence along the wind (Langmuir circulation, about 1 % of the wind's speed) gathers into windrows. Rendering only.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "meniscus": {
+          "type": "number",
+          "description": "Where the camera's near plane crosses the surface (a camera bobbing at the waterline), the width in pixels of the meniscus drawn along the line between the air above and the water's fog below it, each pixel under the surface or not as the waves are there (as og.physics.waterHeight puts them); 0: the line with no meniscus; below 0: no waterline, the whole frame above or under the water as the eye is. Needs underwaterDensity.",
+          "default": 2,
+          "minimum": -1,
+          "maximum": 16,
+          "x-og-tunable": true
+        },
+        "dynamicWaves": {
+          "type": "number",
+          "description": "How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft, and as it moves it throws a bow wave and leaves a Kelvin wake (the 19.5 degree wedge of transverse and diverging waves deep water makes behind any moving body), with foam where those crests break and along its sides, all running at deep water's own speeds within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves and never sees these.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "spray": {
+          "type": "number",
+          "description": "How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
           "x-og-unit": "ratio",
           "x-og-tunable": true
         }
