@@ -93,6 +93,9 @@ pub fn shader_sources() -> Vec<ShaderSource> {
             crate::SPRITE_WGSL
         ),
     );
+    // The probe GI's trace and blend (gi_probes.rs).
+    add("gi probes trace", crate::gi_probes::trace_source());
+    add("gi probes blend", crate::gi_probes::blend_source());
     add("sprite array", crate::sprite_array::source());
     add("sprite mesh", crate::sprite_mesh::source());
     add("sprite skin", crate::sprite_skin::source());

@@ -310,12 +310,12 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The baked lightmap or light volumes where there are (lightmap.rs), at
   // the environment's intensity; the hemisphere light adds at its own.
-  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos), in.world_pos, n);
+  let irradiance = ambient_irradiance(ambient_light(select(n, ambient_normal(in.clip.xy, n), EFFECTS), in.world_pos), in.world_pos, n);
   let diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  let prefiltered = volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness);
+  let prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
   let ao_sample = material_sample(ao_tex, UV_AO, uv).r;
@@ -336,7 +336,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     // image-based light to the same floor (0.35, as three.js-era post AO: the whole colour × mix(0.35, 1, ao)).
     let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
     let ssao_sample = ao_texel.r;
-    if (fx.ao.w > 0.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
+    if (fx.ao.w > 0.5 && fx.ao.w < 1.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
     ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
     ao_all = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
     color *= ao_all;

@@ -345,6 +345,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.lens_flare = None;
     post.ssr = None;
     post.gi = None;
+    post.gi_probes = None;
     post.glow = None;
     post.color_grading = None;
     post.color_adjust = None;
@@ -547,6 +548,22 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     if let Some(g) = resource(world, layouts.global_illumination.as_ref())
         && on(&g, "enabled", false)
         && gi_allowed(Some(&g), fx.gi_preset)
+    {
+        // GiMethod: screen, probes, both.
+        let method = variant(&g["method"], &["screen", "probes", "both"]).min(2);
+        if method >= 1 {
+            post.gi_probes = Some(og_render::ProbeGlobalIllumination {
+                spacing: f(&g, "probeSpacing", 1.0).max(0.05),
+                cascades: u(&g, "probeCascades", 3).clamp(1, 4),
+                rays: u(&g, "probeRays", 64).clamp(32, 256),
+                intensity: f(&g, "intensity", 1.0).max(0.0),
+            });
+        }
+    }
+    if let Some(g) = resource(world, layouts.global_illumination.as_ref())
+        && on(&g, "enabled", false)
+        && gi_allowed(Some(&g), fx.gi_preset)
+        && variant(&g["method"], &["screen", "probes", "both"]) != 1
     {
         post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
             intensity: f(&g, "intensity", 1.0),

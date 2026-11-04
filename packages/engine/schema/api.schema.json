@@ -4377,6 +4377,8 @@
         "StripBlend",
         "PostEffects",
         "LensFlare",
+        "GiMethod",
+        "GiMethod",
         "GlobalIllumination",
         "Palette",
         "Look",
@@ -28316,10 +28318,26 @@
       },
       "additionalProperties": false
     },
+    "GiMethod": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How GlobalIllumination bounces the light.",
+      "type": "string",
+      "enum": [
+        "screen",
+        "probes",
+        "both"
+      ],
+      "x-og-variants": {
+        "screen": "In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows.",
+        "probes": "With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (its meshes and terrains) every few frames, gathers the light arriving from every side, sky included; every lit surface takes its ambient light from the probes around it, tested for which of them see it. Light from off screen and behind walls bounces, a red wall lights the floor beside it however the camera looks, and the sky's light is occluded under roofs, in rooms and between buildings. Coarse (a probe every probeSpacing metres): pair it with PostEffects.ao for contact.",
+        "both": "Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see."
+      }
+    },
     "GlobalIllumination": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.",
+      "description": "Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -28327,9 +28345,14 @@
           "description": "Bounce the light.",
           "default": false
         },
+        "method": {
+          "$ref": "#/$defs/GiMethod",
+          "description": "In screen space, with probes, or both.",
+          "default": "screen"
+        },
         "intensity": {
           "type": "number",
-          "description": "Scales the bounced light; 1 is physical.",
+          "description": "Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce.",
           "default": 1,
           "minimum": 0,
           "x-og-tunable": true
@@ -28380,6 +28403,31 @@
           "$ref": "#/$defs/AoResolution",
           "description": "Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.",
           "default": "full"
+        },
+        "probeSpacing": {
+          "type": "number",
+          "description": "With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors.",
+          "default": 1,
+          "minimum": 0.05,
+          "x-og-unit": "m"
+        },
+        "probeCascades": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth).",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 4
+        },
+        "probeRays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "With probes: rays each probe casts when it is updated; more is smoother and costlier.",
+          "default": 64,
+          "minimum": 32,
+          "maximum": 256
         },
         "allowed": {
           "type": "boolean",

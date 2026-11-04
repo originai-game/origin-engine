@@ -682,6 +682,99 @@ fn gi_bleeds_each_walls_colour_towards_its_side() {
 }
 
 #[test]
+fn gi_room_probes_matches_its_reference() {
+    check("gi-room-probes");
+}
+
+#[test]
+fn gi_shelter_matches_its_reference() {
+    assert!(check("gi-shelter").stats.prepass_draws > 0);
+}
+
+/// The probe GI bleeds each wall's colour wherever the camera looks, not
+/// only from what the screen shows: against the same room with no GI, the
+/// left half of the frame gains more red than green and the right half
+/// more green than red, and the gain is a real bounce (a lift of at least
+/// two levels a pixel on average), not a tint of the environment light.
+#[test]
+fn probe_gi_bleeds_each_walls_colour() {
+    let render = |probes: bool| {
+        let mut g = built("gi-room-probes");
+        g.scene = og_tests::fx_scenes::gi_probe_scene(probes);
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    let (on, off) = (render(true), render(false));
+    let mut gain = [[0i64; 2]; 2];
+    let mut total = 0i64;
+    for y in 0..on.height {
+        for x in 0..on.width {
+            let i = ((y * on.width + x) * 4) as usize;
+            let half = (x >= on.width / 2) as usize;
+            let d = |c: usize| on.pixels[i + c] as i64 - off.pixels[i + c] as i64;
+            total += d(0) + d(1) + d(2);
+            gain[half][0] += d(0);
+            gain[half][1] += d(1);
+        }
+    }
+    let lift = total as f32 / (3 * on.width * on.height) as f32;
+    println!(
+        "(red, green) gained: left {:?}, right {:?}; mean lift {lift:.2}",
+        gain[0], gain[1]
+    );
+    assert!(lift > 2.0, "the probes add a bounce: {lift:.2}");
+    assert!(
+        gain[0][0] > gain[0][1],
+        "the red wall's side reddens: {:?}",
+        gain[0]
+    );
+    assert!(
+        gain[1][1] > gain[1][0],
+        "the green wall's side greens: {:?}",
+        gain[1]
+    );
+}
+
+/// The probes occlude the sky: under the porch's roof (the frame's middle)
+/// the floor is darker with them than lit by the environment alone, while
+/// the open ground in front (the bottom rows) stays within a few levels.
+#[test]
+fn probe_gi_occludes_the_sky_under_a_roof() {
+    let render = |probes: bool| {
+        let mut g = built("gi-shelter");
+        g.scene = og_tests::fx_scenes::gi_shelter_scene(probes, false);
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    let (on, off) = (render(true), render(false));
+    let (w, h) = (on.width, on.height);
+    let porch = |x: u32, y: u32| x > w * 2 / 5 && x < w * 3 / 5 && y > h * 2 / 5 && y < h * 3 / 5;
+    let open = |_: u32, y: u32| y > h * 9 / 10;
+    let mean = |img: &RgbaImage, keep: &dyn Fn(u32, u32) -> bool| {
+        let (mut s, mut n) = (0.0f32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                if keep(x, y) {
+                    let i = ((y * w + x) * 4) as usize;
+                    s += luma(img.pixels[i..i + 4].try_into().expect("rgba"));
+                    n += 1;
+                }
+            }
+        }
+        s / n as f32
+    };
+    let (porch_on, porch_off) = (mean(&on, &porch), mean(&off, &porch));
+    let (open_on, open_off) = (mean(&on, &open), mean(&off, &open));
+    println!("porch {porch_on:.1} against {porch_off:.1}, open {open_on:.1} against {open_off:.1}");
+    assert!(
+        porch_on < 0.8 * porch_off,
+        "the roof hides the sky: {porch_on:.1} against {porch_off:.1}"
+    );
+    assert!(
+        (open_on - open_off).abs() < 0.1 * open_off,
+        "the open ground sees it: {open_on:.1} against {open_off:.1}"
+    );
+}
+
+#[test]
 fn light_volume_room_matches_its_reference() {
     check("light-volume-room");
 }

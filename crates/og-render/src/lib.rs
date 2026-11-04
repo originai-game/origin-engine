@@ -82,6 +82,8 @@ pub mod foliage;
 mod frame;
 mod fx;
 pub mod geometry;
+mod gi_probes;
+mod gi_scene;
 mod glass;
 pub mod graph;
 mod hdr;
@@ -103,6 +105,7 @@ mod quality;
 mod sky_capture;
 mod ssgi;
 mod ssr;
+pub use gi_probes::ProbeGlobalIllumination;
 pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probe_grid::{MAX_GRID_CAPTURES, RealtimeLightVolume};
 pub use probes::{
@@ -440,6 +443,8 @@ pub struct Renderer {
     /// The live sky (`sky_capture.rs`): made while the background is the
     /// per-pixel sky.
     sky_capture: Option<sky_capture::SkyCapture>,
+    /// The probe GI (`gi_probes.rs`), made the first frame that asks for it.
+    gi_probes: Option<gi_probes::GiProbes>,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).
     probes: probes::Probes,
     sprite_pipeline: Sampled<wgpu::RenderPipeline>,

@@ -41,9 +41,39 @@ impl Renderer {
         self.scene_size(grid.0, grid.1, taau);
         self.grow_local_shadows(scene);
         self.fit_shelter_layer(scene);
+        self.prepare_gi_probes(scene);
         self.ensure_environment(scene);
         self.write_sky_params(scene);
         (upscale, grid_offset)
+    }
+
+    /// The probe GI's frame (gi_probes.rs): off where the quality's GI
+    /// switch or a 2D build says so. The probe buffer grows to hold its
+    /// probes before the frame groups that bind it are made.
+    fn prepare_gi_probes(&mut self, scene: &RenderScene) {
+        let desc = scene
+            .post
+            .gi_probes
+            .filter(|_| WORLD_3D && scene.quality.global_illumination);
+        let Some(desc) = desc else {
+            if let Some(g) = &mut self.gi_probes {
+                g.disable();
+            }
+            return;
+        };
+        let region = crate::lightmap::PROBE_CAPACITY;
+        let g = self
+            .gi_probes
+            .get_or_insert_with(|| crate::gi_probes::GiProbes::new(&self.device));
+        let need = region + crate::gi_probes::region_vec4s(&desc);
+        if self
+            .lightmaps
+            .ensure_capacity(&self.device, &self.queue, need)
+        {
+            self.environment = None;
+            g.restart();
+        }
+        g.prepare(&self.device, &self.queue, scene, desc, region);
     }
 
     pub(super) fn prepare_frame_probes(
@@ -60,6 +90,10 @@ impl Renderer {
         let grid = self
             .lightmaps
             .prepare(&self.device, &self.queue, &scene.baked, realtime);
+        // The probe GI's header rows, after the volumes' (gi_probes.rs).
+        if let Some(g) = &mut self.gi_probes {
+            g.write_header(&self.queue, &self.lightmaps.probe_buffer, false);
+        }
         let probe_frame = self.probes.prepare(
             &self.device,
             &self.queue,

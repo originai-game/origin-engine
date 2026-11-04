@@ -36,6 +36,9 @@ pub(crate) enum FramePass {
     /// The live sky's step this frame (`sky_capture.rs`): a slice of its
     /// capture of the per-pixel sky and its filtering.
     LiveSky,
+    /// The probe GI's trace and blend this frame (`gi_probes.rs`): into the
+    /// light volumes' buffer, which every lit pass after it reads.
+    GiProbes,
     /// The reflection probes' captures due this frame (`probes.rs`).
     Probes,
     /// The scene mirrored in a water surface (its planar reflection): slot 0 the one material shaders read, slot 1 a
@@ -191,6 +194,7 @@ impl FramePass {
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::LiveSky => "live-sky".into(),
+            FramePass::GiProbes => "gi-probes".into(),
             FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection(k) => reflection_target(k, "").into(),
             FramePass::View(i) => format!("view-{i}"),
@@ -260,6 +264,10 @@ pub(crate) struct GraphConfig {
     /// without TAA `gi-read`, which the main pass's copy into `gi-write`
     /// fills for the next frame).
     pub gi: bool,
+    /// GTAO writes its bent normals beside the AO for the probe GI
+    /// (fxpost.wgsl `fs_gtao_bent`): the AO targets hold
+    /// [`crate::ssgi::GI_FORMAT`], blurred over all four channels.
+    pub bent: bool,
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
     /// so far.
     pub water: bool,
@@ -502,7 +510,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             );
         }
     }
-    let ao_format = if cfg.gi {
+    let ao_format = if cfg.gi || cfg.bent {
         crate::ssgi::GI_FORMAT
     } else {
         AO_FORMAT
@@ -761,6 +769,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
             // Into its own cubes and the bound IBL ones.
             FramePass::LiveSky => g.pass(name, &[], &[]),
+            // Into the light volumes' buffer, not a graph target.
+            FramePass::GiProbes => g.pass(name, &[], &[]),
             FramePass::Reflection(k) => {
                 let mut writes = vec![reflection_target(k, ""), reflection_target(k, "-depth")];
                 if msaa {
@@ -1003,6 +1013,7 @@ mod tests {
             lightdir: false,
             gtao: true,
             gi,
+            bent: false,
             water: false,
             water_ao: false,
             transmission: false,
@@ -1049,19 +1060,27 @@ mod tests {
                 passes.push(FramePass::Taa);
             }
             passes.push(FramePass::Tonemap);
-            for gi in [false, true] {
-                let plan = build_graph(&passes, &cfg(taa, gi))
-                    .compile()
-                    .unwrap_or_else(|e| panic!("taa {taa} gi {gi}: {e}"));
+            // The screen GI's bounce, or GTAO's bent normals for the probe
+            // GI, take the AO targets' gba.
+            for (gi, bent) in [(false, false), (true, false), (false, true)] {
+                let plan = build_graph(
+                    &passes,
+                    &GraphConfig {
+                        bent,
+                        ..cfg(taa, gi)
+                    },
+                )
+                .compile()
+                .unwrap_or_else(|e| panic!("taa {taa} gi {gi} bent {bent}: {e}"));
                 let at = |p: FramePass| plan.order().iter().position(|&i| passes[i] == p);
                 assert!(at(FramePass::AoUpsample) < at(FramePass::Main));
                 let format = plan.physical()[plan.slot("ao").expect("ao realized")].format;
-                let want = if gi {
+                let want = if gi || bent {
                     crate::ssgi::GI_FORMAT
                 } else {
                     AO_FORMAT
                 };
-                assert_eq!(format, want, "taa {taa} gi {gi}");
+                assert_eq!(format, want, "taa {taa} gi {gi} bent {bent}");
             }
         }
     }

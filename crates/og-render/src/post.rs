@@ -549,6 +549,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_ssgi", crate::ssgi::GI_FORMAT),
     ("fs_gi_blur", crate::ssgi::GI_FORMAT),
     ("fs_gi_upsample", crate::ssgi::GI_FORMAT),
+    ("fs_gtao_bent", crate::ssgi::GI_FORMAT),
 ];
 
 /// The current frame's weight in the TAA blend: 1 when there is no history.

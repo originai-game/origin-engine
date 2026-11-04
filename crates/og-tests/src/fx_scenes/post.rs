@@ -236,6 +236,123 @@ pub fn gi_scene(gi: bool) -> RenderScene {
 }
 
 // ---------------------------------------------------------------------------
+// Probe global illumination.
+// ---------------------------------------------------------------------------
+
+/// The probe GI's settings the room scenes use: probes 0.75 m apart, two
+/// cascades (12 × 6 × 12 m, then twice that), so the room and the floor
+/// around it are inside the first.
+pub fn room_probes() -> og_render::ProbeGlobalIllumination {
+    og_render::ProbeGlobalIllumination {
+        spacing: 0.75,
+        cascades: 2,
+        ..Default::default()
+    }
+}
+
+/// [`gi_scene`]'s room lit by the probe GI instead of the screen-space one
+/// (`probes`; without, no GI at all): the sunlit red wall and floor bounce
+/// into the shade wherever the camera looks, so the floor along the red
+/// wall and the block's left face turn pink, the floor by the green wall
+/// and the sphere's right side mint.
+pub fn gi_probe_scene(probes: bool) -> RenderScene {
+    let mut scene = gi_scene(false);
+    scene.post.gi_probes = probes.then(room_probes);
+    scene
+}
+
+/// A porch under an overcast sky: a roof slab on a back wall and a left
+/// wall, open to the front and the right, on a pale ground. No sun: the
+/// sky is all the light, so what the roof and walls hide of it is what
+/// the probe GI's sky occlusion shows (`probes`) and the environment's
+/// light alone does not: the floor under the roof dark, darkest in the
+/// back left corner, the open ground in front as bright as without. With
+/// `ao`, GTAO (whose bent normals the probes are read along) darkens the
+/// wall-floor joins.
+pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 40.0, 1.0, 0.75);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let sphere = scene.add_mesh(shapes::sphere(32, 24));
+    let matte = |s: &mut RenderScene, c: [f32; 3]| {
+        s.add_material(Material {
+            base_color: [c[0], c[1], c[2], 1.0],
+            roughness: 0.9,
+            ..Default::default()
+        })
+    };
+    let stone = matte(&mut scene, [0.7, 0.68, 0.64]);
+    let ochre = matte(&mut scene, [0.75, 0.45, 0.15]);
+    let place = |s: &mut RenderScene, m, mat, p: Vec3, size: Vec3| {
+        s.add_instance(m, mat, Mat4::from_translation(p) * Mat4::from_scale(size));
+    };
+    // Roof, back wall, left wall.
+    place(
+        &mut scene,
+        cube,
+        stone,
+        Vec3::new(0.0, 3.1, -0.5),
+        Vec3::new(6.4, 0.2, 5.4),
+    );
+    place(
+        &mut scene,
+        cube,
+        stone,
+        Vec3::new(0.0, 1.5, -3.1),
+        Vec3::new(6.4, 3.0, 0.2),
+    );
+    place(
+        &mut scene,
+        cube,
+        ochre,
+        Vec3::new(-3.1, 1.5, -0.5),
+        Vec3::new(0.2, 3.0, 5.4),
+    );
+    place(
+        &mut scene,
+        sphere,
+        stone,
+        Vec3::new(1.2, 0.5, -1.2),
+        Vec3::splat(1.0),
+    );
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 0.9, 0.2),
+        intensity: 0.0,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: Vec3::new(0.3, 0.9, 0.2),
+            sun_color: Vec3::ONE,
+            look: None,
+        },
+        intensity: 1.0,
+        background: Background::Sky,
+        ..Environment::default()
+    };
+    scene.post.gi_probes = probes.then(|| og_render::ProbeGlobalIllumination {
+        spacing: 1.0,
+        cascades: 2,
+        ..Default::default()
+    });
+    scene.post.ao = ao.then(|| AmbientOcclusion {
+        radius: 0.5,
+        intensity: 1.0,
+        method: og_render::AoMethod::Gtao,
+        ..Default::default()
+    });
+    // Below the roof, looking at the floor in the porch's middle (the
+    // frame's centre).
+    scene.camera = Camera {
+        position: Vec3::new(0.6, 1.5, 6.5),
+        target: Vec3::new(0.0, 0.0, -0.8),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+// ---------------------------------------------------------------------------
 // Realtime light volumes.
 // ---------------------------------------------------------------------------
 

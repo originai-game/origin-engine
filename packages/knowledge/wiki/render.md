@@ -73,7 +73,9 @@ module render {
 | [`StripBlend()`](#column-StripBlend) | column kind | A StripBlend field: the variant's index. |
 | [`og.PostEffects`](#record-PostEffects) | resource | The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then costs nothing: no pass is recorded. Read after each tick; it never feeds back into the simulation. |
 | [`og.LensFlare`](#record-LensFlare) | resource | Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve, the halo under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also cast ghosts of their own, smooth aperture-shaped discs (the sun's 8 % of the frame's height in radius, a light's three times its size on screen up to that; magnified up to 1.5 times along the line through the centre, and fainter as they are), as bright as 0.56 % (the sun) or 0.28 % (a light) of the source's exposed radiance spread over the sun's disc, in proportion to its light as its bloom is (so a dim lamp's are faint, and a small lamp's small), each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out; a ghost that would lie on its own source's glare is left out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not. |
-| [`og.GlobalIllumination`](#record-GlobalIllumination) | resource | Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it. |
+| [`GiMethod`](#type-GiMethod) | enum | How GlobalIllumination bounces the light. |
+| [`GiMethod()`](#column-GiMethod) | column kind | A GiMethod field: the variant's index. |
+| [`og.GlobalIllumination`](#record-GlobalIllumination) | resource | Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it. |
 | [`Palette`](#type-Palette) | handle | A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours). |
 | [`Look`](#type-Look) | handle | A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook. |
 | [`Palette()`](#column-Palette) | column kind | A Palette handle field (0 is none). |
@@ -311,7 +313,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 5705</sub>
+<sub>`api.ogt` line 5735</sub>
 
 <a id="fn-sprite"></a>
 
@@ -341,7 +343,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 5835</sub>
+<sub>`api.ogt` line 5865</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -371,7 +373,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 6030</sub>
+<sub>`api.ogt` line 6060</sub>
 
 <a id="fn-measureText"></a>
 
@@ -401,7 +403,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 6037</sub>
+<sub>`api.ogt` line 6067</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -431,7 +433,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6106</sub>
+<sub>`api.ogt` line 6136</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -461,7 +463,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6113</sub>
+<sub>`api.ogt` line 6143</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -491,7 +493,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6120</sub>
+<sub>`api.ogt` line 6150</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -521,7 +523,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6207</sub>
+<sub>`api.ogt` line 6237</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -553,7 +555,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6214</sub>
+<sub>`api.ogt` line 6244</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -585,7 +587,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6231</sub>
+<sub>`api.ogt` line 6261</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -617,7 +619,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 6239</sub>
+<sub>`api.ogt` line 6269</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -651,7 +653,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 6247</sub>
+<sub>`api.ogt` line 6277</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -681,7 +683,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 6256</sub>
+<sub>`api.ogt` line 6286</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -743,7 +745,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 6263</sub>
+<sub>`api.ogt` line 6293</sub>
 
 <a id="fn-setDisplay"></a>
 
@@ -773,7 +775,7 @@ fn setDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6373</sub>
+<sub>`api.ogt` line 6403</sub>
 
 <a id="fn-resetDisplay"></a>
 
@@ -801,7 +803,7 @@ fn resetDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6380</sub>
+<sub>`api.ogt` line 6410</sub>
 
 <a id="fn-display"></a>
 
@@ -829,7 +831,7 @@ fn display {
 }
 ```
 
-<sub>`api.ogt` line 6386</sub>
+<sub>`api.ogt` line 6416</sub>
 
 <a id="fn-look"></a>
 
@@ -857,7 +859,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 6392</sub>
+<sub>`api.ogt` line 6422</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -885,7 +887,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 6398</sub>
+<sub>`api.ogt` line 6428</sub>
 
 <a id="fn-text"></a>
 
@@ -915,7 +917,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 6404</sub>
+<sub>`api.ogt` line 6434</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -945,7 +947,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6442</sub>
+<sub>`api.ogt` line 6472</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -977,7 +979,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6449</sub>
+<sub>`api.ogt` line 6479</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -1007,7 +1009,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6457</sub>
+<sub>`api.ogt` line 6487</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -1037,7 +1039,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6652</sub>
+<sub>`api.ogt` line 6682</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -1067,7 +1069,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6659</sub>
+<sub>`api.ogt` line 6689</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -1097,7 +1099,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6666</sub>
+<sub>`api.ogt` line 6696</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -1127,7 +1129,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6673</sub>
+<sub>`api.ogt` line 6703</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -1157,7 +1159,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6680</sub>
+<sub>`api.ogt` line 6710</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1187,7 +1189,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6687</sub>
+<sub>`api.ogt` line 6717</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1217,7 +1219,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6694</sub>
+<sub>`api.ogt` line 6724</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1247,7 +1249,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6931</sub>
+<sub>`api.ogt` line 6961</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1277,7 +1279,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6938</sub>
+<sub>`api.ogt` line 6968</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1307,7 +1309,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6945</sub>
+<sub>`api.ogt` line 6975</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1337,7 +1339,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6952</sub>
+<sub>`api.ogt` line 6982</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1367,7 +1369,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6959</sub>
+<sub>`api.ogt` line 6989</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1397,7 +1399,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6966</sub>
+<sub>`api.ogt` line 6996</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1427,7 +1429,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6973</sub>
+<sub>`api.ogt` line 7003</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1457,7 +1459,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6980</sub>
+<sub>`api.ogt` line 7010</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1487,7 +1489,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6987</sub>
+<sub>`api.ogt` line 7017</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1517,7 +1519,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6994</sub>
+<sub>`api.ogt` line 7024</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1547,7 +1549,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 7001</sub>
+<sub>`api.ogt` line 7031</sub>
 
 <a id="fn-lines"></a>
 
@@ -1577,7 +1579,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 7059</sub>
+<sub>`api.ogt` line 7089</sub>
 
 <a id="fn-points"></a>
 
@@ -1607,7 +1609,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 7094</sub>
+<sub>`api.ogt` line 7124</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1639,7 +1641,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 7198</sub>
+<sub>`api.ogt` line 7228</sub>
 
 <a id="fn-light2dAt"></a>
 
@@ -1676,7 +1678,7 @@ fn light2dAt {
 }
 ```
 
-<sub>`api.ogt` line 7206</sub>
+<sub>`api.ogt` line 7236</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1706,7 +1708,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7265</sub>
+<sub>`api.ogt` line 7295</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1740,7 +1742,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 7377</sub>
+<sub>`api.ogt` line 7407</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1768,7 +1770,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 7392</sub>
+<sub>`api.ogt` line 7422</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1796,7 +1798,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7474</sub>
+<sub>`api.ogt` line 7504</sub>
 
 ## Components, resources and events
 
@@ -2820,27 +2822,32 @@ resource LensFlare {
 
 ### `og.GlobalIllumination` (resource)
 
-Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
 
 Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumination`; its value type is `GlobalIllumination`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `enabled` | `boolean` | `false` | — | — | — | Bounce the light. |
-| `intensity` | `number` | `1` | ≥ 0 | — | tunable | Scales the bounced light; 1 is physical. |
+| `method` | `GiMethod` | `"screen"` | — | — | — | In screen space, with probes, or both. |
+| `intensity` | `number` | `1` | ≥ 0 | — | tunable | Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce. |
 | `maxDistance` | `number` | `4` | ≥ 0 | `m` | tunable | How far each ray travels: the reach of a bounce. |
 | `thickness` | `number` | `0.5` | ≥ 0 | `m` | tunable | How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it. |
 | `steps` | `number` | `12` | 4 … 64 | — | — | Steps along each ray. |
 | `rays` | `number` | `4` | 1 … 16 | — | — | Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together). |
 | `occlusion` | `number` | `1` | 0 … 1 | — | tunable | How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes. |
 | `resolution` | `AoResolution` | `"full"` | — | — | — | Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's. |
+| `probeSpacing` | `number` | `1` | ≥ 0.05 | `m` | — | With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors. |
+| `probeCascades` | `number` | `3` | 1 … 4 | — | — | With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth). |
+| `probeRays` | `number` | `64` | 32 … 256 | — | — | With probes: rays each probe casts when it is updated; more is smoother and costlier. |
 | `allowed` | `boolean` | `true` | — | — | — | The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again. |
 
 ```ogt
 resource GlobalIllumination {
-  doc "Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
+  doc "Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it."
   field enabled bool "Bounce the light."
-  field intensity f32 "Scales the bounced light; 1 is physical." {
+  field method GiMethod "In screen space, with probes, or both."
+  field intensity f32 "Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce." {
     default 1
     min 0
     tunable true
@@ -2874,13 +2881,28 @@ resource GlobalIllumination {
     tunable true
   }
   field resolution AoResolution "Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's."
+  field probeSpacing f32 "With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors." {
+    default 1
+    min 0.05
+    unit m
+  }
+  field probeCascades u32 "With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth)." {
+    default 3
+    min 1
+    max 4
+  }
+  field probeRays u32 "With probes: rays each probe casts when it is updated; more is smoother and costlier." {
+    default 64
+    min 32
+    max 256
+  }
   field allowed bool "The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 5021</sub>
+<sub>`api.ogt` line 5035</sub>
 
 <a id="record-Stylise"></a>
 
@@ -3135,7 +3157,7 @@ resource Stylise {
 }
 ```
 
-<sub>`api.ogt` line 5128</sub>
+<sub>`api.ogt` line 5158</sub>
 
 <a id="record-MaterialStyle"></a>
 
@@ -3222,7 +3244,7 @@ resource MaterialStyle {
 }
 ```
 
-<sub>`api.ogt` line 5321</sub>
+<sub>`api.ogt` line 5351</sub>
 
 <a id="record-Lighting2D"></a>
 
@@ -3267,7 +3289,7 @@ resource Lighting2D {
 }
 ```
 
-<sub>`api.ogt` line 5389</sub>
+<sub>`api.ogt` line 5419</sub>
 
 <a id="record-Light2D"></a>
 
@@ -3342,7 +3364,7 @@ component Light2D {
 }
 ```
 
-<sub>`api.ogt` line 5427</sub>
+<sub>`api.ogt` line 5457</sub>
 
 <a id="record-Occluder2D"></a>
 
@@ -3379,7 +3401,7 @@ component Occluder2D {
 }
 ```
 
-<sub>`api.ogt` line 5476</sub>
+<sub>`api.ogt` line 5506</sub>
 
 <a id="record-LightMask2D"></a>
 
@@ -3402,7 +3424,7 @@ component LightMask2D {
 }
 ```
 
-<sub>`api.ogt` line 5494</sub>
+<sub>`api.ogt` line 5524</sub>
 
 <a id="record-Decal"></a>
 
@@ -3471,7 +3493,7 @@ component Decal {
 }
 ```
 
-<sub>`api.ogt` line 5501</sub>
+<sub>`api.ogt` line 5531</sub>
 
 <a id="record-ParticleSystem"></a>
 
@@ -3508,7 +3530,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 5546</sub>
+<sub>`api.ogt` line 5576</sub>
 
 <a id="record-ParticleEvent"></a>
 
@@ -3542,7 +3564,7 @@ event ParticleEvent {
 }
 ```
 
-<sub>`api.ogt` line 5569</sub>
+<sub>`api.ogt` line 5599</sub>
 
 <a id="record-Trail"></a>
 
@@ -3618,7 +3640,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 5583</sub>
+<sub>`api.ogt` line 5613</sub>
 
 <a id="record-Beam"></a>
 
@@ -3685,7 +3707,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 5631</sub>
+<sub>`api.ogt` line 5661</sub>
 
 <a id="record-Sprite"></a>
 
@@ -3839,7 +3861,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 5842</sub>
+<sub>`api.ogt` line 5872</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3887,7 +3909,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 5944</sub>
+<sub>`api.ogt` line 5974</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3940,7 +3962,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 6175</sub>
+<sub>`api.ogt` line 6205</sub>
 
 <a id="record-Lines"></a>
 
@@ -4003,7 +4025,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 7101</sub>
+<sub>`api.ogt` line 7131</sub>
 
 <a id="record-Points"></a>
 
@@ -4057,7 +4079,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 7138</sub>
+<sub>`api.ogt` line 7168</sub>
 
 <a id="record-CameraView"></a>
 
@@ -4164,7 +4186,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 7272</sub>
+<sub>`api.ogt` line 7302</sub>
 
 <a id="record-Mirror"></a>
 
@@ -4209,7 +4231,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 7344</sub>
+<sub>`api.ogt` line 7374</sub>
 
 <a id="record-RectLight"></a>
 
@@ -4259,7 +4281,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7406</sub>
+<sub>`api.ogt` line 7436</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -4293,7 +4315,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7433</sub>
+<sub>`api.ogt` line 7463</sub>
 
 <a id="record-RealtimeLightVolume"></a>
 
@@ -4326,7 +4348,7 @@ component RealtimeLightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7448</sub>
+<sub>`api.ogt` line 7478</sub>
 
 ## Types
 
@@ -5285,6 +5307,31 @@ enum StripBlend {
 
 <sub>`api.ogt` line 4632</sub>
 
+<a id="type-GiMethod"></a>
+
+### `GiMethod` (enum)
+
+How GlobalIllumination bounces the light.
+
+A string: one of the variants below. The zero value is `"screen"`.
+
+| Variant | Doc |
+|---|---|
+| `"screen"` | In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows. |
+| `"probes"` | With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (its meshes and terrains) every few frames, gathers the light arriving from every side, sky included; every lit surface takes its ambient light from the probes around it, tested for which of them see it. Light from off screen and behind walls bounces, a red wall lights the floor beside it however the camera looks, and the sky's light is occluded under roofs, in rooms and between buildings. Coarse (a probe every probeSpacing metres): pair it with PostEffects.ao for contact. |
+| `"both"` | Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see. |
+
+```ogt
+enum GiMethod {
+  doc "How GlobalIllumination bounces the light."
+  variant screen "In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows."
+  variant probes "With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (its meshes and terrains) every few frames, gathers the light arriving from every side, sky included; every lit surface takes its ambient light from the probes around it, tested for which of them see it. Light from off screen and behind walls bounces, a red wall lights the floor beside it however the camera looks, and the sky's light is occluded under roofs, in rooms and between buildings. Coarse (a probe every probeSpacing metres): pair it with PostEffects.ao for contact."
+  variant both "Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see."
+}
+```
+
+<sub>`api.ogt` line 5021</sub>
+
 <a id="type-Palette"></a>
 
 ### `Palette` (handle)
@@ -5297,7 +5344,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Palette "A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours)."
 ```
 
-<sub>`api.ogt` line 5065</sub>
+<sub>`api.ogt` line 5095</sub>
 
 <a id="type-Look"></a>
 
@@ -5311,7 +5358,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Look "A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook."
 ```
 
-<sub>`api.ogt` line 5066</sub>
+<sub>`api.ogt` line 5096</sub>
 
 <a id="type-DitherPattern"></a>
 
@@ -5342,7 +5389,7 @@ enum DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5082</sub>
+<sub>`api.ogt` line 5112</sub>
 
 <a id="type-MaterialSurface"></a>
 
@@ -5369,7 +5416,7 @@ enum MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 5099</sub>
+<sub>`api.ogt` line 5129</sub>
 
 <a id="type-StyliseSpace"></a>
 
@@ -5394,7 +5441,7 @@ enum StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 5114</sub>
+<sub>`api.ogt` line 5144</sub>
 
 <a id="type-LookInfo"></a>
 
@@ -5425,7 +5472,7 @@ struct LookInfo {
 }
 ```
 
-<sub>`api.ogt` line 5378</sub>
+<sub>`api.ogt` line 5408</sub>
 
 <a id="type-Light2DKind"></a>
 
@@ -5450,7 +5497,7 @@ enum Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5413</sub>
+<sub>`api.ogt` line 5443</sub>
 
 <a id="type-ParticleEventKind"></a>
 
@@ -5475,7 +5522,7 @@ enum ParticleEventKind {
 }
 ```
 
-<sub>`api.ogt` line 5562</sub>
+<sub>`api.ogt` line 5592</sub>
 
 <a id="type-RibbonPoint"></a>
 
@@ -5515,7 +5562,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 5672</sub>
+<sub>`api.ogt` line 5702</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -5546,7 +5593,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 5693</sub>
+<sub>`api.ogt` line 5723</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -5610,7 +5657,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5712</sub>
+<sub>`api.ogt` line 5742</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -5639,7 +5686,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 5747</sub>
+<sub>`api.ogt` line 5777</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -5662,7 +5709,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 5758</sub>
+<sub>`api.ogt` line 5788</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -5775,7 +5822,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 5765</sub>
+<sub>`api.ogt` line 5795</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -5865,7 +5912,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5971</sub>
+<sub>`api.ogt` line 6001</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -5907,7 +5954,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6044</sub>
+<sub>`api.ogt` line 6074</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -5943,7 +5990,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6067</sub>
+<sub>`api.ogt` line 6097</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -5983,7 +6030,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6085</sub>
+<sub>`api.ogt` line 6115</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -6050,7 +6097,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 6131</sub>
+<sub>`api.ogt` line 6161</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -6073,7 +6120,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6162</sub>
+<sub>`api.ogt` line 6192</sub>
 
 <a id="type-Shader"></a>
 
@@ -6087,7 +6134,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 6222</sub>
+<sub>`api.ogt` line 6252</sub>
 
 <a id="type-FrameCap"></a>
 
@@ -6118,7 +6165,7 @@ enum FrameCap {
 }
 ```
 
-<sub>`api.ogt` line 6285</sub>
+<sub>`api.ogt` line 6315</sub>
 
 <a id="type-PowerPreference"></a>
 
@@ -6141,7 +6188,7 @@ enum PowerPreference {
 }
 ```
 
-<sub>`api.ogt` line 6295</sub>
+<sub>`api.ogt` line 6325</sub>
 
 <a id="type-DisplaySettings"></a>
 
@@ -6202,7 +6249,7 @@ struct DisplaySettings {
 }
 ```
 
-<sub>`api.ogt` line 6301</sub>
+<sub>`api.ogt` line 6331</sub>
 
 <a id="type-GpuMemory"></a>
 
@@ -6239,7 +6286,7 @@ struct GpuMemory {
 }
 ```
 
-<sub>`api.ogt` line 6335</sub>
+<sub>`api.ogt` line 6365</sub>
 
 <a id="type-DisplayInfo"></a>
 
@@ -6286,7 +6333,7 @@ struct DisplayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6354</sub>
+<sub>`api.ogt` line 6384</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -6327,7 +6374,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6413</sub>
+<sub>`api.ogt` line 6443</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -6358,7 +6405,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6429</sub>
+<sub>`api.ogt` line 6459</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -6417,7 +6464,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6464</sub>
+<sub>`api.ogt` line 6494</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -6461,7 +6508,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6500</sub>
+<sub>`api.ogt` line 6530</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -6508,7 +6555,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6524</sub>
+<sub>`api.ogt` line 6554</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -6555,7 +6602,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6551</sub>
+<sub>`api.ogt` line 6581</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -6606,7 +6653,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6578</sub>
+<sub>`api.ogt` line 6608</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -6646,7 +6693,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6608</sub>
+<sub>`api.ogt` line 6638</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -6690,7 +6737,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6629</sub>
+<sub>`api.ogt` line 6659</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -6711,7 +6758,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 6703</sub>
+<sub>`api.ogt` line 6733</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -6748,7 +6795,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6709</sub>
+<sub>`api.ogt` line 6739</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -6821,7 +6868,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6726</sub>
+<sub>`api.ogt` line 6756</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -6869,7 +6916,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6771</sub>
+<sub>`api.ogt` line 6801</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -6913,7 +6960,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6797</sub>
+<sub>`api.ogt` line 6827</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -6953,7 +7000,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6819</sub>
+<sub>`api.ogt` line 6849</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -6976,7 +7023,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 6839</sub>
+<sub>`api.ogt` line 6869</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -7028,7 +7075,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6847</sub>
+<sub>`api.ogt` line 6877</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -7055,7 +7102,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 6874</sub>
+<sub>`api.ogt` line 6904</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -7089,7 +7136,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 6882</sub>
+<sub>`api.ogt` line 6912</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -7114,7 +7161,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 6896</sub>
+<sub>`api.ogt` line 6926</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -7150,7 +7197,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6903</sub>
+<sub>`api.ogt` line 6933</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -7182,7 +7229,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6918</sub>
+<sub>`api.ogt` line 6948</sub>
 
 <a id="type-LineMode"></a>
 
@@ -7207,7 +7254,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7008</sub>
+<sub>`api.ogt` line 7038</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -7273,7 +7320,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 7022</sub>
+<sub>`api.ogt` line 7052</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -7324,7 +7371,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 7066</sub>
+<sub>`api.ogt` line 7096</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -7357,7 +7404,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 7169</sub>
+<sub>`api.ogt` line 7199</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -7392,7 +7439,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 7183</sub>
+<sub>`api.ogt` line 7213</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -7415,7 +7462,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7219</sub>
+<sub>`api.ogt` line 7249</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -7429,7 +7476,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 7232</sub>
+<sub>`api.ogt` line 7262</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -7463,7 +7510,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7241</sub>
+<sub>`api.ogt` line 7271</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -7490,7 +7537,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7256</sub>
+<sub>`api.ogt` line 7286</sub>
 
 <a id="type-Post"></a>
 
@@ -7504,7 +7551,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 7368</sub>
+<sub>`api.ogt` line 7398</sub>
 
 <a id="type-PostError"></a>
 
@@ -7525,7 +7572,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 7386</sub>
+<sub>`api.ogt` line 7416</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -7548,7 +7595,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 7400</sub>
+<sub>`api.ogt` line 7430</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -7581,7 +7628,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7462</sub>
+<sub>`api.ogt` line 7492</sub>
 
 ## Column kinds
 
@@ -7605,6 +7652,7 @@ Each is a factory, `Geometry(value?, options?)`, that makes one field of a compo
 | <a id="column-SpriteBlend"></a>`SpriteBlend` | `SpriteBlend` | `Uint32Array` | 1 | A SpriteBlend field: the variant's index. |
 | <a id="column-SpriteFacing"></a>`SpriteFacing` | `SpriteFacing` | `Uint32Array` | 1 | A SpriteFacing field: the variant's index. |
 | <a id="column-StripBlend"></a>`StripBlend` | `StripBlend` | `Uint32Array` | 1 | A StripBlend field: the variant's index. |
+| <a id="column-GiMethod"></a>`GiMethod` | `GiMethod` | `Uint32Array` | 1 | A GiMethod field: the variant's index. |
 | <a id="column-Palette"></a>`Palette` | `Palette` | `Uint32Array` | 2 | A Palette handle field (0 is none). |
 | <a id="column-Look"></a>`Look` | `Look` | `Uint32Array` | 2 | A Look handle field (0 is none): a look og.load.look answered, kept for og.render.applyLook. |
 | <a id="column-DitherPattern"></a>`DitherPattern` | `DitherPattern` | `Uint32Array` | 1 | A DitherPattern field: the variant's index. |
@@ -7795,6 +7843,17 @@ column StripBlend {
 <sub>`api.ogt` line 4638</sub>
 
 ```ogt
+column GiMethod {
+  doc "A GiMethod field: the variant's index."
+  array Uint32Array
+  stride 1
+  value GiMethod
+}
+```
+
+<sub>`api.ogt` line 5028</sub>
+
+```ogt
 column Palette {
   doc "A Palette handle field (0 is none)."
   array Uint32Array
@@ -7803,7 +7862,7 @@ column Palette {
 }
 ```
 
-<sub>`api.ogt` line 5068</sub>
+<sub>`api.ogt` line 5098</sub>
 
 ```ogt
 column Look {
@@ -7814,7 +7873,7 @@ column Look {
 }
 ```
 
-<sub>`api.ogt` line 5075</sub>
+<sub>`api.ogt` line 5105</sub>
 
 ```ogt
 column DitherPattern {
@@ -7825,7 +7884,7 @@ column DitherPattern {
 }
 ```
 
-<sub>`api.ogt` line 5092</sub>
+<sub>`api.ogt` line 5122</sub>
 
 ```ogt
 column MaterialSurface {
@@ -7836,7 +7895,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>`api.ogt` line 5107</sub>
+<sub>`api.ogt` line 5137</sub>
 
 ```ogt
 column StyliseSpace {
@@ -7847,7 +7906,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>`api.ogt` line 5121</sub>
+<sub>`api.ogt` line 5151</sub>
 
 ```ogt
 column Light2DKind {
@@ -7858,7 +7917,7 @@ column Light2DKind {
 }
 ```
 
-<sub>`api.ogt` line 5420</sub>
+<sub>`api.ogt` line 5450</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -7869,7 +7928,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 6168</sub>
+<sub>`api.ogt` line 6198</sub>
 
 ```ogt
 column Shader {
@@ -7880,7 +7939,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6224</sub>
+<sub>`api.ogt` line 6254</sub>
 
 ```ogt
 column LineMode {
@@ -7891,7 +7950,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 7015</sub>
+<sub>`api.ogt` line 7045</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -7902,7 +7961,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7225</sub>
+<sub>`api.ogt` line 7255</sub>
 
 ```ogt
 column RenderTarget {
@@ -7913,7 +7972,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7234</sub>
+<sub>`api.ogt` line 7264</sub>
 
 ```ogt
 column Post {
@@ -7924,7 +7983,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7370</sub>
+<sub>`api.ogt` line 7400</sub>
 
 ## Constants
 
@@ -7940,28 +7999,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 5544</sub>
+<sub>`api.ogt` line 5574</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 6127</sub>
+<sub>`api.ogt` line 6157</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 6128</sub>
+<sub>`api.ogt` line 6158</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 6129</sub>
+<sub>`api.ogt` line 6159</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 6160</sub>
+<sub>`api.ogt` line 6190</sub>

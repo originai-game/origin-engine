@@ -132,23 +132,54 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(gtao_term(in), 0.0, 0.0, 1.0);
 }
 
+// GTAO with the probe GI (fx.ao.w 2): r the visibility, gba the world
+// bent normal (XeGTAO's, third_party/xegtao), blurred and upsampled over
+// all four channels by fs_gi_blur and fs_gi_upsample, the lit shaders
+// reading the probes' light along it (pbr.wgsl `ambient_normal`).
+@fragment
+fn fs_gtao_bent(in: VsOut) -> @location(0) vec4<f32> {
+  let px = ao_pixel(in.pos.xy);
+  if (is_sky(depth_at(px))) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
+  let g = gtao_bent(in);
+  let world = (vec4<f32>(g.yzw, 0.0) * fxp.view).xyz;
+  return vec4<f32>(g.x, world);
+}
+
+// The rotation taking unit `src` to unit `dst` applied to `x` (XeGTAO's
+// XeGTAO_RotFromToMatrix, Rodrigues with the unnormalised axis).
+fn gtao_rotate(src: vec3<f32>, dst: vec3<f32>, x: vec3<f32>) -> vec3<f32> {
+  let a = cross(src, dst);
+  let e = dot(src, dst);
+  return x * e + cross(a, x) + a * (dot(a, x) / max(1.0 + e, 1e-5));
+}
+
 // The GTAO term at the AO texel `in.pos` (1 on the sky; fs_gtao, and
 // fs_ssgi's occlusion with PostEffects.ao's GTAO).
 fn gtao_term(in: VsOut) -> f32 {
+  return gtao_bent(in).x;
+}
+
+// The GTAO visibility (x) and the view-space bent normal (yzw; the normal
+// itself where nothing is searched) at the AO texel `in.pos`. Jimenez et
+// al. 2016, "Practical Realtime Strategies for Accurate Indirect
+// Occlusion", the bent normal of its Algorithm 2 extension as XeGTAO
+// computes it (MIT, third_party/xegtao/LICENSE).
+fn gtao_bent(in: VsOut) -> vec4<f32> {
   let px = ao_pixel(in.pos.xy);
   let uv = ao_uv(px, in.uv);
   let d = depth_at(px);
-  if (is_sky(d)) { return 1.0; }
+  if (is_sky(d)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
   let p = view_pos(uv, d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
-  if (radius_px < 1.0) { return 1.0; }
+  if (radius_px < 1.0) { return vec4<f32>(1.0, n); }
   let noise = ign(in.pos.xy);
   let slices = 3u;
   let steps = 6u;
   var vis = 0.0;
+  var bent = vec3<f32>(0.0);
   // Loop invariants held outside the loops (the same values every tap
   // read through `depth_uv`): the depth's size, and each slice's jitter.
   let dsize = vec2<i32>(textureDimensions(tex_depth));
@@ -190,9 +221,18 @@ fn gtao_term(in: VsOut) -> f32 {
     let arc0 = (cos_n + 2.0 * a0 * sin(ang_n) - cos(2.0 * a0 - ang_n)) * 0.25;
     let arc1 = (cos_n + 2.0 * a1 * sin(ang_n) - cos(2.0 * a1 - ang_n)) * 0.25;
     vis += proj_len * (arc0 + arc1);
+    // The slice's bent normal in its own frame (the view along +z), then
+    // turned to the view direction.
+    let t0 = (6.0 * sin(a0 - ang_n) - sin(3.0 * a0 - ang_n) + 6.0 * sin(a1 - ang_n) - sin(3.0 * a1 - ang_n)
+      + 16.0 * sin(ang_n) - 3.0 * (sin(a0 + ang_n) + sin(a1 + ang_n))) / 12.0;
+    let t1 = (-cos(3.0 * a0 - ang_n) - cos(3.0 * a1 - ang_n) + 8.0 * cos(ang_n)
+      - 3.0 * (cos(a0 + ang_n) + cos(a1 + ang_n))) / 12.0;
+    let local = vec3<f32>(dir.x * t0, dir.y * t0, t1);
+    bent += gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, local) * proj_len;
   }
   vis = clamp(vis / f32(slices), 0.0, 1.0);
-  return pow(vis, max(fxp.ao.y, 0.0));
+  let bl = length(bent);
+  return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), select(n, bent / bl, bl > 1e-5));
 }
 
 // AoMethod::Screen: three.js-era post SSAO. A disc of 14 taps (a Vogel spiral, rotated per pixel) whose radius is a

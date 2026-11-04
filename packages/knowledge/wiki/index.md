@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2390 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2392 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -600,6 +600,8 @@ Field units the docs and Tune use.
 | [`GeometryPart`](render.md#type-GeometryPart) | desc struct | render | — |
 | [`GestureInfo`](ui.md#type-GestureInfo) | struct | ui | — |
 | [`GestureSpec`](ui.md#type-GestureSpec) | desc struct | ui | — |
+| [`GiMethod`](render.md#type-GiMethod) | enum | render | — |
+| [`GiMethod()`](render.md#column-GiMethod) | column kind | render | — |
 | [`GlassWeight`](ui.md#type-GlassWeight) | enum | ui | — |
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDataDesc`](load.md#type-GltfDataDesc) | desc struct | load | — |

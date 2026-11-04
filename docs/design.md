@@ -1030,6 +1030,40 @@ S6).
   The bounce adds to the diffuse ambient light times the albedo; the
   rays that hit take their share of the ambient light, or with
   `PostEffects.ao` its term does. Scattered copies keep the AO alone.
+- **Probe GI and sky occlusion (area 1).** `og.GlobalIllumination.method`
+  `probes` (or `both`, with the screen rays over it) lights every lit
+  surface's ambient light from DDGI probes (Wicked Engine's, MIT,
+  `third_party/wicked-ddgi`; `gi_probes.rs`, `gi_*.wgsl`).
+  - **Probes.** Cascades of 16 × 8 × 16 probes scroll with the camera,
+    `probeSpacing` apart in the first cascade and twice as far in each
+    next one. Cascade c relights 1/2^c of its probes a frame.
+  - **Tracing.** Each probe traces `probeRays` rays in software through a
+    two-level BVH of the scene, simplified to at most 8192 triangles a
+    mesh and 129² samples a terrain (`gi_scene.rs`). WebGPU has no
+    hardware ray tracing. A hit is shaded with the sun, one shadowed
+    local light, the hemisphere light, emission and the probes' previous
+    bounce.
+  - **Probe data.** Each probe keeps deringed L1 harmonics and a 12²
+    octahedral map of distance moments. Lit fragments read 8 probes a
+    cascade, weighed by a Chebyshev visibility test, so light does not
+    leak through walls.
+  - **Bindings.** The probes share the light volumes' storage buffer
+    (frame binding 10): the lit stages have no texture slot left, and
+    nothing beyond the default limits is requested.
+  - **Sky occlusion.** The sky reaches a point only through the probes'
+    rays that miss, so a roof, a room or a street of buildings hides it.
+    Reflections outside every reflection probe are scaled by what the
+    probes see along the reflected ray (`gi_reflected`).
+  - **GTAO bent normals (XeGTAO, MIT, `third_party/xegtao`).** With
+    `PostEffects.ao`'s GTAO on, the AO targets become RGBA16F and carry
+    the world bent normal in gba. The lit passes read the probes along
+    it. The screen GI's bounce and the contact shadows' masks use the
+    same channels, so either one turns the bent normals off.
+  - **Radiance Cascades** were measured against the probes and not
+    ported (`tests/evidence/gi-area/NOTES.md`). In a BVH a short interval
+    still costs 57% of a full ray, so world-space RC needs about 6× the
+    probes' tracing, and screen-space RC reaches no further than the
+    screen GI.
 - **The live sky (R3).** While the background is the per-pixel sky
   (`Background::Procedural`: og.Sky, og.DayNight, og.PhysicalSky,
   og.Clouds) and no environment map replaces it, the image-based light

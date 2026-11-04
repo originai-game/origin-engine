@@ -793,8 +793,8 @@ mod tests {
     /// cannot shift every field after it in the shaders.
     #[test]
     fn the_wgsl_frame_is_the_rust_frame() {
-        let module = naga::front::wgsl::parse_str(include_str!("../shaders/frame.wgsl"))
-            .expect("frame.wgsl");
+        // frame.wgsl with the probe GI's sampling its ambient light calls.
+        let module = naga::front::wgsl::parse_str(crate::FRAME_WGSL).expect("frame.wgsl");
         let mut layouter = naga::proc::Layouter::default();
         layouter.update(module.to_ctx()).expect("layout");
         let (handle, ty) = module

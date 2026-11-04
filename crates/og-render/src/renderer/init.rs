@@ -1009,6 +1009,7 @@ impl Renderer {
             metaballs,
             ibl,
             sky_capture: None,
+            gi_probes: None,
             sprite_pipeline,
             sprite_additive_pipeline,
             sprite_untonemapped_pipeline,

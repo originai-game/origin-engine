@@ -165,6 +165,8 @@ export interface ColumnKinds {
   SpriteFacing: { readonly array: Uint32Array; readonly stride: 1; readonly value: SpriteFacing };
   /** A StripBlend field: the variant's index. */
   StripBlend: { readonly array: Uint32Array; readonly stride: 1; readonly value: StripBlend };
+  /** A GiMethod field: the variant's index. */
+  GiMethod: { readonly array: Uint32Array; readonly stride: 1; readonly value: GiMethod };
   /** A Palette handle field (0 is none). */
   Palette: { readonly array: Uint32Array; readonly stride: 2; readonly value: Palette };
   /**
@@ -7745,15 +7747,34 @@ export interface LensFlare {
 }
 
 /**
- * Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+ * How GlobalIllumination bounces the light.
+ * - `"screen"`: In screen space: rays through the depth-normal prepass take the light the previous frame showed where they hit. Fine detail and contact, but nothing from off screen or behind what the screen shows.
+ * - `"probes"`: With probes: a grid of probes around the camera, each casting rays through a simplified copy of the scene (its meshes and terrains) every few frames, gathers the light arriving from every side, sky included; every lit surface takes its ambient light from the probes around it, tested for which of them see it. Light from off screen and behind walls bounces, a red wall lights the floor beside it however the camera looks, and the sky's light is occluded under roofs, in rooms and between buildings. Coarse (a probe every probeSpacing metres): pair it with PostEffects.ao for contact.
+ * - `"both"`: Probes for the light from the whole scene and the sky, the screen-space rays for the detail they see.
+ */
+export type GiMethod = "screen" | "probes" | "both";
+
+/**
+ * A GiMethod field: the variant's index.
+ *
+ * A `GiMethod` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function GiMethod(value?: GiMethod, options?: FieldOptions): FieldSpec<"GiMethod">;
+
+/**
+ * Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
  *
  * The `GlobalIllumination` resource (token `og.GlobalIllumination`).
  */
 export interface GlobalIllumination {
   /** Bounce the light. */
   enabled: boolean;
+  /** In screen space, with probes, or both. */
+  method: GiMethod;
   /**
-   * Scales the bounced light; 1 is physical.
+   * Scales the bounced light; 1 is physical. With probes the sky's light and emission are not scaled, only what surfaces bounce.
    *
    * @default 1
    * @range 0..
@@ -7804,6 +7825,28 @@ export interface GlobalIllumination {
    * Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.
    */
   resolution: AoResolution;
+  /**
+   * With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors.
+   *
+   * @default 1
+   * @range 0.05..
+   * @unit m (metres)
+   */
+  probeSpacing: number;
+  /**
+   * With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth).
+   *
+   * @default 3
+   * @range 1..4
+   */
+  probeCascades: number;
+  /**
+   * With probes: rays each probe casts when it is updated; more is smoother and costlier.
+   *
+   * @default 64
+   * @range 32..256
+   */
+  probeRays: number;
   /**
    * The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again.
    *
@@ -53006,9 +53049,9 @@ export declare namespace og {
    */
   const LensFlare: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly ghosts: FieldSpec<"u32">; readonly ghostSpacing: FieldSpec<"f32">; readonly ghostThreshold: FieldSpec<"f32">; readonly haloRadius: FieldSpec<"f32">; readonly haloThickness: FieldSpec<"f32">; readonly haloThreshold: FieldSpec<"f32">; readonly chromaticAberration: FieldSpec<"f32">; readonly starburst: FieldSpec<"bool">; readonly sun: FieldSpec<"f32">; readonly lights: FieldSpec<"f32"> }, LensFlare>;
   /**
-   * Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+   * Global illumination: light bounces between surfaces, so shade is lit by what stands around it. By method: in screen space (`screen`), each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it; light from off screen, or behind what the screen shows, is not bounced. With probes (`probes`), cascades of probes around the camera trace the scene in software and every lit surface (meshes, terrain, grass, scattered copies) takes its ambient light from them: the bounce from the whole scene, and the sky occluded by it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that, and with probes its bent normals (GTAO) pick the probes' light from the direction a crease opens to. Under TAA the screen rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
    */
-  const GlobalIllumination: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly rays: FieldSpec<"u32">; readonly occlusion: FieldSpec<"f32">; readonly resolution: FieldSpec<"AoResolution">; readonly allowed: FieldSpec<"bool"> }, GlobalIllumination>;
+  const GlobalIllumination: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly method: FieldSpec<"GiMethod">; readonly intensity: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly rays: FieldSpec<"u32">; readonly occlusion: FieldSpec<"f32">; readonly resolution: FieldSpec<"AoResolution">; readonly probeSpacing: FieldSpec<"f32">; readonly probeCascades: FieldSpec<"u32">; readonly probeRays: FieldSpec<"u32">; readonly allowed: FieldSpec<"bool"> }, GlobalIllumination>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.

@@ -34,6 +34,22 @@ struct Fx {
 };
 @group(2) @binding(0) var<uniform> fx: Fx;
 @group(2) @binding(1) var ssao_tex: texture_2d<f32>;
+
+// The direction a lit fragment at `clip` reads its diffuse ambient light
+// along: GTAO's bent normal where the AO texture holds it beside the
+// probe GI (fx.ao.w 2: fxpost.wgsl `fs_gtao_bent`, blurred, so it is
+// normalised again), the least occluded direction around `n`, which the
+// probes then light; `n` itself otherwise.
+fn ambient_normal(clip: vec2<f32>, n: vec3<f32>) -> vec3<f32> {
+  if (fx.ao.x < 0.5 || fx.ao.w < 1.5) { return n; }
+  let b = textureSampleLevel(ssao_tex, fx_sampler, clip * fx.screen.zw, 0.0).gba;
+  let l = length(b);
+  if (l < 0.25) { return n; }
+  // Never past the surface's horizon: a bent normal blurred across a
+  // crease may point below it.
+  let bn = b / l;
+  return normalize(bn + n * max(0.05 - dot(bn, n), 0.0));
+}
 @group(2) @binding(2) var decal_atlas: texture_2d<f32>;
 @group(2) @binding(3) var fx_sampler: sampler;
 // The decal records and their clusters (fx.rs, clusters.rs `DecalBins`):

@@ -2,7 +2,13 @@
 
 use super::*;
 
-pub(crate) const FRAME_WGSL: &str = wgsl!("frame.wgsl");
+/// The frame group (frame.wgsl), with the light volumes' buffer and the
+/// probe GI's sampling that `ambient_light` reads (gi_probes.rs).
+pub(crate) const FRAME_WGSL: &str = concat!(
+    wgsl!("frame.wgsl"),
+    wgsl!("gi_common.wgsl"),
+    wgsl!("gi_probes.wgsl")
+);
 /// The lit shader's vertex stages, lights and decals; the standard
 /// fragment shader and the prepass's follow it (`pbr_fs.wgsl`,
 /// `pbr_prepass.wgsl`), the physical one replaces both (`physical.wgsl`).

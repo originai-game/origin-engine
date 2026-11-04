@@ -598,6 +598,11 @@ pub struct PostEffects {
     pub ssr: Option<crate::ScreenSpaceReflections>,
     /// Screen-space global illumination (`None`: off; `ssgi.rs`).
     pub gi: Option<crate::ScreenSpaceGlobalIllumination>,
+    /// Probe global illumination: light bounced through the whole scene and
+    /// the sky occluded by it, from camera-centred probes traced in
+    /// software (`None`: off; `gi_probes.rs`). Beside or instead of
+    /// [`PostEffects::gi`].
+    pub gi_probes: Option<crate::ProbeGlobalIllumination>,
     /// `Some(radius)`: [`PostEffects::bloom`] as three.js UnrealBloomPass
     /// (luminance high pass, five Gaussian mips mixed by `radius`, the knee
     /// as its smoothWidth and the intensity as its strength); `None`: the

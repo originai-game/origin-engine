@@ -463,7 +463,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The environment's irradiance at its intensity, plus the hemisphere light at its own (pbr_fs.wgsl).
-  let irradiance = ambient_irradiance(ambient_light(n, in.world_pos), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
+  let irradiance = ambient_irradiance(ambient_light(select(n, ambient_normal(in.clip.xy, n), EFFECTS), in.world_pos), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -472,7 +472,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   let r = reflect(-v, bent);
   // Relit by the realtime light volumes where there are (lightmap.rs).
-  let prefiltered = volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness) * frame.params.x;
+  let prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let env_brdf = f_ibl * lut.x + lut.y;
   let ao_sample = maps.b;
@@ -485,7 +485,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   if (EFFECTS && fx.ao.x > 0.5) {
     let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
     let ssao_sample = ao_texel.r;
-    if (fx.ao.w > 0.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
+    if (fx.ao.w > 0.5 && fx.ao.w < 1.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
     ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
     ao_direct = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
     diffuse *= ao_direct;

@@ -611,18 +611,23 @@ impl FrameGraph {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
         // Screen-space GI in the AO passes' place (ssgi.rs).
         let gi = self.cfg.is_some_and(|c| c.gi);
+        // GTAO with its bent normals: four channels blurred as the GI's.
+        let bent = self.cfg.is_some_and(|c| c.bent);
         let half = self.views.contains_key("ao.blur");
         // With contact shadows the AO passes end in `ao.pre` (plan.rs).
         let ao = super::plan::ao_target_name(self.views.contains_key("ao.pre"));
         let effect = match pass {
             FramePass::Ao if gi => Some(("fs_ssgi", "ao.raw")),
+            FramePass::Ao if bent => Some(("fs_gtao_bent", "ao.raw")),
             FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
-            FramePass::AoBlur if gi => Some(("fs_gi_blur", if half { "ao.blur" } else { ao })),
+            FramePass::AoBlur if gi || bent => {
+                Some(("fs_gi_blur", if half { "ao.blur" } else { ao }))
+            }
             // Half resolution: the blur's depth is at twice its texel, which
             // gathers do not read.
             FramePass::AoBlur if half => Some(("fs_ao_blur", "ao.blur")),
             FramePass::AoBlur => Some((AO_BLUR_GATHER, ao)),
-            FramePass::AoUpsample if gi => Some(("fs_gi_upsample", ao)),
+            FramePass::AoUpsample if gi || bent => Some(("fs_gi_upsample", ao)),
             FramePass::AoUpsample => Some(("fs_ao_upsample", ao)),
             FramePass::Contact => Some(("fs_contact", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
@@ -873,6 +878,7 @@ impl FrameGraph {
             | FramePass::Fluid3d
             | FramePass::Probes
             | FramePass::LiveSky
+            | FramePass::GiProbes
             | FramePass::Reflection(_)
             | FramePass::View(_)
             | FramePass::Volumetric

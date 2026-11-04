@@ -190,6 +190,15 @@ impl Renderer {
                 .lights
                 .iter()
                 .any(|l| l.cast_shadows && !matches!(l.kind, LightKind::Rect { .. }));
+        // GTAO's bent normals for the probe GI (fxpost.wgsl `fs_gtao_bent`):
+        // the AO targets hold them in gba, where the screen GI's bounce or
+        // the contact shadows' masks would be, so either takes the place.
+        let bent = WORLD_3D
+            && gi.is_none()
+            && !contact
+            && ao.is_some_and(|a| a.method == AoMethod::Gtao)
+            && post_fx.gi_probes.is_some()
+            && scene.quality.global_illumination;
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -2373,13 +2382,20 @@ impl Renderer {
             Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
             Some(_) => 1.0,
         };
-        // w: 1 with the GI's bounce in the AO texture's gba.
+        // w: 1 with the GI's bounce in the AO texture's gba, 2 with GTAO's
+        // bent normal there.
         if ao_target {
             fx_uniform.ao = [
                 1.0,
                 1.0,
                 ao.map_or(0.0, |a| a.direct),
-                gi.is_some() as u32 as f32,
+                if gi.is_some() {
+                    1.0
+                } else if bent {
+                    2.0
+                } else {
+                    0.0
+                },
             ];
         }
         // The planar reflection's plane (n, n·at) for the material shaders
@@ -2494,6 +2510,12 @@ impl Renderer {
             .as_ref()
             .map(|_| FramePass::LiveSky)
             .into_iter()
+            .chain(
+                self.gi_probes
+                    .as_ref()
+                    .filter(|g| g.due())
+                    .map(|_| FramePass::GiProbes),
+            )
             .chain((0..cascades.len() as u32).map(FramePass::Cascade))
             .collect();
         if shelter_redraw {
@@ -2767,6 +2789,7 @@ impl Renderer {
                     lightdir: lightdir_on,
                     gtao,
                     gi: gi.is_some(),
+                    bent,
                     water: !scene_water.is_empty() || fluids_3d || particle_frame.distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     transmission,
@@ -4038,6 +4061,29 @@ impl Renderer {
                         ambient,
                     );
                     stats.draw_calls += (lights_2d > 0) as u32;
+                }
+                FramePass::GiProbes => {
+                    let g = self.gi_probes.as_ref().expect("planned with it");
+                    let ibl = self.ibl.views();
+                    let frame = crate::volumetric::bind_at(
+                        &self.device,
+                        "gi probes frame",
+                        &g.frame_layout,
+                        &[
+                            (0, self.frame_buffer.as_entire_binding()),
+                            (3, wgpu::BindingResource::TextureView(&ibl.irradiance)),
+                            (4, wgpu::BindingResource::TextureView(&ibl.prefiltered)),
+                            (6, wgpu::BindingResource::Sampler(&ibl.sampler)),
+                            (7, self.light_buffers[0].as_entire_binding()),
+                            (10, self.lightmaps.probe_buffer.as_entire_binding()),
+                        ],
+                    );
+                    g.record(
+                        &self.device,
+                        &mut encoder,
+                        &frame,
+                        &self.lightmaps.probe_buffer,
+                    );
                 }
                 FramePass::LiveSky => {
                     let c = self.sky_capture.as_ref().expect("planned with it");

@@ -28,6 +28,16 @@ is one line here, written at the merge that changes
   with the cell's frame. The catalogue gains `intended` per style (the
   traits that look like defects but are the style), and visual-acceptance
   gains §5 (the art bar) and §6 (verdicts). All additive.
+- **Probe global illumination.** These members are new and off by
+  default, so no existing frame moves.
+  - `render.GiMethod` (`screen`, `probes`, `both`).
+  - `GlobalIllumination.method`, default `screen`.
+  - `GlobalIllumination.probeSpacing`, `probeCascades` and `probeRays`.
+  - With `probes`, DDGI probes traced in software through a simplified
+    scene light every surface's ambient light: bounce from off screen,
+    and the sky occluded under roofs and in rooms.
+  - With `PostEffects.ao`'s GTAO on, the probes are read along its bent
+    normals.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

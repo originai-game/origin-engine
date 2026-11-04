@@ -87,21 +87,20 @@ pub struct BakedLighting {
 
 /// The most light volumes a frame samples.
 pub const PROBE_VOLUMES: usize = 8;
-/// The probe buffer's header: two vec4 per volume.
-const HEADER: usize = 2 * PROBE_VOLUMES;
+/// The light volumes' header: two vec4 per volume.
+const VOLUME_HEADER: usize = 2 * PROBE_VOLUMES;
+/// The probe buffer's header: the volumes', then the probe GI's rows
+/// (gi_probes.rs, written each frame after the volumes').
+const HEADER: usize = VOLUME_HEADER + crate::gi_probes::HEADER_ROWS;
 /// The probe buffer's size in vec4: the header and 16384 probes of three
 /// vec4.
 pub(crate) const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
 
-/// The WGSL of the probe buffer and the ambient-light hook (frame binding
-/// 10), placed after lighting.wgsl in the lit shaders.
+/// The WGSL of the ambient-light hook over the probe buffer (frame binding
+/// 10, declared with the frame group: gi_probes.wgsl), placed after
+/// lighting.wgsl in the lit shaders.
 pub(crate) fn probe_wgsl() -> String {
-    format!(
-        "{}\nstruct ProbeWords {{ v: array<vec4<f32>, {n}> }};\n@group(0) @binding(10) var<storage, read> probe_data: ProbeWords;\n{}",
-        format_args!("const PROBE_VOLUMES: u32 = {PROBE_VOLUMES}u;"),
-        AMBIENT_WGSL,
-        n = PROBE_CAPACITY,
-    )
+    format!("const PROBE_VOLUMES: u32 = {PROBE_VOLUMES}u;\n{AMBIENT_WGSL}")
 }
 
 const AMBIENT_WGSL: &str = r#"
@@ -231,7 +230,8 @@ pub(crate) fn probe_layout_entry() -> wgpu::BindGroupLayoutEntry {
 /// what is left is resampled to fewer probes; one that cannot fit two a
 /// side is left out.
 pub(crate) fn pack_probes(volumes: &[ProbeVolume], capacity: usize) -> Vec<[f32; 4]> {
-    let mut out = vec![[0.0, 0.0, 0.0, -1.0]; HEADER];
+    let mut out = vec![[0.0, 0.0, 0.0, -1.0]; VOLUME_HEADER];
+    out.resize(HEADER, [0.0; 4]);
     for (i, v) in volumes.iter().take(PROBE_VOLUMES).enumerate() {
         let left = capacity.saturating_sub(out.len()) / 3;
         let Some((counts, probes)) = fit(v, left) else {
@@ -374,6 +374,9 @@ pub(crate) struct Lightmaps {
     baked_header: Vec<[f32; 4]>,
     baked_end: usize,
     header: Vec<[f32; 4]>,
+    /// The buffer's size in vec4: [`PROBE_CAPACITY`], or more with the
+    /// probe GI's region after it ([`Lightmaps::ensure_capacity`]).
+    capacity: usize,
     /// The realtime volumes (probe_grid.rs) and what relights them.
     pub grid: crate::probe_grid::ProbeGrid,
     pub projector: crate::probe_grid::GridProjector,
@@ -481,6 +484,7 @@ impl Lightmaps {
         });
         let empty = pack_probes(&[], capacity);
         queue.write_buffer(&probe_buffer, 0, bytemuck::cast_slice(&empty));
+        let baked_header = empty[..VOLUME_HEADER].to_vec();
         Lightmaps {
             layout,
             frame_layout: frame_layout.clone(),
@@ -492,8 +496,9 @@ impl Lightmaps {
             probe_buffer,
             probes_key: Vec::new(),
             baked_end: empty.len(),
-            baked_header: empty.clone(),
-            header: empty,
+            baked_header: baked_header.clone(),
+            header: baked_header,
+            capacity,
             grid: Default::default(),
             projector: crate::probe_grid::GridProjector::new(device),
         }
@@ -561,6 +566,38 @@ impl Lightmaps {
         )
     }
 
+    /// Makes the probe buffer hold `vec4s` (the probe GI's region after
+    /// [`PROBE_CAPACITY`]; it never shrinks). True when it was made again:
+    /// its contents are written again by the next [`Lightmaps::prepare`]
+    /// (the realtime volumes sweep again), and every group binding it must
+    /// be made again.
+    pub fn ensure_capacity(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        vec4s: usize,
+    ) -> bool {
+        if vec4s <= self.capacity {
+            return false;
+        }
+        let capacity = vec4s.next_power_of_two().max(PROBE_CAPACITY);
+        self.probe_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("light volumes"),
+            size: (capacity * 16) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let empty = pack_probes(&[], PROBE_CAPACITY);
+        queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&empty));
+        self.capacity = capacity;
+        self.probes_key = vec![(Vec3::NAN, Vec3::NAN, [0; 3], 0)];
+        self.baked_end = empty.len();
+        self.baked_header = empty[..VOLUME_HEADER].to_vec();
+        self.header = self.baked_header.clone();
+        self.grid = Default::default();
+        true
+    }
+
     /// Uploads what changed in `baked` since the last frame: the pages of
     /// every scene a lightmapped mesh names (each set once), the meshes'
     /// uvs; what no mesh names any more is let go. Then lays out the
@@ -617,7 +654,7 @@ impl Lightmaps {
             queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&data));
             self.probes_key = probes_key;
             self.baked_end = data.len();
-            self.baked_header = data[..HEADER].to_vec();
+            self.baked_header = data[..VOLUME_HEADER].to_vec();
             self.header = self.baked_header.clone();
         }
         let baked_volumes = self

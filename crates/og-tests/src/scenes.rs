@@ -58,6 +58,8 @@ pub const SCENES: &[&str] = &[
     "ao-ssao",
     "gi-room",
     "gi-room-taa",
+    "gi-room-probes",
+    "gi-shelter",
     "light-volume-room",
     "light-volume-mirror",
     "light-volume-glossy",
@@ -759,6 +761,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "gi-room-taa" => |g, _| {
             g.scene = fx::gi_scene(true);
             g.desc.antialias = Antialias::Taa;
+            g.frames = 32;
+            Ok(())
+        },
+        // The probe GI (gi_probes.rs): a bounce more each frame, the
+        // probes' estimators settled by the capture.
+        "gi-room-probes" => |g, _| {
+            g.scene = fx::gi_probe_scene(true);
+            g.frames = 32;
+            Ok(())
+        },
+        "gi-shelter" => |g, _| {
+            g.scene = fx::gi_shelter_scene(true, true);
             g.frames = 32;
             Ok(())
         },

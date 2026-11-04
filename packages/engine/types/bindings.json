@@ -183,6 +183,12 @@
       "value": "StripBlend"
     },
     {
+      "name": "GiMethod",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "GiMethod"
+    },
+    {
       "name": "Palette",
       "array": "Uint32Array",
       "stride": 2,
@@ -9340,6 +9346,11 @@
           "default": false
         },
         {
+          "name": "method",
+          "column": "GiMethod",
+          "default": "screen"
+        },
+        {
           "name": "intensity",
           "column": "f32",
           "default": 1,
@@ -9377,6 +9388,21 @@
           "name": "resolution",
           "column": "AoResolution",
           "default": "full"
+        },
+        {
+          "name": "probeSpacing",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "probeCascades",
+          "column": "u32",
+          "default": 3
+        },
+        {
+          "name": "probeRays",
+          "column": "u32",
+          "default": 64
         },
         {
           "name": "allowed",
