@@ -13,6 +13,7 @@ mod ext;
 mod impostor;
 pub mod plain;
 mod primitive;
+pub(super) mod skin_report;
 
 use super::conform;
 pub use blob::*;

@@ -311,7 +311,7 @@ pub fn dependencies(root: &Path, settings: &AnimSettings) -> String {
 
 /// The humanoid map of `skeleton`: from the rig file at `rig` (under
 /// `root`), else detected from its names.
-fn humanoid(
+pub(super) fn humanoid(
     root: &Path,
     rig: Option<&str>,
     skeleton: &og_anim::SkeletonAsset,

@@ -1077,7 +1077,25 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
         triangles += entry["model"]["triangles"].as_u64().unwrap_or(0);
         gpu += gpu_bytes(&entry);
         entry["flags"] = Value::Array(asset_flags(&entry, budgets));
-        entry["warnings"] = Value::Array(asset_warnings(&entry, budgets));
+        let mut warnings = asset_warnings(&entry, budgets);
+        let skin: Vec<_> = a
+            .notes
+            .iter()
+            .filter(|n| {
+                n.starts_with("skin diagnostics:")
+                    || n.starts_with("warning: skin stretch:")
+                    || n.starts_with("skin diagnostics unavailable:")
+            })
+            .collect();
+        if !skin.is_empty() {
+            entry["skinDiagnostics"] = json!(skin);
+            warnings.extend(
+                skin.iter()
+                    .filter(|n| !n.starts_with("skin diagnostics:"))
+                    .map(|n| json!({"kind": if n.starts_with("warning:") { "skinStretch" } else { "skinDiagnosticsUnavailable" }, "message": n})),
+            );
+        }
+        entry["warnings"] = Value::Array(warnings);
         assets.push(entry);
     }
     let mut out = json!({

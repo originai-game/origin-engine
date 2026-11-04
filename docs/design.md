@@ -1409,6 +1409,24 @@ later.
 - **Animation**: glTF skins and clips, a blend tree asset (`.ogt`), state
   machines as data, root motion, additive layers, two-bone and FABRIK IK,
   blendshapes.
+  The cook diagnoses each source mesh/skin binding before welding or LODs,
+  including on incremental cooks. `skinDiagnostics` in `og cook --report`
+  and the cook's asset notes count vertices with summed weight >0.02 on
+  another limb than the dominant limb, excluding limbs with the same attach
+  joint. This count is information, not a warning. Humanoid regions and
+  probes use the retarget map (including `animation { rig }`): each upper
+  arm turns −70° about model X, its forearm −40°, the opposite arm +10°;
+  stride turns left upper/lower leg −35°/+30° and right upper leg +25°.
+  Rotations compose down the hierarchy about inverse-bind joint positions,
+  with +Y up and +Z forward. Without all four mapped limb roots, the root's
+  longest joint chain defines the spine; side branches of at least three
+  joints are regions. Each such branch and the continuing spine child at
+  its fork gets a −70° probe named by its skin joint index. Only triangles
+  whose posed longest edge is both >2.5× its bind longest edge and >0.08
+  model units (8 cm for metre-authored glTF) warn. Warnings name the skin,
+  mesh, primitive, probe and zero-based source triangle IDs. No weights,
+  animations, cooked geometry or world state change; these are fixed stress
+  probes, not a proof that every possible animation is free of stretching.
 - **Motion generation** (planned, the owner's direction of 2026-11-01;
   researched before it is built, `tests/evidence/motionbricks/NOTES.md`):
   a humanoid is animated by intent instead of hand-authored clips and

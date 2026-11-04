@@ -672,3 +672,189 @@ fn khr_animation_pointer_onto_node_visibility_cooks_to_a_visibility_track() {
     let clip = anim(&b, "models/blink.gltf").clip("blink").unwrap().clone();
     assert_eq!(clip.channels.len(), 1, "the visibility track alone");
 }
+
+#[test]
+fn skin_diagnostics_warn_on_stretch_not_foreign_weights_and_survive_cached_cooks() {
+    use serde_json::json;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("skin-diagnostics");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    // Four three-joint limbs; arms leave different spine joints. Joint order
+    // below is reversed in the skin to exercise JOINTS_0 rather than node IDs.
+    let mut nodes = json!([
+        {"name":"Hips", "children":[1,9,12]},
+        {"name":"Spine", "children":[2,3]},
+        {"name":"Chest", "children":[6]},
+        {"name":"LeftArm", "translation":[0,1,0], "children":[4]},
+        {"name":"LeftForeArm", "children":[5]}, {"name":"LeftHand"},
+        {"name":"RightArm", "translation":[0,1,0], "children":[7]},
+        {"name":"RightForeArm", "children":[8]}, {"name":"RightHand"},
+        {"name":"LeftUpLeg", "children":[10]},
+        {"name":"LeftLeg", "children":[11]}, {"name":"LeftFoot"},
+        {"name":"RightUpLeg", "children":[13]},
+        {"name":"RightLeg", "children":[14]}, {"name":"RightFoot"},
+        {"mesh":0,"skin":0}
+    ]);
+    let mut bin = Vec::<u8>::new();
+    // Triangle 0 has uniform cross-limb weights: harmless. Triangle 1 tears.
+    // Triangle 2 grows by >2.5x but stays below 8cm; triangle 3 grows beyond
+    // 8cm but not by 2.5x. Only source triangle 1 should be warned about.
+    let positions: [[f32; 3]; 12] = [
+        [0., 0., 0.],
+        [0.01, 0., 0.],
+        [0., 0.01, 0.],
+        [0., 0., 0.],
+        [0.01, 0., 0.],
+        [0., 0.01, 0.],
+        [0., 0.9, 0.],
+        [0.001, 0.9, 0.],
+        [0., 0.901, 0.],
+        [0., 0., 0.],
+        [0.8, 0., 0.],
+        [0., 0.8, 0.],
+    ];
+    for p in positions {
+        for f in p {
+            bin.extend(f.to_le_bytes());
+        }
+    }
+    for _ in &positions {
+        for j in [11u16, 8, 0, 0] {
+            bin.extend(j.to_le_bytes());
+        }
+    }
+    for i in 0..12 {
+        let weights: [f32; 4] = if i >= 3 && i % 3 == 0 {
+            [1., 0., 0., 0.]
+        } else {
+            [0.8, 0.2, 0., 0.]
+        };
+        for w in weights {
+            bin.extend(w.to_le_bytes());
+        }
+    }
+    for j in (0..15).rev() {
+        let m = glam::Mat4::from_translation(if (3..9).contains(&j) {
+            glam::Vec3::NEG_Y
+        } else {
+            glam::Vec3::ZERO
+        });
+        for f in m.to_cols_array() {
+            bin.extend(f.to_le_bytes());
+        }
+    }
+    std::fs::write(root.join("assets/skin.bin"), &bin).unwrap();
+    let mut doc = json!({
+        "asset":{"version":"2.0"}, "scene":0, "scenes":[{"nodes":[0,15]}],
+        "nodes":nodes, "skins":[{"joints":(0..15).rev().collect::<Vec<_>>(),"inverseBindMatrices":3}],
+        "buffers":[{"uri":"skin.bin","byteLength":bin.len()}],
+        "bufferViews":[
+            {"buffer":0,"byteOffset":0,"byteLength":144},
+            {"buffer":0,"byteOffset":144,"byteLength":96},
+            {"buffer":0,"byteOffset":240,"byteLength":192},
+            {"buffer":0,"byteOffset":432,"byteLength":960}
+        ],
+        "accessors":[
+            {"bufferView":0,"componentType":5126,"count":12,"type":"VEC3","min":[0,0,0],"max":[0.8,0.901,0]},
+            {"bufferView":1,"componentType":5123,"count":12,"type":"VEC4"},
+            {"bufferView":2,"componentType":5126,"count":12,"type":"VEC4"},
+            {"bufferView":3,"componentType":5126,"count":15,"type":"MAT4"}
+        ],
+        "meshes":[{"primitives":[{"attributes":{"POSITION":0,"JOINTS_0":1,"WEIGHTS_0":2}}]}]
+    });
+    std::fs::write(root.join("assets/skin.gltf"), doc.to_string()).unwrap();
+    let first = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(first.ok(), "{:?}", first.errors());
+    let warnings = first.warnings.join("\n");
+    assert!(
+        warnings.contains("rightArmForward: 1 stretched triangles"),
+        "{warnings}"
+    );
+    assert!(
+        first
+            .warnings
+            .iter()
+            .all(|w| w.contains("source triangle IDs [1]")),
+        "{warnings}"
+    );
+    assert!(
+        !warnings.contains("cross-limb"),
+        "counts alone must not warn"
+    );
+    let notes = first
+        .assets
+        .iter()
+        .flat_map(|a| &a.notes)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        notes.contains("9 cross-limb vertices (information only)"),
+        "{notes}"
+    );
+    let second = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(second.cooked_outputs().is_empty());
+    assert_eq!(first.warnings, second.warnings);
+    let stats =
+        og_cook::cook::stats::cook_report_json(&second, &root.join("cooked"), &Default::default());
+    assert!(stats["assets"].as_array().unwrap().iter().any(|a| {
+        a["skinDiagnostics"].is_array()
+            && a["warnings"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| w["kind"] == "skinStretch")
+    }));
+    // The same unnamed rig takes the topology fallback, including the
+    // continuing spine child at its fork, with no humanoid-name dependency.
+    for n in nodes.as_array_mut().unwrap() {
+        n.as_object_mut().unwrap().remove("name");
+    }
+    doc["nodes"] = nodes;
+    std::fs::write(root.join("assets/skin.gltf"), doc.to_string()).unwrap();
+    let fallback = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(fallback.ok(), "{:?}", fallback.errors());
+    assert!(
+        fallback
+            .warnings
+            .iter()
+            .any(|w| w.contains("joint11Forward") && w.contains("source triangle IDs [1]")),
+        "{:?}",
+        fallback.warnings
+    );
+    assert!(
+        fallback
+            .warnings
+            .iter()
+            .any(|w| w.contains("joint12Forward"))
+    );
+    // A custom retarget map is authoritative too. Default node transforms
+    // deliberately disagree with bind matrices; probes must use the latter.
+    for (i, n) in doc["nodes"].as_array_mut().unwrap().iter_mut().enumerate() {
+        n["name"] = json!(format!("n{i}"));
+    }
+    doc["nodes"][3]["translation"] = json!([0, 3, 0]);
+    std::fs::write(root.join("assets/skin.gltf"), doc.to_string()).unwrap();
+    std::fs::write(
+        root.join("assets/skin.gltf.ogt"),
+        "type import\nversion 1\n---\nanimation {\n  rig \"custom.ogt\"\n}\n",
+    )
+    .unwrap();
+    std::fs::write(root.join("assets/custom.ogt"), "type rig\nversion 1\n---\nleftUpperArm \"n3\"\nleftLowerArm \"n4\"\nrightUpperArm \"n6\"\nrightLowerArm \"n7\"\nleftUpperLeg \"n9\"\nleftLowerLeg \"n10\"\nrightUpperLeg \"n12\"\n").unwrap();
+    let custom = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(custom.ok(), "{:?}", custom.errors());
+    assert_eq!(custom.warnings, first.warnings);
+    // Limbs sharing an attach joint are exempt from the informational count.
+    doc["nodes"][1]["children"] = json!([2, 3, 6]);
+    doc["nodes"][2].as_object_mut().unwrap().remove("children");
+    std::fs::write(root.join("assets/skin.gltf"), doc.to_string()).unwrap();
+    let shared = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(shared.ok(), "{:?}", shared.errors());
+    assert!(
+        shared
+            .assets
+            .iter()
+            .flat_map(|a| &a.notes)
+            .any(|n| n.contains("0 cross-limb vertices"))
+    );
+}
