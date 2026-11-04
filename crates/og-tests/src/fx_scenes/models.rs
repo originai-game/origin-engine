@@ -127,7 +127,7 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
     parts.instance(
         &mut scene,
         Mat4::from_translation(Vec3::new(-0.4, -model.min.y * scale, 0.6))
-            * Mat4::from_rotation_y(0.5)
+            * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.5)
             * Mat4::from_scale(Vec3::splat(scale)),
     );
     let sun = Vec3::new(0.5, 0.8, 0.4);
@@ -417,7 +417,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
     for (i, fx) in looks.into_iter().enumerate() {
         let m =
             Mat4::from_translation(Vec3::new(-2.4 + i as f32 * 2.4, -model.min.y * scale, -0.6))
-                * Mat4::from_rotation_y(0.5)
+                * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.5)
                 * Mat4::from_scale(Vec3::splat(scale));
         for &(mesh, material) in &parts.parts {
             scene.instances.push(Instance {

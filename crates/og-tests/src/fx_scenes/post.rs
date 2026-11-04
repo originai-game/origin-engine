@@ -381,7 +381,7 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         parts.instance(
             &mut scene,
             Mat4::from_translation(Vec3::new(x, -model.min.y * scale, z))
-                * Mat4::from_rotation_y(0.3 - i as f32 * 0.15)
+                * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.3 - i as f32 * 0.15)
                 * Mat4::from_scale(Vec3::splat(scale)),
         );
     }

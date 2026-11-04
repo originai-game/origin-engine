@@ -154,6 +154,14 @@ const SPIKE_TIME: f32 = 59.0 / 60.0;
 const SUN: Vec3 = Vec3::new(0.45, 0.8, 0.35);
 const SUN_COLOR: Vec3 = Vec3::new(1.0, 0.95, 0.85);
 
+/// The yaw that turns trickster.glb towards +Z, the camera's side in the
+/// scenes. The asset faces +X: its inverse bind matrices cancel the 90°
+/// yaw on its top node (`trickster_Model`), so glTF's rule (a skinned mesh
+/// is placed by its joints, never by its node) draws it facing +X, as every
+/// animated draw always did; until the unposed draw followed that rule it
+/// faced -Z. The hero scenes add their own yaw to this one.
+pub const TRICKSTER_TO_Z: f32 = -std::f32::consts::FRAC_PI_2;
+
 pub(crate) fn load(name: &str) -> Result<GltfModel, String> {
     load_glb(&asset(name)?).map_err(|e| format!("{name}: {e}"))
 }

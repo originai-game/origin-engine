@@ -379,7 +379,7 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
         parts.instance(
             scene,
             Mat4::from_translation(Vec3::new(x, -model.min.y * scale, z))
-                * Mat4::from_rotation_y(yaw)
+                * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + yaw)
                 * Mat4::from_scale(Vec3::splat(scale)),
         );
         first..scene.instances.len()
