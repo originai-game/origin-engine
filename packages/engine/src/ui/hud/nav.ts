@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop, minText } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop, minText, mix, luminance } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -76,6 +76,19 @@ function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: n
 }
 
 /** `bare`: a zone of a panel that frames it (rtsConsole): no bezel of its own. */
+/**
+ * An ink for the minimap's own dark bezel and north badge, which are near-black in every style: `c` lifted toward
+ * white until it reads at 6:1 or better there. The style's ink and danger are made for its own grounds, so a light
+ * style's dark ink (craft's caption, 1.45:1) or a deep red (the north letter, 2.04:1) vanished on them.
+ */
+function onBezel(c: Rgba): Rgba {
+  for (let t = 0; t < 1; t += 0.05) {
+    const m = mix(c, WHITE, t);
+    if (luminance(m) >= 0.28) return { ...m, a: 1 };
+  }
+  return WHITE;
+}
+
 export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = false): Api.MinimapResult {
   const vp0 = frame().viewport;
   // A phone held sideways keeps the map within 30 % of its height, so at a large text size it shrinks before it meets
@@ -273,7 +286,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
       if (plate) {
         // A long name at a large text size takes a second line rather than an ellipsis.
         box("Plate", { width: pct(1), padding: { left: u(4), right: u(4), top: u(2), bottom: u(2) }, align: "center", cross: "center", part: sel("Minimap", "plate") }, undefined, () =>
-          text("Zone", desc.zone ?? "", { step: capStep, font: "display", color: token("ink", 0.9), align: "center", width: pct(1), maxLines: 2, ellipsis: true }));
+          text("Zone", desc.zone ?? "", { step: capStep, font: "display", color: lit(onBezel(luminance(role("ink")) >= luminance(role("inkInverse")) ? role("ink") : role("inkInverse")), 0.92), align: "center", width: pct(1), maxLines: 2, ellipsis: true }));
       }
       // North on the rim: centred on the bezel's ring, half outside the map, so it covers nothing on the map.
       const nAng = -Math.PI / 2 + turn;
@@ -285,7 +298,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
         fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }))],
         strokes: [stroke(1, lit(WHITE, 0.18))],
         effects: [drop(u(1), u(4), token("shadow", 0.5))],
-      }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
+      }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(onBezel(role("danger"))), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
         // It straddles the map's rim on purpose (inside the top edge when bare).
         // Over a caption plate (a turned map's north at the bottom), it stays inside the map's bottom edge instead.
         fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: Math.min(bezel + R + Math.sin(nAng) * ring - nb / 2, plate ? bezel + size - nb - 1 : Infinity) }, { overlaps: [path] }));

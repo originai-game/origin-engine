@@ -11,7 +11,7 @@ import type * as Api from "@origingame/engine";
 import {
   TAU, a11y, fixed, anchorOf, box, bp, clamp01, ellipseShape, frame, glow, groups, hudPlace, kit, leaf, lit, mix, paintRgba, pct, pulse, px,
   reduced, role, sel, solid, springTo, stroke, text, token, ts, u, vgrad, type Rgba, ut, tsFit,
-  stepSize, textScale,
+  stepSize, textScale, luminance,
 } from "./core.ts";
 import { arcadeSpeedo } from "./arcade.ts";
 
@@ -307,14 +307,18 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       const gearPad = Math.max(3, Math.round((gearSide - stepSize(gearStep).size * 0.62) / 2));
       box("Gear", { height: px(gearSide), padding: { left: gearPad, right: gearPad, top: 0, bottom: 0 }, align: "center", cross: "center", part: sel("Speedometer", "gear", neutral ? "neutral" : null) }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
-        fills: [solid(token("shadow", 0.7))],
+        // The style's HUD ground, which its ink is made to read on (under the dial it sits over the scene): a light
+        // style's translucent shadow left its dark gear numeral invisible there (craft's "5").
+        fills: [solid(token("hud", 0.94))],
         strokes: [stroke(1.5, neutral ? lit(role("warn")) : token("lineStrong"))],
       }, () => text("Text", g, { step: gearStep, font: "display", color: neutral ? lit(role("warn")) : token("ink"), nowrap: true }), extra);
     };
     if (under) {
       // Under the dial, centred: the unit, then the gear.
       box("Under", { direction: "row", width: px(size), gap: gap * 2, align: "center", cross: "center" }, undefined, () => {
-        text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true, outline: 0.8 });
+        // Over the scene: the scheme's light ink (a light style's inkMuted is dark: craft's km/h read 1:1 there).
+        const muted = role("inkMuted"), inverse = role("inkInverse");
+        text("Unit", unit, { step: unitStep, font: "mono", color: lit(luminance(muted) >= luminance(inverse) ? muted : inverse), nowrap: true, outline: 0.8 });
         if (desc.gear) gearBox();
       }, fixed({ start: 0, top: size + gap + (below ? sp.line + gap : 0) }));
     } else {

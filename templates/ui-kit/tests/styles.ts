@@ -209,13 +209,22 @@ export const STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEn
  * the phone's own DPR (the surface's 390×844@3): the horror HUD at 100 and
  * 150 % text in scifi, storybook and fantasy (art, 2026-11-04: the world
  * prompt's name over the scene in the scheme's light ink, its gap above the
- * chip, the d-pad clear of the battery). The phone sheet's own cells are at
- * 100 % only.
+ * chip, the d-pad clear of the battery), and the race HUD at 100 and 150 % in
+ * fantasy and craft (art, 2026-11-04: the tach's speed at the whole text size,
+ * its unit and gear readable under the dial). The phone sheet's own cells are
+ * at 100 % only.
  */
 export const PHONE_STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEntries(
-  ["scifi", "storybook", "fantasy"].map((style) => [
+  [
+    ["scifi", ["horror"]],
+    ["storybook", ["horror"]],
+    ["fantasy", ["horror", "race"]],
+    ["craft", ["race"]],
+  ].map(([style, screens]) => [
     style,
-    ["100", "150"].map((scale) => ({ name: `state-horror-${scale}`, commands: [`demo:text:${scale}`, "show:horrorHud"] })),
+    (screens as string[]).flatMap((screen) =>
+      ["100", "150"].map((scale) => ({ name: `state-${screen}-${scale}`, commands: [`demo:text:${scale}`, `show:${screen}Hud`] })),
+    ),
   ]),
 );
 

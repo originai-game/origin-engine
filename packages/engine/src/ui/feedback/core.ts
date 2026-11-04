@@ -266,17 +266,29 @@ export function arc(fraction: number, thickness: number, cap: Api.LineCap = "rou
 }
 
 /** The HUD's text treatment: an outline and a soft shadow in the style's shadow, so text reads over any game. */
-export function hudText(strength = 1): Api.TextEffectsDesc {
+export function hudText(strength = 1, dark = false): Api.TextEffectsDesc {
   // A solid outline, a drop and a soft halo round the glyphs, as a shipped
   // HUD's ink has: the outline holds the edges, the halo darkens the ground
   // between strokes, so small text reads at 4.5:1 on a bright or busy scene.
+  // A dark ink (a light style's) takes them in the style's light ink instead:
+  // a dark outline round dark glyphs separates nothing, and a light style's
+  // translucent shadow drew a grey band that sank them on their own plate
+  // (craft's lap "2", 2.53:1).
+  const edge = (alpha: number): Api.Paint => (dark ? token("inkInverse", alpha) : token("shadow", alpha));
   return {
-    outline: { width: Math.max(1.5, 2 * strength), color: token("shadow", 1), align: "outside" },
+    outline: { width: Math.max(1.5, 2 * strength), color: edge(dark ? 0.95 : 1), align: "outside" },
     shadows: [
-      { offset: { x: 0, y: 1.5 }, blur: 3, color: token("shadow", 0.7) },
-      { offset: { x: 0, y: 0 }, blur: 6 * Math.max(0.6, strength), color: token("shadow", 0.55) },
+      { offset: { x: 0, y: 1.5 }, blur: 3, color: edge(dark ? 0.5 : 0.7) },
+      { offset: { x: 0, y: 0 }, blur: 6 * Math.max(0.6, strength), color: edge(dark ? 0.45 : 0.55) },
     ],
   };
+}
+
+/** Whether a label's ink is dark (under a fifth of white's luminance): a token or a literal colour, the ink by default. */
+function darkInk(color: unknown): boolean {
+  const c = color as { token?: Api.ThemeColor; color?: { r: number; g: number; b: number }; r?: number; g?: number; b?: number } | undefined;
+  const rgb = !c ? role("ink") : c.token ? role(c.token) : c.color ? { ...c.color, a: 1 } : typeof c.r === "number" ? (c as Rgba) : role("ink");
+  return luminance(rgb) < 0.2;
 }
 
 /**
@@ -329,7 +341,7 @@ export function text(id: string, s: string, desc: TextDesc = {}, props?: Props):
   const { outline, soft, name, gradient, ...label } = desc;
   kit.label(id, s, label);
   if (outline || soft || name || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText() : {};
+    const fx = outline ? hudText(typeof outline === "number" ? outline : 1, darkInk(label.color)) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText() : {};
     kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
   }
   apply(props);
