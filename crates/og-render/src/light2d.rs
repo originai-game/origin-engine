@@ -107,14 +107,24 @@ pub(crate) fn shadow_edges(lights: &[Light2d], occluders: &[Occluder2d]) -> Shad
             if o.layers & l.layers == 0 || contains(outline, l.position) {
                 continue;
             }
+            // All of an outline that reaches the radius, or none of it: a ray
+            // that enters through an edge in range may leave through one
+            // past it, and without that edge the occluder's inside reads as
+            // its shadow (light2d_shadow.wgsl's exit).
+            let edge = |i: usize| (outline[i], outline[(i + 1) % outline.len()]);
+            let reaches = (0..outline.len()).any(|i| {
+                let (a, b) = edge(i);
+                to_segment(l.position, a, b) < radius
+            });
+            if !reaches || out.edges.len() + outline.len() > MAX_SHADOW_EDGES_2D {
+                continue;
+            }
             for i in 0..outline.len() {
-                let (a, b) = (outline[i], outline[(i + 1) % outline.len()]);
-                if to_segment(l.position, a, b) < radius && out.edges.len() < MAX_SHADOW_EDGES_2D {
-                    out.edges.push(ShadowEdge {
-                        ab: [a.x, a.y, b.x, b.y],
-                        id: [id as u32, 0, 0, 0],
-                    });
-                }
+                let (a, b) = edge(i);
+                out.edges.push(ShadowEdge {
+                    ab: [a.x, a.y, b.x, b.y],
+                    id: [id as u32, 0, 0, 0],
+                });
             }
         }
         out.row_of.push(out.rows.len() as i32);
