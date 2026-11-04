@@ -215,7 +215,11 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
   if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5); }
-  let reveal = clamp(textureLoad(reactive_tex, at, 0).r, 0.0, 1.0);
+  // Without OIT the binding is a 1x1 white placeholder: the coordinate is
+  // clamped to it, never loaded out of bounds (which may answer zero and
+  // drop the history). With OIT `at` is the scene pixel, oit.reveal's size.
+  let reactive_size = vec2<i32>(textureDimensions(reactive_tex));
+  let reveal = clamp(textureLoad(reactive_tex, min(at, reactive_size - 1), 0).r, 0.0, 1.0);
   let a = 1.0 - (1.0 - taa.params.x * near) * reveal;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
