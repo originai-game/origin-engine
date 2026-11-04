@@ -676,7 +676,18 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 if ao_depth {
                     writes.push("ao-depth");
                 }
-                g.pass(name, &[], &writes)
+                g.pass(name, &[], &writes);
+                // It sets `fx_group`, which holds the main pass's AO (or
+                // contact) target and planar reflection: neither may alias
+                // a target the prepass draws into.
+                let mut bound = Vec::new();
+                if has(FramePass::AoBlur) || contact {
+                    bound.push("ao");
+                }
+                if has(FramePass::Reflection(0)) {
+                    bound.push(reflection_target(0, ""));
+                }
+                g.binds(&bound)
             }
             FramePass::Ao => g.pass(name, &ao_reads, &["ao.raw"]),
             FramePass::AoBlur if has(FramePass::AoUpsample) => {
@@ -1028,9 +1039,15 @@ mod tests {
             assert!(at(FramePass::Contact) < at(FramePass::Main));
             let format = |name| plan.slot(name).map(|s| plan.physical()[s].format);
             assert_eq!(format("ao"), Some(CONTACT_FORMAT), "ao {ao}");
+            // The prepass holds `ao` in the fx group: it may not share a
+            // texture with `outline-id` (the same format, unread without
+            // an outline pass), which the prepass draws into.
+            assert_ne!(plan.slot("ao"), plan.slot("outline-id"), "ao {ao}");
             if ao {
                 assert!(at(FramePass::AoBlur) < at(FramePass::Contact));
                 assert_eq!(format("ao.pre"), Some(AO_FORMAT));
+                // Realized as a view, so the AO passes write it, not `ao`.
+                assert!(plan.transients().any(|(name, _)| name == "ao.pre"));
             } else {
                 assert_eq!(format("ao.pre"), None);
             }

@@ -19,6 +19,12 @@
 //! renderer's passes load what earlier passes drew (sprites over the scene,
 //! bloom levels added back).
 //!
+//! **What a binding holds.** A pass may hold a target in a bind group it sets
+//! without sampling it ([`RenderGraph::binds`]: a frame-wide group whose
+//! layout its pipelines share). That adds no dependency, but the target's
+//! texture lives through the pass, so it never aliases a target the pass
+//! renders into: a texture is not both bound and an attachment in one pass.
+//!
 //! **Validation** refuses, with the names involved: a target declared twice,
 //! a pass declared twice, a pass naming an undeclared target, a transient
 //! target read but never written, and a cycle (`a -> b -> a`).
@@ -93,6 +99,7 @@ struct PassDecl {
     name: String,
     reads: Vec<String>,
     writes: Vec<String>,
+    binds: Vec<String>,
 }
 
 /// A frame's passes and targets, before ordering. See the module docs.
@@ -134,7 +141,17 @@ impl RenderGraph {
             name: name.into(),
             reads: reads.iter().map(|s| s.to_string()).collect(),
             writes: writes.iter().map(|s| s.to_string()).collect(),
+            binds: Vec::new(),
         });
+        self
+    }
+
+    /// Declares that the pass declared last holds `targets` in a bind group
+    /// without sampling them (see the module docs): their lifetimes cover
+    /// the pass, with no dependency on their writers.
+    pub fn binds(&mut self, targets: &[&str]) -> &mut Self {
+        let pass = self.passes.last_mut().expect("binds follows a pass");
+        pass.binds.extend(targets.iter().map(|s| s.to_string()));
         self
     }
 
@@ -168,7 +185,14 @@ impl RenderGraph {
         // Per pass, the target indices it reads and writes.
         let mut reads = Vec::with_capacity(n);
         let mut writes = Vec::with_capacity(n);
+        let mut binds = Vec::with_capacity(n);
         for p in &self.passes {
+            binds.push(
+                p.binds
+                    .iter()
+                    .map(|t| target_index(p, t))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
             reads.push(
                 p.reads
                     .iter()
@@ -261,7 +285,7 @@ impl RenderGraph {
         }
         let mut lifetimes: Vec<Option<(usize, usize)>> = vec![None; self.targets.len()];
         for p in 0..n {
-            for &t in reads[p].iter().chain(&writes[p]) {
+            for &t in reads[p].iter().chain(&writes[p]).chain(&binds[p]) {
                 if self.targets[t].desc.is_none() {
                     continue;
                 }
