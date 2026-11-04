@@ -81,6 +81,19 @@ impl Ui {
                 _ => {}
             }
         }
+        // A vertical scroller whose content ran past it last frame keeps a
+        // gutter at its end for its bar (Ui::bar_gutter).
+        let gutters: Vec<(usize, f32)> = (0..self.nodes.len())
+            .filter(|&i| {
+                let el = &self.nodes[i].el;
+                el.scroll && !el.scroll_x && !el.hide_bars
+            })
+            .map(|i| (i, self.bar_gutter(self.nodes[i].key)))
+            .filter(|g| g.1 > 0.0)
+            .collect();
+        for (i, g) in gutters {
+            self.nodes[i].el.padding.right += g;
+        }
         crate::layout::snap_pixel_text(&mut self.nodes, &self.fonts);
         self.reuse_check();
         let mut floating: Vec<usize> = self

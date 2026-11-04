@@ -88,6 +88,25 @@ pub(crate) struct Thumb {
 }
 
 impl Ui {
+    /// The room at the end of vertical scroller `key` its bar takes, the bar
+    /// being drawn over its right edge: the bar and a hairline either side
+    /// while its content ran past it last frame, so that content (a results
+    /// stat's figure, a grade) never lies under the bar; else 0. Narrower,
+    /// the content is no shorter, so it keeps overflowing and the gutter
+    /// holds. Layout gives it to every vertical-only scroller with bars.
+    pub(crate) fn bar_gutter(&self, key: u64) -> f32 {
+        if self
+            .state
+            .scroll_info
+            .get(&key)
+            .is_some_and(|s| s.range.y > 0.0)
+        {
+            self.theme.space.xs + 2.0 * self.theme.space.xxs
+        } else {
+            0.0
+        }
+    }
+
     /// The zoom view `key`'s state, when `key` is one.
     pub(crate) fn zoom_state(&self, key: u64) -> Option<ZoomState> {
         let z = self.state.anims.get(&zoom_key(key))?;

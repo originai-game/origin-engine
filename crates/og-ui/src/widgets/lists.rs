@@ -284,6 +284,8 @@ impl Ui {
         .max(floor);
         let gap = if desc.gap > 0.0 { desc.gap } else { t.space.sm };
         let key = self.key_for(id.as_str());
+        // Its bar's gutter while its rows ran past it.
+        let gutter = self.bar_gutter(key);
         // The width the cells had last frame (the grid's, inside its padding).
         // Last frame's whole box, on screen or not: out of view a grid
         // guessed the viewport's width, built a dozen columns of rows and
@@ -292,7 +294,7 @@ impl Ui {
             .hit(key)
             .map(|h| h.full.width)
             .or_else(|| self.prev_rect(key).map(|r| r.width))
-            .map(|w| w - desc.padding.horizontal());
+            .map(|w| w - desc.padding.horizontal() - gutter);
         // `columns` across, exactly: a fit grid is that many cells of the
         // asked width; any other width is shared by them (wider cells, or
         // narrower down to the touch target), rounded down to 1/64 px so a
@@ -322,7 +324,7 @@ impl Ui {
             .min(rows);
         let last_row = ((((off + view) / stride).ceil().max(0.0)) as u32 + 1).min(rows);
         let width = if desc.columns > 0 && matches!(desc.width, Size::Fit { .. }) {
-            Size::Fixed(columns as f32 * stride - gap + desc.padding.horizontal())
+            Size::Fixed(columns as f32 * stride - gap + desc.padding.horizontal() + gutter)
         } else {
             desc.width
         };

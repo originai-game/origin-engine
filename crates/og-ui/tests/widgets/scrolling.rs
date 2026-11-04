@@ -827,3 +827,79 @@ fn a_scroller_fades_the_edges_more_content_lies_past() {
     build(&mut ui, rest(), 0.0);
     assert!(fades(&ui).is_empty(), "no fade asked, none drawn");
 }
+
+/// A vertical scroller's bar is drawn over its right edge: once its
+/// content runs past it, its rows (a results stat's right-aligned figure)
+/// end before the bar instead of under it; content that fits keeps the
+/// whole width.
+#[test]
+fn an_overflowing_scrollers_content_ends_before_its_bar() {
+    let rows = |n: u32| {
+        move |ui: &mut Ui, _: &mut ()| {
+            ui.scroll(
+                "Page",
+                ScrollDesc {
+                    width: Size::px(300.0),
+                    height: Size::px(200.0),
+                    ..ScrollDesc::default()
+                },
+                |ui| {
+                    for k in 0..n {
+                        ui.row(
+                            ui_idi("Stat", k),
+                            Element {
+                                width: Size::grow(),
+                                ..Element::row()
+                            },
+                            |ui| {
+                                ui.label(
+                                    "Name",
+                                    "Score",
+                                    LabelDesc {
+                                        width: Size::grow(),
+                                        ..LabelDesc::default()
+                                    },
+                                );
+                                ui.label("Value", "48,210", LabelDesc::default());
+                            },
+                        );
+                    }
+                },
+            );
+        }
+    };
+    let right = |rig: &Rig<()>, path: &str| {
+        let e = rig.ui.frame().element(path).expect(path);
+        e.x + e.width
+    };
+    let mut fits = Rig::new(());
+    fits.idle(3, &mut rows(2));
+    let page = right(&fits, "Page");
+    assert_eq!(
+        right(&fits, "Page/Stat#0/Value"),
+        page,
+        "fitting content keeps the width"
+    );
+    let mut long = Rig::new(());
+    long.idle(3, &mut rows(30));
+    let bar_left = long
+        .ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Quad { rect, .. }
+                if rect.width < 10.0 && rect.height > 20.0 && rect.right() <= page + 0.5 =>
+            {
+                Some(rect.x)
+            }
+            _ => None,
+        })
+        .fold(f32::INFINITY, f32::min);
+    assert!(bar_left.is_finite(), "the bar is drawn");
+    let value = right(&long, "Page/Stat#0/Value");
+    assert!(
+        value <= bar_left,
+        "the figure ends at {value}, under the bar from {bar_left}"
+    );
+}

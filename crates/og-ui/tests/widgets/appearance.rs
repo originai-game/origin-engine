@@ -605,7 +605,8 @@ fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
         }
         rows
     };
-    // Two columns in 500 px: two cards of (500 + 8) / 2 - 8 = 246 px, not four of 104.
+    // Two columns in 500 px, less the 8 px its bar takes once its rows run past
+    // it (Ui::bar_gutter): two cards of (492 + 8) / 2 - 8 = 242 px, not four of 104.
     let mut rig = Rig::new(G {
         columns: 2,
         width: Size::grow(),
@@ -618,7 +619,7 @@ fn a_grid_lays_out_exactly_its_columns_whatever_its_width() {
         "rows of two: {r:?}"
     );
     assert!(
-        (r[0][0].0 - 246.0).abs() < 0.1,
+        (r[0][0].0 - 242.0).abs() < 0.1,
         "the cards share the width: {r:?}"
     );
     // Six columns of 104 asked in 500 px: six narrower cells a row, not four.
