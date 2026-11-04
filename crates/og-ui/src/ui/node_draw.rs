@@ -396,13 +396,18 @@ impl Ui {
                             }
                         }
                         text(0.0, 0.0, tc.color, glow, cmds);
+                        // The flourish frames a title, never a smaller
+                        // heading (under 28 px it crowds the words), at
+                        // the words' cap height (art review, 2026-11-04).
                         if n.heading
                             && k == 0
+                            && tc.step.size >= FLOURISH_MIN_TITLE
                             && let Some(o) = t.art.flourish.filter(|_| t.art.atlas.is_some())
                         {
                             let cy = ly + lh / 2.0;
                             let gap = o.offset + t.space.sm;
-                            let (w, h) = (o.w * sk, o.h * sk);
+                            let h = CAP_HEIGHT * size;
+                            let w = o.w / o.h.max(1e-3) * h;
                             let left = Rect::new(x - gap - w, cy - h / 2.0, w, h);
                             let right = Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
                             // Both sides of a centred heading; the side away from the edge otherwise.
@@ -635,3 +640,9 @@ pub(super) fn part_rect(n: &crate::layout::Node, press_scale: f32) -> Rect {
         _ => n.rect,
     }
 }
+
+/// The smallest heading (CSS px) a style's flourish frames.
+const FLOURISH_MIN_TITLE: f32 = 28.0;
+/// A face's cap height as a share of its size (Latin display faces run
+/// 0.66 to 0.72): what a flourish is drawn as tall as.
+const CAP_HEIGHT: f32 = 0.7;

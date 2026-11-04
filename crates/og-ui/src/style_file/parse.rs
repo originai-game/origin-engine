@@ -652,6 +652,10 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         }
                     };
                     match c.key.as_str() {
+                        "slice" if c.values.len() == 1 && q.word(0).is_ok_and(|w| w == "none") => {
+                            d.frame.slice = None;
+                            d.frame.unsliced = true;
+                        }
                         "slice" => {
                             needs_atlas()?;
                             d.frame.slice = Some(slice_at(&q, 0, size, scale)?);

@@ -878,6 +878,20 @@ impl Ui {
             self.resolve_cursor(&present)
         };
 
+        // A button narrower than an ornament's span is `[narrow]`, laid
+        // out: a style draws it plain (fantasy's hairline and bevel, no
+        // ornament under 160 px, art review 2026-11-04). `Ui::button`
+        // decides its own as it builds (its label's ink follows the art).
+        for &i in &order {
+            let n = &mut self.nodes[i];
+            if !matches!(n.widget, crate::layout::Widget::Button { .. })
+                && let Some(p) = n.el.part.as_mut()
+                && p.class == Some(crate::tokens::ElementClass::Button)
+                && n.rect.width < NARROW_BUTTON
+            {
+                *p = p.flag("narrow");
+            }
+        }
         self.build_part_draws(&order);
         let mut cmds = self.commands(&order);
         self.record_matches(&order);
@@ -972,5 +986,19 @@ impl Ui {
             }
         }
         out
+    }
+}
+
+/// The width (CSS px) under which a button is `[narrow]`.
+pub const NARROW_BUTTON: f32 = 160.0;
+
+impl Ui {
+    /// Whether a button of `width` is `[narrow]`: its fixed width, else its
+    /// width as laid out last tick (none yet: not narrow).
+    pub(crate) fn narrow_button(&self, key: u64, width: Size) -> bool {
+        match width {
+            Size::Fixed(w) => w < NARROW_BUTTON,
+            _ => self.hit(key).is_some_and(|h| h.full.width < NARROW_BUTTON),
+        }
     }
 }

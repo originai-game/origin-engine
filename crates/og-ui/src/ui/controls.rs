@@ -184,7 +184,8 @@ impl Ui {
                 .flag_if(r.focused, "focused")
                 .flag_if(desc.size == ControlSize::Small, "small")
                 .flag_if(desc.size == ControlSize::Large, "large")
-                .flag_if(desc.square, "square");
+                .flag_if(desc.square, "square")
+                .flag_if(self.narrow_button(key, width), "narrow");
         part.hover = amounts.0;
         part.press = amounts.1;
         let resolved = self.dress.resolve(&part);

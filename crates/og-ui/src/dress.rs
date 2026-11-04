@@ -206,6 +206,9 @@ impl fmt::Display for Selector {
 pub struct DressFrame {
     /// `slice <x> <y> <w> <h> <inset>… [tint|authored] [stretch|repeat|round]`.
     pub slice: Option<Slice>,
+    /// `slice none`: no art, not even a less specific dressing's (a red
+    /// Delete drawn by its fill under a pack's sliced buttons).
+    pub unsliced: bool,
     /// `shadow <dx> <dy> <blur> <spread> "<colour>"`.
     pub shadow: Option<Shadow>,
     /// `glow <size> <ink> <alpha>`.
@@ -613,7 +616,11 @@ impl DressSet {
         for d in self.list.iter().filter(|d| part.matched_by(&d.selector)) {
             r.matched += 1;
             let (f, g) = (&d.frame, &mut r.frame);
-            g.slice = f.slice.or(g.slice);
+            g.slice = if f.unsliced {
+                None
+            } else {
+                f.slice.or(g.slice)
+            };
             g.shadow = f.shadow.or(g.shadow);
             g.glow = f.glow.or(g.glow);
             g.glass = f.glass.or(g.glass);
@@ -768,8 +775,9 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
 }
 
 /// Whether a selected chip, slot or tab takes the one selection grammar.
+/// A tab bar's underlined tab is marked by its indicator alone.
 fn selected_grammar(part: &PartRef, theme: &Theme) -> bool {
-    part.has("selected") && part.part != "track" && pack_grammar(theme)
+    part.has("selected") && part.part != "track" && !part.has("underline") && pack_grammar(theme)
 }
 
 /// Whether a theme's selected chips, slots and tabs follow the style

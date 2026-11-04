@@ -141,12 +141,31 @@ impl Ui {
                 thumb,
                 sel,
             );
+            // A style that dresses `Tabs.indicator` marks the current tab
+            // with it, as the tab bar does: a short bar under the label
+            // (fantasy's glowing gold, scifi's ice), the accent unless dressed.
+            let underline = (on && self.dress.dresses("Tabs", "indicator")).then(|| {
+                let h = t.tokens.stroke(crate::tokens::StrokeWidth::Regular);
+                Shape::Part {
+                    frame: Frame {
+                        fx: 0.25,
+                        fw: 0.5,
+                        fy: 1.0,
+                        y: -h - t.space.xxs,
+                        h,
+                        ..Frame::default()
+                    },
+                    part: crate::dress::PartRef::of("Tabs", "indicator", None).flag("underline"),
+                    fill: Some(p.primary),
+                }
+            });
             let n = &mut self.nodes[i];
             n.el.background = (bg.alpha > 0.004).then_some(bg);
             n.el.part = Some(part);
             n.content = Content::Text(c);
             n.probe_text = (*label).to_owned();
             n.a11y.selected = Some(on);
+            n.shapes.extend(underline);
         }
         self.close();
         out
