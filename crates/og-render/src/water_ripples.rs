@@ -381,9 +381,9 @@ impl Ripples {
 }
 
 /// What a frame steps: each new tick's cuts with the tick before's.
-struct Plan<'a> {
-    reset: bool,
-    steps: Vec<(
+pub(crate) struct Plan<'a> {
+    pub(crate) reset: bool,
+    pub(crate) steps: Vec<(
         Option<&'a [crate::water::WaterCut]>,
         &'a [crate::water::WaterCut],
     )>,
@@ -392,7 +392,7 @@ struct Plan<'a> {
 /// The ticks of `wakes` after `at` (the epoch and tick last stepped): all
 /// of them when they follow it, else none and a reset (a new epoch, a world
 /// that went back, or more ticks than the wakes keep).
-fn plan(at: Option<(u64, u64)>, wakes: &WaterWakes) -> Plan<'_> {
+pub(crate) fn plan(at: Option<(u64, u64)>, wakes: &WaterWakes) -> Plan<'_> {
     let calm = Plan {
         reset: true,
         steps: Vec::new(),
