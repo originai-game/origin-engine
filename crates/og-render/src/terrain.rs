@@ -494,6 +494,47 @@ impl Terrain {
             visible: true,
         }
     }
+
+    /// The clipmap drawn for this camera, also read by frame diagnostics.
+    /// Coordinates are grid units from the terrain's -x, -z corner.
+    pub fn clipmap(&self, layout: TerrainLayout, camera: Vec3, far: f32) -> TerrainClipmap {
+        let cell = layout.cell();
+        let unit = if self.lod.spacing > 0.0 {
+            self.lod.spacing
+        } else {
+            cell.x.min(cell.y)
+        };
+        let local = self.transform.inverse().transform_point3(camera);
+        let camera = (Vec2::new(local.x, local.z) + layout.size * 0.5) / unit;
+        let ring = self.lod.ring_quads();
+        let morph_width = (ring / 8).max(2) as f32;
+        TerrainClipmap {
+            unit,
+            camera,
+            ring,
+            morph_start: ring as f32 * 0.5 - 2.0 - morph_width,
+            morph_width,
+            levels: levels(
+                camera,
+                layout.size / unit,
+                ring,
+                (far / horizontal_scale(self.transform) / unit) as f64,
+            ),
+        }
+    }
+}
+
+/// The same layout the renderer uploads, before frustum culling.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TerrainClipmap {
+    /// Terrain-space metres per finest grid unit.
+    pub unit: f32,
+    pub camera: Vec2,
+    pub ring: u32,
+    /// Distance and width in each level's quads, measured from the camera.
+    pub morph_start: f32,
+    pub morph_width: f32,
+    pub levels: Vec<TerrainLevel>,
 }
 
 /// `TerrainLayerGpu` in terrain.wgsl.
@@ -567,7 +608,7 @@ pub(crate) struct TerrainDraw {
 
 /// The levels of one terrain for a camera, in whole grid units.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Level {
+pub struct TerrainLevel {
     /// The centre (grid units from the terrain's -x, -z corner).
     pub center: [f64; 2],
     /// Grid units per quad (2^level).
@@ -580,12 +621,12 @@ pub(crate) struct Level {
 /// The clipmap levels around `camera` (grid units, the terrain's -x, -z
 /// corner at 0) over a terrain `extent` grid units wide, with `ring` quads
 /// per side, out to `far` grid units.
-pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<Level> {
+pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<TerrainLevel> {
     let cam = [camera.x as f64, camera.y as f64];
     let ext = [extent.x as f64, extent.y as f64];
     let quarter = ring as f64 / 4.0;
     let half = ring as f64 / 2.0;
-    let mut out: Vec<Level> = Vec::new();
+    let mut out: Vec<TerrainLevel> = Vec::new();
     let mut prev: Option<[f64; 2]> = None;
     for l in 0..MAX_TERRAIN_LEVELS {
         let step = (1u64 << l) as f64;
@@ -605,7 +646,7 @@ pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<Lev
         let r = half * step;
         let touches = (0..2).all(|i| c[i] + r >= 0.0 && c[i] - r <= ext[i]);
         if touches {
-            out.push(Level {
+            out.push(TerrainLevel {
                 center: c,
                 step,
                 hole,

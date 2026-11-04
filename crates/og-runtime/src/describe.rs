@@ -28,6 +28,9 @@ pub(crate) struct DrawIds {
     pub instances: Vec<u64>,
     /// `(sprite index, entity)` for og.Sprite rows.
     pub sprites: Vec<(u32, u64)>,
+    /// Per `scene.terrains`.
+    #[cfg(not(feature = "profile2d"))]
+    pub terrains: Vec<u64>,
 }
 
 pub(crate) struct RuntimeView {

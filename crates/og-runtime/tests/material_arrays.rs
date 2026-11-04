@@ -87,6 +87,7 @@ impl Hooks for Disk {
 struct Seen {
     instances: Vec<(Option<u32>, StandardMaterial)>,
     terrains: Vec<og_render::Terrain>,
+    debug: og_render::DebugView,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -110,6 +111,7 @@ impl RenderBackend for Recorder {
             })
             .collect();
         self.0.borrow_mut().terrains = scene.terrains.clone();
+        self.0.borrow_mut().debug = scene.debug;
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -228,7 +230,7 @@ fn a_terrain_samples_its_layer_arrays() {
         engine,
         "terrain/hill.ogt".into(),
     ));
-    spawn(
+    let entity = spawn(
         engine,
         &[
             ("og.Transform", json!({})),
@@ -256,4 +258,36 @@ fn a_terrain_samples_its_layer_arrays() {
             .iter()
             .all(|l| l.albedo.is_none() && l.normal.is_none())
     );
+    drop(s);
+    let entity = og_ecs::Entity::from_bits(entity as u64);
+    let id = format!("#{}.{}", entity.index(), entity.generation());
+    let dump: Value = serde_json::from_str(&og_runtime::og_engine_probe_dump(
+        engine,
+        Some(json!({"what": "entity", "id": id}).to_string()),
+    ))
+    .unwrap();
+    let terrain = &dump["render"]["terrain"];
+    assert_eq!(terrain["layers"][1]["slope"], json!([30.0, 90.0]), "{dump}");
+    assert_eq!(terrain["skirts"], json!(false), "{dump}");
+    let regions = terrain["regionsBeforeCulling"]
+        .as_array()
+        .expect("clipmap regions");
+    assert!(!regions.is_empty());
+    assert_eq!(regions[0]["level"], json!(0));
+    assert!(regions[0]["triangleSpacingLocal"].as_f64().unwrap() > 0.0);
+    assert_eq!(regions.last().unwrap()["seam"]["morph"], json!(false));
+    for (name, expected) in [
+        ("terrain", og_render::DebugView::Terrain),
+        ("terrainLayers", og_render::DebugView::TerrainLayers),
+        ("terrainMip", og_render::DebugView::TerrainMip),
+    ] {
+        let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
+            engine,
+            format!("0:debug:{name}"),
+        ))
+        .unwrap();
+        assert_eq!(scheduled["scheduled"], json!(1), "{scheduled}");
+        frame(engine);
+        assert_eq!(seen.borrow().debug, expected);
+    }
 }

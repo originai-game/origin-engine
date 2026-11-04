@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10241</sub>
+<sub>`api.ogt` line 10244</sub>
 
 ## Contents
 
@@ -69,7 +69,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10985</sub>
+<sub>`api.ogt` line 10988</sub>
 
 ## Components, resources and events
 
@@ -184,7 +184,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 10252</sub>
+<sub>`api.ogt` line 10255</sub>
 
 <a id="record-Sky"></a>
 
@@ -291,7 +291,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 10334</sub>
+<sub>`api.ogt` line 10337</sub>
 
 <a id="record-DayNight"></a>
 
@@ -373,7 +373,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 10409</sub>
+<sub>`api.ogt` line 10412</sub>
 
 <a id="record-PhysicalSky"></a>
 
@@ -430,7 +430,7 @@ resource PhysicalSky {
 }
 ```
 
-<sub>`api.ogt` line 10466</sub>
+<sub>`api.ogt` line 10469</sub>
 
 <a id="record-Clouds"></a>
 
@@ -527,7 +527,7 @@ resource Clouds {
 }
 ```
 
-<sub>`api.ogt` line 10501</sub>
+<sub>`api.ogt` line 10504</sub>
 
 <a id="record-Aurora"></a>
 
@@ -618,7 +618,7 @@ resource Aurora {
 }
 ```
 
-<sub>`api.ogt` line 10571</sub>
+<sub>`api.ogt` line 10574</sub>
 
 <a id="record-WeatherState"></a>
 
@@ -745,7 +745,7 @@ resource WeatherState {
 }
 ```
 
-<sub>`api.ogt` line 10634</sub>
+<sub>`api.ogt` line 10637</sub>
 
 <a id="record-LightningStrike"></a>
 
@@ -771,7 +771,7 @@ event LightningStrike {
 }
 ```
 
-<sub>`api.ogt` line 10728</sub>
+<sub>`api.ogt` line 10731</sub>
 
 <a id="record-Weather"></a>
 
@@ -833,7 +833,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10737</sub>
+<sub>`api.ogt` line 10740</sub>
 
 <a id="record-Wind"></a>
 
@@ -879,7 +879,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10777</sub>
+<sub>`api.ogt` line 10780</sub>
 
 <a id="record-Water"></a>
 
@@ -1074,7 +1074,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10804</sub>
+<sub>`api.ogt` line 10807</sub>
 
 <a id="record-Water2D"></a>
 
@@ -1128,7 +1128,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10953</sub>
+<sub>`api.ogt` line 10956</sub>
 
 ## Constants
 
@@ -1144,28 +1144,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 10246</sub>
+<sub>`api.ogt` line 10249</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 10247</sub>
+<sub>`api.ogt` line 10250</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 10248</sub>
+<sub>`api.ogt` line 10251</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 10249</sub>
+<sub>`api.ogt` line 10252</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 10250</sub>
+<sub>`api.ogt` line 10253</sub>

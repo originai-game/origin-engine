@@ -86,6 +86,10 @@
     ],
     "added": [
       {
+        "member": "DebugView.terrain, terrainLayers, terrainMip; dump_entity terrain diagnostics",
+        "summary": "Terrain projection weights, clipmap cells and morph bands, strongest raw layer and normal-map mip footprint estimate. Entity dumps report the renderer's clipmap regions, triangle spacing, seams and material rules. No simulation or default beauty change."
+      },
+      {
         "member": "timeline tracks property, light, visibility, post, blendshape, material and timeline (nested); camera keys roll, focus, focusOn and focusRange; TimelineTrackInfo.kind and target name them",
         "summary": "Cinematics, R10 batch 1: a timeline eases any reflected field of a component or resource (`track property \"lamp\" { field \"og.PointLight.distance\" ... }`), an entity's light, what it draws' visibility (stepped), og.PostEffects, og.Blendshapes weights and a material's parameters, nests other timelines (from a key, at a speed, looping or held, at most four deep, their markers named `<file>/<marker>`), and rolls and focuses the camera (depth of field on a distance or an entity). Every value is read from the timeline's time, so a seek lands where playing does. The cook checks each field against the engine's records and refuses nesting cycles; an unknown track kind is refused naming it and the engine's version. Material tracks are presentation, applied every frame from the time and put back at the end, so a restore mid-way draws the right material on its next frame. No blob change: the og.Timeline blob keeps its text payload, version and type hash, and a timeline from before cooks to the same bytes; the og.timeline state block grows only for a run whose camera track focused."
       },

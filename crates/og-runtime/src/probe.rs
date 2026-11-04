@@ -89,8 +89,14 @@ impl Capture for RuntimeCapture {
 
     fn entity_render(&self, _world: &World, entity: Entity) -> Option<Value> {
         let rs = self.render.try_borrow().ok()?;
-        let level = rs.lod_drawn.get(&entity.to_bits())?;
-        Some(json!({ "lod": level }))
+        let mut out = serde_json::Map::new();
+        if let Some(level) = rs.lod_drawn.get(&entity.to_bits()) {
+            out.insert("lod".into(), json!(level));
+        }
+        if let Some(terrain) = super::terrain::dump_render(&rs, entity.to_bits()) {
+            out.insert("terrain".into(), terrain);
+        }
+        (!out.is_empty()).then_some(Value::Object(out))
     }
 
     fn capture_error(&self) -> Option<String> {

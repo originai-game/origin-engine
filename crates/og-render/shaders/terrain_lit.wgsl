@@ -290,6 +290,41 @@ fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c:
   return mix(albedo, col * sheen, amount);
 }
 
+// Six repeating colours, shared by the layer and mip diagnostic legends.
+fn terrain_debug_color(i: u32) -> vec3<f32> {
+  let colors = array<vec3<f32>, 6>(
+    vec3<f32>(0.1, 1.0, 0.1), vec3<f32>(1.0, 1.0, 0.1),
+    vec3<f32>(1.0, 0.2, 0.1), vec3<f32>(0.1, 0.8, 1.0),
+    vec3<f32>(0.6, 0.2, 1.0), vec3<f32>(1.0, 0.5, 0.1));
+  return colors[i % 6u];
+}
+
+fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
+  let samples = (in.local.xz - terrain_min()) / terrain_cell();
+  let gx = dpdx(samples);
+  let gy = dpdy(samples);
+  let cell = (in.local.xz - terrain_min()) / (level.camera.z * level.center.z);
+  let edge = abs(fract(cell - 0.5) - 0.5) / max(fwidth(cell), vec2<f32>(1e-5));
+  if (frame.light_color.w > 8.5) {
+    let resident = resident_from(0u, samples);
+    let footprint = max(length(gx), length(gy)) / f32(1u << resident.lvl);
+    let mip = max(log2(max(footprint, 1.0)), 0.0);
+    return terrain_debug_color(u32(mip)) * (1.0 - 0.5 * fract(mip));
+  }
+  if (frame.light_color.w > 7.5) {
+    let pick = pick_layers(in.world, point.normal, point.control);
+    if (pick.fallback) { return vec3<f32>(1.0, 0.0, 1.0); }
+    let share = pick.w.x / max(dot(pick.w, vec4<f32>(1.0)), 1e-5);
+    return terrain_debug_color(pick.ids.x) * (0.25 + 0.75 * share);
+  }
+  var weights = pow(abs(point.normal), vec3<f32>(4.0));
+  weights /= max(dot(weights, vec3<f32>(1.0)), 1e-5);
+  let c = (in.local.xz - terrain_min()) / level.camera.z;
+  let d = max(abs(c.x - level.camera.x), abs(c.y - level.camera.y)) / level.center.z;
+  let seam = select(0.0, clamp((d - level.grid.y) / max(level.grid.z, 1.0), 0.0, 1.0), level.grid.z > 0.0);
+  return mix(weights * mix(0.15, 1.0, clamp(min(edge.x, edge.y), 0.0, 1.0)), vec3<f32>(1.0), seam * 0.7);
+}
+
 @fragment
 fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   if (terrain_hole_at(in.local)) { discard; }
@@ -297,6 +332,9 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let dpx = dpdx(p);
   let dpy = dpdy(p);
   let point = terrain_point(in.local);
+  if (frame.light_color.w > 6.5) {
+    return vec4<f32>(terrain_debug(in, point), 1.0);
+  }
   let n_geo = point.normal;
   let look = terrain_look(in, point, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);

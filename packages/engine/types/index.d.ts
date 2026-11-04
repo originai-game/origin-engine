@@ -5695,8 +5695,11 @@ export type TaaHistory = "bilinear" | "catmullRom";
  * - `"direct"`: In place of the lit image: the direct light (directional, point and spot lights, shadows applied) each lit material receives.
  * - `"aoDepth"`: The ao view with the depth the ambient occlusion pass reads in place of its term, as its fraction of a metre (one ramp per metre), to check the depth the AO sees.
  * - `"aoRaw"`: The ao view before the term's depth-aware blur, to tell the search's noise from the blur's.
+ * - `"terrain"`: Terrain projection weights: XYZ as RGB (green is planar XZ). Dark lines show clipmap cells and white marks the outer morph band. dump_entity reports the clipmap regions and their triangle spacing.
+ * - `"terrainLayers"`: Terrain's strongest raw layer (control times slope and altitude), coloured by index; magenta means the first-layer fallback. Brightness shows its share before height blending.
+ * - `"terrainMip"`: Terrain normal-map mip footprint: one colour per estimated isotropic mip, darkening between levels. This is a derivative-based estimate, not the hardware anisotropic mip selection.
  */
-export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw";
+export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw" | "terrain" | "terrainLayers" | "terrainMip";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.

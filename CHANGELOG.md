@@ -15,6 +15,10 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Terrain diagnostics.** `DebugView` adds `terrain` (projection weights,
+  clipmap cells and morph seams), `terrainLayers` (strongest raw layer)
+  and `terrainMip` (normal-map mip footprint estimate). `dump_entity`
+  reports terrain clipmap regions, triangle spacing, seams and layer rules.
 - **Garment draw compute.** Per-frame skinning, simulated offsets and welded
   normals run in compute, including `og.motion`'s generated palette. Previous
   drawn positions stay on the GPU for TAA and motion blur; devices without

@@ -642,6 +642,13 @@ pub enum DebugView {
     /// The ambient occlusion term before its depth-aware blur; with
     /// [`PostEffects::ao`] set.
     AoRaw,
+    /// Terrain triplanar projection weights (XYZ as RGB), with clipmap
+    /// cell edges dark and the outer morph band white.
+    Terrain,
+    /// Terrain's strongest slope/control layer, coloured by its index.
+    TerrainLayers,
+    /// Terrain normal-map mip footprint, one colour band per level.
+    TerrainMip,
 }
 
 impl DebugView {
@@ -657,6 +664,9 @@ impl DebugView {
             DebugView::IblDiffuse => 4.0,
             DebugView::IblSpecular => 5.0,
             DebugView::DirectLight => 6.0,
+            DebugView::Terrain => 7.0,
+            DebugView::TerrainLayers => 8.0,
+            DebugView::TerrainMip => 9.0,
         }
     }
 

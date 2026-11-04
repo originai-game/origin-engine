@@ -873,21 +873,14 @@ impl TerrainRenderer {
 
             // The levels are laid out in the terrain's own space: the camera
             // brought into it, the far plane by the terrain's horizontal scale.
-            let cell = lay.cell();
-            let unit = if t.lod.spacing > 0.0 {
-                t.lod.spacing
-            } else {
-                cell.x.min(cell.y)
-            };
-            let local_camera = model.inverse().transform_point3(camera);
+            let clipmap = t.clipmap(lay, camera, far);
+            let unit = clipmap.unit;
             let lo = -lay.size * 0.5;
-            let cam = (Vec2::new(local_camera.x, local_camera.z) - lo) / unit;
-            let extent = lay.size / unit;
-            let n = t.lod.ring_quads();
-            let along = horizontal_scale(model);
-            let list = levels(cam, extent, n, (far / along / unit) as f64);
-            let morph_width = (n / 8).max(2) as f32;
-            let morph_start = n as f32 * 0.5 - 2.0 - morph_width;
+            let cam = clipmap.camera;
+            let n = clipmap.ring;
+            let list = clipmap.levels;
+            let morph_width = clipmap.morph_width;
+            let morph_start = clipmap.morph_start;
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
             let mut out = Vec::with_capacity(list.len());
             let (hmin, hmax) = data.range;

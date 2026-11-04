@@ -32,6 +32,10 @@ pub(crate) struct TerrainState {
 
 pub(crate) fn retire(_id: u32) {}
 
+pub(crate) fn dump_render(_rs: &RenderState, _entity: u64) -> Option<Value> {
+    None
+}
+
 /// The edit log's state block, so a world here is the bytes the full build
 /// writes (a save, the world hash; `og_ecs::snapshot`'s blocks section):
 /// never an edit. A save that carries one is a 3D game's and is refused

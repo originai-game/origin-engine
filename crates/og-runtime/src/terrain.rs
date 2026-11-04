@@ -1017,6 +1017,51 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
     }
 }
 
+/// Presentation-only diagnostics of the extracted terrain, from the same
+/// clipmap layout the renderer uploads. Never stored in the ECS.
+pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
+    let i = rs.ids.terrains.iter().position(|&e| e == entity)?;
+    let t = rs.scene.terrains.get(i)?;
+    let layout = rs.scene.terrain_layout(t.terrain)?;
+    let c = t.clipmap(layout, rs.scene.camera.position, rs.scene.camera.far);
+    let regions: Vec<Value> = c
+        .levels
+        .iter()
+        .enumerate()
+        .map(|(level, l)| {
+            let spacing = c.unit as f64 * l.step;
+            let center = l.center.map(|v| v * c.unit as f64);
+            let half = c.ring as f64 * spacing * 0.5;
+            json!({
+                "level": level, "ring": l.hole.is_some(), "holeOffset": l.hole,
+                "localBoundsXZ": [center[0] - half - layout.size.x as f64 * 0.5,
+                    center[1] - half - layout.size.y as f64 * 0.5,
+                    center[0] + half - layout.size.x as f64 * 0.5,
+                    center[1] + half - layout.size.y as f64 * 0.5],
+                "triangleSpacingLocal": spacing,
+                "triangleSpacingWorldXZ": [t.transform.x_axis.truncate().length() as f64 * spacing,
+                    t.transform.z_axis.truncate().length() as f64 * spacing],
+                "seam": {"morph": l.morph, "startQuads": c.morph_start,
+                    "widthQuads": if l.morph { c.morph_width } else { 0.0 }},
+            })
+        })
+        .collect();
+    Some(json!({
+        "visible": t.visible, "cell": layout.cell().to_array(), "ringQuads": c.ring,
+        "regionsBeforeCulling": regions, "skirts": false,
+        "heightBlend": t.height_blend,
+        "layers": t.layers.iter().enumerate().map(|(i, l)| json!({
+            "index": i, "triplanar": l.triplanar, "tile": l.tile,
+            "slope": l.slope, "slopeFade": l.slope_fade,
+            "altitude": l.altitude, "altitudeFade": l.altitude_fade,
+        })).collect::<Vec<_>>(),
+        "projectionWeights": {"view": "terrain", "rgb": ["X", "Y", "Z"],
+            "normal": "filtered height-field normal", "exponent": 4},
+        "normalMip": {"view": "terrainMip", "measurement": "isotropic derivative estimate",
+            "colors": ["green", "yellow", "red", "cyan", "purple", "orange"]},
+    }))
+}
+
 /// og.Terrain components into `rs.scene.terrains`: each terrain placed by
 /// its entity's world transform with its layers; og.TerrainScatter
 /// components into `rs.scene.scatters`; then the streamed terrains' tiles.
@@ -1027,6 +1072,7 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
 /// started from that frame's metering).
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     rs.scene.terrains.clear();
+    rs.ids.terrains.clear();
     let layout = rs.draw.terrain.clone();
     let mut settle = std::mem::take(&mut rs.terrain.settle) || rs.terrain.resident;
     let budget = rs.terrain.budget;
@@ -1067,6 +1113,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             fade_in: !settle,
             visible: on(&v, "visible", true),
         });
+        rs.ids.terrains.push(e);
         if !t.edited {
             streamed.push((i, rs.scene.terrains.len() - 1));
         }

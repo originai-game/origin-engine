@@ -257,8 +257,8 @@ pub use stylise::{
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS,
-    TERRAIN_TEXTURED_LAYERS, Terrain, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLayerArrays, TerrainLod, TerrainSampler, TerrainScatter,
+    TERRAIN_TEXTURED_LAYERS, Terrain, TerrainClipmap, TerrainControl, TerrainData, TerrainLayer,
+    TerrainLayerArrays, TerrainLevel, TerrainLod, TerrainSampler, TerrainScatter,
 };
 pub use terrain_tiles::{
     ControlPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE,
