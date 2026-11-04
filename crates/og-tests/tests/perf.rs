@@ -290,17 +290,33 @@ fn profile(scene: &str) {
 
 /// Crowds at scale: 5,000, 20,000 and 50,000 walkers on one baked walk,
 /// every one moving and stepping each frame (fx_scenes/crowds.rs), under
-/// TAA and a shadowing sun. With `OG_CROWD_PROFILE`, where each frame goes
-/// as well.
+/// TAA and a shadowing sun, culled, given their levels and drawn on the
+/// GPU-driven path (og-render's crowd.rs). With `OG_CROWD_PROFILE`, where
+/// each frame goes as well. One test a scene, so each measurement is its
+/// own exclusive GPU acquisition (scripts/lock.sh).
+fn crowd(scene: &str) {
+    if std::env::var_os("OG_CROWD_PROFILE").is_some() {
+        profile(scene);
+    }
+    perf(scene);
+}
+
 #[test]
 #[ignore]
-fn perf_crowds() {
-    for scene in ["crowd-5k", "crowd-20k", "crowd-50k"] {
-        if std::env::var_os("OG_CROWD_PROFILE").is_some() {
-            profile(scene);
-        }
-        perf(scene);
-    }
+fn perf_crowd_5k() {
+    crowd("crowd-5k");
+}
+
+#[test]
+#[ignore]
+fn perf_crowd_20k() {
+    crowd("crowd-20k");
+}
+
+#[test]
+#[ignore]
+fn perf_crowd_50k() {
+    crowd("crowd-50k");
 }
 
 /// R11's 2D lighting: 64 shadowed lights over 128 occluders, at the default
