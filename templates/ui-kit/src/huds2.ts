@@ -542,7 +542,13 @@ export function survivalHud(world: World): void {
     og.ui.statBar("Food", { value: 38, max: 100, color: rgb(0.92, 0.6, 0.2), icon: "apple", low: 40, width: w, thickness: 10, name: L("sc.survival.food"), anchor: null });
     og.ui.statBar("Water", { value: 61, max: 100, color: rgb(0.3, 0.62, 0.95), icon: "drop", width: w, thickness: 10, name: L("sc.survival.water"), anchor: null });
   });
-  og.ui.radialMeter("Stamina", { value: 0.35 + 0.6 * ((tick % 300) / 300), size: Math.round(40 * k), hideWhenFull: false, name: L("sc.survival.stamina"), anchor: "center" });
+  // Stamina by the player at the frame's middle, slid toward the start as far as needed to keep clear of the gather
+  // prompt beside it (both as laid last tick): on a phone the prompt's point stands a little past the middle.
+  const gather = og.ui.bounds("Gather");
+  const meter = Math.round(40 * k);
+  const vpS = og.ui.frameViewport();
+  const clearX = gather ? Math.min(0, Math.round(gather.x - t.space.sm - (vpS.width / 2 + meter / 2))) : 0;
+  og.ui.anchor("StaminaHud", { anchor: "center", offsetX: clearX }, () => og.ui.radialMeter("Stamina", { value: 0.35 + 0.6 * ((tick % 300) / 300), size: meter, hideWhenFull: false, name: L("sc.survival.stamina"), anchor: null }));
   if (touch) {
     thumbs([{ id: "Use", label: L("sc.survival.gather"), icon: "bag" }, { id: "Swing", label: L("sc.survival.swing"), icon: "sword", primary: true }]);
     return;

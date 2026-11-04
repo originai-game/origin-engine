@@ -369,7 +369,19 @@ export function manageHud(world: World): void {
   const clk = og.ui.bounds("Clock");
   const under = portrait || (res !== null && clk !== null && res.x + res.width + t.space.sm > og.ui.frameViewport().width - sa0.right - m - clk.width);
   const drop = !under ? 0 : res ? Math.round(res.y + res.height + t.space.sm - (sa0.top + m)) : Math.round(60 * k);
-  og.ui.anchor("Clock", { anchor: portrait ? "topLeft" : "topRight", margin: m, offsetY: drop, direction: "row", gap: t.space.sm, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.xs, bottom: t.space.xs }, background: { token: "hud" }, radius: 999, frame: "hud" }, () => {
+  // The speed control sits beside the date where its three choices fit whole; where they would not (a phone at large
+  // text: the strip scrolled and cut Play, Fast out of view), it takes its own row under the date. Measured from the
+  // strip's choices as laid last tick, held for the look.
+  const vpC = og.ui.frameViewport();
+  const strip = og.ui.bounds("Clock/Speed");
+  const items = [0, 1, 2].map((i) => og.ui.bounds(`Clock/Speed/Strip/Track/Item#${i}`));
+  const end = items.reduce((r, b) => (b ? Math.max(r, b.x + b.width) : r), 0);
+  const clockB = og.ui.bounds("Clock");
+  // A choice scrolled wholly out of the strip is not built at all, and a row that fills the room to the screen's edge was
+  // squeezed (its strip scrolls): both count as cut.
+  const cut = (strip !== null && (items.some((b) => !b || b.width <= 0) || end > strip.x + strip.width + 0.5)) || (portrait && clockB !== null && clockB.x + clockB.width >= vpC.width - vpC.safeArea.right - m - 0.5);
+  const stacked = held("manageClock", `${vpC.width}x${vpC.height}|${t.textScale ?? 1}|${t.style}`, cut);
+  og.ui.anchor("Clock", { anchor: portrait ? "topLeft" : "topRight", margin: m, offsetY: drop, direction: stacked ? "column" : "row", gap: stacked ? t.space.xs : t.space.sm, cross: stacked ? "start" : "center", padding: stacked ? { left: t.space.md, top: t.space.sm, right: t.space.sm, bottom: t.space.sm } : { left: t.space.md, top: t.space.xs, right: t.space.xs, bottom: t.space.xs }, background: { token: "hud" }, radius: stacked ? t.radius["panel"] ?? 12 : 999, frame: "hud" }, () => {
     og.ui.label("Date", L("sc.manage.date"), { step: "base", nowrap: true });
     const speed = og.ui.segmented("Speed", { items: [{ icon: "pause", label: L("sc.pause") }, { icon: "play", label: L("sc.manage.play") }, { icon: "bolt", label: L("sc.manage.fast") }], selected: st.speed, size: "small" });
     if (speed.selected !== st.speed) st.speed = speed.selected;
