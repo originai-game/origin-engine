@@ -285,3 +285,68 @@ fn crowds_without_indirect_first_instance_fall_back_to_the_cpu_lists() {
     );
 }
 
+/// Crowd impostors (og-render's crowd.rs, **Impostors**): crowd-lods drawn
+/// with its cards, with its coarsest mesh in their place, and without its
+/// crowd. Near the camera the cards change nothing (they are the far
+/// level); at the gate end they draw people where the meshes did (nearer
+/// the meshes' frame than the empty avenue's) but not the meshes' pixels
+/// (they are drawn).
+#[test]
+fn crowd_cards_draw_the_far_members_and_only_them() {
+    let run = |cards: bool, crowd: bool| {
+        let mut built = scenes::build("crowd-lods").expect("scene");
+        built.desc.culling = Culling::Gpu;
+        for c in &mut built.scene.crowds {
+            if !cards {
+                c.impostor = None;
+            }
+            if !crowd {
+                c.members.clear();
+            }
+        }
+        let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+        for _ in 0..built.frames.max(1) {
+            renderer
+                .render(&built.scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        renderer.read_offscreen().expect("capture")
+    };
+    let (cards, meshes, empty) = (run(true, true), run(false, true), run(true, false));
+    let dir = out_dir();
+    std::fs::create_dir_all(&dir).expect("output directory");
+    gfx::save_png(&dir.join("crowd-lods.cards.png"), &cards).expect("save");
+    gfx::save_png(&dir.join("crowd-lods.meshes.png"), &meshes).expect("save");
+    // RMSE over a window of rows and columns, 0 to 1.
+    let rmse = |a: &RgbaImage, b: &RgbaImage, (x0, x1): (u32, u32), (y0, y1): (u32, u32)| {
+        let mut sum = 0.0f64;
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let i = ((y * a.width + x) * 4) as usize;
+                for c in 0..3 {
+                    let d = (a.pixels[i + c] as f64 - b.pixels[i + c] as f64) / 255.0;
+                    sum += d * d;
+                }
+            }
+        }
+        (sum / ((x1 - x0) * (y1 - y0) * 3) as f64).sqrt()
+    };
+    let (w, h) = (cards.width, cards.height);
+    // The nearest rows: members a few metres away, full meshes either way.
+    let near = rmse(&cards, &meshes, (0, w), (h * 7 / 8, h));
+    assert!(near < 0.002, "the cards moved the near crowd (RMSE {near})");
+    // Through the gate (the far end of the avenue).
+    let gate = ((w * 45 / 100), (w * 55 / 100));
+    let far = (h * 42 / 100, h * 48 / 100);
+    let changed = rmse(&cards, &meshes, gate, far);
+    let to_meshes = changed;
+    let to_empty = rmse(&cards, &empty, gate, far);
+    assert!(
+        changed > 0.003,
+        "the far members drew as meshes (RMSE {changed})"
+    );
+    assert!(
+        to_meshes < to_empty * 0.6,
+        "the cards draw the far crowd (RMSE {to_meshes} from the meshes, {to_empty} from the empty avenue)"
+    );
+}

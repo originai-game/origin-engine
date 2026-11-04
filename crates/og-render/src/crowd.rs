@@ -25,6 +25,31 @@
 //! nothing visible as it switches). Every view draws a member at the level
 //! the camera picked, so its shadow is the shape it shows.
 //!
+//! **Impostors.** A crowd with an [`CrowdImpostor`] draws its farthest
+//! members as animated octahedral-style cards (Assassin's Creed Unity's
+//! and Total War's far crowds): the renderer bakes the crowd's full mesh
+//! on the GPU once (`crowd_impostor.rs`), posed at `frames` frames of the
+//! impostor's clip and seen from `views` directions around the vertical
+//! at `elevation` above the horizon, into an atlas of `views` columns by
+//! `frames` rows: the colour detail (its parts' textures and vertex
+//! colours, without their materials' colours) with its coverage, and per
+//! texel its normal and depth in the view's basis and which part it is.
+//! Crowds whose parts share meshes share an atlas: a card colours each
+//! part by its crowd's material, so outfits cost no atlas each. The card
+//! is the last level of the chain: its error is a texel of the atlas on
+//! the model (`2 × radius / size`, at least the coarsest mesh level's), so a
+//! member draws it once a texel covers less than a pixel. A card faces
+//! the camera's direction around the vertical, tilted to the bake's
+//! elevation, blends the two views and the two frames around the member's
+//! direction and place in its walk, writes its surface's depth and is lit
+//! as the meshes are; in the shadow passes it faces the light. A member
+//! playing a clip other than the impostor's keeps its coarsest mesh.
+//! Under GPU culling the cull writes a card's record (its transform, its
+//! place in the clip, its look) where a mesh level's would be and one
+//! indexed indirect draw of a quad per crowd; on the CPU path every
+//! card-level member's record is drawn whole (the depth test keeps what the
+//! GPU cull would).
+//!
 //! **Bounds.** A member's box is its clip's box over every frame
 //! (`skin::clip_box`, the union over the crowd's parts and levels) through
 //! its transform: a blend of two frames stays inside it.
@@ -54,8 +79,49 @@ pub(crate) const CROWD_CULL_WGSL: &str = concat!(
     wgsl!("cull_hiz.wgsl")
 );
 
-/// The most levels a crowd draws (`Crowd::errors`).
+/// The most levels a crowd draws: its mesh levels (`Crowd::errors`) and,
+/// with an impostor, its card.
 pub const MAX_CROWD_LEVELS: usize = 4;
+
+/// A crowd's far level: animated impostor cards (module docs, **Impostors**).
+/// Its zero value takes the defaults.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CrowdImpostor {
+    /// The clip it is baked from ([`crate::RenderScene::baked_clips`]):
+    /// members playing another clip keep their coarsest mesh.
+    pub clip: u32,
+    /// Directions around the vertical it is baked from: 4 to 32 (0: 16).
+    pub views: u32,
+    /// Frames of the clip it holds, evenly over it: 2 to 32 (0: 16).
+    pub frames: u32,
+    /// Pixels a side of each view: 16 to 256 (0: 64).
+    pub size: u32,
+    /// How far above the horizon it is seen from, in degrees: 0 to 60 (0:
+    /// the default, 10; a crowd seen from a person's height, or from a
+    /// tower, picks its own).
+    pub elevation: f32,
+}
+
+impl CrowdImpostor {
+    /// Its views, frames, pixels a side and elevation (degrees) with the
+    /// defaults filled in and each clamped to its range.
+    pub fn resolved(&self) -> (u32, u32, u32, f32) {
+        let pick = |v: u32, default: u32, lo: u32, hi: u32| {
+            if v == 0 { default } else { v.clamp(lo, hi) }
+        };
+        let elevation = if self.elevation > 0.0 && self.elevation.is_finite() {
+            self.elevation.min(60.0)
+        } else {
+            10.0
+        };
+        (
+            pick(self.views, 16, 4, 32),
+            pick(self.frames, 16, 2, 32),
+            pick(self.size, 64, 16, 256),
+            elevation,
+        )
+    }
+}
 
 /// One part of a crowd's model: its skinned meshes, level 0 the full mesh
 /// and each after it coarser, and its material. A part with fewer levels
@@ -118,6 +184,8 @@ pub struct Crowd {
     pub cast_shadows: bool,
     /// The three.js layer mask its members are on (`views.rs`).
     pub layers: u32,
+    /// Its far level, cards baked from its full mesh (module docs).
+    pub impostor: Option<CrowdImpostor>,
     pub members: Vec<CrowdMember>,
 }
 
@@ -131,15 +199,41 @@ impl Default for Crowd {
             lod_bias: 1.0,
             cast_shadows: true,
             layers: 1,
+            impostor: None,
             members: Vec::new(),
         }
     }
 }
 
 impl Crowd {
-    /// How many levels it draws (1 to [`MAX_CROWD_LEVELS`]).
+    /// How many levels it draws (1 to [`MAX_CROWD_LEVELS`]): its mesh
+    /// levels, and its card last when it has an impostor.
     pub fn levels(&self) -> usize {
-        self.errors.len().clamp(1, MAX_CROWD_LEVELS)
+        self.mesh_levels() + self.impostor.is_some() as usize
+    }
+
+    /// How many of its levels are meshes (an impostor's card takes the last
+    /// of [`MAX_CROWD_LEVELS`] when it has one).
+    pub fn mesh_levels(&self) -> usize {
+        let most = MAX_CROWD_LEVELS - self.impostor.is_some() as usize;
+        self.errors.len().clamp(1, most)
+    }
+
+    /// Each level's error, rising (lod.rs's rule): its mesh levels', then
+    /// its card's (a texel of the atlas on the model, at least the
+    /// coarsest mesh's).
+    pub fn level_errors(&self) -> Vec<f32> {
+        let mut out = Vec::with_capacity(self.levels());
+        let mut e = 0.0f32;
+        for l in 0..self.mesh_levels() {
+            e = e.max(self.errors.get(l).copied().unwrap_or(0.0).max(0.0));
+            out.push(e);
+        }
+        if let Some(i) = &self.impostor {
+            let size = i.resolved().2 as f32;
+            out.push(e.max(2.0 * self.radius.max(0.0) / size));
+        }
+        out
     }
 }
 
@@ -158,6 +252,7 @@ pub fn member_level(
     if levels < 2 {
         return 0;
     }
+    let errors = crowd.level_errors();
     let scale = max_scale(transform);
     let per_unit = crate::lod::pixels_per_unit(
         camera,
@@ -165,12 +260,17 @@ pub fn member_level(
         crowd.radius * scale,
         view_height,
     );
-    crate::lod::select(
-        &crowd.errors[..levels],
-        per_unit * scale,
-        bias * crowd.lod_bias,
-        None,
-    )
+    crate::lod::select(&errors, per_unit * scale, bias * crowd.lod_bias, None)
+}
+
+/// The level `member` of `crowd` draws at the camera's level `level`
+/// ([`member_level`]): a member playing a clip other than the impostor's
+/// keeps the coarsest mesh in the card's place.
+pub fn drawn_level(crowd: &Crowd, member: &CrowdMember, level: usize) -> usize {
+    match &crowd.impostor {
+        Some(i) if level == crowd.mesh_levels() && member.pose.clip != i.clip => level - 1,
+        _ => level,
+    }
 }
 
 /// The largest scale of `m`'s axes.
@@ -198,17 +298,20 @@ pub(crate) struct MemberGpu {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct CrowdGpu {
-    /// Its first member, members, levels, its first draw.
+    /// Its first member, members, levels (its card's among them), its
+    /// first draw.
     pub members: [u32; 4],
     /// Its parts, whether it casts shadows, may be occluded (no material
-    /// vertex hook), its first clip box (`clip_base + clip`), then its layers.
+    /// vertex hook), its first clip box (`clip_base + clip`).
     pub info: [u32; 4],
+    /// x: its layers; y: its card's draw plus one (0: no impostor), z: the
+    /// impostor's clip, w: the frames of the clip it holds.
     pub layers: [u32; 4],
-    /// Its levels' errors, each at least the one before, times its bias.
+    /// Its levels' errors, each at least the one before ([`Crowd::level_errors`]).
     pub errors: [f32; 4],
     /// Its sphere's centre and radius.
     pub sphere: [f32; 4],
-    /// x: the scene's level of detail bias times its own.
+    /// x: the scene's level of detail bias times its own, y: its mesh levels.
     pub lod: [f32; 4],
 }
 
@@ -234,13 +337,30 @@ pub(crate) struct CrowdDraw {
     pub index_count: u32,
 }
 
+/// One crowd's cards (its impostor level): drawn as a quad of 6 indices,
+/// its draw [`CrowdFrame::card_draw`].
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct CrowdCard {
+    /// The scene's crowd.
+    pub crowd: u32,
+    pub impostor: CrowdImpostor,
+    /// Each part's full mesh and its material.
+    pub parts: Vec<(usize, usize)>,
+    pub cast_shadows: bool,
+    pub center: Vec3,
+    pub radius: f32,
+}
+
 /// The frame's crowds as tables (`build`).
 #[derive(Default)]
 pub(crate) struct CrowdFrame {
     pub members: Vec<MemberGpu>,
     pub crowds: Vec<CrowdGpu>,
     pub clips: Vec<ClipGpu>,
+    /// The mesh levels' draws, each crowd's (level, part) in order.
     pub draws: Vec<CrowdDraw>,
+    /// The crowds' cards, their draws after the mesh levels'.
+    pub cards: Vec<CrowdCard>,
     /// Each member's previous transform (TAA and motion blur only), in
     /// member order: the palette slots after the frame's others.
     pub previous: Vec<[[f32; 4]; 4]>,
@@ -251,6 +371,21 @@ pub(crate) struct CrowdFrame {
 impl CrowdFrame {
     pub fn len(&self) -> u32 {
         self.members.len() as u32
+    }
+
+    /// The draw of card `k` in the cull's draw table (after the meshes').
+    pub fn card_draw(&self, k: usize) -> u32 {
+        (self.draws.len() + k) as u32
+    }
+
+    /// Every draw's index count, the cull's draw table: the mesh levels',
+    /// then a quad's (6) per card.
+    pub fn index_counts(&self) -> Vec<u32> {
+        self.draws
+            .iter()
+            .map(|d| d.index_count)
+            .chain(self.cards.iter().map(|_| 6))
+            .collect()
     }
 }
 
@@ -294,8 +429,9 @@ pub(crate) fn build<'m>(
             continue;
         }
         let levels = c.levels();
+        let mesh_levels = c.mesh_levels();
         let draw_base = f.draws.len() as u32;
-        for level in 0..levels {
+        for level in 0..mesh_levels {
             for (pi, p) in c.parts.iter().enumerate() {
                 if p.material.index() >= materials {
                     return Err(RenderError::InvalidHandle(format!(
@@ -382,12 +518,38 @@ pub(crate) fn build<'m>(
         }
         // Errors only rise along a chain (lod::select's rule).
         let mut errors = [0.0f32; 4];
-        let mut e = 0.0f32;
-        for (l, slot) in errors.iter_mut().enumerate().take(levels) {
-            e = e.max(c.errors.get(l).copied().unwrap_or(0.0).max(0.0));
+        for (slot, e) in errors.iter_mut().zip(c.level_errors()) {
             *slot = e;
         }
         let hooked = c.parts.iter().any(|p| hooked(p.material.index()));
+        // The card: its clip must be a whole one; its draw is numbered
+        // once every crowd's mesh draws are known (below).
+        let mut card = [0u32; 3];
+        if let Some(i) = &c.impostor {
+            let whole = clips.get(i.clip as usize).is_some_and(|k| {
+                k.joints > 0 && k.frames.len() % k.joints as usize == 0 && k.frame_count() >= 2
+            });
+            if !whole {
+                return Err(RenderError::InvalidData(format!(
+                    "crowd {ci}: its impostor's baked clip {} of {} (a clip holds whole frames, at least two)",
+                    i.clip,
+                    clips.len()
+                )));
+            }
+            card = [f.cards.len() as u32 + 1, i.clip, i.resolved().1];
+            f.cards.push(CrowdCard {
+                crowd: ci as u32,
+                impostor: *i,
+                parts: c
+                    .parts
+                    .iter()
+                    .map(|p| (p.levels[0].index(), p.material.index()))
+                    .collect(),
+                cast_shadows: c.cast_shadows,
+                center: c.center,
+                radius: c.radius.max(0.0),
+            });
+        }
         f.crowds.push(CrowdGpu {
             members: [first, c.members.len() as u32, levels as u32, draw_base],
             info: [
@@ -396,11 +558,18 @@ pub(crate) fn build<'m>(
                 !hooked as u32,
                 clip_base,
             ],
-            layers: [c.layers, 0, 0, 0],
+            layers: [c.layers, card[0], card[1], card[2]],
             errors,
             sphere: [c.center.x, c.center.y, c.center.z, c.radius.max(0.0)],
-            lod: [lod_bias * c.lod_bias, 0.0, 0.0, 0.0],
+            lod: [lod_bias * c.lod_bias, mesh_levels as f32, 0.0, 0.0],
         });
+    }
+    // Each card's draw after the mesh draws (`layers.y`: its draw plus one).
+    let meshes = f.draws.len() as u32;
+    for g in &mut f.crowds {
+        if g.layers[1] > 0 {
+            g.layers[1] += meshes;
+        }
     }
     Ok(f)
 }
@@ -472,6 +641,47 @@ pub(crate) fn record(
     }
 }
 
+/// Where frame `frame` of a clip of `clip_frames` frames falls among the
+/// `frames` an impostor holds of it, from 0 up to `frames` (wrapping: the
+/// clip loops, its last frame its first). As `crowd_cull.wgsl` `card_row`.
+pub(crate) fn card_row(frame: f32, clip_frames: u32, frames: u32) -> f32 {
+    let f = if frame.is_finite() {
+        frame.max(0.0)
+    } else {
+        0.0
+    };
+    let span = clip_frames.saturating_sub(1).max(1) as f32;
+    (f / span * frames as f32).rem_euclid(frames as f32)
+}
+
+/// A card-level member's record (`crowd_card.wgsl` `CardIn`): its
+/// transform's columns where a skinned record's are, then its place among
+/// the impostor's frames (its sign whether it receives shadows, as
+/// [`crate::instances::layer_bits`]) and its look's flash, flash colour
+/// and tint. As `crowd_cull.wgsl` `scatter` writes it.
+pub(crate) fn card_record(
+    m: &MemberGpu,
+    clips: &[ClipGpu],
+    clip_base: u32,
+    frames: u32,
+) -> SkinnedInstanceGpu {
+    let clip = &clips[(clip_base + m.pose[0] as u32) as usize];
+    let row = card_row(m.pose[1], clip.info[2], frames);
+    let receive = m.look[0] >= 0.0;
+    SkinnedInstanceGpu {
+        transform: m.columns,
+        palette: [
+            crate::instances::layer_bits(row, receive),
+            m.look[1],
+            m.look[2],
+            m.look[3],
+        ],
+        morph0: [0.0; 4],
+        morph1: [0.0; 4],
+        look: [0.0; 4],
+    }
+}
+
 /// The member's transform from its record's columns.
 pub(crate) fn member_transform(m: &MemberGpu) -> Mat4 {
     let c = m.columns;
@@ -483,12 +693,23 @@ pub(crate) fn member_transform(m: &MemberGpu) -> Mat4 {
     )
 }
 
-/// The CPU path's crowd records: each member at its level ([`member_level`])
-/// as one record per part, grouped (crowd, level, part) into runs of
-/// `(draw, first, count)` over the records, with each record's world box.
-/// `previous_base`: the palette slot of the first member's previous
-/// transform (0: none).
-#[allow(clippy::type_complexity)]
+/// The CPU path's crowds ([`cpu_records`]).
+#[derive(Default)]
+pub(crate) struct CpuCrowds {
+    /// Mesh levels: runs of `(draw, first, count)` over `data`, grouped
+    /// (crowd, level, part), and each record's world box.
+    pub runs: Vec<(u32, u32, u32)>,
+    pub data: Vec<SkinnedInstanceGpu>,
+    pub boxes: Vec<(Vec3, Vec3)>,
+    /// Cards: runs of `(card, first, count)` over `cards`.
+    pub card_runs: Vec<(u32, u32, u32)>,
+    pub cards: Vec<SkinnedInstanceGpu>,
+}
+
+/// The CPU path's crowd records: each member at its level ([`member_level`],
+/// [`drawn_level`]) as one record per part, or a card's record at its
+/// impostor's level. `previous_base`: the palette slot of the first
+/// member's previous transform (0: none).
 pub(crate) fn cpu_records(
     crowds: &[Crowd],
     frame: &CrowdFrame,
@@ -496,14 +717,16 @@ pub(crate) fn cpu_records(
     view_height: f32,
     bias: f32,
     previous_base: Option<u32>,
-) -> (
-    Vec<(u32, u32, u32)>,
-    Vec<SkinnedInstanceGpu>,
-    Vec<(Vec3, Vec3)>,
-) {
-    let mut runs = Vec::new();
-    let mut data = Vec::new();
-    let mut boxes = Vec::new();
+) -> CpuCrowds {
+    let mut out = CpuCrowds::default();
+    let CpuCrowds {
+        runs,
+        data,
+        boxes,
+        card_runs,
+        cards,
+    } = &mut out;
+    let mut card = 0u32;
     let mut c_gpu = frame.crowds.iter();
     for c in crowds
         .iter()
@@ -517,9 +740,13 @@ pub(crate) fn cpu_records(
         let level: Vec<u32> = c
             .members
             .iter()
-            .map(|m| member_level(c, &m.transform, camera, view_height, bias) as u32)
+            .map(|m| {
+                let l = member_level(c, &m.transform, camera, view_height, bias);
+                drawn_level(c, m, l) as u32
+            })
             .collect();
-        for l in 0..levels {
+        let mesh_levels = c.mesh_levels() as u32;
+        for l in 0..levels.min(mesh_levels) {
             for p in 0..parts {
                 let start = data.len() as u32;
                 for (k, m) in members.iter().enumerate() {
@@ -541,8 +768,21 @@ pub(crate) fn cpu_records(
                 }
             }
         }
+        if c.impostor.is_some() {
+            let start = cards.len() as u32;
+            for (k, m) in members.iter().enumerate() {
+                if level[k] == mesh_levels {
+                    cards.push(card_record(m, &frame.clips, clip_base, g.layers[3]));
+                }
+            }
+            let n = cards.len() as u32 - start;
+            if n > 0 {
+                card_runs.push((card, start, n));
+            }
+            card += 1;
+        }
     }
-    (runs, data, boxes)
+    out
 }
 
 #[cfg(test)]
@@ -672,7 +912,12 @@ mod tests {
         let f = frame_of(&crowds, &clips, &boxes, true);
         assert_eq!(f.draws.len(), 3);
         assert_eq!(f.previous.len(), 4);
-        let (runs, data, bx) = cpu_records(&crowds, &f, &camera, 720.0, 1.0, Some(50));
+        let CpuCrowds {
+            runs,
+            data,
+            boxes: bx,
+            ..
+        } = cpu_records(&crowds, &f, &camera, 720.0, 1.0, Some(50));
         // Level 0 holds members 0 and 2 in order, level 2 members 1 and 3.
         assert_eq!(runs, vec![(0, 0, 2), (2, 2, 2)]);
         assert_eq!(data.len(), 4);
@@ -695,7 +940,7 @@ mod tests {
         }
         // Without motion: no previous slots, records name none.
         let f = frame_of(&crowds, &clips, &boxes, false);
-        let (_, data, _) = cpu_records(&crowds, &f, &camera, 720.0, 1.0, None);
+        let data = cpu_records(&crowds, &f, &camera, 720.0, 1.0, None).data;
         assert!(f.previous.is_empty() && data.iter().all(|r| r.morph1[0] == 0.0));
     }
 
@@ -722,5 +967,48 @@ mod tests {
         // An empty crowd has no row.
         let f = frame_of(&[crowd_of(Vec::new(), 1)], &[lift_clip(2)], &boxes, false);
         assert!(f.crowds.is_empty() && f.draws.is_empty());
+    }
+
+    #[test]
+    fn an_impostor_is_the_last_level_and_keeps_its_clip() {
+        let camera = Camera::default();
+        let mut crowd = crowd_of(Vec::new(), 3);
+        crowd.impostor = Some(CrowdImpostor {
+            clip: 1,
+            size: 16,
+            ..Default::default()
+        });
+        // Three mesh levels and the card; its error a texel of the atlas
+        // (2 m / 16 on a 1 m sphere), above the coarsest mesh's.
+        assert_eq!((crowd.mesh_levels(), crowd.levels()), (3, 4));
+        assert_eq!(crowd.level_errors(), vec![0.0, 0.02, 0.08, 0.125]);
+        // A finer atlas (a texel 2 m / 64) takes the coarsest mesh's error:
+        // the card replaces the mesh levels coarser than a texel (lod.rs's
+        // rule for model impostors).
+        let mut fine = crowd.clone();
+        fine.impostor.as_mut().unwrap().size = 64;
+        assert_eq!(fine.level_errors(), vec![0.0, 0.02, 0.08, 0.08]);
+        // Far away: the card, for a member playing its clip; the coarsest
+        // mesh for one playing another.
+        let far = Mat4::from_translation(Vec3::new(0.0, 0.0, -2000.0));
+        assert_eq!(member_level(&crowd, &far, &camera, 720.0, 1.0), 3);
+        let on = CrowdMember::new(far, 1, 0.0);
+        let off = CrowdMember::new(far, 0, 0.0);
+        assert_eq!(drawn_level(&crowd, &on, 3), 3);
+        assert_eq!(drawn_level(&crowd, &off, 3), 2);
+        // Between the coarsest mesh and the card: still the mesh.
+        // At 64 m (about 10 pixels a metre at 60 degrees) the coarsest mesh's
+        // error is under a pixel and a card's texel over it.
+        let mid = Mat4::from_translation(Vec3::new(0.0, -1.0, -64.0));
+        assert_eq!(member_level(&crowd, &mid, &camera, 720.0, 1.0), 2);
+        // Four mesh levels with an impostor: the last mesh level gives way.
+        let mut four = crowd.clone();
+        four.errors = vec![0.0, 0.01, 0.02, 0.04];
+        assert_eq!((four.mesh_levels(), four.levels()), (3, 4));
+        // A card's row: frame 15 of a 31-frame loop is halfway through 16
+        // atlas frames; the last frame (the first again) wraps to 0.
+        assert_eq!(card_row(15.0, 31, 16), 8.0);
+        assert_eq!(card_row(30.0, 31, 16), 0.0);
+        assert_eq!(card_row(f32::NAN, 31, 16), 0.0);
     }
 }

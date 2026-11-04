@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **GPU-driven crowds.** og.CrowdAnimation members draw as og-render
+  crowds: culled (frustum, two-phase Hi-Z), given their level and drawn
+  indirect on the GPU, shadows included, with animated impostor cards as a
+  crowd's far level (`Crowd::impostor`). Metal M4 Pro, 1280×720 TAA:
+  5k 18.4 → 5.2 ms, 20k 63.4 → 10.2 ms, 50k 129 → 26.3 ms a frame. New
+  `RenderCapabilities.gpuCrowds` (false where the device lacks indirect
+  first instances: crowds then take the CPU path) and
+  `RenderDesc::without_features`.
+
 - **UI phase 0 grammar, typography and sheets (breaking; next minor).**
   `typography` drives every legacy ramp alias, including weight and tracking;
   `hero` adds the top step and `case upper` uses locale-aware Unicode casing.

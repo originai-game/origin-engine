@@ -732,6 +732,12 @@ impl Renderer {
             .iter()
             .flat_map(|c| &c.members)
             .for_each(|m| mark(&m.pose));
+        // And the clips crowds' impostors are baked from.
+        for i in scene.crowds.iter().filter_map(|c| c.impostor.as_ref()) {
+            if let Some(m) = marked.get_mut(i.clip as usize) {
+                *m = true;
+            }
+        }
         let used: std::collections::BTreeSet<u32> = marked
             .iter()
             .enumerate()
@@ -1074,7 +1080,9 @@ impl Renderer {
     /// each member at the camera's level, a record per part, appended to
     /// `skinned` as batches of `crowd_batches`' kinds with their boxes.
     /// `previous_at`: the palette slot of the first member's previous
-    /// transform (TAA).
+    /// transform (TAA). Answers the card-level members' records, by card
+    /// (`(card, first, count)` runs over them).
+    #[allow(clippy::type_complexity)]
     pub(crate) fn append_crowds(
         &self,
         scene: &RenderScene,
@@ -1082,8 +1090,14 @@ impl Renderer {
         crowd_batches: &[Batch],
         skinned: &mut SkinnedFrame,
         previous_at: Option<u32>,
-    ) {
-        let (runs, data, boxes) = crate::crowd::cpu_records(
+    ) -> (Vec<(u32, u32, u32)>, Vec<crate::skin::SkinnedInstanceGpu>) {
+        let crate::crowd::CpuCrowds {
+            runs,
+            data,
+            boxes,
+            card_runs,
+            cards,
+        } = crate::crowd::cpu_records(
             &scene.crowds,
             frame,
             &scene.camera,
@@ -1103,6 +1117,7 @@ impl Renderer {
         skinned.data.extend(data);
         skinned.boxes.extend(boxes);
         skinned.baked_moved |= frame.moved;
+        (card_runs, cards)
     }
 
     /// The skinned batches the camera sees: instances whose posed box

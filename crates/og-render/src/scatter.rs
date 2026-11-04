@@ -813,8 +813,19 @@ fn crossfade_noise_offset(frame_index: u64) -> f32 {
 }
 
 const SLOT: u64 = 256;
-/// The pipelines' kinds past a [`ScatterPass`]'s: its impostor's.
+/// The pipelines' kinds past a [`ScatterPass`]'s: its impostor's, and its
+/// crowd cards'.
 const IMPOSTOR_KIND: u8 = 3;
+const CARD_KIND: u8 = 6;
+
+/// A crowd card's record (crowd.rs `card_record`, `CardIn`): a skinned
+/// record's stride, its transform's columns, then (its place, flash, flash
+/// colour, tint).
+const CARD_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: crate::skin::SKINNED_INSTANCE_STRIDE,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4],
+};
 
 /// What a chunk was built from: the scatter, its terrain's placement and
 /// data, the mesh and material, and the chunk's place.
@@ -879,19 +890,55 @@ pub(crate) struct ImpostorBatch {
     radius: f32,
 }
 
-/// What [`ScatterRenderer::prepare`] answers: the scatters' batches and
-/// the model impostors'.
+/// A crowd's impostor cards this frame (crowd.rs **Impostors**,
+/// `crowd_card.wgsl`): its sphere in the model's space, its atlas's views
+/// and frames and the elevation it was baked at (radians), its draw in the
+/// crowd cull's table (the GPU path), its records among the frame's CPU
+/// card records (the CPU path) and whether it casts shadows.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct CardInput {
+    pub center: Vec3,
+    pub radius: f32,
+    pub views: u32,
+    pub frames: u32,
+    pub elevation: f32,
+    pub draw: u32,
+    pub cpu: Option<(u32, u32)>,
+    pub cast_shadows: bool,
+}
+
+/// A crowd's cards as drawn: its uniform slot, and its material group (the
+/// atlas and its parts' colours, `crowd_impostor.rs`) once baked.
+pub(crate) struct CardBatch {
+    pub input: CardInput,
+    offset: u32,
+    pub group: Option<wgpu::BindGroup>,
+}
+
+/// Where a pass's crowd cards come from: the crowd cull's row (its records
+/// and draws), the CPU path's records, or none.
+#[derive(Clone, Copy)]
+pub(crate) enum CardSource<'a> {
+    None,
+    Gpu(&'a crate::crowd_gpu::CrowdCulling, u32),
+    Cpu,
+}
+
+/// What [`ScatterRenderer::prepare`] answers: the scatters' batches, the
+/// model impostors' and the crowds' cards.
 #[derive(Default)]
 pub(crate) struct ScatterBatches {
     pub scatters: Vec<ScatterBatch>,
     pub impostors: Vec<ImpostorBatch>,
+    pub cards: Vec<CardBatch>,
 }
 
 impl ScatterBatches {
-    /// Whether any copy or model impostor this frame casts a shadow.
+    /// Whether any copy, model impostor or crowd card this frame casts a shadow.
     pub(crate) fn casts(&self) -> bool {
         self.scatters.iter().any(|b| b.cast_shadows)
             || self.impostors.iter().any(|b| b.cast_shadows)
+            || self.cards.iter().any(|b| b.input.cast_shadows)
     }
 }
 
@@ -958,6 +1005,10 @@ pub(crate) struct ScatterRenderer {
     trample: wgpu::TextureView,
     /// The frame's model impostors' transforms, and how many it holds.
     impostor_instances: Option<(wgpu::Buffer, u64)>,
+    /// A card's quad (6 indices) and the CPU path's card records, with
+    /// their capacity in bytes.
+    card_quad: wgpu::Buffer,
+    card_instances: Option<(wgpu::Buffer, u64)>,
     /// The GPU cull (with compute) and this frame's culled chunks, in order.
     cull: Option<crate::scatter_cull::ScatterCull>,
     culled_chunks: Vec<ChunkKey>,
@@ -1117,6 +1168,16 @@ impl ScatterRenderer {
             wind_field: p.wind_field,
             trample: p.trample,
             impostor_instances: None,
+            card_quad: crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("crowd card quad"),
+                    contents: bytemuck::cast_slice(&[0u32, 1, 2, 3, 4, 5]),
+                    usage: wgpu::BufferUsages::INDEX,
+                },
+            ),
+            card_instances: None,
             cull: p
                 .compute
                 .then(|| crate::scatter_cull::ScatterCull::new(device, queue)),
@@ -1380,6 +1441,90 @@ impl ScatterRenderer {
         })
     }
 
+    /// A crowd card pipeline (`crowd_card.wgsl`): instance records of
+    /// [`CARD_LAYOUT`] (slot 0), indexed by the card quad, both faces.
+    fn card_pipeline(&self, device: &wgpu::Device, pass: ScatterPass) -> wgpu::RenderPipeline {
+        let buffers = [Some(CARD_LAYOUT)];
+        let depth = Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        });
+        let target = |format| {
+            Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })
+        };
+        let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
+            ScatterPass::Lit => {
+                return crate::hdr_pipeline(
+                    device,
+                    crate::HdrPipeline {
+                        alpha_to_coverage: true,
+                        label: "crowd card",
+                        layout: &self.lit_fx_layout,
+                        module: &self.lit_module,
+                        vs: "vs_crowd_card",
+                        fs: "fs_crowd_card",
+                        buffers: &buffers,
+                        cull: None,
+                        depth_write: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        blend: None,
+                        samples: self.samples,
+                    },
+                );
+            }
+            ScatterPass::Prepass => (
+                &self.lit_layout,
+                &self.lit_module,
+                "vs_crowd_card",
+                "fs_crowd_card_prepass",
+                vec![
+                    target(crate::post::GBUFFER_FORMAT),
+                    target(crate::post::LINDEPTH_FORMAT),
+                    target(crate::post::OUTLINE_FORMAT),
+                ],
+            ),
+            ScatterPass::Shadow => (
+                &self.shadow_layout,
+                &self.shadow_module,
+                "vs_crowd_card_shadow",
+                "fs_crowd_card_shadow",
+                vec![Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R32Float,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::RED,
+                })],
+            ),
+        };
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("crowd card"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some(vs),
+                compilation_options: Default::default(),
+                buffers: &buffers,
+            },
+            primitive: Default::default(),
+            depth_stencil: depth,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(fs),
+                compilation_options: Default::default(),
+                targets: &targets,
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
+    }
+
     /// Groups the scene's model impostors by atlas, uploads their
     /// transforms and writes each group's uniform at the slots after the
     /// scatters'.
@@ -1473,6 +1618,7 @@ impl ScatterRenderer {
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32, u32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
+        (card_inputs, cpu_cards): (&[CardInput], &[crate::skin::SkinnedInstanceGpu]),
     ) -> ScatterBatches {
         self.frame += 1;
         self.built = 0;
@@ -1509,7 +1655,7 @@ impl ScatterRenderer {
                 None => groups.push((d.impostor, vec![i])),
             }
         }
-        let slots = (scene.scatters.len() + groups.len()) as u64;
+        let slots = (scene.scatters.len() + groups.len() + card_inputs.len()) as u64;
         if self.slots < slots {
             self.slots = slots.next_power_of_two();
             let (u, g) = Self::slots(
@@ -1539,6 +1685,15 @@ impl ScatterRenderer {
         let impostors =
             self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
         let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        let cards = self.prepare_cards(
+            device,
+            queue,
+            base,
+            light,
+            card_inputs,
+            cpu_cards,
+            scene.scatters.len() + groups.len(),
+        );
         self.culled_chunks.clear();
         let mut cull_items = Vec::new();
         // Per batch, per chunk, its item among `cull_items`.
@@ -1552,6 +1707,7 @@ impl ScatterRenderer {
             return ScatterBatches {
                 scatters: batches,
                 impostors,
+                cards,
             };
         }
         let (sources, revisions) = scene.terrain_sources();
@@ -1874,7 +2030,69 @@ impl ScatterRenderer {
         ScatterBatches {
             scatters: batches,
             impostors,
+            cards,
         }
+    }
+
+    /// The crowds' cards: each its uniform at the slots from `first_slot`
+    /// (its sphere, views, frames and elevation), the CPU path's records
+    /// uploaded, and their pipelines made.
+    #[allow(clippy::too_many_arguments)]
+    fn prepare_cards(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        base: ScatterGpu,
+        light: Vec3,
+        inputs: &[CardInput],
+        cpu: &[crate::skin::SkinnedInstanceGpu],
+        first_slot: usize,
+    ) -> Vec<CardBatch> {
+        if inputs.is_empty() {
+            return Vec::new();
+        }
+        if !cpu.is_empty() {
+            let size = std::mem::size_of_val(cpu) as u64;
+            if self.card_instances.as_ref().is_none_or(|b| b.1 < size) {
+                let cap = size.next_power_of_two();
+                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("crowd card records"),
+                    size: cap,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                self.card_instances = Some((buffer, cap));
+            }
+            let (buffer, _) = self.card_instances.as_ref().expect("made above");
+            queue.write_buffer(buffer, 0, bytemuck::cast_slice(cpu));
+        }
+        let out = inputs
+            .iter()
+            .enumerate()
+            .map(|(k, c)| {
+                let slot = first_slot + k;
+                let mut gpu = base;
+                gpu.impostor = c.center.extend(c.radius).to_array();
+                gpu.impostor_grid = [0.0, 0.0, f32::from(u8::from(self.samples > 1)), 0.0];
+                gpu.fade[2] = c.views as f32;
+                gpu.fade[3] = c.frames as f32;
+                gpu.impostor_light = light.extend(c.elevation).to_array();
+                queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
+                CardBatch {
+                    input: *c,
+                    offset: (slot as u64 * SLOT) as u32,
+                    group: None,
+                }
+            })
+            .collect();
+        for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
+            let kind = pass as u8 + CARD_KIND;
+            if !self.pipelines.contains_key(&(None, Side::Double, kind)) {
+                let p = self.card_pipeline(device, pass);
+                self.pipelines.insert((None, Side::Double, kind), p);
+            }
+        }
+        out
     }
 
     /// Culls this frame's chunks for the main camera on the GPU (before
@@ -1914,6 +2132,7 @@ impl ScatterRenderer {
         mut probes: Option<&mut crate::probe_select::Binder>,
         fx_group: Option<&wgpu::BindGroup>,
         camera: bool,
+        cards: CardSource<'_>,
     ) -> (u32, u32) {
         // The main camera's prepass and lit pass draw the GPU cull's copies.
         let list = self
@@ -2040,6 +2259,48 @@ impl ScatterRenderer {
                 pass.draw(0..6, 0..b.count);
                 draws += 1;
                 copies += b.count;
+            }
+        }
+        // The crowds' cards: the cull's row of them, or the CPU path's
+        // records drawn whole (the depth test keeps what the cull would).
+        let card_pipeline = self
+            .pipelines
+            .get(&(None, Side::Double, kind as u8 + CARD_KIND));
+        if let Some(cp) = card_pipeline {
+            for b in &all.cards {
+                if kind == ScatterPass::Shadow && !b.input.cast_shadows {
+                    continue;
+                }
+                let Some(group) = &b.group else { continue };
+                let source = match (cards, b.input.cpu, &self.card_instances) {
+                    (CardSource::Gpu(cc, row), _, _) => {
+                        let at = cc.row_offset(row);
+                        Some((
+                            cc.records.slice(at..cc.row_offset(row + 1)),
+                            Some((cc, row)),
+                            0,
+                        ))
+                    }
+                    (CardSource::Cpu, Some((first, count)), Some((buffer, _))) => {
+                        let stride = crate::skin::SKINNED_INSTANCE_STRIDE;
+                        Some((buffer.slice(first as u64 * stride..), None, count))
+                    }
+                    _ => None,
+                };
+                let Some((slice, gpu, count)) = source else {
+                    continue;
+                };
+                pass.set_pipeline(cp);
+                bind_rest(pass, group, b.offset);
+                pass.set_vertex_buffer(0, slice);
+                pass.set_index_buffer(self.card_quad.slice(..), wgpu::IndexFormat::Uint32);
+                match gpu {
+                    Some((cc, row)) => {
+                        pass.draw_indexed_indirect(&cc.args, cc.draw_offset(row, b.input.draw))
+                    }
+                    None => pass.draw_indexed(0..6, 0, 0..count),
+                }
+                draws += 1;
             }
         }
         if let Some(b) = probes {

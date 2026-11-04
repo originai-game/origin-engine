@@ -1235,6 +1235,21 @@ its frames; under GPU culling the camera's pass, its occlusion test
 included, the planar reflection and every shadow pass take them with the
 instances, and their records are compacted per pass for the skinned
 draws.
+Crowds (`RenderScene::crowds`, og-render's `crowd.rs`, what
+og.CrowdAnimation members draw as) are the GPU-driven path's skinned
+workload: per culled pass a compute pass (`crowd_cull.wgsl`) tests each
+member's clip box against the pass's planes (the camera's also against
+the Hi-Z pyramid), picks its level from the camera (lod.rs's rule), and
+compacts the survivors by a deterministic prefix sum into indexed
+indirect draws that blend the clip's baked frames in the vertex stage.
+A crowd's last level may be an impostor (`CrowdImpostor`): cards of its
+full mesh baked on the GPU per view around the vertical and per frame of
+its clip (`crowd_impostor.rs`), shared by crowds of the same meshes and
+coloured per part by each crowd's materials, lit, depth-written and cast
+into the shadow maps as the meshes are. Without
+`INDIRECT_FIRST_INSTANCE` (`RenderInfo::gpu_crowds`, the capability
+`gpuCrowds`), with secondary views or probe faces, crowds take the CPU
+lists: the same members at the same levels.
 - `every` skips ticks.
 - A mirror reflects the main eye in its plane. It draws through an
   off-axis frustum fitted to the quad's corners (Kooima), with the near

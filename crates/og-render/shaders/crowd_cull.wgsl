@@ -5,7 +5,8 @@
 // level and in member order, into the row's region of skinned instance
 // records (skin.rs `SkinnedInstanceGpu`). Each (crowd, part, level) gets an
 // indexed indirect draw whose first instance is where its members start in
-// the region. No atomics decide an order: a deterministic prefix sum over
+// the region; a crowd's impostor level (crowd.rs, **Impostors**) writes a
+// card's record in the same slot and one quad draw for the crowd. No atomics decide an order: a deterministic prefix sum over
 // one-hot level vectors does.
 //
 // One workgroup row (workgroup_id.y) per view row:
@@ -50,15 +51,16 @@ struct Row {
 };
 
 struct CrowdGpu {
-  // x: first member, y: members, z: levels, w: first draw
+  // x: first member, y: members, z: levels (its card's among them), w: first draw
   members: vec4<u32>,
   // x: parts, y: casts shadows, z: may be occluded, w: first clip box
   info: vec4<u32>,
-  // x: its layer mask
+  // x: its layer mask, y: its card's draw plus one (0: no impostor), z:
+  // the impostor's clip, w: the frames of it the impostor holds
   layers: vec4<u32>,
   errors: vec4<f32>,
   sphere: vec4<f32>,
-  // x: the scene's lod bias times its own
+  // x: the scene's lod bias times its own, y: its mesh levels
   lod: vec4<f32>,
 };
 
@@ -139,6 +141,22 @@ fn member_level(c: CrowdGpu, m: mat4x4<f32>) -> u32 {
   return level;
 }
 
+// crowd.rs `drawn_level`: a member playing a clip other than the
+// impostor's keeps the coarsest mesh in the card's place.
+fn drawn_level(c: CrowdGpu, k: u32, level: u32) -> u32 {
+  let clip = u32(members[k * MEMBER_FLOATS + 12u]);
+  if (c.layers.y > 0u && level == u32(c.lod.y) && clip != c.layers.z) { return level - 1u; }
+  return level;
+}
+
+// crowd.rs `card_row`: where `frame` of a clip of `clip_frames` frames
+// falls among the `frames` the impostor holds (0 up to `frames`, wrapping).
+fn card_row(frame: f32, clip_frames: u32, frames: u32) -> f32 {
+  let f = select(0.0, max(frame, 0.0), frame == frame && abs(frame) < 3.0e38);
+  let r = f / f32(max(clip_frames, 2u) - 1u) * f32(frames);
+  return r - f32(frames) * floor(r / f32(frames));
+}
+
 fn one_hot(l: u32) -> vec4<u32> {
   return vec4<u32>(vec4<bool>(l == 0u, l == 1u, l == 2u, l == 3u));
 }
@@ -181,12 +199,16 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
         && occluded(m, center, extent * (1.0 + 1e-5) + vec3<f32>(1e-6))) {
       inside = false;
       hidden.y = parts;
-      let l = member_level(c, m);
-      for (var p = 0u; p < parts; p++) {
-        hidden.z += draws[c.members.w + l * parts + p] / 3u;
+      let l = drawn_level(c, k, member_level(c, m));
+      if (l < u32(c.lod.y)) {
+        for (var p = 0u; p < parts; p++) {
+          hidden.z += draws[c.members.w + l * parts + p] / 3u;
+        }
+      } else {
+        hidden.z += 2u;
       }
     }
-    if (inside) { v = one_hot(member_level(c, m)); }
+    if (inside) { v = one_hot(drawn_level(c, k, member_level(c, m))); }
     scan[prefix_at(r) + k] = v;
   }
   shared_sum[li] = v;
@@ -286,28 +308,39 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
     let a = k * MEMBER_FLOATS;
     let o = slot * RECORD_FLOATS;
     for (var j = 0u; j < 12u; j++) { records[o + j] = members[a + j]; }
-    let clip = clips[c.info.w + u32(members[a + 12u])];
-    let now = frame_slot(c, members[a + 12u], members[a + 13u]);
-    let then = frame_slot(c, members[a + 14u], members[a + 15u]);
-    records[o + 12u] = now.x;
-    records[o + 13u] = f32(clip.info.y);
-    records[o + 14u] = 0.0;
-    records[o + 15u] = -1.0 - now.y;
-    for (var j = 16u; j < 20u; j++) { records[o + j] = 0.0; }
-    var previous = 0.0;
-    if (params.lod.w > 0.5) { previous = params.lod.w + f32(k); }
-    records[o + 20u] = previous;
-    records[o + 21u] = then.x;
-    records[o + 22u] = then.y;
-    records[o + 23u] = 0.0;
-    for (var j = 0u; j < 4u; j++) { records[o + 24u + j] = members[a + 16u + j]; }
+    if (l == u32(c.lod.y)) {
+      // A card (crowd.rs `card_record`): its place among the impostor's
+      // frames, signed as the member receives shadows, then its look.
+      let clip = clips[c.info.w + u32(members[a + 12u])];
+      let row = card_row(members[a + 13u], clip.info.z, c.layers.w);
+      records[o + 12u] = select(-1.0 - row, row, members[a + 16u] >= 0.0);
+      for (var j = 1u; j < 4u; j++) { records[o + 12u + j] = members[a + 16u + j]; }
+      for (var j = 16u; j < 28u; j++) { records[o + j] = 0.0; }
+    } else {
+      let clip = clips[c.info.w + u32(members[a + 12u])];
+      let now = frame_slot(c, members[a + 12u], members[a + 13u]);
+      let then = frame_slot(c, members[a + 14u], members[a + 15u]);
+      records[o + 12u] = now.x;
+      records[o + 13u] = f32(clip.info.y);
+      records[o + 14u] = 0.0;
+      records[o + 15u] = -1.0 - now.y;
+      for (var j = 16u; j < 20u; j++) { records[o + j] = 0.0; }
+      var previous = 0.0;
+      if (params.lod.w > 0.5) { previous = params.lod.w + f32(k); }
+      records[o + 20u] = previous;
+      records[o + 21u] = then.x;
+      records[o + 22u] = then.y;
+      records[o + 23u] = 0.0;
+      for (var j = 0u; j < 4u; j++) { records[o + 24u + j] = members[a + 16u + j]; }
+    }
   }
   if (k == c.members.x) {
     // The crowd's draws: each level's members, for every part.
     let first = here;
     let last = scan[at + c.members.x + c.members.y];
     let parts = c.info.x;
-    for (var l = 0u; l < c.members.z; l++) {
+    let meshes = u32(c.lod.y);
+    for (var l = 0u; l < meshes; l++) {
       for (var p = 0u; p < parts; p++) {
         let d = c.members.w + l * parts + p;
         let w = (r * params.counts.w + d) * 5u;
@@ -317,6 +350,15 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
         args[w + 3u] = 0u;
         args[w + 4u] = starts[l] + first[l];
       }
+    }
+    if (c.layers.y > 0u) {
+      // The cards: a quad each.
+      let w = (r * params.counts.w + c.layers.y - 1u) * 5u;
+      args[w] = 6u;
+      args[w + 1u] = last[meshes] - first[meshes];
+      args[w + 2u] = 0u;
+      args[w + 3u] = 0u;
+      args[w + 4u] = starts[meshes] + first[meshes];
     }
   }
 }

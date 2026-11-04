@@ -282,6 +282,7 @@ impl Renderer {
                     None,
                     Some(fx_group),
                     false,
+                    scatter::CardSource::Cpu,
                 );
                 if n > 0 {
                     pass.set_bind_group(2, fx_group, &[]);

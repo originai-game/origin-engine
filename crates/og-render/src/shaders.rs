@@ -202,6 +202,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("particle sim", crate::particles_gpu::sim_source());
     add("cull", crate::cull_gpu::CULL_WGSL.to_string());
     add("crowd cull", crate::crowd::CROWD_CULL_WGSL.to_string());
+    add("crowd bake", crate::crowd_bake_source());
     add("depth pyramid", crate::cull_gpu::hiz_source(false));
     add(
         "depth pyramid (multisampled)",

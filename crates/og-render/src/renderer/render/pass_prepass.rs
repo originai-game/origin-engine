@@ -20,6 +20,8 @@ pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) view_frustum: &'a Frustum,
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
+    /// Where the crowds' cards come from in this pass.
+    pub(super) cards: scatter::CardSource<'a>,
     pub(super) scatter_material: &'a F1,
     pub(super) scatter_mesh: &'a F2,
     pub(super) grass_frame: &'a grass::GrassFrame,
@@ -46,6 +48,7 @@ impl Renderer {
             terrain_draws,
             view_frustum,
             scatter_batches,
+            cards,
             scatter_material,
             scatter_mesh,
             grass_frame,
@@ -205,6 +208,7 @@ impl Renderer {
             None,
             None,
             true,
+            cards,
         );
         stats.prepass_draws += n;
         stats.prepass_draws +=

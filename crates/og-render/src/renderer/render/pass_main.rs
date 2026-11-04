@@ -24,6 +24,8 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) view_frustum: &'a Frustum,
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
+    /// Where the crowds' cards come from in this pass.
+    pub(super) cards: scatter::CardSource<'a>,
     pub(super) scatter_material: &'a F2,
     pub(super) scatter_mesh: &'a F3,
     pub(super) grass_frame: &'a grass::GrassFrame,
@@ -99,6 +101,7 @@ impl Renderer {
             terrain_draws,
             view_frustum,
             scatter_batches,
+            cards,
             scatter_material,
             scatter_mesh,
             grass_frame,
@@ -312,6 +315,7 @@ impl Renderer {
             Some(&mut probe_select::Binder::new(probe_binding)),
             Some(fx_group),
             true,
+            cards,
         );
         if n > 0 {
             // The copies' group 2 is theirs: the effects' back for what follows.

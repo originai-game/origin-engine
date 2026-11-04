@@ -274,7 +274,8 @@ impl CrowdCulling {
         counts: (&wgpu::Buffer, u32),
     ) {
         let n = frame.len();
-        let d = frame.draws.len() as u32;
+        // Every draw: the mesh levels', then a card's per crowd with an impostor.
+        let d = index_counts.len() as u32;
         self.rows_of = passes
             .iter()
             .scan(0u32, |r, p| {

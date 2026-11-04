@@ -1116,6 +1116,7 @@ impl Renderer {
             indirect,
             crowd_indirect,
             crowd_gpu: None,
+            crowd_impostors: None,
             gpu_cull: None,
             meshlet: None,
             culling_counts: false,

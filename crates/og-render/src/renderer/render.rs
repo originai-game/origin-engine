@@ -7,6 +7,7 @@ mod overlay_setup;
 mod prepare_pipelines;
 use prepare_pipelines::PrepareFramePipelinesInputs;
 
+mod crowd_cards;
 mod draw_skinned;
 use draw_skinned::DrawSkinnedInputs;
 
@@ -183,15 +184,18 @@ impl Renderer {
                         .get_or_insert_with(|| crowd_gpu::CrowdCulling::new(&self.device, max))
                         .fits(crowd_frame.len(), rows)
             };
-        if !crowd_gpu && crowd_frame.len() > 0 {
+        // The CPU path's card records (`crowd_impostor.rs` draws them whole).
+        let cpu_cards = if !crowd_gpu && crowd_frame.len() > 0 {
             self.append_crowds(
                 scene,
                 &crowd_frame,
                 &crowd_batches,
                 &mut skinned,
                 crowd_previous,
-            );
-        }
+            )
+        } else {
+            Default::default()
+        };
         skinned.baked_moved |= crowd_frame.moved;
         let (view_plans, mut view_skinned) =
             self.prepare_view_culling(scene, &camera, &mut skinned);
@@ -1410,7 +1414,7 @@ impl Renderer {
         };
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // Scattered copies: the chunks this frame needs built, what to draw.
-        let scatter_batches = if !WORLD_3D {
+        let mut scatter_batches = if !WORLD_3D {
             scatter::ScatterBatches::default()
         } else {
             let materials = &self.cache.materials;
@@ -1439,6 +1443,10 @@ impl Renderer {
                 },
                 |m| materials.get(m).and_then(|g| g.shader),
                 |sh| scene.shaders()[sh].hooks_wgsl(),
+                (
+                    &Self::crowd_card_inputs(&crowd_frame, &cpu_cards.0),
+                    &cpu_cards.1,
+                ),
             )
         };
         // Grass: this frame's fields planned over the drawn terrains (grass.rs).
@@ -1462,13 +1470,6 @@ impl Renderer {
                 &view_frustum,
                 &|h| textures.get(h.index()).map(|t| &t.view),
             )
-        };
-        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
-        let scatter_mesh = |m: usize| {
-            self.cache
-                .meshes
-                .get(m)
-                .map(|g| (&g.vertices, &g.indices, g.index_count))
         };
 
         // The directional light's cascades.
@@ -2167,6 +2168,15 @@ impl Renderer {
                 morphs_changed,
             );
         }
+        // The crowds' cards' atlases, baked from the palette's clips.
+        self.prepare_crowd_cards(scene, &crowd_frame, &mut scatter_batches.cards);
+        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
+        let scatter_mesh = |m: usize| {
+            self.cache
+                .meshes
+                .get(m)
+                .map(|g| (&g.vertices, &g.indices, g.index_count))
+        };
         grow_and_write(
             &self.device,
             &self.queue,
@@ -3833,7 +3843,7 @@ impl Renderer {
                 }
                 Projection::Orthographic { height } => (None, height),
             };
-            let index_counts: Vec<u32> = crowd_frame.draws.iter().map(|d| d.index_count).collect();
+            let index_counts = crowd_frame.index_counts();
             let cc = self
                 .crowd_gpu
                 .as_mut()
@@ -3954,6 +3964,22 @@ impl Renderer {
         };
         let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
+        // Where a pass's crowd cards come from: GPU culling pass `g`'s row
+        // of the crowd cull, or the CPU path's records.
+        let card_source = |g: Option<u32>| match crowd_cull {
+            Some(cc) => g
+                .and_then(|g| cc.rows_of.get(g as usize).copied().flatten())
+                .map_or(scatter::CardSource::None, |r| {
+                    scatter::CardSource::Gpu(cc, r)
+                }),
+            None => scatter::CardSource::Cpu,
+        };
+        let camera_cards = card_source(
+            cull_passes
+                .iter()
+                .position(|p| p.kind == cull_gpu::PassKind::Main)
+                .map(|g| g as u32),
+        );
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
         let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
@@ -4319,6 +4345,7 @@ impl Renderer {
                         None,
                         None,
                         false,
+                        card_source(None),
                     )
                     .0;
             }
@@ -4407,6 +4434,7 @@ impl Renderer {
                     None,
                     None,
                     false,
+                    card_source(g),
                 );
                 stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
                 if slot < grass::SHADOW_CASCADES {
@@ -4569,6 +4597,7 @@ impl Renderer {
                     terrain_draws: &terrain_draws,
                     view_frustum: &view_frustum,
                     scatter_batches: &scatter_batches,
+                    cards: camera_cards,
                     scatter_material: &scatter_material,
                     scatter_mesh: &scatter_mesh,
                     grass_frame: &grass_frame,
@@ -4794,6 +4823,7 @@ impl Renderer {
                         terrain_draws: &terrain_draws,
                         view_frustum: &view_frustum,
                         scatter_batches: &scatter_batches,
+                        cards: camera_cards,
                         scatter_material: &scatter_material,
                         scatter_mesh: &scatter_mesh,
                         grass_frame: &grass_frame,

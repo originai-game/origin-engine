@@ -78,6 +78,7 @@ mod clusters;
 mod compact;
 mod crowd;
 mod crowd_gpu;
+mod crowd_impostor;
 mod cull_gpu;
 mod custom;
 pub mod debug;
@@ -367,7 +368,9 @@ pub mod impostors {
         blend_frames, frame_basis, frame_direction, hemi_oct_decode, hemi_oct_encode,
     };
 }
-pub use crowd::{Crowd, CrowdMember, CrowdPart, MAX_CROWD_LEVELS, member_level};
+pub use crowd::{
+    Crowd, CrowdImpostor, CrowdMember, CrowdPart, MAX_CROWD_LEVELS, drawn_level, member_level,
+};
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{
@@ -739,6 +742,9 @@ pub struct Renderer {
     /// with a first instance), and their culling once a frame used it.
     crowd_indirect: bool,
     crowd_gpu: Option<crowd_gpu::CrowdCulling>,
+    /// Crowd impostors' atlases (`crowd_impostor.rs`), made when a crowd
+    /// with an impostor is first drawn.
+    crowd_impostors: Option<crowd_impostor::CrowdImpostors>,
     /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
     meshlet: Option<meshlet_gpu::MeshletGpu>,
     /// Whether the next frame's GPU culling counts are read back
