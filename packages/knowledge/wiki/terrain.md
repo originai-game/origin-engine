@@ -18,7 +18,7 @@ module terrain {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 28427</sub>
+<sub>`api.ogt` line 28474</sub>
 
 ## Contents
 
@@ -30,8 +30,10 @@ module terrain {
 | [`TerrainStampMode`](#type-TerrainStampMode) | enum | What og.terrain.stamp does to the height field under a stamp's mesh. |
 | [`og.Terrain`](#record-Terrain) | component | Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to. |
 | [`og.TerrainStamp`](#record-TerrainStamp) | component | Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry. |
-| [`og.TerrainScatter`](#record-TerrainScatter) | component | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities. |
+| [`og.TerrainScatter`](#record-TerrainScatter) | component | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities. |
 | [`og.Grass`](#record-Grass) | component | A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one). |
+| [`og.GrassType`](#record-GrassType) | component | Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's. |
+| [`og.GrassPusher`](#record-GrassPusher) | component | Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press. |
 | [`TerrainInfo`](#type-TerrainInfo) | struct | A loaded terrain. |
 | [`TerrainSampleDesc`](#type-TerrainSampleDesc) | desc struct | Where og.terrain.sample looks. |
 | [`TerrainSample`](#type-TerrainSample) | struct | The terrain under a point. |
@@ -79,7 +81,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 28927</sub>
+<sub>`api.ogt` line 29076</sub>
 
 <a id="fn-sample"></a>
 
@@ -109,7 +111,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 28934</sub>
+<sub>`api.ogt` line 29083</sub>
 
 <a id="fn-bounds"></a>
 
@@ -151,7 +153,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 28941</sub>
+<sub>`api.ogt` line 29090</sub>
 
 <a id="fn-edit"></a>
 
@@ -183,7 +185,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 28957</sub>
+<sub>`api.ogt` line 29106</sub>
 
 <a id="fn-stamp"></a>
 
@@ -213,7 +215,7 @@ fn stamp {
 }
 ```
 
-<sub>`api.ogt` line 28965</sub>
+<sub>`api.ogt` line 29114</sub>
 
 <a id="fn-unstamp"></a>
 
@@ -245,7 +247,7 @@ fn unstamp {
 }
 ```
 
-<sub>`api.ogt` line 28972</sub>
+<sub>`api.ogt` line 29121</sub>
 
 <a id="fn-layer"></a>
 
@@ -277,7 +279,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 28980</sub>
+<sub>`api.ogt` line 29129</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -311,7 +313,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 28988</sub>
+<sub>`api.ogt` line 29137</sub>
 
 ## Components, resources and events
 
@@ -358,7 +360,7 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 28459</sub>
+<sub>`api.ogt` line 28506</sub>
 
 <a id="record-TerrainStamp"></a>
 
@@ -397,13 +399,13 @@ component TerrainStamp {
 }
 ```
 
-<sub>`api.ogt` line 28483</sub>
+<sub>`api.ogt` line 28530</sub>
 
 <a id="record-TerrainScatter"></a>
 
 ### `og.TerrainScatter` (component)
 
-Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
+Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
 
 Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`; its value type is `TerrainScatter`.
 
@@ -415,19 +417,25 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. |
 | `density` | `number` | `2` | 0 … 400 | — | tunable | Copies per square metre where the layer's weight is 1. |
 | `distance` | `number` | `40` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies are placed. |
-| `fade` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The outer part of `distance` over which copies thin out to nothing. |
+| `fade` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The outer part of `distance` over which copies shrink and thin out to nothing. |
 | `minScale` | `number` | `0.8` | ≥ 0 | — | tunable | The smallest copy's uniform scale. |
 | `maxScale` | `number` | `1.2` | ≥ 0 | — | tunable | The largest copy's uniform scale. |
 | `align` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far copies lean with the ground: 0 upright, 1 along its normal. |
 | `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
 | `castShadows` | `boolean` | `true` | — | — | — | Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set). |
 | `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin. |
-| `impostor` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement. |
+| `impostor` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement. |
 | `impostorDistance` | `number` | `0` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`. |
+| `noiseScale` | `number` | `8` | 0.1 … 1000 | `m` | tunable | The size of the patches noiseThreshold gathers copies into. |
+| `noiseThreshold` | `number` | `0` | 0 … 1 | `ratio` | tunable | Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere. |
+| `footprint` | `number` | `0` | 0 … 100 | `m` | tunable | How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none. |
+| `priority` | `number` | `0` | — | — | — | Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order. |
+| `avoidWater` | `number` | `0` | 0 … 100 | `m` | tunable | Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere. |
+| `densityMap` | `Texture` | `0` | — | — | — | Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none. |
 
 ```ogt
 component TerrainScatter {
-  doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
+  doc "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities."
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
   field geometry Geometry "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space."
   field material Material "Its material."
@@ -447,7 +455,7 @@ component TerrainScatter {
     unit m
     tunable true
   }
-  field fade f32 "The outer part of `distance` over which copies thin out to nothing." {
+  field fade f32 "The outer part of `distance` over which copies shrink and thin out to nothing." {
     default 0.3
     min 0
     max 1
@@ -482,17 +490,44 @@ component TerrainScatter {
     max 2
     tunable true
   }
-  field impostor Asset "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement."
+  field impostor Asset "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement."
   field impostorDistance f32 "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`." {
     min 0
     max 500
     unit m
     tunable true
   }
+  field noiseScale f32 "The size of the patches noiseThreshold gathers copies into." {
+    default 8
+    min 0.1
+    max 1000
+    unit m
+    tunable true
+  }
+  field noiseThreshold f32 "Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere." {
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field footprint f32 "How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none." {
+    min 0
+    max 100
+    unit m
+    tunable true
+  }
+  field priority u32 "Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order."
+  field avoidWater f32 "Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere." {
+    min 0
+    max 100
+    unit m
+    tunable true
+  }
+  field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none."
 }
 ```
 
-<sub>`api.ogt` line 28502</sub>
+<sub>`api.ogt` line 28549</sub>
 
 <a id="record-Grass"></a>
 
@@ -528,8 +563,13 @@ Token `og.Grass`, registered under the schema name `og.Grass`; its value type is
 | `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind bends the blades: 1 as it blows, 0 still. |
 | `stiffness` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How stiff the blades are: 0 bends furthest, 1 least, and sways faster. |
 | `flutter` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How much the tips of near blades shiver in the wind. |
-| `castShadows` | `boolean` | `false` | — | — | — | Whether the blades cast the sun's shadows (near the camera, into the first cascade). |
+| `castShadows` | `boolean` | `true` | — | — | — | Whether the blades cast the sun's shadows (near the camera, into the first two cascades). Either way a blade is shaded by the field's own canopy between it and the sun, darker towards the roots the denser the field and the lower the sun. |
 | `seed` | `number` | `1` | — | — | — | Another seed places the blades elsewhere. |
+| `recovery` | `number` | `4` | 0 … 120 | `s` | tunable | How long blades pressed by an og.GrassPusher take to stand again after it leaves. |
+| `types` | `readonly Entity[]` | `[]` | — | — | a list of at most 3 `Entity` (`List.Entity.3`): reads a frozen copy, writes a whole array | Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped. |
+| `typeMap` | `Texture` | `0` | — | — | — | Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share. |
+| `densityMap` | `Texture` | `0` | — | — | — | Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none. |
+| `heightMap` | `Texture` | `0` | — | — | — | Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none. |
 
 ```ogt
 component Grass {
@@ -672,14 +712,128 @@ component Grass {
     unit ratio
     tunable true
   }
-  field castShadows bool "Whether the blades cast the sun's shadows (near the camera, into the first cascade)."
+  field castShadows bool "Whether the blades cast the sun's shadows (near the camera, into the first two cascades). Either way a blade is shaded by the field's own canopy between it and the sun, darker towards the roots the denser the field and the lower the sun." {
+    default true
+  }
   field seed u32 "Another seed places the blades elsewhere." {
     default 1
+  }
+  field recovery f32 "How long blades pressed by an og.GrassPusher take to stand again after it leaves." {
+    default 4
+    min 0
+    max 120
+    unit s
+    tunable true
+  }
+  field types List.Entity.3 "Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped."
+  field typeMap Texture "Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share."
+  field densityMap Texture "Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none."
+  field heightMap Texture "Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none."
+}
+```
+
+<sub>`api.ogt` line 28641</sub>
+
+<a id="record-GrassType"></a>
+
+### `og.GrassType` (component)
+
+Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's.
+
+Token `og.GrassType`, registered under the schema name `og.GrassType`; its value type is `GrassType`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `height` | `number` | `0.45` | 0 … 4 | `m` | tunable | The tallest blade of this kind. |
+| `width` | `number` | `0.012` | 0 … 0.5 | `m` | tunable | A blade's width at its root. |
+| `curve` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How far its blades droop along their length: 0 straight, 1 arching over. |
+| `baseColor` | `Color` | `{ r: 0.04, g: 0.085, b: 0.024 }` | — | — | — | The roots' colour (linear). |
+| `tipColor` | `Color` | `{ r: 0.235, g: 0.39, b: 0.11 }` | — | — | — | The tips' colour (linear): a flower's petals. |
+| `share` | `number` | `1` | 0 … 100 | — | tunable | How many clumps grow this kind for each one of the field's own, where no typeMap says. |
+
+```ogt
+component GrassType {
+  doc "Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's."
+  field height f32 "The tallest blade of this kind." {
+    default 0.45
+    min 0
+    max 4
+    unit m
+    tunable true
+  }
+  field width f32 "A blade's width at its root." {
+    default 0.012
+    min 0
+    max 0.5
+    unit m
+    tunable true
+  }
+  field curve f32 "How far its blades droop along their length: 0 straight, 1 arching over." {
+    default 0.5
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field baseColor Color "The roots' colour (linear)." {
+    default 0.04 0.085 0.024
+  }
+  field tipColor Color "The tips' colour (linear): a flower's petals." {
+    default 0.235 0.39 0.11
+  }
+  field share f32 "How many clumps grow this kind for each one of the field's own, where no typeMap says." {
+    default 1
+    min 0
+    max 100
+    tunable true
   }
 }
 ```
 
-<sub>`api.ogt` line 28567</sub>
+<sub>`api.ogt` line 28800</sub>
+
+<a id="record-GrassPusher"></a>
+
+### `og.GrassPusher` (component)
+
+Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
+
+Token `og.GrassPusher`, registered under the schema name `og.GrassPusher`; its value type is `GrassPusher`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `0.5` | 0 … 20 | `m` | tunable | How far it reaches on the ground. |
+| `height` | `number` | `1.8` | 0 … 50 | `m` | tunable | How tall it is: its bottom is the entity's position. |
+| `strength` | `number` | `1` | 0 … 1 | `ratio` | tunable | How hard it presses: 1 flattens the blades, 0.3 parts them. |
+
+```ogt
+component GrassPusher {
+  doc "Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press."
+  field radius f32 "How far it reaches on the ground." {
+    default 0.5
+    min 0
+    max 20
+    unit m
+    tunable true
+  }
+  field height f32 "How tall it is: its bottom is the entity's position." {
+    default 1.8
+    min 0
+    max 50
+    unit m
+    tunable true
+  }
+  field strength f32 "How hard it presses: 1 flattens the blades, 0.3 parts them." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 28837</sub>
 
 ## Types
 
@@ -695,7 +849,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TerrainData "A loaded terrain: its heights, control map and layers."
 ```
 
-<sub>`api.ogt` line 28433</sub>
+<sub>`api.ogt` line 28480</sub>
 
 <a id="type-TerrainBrushMode"></a>
 
@@ -728,7 +882,7 @@ enum TerrainBrushMode {
 }
 ```
 
-<sub>`api.ogt` line 28442</sub>
+<sub>`api.ogt` line 28489</sub>
 
 <a id="type-TerrainStampMode"></a>
 
@@ -751,7 +905,7 @@ enum TerrainStampMode {
 }
 ```
 
-<sub>`api.ogt` line 28453</sub>
+<sub>`api.ogt` line 28500</sub>
 
 <a id="type-TerrainInfo"></a>
 
@@ -800,7 +954,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 28713</sub>
+<sub>`api.ogt` line 28862</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -840,7 +994,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 28737</sub>
+<sub>`api.ogt` line 28886</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -871,7 +1025,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 28756</sub>
+<sub>`api.ogt` line 28905</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -896,7 +1050,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 28769</sub>
+<sub>`api.ogt` line 28918</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -954,7 +1108,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 28779</sub>
+<sub>`api.ogt` line 28928</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -983,7 +1137,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 28813</sub>
+<sub>`api.ogt` line 28962</sub>
 
 <a id="type-TerrainStampDesc"></a>
 
@@ -1035,7 +1189,7 @@ struct TerrainStampDesc {
 }
 ```
 
-<sub>`api.ogt` line 28825</sub>
+<sub>`api.ogt` line 28974</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -1140,7 +1294,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 28852</sub>
+<sub>`api.ogt` line 29001</sub>
 
 ## Column kinds
 
@@ -1159,4 +1313,4 @@ column TerrainData {
 }
 ```
 
-<sub>`api.ogt` line 28435</sub>
+<sub>`api.ogt` line 28482</sub>

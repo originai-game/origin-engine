@@ -50272,7 +50272,7 @@ export interface TerrainStamp {
 }
 
 /**
- * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
+ * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
  *
  * The value of the `TerrainScatter` component (token `og.TerrainScatter`).
  */
@@ -50309,7 +50309,7 @@ export interface TerrainScatter {
    */
   distance: number;
   /**
-   * The outer part of `distance` over which copies thin out to nothing.
+   * The outer part of `distance` over which copies shrink and thin out to nothing.
    *
    * @default 0.3
    * @range 0..1
@@ -50362,7 +50362,7 @@ export interface TerrainScatter {
    */
   sway: number;
   /**
-   * A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.
+   * A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.
    */
   impostor: Asset;
   /**
@@ -58517,7 +58517,7 @@ export declare namespace og {
    */
   const TerrainStamp: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly blend: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool"> }, TerrainStamp>;
   /**
-   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
+   * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32">; readonly noiseScale: FieldSpec<"f32">; readonly noiseThreshold: FieldSpec<"f32">; readonly footprint: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly avoidWater: FieldSpec<"f32">; readonly densityMap: FieldSpec<"Texture"> }, TerrainScatter>;
   /**
