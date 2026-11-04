@@ -146,7 +146,7 @@ function start(world: World): void {
     const model = must(og.load.gltf(world, `models/flowers/${name}.glb`));
     const gi = must(og.load.gltfInfo(world, model));
     const e = must(world.spawn({ name: `flowers-${name}` }));
-    must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: gi.geometries[0]!, material: gi.materials[0]!, layer: 1, density: 0.12, distance: 45, fade: 12, minScale: 0.75, maxScale: 1.2, align: 0.25, seed: 11 + k, sway: 0.7, impostor: model, impostorDistance: 12 }));
+    must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: gi.geometries[0]!, material: gi.materials[0]!, layer: 1, density: 0.12, distance: 45, fade: 0.25, minScale: 0.75, maxScale: 1.2, align: 0.25, seed: 11 + k, sway: 0.7, impostor: model, impostorDistance: 12 }));
   });
 
 
