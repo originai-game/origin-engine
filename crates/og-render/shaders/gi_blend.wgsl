@@ -194,6 +194,11 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
       sh[2] += basis * radiance[i].b;
     }
     for (var c = 0u; c < 3u; c++) {
+      // The texels hold the radiance filtered by the cos⁴ lobe above,
+      // which scales the first band by (n + 1) / (n + 2) = 5/6 (Funk and
+      // Hecke's theorem for a normalised cosine power): undone, so a probe
+      // over a darker floor keeps the sky's light on the floor beside it.
+      sh[c] = vec4<f32>(sh[c].xyz * 1.2, sh[c].w);
       let band = length(sh[c].xyz);
       let keep = select(1.0, max(sh[c].w, 0.0) / band, band > max(sh[c].w, 0.0));
       probes[at + GI_SH_AT + c] = vec4<f32>(sh[c].xyz * keep, max(sh[c].w, 0.0));

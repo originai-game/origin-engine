@@ -59,7 +59,11 @@ fn gi_box(n: u32, o: vec3<f32>, inv: vec3<f32>, t_max: f32) -> f32 {
 }
 
 // Möller and Trumbore's test of triangle `at` (both faces): its distance,
-// or a miss.
+// or a miss. A ray starting on the triangle's plane hits it at 0 when it
+// heads into its front face: a probe on a surface's plane (a floor at y 0
+// is on a probe plane) sees that surface at no distance below it, so the
+// relocation pushes it off, instead of looking through it into the dark
+// below; its rays leaving the front face see what lies above.
 fn gi_triangle(at: u32, o: vec3<f32>, d: vec3<f32>) -> f32 {
   let v0 = gi_bvh[at].xyz;
   let e1 = gi_bvh[at + 1u].xyz - v0;
@@ -73,7 +77,7 @@ fn gi_triangle(at: u32, o: vec3<f32>, d: vec3<f32>) -> f32 {
   let q = cross(s, e1);
   let v = dot(d, q) * inv;
   let t = dot(e2, q) * inv;
-  return select(GI_MISS * 2.0, t, u >= 0.0 && v >= 0.0 && u + v <= 1.0 && t > 0.0);
+  return select(GI_MISS * 2.0, t, u >= 0.0 && v >= 0.0 && u + v <= 1.0 && (t > 0.0 || (t == 0.0 && det > 0.0)));
 }
 
 // The first hit along the ray from `o` along unit `d` within `t_max`; with

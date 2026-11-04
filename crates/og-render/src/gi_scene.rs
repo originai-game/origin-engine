@@ -603,7 +603,7 @@ mod tests {
         let q = s.cross(e1);
         let w = d.dot(q) / det;
         let h = e2.dot(q) / det;
-        (u >= 0.0 && w >= 0.0 && u + w <= 1.0 && h > 0.0).then_some(h)
+        (u >= 0.0 && w >= 0.0 && u + w <= 1.0 && (h > 0.0 || h == 0.0 && det > 0.0)).then_some(h)
     }
 
     fn rng(seed: &mut u64) -> f32 {
