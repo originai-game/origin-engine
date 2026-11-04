@@ -25,6 +25,10 @@
 //!   judged when `normals flat`), the texel density (texels per metre over
 //!   the model's surface, area-weighted, against `ArtTexels.density` within
 //!   a factor of two) and, where untextured, the colours of its faces.
+//! - **clips** (`ArtMotion`): each cooked model clip's resampling rate and
+//!   whether its moving channels hold each pose, against `stepFps`, and its
+//!   frames against `maxFrames`; each flipbook clip's frame durations
+//!   (whole steps of `stepFps`) and frame count.
 //!
 //! Every opt-out (`conform off`, project.ogt's `conform { off ... }`, and
 //! what the cook leaves alone by kind) is listed: an opted-out asset is
@@ -35,7 +39,11 @@
 //! }`, or `--title`, `--play`, `--results`; a script without a
 //! `screenshot` gets one at its last step), and each is measured: colour
 //! count, palette hit rate, edge statistics (edge density, the share of
-//! hard one-pixel steps, mean contrast) and its pixel grid. `--critic`
+//! hard one-pixel steps, mean contrast), its pixel grid and the camera it
+//! was captured with (`og.Camera`, read through the probe at the
+//! screenshot) against `ArtCamera`: the projection, the pitch and yaw with
+//! `fixedAngle`, a perspective camera's field of view against `fovMin` and
+//! `fovMax`; a camera off the contract makes the exit status 3. `--critic`
 //! prints only the catalogue entry's three checks as written and the
 //! frames' paths, for a blind critic: never the style's name, slug or the
 //! look's id. `--json` prints one JSON document.
@@ -120,6 +128,18 @@ pub struct Contract {
     pub filter: String,
     /// `ArtTexels.mips`: `any`, `full` or `none`.
     pub mips: String,
+    /// `ArtCamera.projection`: `any`, `perspective` or `orthographic`.
+    pub projection: String,
+    /// `ArtCamera.fixedAngle`, `pitch` and `yaw` (degrees).
+    pub fixed_angle: bool,
+    pub pitch: f64,
+    pub yaw: f64,
+    /// `ArtCamera.fovMin` and `fovMax` (degrees; 0 no limit).
+    pub fov_min: f64,
+    pub fov_max: f64,
+    /// `ArtMotion.stepFps` (0 smooth) and `maxFrames` (0 no limit).
+    pub step_fps: f64,
+    pub max_frames: u32,
 }
 
 fn field<'a>(look: &'a LookFile, resource: &str, name: &str) -> Option<&'a og_core::ogt::Value> {
@@ -207,6 +227,15 @@ impl Contract {
             max_size: num(look, "ArtTexels", "maxSize") as u32,
             filter: word(look, "ArtTexels", "filter", "any"),
             mips: word(look, "ArtTexels", "mips", "any"),
+            projection: word(look, "ArtCamera", "projection", "any"),
+            fixed_angle: field(look, "ArtCamera", "fixedAngle").and_then(|v| v.as_bool())
+                == Some(true),
+            pitch: num(look, "ArtCamera", "pitch"),
+            yaw: num(look, "ArtCamera", "yaw"),
+            fov_min: num(look, "ArtCamera", "fovMin"),
+            fov_max: num(look, "ArtCamera", "fovMax"),
+            step_fps: num(look, "ArtMotion", "stepFps"),
+            max_frames: num(look, "ArtMotion", "maxFrames") as u32,
         })
     }
 
@@ -401,6 +430,25 @@ pub fn measure(
             continue;
         }
         let model = asset.outputs.iter().find(|o| o.ty == "og.Model");
+        // ArtMotion: the model's clips and a flipbook's, as cooked.
+        if c.step_fps > 0.0 || c.max_frames > 0 {
+            for o in &asset.outputs {
+                if o.ty == "og.Animation" {
+                    let anim = bundle.load_animation(&o.id).map_err(|e| e.to_string())?;
+                    for clip in &anim.clips {
+                        let mut a = judge_clip(&c, &o.id, clip);
+                        a.off = off_of(&o.id);
+                        assets.push(a);
+                    }
+                } else if o.ty == "og.Flipbook" {
+                    let sheet = bundle.load_flipbook(&o.id).map_err(|e| e.to_string())?;
+                    for mut a in judge_flipbook(&c, &o.id, &sheet) {
+                        a.off = off_of(&o.id);
+                        assets.push(a);
+                    }
+                }
+            }
+        }
         for o in &asset.outputs {
             if o.ty != "og.Texture" {
                 continue;
@@ -494,6 +542,10 @@ pub struct Frame {
     pub palette_hit: Option<f64>,
     pub edges: Edges,
     pub grid: u32,
+    /// The camera it was captured with (`og.Camera` through the probe),
+    /// and its checks against `ArtCamera`.
+    pub camera: Value,
+    pub camera_checks: Vec<Check>,
 }
 
 /// Measures one frame (a PNG) against the contract's palette.
@@ -531,6 +583,8 @@ pub fn measure_frame(
         palette_hit: palette.and_then(|p| palette_hit(&counts, p)),
         edges: edges(&img),
         grid: if g.kx == g.ky { g.kx } else { g.kx.min(g.ky) },
+        camera: Value::Null,
+        camera_checks: Vec::new(),
     })
 }
 
@@ -592,6 +646,22 @@ pub fn with_screenshot(script: &str) -> String {
     all.join(";")
 }
 
+/// `script` reading the camera (`get:og.Camera`) into `camera.json` at its
+/// first screenshot's time, so the frame's camera is measured with it.
+pub fn with_camera(script: &str) -> String {
+    let at = script
+        .split(';')
+        .map(str::trim)
+        .find(|s| s.split(':').nth(1) == Some("screenshot"))
+        .and_then(|s| s.split(':').next())
+        .unwrap_or("0")
+        .to_string();
+    format!("{script};{at}:get:og.Camera:{CAMERA_FILE}")
+}
+
+/// Where a screen's capture writes its camera.
+const CAMERA_FILE: &str = "camera.json";
+
 /// Captures one screen with `og run --headless --commands`: its PNGs.
 fn capture(
     root: &Path,
@@ -599,6 +669,7 @@ fn capture(
     script: &str,
     size: Option<&str>,
 ) -> Result<Vec<PathBuf>, String> {
+    let script = &with_camera(script);
     let dir = root.join("og-out/style").join(screen);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -666,6 +737,10 @@ fn frame_json(f: &Frame) -> Value {
         "paletteHit": f.palette_hit,
         "edges": { "density": f.edges.density, "hard": f.edges.hard, "contrast": f.edges.contrast },
         "texelsPerPixel": f.grid,
+        "camera": f.camera,
+        "cameraChecks": f.camera_checks.iter().map(|c| json!({
+            "name": c.name, "value": c.value, "limit": c.limit, "ok": c.ok,
+        })).collect::<Vec<_>>(),
     })
 }
 
@@ -796,6 +871,15 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String]) -> String
             f.edges.contrast,
             f.grid
         ));
+        for c in &f.camera_checks {
+            s.push_str(&format!(
+                "          {} camera {}: {} against {}\n",
+                if c.ok { "✓" } else { "✗" },
+                c.name,
+                c.value,
+                c.limit
+            ));
+        }
     }
     for e in frame_errors {
         s.push_str(&format!("  failed: {e}\n"));
@@ -988,9 +1072,23 @@ pub fn run(args: &[&str]) -> ExitCode {
         for (screen, script) in scripts {
             match capture(&root, &screen, &script, a.size.as_deref()) {
                 Ok(pngs) => {
+                    // The camera the screen was captured with.
+                    let camera = pngs
+                        .first()
+                        .and_then(|p| p.parent())
+                        .and_then(|d| std::fs::read_to_string(d.join(CAMERA_FILE)).ok())
+                        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+                        .map(|v| v["value"].clone());
                     for p in pngs {
                         match measure_frame(&screen, &p, palette) {
-                            Ok(f) => frames.push(f),
+                            Ok(mut f) => {
+                                if let Some(cam) = &camera {
+                                    let (m, checks) = judge_camera(&measured.contract, cam);
+                                    f.camera = m;
+                                    f.camera_checks = checks;
+                                }
+                                frames.push(f)
+                            }
                             Err(e) => frame_errors.push(e),
                         }
                     }
@@ -1027,9 +1125,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         println!("og style check {}", root.display());
         print!("{}", report(&measured, &frames, &frame_errors));
     }
+    let camera_off = frames.iter().any(|f| f.camera_checks.iter().any(|c| !c.ok));
     if !frame_errors.is_empty() {
         ExitCode::FAILURE
-    } else if measured.off_contract().is_empty() {
+    } else if measured.off_contract().is_empty() && !camera_off {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(3)
@@ -1455,6 +1554,119 @@ mod tests {
         );
     }
 
+    /// The rotation looking `pitch` degrees below the horizon turned `yaw`
+    /// about +Y (Ry(yaw) Rx(-pitch)), as {x, y, z, w}, worked out by hand.
+    fn camera_quat(pitch: f64, yaw: f64) -> Value {
+        let (sx, cx) = (-pitch.to_radians() / 2.0).sin_cos();
+        let (sy, cy) = (yaw.to_radians() / 2.0).sin_cos();
+        json!({ "x": cy * sx, "y": sy * cx, "z": -sy * sx, "w": cy * cx })
+    }
+
+    /// ArtCamera measured on the captured camera: projection, the fixed
+    /// angle and the field of view, each judged only where the contract
+    /// sets it. Old code measured no camera at all.
+    #[test]
+    fn the_check_measures_the_frames_camera_against_art_camera() {
+        let iso = Contract {
+            projection: "orthographic".into(),
+            fixed_angle: true,
+            pitch: 30.0,
+            yaw: 45.0,
+            ..contract()
+        };
+        let cam = |ortho: bool, pitch: f64, yaw: f64, fov: f64| json!({ "orthographic": ortho, "quaternion": camera_quat(pitch, yaw), "fov": fov });
+        let by = |checks: &[Check], n: &str| checks.iter().find(|c| c.name == n).map(|c| c.ok);
+        let (m, checks) = judge_camera(&iso, &cam(true, 30.0, 45.0, 50.0));
+        assert!((m["pitch"].as_f64().unwrap() - 30.0).abs() < 1e-6, "{m}");
+        assert!((m["yaw"].as_f64().unwrap() - 45.0).abs() < 1e-6, "{m}");
+        assert!(checks.iter().all(|c| c.ok), "{checks:?}");
+        let (_, checks) = judge_camera(&iso, &cam(false, 30.0, 45.0, 50.0));
+        assert_eq!(
+            by(&checks, "projection"),
+            Some(false),
+            "a perspective camera"
+        );
+        let (_, checks) = judge_camera(&iso, &cam(true, 20.0, -45.0, 50.0));
+        assert_eq!(by(&checks, "pitch"), Some(false));
+        assert_eq!(by(&checks, "yaw"), Some(false));
+        // Straight down has no heading: any yaw holds.
+        let top = Contract {
+            pitch: 90.0,
+            yaw: 0.0,
+            ..iso.clone()
+        };
+        let (_, checks) = judge_camera(&top, &cam(true, 90.0, 0.0, 50.0));
+        assert_eq!(by(&checks, "yaw"), Some(true), "{checks:?}");
+        // The field of view, for a perspective camera only.
+        let lens = Contract {
+            fov_min: 30.0,
+            fov_max: 45.0,
+            ..contract()
+        };
+        let (_, checks) = judge_camera(&lens, &cam(false, 0.0, 0.0, 60.0));
+        assert_eq!(by(&checks, "fov"), Some(false));
+        let (_, checks) = judge_camera(&lens, &cam(false, 0.0, 0.0, 40.0));
+        assert_eq!(by(&checks, "fov"), Some(true));
+        let (_, checks) = judge_camera(&contract(), &cam(false, 10.0, 0.0, 90.0));
+        assert!(checks.is_empty(), "no ArtCamera, no checks: {checks:?}");
+    }
+
+    /// ArtMotion measured on the cooked clips: a model clip's rate and held
+    /// poses against stepFps and its frames against maxFrames, a
+    /// flipbook's frame durations as whole steps.
+    #[test]
+    fn the_check_measures_clips_against_art_motion() {
+        let c = Contract {
+            step_fps: 12.0,
+            max_frames: 8,
+            ..contract()
+        };
+        let clip = |rate: f32, frames: u32, step: bool| og_anim::ClipAsset {
+            name: "walk".into(),
+            duration: (frames - 1) as f32 / rate,
+            rate,
+            source_rate: 30.0,
+            frames,
+            channels: vec![og_anim::Channel {
+                node: 0,
+                node_name: "hip".into(),
+                path: og_anim::ChannelPath::Translation,
+                step,
+                lanes: 3,
+                samples: og_anim::Samples::F32(vec![0.0; frames as usize * 3]),
+            }],
+            events: Vec::new(),
+        };
+        let ok = |a: &Asset, n: &str| a.checks.iter().find(|k| k.name == n).unwrap().ok;
+        let held = judge_clip(&c, "m.glb#anim", &clip(12.0, 7, true));
+        assert!(
+            ok(&held, "stepFps") && ok(&held, "maxFrames"),
+            "{:?}",
+            held.checks
+        );
+        assert_eq!(held.role, Role::Clip);
+        let smooth = judge_clip(&c, "m.glb#anim", &clip(30.0, 31, false));
+        assert!(!ok(&smooth, "stepFps") && !ok(&smooth, "maxFrames"));
+        let interpolated = judge_clip(&c, "m.glb#anim", &clip(12.0, 7, false));
+        assert!(!ok(&interpolated, "stepFps"), "a pose not held");
+        let sheet = og_anim::FlipbookSheet::parse(
+            "type flipbook\nversion 1\n---\ntexture \"t.png\"\nsize 64 8\ngrid 8 8\nclip \"run\" {\n  frames 0 1 2 3\n  fps 30\n}\n",
+        )
+        .unwrap();
+        let fb = judge_flipbook(&c, "run.ogt", &sheet);
+        assert_eq!(fb.len(), 1);
+        assert!(
+            !ok(&fb[0], "stepFps"),
+            "1/30 s frames are not whole 1/12 s steps"
+        );
+        assert!(ok(&fb[0], "maxFrames"));
+        let mut stepped = sheet.clone();
+        for d in &mut stepped.clips[0].durations {
+            *d = 2.0 / 12.0;
+        }
+        assert!(ok(&judge_flipbook(&c, "run.ogt", &stepped)[0], "stepFps"));
+    }
+
     #[test]
     fn the_critic_reads_the_checks_and_frames_and_never_the_style() {
         let checks = catalogue_checks("16bit-pixel");
@@ -1467,6 +1679,8 @@ mod tests {
             palette_hit: None,
             edges: Edges::default(),
             grid: 1,
+            camera: Value::Null,
+            camera_checks: Vec::new(),
         }];
         let styles = catalogue_styles();
         let entry = styles.iter().find(|e| e["slug"] == "16bit-pixel").unwrap();

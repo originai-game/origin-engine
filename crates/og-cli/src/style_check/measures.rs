@@ -430,6 +430,8 @@ pub enum Role {
     /// A texture on 3D surfaces.
     Texture,
     Model,
+    /// A clip: a model's skeletal or morph clip, or a flipbook's.
+    Clip,
 }
 
 impl Role {
@@ -438,6 +440,7 @@ impl Role {
             Role::Sprite => "sprite",
             Role::Texture => "texture",
             Role::Model => "model",
+            Role::Clip => "clip",
         }
     }
 }
@@ -742,4 +745,198 @@ pub fn judge_model(c: &Contract, id: &str, m: &ModelMeasures, character: bool) -
         colour_checks(c, &m.colours, &mut a.measures, &mut a.checks, true);
     }
     a
+}
+
+// ── motion and camera (ArtMotion, ArtCamera) ────────────────────────────────
+
+/// A rate within this share of `ArtMotion.stepFps` holds it (the cook's
+/// rates are the contract's own number, through f32).
+const RATE_SLACK: f64 = 1e-3;
+
+/// A held duration is a whole number of steps within this many seconds.
+const STEP_SLACK: f64 = 1e-4;
+
+/// A camera angle within this many degrees of `ArtCamera.pitch` or `yaw`
+/// holds it.
+pub const ANGLE_SLACK: f64 = 0.5;
+
+/// A cooked model clip against `ArtMotion`: its resampling rate and
+/// whether its moving channels hold each pose (`stepFps`), and its frames
+/// (`maxFrames`).
+pub fn judge_clip(c: &Contract, id: &str, clip: &og_anim::ClipAsset) -> Asset {
+    let moving: Vec<&og_anim::Channel> = clip
+        .channels
+        .iter()
+        .filter(|ch| !matches!(ch.samples, og_anim::Samples::Constant(_)))
+        .collect();
+    let stepped = moving.iter().all(|ch| ch.step);
+    let mut a = Asset {
+        id: format!("{id}:{}", clip.name),
+        role: Role::Clip,
+        off: None,
+        measures: json!({ "rate": clip.rate, "frames": clip.frames, "stepped": stepped }),
+        checks: Vec::new(),
+        notes: Vec::new(),
+    };
+    if c.step_fps > 0.0 {
+        let rate = f64::from(clip.rate);
+        let ok = (rate - c.step_fps).abs() <= c.step_fps * RATE_SLACK
+            || (c.max_frames > 0 && rate < c.step_fps);
+        a.checks.push(Check::new(
+            "stepFps",
+            format!(
+                "{rate:.3} Hz, {}",
+                if stepped {
+                    "each pose held"
+                } else {
+                    "interpolated"
+                }
+            ),
+            format!("{} Hz, held (ArtMotion.stepFps)", c.step_fps),
+            ok && (stepped || moving.is_empty()),
+        ));
+    }
+    if c.max_frames > 0 {
+        a.checks.push(Check::new(
+            "maxFrames",
+            clip.frames.to_string(),
+            format!("<= {} (ArtMotion.maxFrames)", c.max_frames),
+            clip.frames <= c.max_frames,
+        ));
+    }
+    a
+}
+
+/// A cooked flipbook's clips against `ArtMotion`: every frame held a whole
+/// number of steps (`stepFps`), and at most `maxFrames` frames a clip.
+pub fn judge_flipbook(c: &Contract, id: &str, sheet: &og_anim::FlipbookSheet) -> Vec<Asset> {
+    sheet
+        .clips
+        .iter()
+        .map(|clip| {
+            let mut a = Asset {
+                id: format!("{id}:{}", clip.name),
+                role: Role::Clip,
+                off: None,
+                measures: json!({ "frames": clip.frames.len(), "durations": clip.durations }),
+                checks: Vec::new(),
+                notes: Vec::new(),
+            };
+            if c.step_fps > 0.0 {
+                let off = clip
+                    .durations
+                    .iter()
+                    .filter(|&&d| {
+                        let steps = f64::from(d) * c.step_fps;
+                        steps < 1.0 - STEP_SLACK * c.step_fps
+                            || (steps - steps.round()).abs() > STEP_SLACK * c.step_fps
+                    })
+                    .count();
+                a.checks.push(Check::new(
+                    "stepFps",
+                    format!("{off} of {} frames off the steps", clip.durations.len()),
+                    format!(
+                        "every frame a whole number of 1/{} s (ArtMotion.stepFps)",
+                        c.step_fps
+                    ),
+                    off == 0,
+                ));
+            }
+            if c.max_frames > 0 {
+                a.checks.push(Check::new(
+                    "maxFrames",
+                    clip.frames.len().to_string(),
+                    format!("<= {} (ArtMotion.maxFrames)", c.max_frames),
+                    clip.frames.len() <= c.max_frames as usize,
+                ));
+            }
+            a
+        })
+        .collect()
+}
+
+/// The numbers of an `og.Camera` read through the probe (`get:og.Camera`):
+/// a vector field as `{x, y, z[, w]}` or an array.
+fn lanes(v: &Value, n: usize) -> Option<Vec<f64>> {
+    match v {
+        Value::Array(a) if a.len() >= n => a[..n].iter().map(Value::as_f64).collect(),
+        Value::Object(o) => ["x", "y", "z", "w"][..n]
+            .iter()
+            .map(|k| o.get(*k).and_then(Value::as_f64))
+            .collect(),
+        _ => None,
+    }
+}
+
+/// The camera a frame was captured with (its `og.Camera` fields) against
+/// `ArtCamera`: the projection, with `fixedAngle` its pitch (below the
+/// horizon) and yaw (about +Y, the camera looking down its local -Z), and
+/// a perspective camera's field of view against `fovMin` and `fovMax`.
+/// The measures and the checks; no check where the contract sets none.
+pub fn judge_camera(c: &Contract, camera: &Value) -> (Value, Vec<Check>) {
+    let mut checks = Vec::new();
+    let ortho = camera["orthographic"].as_bool().unwrap_or(false);
+    let fov = camera["fov"].as_f64();
+    // The forward axis: the rotation applied to (0, 0, -1).
+    let (pitch, yaw) = match lanes(&camera["quaternion"], 4).as_deref() {
+        Some(&[x, y, z, w]) => {
+            let f = [
+                -2.0 * (x * z + w * y),
+                -2.0 * (y * z - w * x),
+                -(1.0 - 2.0 * (x * x + y * y)),
+            ];
+            let len = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt().max(1e-12);
+            (
+                Some((-f[1] / len).clamp(-1.0, 1.0).asin().to_degrees()),
+                Some((-f[0]).atan2(-f[2]).to_degrees()),
+            )
+        }
+        _ => (None, None),
+    };
+    let measures = json!({
+        "projection": if ortho { "orthographic" } else { "perspective" },
+        "pitch": pitch,
+        "yaw": yaw,
+        "fov": fov,
+    });
+    if c.projection == "perspective" || c.projection == "orthographic" {
+        let is = if ortho { "orthographic" } else { "perspective" };
+        checks.push(Check::new(
+            "projection",
+            is.to_string(),
+            format!("{} (ArtCamera.projection)", c.projection),
+            is == c.projection,
+        ));
+    }
+    if c.fixed_angle {
+        // Angles compared the short way round.
+        let near =
+            |a: f64, b: f64| ((a - b + 540.0).rem_euclid(360.0) - 180.0).abs() <= ANGLE_SLACK;
+        let show = |v: Option<f64>| v.map_or("unknown".to_string(), |v| format!("{v:.2}°"));
+        checks.push(Check::new(
+            "pitch",
+            show(pitch),
+            format!("{}° ± {ANGLE_SLACK} (ArtCamera.pitch)", c.pitch),
+            pitch.is_some_and(|p| near(p, c.pitch)),
+        ));
+        // Straight down, the yaw is any (the forward axis has no heading).
+        let down = pitch.is_some_and(|p| p.abs() > 90.0 - ANGLE_SLACK);
+        checks.push(Check::new(
+            "yaw",
+            show(yaw),
+            format!("{}° ± {ANGLE_SLACK} (ArtCamera.yaw)", c.yaw),
+            down || yaw.is_some_and(|y| near(y, c.yaw)),
+        ));
+    }
+    if !ortho && (c.fov_min > 0.0 || c.fov_max > 0.0) {
+        let lo = if c.fov_min > 0.0 { c.fov_min } else { 0.0 };
+        let hi = if c.fov_max > 0.0 { c.fov_max } else { 180.0 };
+        checks.push(Check::new(
+            "fov",
+            fov.map_or("unknown".into(), |f| format!("{f:.1}°")),
+            format!("{lo}° to {hi}° (ArtCamera.fovMin, fovMax)"),
+            fov.is_some_and(|f| f >= lo - 1e-3 && f <= hi + 1e-3),
+        ));
+    }
+    (measures, checks)
 }
