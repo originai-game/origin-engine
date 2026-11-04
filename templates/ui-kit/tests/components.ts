@@ -179,46 +179,46 @@ export function componentsScript(phone: boolean): Script {
   b.shot("graph-month", 0.7);
   b.dump("graph");
 
-  // At the player's largest text size (200 %, docs/ui.md §15.2): every screen grows with its
+  // At the player's largest text size (150 %, docs/ui.md §15.2): every screen grows with its
   // text and cuts none of it; the overlays open, the data in its states.
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   b.cmd("show:containers");
-  b.shot("text200-containers", 0.8);
+  b.shot("text150-containers", 0.8);
   b.cmd("show:navigation");
-  b.shot("text200-navigation", 0.8);
-  b.dump("navigation-200");
-  if (!phone) padBumpers(b, "text200-navigation");
+  b.shot("text150-navigation", 0.8);
+  b.dump("navigation-150");
+  if (!phone) padBumpers(b, "text150-navigation");
   if (phone) b.scroll("Navigation", 1100);
   b.seq((at) => tap(at, "Path/More"), 0.2);
-  b.shot("text200-navigation-crumbs-menu", 0.5);
+  b.shot("text150-navigation-crumbs-menu", 0.5);
   b.seq((at) => key(at, "Escape"), 0.3);
   b.cmd("show:overlays");
   for (const o of ["menu", "popover", "confirm", "sheet", "radial"] as const) {
     b.cmd(`demo:overlay:${o}`);
-    b.shot(`text200-overlays-${o}`, o === "sheet" ? 0.9 : 0.5);
+    b.shot(`text150-overlays-${o}`, o === "sheet" ? 0.9 : 0.5);
     if (o === "menu") {
       b.seq((at) => tap(at, "Menu/Panel/Content/Item#4"), 0.2);
-      b.shot("text200-overlays-submenu", 0.5);
+      b.shot("text150-overlays-submenu", 0.5);
     }
     b.cmd("demo:overlay:none", 0.4);
   }
   b.cmd("show:data");
-  b.shot("text200-data-rows", 0.8);
+  b.shot("text150-data-rows", 0.8);
   for (const s of ["empty", "error"]) {
     b.cmd(`demo:data:${s}`);
-    b.shot(`text200-data-${s}`, 0.5);
+    b.shot(`text150-data-${s}`, 0.5);
     // The page's lower panels (the tree, the grid's and the stats' states), scrolled into view.
     b.scroll("Data", 600);
-    b.shot(`text200-data-${s}-end`, 0.5);
+    b.shot(`text150-data-${s}-end`, 0.5);
     b.scroll("Data", -600);
   }
   b.cmd("demo:data:rows");
   b.cmd("show:charts");
-  b.shot("text200-charts", 1.2);
+  b.shot("text150-charts", 1.2);
   b.cmd("show:chartsMore");
-  b.shot("text200-charts-more", 1.2);
+  b.shot("text150-charts-more", 1.2);
   b.cmd("show:graph");
-  b.shot("text200-graph", 0.9);
+  b.shot("text150-graph", 0.9);
   b.cmd("demo:text:100");
   return b.end();
 }

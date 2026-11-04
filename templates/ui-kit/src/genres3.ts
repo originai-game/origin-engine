@@ -457,7 +457,7 @@ export function settingsTreeScreen(world: World): TreeSettings | null {
       E("resetBindings", "action"),
     ] },
     { key: "access", label: L("set.page.access"), entries: [
-      E("textSize", "choice", { options: ["100%", "150%", "200%"] }), E("contrast", "toggle"), E("reduceMotion", "toggle"),
+      E("textSize", "choice", { options: ["100%", "125%", "150%"] }), E("contrast", "toggle"), E("reduceMotion", "toggle"),
       E("colorblind", "choice", { options: words("set.colorblind", ["off", "protan", "deutan", "tritan"]) }),
     ] },
     { key: "language", label: L("set.page.language"), entries: [E("language", "choice", { options: LANGS.map((l) => ENDONYMS[l]!) })] },

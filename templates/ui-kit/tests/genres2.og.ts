@@ -3,7 +3,7 @@
 // a layer moved up), the ledger (a service underfunded, sorted, the year)
 // the city's overlays (traffic, power, none) and the chat (links and a
 // mention, a mention suggested and sent, the party's tab, the HUD's chat)
-// and the RTS console (its orders, Build, Barracks targeting, a group); then each right to left, in Japanese and at 200 %
+// and the RTS console (its orders, Build, Barracks targeting, a group); then each right to left, in Japanese and at 150 %
 // text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-<file>.
 import { playtest } from "@origingame/engine/playtest";

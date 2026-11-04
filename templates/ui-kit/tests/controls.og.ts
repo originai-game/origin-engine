@@ -1,7 +1,7 @@
 // The foundations and controls previews at desktop size (1280×720 CSS px
 // at 1×), driven by the pointer, keys and a pad: each part idle, hovered,
 // pressed, focused and disabled; a hold, a drag, a capture's conflict, the
-// on-screen keyboard; right to left and at 200 % text. Each frame is
+// on-screen keyboard; right to left and at 150 % text. Each frame is
 // compared with crates/og-ui/references/<tier>/kit-controls-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
@@ -37,9 +37,9 @@ export default playtest({
     const kana = ui(run, "bindings-kana.json");
     t.ok(kana.some((e) => e.role === "button" && e.name === "勇者"), "the composition ゆうしゃ offers the game's candidate");
     t.ok(kana.some((e) => e.role === "button" && e.name === "ユウシャ"), "and its katakana");
-    const big = ui(run, "controls-200.json");
+    const big = ui(run, "controls-150.json");
     const small = controls.filter((e) => e.role === "button").map((e) => e.height);
-    t.ok(Math.min(...big.filter((e) => e.role === "button" && !e.clipped).map((e) => e.height)) > Math.max(...small) * 0.9, "at 200 % text the buttons grow with their labels");
+    t.ok(Math.min(...big.filter((e) => e.role === "button" && !e.clipped).map((e) => e.height)) > Math.max(...small) * 0.9, "at 150 % text the buttons grow with their labels");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });

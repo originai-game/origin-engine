@@ -1,6 +1,6 @@
 // The starship screens on a phone in portrait (390×844 CSS px at 3×, a
 // 47 px notch and a 34 px home indicator) in scifi, fantasy and kawaii, then
-// right to left, in Japanese and at 200 % text: each frame compared with
+// right to left, in Japanese and at 150 % text: each frame compared with
 // crates/og-ui/references/<tier>/kit-starship-phone-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";

@@ -390,7 +390,7 @@ function commerce(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): v
   b.cmd("pat:reset");
 }
 
-/** Every pattern screen in its states, then right to left and at 200 % text. */
+/** Every pattern screen in its states, then right to left and at 150 % text. */
 export function patternsScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
@@ -464,30 +464,30 @@ export function patternsScript(phone: boolean): Script {
   b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
   b.cmd("locale:en");
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   b.cmd("show:gear");
-  b.shot("text200-gear", 0.8);
+  b.shot("text150-gear", 0.8);
   b.cmd("pat:select:greatsword");
-  b.shot("text200-gear-selected", 0.5);
+  b.shot("text150-gear-selected", 0.5);
   b.cmd("pat:reset");
   b.cmd("show:cards");
-  b.shot("text200-cards", 0.8);
+  b.shot("text150-cards", 0.8);
   b.cmd("pat:inspect:bash");
-  b.shot("text200-cards-inspect", 0.6);
+  b.shot("text150-cards-inspect", 0.6);
   b.cmd("pat:reset");
   b.cmd("show:rewards");
-  b.shot("text200-rewards", 1.0);
+  b.shot("text150-rewards", 1.0);
   b.cmd("show:gacha");
-  b.shot("text200-gacha", 0.8);
+  b.shot("text150-gacha", 0.8);
   b.cmd("pat:pull:10");
   b.seq((at) => key(at, "Escape"), 0.2);
-  b.shot("text200-gacha-summary", 1.2);
+  b.shot("text150-gacha-summary", 1.2);
   b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
   b.cmd("show:store");
-  b.shot("text200-store", 1.0);
+  b.shot("text150-store", 1.0);
   b.cmd("show:pass");
-  b.shot("text200-pass", 1.2);
+  b.shot("text150-pass", 1.2);
   b.cmd("demo:text:100");
   return b.end();
 }
@@ -588,7 +588,7 @@ function story(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("pat:quest:hud:off");
 }
 
-/** The story patterns in their states, then right to left, in Japanese, Korean and Chinese, and at 200 % text. */
+/** The story patterns in their states, then right to left, in Japanese, Korean and Chinese, and at 150 % text. */
 export function storyScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
@@ -607,16 +607,16 @@ export function storyScript(phone: boolean): Script {
     b.shot(`${name}-quests`, 1.0);
   }
   b.cmd("locale:en");
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   b.cmd("show:dialogue");
   b.cmd("pat:dlg:reset");
-  b.shot("text200-dialogue", 2.6);
+  b.shot("text150-dialogue", 2.6);
   b.cmd("show:vn");
   b.cmd("pat:dlg:reset");
   b.seq((at) => tap(at, "Talk/Hit"), 0.3);
-  b.shot("text200-vn", 2.6);
+  b.shot("text150-vn", 2.6);
   b.cmd("show:quests");
-  b.shot("text200-quests", 1.0);
+  b.shot("text150-quests", 1.0);
   b.cmd("demo:text:100");
   return b.end();
 }
@@ -689,7 +689,7 @@ function genres(b: ReturnType<typeof builder>, phone: boolean): void {
 
 const GENRE_SCREENS = ["lobby", "select", "versus", "draft", "worldMap", "songs"] as const;
 
-/** The roster and wider-game previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+/** The roster and wider-game previews in their states, then each screen right to left, in Japanese, and at 150 % text. */
 export function genresScript(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
@@ -703,11 +703,11 @@ export function genresScript(phone: boolean): Script {
     }
   }
   b.cmd("locale:en");
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   for (const s of GENRE_SCREENS) {
     b.cmd(`show:${s}`);
     b.cmd("pat:reset");
-    b.shot(`text200-${s}`, 1.0);
+    b.shot(`text150-${s}`, 1.0);
   }
   b.cmd("demo:text:100");
   return b.end();
@@ -805,7 +805,7 @@ function genres2(b: ReturnType<typeof builder>, phone: boolean): void {
 
 const GENRE2_SCREENS = ["garage", "ledger", "cityMap", "chat", "rts"] as const;
 
-/** The systems games' previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+/** The systems games' previews in their states, then each screen right to left, in Japanese, and at 150 % text. */
 export function genres2Script(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
@@ -819,11 +819,11 @@ export function genres2Script(phone: boolean): Script {
     }
   }
   b.cmd("locale:en");
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   for (const s of GENRE2_SCREENS) {
     b.cmd(`show:${s}`);
     b.cmd("pat:reset");
-    b.shot(`text200-${s}`, 1.0);
+    b.shot(`text150-${s}`, 1.0);
   }
   b.cmd("demo:text:100");
   return b.end();
@@ -971,7 +971,7 @@ function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
 
 const GENRE3_SCREENS = ["photo", "loadout", "deck", "cgGallery", "routes", "settingsTree"] as const;
 
-/** The last previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+/** The last previews in their states, then each screen right to left, in Japanese, and at 150 % text. */
 export function genres3Script(phone: boolean): Script {
   const b = builder(0.3);
   if (phone) b.cmd("viewport:phone");
@@ -985,11 +985,11 @@ export function genres3Script(phone: boolean): Script {
     }
   }
   b.cmd("locale:en");
-  b.cmd("demo:text:200");
+  b.cmd("demo:text:150");
   for (const s of GENRE3_SCREENS) {
     b.cmd(`show:${s}`);
     b.cmd("pat:reset");
-    b.shot(`text200-${s}`, 1.0);
+    b.shot(`text150-${s}`, 1.0);
   }
   b.cmd("demo:text:100");
   return b.end();

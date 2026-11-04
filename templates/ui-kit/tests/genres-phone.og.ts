@@ -1,6 +1,6 @@
 // The roster and wider-game previews on a phone in portrait (390×844 CSS px
 // at 3×, a 47 px notch and a 34 px home indicator), driven by touch only,
-// then right to left, in Japanese and at 200 % text: each frame compared
+// then right to left, in Japanese and at 150 % text: each frame compared
 // with crates/og-ui/references/<tier>/kit-genres-phone-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";

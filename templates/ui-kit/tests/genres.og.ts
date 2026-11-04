@@ -4,7 +4,7 @@
 // the draft (a pick, locked in, the ban phase), the world map (its fog, a
 // place's detail, kinds turned off) and the song select (selected, a row
 // tapped, a locked song, the preview paused); then each right to left, in
-// Japanese and at 200 % text, each frame compared with
+// Japanese and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";

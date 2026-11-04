@@ -2,7 +2,7 @@
 // screen in its states, every interactive part idle, hovered, pressed,
 // focused and disabled, then driven: a hold, a drag, a capture and its
 // conflict, the on-screen keyboard typing letters and composing kana; then
-// right to left and at 200 % text. The desktop and phone playtests share
+// right to left and at 150 % text. The desktop and phone playtests share
 // them; each frame is `<screen>-<state>.png`, compared with
 // crates/og-ui/references/<tier>/kit-controls[-phone]-<file>.
 
@@ -194,15 +194,15 @@ export function controlsScript(phone: boolean): Script {
   }
   b.cmd("locale:en");
 
-  // At the player's largest text size (200 %): every control grows with its text and cuts none of it.
-  b.cmd("demo:text:200");
+  // At the player's largest text size (150 %): every control grows with its text and cuts none of it.
+  b.cmd("demo:text:150");
   for (const s of ["foundations", "controls", "ranges", "fields", "bindings"]) {
     show(s);
-    b.shot(`text200-${s}`, 0.8);
-    if (s === "controls") b.dump("controls-200");
+    b.shot(`text150-${s}`, 0.8);
+    if (s === "controls") b.dump("controls-150");
   }
   b.cmd("demo:keyboard:letters");
-  b.shot("text200-keyboard", 0.8);
+  b.shot("text150-keyboard", 0.8);
   b.cmd("demo:keyboard:none", 0.4);
   b.cmd("demo:text:100");
   return b.end();

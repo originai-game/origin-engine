@@ -8,7 +8,7 @@
 // viewer with a version and next, a chapter), the route chart and the
 // settings tree (a display change applied and reverted, the bindings, the HUD
 // editor); then each right to left, in Japanese and
-// at 200 % text, each frame compared with
+// at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres3-phone-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";

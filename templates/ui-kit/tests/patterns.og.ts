@@ -2,7 +2,7 @@
 // gear screen (inventory grid and paperdoll) idle, hovered, dragged over a
 // slot that accepts, a refused footprint, a swap and a merge, equipped, the
 // item menu, a lit tag, a selection, the key cursor and a key carry, then
-// right to left and at 200 % text, each frame compared with
+// right to left and at 150 % text, each frame compared with
 // crates/og-ui/references/<tier>/kit-patterns-<file>.
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
