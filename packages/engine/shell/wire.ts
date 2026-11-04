@@ -391,8 +391,10 @@ export function stageInPage(w: Window & Record<string, unknown> = globalThis as 
  * The wire on this page: host = parent when embedded, else opener; origin =
  * `window.__OG_STAGE_HOST__`. A top-level page told its own origin also answers
  * itself: the Stage overlay drawn in this document posts to this window.
+ * Calls are answered from the mount; the unsolicited hello, which tells the
+ * host the page can be driven (a tap reaches its gate), waits for `announce`.
  */
-export function mountWire(options: Omit<WireOptions, "host" | "hostOrigin">): { stop(): void; push(message: Record<string, unknown>): void } {
+export function mountWire(options: Omit<WireOptions, "host" | "hostOrigin">): { announce(): void; stop(): void; push(message: Record<string, unknown>): void } {
   const w = globalThis as unknown as Window & Record<string, unknown>;
   const wire = createWire({
     ...options,
@@ -404,10 +406,13 @@ export function mountWire(options: Omit<WireOptions, "host" | "hostOrigin">): { 
     },
   });
   addEventListener("message", wire.onMessage);
-  const stop = wire.watch();
+  let stop: (() => void) | null = null;
   return {
+    announce() {
+      stop ??= wire.watch();
+    },
     stop() {
-      stop();
+      stop?.();
       removeEventListener("message", wire.onMessage);
     },
     push: wire.push,

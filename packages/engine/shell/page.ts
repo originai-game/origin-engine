@@ -280,7 +280,7 @@ export async function play(): Promise<PlayHandle> {
   // The inspector's Save writes no file here (development builds): to a Stage whose hello
   // lists scene_saved, the texts over the og-probe wire; otherwise a download each
   // (docs/platform-asks.md #22).
-  let wire: { push(message: Record<string, unknown>): void } | null = null;
+  let wire: { announce(): void; push(message: Record<string, unknown>): void } | null = null;
   const download = (name: string, text: string) => {
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
     const a = document.createElement("a");
@@ -434,10 +434,14 @@ export async function play(): Promise<PlayHandle> {
 
   // ── the error card (§6) ──────────────────────────────────────────────
   let shellRef: Shell | null = null;
+  // Fork s61: settled by the first frame or a failure, whichever comes first: what the gate waits for.
+  let drawnOrFailed: () => void = () => {};
+  const drawn = new Promise<void>((r) => (drawnOrFailed = r));
   // `retryable` false: a reload cannot help (a browser without WebGPU).
   const fail = async (title: string, message: string, after: boolean, retryable = true, cause?: HostError) => {
     if (phase === "failed") return;
     phase = "failed";
+    drawnOrFailed();
     emit("og:failed", { message });
     if (after) player.crash("EngineCrash", message, context ? crashFields(cause ?? { kind: "error", message, tick: null, lane: null, location: null }, context, lastMemory) : undefined);
     else player.fail("engine_start", message, retryable);
@@ -658,6 +662,7 @@ export async function play(): Promise<PlayHandle> {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
         emit("og:first-frame");
+        drawnOrFailed();
         ready();
         if (telemetry) void bootSample();
       },
@@ -834,15 +839,7 @@ export async function play(): Promise<PlayHandle> {
   // textures' uploads, the pipelines), not when the bytes are in: Play then leads to a picture.
   // With no gate (og-config gate "none") the game starts at once instead: it runs its own loading
   // screen behind which the first frames draw (one bar from the page's first paint to the game's click).
-  if (!harness && config.gate !== "none" && !firstFrameAt && shell.ready.tier !== "none")
-    await new Promise<void>((r) => {
-      const t = setInterval(() => {
-        if (firstFrameAt || phase === "failed") {
-          clearInterval(t);
-          r();
-        }
-      }, 100);
-    });
+  if (!harness && config.gate !== "none" && shell.ready.tier !== "none") await drawn;
   setProgress(1);
   boot?.setAttribute("data-done", "");
   setTimeout(() => boot && phase !== "failed" && (boot.hidden = true), 300);
@@ -888,6 +885,11 @@ export async function play(): Promise<PlayHandle> {
       addEventListener("keydown", key, true);
     } else start();
   }
+
+  // The og-probe wire's hello tells the host the page can be driven: said once the gate takes a tap
+  // (or play began), so a host's tap after it reaches the gate. With the gate after the first frame
+  // (fork s61), a hello said at ready came before the gate was up, and a tap then was lost.
+  wire?.announce();
 
   // ── PWA ──────────────────────────────────────────────────────────────
   // The shared Stage origin installs no service worker.
