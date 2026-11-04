@@ -80,6 +80,8 @@ fn triangles(
     let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) else {
         return out;
     };
+    // A skinned mesh is drawn at its bind pose (model.rs `skin_binds`).
+    let binds = super::skin_binds(src);
     let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
     while let Some((node, parent)) = stack.pop() {
         if node
@@ -96,9 +98,10 @@ fn triangles(
                 Quat::from_array(r),
                 Vec3::from(t),
             );
-        let at: Vec<Mat4> = match instanced.get(&node.index()) {
-            Some(i) => i.iter().map(|m| world * *m).collect(),
-            None => vec![world],
+        let at: Vec<Mat4> = match (binds.get(&node.index()), instanced.get(&node.index())) {
+            (Some(b), _) => vec![*b],
+            (None, Some(i)) => i.iter().map(|m| world * *m).collect(),
+            (None, None) => vec![world],
         };
         if let Some(mesh) = node.mesh() {
             for prim in mesh

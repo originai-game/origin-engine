@@ -243,6 +243,11 @@ pub struct CookedModel {
     pub variant_materials: Vec<Vec<(usize, usize)>>,
     /// Its octahedral impostor (`model { impostor true }`).
     pub impostor: Option<CookedImpostor>,
+    /// Per skinned mesh node, its bind pose in model space
+    /// ([`crate::format::NodeBindRow`]): where its mesh is drawn at rest,
+    /// in place of the node's own transform, which glTF ignores for a
+    /// skinned mesh.
+    pub skin_binds: BTreeMap<usize, Mat4>,
 }
 
 /// A model's octahedral impostor ([`crate::format::ImpostorRow`]): drawn
@@ -308,6 +313,8 @@ impl CookedModel {
         let mapping_rows = table::<VariantMappingRow>(blob, "variant_mappings")?;
         // Optional: a model cooked before impostors has no table.
         let impostor_rows = table::<ImpostorRow>(blob, "impostors").unwrap_or_default();
+        // Optional: only a model with a skinned mesh has them.
+        let bind_rows = table::<NodeBindRow>(blob, "skin_binds").unwrap_or_default();
         // Optional: only a model with foliage has them.
         let foliage_rows = table::<FoliageRow>(blob, "foliage_rows").unwrap_or_default();
         let foliage_bytes: &[u8] = if foliage_rows.is_empty() {
@@ -714,6 +721,20 @@ impl CookedModel {
             }
             variant_materials[v].push((p, mat));
         }
+        let mut skin_binds = BTreeMap::new();
+        for b in &bind_rows {
+            if b.node as usize >= model_nodes.len() {
+                return Err(bad("skin bind out of range".into()));
+            }
+            skin_binds.insert(
+                b.node as usize,
+                Mat4::from_scale_rotation_translation(
+                    Vec3::new(b.sx, b.sy, b.sz),
+                    Quat::from_xyzw(b.rx, b.ry, b.rz, b.rw),
+                    Vec3::new(b.tx, b.ty, b.tz),
+                ),
+            );
+        }
         let impostor = match impostor_rows.first() {
             None => None,
             Some(i) => Some(CookedImpostor {
@@ -744,13 +765,18 @@ impl CookedModel {
             max: Vec3::new(meta.max_x, meta.max_y, meta.max_z),
             skipped_animations: meta.skipped_animations,
             skipped_skins: meta.skipped_skins,
+            skin_binds,
         })
     }
 
     /// Where node `n` draws its mesh, in model space (`world` from
-    /// [`CookedModel::node_world`]): at each of its `EXT_mesh_gpu_instancing`
-    /// instances, or once at its own transform.
+    /// [`CookedModel::node_world`]): a skinned mesh at its bind pose
+    /// ([`Self::skin_binds`]), otherwise at each of its
+    /// `EXT_mesh_gpu_instancing` instances, or once at its own transform.
     pub fn node_draws(&self, world: &[Mat4], n: usize) -> Vec<Mat4> {
+        if let Some(b) = self.skin_binds.get(&n) {
+            return vec![*b];
+        }
         match self.instances.get(&n) {
             Some(i) => i.iter().map(|m| world[n] * *m).collect(),
             None => vec![world[n]],
