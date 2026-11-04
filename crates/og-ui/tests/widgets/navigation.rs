@@ -89,6 +89,126 @@ fn arrows_move_to_the_aligned_neighbour_and_wrap_at_the_edges() {
     assert_eq!(rig.state.clicks.len(), 2, "Space presses it too");
 }
 
+/// A row of two buttons over a wider tab that starts under the first and
+/// ends under the second (the kit's deck header on a phone: Gallery and
+/// Next, the deck tab below). Right from the first lands on the second
+/// beside it, not on the tab diagonally below; up from the tab lands on
+/// the button its centre is nearer. Scored centre to centre, right from
+/// Gallery took the tab (62 + 3 × the 4 px gap, against 98) and up from
+/// the tab tied and took Gallery, so nothing led to Next.
+#[test]
+fn a_direction_prefers_the_control_in_its_row_measured_edge_to_edge() {
+    #[derive(Default)]
+    struct S {
+        focus: Option<String>,
+    }
+    let want = std::cell::Cell::new(None::<&str>);
+    let mut b = |ui: &mut Ui, s: &mut S| {
+        s.focus = None;
+        let mut button = |ui: &mut Ui, id: &str, w: f32| {
+            let desc = ButtonDesc {
+                width: Some(Size::Fixed(w)),
+                ..ButtonDesc::default()
+            };
+            if ui.button(id, id, desc).focused {
+                s.focus = Some(id.to_string());
+            }
+        };
+        ui.column(
+            "Head",
+            Element {
+                gap: 4.0,
+                ..Element::default()
+            },
+            |ui| {
+                let row = |left: f32| Element {
+                    gap: 8.0,
+                    padding: Insets {
+                        left,
+                        ..Insets::default()
+                    },
+                    ..Element::default()
+                };
+                ui.row("Nav", row(186.0), |ui| {
+                    button(ui, "Gallery", 80.0);
+                    button(ui, "Next", 100.0);
+                });
+                ui.row("Views", row(194.0), |ui| button(ui, "Deck", 188.0));
+            },
+        );
+        if let Some(p) = want.take() {
+            ui.set_focus(p);
+        }
+    };
+    let mut rig = Rig::new(S::default());
+    rig.idle(1, &mut b);
+    want.set(Some("Head/Nav/Gallery"));
+    rig.idle(2, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Gallery"));
+    rig.key(UiKey::Right, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(
+        rig.state.focus.as_deref(),
+        Some("Next"),
+        "right goes beside, not diagonally below"
+    );
+    rig.key(UiKey::Down, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Deck"));
+    rig.key(UiKey::Up, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(
+        rig.state.focus.as_deref(),
+        Some("Next"),
+        "up takes the button the tab's centre is nearer"
+    );
+}
+
+/// Two links inside a focusable row (a chat line and its item and player
+/// links): Right from the first link lands on the second, not on the row
+/// around both, which no edge of lies further that way. Measured edge to
+/// edge without that rule, the row (its centre right of the link's) won at
+/// no distance and the second link was never reached.
+#[test]
+fn a_direction_leaves_for_a_control_past_the_focus_not_the_row_around_it() {
+    #[derive(Default)]
+    struct S {
+        focus: Option<String>,
+    }
+    let want = std::cell::Cell::new(None::<&str>);
+    let mut b = |ui: &mut Ui, s: &mut S| {
+        s.focus = None;
+        ui.open(
+            "Line",
+            Element {
+                interactive: true,
+                focusable: true,
+                width: Size::Fixed(600.0),
+                gap: 80.0,
+                padding: Insets::all(4.0),
+                ..Element::row()
+            },
+        );
+        for id in ["Umaren", "Ring"] {
+            if ui.button(id, id, ButtonDesc::default()).focused {
+                s.focus = Some(id.to_string());
+            }
+        }
+        ui.close();
+        if let Some(p) = want.take() {
+            ui.set_focus(p);
+        }
+    };
+    let mut rig = Rig::new(S::default());
+    rig.idle(1, &mut b);
+    want.set(Some("Line/Umaren"));
+    rig.idle(2, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Umaren"));
+    rig.key(UiKey::Right, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Ring"));
+}
+
 #[test]
 fn set_focus_moves_the_focus_to_a_path_and_a_wrong_path_leaves_it() {
     // Wrong: a path keyed otherwise than the frame keys it (the focus lands
@@ -837,40 +957,48 @@ fn an_adjustable_container_takes_left_and_right_while_focused() {
     let b = &mut |ui: &mut Ui, s: &mut Rows| {
         s.adjust.clear();
         ui.button("Side", "Side", ButtonDesc::default());
-        ui.column("Menu", Element::column(), |ui| {
-            for k in 0..2u32 {
-                ui.open(
-                    ui_idi("Row", k),
-                    Element {
-                        interactive: true,
-                        focusable: true,
-                        adjustable: k == 0,
-                        padding: Insets::all(8.0),
-                        ..Element::row()
-                    },
-                );
-                ui.label("Name", "Row", LabelDesc::default());
-                s.adjust.push(ui.close().adjust);
-            }
+        // A control to the menu's right, where a plain row's Right goes.
+        ui.row("Line", Element::row(), |ui| {
+            ui.column("Menu", Element::column(), |ui| {
+                for k in 0..2u32 {
+                    ui.open(
+                        ui_idi("Row", k),
+                        Element {
+                            interactive: true,
+                            focusable: true,
+                            adjustable: k == 0,
+                            padding: Insets::all(8.0),
+                            ..Element::row()
+                        },
+                    );
+                    ui.label("Name", "Row", LabelDesc::default());
+                    s.adjust.push(ui.close().adjust);
+                }
+            });
+            ui.button("End", "End", ButtonDesc::default());
         });
     };
     rig.idle(2, b);
     rig.key(UiKey::Tab, b);
     rig.key(UiKey::Tab, b);
-    assert_eq!(rig.ui.focus_path(0), "Menu/Row#0");
+    assert_eq!(rig.ui.focus_path(0), "Line/Menu/Row#0");
     rig.step(keys(&[UiKey::Right]), b);
     assert_eq!(rig.state.adjust, [1, 0], "Right steps it forward");
     rig.step(InputFrame::default(), b);
     assert_eq!(rig.state.adjust, [0, 0], "one tick");
-    assert_eq!(rig.ui.focus_path(0), "Menu/Row#0", "and the focus stays");
+    assert_eq!(
+        rig.ui.focus_path(0),
+        "Line/Menu/Row#0",
+        "and the focus stays"
+    );
     rig.step(keys(&[UiKey::Left]), b);
     assert_eq!(rig.state.adjust, [-1, 0]);
     rig.key(UiKey::Down, b);
-    assert_eq!(rig.ui.focus_path(0), "Menu/Row#1", "Down still moves");
+    assert_eq!(rig.ui.focus_path(0), "Line/Menu/Row#1", "Down still moves");
     rig.key(UiKey::Right, b);
-    assert_ne!(
+    assert_eq!(
         rig.ui.focus_path(0),
-        "Menu/Row#1",
+        "Line/End",
         "a plain row lets Right move the focus"
     );
 }

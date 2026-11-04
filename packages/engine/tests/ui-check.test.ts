@@ -3,7 +3,7 @@
 // names its rule, paths, measured value and the prop to change. The rules
 // that wait for later phases are listed as such, never dropped.
 import { expect, test } from "bun:test";
-import { checkFrame, checkLocales, checkScale, elementPaths, formatText, mergeFindings, padFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
+import { checkFrame, checkLocales, checkScale, elementPaths, formatText, mergeFindings, neighbour, padFindings, padGraph, pseudo, RULES, screensFromHelp, screensFromPlaytest, type Rect4, type UiCell, type UiElementDump, type UiFrameSnapshot } from "../src/node/ui-check.ts";
 
 const cell: UiCell = { screen: "s", breakpoint: "phonePortrait", locale: "", style: "", scale: 100, highContrast: false };
 
@@ -196,6 +196,19 @@ test("pad reach: a control stacked on another is unreachable from the default fo
   const off = (navigation: boolean) => frame({ a11y: { navigation, focused: "A", focusOrder: ["A", "C"], nodes: [node("A", [40, 60, 40, 40]), node("C", [40, 60, 40, 40]), { path: "Card", parent: "", role: "button", name: "Card", states: [], rect: [40, 100, 80, 44] }] } });
   expect(rules(off(false))).not.toContain("focus-reach");
   expect(checkFrame(off(true), cell).filter((x) => x.rule === "focus-reach").map((x) => x.paths[0]).sort()).toEqual(["C", "Card"]);
+});
+
+test("pad reach: a control beside the focus in its row beats one diagonally below (edge to edge, beam first)", () => {
+  // The kit's deck header on a phone: Gallery and Next in a row, the deck tab under both. Scored centre to centre,
+  // right from Gallery took the tab and up from the tab tied and took Gallery, so nothing led to Next.
+  const gallery: Rect4 = [186, 63, 80, 44], next: Rect4 = [274, 63, 100, 44], tab: Rect4 = [194, 111, 188, 44];
+  const graph = padGraph([gallery, next, tab]);
+  expect(neighbour(gallery, [[1, next], [2, tab]], "right")).toBe(1);
+  expect(neighbour(tab, [[0, gallery], [1, next]], "up")).toBe(1);
+  expect(padFindings(graph, 0)).toEqual([]);
+  // A link beside another inside the focusable row around both (a chat line): right goes to the link, not the row.
+  const row: Rect4 = [38, 224, 1204, 38], who: Rect4 = [240, 227, 69, 32], ring: Rect4 = [415, 227, 146, 32];
+  expect(neighbour(who, [[0, row], [2, ring]], "right")).toBe(2);
 });
 
 test("pad reach: options inside a focusable listbox are reached through it; outside one they are not", () => {

@@ -4,10 +4,11 @@
 //!
 //! - An element's **explicit moves** ([`crate::NavLinks`]) come first.
 //! - **Next/Prev** walk the controls in reading (draw) order and wrap.
-//! - **Directions** pick the nearest control whose centre lies that way,
-//!   scoring the distance along the direction plus three times the gap
-//!   across it (so the control in the same row or column wins); with none,
-//!   focus wraps to the far end of the same row or column.
+//! - **Directions** pick the nearest control past the focus that way at
+//!   both its edges, as Android's FocusFinder does: one in the focus's row or column (its
+//!   beam) first, then by the edge-to-edge distance along the move,
+//!   weighted, and the centres' offset across it; with none, focus wraps
+//!   to the far end of the same row or column.
 //! - Inside a **focus group** ([`crate::FocusGroup`]) a direction picks
 //!   among the group's members first; at its edge a wrapping group goes
 //!   round inside itself, any other leaves it for the nearest control
@@ -27,8 +28,8 @@ pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<
     neighbour_in(from, cands, dir, false).or_else(|| neighbour_in(from, cands, dir, true))
 }
 
-/// The nearest control that way (`wrap` false), or the farthest the other
-/// way, in the same row or column first (`wrap` true).
+/// The nearest control that way (`wrap` false, [`toward`]), or the
+/// farthest the other way, in the same row or column first (`wrap` true).
 fn neighbour_in(from: &Rect, cands: &[(u64, Rect)], dir: Nav, wrap: bool) -> Option<u64> {
     let (fx, fy) = from.center();
     // (along, across): along > 0 is in the direction.
@@ -42,15 +43,106 @@ fn neighbour_in(from: &Rect, cands: &[(u64, Rect)], dir: Nav, wrap: bool) -> Opt
             _ => (fx - cx, gap(from.y, from.bottom(), r.y, r.bottom())),
         }
     };
+    if !wrap {
+        return toward(from, cands, dir);
+    }
     let mut best: Option<(f32, u64)> = None;
     for (k, r) in cands {
         let (along, across) = axes(r);
-        let ok = if wrap { along < -0.5 } else { along > 0.5 };
-        if ok {
+        if along < -0.5 {
             let score = along + 3.0 * across;
             if best.is_none_or(|(s, _)| score < s) {
                 best = Some((score, *k));
             }
+        }
+    }
+    best.map(|b| b.1)
+}
+
+/// Where a candidate stands from the focus, for one direction.
+struct Toward {
+    /// It overlaps the focus across the move (its row or column).
+    beam: bool,
+    /// The gap from the focus's leading edge to its near edge (0 touching).
+    major: f32,
+    /// From the focus's leading edge to its far edge.
+    far: f32,
+    /// Its centre's offset from the focus's across the move.
+    minor: f32,
+}
+
+/// The nearest control that lies in direction `dir` from `from` at both of
+/// its edges, by Android's FocusFinder (the W3C css-nav rule is the same in
+/// substance): a control in the focus's beam (overlapping it across the
+/// move) beats one outside it (going up or down, unless that one is wholly
+/// nearer), then the least `13·major² + minor²` with `major` measured edge
+/// to edge along the move and `minor` centre to centre across it. Scored
+/// from centres, a tab diagonally below beat the button beside the focus in
+/// its own row, and nothing led to that button.
+fn toward(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
+    let (fx, fy) = from.center();
+    let horizontal = matches!(dir, Nav::Left | Nav::Right);
+    let at = |r: &Rect| -> Option<Toward> {
+        let (cx, cy) = r.center();
+        let overlap = |a0: f32, a1: f32, b0: f32, b1: f32| a1.min(b1) - a0.max(b0) > 0.5;
+        // That way at both of its edges (FocusFinder's isCandidate): a row
+        // around the focus, whose centre lies past it, is no move out of
+        // it (it won at no distance, and a link's neighbour in the same
+        // row was never reached).
+        let (that_way, major, far) = match dir {
+            Nav::Down => (
+                (from.y < r.y || from.bottom() <= r.y) && from.bottom() < r.bottom(),
+                r.y - from.bottom(),
+                r.bottom() - from.bottom(),
+            ),
+            Nav::Up => (
+                (from.bottom() > r.bottom() || from.y >= r.bottom()) && from.y > r.y,
+                from.y - r.bottom(),
+                from.y - r.y,
+            ),
+            Nav::Right => (
+                (from.x < r.x || from.right() <= r.x) && from.right() < r.right(),
+                r.x - from.right(),
+                r.right() - from.right(),
+            ),
+            _ => (
+                (from.right() > r.right() || from.x >= r.right()) && from.x > r.x,
+                from.x - r.right(),
+                from.x - r.x,
+            ),
+        };
+        that_way.then(|| Toward {
+            beam: if horizontal {
+                overlap(from.y, from.bottom(), r.y, r.bottom())
+            } else {
+                overlap(from.x, from.right(), r.x, r.right())
+            },
+            major: major.max(0.0),
+            far: far.max(0.0),
+            minor: if horizontal {
+                (cy - fy).abs()
+            } else {
+                (cx - fx).abs()
+            },
+        })
+    };
+    let weighted = |t: &Toward| 13.0 * t.major * t.major + t.minor * t.minor;
+    // Whether `a` beats `b` (FocusFinder's isBetterCandidate and beamBeats).
+    let beats = |a: &Toward, b: &Toward| {
+        if a.beam != b.beam {
+            let (inside, outside) = if a.beam { (a, b) } else { (b, a) };
+            if horizontal || inside.major < outside.far {
+                return a.beam;
+            }
+        }
+        weighted(a) < weighted(b)
+    };
+    let mut best: Option<(Toward, u64)> = None;
+    for (k, r) in cands {
+        if let Some(t) = at(r)
+            && best.as_ref().is_none_or(|(b, _)| beats(&t, b))
+        {
+            best = Some((t, *k));
         }
     }
     best.map(|b| b.1)

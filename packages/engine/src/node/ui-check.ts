@@ -271,15 +271,44 @@ export function neighbour(from: Rect4, cands: Array<[number, Rect4]>, dir: "up" 
     if (dir === "right") return [cx - fx, gap(from[1], from[1] + from[3], r[1], r[1] + r[3])];
     return [fx - cx, gap(from[1], from[1] + from[3], r[1], r[1] + r[3])];
   };
-  let best: [number, number] | null = null;
-  for (const [k, r] of cands) {
-    const [along, across] = axes(r);
-    if (along > 0.5) {
-      const s = along + 3 * across;
-      if (!best || s < best[0]) best = [s, k];
+  // That way: Android's FocusFinder, as og-ui's `toward`: past the focus at both edges, a control in the focus's beam (overlapping it across the
+  // move) first (going up or down, unless the other is wholly nearer), then the least 13·major² + minor², `major`
+  // edge to edge along the move, `minor` centre to centre across it.
+  const horizontal = dir === "left" || dir === "right";
+  type Toward = { beam: boolean; major: number; far: number; minor: number };
+  const at = (r: Rect4): Toward | null => {
+    const cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
+    const [fr, fb, rr, rb] = [from[0] + from[2], from[1] + from[3], r[0] + r[2], r[1] + r[3]];
+    // That way at both of its edges (FocusFinder's isCandidate): a row around the focus is no move out of it.
+    const [thatWay, major, far] =
+      dir === "down" ? [(from[1] < r[1] || fb <= r[1]) && fb < rb, r[1] - fb, rb - fb]
+      : dir === "up" ? [(fb > rb || from[1] >= rb) && from[1] > r[1], from[1] - rb, from[1] - r[1]]
+      : dir === "right" ? [(from[0] < r[0] || fr <= r[0]) && fr < rr, r[0] - fr, rr - fr]
+      : [(fr > rr || from[0] >= rr) && from[0] > r[0], from[0] - rr, from[0] - r[0]];
+    if (!thatWay) return null;
+    const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0) > 0.5;
+    return {
+      beam: horizontal ? overlap(from[1], fb, r[1], rb) : overlap(from[0], fr, r[0], rr),
+      major: Math.max(0, major),
+      far: Math.max(0, far),
+      minor: horizontal ? Math.abs(cy - fy) : Math.abs(cx - fx),
+    };
+  };
+  const weighted = (t: Toward) => 13 * t.major * t.major + t.minor * t.minor;
+  const beats = (a: Toward, b: Toward): boolean => {
+    if (a.beam !== b.beam) {
+      const [inside, outside] = a.beam ? [a, b] : [b, a];
+      if (horizontal || inside.major < outside.far) return a.beam;
     }
+    return weighted(a) < weighted(b);
+  };
+  let near: [Toward, number] | null = null;
+  for (const [k, r] of cands) {
+    const t = at(r);
+    if (t && (!near || beats(t, near[0]))) near = [t, k];
   }
-  if (best) return best[1];
+  if (near) return near[1];
+  let best: [number, number] | null = null;
   for (const [k, r] of cands) {
     const [along, across] = axes(r);
     if (along < -0.5) {
