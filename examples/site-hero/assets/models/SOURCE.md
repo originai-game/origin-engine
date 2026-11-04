@@ -77,6 +77,11 @@ with ImageMagick:
   20×; the isotropic rock.png smeared into streaks down the slope at both 8×
   and 16× anisotropy (macrunner, hold 708: strip high-pass 0.0061 against the
   stack's 0.0018). Horizontal strata stay bands across the slope.
+  Accepted by the art director by eye (2026-11-04, macrunner Metal, site
+  c23a4a3be): strip high-pass 0.0035 at hold 708. The 0.0025 bound was a
+  diagnostic set to detect the streaks, not an acceptance test; the
+  remaining broad strata-scale patches match the stack's facets, and the art
+  director has the final say on the look.
 
 ## Sky props (meadow): replacing the procedural stand-ins
 
