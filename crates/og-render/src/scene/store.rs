@@ -112,6 +112,7 @@ impl RenderScene {
             previous_joint_palettes: Vec::new(),
             previous_morph_weights: Vec::new(),
             baked_clips: Vec::new(),
+            crowds: Vec::new(),
             deformed_vertices: Vec::new(),
             previous_deformed_vertices: Vec::new(),
             camera_cut: false,

@@ -1647,6 +1647,7 @@ mod tests {
             cast: true,
             layers: 1,
             probe: 0,
+            crowd: None,
         }
     }
 

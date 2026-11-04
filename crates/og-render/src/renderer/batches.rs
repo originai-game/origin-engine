@@ -49,6 +49,7 @@ impl Renderer {
                     cast: r.cast,
                     layers: r.layers,
                     probe: r.probe,
+                    crowd: None,
                 }
             })
             .collect();
@@ -710,11 +711,32 @@ impl Renderer {
                 None => {}
             }
         }
-        let used: std::collections::BTreeSet<u32> = scene
+        // The clips the skinned instances and the crowds play, now or the
+        // frame before (a crowd's members mostly share one: marked, not
+        // inserted one by one).
+        let mut marked = vec![false; scene.baked_clips.len()];
+        let mut mark = |b: &skin::BakedPose| {
+            for c in [b.clip, b.previous_clip] {
+                if let Some(m) = marked.get_mut(c as usize) {
+                    *m = true;
+                }
+            }
+        };
+        scene
             .skinned_instances
             .iter()
-            .filter_map(|s| s.baked)
-            .flat_map(|b| [b.clip, b.previous_clip])
+            .filter_map(|s| s.baked.as_ref())
+            .for_each(&mut mark);
+        scene
+            .crowds
+            .iter()
+            .flat_map(|c| &c.members)
+            .for_each(|m| mark(&m.pose));
+        let used: std::collections::BTreeSet<u32> = marked
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| **m)
+            .map(|(i, _)| i as u32)
             .collect();
         let baked_joints: usize = used
             .iter()
@@ -823,6 +845,7 @@ impl Renderer {
                         cast,
                         layers,
                         probe,
+                        crowd: None,
                     });
                 }
             }
@@ -975,6 +998,111 @@ impl Renderer {
             previous_slots,
             baked_moved,
         })
+    }
+
+    /// The scene's crowds as the crowd cull's tables (crowd.rs `build`),
+    /// their previous transforms with them when `motion`.
+    pub(crate) fn build_crowds(
+        &self,
+        scene: &RenderScene,
+        motion: bool,
+    ) -> Result<crate::crowd::CrowdFrame, RenderError> {
+        let cache = &self.cache;
+        crate::crowd::build(
+            &scene.crowds,
+            &scene.baked_clips,
+            &|m| {
+                Some(crate::crowd::MeshInfo {
+                    skinned: cache.skins.get(m)?.is_some(),
+                    index_count: cache.meshes.get(m)?.index_count,
+                    joints: cache.joint_boxes.get(m).map_or(&[][..], Vec::as_slice),
+                })
+            },
+            cache.materials.len(),
+            &|m| cache.materials[m].shader.is_some(),
+            &|c| self.palette.baked_offset(c),
+            motion,
+            scene.lod_bias,
+        )
+    }
+
+    /// One skinned batch per crowd draw (a part at a level): no instances
+    /// of its own; on the GPU path it draws the crowd cull's records
+    /// ([`Batch::crowd`]), on the CPU path [`Self::append_crowds`] gives it
+    /// runs of records.
+    pub(crate) fn crowd_batches(
+        &self,
+        scene: &RenderScene,
+        frame: &crate::crowd::CrowdFrame,
+    ) -> Vec<Batch> {
+        frame
+            .draws
+            .iter()
+            .enumerate()
+            .map(|(k, d)| {
+                let m = &self.cache.materials[d.material];
+                let c = &scene.crowds[d.crowd as usize];
+                Batch {
+                    mesh: d.mesh,
+                    material: d.material,
+                    first: 0,
+                    count: 0,
+                    side: m.side,
+                    transparent: m.transparent,
+                    blend: m.blend,
+                    physical: m.physical.is_some(),
+                    transmissive: m.transmissive,
+                    dissolve: m.dissolve,
+                    effects: m.effects,
+                    shader: m.shader,
+                    lean: false,
+                    derivatives: m.flat,
+                    compact: false,
+                    array: m.array.is_some(),
+                    foliage: false,
+                    simulated: false,
+                    cast: c.cast_shadows,
+                    layers: c.layers,
+                    probe: crate::probe_select::NONE,
+                    crowd: Some(k as u32),
+                }
+            })
+            .collect()
+    }
+
+    /// The crowds drawn as skinned instances (the CPU path, crowd.rs):
+    /// each member at the camera's level, a record per part, appended to
+    /// `skinned` as batches of `crowd_batches`' kinds with their boxes.
+    /// `previous_at`: the palette slot of the first member's previous
+    /// transform (TAA).
+    pub(crate) fn append_crowds(
+        &self,
+        scene: &RenderScene,
+        frame: &crate::crowd::CrowdFrame,
+        crowd_batches: &[Batch],
+        skinned: &mut SkinnedFrame,
+        previous_at: Option<u32>,
+    ) {
+        let (runs, data, boxes) = crate::crowd::cpu_records(
+            &scene.crowds,
+            frame,
+            &scene.camera,
+            self.height as f32,
+            scene.lod_bias,
+            previous_at,
+        );
+        let base = skinned.data.len() as u32;
+        for (draw, first, count) in runs {
+            skinned.batches.push(Batch {
+                first: base + first,
+                count,
+                crowd: None,
+                ..crowd_batches[draw as usize]
+            });
+        }
+        skinned.data.extend(data);
+        skinned.boxes.extend(boxes);
+        skinned.baked_moved |= frame.moved;
     }
 
     /// The skinned batches the camera sees: instances whose posed box

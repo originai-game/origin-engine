@@ -217,6 +217,92 @@ fn perf_tilemap_256() {
     }
 }
 
+/// The renderer's clock for pass timings: milliseconds since first read.
+fn clock_ms() -> f64 {
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_secs_f64() * 1000.0
+}
+
+/// Where `scene`'s frame goes: each render-graph pass's CPU encoding and
+/// GPU time, averaged over 60 frames after a warm-up, and the CPU's time
+/// in `render` per frame (submitting without waiting for the GPU).
+fn profile(scene: &str) {
+    let mut built = scenes::build(scene).expect("scene");
+    let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+    renderer.set_clock(Some(clock_ms));
+    let frames = 60u32;
+    let mut cpu: Vec<(String, f64)> = Vec::new();
+    let mut gpu: Vec<(String, f64, u32)> = Vec::new();
+    let (mut render_ms, mut update_ms) = (0.0, 0.0);
+    for frame in 0..frames + 20 {
+        let t = Instant::now();
+        if let Some(update) = built.update {
+            update(&mut built.scene, frame);
+        }
+        let u = t.elapsed().as_secs_f64() * 1000.0;
+        let t = Instant::now();
+        renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let r = t.elapsed().as_secs_f64() * 1000.0;
+        if frame < 20 {
+            renderer.gpu_timings(true);
+            continue;
+        }
+        render_ms += r;
+        update_ms += u;
+        for p in renderer.pass_timings() {
+            match cpu.iter_mut().find(|c| c.0 == p.name) {
+                Some(c) => c.1 += p.ms,
+                None => cpu.push((p.name.clone(), p.ms)),
+            }
+        }
+        for f in renderer.gpu_timings(true) {
+            for p in &f.passes {
+                match gpu.iter_mut().find(|c| c.0 == p.name) {
+                    Some(c) => {
+                        c.1 += p.ms();
+                        c.2 += 1;
+                    }
+                    None => gpu.push((p.name.clone(), p.ms(), 1)),
+                }
+            }
+        }
+    }
+    let n = f64::from(frames);
+    println!(
+        "profile {scene}: render {:.3} ms CPU per frame, the scene's update {:.3} ms",
+        render_ms / n,
+        update_ms / n
+    );
+    let total: f64 = gpu.iter().map(|g| g.1 / f64::from(g.2)).sum();
+    println!("  GPU {total:.3} ms per frame:");
+    for (name, ms, count) in &gpu {
+        println!("    {name:<28} {:.3}", ms / f64::from(*count));
+    }
+    println!("  CPU encoding:");
+    for (name, ms) in &cpu {
+        if ms / n >= 0.05 {
+            println!("    {name:<28} {:.3}", ms / n);
+        }
+    }
+}
+
+/// Crowds at scale: 5,000, 20,000 and 50,000 walkers on one baked walk,
+/// every one moving and stepping each frame (fx_scenes/crowds.rs), under
+/// TAA and a shadowing sun. With `OG_CROWD_PROFILE`, where each frame goes
+/// as well.
+#[test]
+#[ignore]
+fn perf_crowds() {
+    for scene in ["crowd-5k", "crowd-20k", "crowd-50k"] {
+        if std::env::var_os("OG_CROWD_PROFILE").is_some() {
+            profile(scene);
+        }
+        perf(scene);
+    }
+}
+
 /// R11's 2D lighting: 64 shadowed lights over 128 occluders, at the default
 /// shadow angles, at 4096, and with normal-mapped receivers (for the
 /// record: the baselines catch a regression).

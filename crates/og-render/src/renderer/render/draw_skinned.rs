@@ -21,6 +21,10 @@ pub(super) struct DrawSkinnedInputs<'a, 'p> {
     /// pass kept (`cull_gpu::SkinnedCull`). `None`: `list`'s ranges of the
     /// skinned instance buffer.
     pub(super) indirect: Option<(&'a cull_gpu::GpuCulling, u32)>,
+    /// The crowd cull and this pass's row in it (`crowd_gpu.rs`): a crowd
+    /// batch ([`Batch::crowd`]) draws that row's records of it; `None`:
+    /// the pass draws no crowd batch.
+    pub(super) crowds: Option<(&'a crowd_gpu::CrowdCulling, u32)>,
 }
 
 impl Renderer {
@@ -38,6 +42,7 @@ impl Renderer {
             probes,
             palette_group,
             indirect,
+            crowds,
         }: DrawSkinnedInputs<'_, '_>,
     ) -> u32 {
         let Some(palette) = palette_group else {
@@ -56,6 +61,9 @@ impl Renderer {
                 || (shadow && !batch.cast)
                 || blended.is_some_and(|b| b != batch.blend)
             {
+                continue;
+            }
+            if batch.crowd.is_some() && crowds.is_none() {
                 continue;
             }
             let physical = batch.physical && physical_fx.is_some();
@@ -83,22 +91,30 @@ impl Renderer {
                 .as_ref()
                 .expect("a skinned mesh");
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-            let (records, first) = match indirect {
-                Some((gc, g)) => (&gc.skinned, gc.skinned_region(g, batch.first)),
-                None => (&self.skinned_buffer, batch.first),
-            };
-            let start = first as u64 * skin::SKINNED_INSTANCE_STRIDE;
-            pass.set_vertex_buffer(
-                1,
-                records.slice(start..start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE),
-            );
             pass.set_vertex_buffer(2, skin.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            match indirect {
-                Some((gc, g)) => {
-                    pass.draw_indexed_indirect(&gc.args, gc.skinned_draw_offset(g, k as u32))
+            match (batch.crowd, crowds) {
+                // A crowd's draw: the row's records from its start, the
+                // level's members from the first instance the cull wrote.
+                (Some(d), Some((cc, row))) => {
+                    let start = cc.row_offset(row);
+                    pass.set_vertex_buffer(1, cc.records.slice(start..cc.row_offset(row + 1)));
+                    pass.draw_indexed_indirect(&cc.args, cc.draw_offset(row, d));
                 }
-                None => pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count),
+                _ => {
+                    let (records, first) = match indirect {
+                        Some((gc, g)) => (&gc.skinned, gc.skinned_region(g, batch.first)),
+                        None => (&self.skinned_buffer, batch.first),
+                    };
+                    let start = first as u64 * skin::SKINNED_INSTANCE_STRIDE;
+                    let end = start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE;
+                    pass.set_vertex_buffer(1, records.slice(start..end));
+                    match indirect {
+                        Some((gc, g)) => pass
+                            .draw_indexed_indirect(&gc.args, gc.skinned_draw_offset(g, k as u32)),
+                        None => pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count),
+                    }
+                }
             }
             draws += 1;
         }

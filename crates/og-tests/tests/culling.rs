@@ -90,6 +90,10 @@ const SCENES: &[(&str, u32)] = &[
     // behind a wall; and object motion blur, which GPU culling takes too.
     ("skinning", 2),
     ("crowd-culling", 3),
+    // Crowds (og-render's crowd.rs): 2,000 walkers among buildings,
+    // culled, given their levels and drawn on the GPU path (crowd_gpu.rs)
+    // against the CPU path's skinned lists, shadows and TAA included.
+    ("crowd-2k", 3),
     ("motion-blur", 4),
 ];
 

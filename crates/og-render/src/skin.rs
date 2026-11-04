@@ -54,7 +54,12 @@
 //! vectors need no previous baked palette. Only the transform slot is
 //! copied into the dynamic previous section, keeping it aligned.
 //!
-//! Both sections together hold at most [`MAX_JOINTS`] slots.
+//! 3. **The crowds' previous transforms** (TAA only, crowd.rs): one slot a
+//!    crowd member, in member order, after the previous section (after
+//!    the current one when there is none, [`previous_section_len`]). Not
+//!    copied into the previous section: a member's record names its slot.
+//!
+//! Every section together holds at most [`MAX_JOINTS`] slots.
 //!
 //! The morph deltas (binding 1, `array<vec4<f32>>`) are static per mesh:
 //! from the mesh's base (`palette.z`), one header per vertex (x: its first
@@ -294,9 +299,11 @@ pub(crate) fn moved_box(m: &Mat4, a: Vec3, b: Vec3) -> (Vec3, Vec3) {
     (c - r, c + r)
 }
 
-/// The most slots one frame's palette buffer may hold: joints and
-/// blendshape weights, both sections together (see the module's layout).
-pub const MAX_JOINTS: usize = 256 * 256;
+/// The most slots one frame's palette buffer may hold: joints, blendshape
+/// weights, deformed vertices and crowds' previous transforms, every
+/// section together (see the module's layout): 64 MiB, under every
+/// device's 128 MiB storage binding. The buffer grows to what a frame uses.
+pub const MAX_JOINTS: usize = 1 << 20;
 
 /// The palette slots of `targets` blendshape weights: 16 to a slot.
 pub(crate) fn weight_slots(weights: &[f32], targets: usize) -> Vec<[[f32; 4]; 4]> {
@@ -670,6 +677,23 @@ impl GpuPalette {
     }
 }
 
+/// How many slots [`append_previous`] appends after a current section of
+/// `slots` slots (`previous_slots` of them weights and vertices): as many
+/// again, or 0 when it appends none (no previous palettes, or no room).
+pub(crate) fn previous_section_len(
+    palettes: &[JointPalette],
+    previous: &[JointPalette],
+    slots: usize,
+    previous_slots: usize,
+) -> usize {
+    let joints: usize = palettes.iter().map(|p| p.matrices.len()).sum();
+    let ok = !previous.is_empty()
+        && previous.len() == palettes.len()
+        && slots * 2 <= MAX_JOINTS
+        && slots == joints + previous_slots;
+    if ok { slots } else { 0 }
+}
+
 /// The previous section of the palette buffer for TAA's motion vectors
 /// (the module's layout), appended after the current section `slots`
 /// (at `slots.len()` before the call, which the prepass reads through
@@ -688,13 +712,10 @@ pub(crate) fn append_previous(
     previous_slots: &[[[f32; 4]; 4]],
     slots: &mut Vec<[[f32; 4]; 4]>,
 ) -> Option<bool> {
-    if previous.is_empty() || previous.len() != palettes.len() || slots.len() * 2 > MAX_JOINTS {
+    if previous_section_len(palettes, previous, slots.len(), previous_slots.len()) == 0 {
         return None;
     }
     let joints: usize = palettes.iter().map(|p| p.matrices.len()).sum();
-    if slots.len() != joints + previous_slots.len() {
-        return None;
-    }
     let weights_moved = slots[joints..] != *previous_slots;
     let mut at = vec![None; palettes.len()];
     for s in instances {

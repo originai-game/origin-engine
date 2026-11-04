@@ -299,6 +299,14 @@ pub fn base_desc() -> RenderDesc {
     }
 }
 
+fn crowd_perf(g: &mut GfxScene, count: u32) -> Result<(), String> {
+    g.scene = fx::crowd_scene(count);
+    g.update = Some(fx::walk_crowd);
+    g.desc.antialias = Antialias::Tier;
+    g.frames = 8;
+    Ok(())
+}
+
 /// Builds the scene called `name`.
 pub fn build(name: &str) -> Result<GfxScene, String> {
     let mut g = GfxScene {
@@ -334,6 +342,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(bob_spheres);
             Ok(())
         },
+        // Crowds at scale (fx_scenes/crowds.rs): 5,000, 20,000 and 50,000
+        // walkers playing one baked walk, every one moving and stepping
+        // each frame, under TAA and a shadowing sun. Perf only.
+        // The same at 2,000 walkers: GPU culling's crowd scene (culling.rs).
+        "crowd-2k" => |g, _| crowd_perf(g, 2_000),
+        "crowd-5k" => |g, _| crowd_perf(g, 5_000),
+        "crowd-20k" => |g, _| crowd_perf(g, 20_000),
+        "crowd-50k" => |g, _| crowd_perf(g, 50_000),
         // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
         "cascades-200m" => |g, _| {
             g.scene = cascades_200m(true);

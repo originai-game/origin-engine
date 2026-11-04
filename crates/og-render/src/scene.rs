@@ -190,6 +190,10 @@ pub struct RenderScene {
     /// kept from frame to frame; a frame uploads only the clips its
     /// instances use (`skin.rs`, the palette buffer's layout).
     pub baked_clips: Vec<crate::BakedClip>,
+    /// Crowds: thousands of copies of one skinned model, each posed by a
+    /// baked clip, culled, given a level and drawn on the GPU-driven path
+    /// (`crowd.rs`).
+    pub crowds: Vec<crate::Crowd>,
     /// The vertices of skinned instances that bring their own
     /// ([`crate::SkinnedInstance::deformed`] indexes it): a simulated
     /// garment's points, in each instance's space.

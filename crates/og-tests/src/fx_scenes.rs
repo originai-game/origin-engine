@@ -19,12 +19,14 @@ use og_render::{
     Text, TextureData, TextureHandle, Tonemap, Trail, TrailStyle, Vertex, Vignette, shapes,
 };
 
+mod crowds;
 mod models;
 mod particles;
 mod post;
 mod showcase;
 mod sprites;
 
+pub use crowds::*;
 pub use models::*;
 pub use particles::*;
 pub use post::*;

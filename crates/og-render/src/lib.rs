@@ -76,6 +76,8 @@ mod capture;
 mod clouds;
 mod clusters;
 mod compact;
+mod crowd;
+mod crowd_gpu;
 mod cull_gpu;
 mod custom;
 pub mod debug;
@@ -362,6 +364,7 @@ pub mod impostors {
         blend_frames, frame_basis, frame_direction, hemi_oct_decode, hemi_oct_encode,
     };
 }
+pub use crowd::{Crowd, CrowdMember, CrowdPart, MAX_CROWD_LEVELS, member_level};
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{
@@ -727,6 +730,10 @@ pub struct Renderer {
     desc_culling: Culling,
     indirect: bool,
     gpu_cull: Option<cull_gpu::GpuCulling>,
+    /// Whether crowds can be culled and drawn on the GPU (indirect draws
+    /// with a first instance), and their culling once a frame used it.
+    crowd_indirect: bool,
+    crowd_gpu: Option<crowd_gpu::CrowdCulling>,
     /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
     meshlet: Option<meshlet_gpu::MeshletGpu>,
     /// Whether the next frame's GPU culling counts are read back

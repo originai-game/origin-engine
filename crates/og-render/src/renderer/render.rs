@@ -128,6 +128,71 @@ impl Renderer {
             &aspect,
         );
         let reflection = reflections.first();
+        // Crowds (crowd.rs): their members as the crowd cull's tables, and
+        // where each member's previous transform goes under TAA (after the
+        // palette's previous section, skin.rs).
+        let crowd_motion = temporal || scene.post.motion_blur.is_some();
+        let crowd_frame = self.build_crowds(scene, crowd_motion)?;
+        let crowd_batches = self.crowd_batches(scene, &crowd_frame);
+        let crowd_previous = crowd_motion.then(|| {
+            (skinned.matrices.len()
+                + skin::previous_section_len(
+                    &scene.joint_palettes,
+                    &scene.previous_joint_palettes,
+                    skinned.matrices.len(),
+                    skinned.previous_slots.len(),
+                )) as u32
+        });
+        if crowd_previous.is_some_and(|at| at as usize + crowd_frame.previous.len() > MAX_JOINTS) {
+            return Err(RenderError::InvalidData(format!(
+                "{} crowd members' previous transforms past the palette's other slots (at most {MAX_JOINTS} in all)",
+                crowd_frame.previous.len()
+            )));
+        }
+        // On the GPU-driven path (crowd_gpu.rs) where the device draws
+        // indirect with a first instance and every view that draws them is
+        // a GPU culling pass (secondary views and probe faces cull skinned
+        // instances on the CPU); else as skinned instances.
+        let crowd_gpu = crowd_frame.len() > 0
+            && self.crowd_indirect
+            && self.desc_culling != Culling::Cpu
+            && scene.views.is_empty()
+            && probe_frame.due.is_empty()
+            && crowd_batches.iter().all(|b| !b.transparent)
+            && {
+                let limits = self.device.limits();
+                let max = limits
+                    .max_storage_buffer_binding_size
+                    .min(limits.max_buffer_size);
+                let rows = 4
+                    + MAX_CASCADES as usize
+                    + scene.lights.iter().filter(|l| l.cast_shadows).count() * 6;
+                // GPU culling must take the frame too (its pyramid, its
+                // passes): checked for every instance the frame may sort.
+                let culls = self
+                    .gpu_cull
+                    .get_or_insert_with(|| cull_gpu::GpuCulling::new(&self.device, max))
+                    .fits(
+                        scene.instances.len() as u32,
+                        scene.skinned_instances.len() as u32,
+                        rows,
+                    );
+                culls
+                    && self
+                        .crowd_gpu
+                        .get_or_insert_with(|| crowd_gpu::CrowdCulling::new(&self.device, max))
+                        .fits(crowd_frame.len(), rows)
+            };
+        if !crowd_gpu && crowd_frame.len() > 0 {
+            self.append_crowds(
+                scene,
+                &crowd_frame,
+                &crowd_batches,
+                &mut skinned,
+                crowd_previous,
+            );
+        }
+        skinned.baked_moved |= crowd_frame.moved;
         let (view_plans, mut view_skinned) =
             self.prepare_view_culling(scene, &camera, &mut skinned);
         let (probe_faces, mut probe_skinned) =
@@ -135,6 +200,12 @@ impl Renderer {
         let (mut skinned_visible, mut skinned_culled) =
             Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
+        // The skinned instances' batches; the crowds' GPU draws after them.
+        let skinned_plain = skinned_batches.len();
+        if crowd_gpu {
+            skinned_batches.extend(crowd_batches.iter().map(|b| Batch { ..*b }));
+            skinned_visible.extend(crowd_batches.iter().map(|b| Batch { ..*b }));
+        }
         let skinned_data = std::mem::take(&mut skinned.data);
         let mut joint_matrices = std::mem::take(&mut skinned.matrices);
         let joints_drawn = (joint_matrices.len() + self.palette.baked_len()) as u32;
@@ -153,6 +224,11 @@ impl Renderer {
         } else {
             None
         };
+        // The crowd members' previous transforms, after every other slot.
+        if let Some(at) = crowd_previous {
+            debug_assert_eq!(at as usize, joint_matrices.len());
+            joint_matrices.extend_from_slice(&crowd_frame.previous);
+        }
 
         // Effects this frame.
         let post_fx = &scene.post;
@@ -939,20 +1015,22 @@ impl Renderer {
         }
         // Clustered batches draw only under GPU culling: they turn it on
         // under `Culling::Auto` however few the instances.
-        let gpu_cull = (self.gpu_culls(sorted + skinned_n) || !meshlet_taken.is_empty())
-            && (!batches.is_empty() || skinned_n > 0)
-            && {
-                let limits = self.device.limits();
-                let gc = self.gpu_cull.get_or_insert_with(|| {
-                    cull_gpu::GpuCulling::new(
-                        &self.device,
-                        limits
-                            .max_storage_buffer_binding_size
-                            .min(limits.max_buffer_size),
-                    )
-                });
-                gc.fits(sorted, skinned_n, max_passes)
-            };
+        // So do crowds on the GPU path (`crowd_gpu`, checked to fit).
+        let gpu_cull =
+            (self.gpu_culls(sorted + skinned_n) || !meshlet_taken.is_empty() || crowd_gpu)
+                && (!batches.is_empty() || skinned_n > 0 || crowd_gpu)
+                && {
+                    let limits = self.device.limits();
+                    let gc = self.gpu_cull.get_or_insert_with(|| {
+                        cull_gpu::GpuCulling::new(
+                            &self.device,
+                            limits
+                                .max_storage_buffer_binding_size
+                                .min(limits.max_buffer_size),
+                        )
+                    });
+                    gc.fits(sorted, skinned_n, max_passes)
+                };
         if !gpu_cull {
             meshlet_taken.clear();
         }
@@ -1875,7 +1953,7 @@ impl Renderer {
                 previous_sorted.as_deref(),
                 &batches,
                 skinned_gpu.then_some(&cull_gpu::SkinnedCull {
-                    batches: &skinned_batches,
+                    batches: &skinned_batches[..skinned_plain],
                     records: &skinned_data,
                     boxes: &skinned.boxes,
                 }),
@@ -1971,6 +2049,40 @@ impl Renderer {
                         &batches,
                     );
                 }
+            }
+            // The crowds, after the pyramid's last build (the meshlets'
+            // first phase draws into its depth).
+            if crowd_gpu {
+                let gc = self.gpu_cull.as_ref().expect("made above");
+                let (half_tan, ortho_height) = match scene.camera.projection {
+                    Projection::Perspective { fov_y_degrees } => {
+                        (Some((fov_y_degrees.to_radians() * 0.5).tan()), 0.0)
+                    }
+                    Projection::Orthographic { height } => (None, height),
+                };
+                let index_counts: Vec<u32> =
+                    crowd_frame.draws.iter().map(|d| d.index_count).collect();
+                let cc = self
+                    .crowd_gpu
+                    .as_mut()
+                    .expect("made when crowd_gpu was decided");
+                commands.push(cc.encode(
+                    &self.device,
+                    &self.queue,
+                    &crowd_frame,
+                    &index_counts,
+                    &cull_passes,
+                    &crowd_gpu::CrowdView {
+                        position: camera.position,
+                        half_tan,
+                        ortho_height,
+                        view_height: self.height as f32,
+                        view_proj: cam.jittered_view_proj,
+                        size: (self.width, self.height),
+                        pyramid: gc.pyramid(),
+                    },
+                    crowd_previous.map_or(0, |at| at + 1),
+                ));
             }
             commands
         } else {
@@ -2071,7 +2183,7 @@ impl Renderer {
             self.prev_instance_upload.invalidate();
         }
         self.sorted.restore(transforms, spheres);
-        if !skinned_data.is_empty() {
+        if !skinned_data.is_empty() || crowd_gpu {
             grow_and_write(
                 &self.device,
                 &self.queue,
@@ -3789,6 +3901,7 @@ impl Renderer {
             Vec::new()
         };
         let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
+        let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
         // The effect groups of the standard and the physical pipelines, in
         // the passes that draw physical materials with theirs.
         let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
@@ -3891,6 +4004,8 @@ impl Renderer {
                     .filter(|_| skinned_gpu)
                     .zip(culled_gpu)
                     .map(|(g, gc)| (gc, g)),
+                // Crowds take this path only when every part is opaque.
+                crowds: None,
             });
             if let Some(mode) = mode {
                 draws += self.frame_draw_oit_billboards(
@@ -3962,6 +4077,13 @@ impl Renderer {
                     .filter(|_| skinned_gpu)
                     .zip(culled_gpu)
                     .map(|(g, gc)| (gc, g)),
+                crowds: cull_pass.zip(crowd_cull).and_then(|(g, cc)| {
+                    cc.rows_of
+                        .get(g as usize)
+                        .copied()
+                        .flatten()
+                        .map(|r| (cc, r))
+                }),
             })
         };
         // Glowing sprites into a glow buffer (group 0 set: the camera's).

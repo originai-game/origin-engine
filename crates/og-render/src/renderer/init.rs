@@ -205,6 +205,16 @@ impl Renderer {
         {
             features |= wgpu::Features::TIMESTAMP_QUERY;
         }
+        // Crowds on the GPU-driven path (crowd_gpu.rs) start each level's
+        // indirect draw at the first instance the cull found; without the
+        // feature they are drawn through the CPU's skinned lists.
+        let crowd_indirect = indirect
+            && adapter
+                .features()
+                .contains(wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        if crowd_indirect {
+            features |= wgpu::Features::INDIRECT_FIRST_INSTANCE;
+        }
         let mut info = RenderInfo {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
@@ -1098,6 +1108,8 @@ impl Renderer {
             desc_particles: desc.particles,
             desc_culling: desc.culling,
             indirect,
+            crowd_indirect,
+            crowd_gpu: None,
             gpu_cull: None,
             meshlet: None,
             culling_counts: false,

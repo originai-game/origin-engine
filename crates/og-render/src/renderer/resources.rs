@@ -424,6 +424,10 @@ pub(crate) struct Batch {
     pub(crate) layers: u32,
     /// The reflection probe its instances sample (`probe_select.rs`).
     pub(crate) probe: u8,
+    /// A crowd's draw (`crowd.rs`, its index in the frame's crowd draws)
+    /// drawn from the crowd cull's records and indirect draws, not the
+    /// skinned instances' (`crowd_gpu.rs`).
+    pub(crate) crowd: Option<u32>,
 }
 
 /// The effect bind groups and what they were made from.
