@@ -372,6 +372,12 @@ impl Ui {
         if let Some(a) = r.num("aspect") {
             el.aspect = a;
         }
+        if let Some(f) = r.num("fade") {
+            el.fade = f.max(0.0);
+        }
+        if let Some(c) = r.color("fadeInto") {
+            el.fade_into = Some(c);
+        }
         if r.has("interactive") {
             el.interactive = r.flag("interactive");
         }

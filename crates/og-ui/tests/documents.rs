@@ -651,3 +651,59 @@ image Pic {
     ui.end();
     assert_eq!(host.0.borrow().as_slice(), [handle]);
 }
+
+/// A document scroll with `fade` fades its bottom edge where its rows run
+/// on past it, so a cut row reads as more rather than as a clip; one whose
+/// rows fit draws no fade.
+#[test]
+fn a_document_scroll_fades_where_its_content_runs_on() {
+    const LIST: &str = r#"type screen
+version 1
+---
+name "list"
+layer menu
+props {
+  rows list "Rows."
+}
+fixture few "{\"rows\": [1, 2]}"
+fixture many "{\"rows\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]}"
+column List {
+  width 300
+  height 300
+  scroll Page {
+    width grow
+    height 120
+    fade 32
+    for r in rows {
+      label Row {
+        text "Row"
+      }
+    }
+  }
+}
+"#;
+    let fades = |fixture: &str| {
+        let mut ui = ui_with_font(test_font_metrics());
+        let doc = UiDocument::parse("ui/list.ogt", LIST).expect("the list parses");
+        let vm = doc.fixture(fixture).cloned().unwrap();
+        ui.define_document(doc);
+        ui.push_screen("list", vm).unwrap();
+        for _ in 0..3 {
+            tick(&mut ui, InputFrame::default());
+        }
+        let page = el(&ui, "list/List/Page").clone();
+        ui.frame()
+            .items
+            .iter()
+            .filter(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. } => {
+                    matches!(shape.paint, og_render::UiPaint::Gradient(_))
+                        && (shape.center.y + shape.half.y - (page.y + page.height)).abs() < 1.0
+                }
+                _ => false,
+            })
+            .count()
+    };
+    assert_eq!(fades("few"), 0, "rows that fit draw no fade");
+    assert_eq!(fades("many"), 1, "one fade over the bottom edge");
+}

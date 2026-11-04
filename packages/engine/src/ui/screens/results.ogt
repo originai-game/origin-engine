@@ -66,6 +66,7 @@ column Results {
       width grow
       height grow
       gap 16
+      fade 40
       at phone {
         gap 12
       }

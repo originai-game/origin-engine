@@ -298,6 +298,18 @@ pub const PROPS: &[PropSpec] = &[
         "The style frame its background takes."
     ),
     p!("aspect", Ty::Num, "Width over height (0: none)."),
+    p!(
+        "fade",
+        Ty::Num,
+        ["scroll"],
+        "How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none."
+    ),
+    p!(
+        "fadeInto",
+        Ty::Paint,
+        ["scroll"],
+        "The colour its fade runs into: the ground it sits on (default panel)."
+    ),
     p!("interactive", Ty::Bool, "It reports clicks (`on click`)."),
     p!(
         "focusable",
