@@ -892,29 +892,24 @@ fn threshold(cell: vec2<u32>) -> f32 {
   return 0.5;
 }
 
-// A cell's own number in 0..1 (a 2D integer hash), which picks the octave
-// a cell takes while two fade.
-fn cell_hash(c: vec2<i32>) -> f32 {
-  var h = bitcast<u32>(c.x) * 0x27d4eb2du ^ bitcast<u32>(c.y) * 0x165667b1u;
-  h = (h ^ (h >> 15u)) * 0x85ebca6bu;
-  h = (h ^ (h >> 13u)) * 0xc2b2ae35u;
-  return f32((h ^ (h >> 16u)) & 0xffffffu) / 16777216.0;
-}
-
-// The threshold of the cells on coordinates `q` (metres on a surface plane,
-// or a direction's plane on the camera's sphere) whose pixel is `pixel`
-// wide there: cells about ditherScale pixels across, by whole octaves
-// (powers of two of the units), so a cell stays on the surface as the
-// camera moves and keeps its screen size as it nears or recedes. Between
-// two octaves each coarse cell switches on its own (cell_hash against the
-// fade), so the pattern never jumps as a whole.
-fn dither_cells(q: vec2<f32>, pixel: f32) -> f32 {
-  let o = octave(max(st.quantize.w, 1.0), pixel);
-  let coarse = vec2<i32>(floor(q / (o.x * 2.0)));
-  if (cell_hash(coarse) < o.y) {
-    return threshold(bitcast<vec2<u32>>(coarse));
-  }
-  return threshold(bitcast<vec2<u32>>(vec2<i32>(floor(q / o.x))));
+// The threshold of the cells on plane coordinates `q` (metres on a surface
+// plane, or a direction's plane on the camera's cube) where one logical
+// pixel moves `q` by `gu` along its first axis and `gv` along its second
+// (each the change per pixel across and down): each axis takes its own
+// whole octave (a power of two of the units), the finest whose cell is at
+// least ditherScale pixels on the screen along both screen axes. So a
+// floor seen at a grazing angle gets cells long along its depth and fine
+// across, each about one dither cell on the screen, instead of square
+// cells stretched into streaks, and the pattern stays the ordered one
+// (no cell of another octave among them) while it stays on the surface.
+fn dither_cells(q: vec2<f32>, gu: vec2<f32>, gv: vec2<f32>) -> f32 {
+  let scale = max(st.quantize.w, 1.0);
+  // 1/64 of an octave of slack, so a footprint exactly on a power of two
+  // (an orthographic wall at one cell per pixel) keeps that octave.
+  let lu = clamp(ceil(log2(scale * max(length(gu), 1e-9)) - 0.015625), -24.0, 12.0);
+  let lv = clamp(ceil(log2(scale * max(length(gv), 1e-9)) - 0.015625), -24.0, 12.0);
+  let cell = vec2<f32>(exp2(lu), exp2(lv));
+  return threshold(bitcast<vec2<u32>>(vec2<i32>(floor(q / cell))));
 }
 
 // The world direction through logical pixel position `p`.
@@ -936,20 +931,29 @@ fn dither_sky(p: vec2<f32>) -> f32 {
   var a = 2;
   if (ad.x >= ad.y && ad.x >= ad.z) { a = 0; } else if (ad.y >= ad.z) { a = 1; }
   let face = d / max(ad[a], 1e-6);
-  // One pixel's angle on the face: the next pixel's direction there.
-  let n = view_dir(p + vec2<f32>(1.0, 0.0));
-  let pixel = max(length(plane_uv(n / max(abs(n[a]), 1e-6) - face, a)), 1e-6);
+  // How a pixel's step across and down moves the point on the face.
+  let nx = view_dir(p + vec2<f32>(1.0, 0.0));
+  let ny = view_dir(p + vec2<f32>(0.0, 1.0));
+  let sx = plane_uv(nx / max(abs(nx[a]), 1e-6) - face, a);
+  let sy = plane_uv(ny / max(abs(ny[a]), 1e-6) - face, a);
   // The face's sign keeps opposite faces from sharing cells.
-  return dither_cells(plane_uv(face, a) + select(0.0, 8.0, d[a] < 0.0), pixel);
+  return dither_cells(
+    plane_uv(face, a) + select(0.0, 8.0, d[a] < 0.0),
+    vec2<f32>(sx.x, sy.x),
+    vec2<f32>(sx.y, sy.y),
+  );
 }
 
 // The dither on a surface: cells on the plane its normal faces most (a
-// threshold cannot blend between planes: the most-facing one takes it).
+// threshold cannot blend between planes: the most-facing one takes it),
+// sized along each of the plane's axes by the pixel steps there.
 fn dither_surface(s: Surf) -> f32 {
   let w = tri_weights(s.n);
   var a = 2;
   if (w.x >= w.y && w.x >= w.z) { a = 0; } else if (w.y >= w.z) { a = 1; }
-  return dither_cells(plane_uv(s.p, a), s.pixel);
+  let sx = plane_uv(s.dx, a);
+  let sy = plane_uv(s.dy, a);
+  return dither_cells(plane_uv(s.p, a), vec2<f32>(sx.x, sy.x), vec2<f32>(sx.y, sy.y));
 }
 
 fn dither_at(pos: vec2<f32>) -> f32 {

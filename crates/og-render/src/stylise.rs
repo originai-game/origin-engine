@@ -149,8 +149,9 @@ pub struct Quantize {
     /// One dither cell in logical pixels.
     pub dither_scale: u32,
     /// Where the dither's cells lie: over the frame, or on the surfaces
-    /// (world or each instance's space, about `dither_scale` pixels by
-    /// whole octaves), so a pattern stays on what it shades as the camera
+    /// (world or each instance's space, at least `dither_scale` pixels on
+    /// the screen along both axes, each of the surface's axes by whole
+    /// octaves, so a receding floor's cells are long along its depth), so a pattern stays on what it shades as the camera
     /// moves instead of crawling over the screen; the sky's cells lie on a
     /// cube round the camera (Lucas Pope's Obra Dinn). On surfaces the
     /// frame runs the prepass.
