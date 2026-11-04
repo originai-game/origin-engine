@@ -101,6 +101,19 @@ fn ign(px: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(dot(px, vec2<f32>(0.06711056, 0.00583715))));
 }
 
+// A 4x4 Bayer ordering of the AO texel (0..15, +0.5, over 16): interleaved
+// sampling (Keller and Heidrich 2001) matched to fs_ao_blur's and
+// fs_gi_blur's 4x4 window, so every window holds each of the sixteen
+// rotations and step offsets once and the blur returns their mean, with no
+// residue of the pattern on a flat surface (IGN's, which needs a temporal
+// filter to average, left a dotted stipple on grazing roofs).
+fn ao_noise(px: vec2<f32>) -> f32 {
+  let p = vec2<u32>(px) & vec2<u32>(3u);
+  let lo = (((p.x ^ p.y) & 1u) << 1u) | (p.y & 1u);
+  let hi = ((((p.x ^ p.y) >> 1u) & 1u) << 1u) | ((p.y >> 1u) & 1u);
+  return (f32(lo * 4u + hi) + 0.5) / 16.0;
+}
+
 // Pixels per world unit at view depth `d` (vertically).
 fn pixels_per_unit(d: f32) -> f32 {
   let s = fxp.proj[1][1] * 0.5 * fxp.screen.y;
@@ -175,7 +188,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
   if (radius_px < 1.0) { return vec4<f32>(1.0, n); }
-  let noise = ign(in.pos.xy);
+  let noise = ao_noise(in.pos.xy);
   let slices = 3u;
   let steps = 6u;
   var vis = 0.0;
@@ -185,7 +198,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   let dsize = vec2<i32>(textureDimensions(tex_depth));
   let dsize_f = vec2<f32>(dsize);
   for (var s = 0u; s < slices; s++) {
-    let jitter = fract(noise * 7.13 + f32(s) * 0.37);
+    let jitter = fract(noise * 4.0 + f32(s) * 0.37);
     let phi = (f32(s) + noise) * FX_PI / f32(slices);
     let omega = vec2<f32>(cos(phi), -sin(phi));
     let dir = vec3<f32>(cos(phi), sin(phi), 0.0);
