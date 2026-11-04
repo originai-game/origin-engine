@@ -245,7 +245,22 @@ function hide(world: World, args: readonly string[]): void {
       const m = must(world.get(c, og.Model));
       must(world.set(c, og.Model, { ...m, visible: false }));
     }
-  } else throw new Error("write hide:<cloak|traveller|ground>");
+  } else if (args[0] === "terrain") {
+    const g = world.find("meadow")!;
+    const tr = must(world.get(g, og.Terrain));
+    must(world.set(g, og.Terrain, { ...tr, visible: false }));
+  } else if (args[0] === "rocks") {
+    for (let k = 0; k < 6; k++) {
+      const c = world.find(`cliff-${k}`)!;
+      const m = must(world.get(c, og.Model));
+      must(world.set(c, og.Model, { ...m, visible: false }));
+    }
+  } else if (args[0] === "grass") {
+    must(world.remove(world.find("meadow")!, og.Grass));
+    must(world.remove(world.find("grass-edge")!, og.Grass));
+  } else if (args[0] === "edge") {
+    must(world.remove(world.find("grass-edge")!, og.Grass));
+  } else throw new Error("write hide:<cloak|traveller|ground|terrain|rocks|grass|edge>");
 }
 
 function brace(world: World, args: readonly string[]): void {
@@ -267,7 +282,7 @@ export default og.game({
     brace: { usage: "<seconds>", doc: "Brace against the wind and shield the eyes, held this long (1.5 s if omitted)." },
     cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
     clouds: { usage: "<0|1>", doc: "Hide the cloud sea (0) or show it (1)." },
-    hide: { usage: "<cloak|traveller|ground>", doc: "Diagnostic: hide the cloak, the traveller, or the terrain and cliff rocks." },
+    hide: { usage: "<cloak|traveller|ground|terrain|rocks|grass|edge>", doc: "Diagnostic: hide the cloak, the traveller, or the terrain and cliff rocks." },
   },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);
