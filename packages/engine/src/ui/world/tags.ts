@@ -17,7 +17,7 @@ import {
   a11y, box, clamp01, easeBack, easeOut, edge, ellipseShape, fillDraw, glow, groups, icon, inkOn, kit, leaf, lit, mix, msToTicks, now, pct, pop,
   px, rarityColor, rarityPips, reactionColor, reduced, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, waypointColor, absolute,
   tps, arc, paintRgba, type Rgba, apply, type Props, ut,
-  isolate,
+  isolate, luminance,
 } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
@@ -128,7 +128,8 @@ export function interactionPrompt(world: Api.World, id: string, desc: Api.Intera
     ...lift(desc.target, desc.height ?? 1.2),
     direction: "column",
     cross: "center",
-    gap: u(4),
+    // The name's gap grows with the player's text size, so the chip's entrance never reaches its letters.
+    gap: ut(6),
     maxDistance: desc.maxDistance || 6,
     occlusion: "none",
     declutter: "shift",
@@ -144,7 +145,13 @@ export function interactionPrompt(world: Api.World, id: string, desc: Api.Intera
     const enter = reduced() ? 1 : easeBack(clamp01((t - shownAt) / msToTicks(260)));
     const done = edge("done", hold !== null && hold >= 1 ? 1 : 0);
     const s = hold !== null && hold >= 1 ? pop(done.since, 0.2, 300) : 1;
-    if (desc.name) text("Name", desc.name, { step: ts(12), color: token("inkMuted"), nowrap: true, outline: 1 });
+    // The name sits on the world, not on the chip's plate: it takes the scheme's light ink (inkMuted in a dark
+    // style, inkInverse in a light one, whose inkMuted is dark and vanishes on a dark scene) and the HUD's
+    // name treatment, whose outline is a dark neutral rather than a light style's translucent shadow.
+    if (desc.name) {
+      const muted = role("inkMuted"), inverse = role("inkInverse");
+      text("Name", desc.name, { step: ts(12), color: lit(luminance(muted) >= luminance(inverse) ? muted : inverse), nowrap: true, name: true });
+    }
     box("Frame", {
       direction: "row", gap: u(8), cross: "center", padding: { left: u(6), right: u(12), top: u(5), bottom: u(5) },
       part: sel("InteractionPrompt", "frame", disabled ? "disabled" : null), partClass: "hud",
