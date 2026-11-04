@@ -24,8 +24,13 @@ import type { Entity, TerrainData, World } from "@origingame/engine";
 import { must, v3 } from "./mesh.ts";
 import { buildSky } from "./sky.ts";
 
-/** The hour and the sun's azimuth that stand it 12° up, behind the traveller's right shoulder. */
-const HOUR = 17.115;
+/**
+ * The hour and the sun's azimuth that stand it 9° up, behind the traveller's
+ * right shoulder (og.DayNight: elevation = asin(sin(a) cos(tilt)), a the
+ * hour's angle from 6 h). At 12° its disc touched the top edge of the hero
+ * (whose top is 14° up) and the wide shot.
+ */
+const HOUR = 17.3375;
 const AZIMUTH = -122;
 
 export const View = defineResource("View", {
