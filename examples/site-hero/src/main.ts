@@ -11,7 +11,7 @@
 //
 // Commands (dev builds): `shot:<n>` picks the view (0 the hero framing,
 // 1 a step further back, 2 close on the traveller), `brace:<seconds>`
-// has the traveller brace against the wind, a hand on the hood
+// has the traveller brace against the wind and shield his eyes
 // (og.motion.react with actions/brace.ogt), `cloth:<0|1>` takes the
 // cloak's simulation off or puts it back (a diagnostic: off, the cloak is
 // drawn as skinned).
@@ -195,7 +195,7 @@ export default og.game({
   commands: { shot, brace, cloth },
   commandHelp: {
     shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
-    brace: { usage: "<seconds>", doc: "Brace against the wind, a hand on the hood, held this long (1.5 s if omitted)." },
+    brace: { usage: "<seconds>", doc: "Brace against the wind and shield the eyes, held this long (1.5 s if omitted)." },
     cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
   },
   facts: (world) => {

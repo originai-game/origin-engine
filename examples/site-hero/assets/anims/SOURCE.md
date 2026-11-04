@@ -11,6 +11,9 @@ motion capture of a real person, no likeness.
   man sidesteps once to widen his stance, lifts his right hand to grip his
   hood at the side of his head, and holds that pose motionless; finally the
   hand drops back to his side."
+  The traveller's hood is modelled down, so in the scene the raised hand
+  lands at the brow: the beat is "shields his eyes against the gust"
+  (actions/brace.ogt).
 - Motion: operation traveller-brace-meshy-2026-11-03-v11, task 01a1a248-19fa-7373-8f7f-97a18ca26f04
 - Applied to the rig task 01a1a0ca-a89b-718b-95eb-478d5f4fc081: operation
   traveller-brace-apply-2026-11-03-v11, task 01a1a24a-806c-752f-9d41-b5da5ce883ac,

@@ -14,7 +14,7 @@
 // alpha, painted in the alpha over white so the texture keeps its colour)
 // is 0 where the cloak meets the body (the seam, and a band along it by
 // distance over the cloak), 0 above the shoulder blades (the hood and
-// collar stay on the skin; the hood is where the hand holds it), rising
+// collar stay on the skin), rising
 // to 1 by the hips, so the lower cloak swings while its top stays put and
 // never opens a gap to the body.
 
