@@ -31,7 +31,7 @@ const ART_FILES = [
 ] as const;
 export type HudArt = (typeof ART_FILES)[number];
 const CUT_OUTS: ReadonlySet<string> = new Set(["loadout/raven"]);
-const cutOut = (f: string): boolean => CUT_OUTS.has(f) || f.startsWith("race/");
+const cutOut = (f: string): boolean => CUT_OUTS.has(f) || f.startsWith("race/") || f.startsWith("city/");
 const ART: Partial<Record<HudArt, number>> = {};
 
 /** Load the HUDs' art (the game's start). A file that is missing leaves its slot on the style's placeholder. */

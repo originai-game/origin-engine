@@ -153,7 +153,7 @@ const ART_FILES = [
   "scenes/tactical", "scenes/jade", "scenes/scifi", "photo/shot", "photo/vivid", "photo/noir", "photo/sepia", "photo/cool", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film",
   "photo/thumb-cinema", "photo/thumb-polaroid", "photo/thumb-film",
 ] as const;
-/** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
+/** The cut-outs on transparent ground (PNG; the figures and the city tiles too); the rest is painted edge to edge (JPEG). */
 const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven", "photo/frame-cinema", "photo/frame-polaroid", "photo/frame-film"]);
 export type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
@@ -175,7 +175,7 @@ export function loadPatternArt(world: World): void {
   words = world;
   for (const f of ART_FILES) {
     // Figures and the other cut-outs are on transparent ground (PNG); the rest is painted edge to edge (JPEG).
-    const r = og.load.texture(world, `textures/art/${f}.${f.startsWith("figures/") || CUTOUTS.has(f) ? "png" : "jpg"}`);
+    const r = og.load.texture(world, `textures/art/${f}.${f.startsWith("figures/") || f.startsWith("city/") || CUTOUTS.has(f) ? "png" : "jpg"}`);
     if (r.ok) ART[f] = r.value as unknown as number;
   }
 }
