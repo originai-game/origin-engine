@@ -36,6 +36,12 @@ const SUN_RADIUS_DEGREES: f32 = 0.27;
 /// round the sun, a light's own bulb.
 const SUN_MASK_RADII: f32 = 3.0;
 const LIGHT_MASK_RADII: f32 = 1.5;
+/// A source ghost's least radius, as a fraction of the frame's height: a
+/// soft aperture, not a sharp copy of a small source.
+const GHOST_APERTURE: f32 = 0.025;
+/// A source ghost's share of its exposed radiance (art direction: a ghost
+/// 5 to 15 % of its source's halo, so a dim lamp's are faint).
+const GHOST_GAIN: f32 = 0.02;
 /// The view depth a local light must lie past to flare (metres).
 const MIN_LIGHT_DEPTH: f32 = 0.05;
 
@@ -228,7 +234,7 @@ pub(crate) fn flare_uniform(
         ],
         exposure: exposure.0,
         meter: [exposure.1, sources.count as f32, 0.0, 0.0],
-        mask: [SUN_MASK_RADII, LIGHT_MASK_RADII, 0.0, 0.0],
+        mask: [SUN_MASK_RADII, LIGHT_MASK_RADII, GHOST_APERTURE, GHOST_GAIN],
         lights: sources.lights,
         colors: sources.colors,
     }

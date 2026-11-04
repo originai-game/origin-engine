@@ -212,6 +212,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::fx::GLOBAL_ILLUMINATION,
         enable: |_, _| Ok(()),
     },
+    // The lens flare's settings, read by extraction alone.
+    Lazy {
+        name: crate::fx::LENS_FLARE,
+        enable: |_, _| Ok(()),
+    },
     // R3: realtime light volumes, read by extraction alone.
     Lazy {
         name: crate::probes::REALTIME_LIGHT_VOLUME,

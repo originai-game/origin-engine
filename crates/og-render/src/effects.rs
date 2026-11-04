@@ -233,17 +233,19 @@ pub struct LensFlare {
 }
 
 impl Default for LensFlare {
-    /// Filament's `BloomOptions` defaults, its strength as the intensity.
+    /// Filament's `BloomOptions` defaults, its strength as the intensity,
+    /// but for a fifth of its chromatic aberration and a halo 30 % smaller
+    /// (art direction).
     fn default() -> Self {
         LensFlare {
             intensity: 0.1,
             ghosts: 4,
             ghost_spacing: 0.6,
             ghost_threshold: 10.0,
-            halo_radius: 0.4,
+            halo_radius: 0.28,
             halo_thickness: 0.1,
             halo_threshold: 10.0,
-            chromatic_aberration: 0.005,
+            chromatic_aberration: 0.001,
             starburst: true,
             sun: 1.0,
             lights: 1.0,

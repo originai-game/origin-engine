@@ -25,6 +25,8 @@ use std::sync::Arc;
 /// Screen-space GI's settings: a lazy resource (crate::lazy), so a world
 /// that never names it keeps its type table and hash.
 pub(crate) const GLOBAL_ILLUMINATION: &str = "og.GlobalIllumination";
+/// The lens flare's settings: lazy as well, read by extraction alone.
+pub(crate) const LENS_FLARE: &str = "og.LensFlare";
 
 /// The layouts of the effect records the engine registered.
 #[derive(Default)]
@@ -32,6 +34,7 @@ pub(crate) struct FxLayouts {
     pub post: Option<Layout>,
     pub lighting_2d: Option<Layout>,
     pub global_illumination: Option<Layout>,
+    pub lens_flare: Option<Layout>,
     pub light_2d: Option<Layout>,
     pub occluder_2d: Option<Layout>,
     pub light_mask_2d: Option<Layout>,
@@ -56,6 +59,7 @@ impl FxLayouts {
             post: get("og.PostEffects"),
             lighting_2d: get("og.Lighting2D"),
             global_illumination: get(GLOBAL_ILLUMINATION),
+            lens_flare: get(LENS_FLARE),
             light_2d: get("og.Light2D"),
             occluder_2d: get("og.Occluder2D"),
             light_mask_2d: get("og.LightMask2D"),
@@ -424,22 +428,6 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
                 threshold: f(&p, "godRaysThreshold", 2.0),
             });
         }
-        if on(&p, "lensFlare", false) {
-            let d = LensFlare::default();
-            post.lens_flare = Some(LensFlare {
-                intensity: f(&p, "lensFlareIntensity", d.intensity),
-                ghosts: u(&p, "lensFlareGhosts", d.ghosts),
-                ghost_spacing: f(&p, "lensFlareGhostSpacing", d.ghost_spacing),
-                ghost_threshold: f(&p, "lensFlareGhostThreshold", d.ghost_threshold),
-                halo_radius: f(&p, "lensFlareHaloRadius", d.halo_radius),
-                halo_thickness: f(&p, "lensFlareHaloThickness", d.halo_thickness),
-                halo_threshold: f(&p, "lensFlareHaloThreshold", d.halo_threshold),
-                chromatic_aberration: f(&p, "lensFlareChromaticAberration", d.chromatic_aberration),
-                starburst: on(&p, "lensFlareStarburst", d.starburst),
-                sun: f(&p, "lensFlareSun", d.sun),
-                lights: f(&p, "lensFlareLights", d.lights),
-            });
-        }
         if on(&p, "ssr", false) {
             post.ssr = Some(og_render::ScreenSpaceReflections {
                 max_distance: f(&p, "ssrMaxDistance", 20.0),
@@ -538,6 +526,24 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         &fx.look.palettes,
         textures,
     );
+    if let Some(p) = resource(world, layouts.lens_flare.as_ref())
+        && on(&p, "enabled", false)
+    {
+        let d = LensFlare::default();
+        post.lens_flare = Some(LensFlare {
+            intensity: f(&p, "intensity", d.intensity),
+            ghosts: u(&p, "ghosts", d.ghosts),
+            ghost_spacing: f(&p, "ghostSpacing", d.ghost_spacing),
+            ghost_threshold: f(&p, "ghostThreshold", d.ghost_threshold),
+            halo_radius: f(&p, "haloRadius", d.halo_radius),
+            halo_thickness: f(&p, "haloThickness", d.halo_thickness),
+            halo_threshold: f(&p, "haloThreshold", d.halo_threshold),
+            chromatic_aberration: f(&p, "chromaticAberration", d.chromatic_aberration),
+            starburst: on(&p, "starburst", d.starburst),
+            sun: f(&p, "sun", d.sun),
+            lights: f(&p, "lights", d.lights),
+        });
+    }
     if let Some(g) = resource(world, layouts.global_illumination.as_ref())
         && on(&g, "enabled", false)
         && gi_allowed(Some(&g), fx.gi_preset)

@@ -1,6 +1,6 @@
 # lens-flare
 
-The lens flare (`PostEffects.lensFlare`; `crates/og-render/shaders/lens_flare.wgsl`,
+The lens flare (`og.LensFlare`; `crates/og-render/shaders/lens_flare.wgsl`,
 `crates/og-render/src/post/flare.rs`, the starburst in
 `crates/og-render/shaders/post.wgsl`) ports two sources.
 
@@ -58,8 +58,15 @@ skip of a sun below the horizon.
 - Wicked draws textured sprites along the axis. Here, the sun and the lights
   instead feed the ported Filament ghosts and halo as discs of their
   radiance, each thresholded and clamped on its own and then scaled by its
-  visible share. Around each source, the bloom taps that show it (the sky
-  round the sun, a lamp's bulb) are masked out, so it flares once.
+  visible share. Around each source, the bloom taps are masked out (the sky
+  round the sun, a lamp's bulb, and the bloom's spill of them onto an
+  occluder's edge), so it flares once.
+- A source's ghosts are a smooth (1 - t²)² aperture at least 2.5 % of
+  the frame's height across, holding 2 % of its exposed radiance over the
+  threshold with the disc's energy kept, neither clamped nor split into
+  channels. Each ghost takes one coating tint (amber, teal, violet), the
+  hot core is rolled off, the chromatic aberration defaults to 0.001
+  (Filament: 0.005) and the halo radius to 0.28 (0.4): art direction.
 - A spot only flares from inside its cone. Fog dims a source as frame.wgsl
   `fog_amount` does. The sun fades out over the horizon instead of being
   skipped at it.

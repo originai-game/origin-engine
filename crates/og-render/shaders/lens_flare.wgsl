@@ -1,4 +1,4 @@
-// Lens flare (PostEffects.lensFlare, lens_flare.rs). Prepended by
+// Lens flare (og.LensFlare, post/flare.rs). Prepended by
 // fullscreen.wgsl. Every pass binds the same layout; slots a pass does
 // not use hold placeholders.
 //
@@ -38,7 +38,7 @@ struct Flare {
   halo: vec4<f32>,      // x: radius, y: thickness (0: none), z: threshold, w: the sky's view depth (the camera's far plane)
   exposure: vec4<f32>,  // as post.wgsl Post.exposure
   meter: vec4<f32>,     // x: exposure compensation, y: the lights (0 to FLARE_LIGHTS)
-  mask: vec4<f32>,      // the bloom taps masked round a source that show it, in its disc's radii: x the sun's, y a light's
+  mask: vec4<f32>,      // x, y: the bloom taps masked round the sun and round a light, in its disc's radii; z: a source ghost's least aperture radius (height units); w: a source ghost's share of its exposed radiance
   // Each light: xy its uv, z the view depth a sample must reach to see
   // it (below 0: the sky, for the sun), w its disc's radius (height units).
   lights: array<vec4<f32>, 8>,
@@ -63,12 +63,6 @@ fn flare_exposure() -> f32 {
     return exp2(clamp(log2(0.18) - avg + flare.meter.x, flare.exposure.z, flare.exposure.w));
   }
   return exp2(flare.exposure.x);
-}
-
-fn flare_view_depth(uv: vec2<f32>) -> f32 {
-  let size = vec2<i32>(textureDimensions(flare_depth));
-  let p = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1);
-  return textureLoad(flare_depth, p, 0).r;
 }
 
 fn flare_is_sky(d: f32) -> bool {
@@ -115,19 +109,19 @@ fn fs_flare_occlusion(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(visible / max(samples, 1.0), 0.0, 0.0, 1.0);
 }
 
-// The bloom chain's first level at `uv`, masked out where it shows one of
-// the sources near it (the sky round the sun, a lamp's bulb): the
-// source's own disc replaces it.
+// The bloom chain's first level at `uv`, masked out near each source
+// (the sky round the sun, a lamp's bulb): the source's own disc, weighted
+// by its visibility, replaces it. Every tap in the mask goes, whatever its
+// depth: the bloom chain's downsample spreads a partly hidden source's
+// visible sliver onto the occluder's pixels beside it, and those, ghosted
+// on top of the disc, brightened the flare as the sun slid behind a wall.
 fn flare_screen(uv: vec2<f32>) -> vec3<f32> {
   let n = min(u32(flare.meter.y), FLARE_LIGHTS);
-  if (n > 0u) {
-    let d = flare_view_depth(uv);
-    for (var i = 0u; i < n; i++) {
-      let light = flare.lights[i];
-      let radii = select(flare.mask.y, flare.mask.x, light.z < 0.0);
-      if (flare_distance(uv, light.xy) < flare_radius(i) * radii && flare_sees(d, light.z)) {
-        return vec3<f32>(0.0);
-      }
+  for (var i = 0u; i < n; i++) {
+    let light = flare.lights[i];
+    let radii = select(flare.mask.y, flare.mask.x, light.z < 0.0);
+    if (flare_distance(uv, light.xy) < flare_radius(i) * radii) {
+      return vec3<f32>(0.0);
     }
   }
   return textureSampleLevel(flare_source, flare_linear, uv, 0.0).rgb;
@@ -140,17 +134,9 @@ fn flare_radius(i: u32) -> f32 {
   return max(flare.lights[i].w, 1.0 / flare.size.y);
 }
 
-// Light `i`'s disc at `p`: 1 inside, falling to 0 at its radius.
-fn flare_disc(p: vec2<f32>, i: u32) -> f32 {
-  let r = flare_radius(i);
-  return 1.0 - smoothstep(0.5 * r, r, flare_distance(p, flare.lights[i].xy));
-}
-
 // flare.mat `sampleColor` thresholded: the bloom level's red, green and
 // blue `offset` apart along the line to the centre, each over `threshold`
-// and clamped to 1; then each light's disc the same way, times what the
-// depth shows of it and its gain, so a partly hidden light's ghosts fade
-// rather than staying clamped at full.
+// and clamped to 1.
 fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
   // (Filament: avoids a division by zero in normalize.)
   let offset = normalize(vec2<f32>(0.5001) - uv) * flare.ghosts.w;
@@ -158,18 +144,47 @@ fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
     flare_screen(uv + offset).r,
     flare_screen(uv).g,
     flare_screen(uv - offset).b);
-  var c = clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0));
-  let n = u32(flare.meter.y);
-  if (n == 0u) { return c; }
+  return clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0)) + flare_sources(uv, threshold);
+}
+
+// The sources' ghosts at `uv`: each a smooth aperture, (1 - t²)², at least
+// `mask.z` across (a ghost is the lens's defocused aperture, not a sharp
+// copy of the source), holding the source's disc's exposed radiance over
+// the threshold times `mask.w`, spread over the aperture with its energy
+// kept, times its visible share and gain. Not clamped and not split into
+// red, green and blue: a clamp turned each source's ghost into a flat,
+// display-white copy of it whatever its brightness (every lamp's ghosts as
+// bright as the sun's) with hard contours, and the per-channel offsets
+// copied that disc three times in rainbow colours across the frame.
+fn flare_sources(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
+  let n = min(u32(flare.meter.y), FLARE_LIGHTS);
+  if (n == 0u) { return vec3<f32>(0.0); }
   let exposure = flare_exposure();
-  for (var i = 0u; i < min(n, FLARE_LIGHTS); i++) {
+  var c = vec3<f32>(0.0);
+  for (var i = 0u; i < n; i++) {
     let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
     if (seen <= 0.0) { continue; }
-    let disc = vec3<f32>(flare_disc(uv + offset, i), flare_disc(uv, i), flare_disc(uv - offset, i));
-    let l = flare.colors[i].rgb * exposure * disc;
-    c += clamp(l - threshold, vec3<f32>(0.0), vec3<f32>(1.0)) * seen;
+    let r = flare_radius(i);
+    let ra = max(r, flare.mask.z);
+    let t = flare_distance(uv, flare.lights[i].xy) / ra;
+    if (t >= 1.0) { continue; }
+    let a = (1.0 - t * t) * (1.0 - t * t);
+    // (1 - t²)² integrates to a third of its disc: 3 (r / ra)² keeps the
+    // source disc's energy.
+    let spread = 3.0 * (r / ra) * (r / ra);
+    let l = max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0));
+    c += l * (flare.mask.w * spread * a * seen);
   }
   return c;
+}
+
+// A coating tint per ghost (amber, teal, violet in turn), each of luma 1,
+// in place of a rainbow across one ghost.
+fn flare_ghost_tint(i: f32) -> vec3<f32> {
+  let k = u32(i) % 3u;
+  let tint = select(select(vec3<f32>(0.78, 0.6, 1.0), vec3<f32>(0.55, 1.05, 1.0), k == 1u),
+    vec3<f32>(1.25, 0.95, 0.6), k == 0u);
+  return tint / dot(tint, LUMA);
 }
 
 // flare.mat `smoothstep01` and `ring`.
@@ -187,7 +202,7 @@ fn flare_ghosts(vertex_uv: vec2<f32>) -> vec3<f32> {
   let v = (0.5 - uv) * flare.ghosts.y;
   var color = vec3<f32>(0.0);
   for (var i = 0.0; i < flare.ghosts.x; i += 1.0) {
-    color += flare_tap(fract(uv + v * i), flare.ghosts.z);
+    color += flare_tap(fract(uv + v * i), flare.ghosts.z) * flare_ghost_tint(i);
   }
   return color;
 }
@@ -216,6 +231,10 @@ fn fs_flare(in: VsOut) -> @location(0) vec4<f32> {
   if (flare.halo.y > 0.0) {
     color += flare_halo(in.uv);
   }
+  // A hot core rolled off (Reinhard on its largest channel past 4 exposed
+  // units), so a ghost reads as veiling glare, never a white disc.
+  let peak = max(color.r, max(color.g, color.b));
+  color *= 1.0 / (1.0 + max(peak - 4.0, 0.0) / 4.0);
   return vec4<f32>(color, 1.0);
 }
 

@@ -1062,6 +1062,7 @@ Field units the docs and Tune use.
 | [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
+| [`og.LensFlare`](render.md#record-LensFlare) | resource | render | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
 | [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
 | [`og.LightMask2D`](render.md#record-LightMask2D) | component | render | — |
