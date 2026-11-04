@@ -54,6 +54,8 @@ const SEA: f32 = 6000.0;
 fn sea_haze(scene: &mut RenderScene) {
     if let Some(f) = scene.fog.as_mut() {
         f.density = 3.5 / SEA;
+        // Replace the colonnade's ground haze, rather than adding to it.
+        f.height_density = 0.0;
         f.start = 20.0;
         f.max_opacity = 1.0;
     }

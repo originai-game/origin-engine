@@ -86,8 +86,12 @@ pub fn physical_light(
     scene.fog = Some(Fog {
         color: look.fog_color,
         sun_color: look.fog_sun.unwrap_or(Fog::default().sun_color),
-        density: 0.0015,
-        start: 12.0,
+        // Light ground haze, not homogeneous fog up to the cloud layer:
+        // 0.0015/m over 1500m would hide almost 90% even looking straight up.
+        density: 0.0,
+        height_density: 0.0015,
+        height: 0.0,
+        falloff: 0.02, // 50m scale height
         sky: 0.0,
         ..Default::default()
     });
