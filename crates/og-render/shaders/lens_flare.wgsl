@@ -148,19 +148,16 @@ fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
   return clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
-// A source ghost's least radius in this pass's texels: smaller, a ghost of
-// a far source was under two texels, and where its quarter-frame texels
-// fell moved its brightness frame to frame by more than its occlusion did.
-const FLARE_APERTURE_TEXELS: f32 = 6.0;
+// A source ghost's least radius in this pass's texels, below which it would
+// shimmer as its few texels moved; under the least radius `mask.z` from a
+// frame 150 pixels high up, so a ghost's size and brightness do not depend
+// on the resolution.
+const FLARE_APERTURE_TEXELS: f32 = 3.0;
 // The aperture's flat top, as a fraction of its radius; its rim rolls off
 // smoothly over the rest. `FLARE_APERTURE_AREA` is its integral over the
 // unit disc, as a fraction of the disc (0.36 + 0.288).
 const FLARE_APERTURE_EDGE: f32 = 0.6;
 const FLARE_APERTURE_AREA: f32 = 0.648;
-// The brightness a source ghost's peak rolls off above, and twice it the
-// most it reaches (exposed units, before the intensity), as Filament
-// clamps each tap at 1.
-const FLARE_CORE_KNEE: f32 = 0.5;
 
 // A defocused aperture: an even disc with a soft rim, never a line or a
 // ring inside it.
@@ -175,20 +172,16 @@ fn flare_aperture_radius() -> f32 {
 
 // The light of source `i`'s disc, exposed, over `threshold`, times the
 // gain `mask.w` and spread over an aperture of radius `ra` with its
-// energy kept, its peak rolled off past FLARE_CORE_KNEE (so a sun's ghost
-// is veiling glare, never a white disc), then times the share of it the
-// depth shows and its gain. The roll-off comes before the visible share,
-// so the ghost stays in proportion to how much of its source is seen.
+// energy kept, times the share of it the depth shows and its gain. Linear
+// in the source's light, as its bloom halo is, so every source's ghosts
+// stand in the same proportion to its halo: a roll-off of the peak held
+// every lamp's ghosts near the sun's, as bright as their own halos.
 fn flare_source_light(i: u32, threshold: f32, ra: f32, exposure: f32) -> vec3<f32> {
   let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
   if (seen <= 0.0) { return vec3<f32>(0.0); }
   let r = flare_radius(i);
   let spread = (r / ra) * (r / ra) / FLARE_APERTURE_AREA;
-  let l = max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0)) * (flare.mask.w * spread);
-  let peak = max(l.r, max(l.g, l.b));
-  let over = max(peak - FLARE_CORE_KNEE, 0.0);
-  let rolled = FLARE_CORE_KNEE + over / (1.0 + over / FLARE_CORE_KNEE);
-  return l * (min(rolled, peak) / max(peak, 1e-6) * seen);
+  return max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0)) * (flare.mask.w * spread * seen);
 }
 
 // The sources' share of the halo tap at `uv` (the halo warps the frame,

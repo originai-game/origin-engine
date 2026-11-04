@@ -1016,9 +1016,9 @@ fn lens_flare_ghosts_are_smooth_discs() {
         let r = (cx - 1, cy - 1, cx + 2, cy + 2);
         region(&on, r) - region(&off, r)
     };
-    // The ghost is at least 6 of the quarter frame's texels (24 pixels)
-    // in radius; its profile is sampled every 2 pixels out to 16 each way.
-    let profile: Vec<f32> = (-8..=8).map(|i| added(i as f32 * 2.0)).collect();
+    // The ghost is 8 % of the frame's height (14 pixels) in radius; its
+    // profile is sampled every 2 pixels out to 12 each way.
+    let profile: Vec<f32> = (-6..=6).map(|i| added(i as f32 * 2.0)).collect();
     println!("clear lamp's ghost, its profile across: {profile:?}");
     let peak = (0..profile.len())
         .max_by(|&a, &b| profile[a].total_cmp(&profile[b]))
@@ -1028,7 +1028,7 @@ fn lens_flare_ghosts_are_smooth_discs() {
         "the clear lamp's ghost shows: {profile:?}"
     );
     assert!(
-        (6..=10).contains(&peak),
+        (4..=8).contains(&peak),
         "the ghost peaks near the mirrored pixel: {profile:?}"
     );
     // Rising to the peak and falling after it, a step at a time.

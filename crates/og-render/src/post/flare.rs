@@ -37,12 +37,13 @@ const SUN_RADIUS_DEGREES: f32 = 0.27;
 const SUN_MASK_RADII: f32 = 3.0;
 const LIGHT_MASK_RADII: f32 = 1.5;
 /// A source ghost's least radius, as a fraction of the frame's height: a
-/// soft aperture, not a sharp copy of a small source (and never under six
-/// of the flare's texels, `lens_flare.wgsl` FLARE_APERTURE_TEXELS).
-const GHOST_APERTURE: f32 = 0.025;
-/// A source ghost's share of its exposed radiance (art direction: a ghost
-/// 5 to 15 % of its source's halo, so a dim lamp's are faint).
-const GHOST_GAIN: f32 = 0.02;
+/// soft aperture, not a sharp copy of a small source (`lens_flare.wgsl`
+/// FLARE_APERTURE_TEXELS keeps it three flare texels in frames under 150
+/// pixels high).
+const GHOST_APERTURE: f32 = 0.08;
+/// A source ghost's share of its exposed radiance, the same for the sun and
+/// every light (art direction: a ghost 5 to 15 % of its source's halo).
+const GHOST_GAIN: f32 = 0.007;
 /// The view depth a local light must lie past to flare (metres).
 const MIN_LIGHT_DEPTH: f32 = 0.05;
 

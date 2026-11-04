@@ -7617,7 +7617,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The exposed brightness above which a spot casts ghosts (each screen-space tap clamps at 1, display white; a source's own ghost rolls off towards 1)."),
+                doc: doc!("The exposed brightness above which a spot casts ghosts (each screen-space tap clamps at 1, display white; a source's own ghosts stay in proportion to its light)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
