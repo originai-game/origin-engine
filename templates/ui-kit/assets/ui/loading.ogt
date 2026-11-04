@@ -83,6 +83,7 @@ stack Loading {
       padding 16
       gap 6
       frame panel
+      background token panel
       label Eyebrow {
         key "screen.loading.tip"
         text "Tip"

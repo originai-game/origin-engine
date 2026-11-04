@@ -333,6 +333,7 @@ export function raceClassification(): void {
   const fastest = Math.min(...rows.map((r) => r[2]));
   const leader = rows[0]![1];
   const w = (n: number) => ({ kind: "fixed" as const, px: Math.round(n * Math.min(1.4, t.textScale)) });
+  const narrow = og.ui.frameViewport().width < 600;
   og.ui.column("Classification", { width: { kind: "grow" }, gap: 2 }, () => {
     rows.forEach(([name, total, best], i) => {
       const you = name === "You";
@@ -341,9 +342,21 @@ export function raceClassification(): void {
         const ink = you ? ({ token: "onPrimary" } as Paint) : null;
         const muted = you ? ink : ({ token: "inkMuted" } as Paint);
         og.ui.label("Place", String(i + 1), { step: "lg", font: "display", color: ink, nowrap: true, width: w(28), align: "end" });
-        og.ui.label("Name", you ? L("sc.you") : name, { step: "base", font: you ? "display" : "body", color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" } });
-        og.ui.label("Total", lapTime(total), { step: "base", font: "mono", color: ink, nowrap: true });
-        og.ui.label("Best", lapTime(best), { step: "sm", font: "mono", color: best === fastest ? FASTEST : muted, nowrap: true });
+        // A narrow panel (a phone) puts the times under the name, so the name keeps its room.
+        const times = (): void => {
+          og.ui.label("Total", lapTime(total), { step: "base", font: "mono", color: ink, nowrap: true });
+          og.ui.label("Best", lapTime(best), { step: "sm", font: "mono", color: best === fastest ? FASTEST : muted, nowrap: true });
+        };
+        const name_ = (): void => og.ui.label("Name", you ? L("sc.you") : name, { step: "base", font: you ? "display" : "body", color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" } });
+        if (narrow) {
+          og.ui.column("Driver", { width: { kind: "grow" }, gap: 0 }, () => {
+            name_();
+            og.ui.row("Times", { gap: t.space.sm, cross: "center" }, times);
+          });
+        } else {
+          name_();
+          times();
+        }
         og.ui.label("Gap", i === 0 ? "" : `+${((total - leader) / 1000).toFixed(3)}`, { step: "sm", font: "mono", color: muted, nowrap: true, width: w(64), align: "end" });
       });
     });

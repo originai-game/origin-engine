@@ -150,6 +150,7 @@ column Screen {
     cross center
     wrap true
     frame card
+    background token panelRaised
     visible bind "tab == \"league\""
     label Name {
       text bind league.name

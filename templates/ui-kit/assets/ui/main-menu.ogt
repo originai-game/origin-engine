@@ -161,6 +161,7 @@ stack Menu {
     padding 16
     gap 4
     frame card
+    background token panelRaised
     interactive true
     focusable true
     visible bind "news != \"\""

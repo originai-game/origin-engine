@@ -84,6 +84,7 @@ column Results {
     padding 24
     gap 16
     frame panel
+    background token panel
     on appear play land
     at phone {
       padding 16
@@ -247,6 +248,7 @@ column Results {
               gap 4
               cross center
               frame card
+              background token panelRaised
               slot Icon {
                 width 56
                 height 56

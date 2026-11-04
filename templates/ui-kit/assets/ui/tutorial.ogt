@@ -67,6 +67,7 @@ stack Tutorial {
     padding 16
     gap 8
     frame panel
+    background token panel
     enter pop
     at phonePortrait {
       start 12

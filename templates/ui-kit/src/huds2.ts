@@ -320,6 +320,9 @@ export function tdHud(world: World): void {
 
 // ── rhythm ───────────────────────────────────────────────────────────────
 
+/** The largest boxes the judgement and the combo were laid out in, for one look (the rhythm HUD's plates under them). */
+const judgeBoxes: { look: string; boxes: Record<string, { w: number; h: number }> } = { look: "", boxes: {} };
+
 const LANE_HUES: Paint[] = [rgb(0.95, 0.3, 0.45), rgb(0.25, 0.75, 0.95), rgb(0.25, 0.75, 0.95), rgb(0.95, 0.3, 0.45)];
 
 /**
@@ -374,15 +377,44 @@ export function rhythmHud(world: World): void {
   });
   const pressed = ["d", "f", "j", "k"].filter((_, i) => (tick + i * 13) % 26 < 6);
   og.ui.laneKeys("Keys", { lanes: ["d", "f", "j", "k"].map((key, i) => ({ key, hotkey: key.toUpperCase(), x: left + lane * i + lane / 2, color: LANE_HUES[i]! })), y: hitY, width: lane - 12, pressed, hit: pressed });
+  // The judgement and the combo stand over the highway and the stage: a plate of the style's HUD ground under each
+  // holds it, so a pack whose tiers' inks are meant for light panels still reads over the dark well and the lights.
+  // Each plate is tight to its text, so the notes stay in view around it.
+  const hudGround = { token: "hud" } as const;
+  const look = `${vp.width}x${vp.height}|${t.textScale ?? 1}|${t.palette["hud"] ?? ""}`;
+  if (judgeBoxes.look !== look) Object.assign(judgeBoxes, { look, boxes: {} });
+  // Each plate is centred on its widget's place (the static box the word and the count animate in) and as large as the
+  // largest its text has been drawn.
+  const plates: Array<[string, string, string[]]> = [["JudgePlate", "JudgeHud", ["JudgeHud/Judge/Word"]], ["ComboPlate", "ComboHud", ["ComboHud/Combo/Count", "ComboHud/Combo/Under"]]];
+  for (const [id, home, paths] of plates) {
+    const box = (judgeBoxes.boxes[id] ??= { w: 0, h: 0 });
+    const at = og.ui.bounds(home);
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const path of paths) {
+      const b = og.ui.bounds(path);
+      if (!b || b.width <= 0) continue;
+      box.w = Math.max(box.w, b.width);
+      top = Math.min(top, b.y);
+      bottom = Math.max(bottom, b.y + b.height);
+    }
+    if (bottom > top) box.h = Math.max(box.h, bottom - top);
+    if (!at || box.w <= 0) continue;
+    const w = box.w + 2 * t.space.sm;
+    const h = Math.max(at.height, box.h) + 2 * t.space.xs;
+    og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetX: Math.round(at.x + at.width / 2 - w / 2 - vp.safeArea.left), offsetY: Math.round(at.y + at.height / 2 - h / 2 - vp.safeArea.top), width: px(w), height: px(h), background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" }, () => {});
+    og.ui.props({ inert: true, overlaps: [home] } as never);
+  }
   const tiers = ["sc.rhythm.perfect", "sc.rhythm.great", "sc.rhythm.perfect", "sc.rhythm.good"];
   const beat = Math.floor(tick / 26);
   og.ui.judgement("Judge", { last: { text: L(tiers[beat % 4]!), tier: [0, 1, 0, 2][beat % 4]!, offsetMs: [0, -18, 0, 26][beat % 4]!, at: beat * 26 }, earlyLabel: L("sc.rhythm.early"), lateLabel: L("sc.rhythm.late"), anchor: "center", offsetY: -Math.round(40 * k) });
   og.ui.comboCounter("Combo", { count: 212 + beat, label: L("sc.combo"), breakLabel: L("sc.comboBreak"), milestones: [250, 500], anchor: "center" });
-  og.ui.anchor("Score", { anchor: "topRight", margin: m, direction: "column", cross: "end", gap: 2 }, () => {
+  const plate = { background: hudGround, radius: t.radius["panel"] ?? 12, frame: "hud" as const, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.sm } };
+  og.ui.anchor("Score", { anchor: "topRight", margin: m, direction: "column", cross: "end", gap: 2, ...plate }, () => {
     og.ui.counter("Points", 812_400 + beat * 1_250, { step: "xl2", font: "display" });
     og.ui.label("Accuracy", L("sc.rhythm.accuracy", { pct: "98.42" }), { step: "sm", font: "mono", color: { token: "inkMuted" }, nowrap: true });
   });
-  og.ui.anchor("Song", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs }, () => {
+  og.ui.anchor("Song", { anchor: "topLeft", margin: m, direction: "column", gap: t.space.xs, ...plate }, () => {
     og.ui.label("Title", "Stormbreak", { step: "lg", font: "display", nowrap: true });
     og.ui.statBar("Progress", { value: 0.38 + (tick % 3600) / 9000, max: 1, kind: "primary", width: px((small ? 140 : 220) * k), thickness: 4, name: L("sc.rhythm.progress"), anchor: null });
     og.ui.statBar("Life", { value: 82, max: 100, kind: "health", width: px((small ? 140 : 220) * k), thickness: 8, name: L("sc.rhythm.life"), anchor: null });
