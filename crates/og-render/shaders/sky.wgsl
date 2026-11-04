@@ -116,23 +116,28 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let up = clamp(d.y, -1.0, 1.0);
   let light = frame.sky_glow.yzw;
   let sky = sky_rolloff((physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
-  // The disc is the sunlight through the air, the same transmittance as
-  // the sky's (deep orange at sunset), replacing the glow under it a little
-  // brighter than that glow, rolled off as the glow is (at a higher knee:
-  // the brightest thing in the sky), and darkened
-  // towards its limb (a sun's centre is brighter than its edge). Gone once
-  // the sun has set.
+  // Composite the solar radiance after atmospheric scattering, as in
+  // Hillaire 2020 / UE SkyAtmosphere (third_party/hillaire-sky.md).
+  // sun_intensity is radiance in the engine's scene-linear units, not a
+  // display value. Keep its HDR energy for bloom and the output tonemapper;
+  // atmospheric extinction, not a hue-normalized brightness cap, reddens it.
   let through = physical_sun(d, h0);
-  let peak = max(max(through.r, through.g), through.b);
-  let hue = through / max(peak, 1e-6);
-  let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 1.5);
-  let glow = max(max(sky.r, sky.g), sky.b) * 1.15;
   let cos_d = dot(d, sun);
-  let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, cos_d) * smoothstep(0.0, 1e-3, peak) * min(frame.sky_sun.z, 1.0);
-  // How far from the centre to the limb, 0 to 1 (by the disc's outer cosine).
-  let edge = clamp(sqrt(max(1.0 - cos_d, 0.0) / max(1.0 - frame.sky_sun.x, 1e-7)), 0.0, 1.0);
+  // Filter the limb over one pixel's angular footprint, independently of
+  // the authored radius. The aureole is scattering plus bloom, not a
+  // radius-relative feather. Ray derivatives stay well behaved at centre.
+  let angle = atan2(length(cross(d, sun)), cos_d);
+  // The legacy SkyLook uniforms bracket the authored radius at 0.8/1.2.
+  let radius = 0.5 * (acos(clamp(frame.sky_sun.x, -1.0, 1.0)) + acos(clamp(frame.sky_sun.y, -1.0, 1.0)));
+  let pixel_angle = max(max(length(dpdx(d)), length(dpdy(d))), 1e-7);
+  var disc = 0.0;
+  if (radius > 0.0) {
+    disc = clamp((radius - angle) / pixel_angle + 0.5, 0.0, 1.0);
+  }
+  // How far from the centre to the physical limb, 0 to 1.
+  let edge = clamp(angle / max(radius, 1e-7), 0.0, 1.0);
   let limb = 0.75 + 0.25 * sqrt(max(1.0 - edge * edge, 0.0));
-  var color = mix(sky, sky_rolloff(light * hue * max(strength, glow), 0.9, 0.3) * limb, disc);
+  var color = sky + light * through * max(frame.sky_sun.z, 0.0) * limb * disc;
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;
@@ -257,6 +262,13 @@ fn deck_along(background: vec3<f32>, d: vec3<f32>, e: f32) -> vec3<f32> {
   return clouds_march(background, up, vec2<f32>(-1.0));
 }
 
+// A cloud is a finite-distance participating surface, not the sky at
+// infinity: the same integrated view fog as meshes, independent of Fog.sky.
+// Scale its light before fog, just as the background/probe capture does.
+fn cloud_view_fog(color: vec3<f32>, d: vec3<f32>, distance: f32) -> vec3<f32> {
+  return apply_fog(color * (1.0 - frame.view_up.w), frame.view_pos.xyz + d * distance);
+}
+
 // The high layer, then the volumetric layer, faded into the sky with distance.
 fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
   let c = frame.clouds;
@@ -298,7 +310,7 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   // and a little of the sun through it.
   let dk = cloud_deck(d);
   let deck_cover = dk.a;
-  let deck = dk.rgb;
+  let deck = cloud_view_fog(dk.rgb, d, 60000.0);
 
   // The high thin layer (cirrus), streaked along the wind.
   if (c[3].x > 0.0) {
@@ -310,7 +322,7 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
       let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
       let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.2 + sky_top * 0.8;
-      color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.6 * fade);
+      color = mix(color, cloud_view_fog(lit * c[2].rgb, d, t), clamp(wisp, 0.0, 1.0) * 0.6 * fade);
     }
   }
 
@@ -389,7 +401,7 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
       // Under a cover of cloud the light between them is the clouds' own,
       // grey, not the clear sky's blue.
       ambient = mix(ambient, vec3<f32>(dot(ambient, vec3<f32>(0.2126, 0.7152, 0.0722))), c[0].x * 0.7);
-      let s = (sun + ambient) * c[2].rgb * sigma;
+      let s = cloud_view_fog((sun + ambient) * c[2].rgb, d, t) * sigma;
       let seg = exp(-sigma * dt);
       scattered += transmittance * (s - s * seg) / sigma;
       transmittance *= seg;
@@ -399,7 +411,8 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   }
   // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
   // mean colour along this ray, the fallback's where the ray found little cloud).
-  let fade = exp(-start / (far * 0.45));
+  // The legacy distance fade is only for looks without explicit fog.
+  let fade = select(exp(-start / (far * 0.45)), 1.0, frame.fog_color.w > 0.5);
   let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
   let behind = mix(color, mean, deck_cover);
   return mix(behind, color * transmittance + scattered, fade);
@@ -518,5 +531,11 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   var sky = sky_look(dir);
   if (scatter_on()) { sky = sky_physical_look(dir); }
   sky = aurora_over(sky, dir, in.pos.xy);
-  return vec4<f32>(sky_fog(clouds_over(sky, dir, in.pos.xy) * (1.0 - frame.view_up.w), dir), 1.0);
+  // Fog.sky applies to the distant background alone; clouds integrate
+  // their own view fog at each scattering sample, never a second time here.
+  sky = sky_fog(sky * (1.0 - frame.view_up.w), dir);
+  let color = clouds_over(sky, dir, in.pos.xy);
+  // Storage bound only, not a display rolloff: avoid half-float infinity
+  // before bloom. SDR/AgX and opt-in HDR/LPM own the display peak mapping.
+  return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(65504.0)), 1.0);
 }

@@ -1094,6 +1094,17 @@ S6).
   irradiance as their ambient light. The IBL generator's own sky (the
   1024-byte parameter slots, the BRDF LUT, environment maps) is
   unchanged and draws the first frame's lighting.
+- **Physical solar radiance and cloud view fog.** The physical sky adds
+  the atmosphere-attenuated solar radiance after scattering, retaining
+  limb darkening and filtering the disc boundary over one pixel's angular
+  footprint. Its aureole comes from scattering and bloom, not a feather
+  proportional to its radius. Only the scattered sky retains the look's
+  saturated-colour shoulder; the sun reaches bloom and the tonemapper in
+  scene-linear HDR (`third_party/hillaire-sky.md`). The sky output is
+  bounded to finite RGBA16F storage; the HDR output mapper bounds it to
+  the display peak. Cloud scattering samples receive the same view fog
+  as meshes at their distance. `Fog.sky` affects the distant background
+  before cloud composition, not the finite-distance cloud volume.
 - **Realtime light volumes (R3).** The lazy component
   `og.RealtimeLightVolume` (`updatesPerFrame`, `intensity`) beside an
   `og.LightVolume` relights that box's probes while the game runs

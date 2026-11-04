@@ -605,6 +605,236 @@ fn a_replaced_mesh_draws_its_new_shape() {
     }
 }
 
+/// A disc alone against black, so neither scattered sky nor automatic
+/// exposure can hide a lost HDR peak or manufacture its bloom halo.
+fn solar_probe() -> RenderScene {
+    let mut scene = RenderScene::new();
+    let sun = Vec3::new(0.0, 0.5, -0.8660254);
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.sky.sun_color = Vec3::ONE;
+    scene.environment.sky.look = Some(og_render::SkyLook {
+        physical: Some(og_render::PhysicalAtmosphere::EARTH),
+        sun_size: 2.0,
+        sun_intensity: 40.0,
+        brightness: 0.0,
+        stars: 0.0,
+        moon_size: 0.0,
+        ..Default::default()
+    });
+    scene.environment.background = og_render::Background::Procedural {
+        sun_direction: sun,
+        sun_color: Vec3::ONE,
+    };
+    scene.camera = Camera {
+        position: Vec3::ZERO,
+        target: sun,
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 30.0,
+        },
+        exposure: og_render::Exposure::Manual { ev: -6.0 },
+        ..Default::default()
+    };
+    scene.post.tonemap = og_render::Tonemap::None;
+    scene
+}
+
+fn linear_pixel(image: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
+    px(image, x, y).map(|v| {
+        let s = v / 255.0;
+        if s <= 0.04045 {
+            s / 12.92
+        } else {
+            ((s + 0.055) / 1.055).powf(2.4)
+        }
+    })
+}
+
+#[test]
+fn physical_sun_retains_hdr_radiance_limb_darkening_and_bloom_falloff() {
+    let mut scene = solar_probe();
+    let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
+        width: 256,
+        height: 256,
+        antialias: og_render::Antialias::Off,
+        ..scenes::base_desc()
+    })
+    .unwrap();
+    let mut draw = |s: &RenderScene| {
+        renderer.render(s, &RenderTarget::Offscreen).unwrap();
+        renderer.read_offscreen().unwrap()
+    };
+    // None + -6 EV keeps the raw peak within the capture's range. Undo the
+    // known exposure and sRGB transfer to measure the pre-tonemap pixel.
+    let bright = draw(&scene);
+    let center = luma(linear_pixel(&bright, 128, 128)) * 64.0;
+    let limb = luma(linear_pixel(&bright, 140, 128)) * 64.0;
+    let edge = luma(linear_pixel(&bright, 144, 128)) * 64.0;
+    println!("solar pre-tonemap: center={center}, limb={limb}, edge={edge}");
+    assert!(
+        center > 10.0,
+        "well past bloom threshold 1.2, not capped at 1.5: {center}"
+    );
+    assert!(
+        center > limb && limb > edge && edge > 0.0,
+        "radial limb/coverage falloff"
+    );
+    // The 2-degree radius projects to 16.7px. Only the boundary pixel is
+    // filtered, not the old 0.8..1.2-radius band. No aureole without bloom
+    // or atmospheric scattering (brightness is zero in this fixture).
+    assert!(luma(linear_pixel(&bright, 143, 128)) * 64.0 > center * 0.7);
+    assert!(luma(linear_pixel(&bright, 145, 128)) < 0.001);
+    scene.environment.sky.look.as_mut().unwrap().sun_intensity = 10.0;
+    let dim = draw(&scene);
+    let quarter = luma(linear_pixel(&dim, 128, 128)) * 64.0;
+    assert!(
+        (center / quarter - 4.0).abs() < 0.2,
+        "radiance scales before tone mapping"
+    );
+    scene.environment.sky.look.as_mut().unwrap().sun_intensity = 40.0;
+    scene.camera.exposure = og_render::Exposure::Manual { ev: 0.0 };
+    scene.post.bloom = Some(og_render::Bloom {
+        threshold: 1.2,
+        knee: 0.0,
+        intensity: 0.6,
+    });
+    let bloom = draw(&scene);
+    // Outside the disc's 16.7px radius: only the post bloom can light it.
+    let near = luma(linear_pixel(&bloom, 156, 128));
+    let far = luma(linear_pixel(&bloom, 220, 128));
+    println!("solar halo: near={near}, far={far}");
+    assert!(
+        near > 0.01 && far < near * 0.6,
+        "bloom falls off outside the solar disc"
+    );
+    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("solar-hdr");
+    std::fs::create_dir_all(&out).unwrap();
+    std::fs::write(out.join("radiance.png"), og_render::png(&bright)).unwrap();
+    std::fs::write(out.join("bloom.png"), og_render::png(&bloom)).unwrap();
+}
+
+#[test]
+fn cloud_volume_gets_view_fog_even_when_the_clear_sky_does_not() {
+    let mut scene = solar_probe();
+    scene.environment.sky.look.as_mut().unwrap().sun_intensity = 0.0;
+    scene.camera.exposure = og_render::Exposure::Manual { ev: 0.0 };
+    let color = Vec3::new(0.2, 0.05, 0.1);
+    scene.fog = Some(og_render::Fog {
+        color,
+        sun_color: color,
+        density: 0.02,
+        sky: 0.0,
+        ..Default::default()
+    });
+    scene.clouds = Some(og_render::Clouds {
+        coverage: 1.0,
+        density: 0.1,
+        base: 1000.0,
+        thickness: 2000.0,
+        layer: 0.0,
+        detail: 0.0,
+        wind: Vec3::ZERO,
+        ..Default::default()
+    });
+    let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
+        width: 128,
+        height: 128,
+        antialias: og_render::Antialias::Off,
+        ..scenes::base_desc()
+    })
+    .unwrap();
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let cloudy = renderer.read_offscreen().unwrap();
+    let measured = Vec3::from_array(linear_pixel(&cloudy, 64, 64));
+    println!("cloud through fog: {measured}, expected {color}");
+    assert!(
+        (measured - color).abs().max_element() < 0.02,
+        "opaque cloud tends to the same fog colour as a distant mesh"
+    );
+    scene.clouds = None;
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let clear = renderer.read_offscreen().unwrap();
+    assert!(
+        luma(linear_pixel(&clear, 64, 64)) < 0.001,
+        "Fog.sky=0 leaves the clear background alone"
+    );
+}
+
+#[test]
+fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
+    for (name, aa, scale) in [
+        ("taa", og_render::Antialias::Taa, 1.0),
+        ("taau", og_render::Antialias::Taa, 0.67),
+        ("smaa-t2x", og_render::Antialias::SmaaT2x, 1.0),
+    ] {
+        let mut scene = solar_probe();
+        scene.environment.sky.look.as_mut().unwrap().sun_size = 0.5;
+        scene.camera.projection = og_render::Projection::Perspective {
+            fov_y_degrees: 50.0,
+        };
+        let sun = scene.environment.sky.sun_direction;
+        let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
+            width: 320,
+            height: 180,
+            antialias: aa,
+            ..scenes::base_desc()
+        })
+        .unwrap();
+        renderer.set_render_scale(scale);
+        let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+            .join("solar-hdr")
+            .join(name);
+        std::fs::create_dir_all(&out).unwrap();
+        let mut energy = Vec::new();
+        let mut largest_lag = 0.0f32;
+        for frame in 0..48 {
+            // Warm history first, then pan continuously through subpixels.
+            let angle = (frame as f32 - 8.0).max(0.0) * 0.002;
+            scene.camera.target = glam::Quat::from_rotation_y(angle) * sun;
+            scene.tick = frame;
+            renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+            let image = renderer.read_offscreen().unwrap();
+            std::fs::write(out.join(format!("{frame:03}.png")), og_render::png(&image)).unwrap();
+            if frame < 8 {
+                continue;
+            }
+            let forward = scene.camera.target.normalize();
+            let right = forward.cross(scene.camera.up).normalize();
+            let up = right.cross(forward);
+            let z = sun.dot(forward) * 25f32.to_radians().tan();
+            let expected = Vec2::new(
+                159.5 + sun.dot(right) / z * 90.0,
+                89.5 - sun.dot(up) / z * 90.0,
+            );
+            let mut total = 0.0;
+            let mut centroid = Vec2::ZERO;
+            let mut trail = 0.0;
+            for y in 0..180 {
+                for x in 0..320 {
+                    let w = luma(linear_pixel(&image, x, y));
+                    total += w;
+                    let p = Vec2::new(x as f32, y as f32);
+                    centroid += p * w;
+                    if p.distance(expected) > 6.0 {
+                        trail += w;
+                    }
+                }
+            }
+            assert!(total > 0.2, "{name}: solar radiance disappeared");
+            largest_lag = largest_lag.max((centroid / total).distance(expected));
+            assert!(trail < total * 0.01, "{name}: a detached HDR history trail");
+            energy.push(total);
+        }
+        let min = energy.iter().copied().fold(f32::INFINITY, f32::min);
+        let max = energy.iter().copied().fold(0.0, f32::max);
+        println!(
+            "{name}: solar energy {min}..{max}, max centroid error {largest_lag}px; frames {}",
+            out.display()
+        );
+        assert!(max < min * 1.6, "{name}: subpixel solar energy flickers");
+        assert!(largest_lag < 2.0, "{name}: solar history lags the camera");
+    }
+}
+
 /// R4's physical sky over the colonnade: each frame matches its
 /// reference, and reads as the sky it is. At noon the band above the
 /// pillars is blue (blue over red); looking into the setting sun the
