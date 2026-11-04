@@ -184,7 +184,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   kit.openScroll("Info", { width: grow(), height: short || large ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
   {
     if (portrait && big) tabsBlock();
-    if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
+    if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", maxLines: 2, width: grow() });
     text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
       timerChip("Timer", desc.endsIn, "", timeWords(desc));
@@ -361,7 +361,8 @@ function pityMeter(id: string, pity: number, max: number, label: string): void {
   // underline. Lit in the highlight once the guarantee is near.
   kit.column(id, { gap: u(5), cross: "stretch", width: grow(), part: "Gacha.pity", partClass: "badge" }, () => {
     kit.row("Words", { gap: u(8), cross: "center", width: grow(), align: "spaceBetween" }, () => {
-      text("Label", words, { step: st(13), nowrap: true, ellipsis: true, color: f > 0.8 ? "highlight" : "ink" });
+      // Wrapped beside its count rather than cut (a pixel face, large text).
+      text("Label", words, { step: st(13), maxLines: 2, width: grow(), color: f > 0.8 ? "highlight" : "ink" });
       text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted" });
     });
     kit.open("Track", { width: grow(), height: px(u(6)), radius: 999 });

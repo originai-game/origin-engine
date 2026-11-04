@@ -228,9 +228,10 @@ export function storeFront(id: string, desc: Api.StoreFrontDesc): Api.StoreFront
           // What the bundle holds, on the shaded start side.
           kit.open("Contents", { direction: "column", gap: u(3), width: px(Math.round(w * 0.5)), part: "Store.contents", partClass: "badge" });
           for (const [i, c] of (o.contents ?? []).slice(0, 5).entries()) {
-            kit.open(kit.idi("Line", i), { direction: "row", gap: u(6), cross: "center", width: grow() });
+            kit.open(kit.idi("Line", i), { direction: "row", gap: u(6), cross: "start", width: grow() });
             symbol("Dot", "check", u(12), rim === role("lineStrong") ? role("success") : mix(rim, hex("#ffffff"), 0.35));
-            text("Text", c, { step: st(13), color: "ink", nowrap: true, ellipsis: true, width: grow() });
+            // Wrapped, never cut: a pixel face or large text takes a second line.
+            text("Text", c, { step: st(13), color: "ink", maxLines: 3, width: grow() });
             kit.close();
           }
           kit.close();

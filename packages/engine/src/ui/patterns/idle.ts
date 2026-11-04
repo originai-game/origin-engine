@@ -29,7 +29,9 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
   const bought = kit.memory(`${id}~pop`, -1000);
   const pop = moving && tick - bought < 14 ? 1 + 0.06 * Math.sin(((tick - bought) / 14) * Math.PI) : 1;
 
-  kit.open(id, { direction: "row", width: grow(), gap: u(phone ? 10 : 14), cross: "center", padding: xy(u(10), u(10)), radius: u(12), part: `Idle.generator${locked ? "[locked]" : ""}${can ? "[affordable]" : ""}`, partClass: "panel" });
+  // On a phone the Buy button takes its own line under the art and the words, the row's width: beside them it left
+  // the words too little room once its cost and label fitted (a pixel face, large text).
+  kit.open(id, { direction: phone ? "column" : "row", width: grow(), gap: u(phone ? 10 : 14), cross: phone ? "stretch" : "center", padding: xy(u(10), u(10)), radius: u(12), part: `Idle.generator${locked ? "[locked]" : ""}${can ? "[affordable]" : ""}`, partClass: "panel" });
   // Dark glass with a quiet rim; a row the purse can buy from carries a thin accent along its start edge.
   kit.setDraw({
     shape: { kind: "rect", radii: [u(12), u(12), u(12), u(12)] },
@@ -38,6 +40,7 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
     effects: [shadow(u(3), u(10), 0.5)],
   } as Api.DrawDesc);
   kit.props({ transform: { scaleX: pop, scaleY: pop }, states: [{ name: "purse", states: [vstate("afford"), vstate("short")], transitions: [] }], state: [{ group: "purse", state: can ? "afford" : "short" }] });
+  if (phone) kit.open("Top", { direction: "row", width: grow(), gap: u(10), cross: "center" });
   // The art, darkened and locked until it is unlocked.
   kit.open("Art", { width: px(art), height: px(art), part: "Idle.art", partClass: "badge" });
   if (desc.image) artSlot("Pic", "Idle.pic", { texture: desc.image, kind: "item", width: px(art), height: px(art), radius: u(8) });
@@ -58,11 +61,12 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
   if (locked) {
     if (desc.lockedHint) text("Hint", desc.lockedHint, { step: st(13), color: "warn", maxLines: 2, width: grow() });
   } else {
-    kit.row("Meta", { gap: u(14), cross: "center", width: grow() }, () => {
+    // Both lines wrap at large text rather than cut what they say.
+    kit.row("Meta", { gap: u(10), cross: "center", width: grow(), wrap: true }, () => {
       text("Level", fill(desc.levelLabel ?? "Lv. {level}", { level: desc.level ?? 0 }), { step: st(13), color: role("info"), nowrap: true, font: "display" });
       if (desc.ownedText) text("Owned", fill(desc.ownedLabel ?? "Owned: {owned}", { owned: desc.ownedText }), { step: st(13), color: "inkMuted", nowrap: true });
     });
-    kit.row("Line", { gap: u(10), cross: "center", width: grow() }, () => {
+    kit.row("Line", { gap: u(10), cross: "center", width: grow(), wrap: true }, () => {
       const secs = desc.cycleSeconds ?? 0;
       if (secs > 0) {
         // Under a quarter second a cycle is too fast to read as a fill: the bar stays full and a light runs along it.
@@ -90,6 +94,7 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
     });
   }
   kit.close();
+  if (phone) kit.close();
   // Buy: lit (the primary's raised face) while the purse pays, glass when it does not; its cost over its label.
   const was = lastInteraction("Buy");
   const label = fill(desc.buyLabel ?? "Buy ×{n}", { n });
@@ -97,7 +102,8 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
     variant: can ? "primary" : "glass",
     size: "lg",
     disabled: locked,
-    width: px(u(phone ? 104 : 128)),
+    // As wide as its cost and label need (a pixel face, large text), never narrower than a steady column of buttons.
+    width: phone ? grow() : ({ kind: "fit", min: u(128) } as Api.Size),
     part: `Idle.buy${can ? "[affordable]" : "[short]"}`,
     name: `${label}, ${desc.costText ?? ""}${can || locked ? "" : ", short"}`,
     before: () => {
@@ -162,7 +168,7 @@ export function prestigePanel(id: string, desc: Api.PrestigeDesc): Api.PrestigeR
     kit.close();
     kit.column("Words", { width: grow(), gap: u(4) }, () => {
       if (desc.lead) text("Lead", desc.lead, { step: st(14), color: "inkMuted", maxLines: 2, width: grow() });
-      text("Reward", desc.rewardText ?? "", { step: st(phone ? 24 : 30), font: "display", color: ready ? STAR_GOLD : role("inkMuted"), nowrap: true, ellipsis: true, width: grow() });
+      text("Reward", desc.rewardText ?? "", { step: st(phone ? 24 : 30), font: "display", color: ready ? STAR_GOLD : role("inkMuted"), maxLines: 2, width: grow() });
       (desc.points ?? []).forEach((pt, k) => {
         kit.row(kit.idi("Point", k), { gap: u(6), cross: "center", width: grow() }, () => {
           symbol("Tick", "check", u(14), ready ? role("success") : role("inkFaint"));

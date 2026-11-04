@@ -113,8 +113,21 @@ function header(desc: Api.BattlePassDesc, out: Mut<Api.BattlePassResult>, phone:
     }
   }
   if (!desc.premium) {
-    const label = desc.unlockPriceText ? `${desc.unlockLabel ?? "Unlock Premium"} · ${desc.unlockPriceText}` : desc.unlockLabel ?? "Unlock Premium";
-    if (btn("Unlock", label, { variant: "premium", size: phone ? "md" : "lg", part: "Pass.unlock", sym: "crown", width: bw }).clicked) {
+    const name = desc.unlockLabel ?? "Unlock Premium";
+    const label = desc.unlockPriceText ? `${name} · ${desc.unlockPriceText}` : name;
+    // Stacked (a phone in portrait), the price takes its own line under the label: on one line a pixel face at large
+    // text ran past the button.
+    const split = stackActs && !!desc.unlockPriceText;
+    const ink = hex("#1d1406");
+    const before = split
+      ? () => {
+          kit.column("Stack", { gap: 0, cross: "center", padding: xy(0, u(4)) }, () => {
+            kit.richText("Label", `[b]${name.replace(/\[/g, "[[")}[/b]`, { step: st(phone ? 14 : 16), color: paint(ink), nowrap: true, font: "display" } as Api.RichTextDesc);
+            text("Price", desc.unlockPriceText!, { step: st(13), color: ink, nowrap: true, font: "display" });
+          });
+        }
+      : undefined;
+    if (btn("Unlock", split ? "" : label, { variant: "premium", size: phone ? "md" : "lg", part: "Pass.unlock", sym: "crown", width: bw, name: label, ...(before ? { before } : {}) }).clicked) {
       out.unlock = true;
       kit.feedback("select", -1);
     }
