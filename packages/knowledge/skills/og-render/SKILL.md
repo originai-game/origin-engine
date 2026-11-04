@@ -662,11 +662,13 @@ layer {                    # a block's '}' stands alone on its line
   normal "textures/grass-n.png"
   tile 6
   slope 0 30
+  antiTiling 1             # hex-tiling: no visible 6 m repeat across the meadow
+  macroVariation 0.5       # brightness and hue drift, a coarser repeat far off
 }
 layer {
   albedo "textures/rock.png"
   tile 12
-  triplanar true
+  projectSlope 45          # past 45°: the two projections facing the face (no streaks)
   slope 28 90
 }
 layer {
@@ -678,7 +680,13 @@ layer {
 
 A layer shows where its control channel (1 without a map) times its slope
 band (degrees) times its altitude band (metres above the terrain's entity)
-is high; give cliffs a `triplanar` layer so the texture does not stretch.
+is high. Give cliff layers a `projectSlope` (planar below it, biplanar
+past it: the two projections facing the face, so an 85° wall shows its
+texture square instead of in vertical streaks; `triplanar true` samples
+three projections everywhere instead). `antiTiling` (0 to 1) breaks a
+layer's repeat by hex-tiling, `macroVariation` (0 to 1) keeps a large field
+of one layer from reading as one texture, and `heightContrast` (0 to 1)
+sharpens the `heightBlend` rim at that layer's edges.
 In the game, load it in `start` and place it:
 
 ```ts

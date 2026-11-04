@@ -176,6 +176,8 @@ pub const SCENES: &[&str] = &[
     "terrain-grass-wind",
     "terrain-holes",
     "terrain-layers",
+    "terrain-tiling",
+    "terrain-steep",
     "impostors",
     "impostor-scatter",
     "wind-models",
@@ -1366,6 +1368,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // height blend (a crisp rim) as the first four are.
         "terrain-layers" => |g, _| {
             g.scene = crate::terrain_scenes::layers_scene(true);
+            Ok(())
+        },
+        // R7: a flat terrain of one high-contrast layer (dark blobs
+        // repeating every 4 m) seen straight down, its repeat broken by
+        // hex-tiling (antiTiling 1): no 4 m period shows.
+        "terrain-tiling" => |g, _| {
+            g.scene = crate::terrain_scenes::tiling_scene(1.0);
+            Ok(())
+        },
+        // R7: an 85° wall 60 m high, a checker of 4 m cells over it
+        // sampled past 45° by the two projections facing it (projectSlope
+        // 45): square cells on the face, not vertical streaks.
+        "terrain-steep" => |g, _| {
+            g.scene = crate::terrain_scenes::steep_scene(45.0);
             Ok(())
         },
         // R6: a ball red on its +x half and blue on its -x half, 2 m

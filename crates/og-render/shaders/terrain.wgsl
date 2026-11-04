@@ -25,6 +25,15 @@ struct TerrainLayerGpu {
   slope: vec4<f32>,     // x: min (deg), y: max (deg), z: fade (deg), w: the albedo's layer (layer arrays)
   altitude: vec4<f32>,  // x: min (m), y: max (m), z: fade (m), w: the normal map's layer (layer arrays)
   offset: vec4<f32>,    // xyz: the layer's uv at the frame's origin, whole repeats dropped (origin.rs)
+  look: vec4<f32>,      // x: anti-tiling, y: height contrast, z: biplanar past this slope (deg, 0 none), w: macro variation
+  // The hex-tiling lattice at the frame's origin, per projection plane
+  // (xz, zy, xy): xy the origin's place in its skewed cell, zw the
+  // origin cell's centre in uv, whole repeats dropped (terrain_lit.wgsl
+  // plane_taps); computed in f64 on the CPU so the tiles stay put when
+  // the origin moves.
+  hex: array<vec4<f32>, 3>,
+  hex_base: array<vec4<i32>, 2>,  // the origin cell's ids: xz.xy, zy.xy | xy.xy, -, -
+  coarse: vec4<f32>,    // xyz: the uv at the frame's origin at a quarter of the frequency, whole repeats dropped
 };
 
 struct TerrainUniform {

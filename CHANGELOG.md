@@ -66,6 +66,14 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrain material v2.** `TerrainLayerDesc` adds `antiTiling` (hex-tiling
+  after Mikkelsen 2022: no visible repeat), `projectSlope` (planar below the
+  slope, biplanar past it, so steep faces show their texture square instead
+  of streaking), `heightContrast` (a per-layer height-blend window) and
+  `macroVariation` (brightness and hue drift, a coarser repeat far off); the
+  terrain file takes the same keys per layer. All default to 0: a terrain
+  that does not set them draws as before. The terrain prepass now reads only
+  the layers' weights and heights for its roughness, never their normal maps.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

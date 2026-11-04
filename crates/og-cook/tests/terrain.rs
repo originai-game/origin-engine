@@ -84,6 +84,10 @@ layer {
   triplanar true
   normalStrength 1.5
   slope 30 90
+  projectSlope 50
+  antiTiling 0.75
+  heightContrast 0.5
+  macroVariation 0.25
 }
 "#;
 
@@ -229,6 +233,16 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
     );
     assert_eq!((g.altitude, g.altitude_fade), ([-1.0e6, 60.0], 12.0));
     assert!(r.triplanar && r.normal_strength == 1.5 && r.slope == [30.0, 90.0]);
+    assert_eq!(
+        (
+            r.project_slope,
+            r.anti_tiling,
+            r.height_contrast,
+            r.macro_variation
+        ),
+        (50.0, 0.75, 0.5, 0.25)
+    );
+    assert_eq!((g.project_slope, g.anti_tiling), (0.0, 0.0), "absent: off");
     assert_eq!(t.height_blend, 0.5);
     assert_eq!((t.lod.spacing, t.lod.ring), (1.5, 96));
     assert!(!t.cast_shadows && t.collision);
@@ -524,6 +538,15 @@ fn refusals_name_the_fix() {
     );
     let e = cook_err("seventeen", &five, &[("t/h.png", &height)]);
     assert!(e.contains("at most 16 layers"), "{e}");
+    let e = cook_err(
+        "anti-tiling",
+        "type terrain\nversion 1\n---\nheightmap \"h.png\"\nlayer {\n  antiTiling 2\n}\n",
+        &[("t/h.png", &height)],
+    );
+    assert!(
+        e.contains("'antiTiling' takes a number from 0 to 1, got 2"),
+        "{e}"
+    );
     let e = cook_err(
         "texture",
         "type terrain\nversion 1\n---\nheightmap \"h.png\"\nlayer {\n  albedo \"textures/none.png\"\n}\n",

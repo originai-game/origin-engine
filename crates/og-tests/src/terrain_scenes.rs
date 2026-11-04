@@ -175,6 +175,9 @@ pub fn island_layers(scene: &mut RenderScene) -> Vec<TerrainLayer> {
             slope_fade: 6.0,
             altitude: [-1.0e6, 185.0],
             altitude_fade: 25.0,
+            anti_tiling: 1.0,
+            macro_variation: 0.6,
+            height_contrast: 0.4,
             ..Default::default()
         },
         TerrainLayer {
@@ -184,6 +187,9 @@ pub fn island_layers(scene: &mut RenderScene) -> Vec<TerrainLayer> {
             roughness: 0.85,
             tile: 14.0,
             triplanar: true,
+            project_slope: 45.0,
+            anti_tiling: 0.5,
+            macro_variation: 0.4,
             slope: [30.0, 90.0],
             slope_fade: 6.0,
             ..Default::default()
@@ -195,6 +201,8 @@ pub fn island_layers(scene: &mut RenderScene) -> Vec<TerrainLayer> {
             tile: 5.0,
             slope: [0.0, 32.0],
             slope_fade: 6.0,
+            anti_tiling: 1.0,
+            macro_variation: 0.4,
             ..Default::default()
         },
         TerrainLayer {
@@ -206,6 +214,8 @@ pub fn island_layers(scene: &mut RenderScene) -> Vec<TerrainLayer> {
             slope_fade: 8.0,
             altitude: [175.0, 1.0e6],
             altitude_fade: 25.0,
+            height_contrast: 0.6,
+            anti_tiling: 1.0,
             ..Default::default()
         },
     ]
@@ -740,5 +750,128 @@ pub fn layers_scene(painted: bool) -> RenderScene {
             ..grass
         });
     }
+    scene
+}
+
+/// A soft sun from high up and a plain sky: the material v2 scenes'
+/// light, so their frames measure the texture, not the shading.
+fn plain_light(scene: &mut RenderScene) {
+    let sun = Vec3::new(0.3, 1.0, 0.2);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        color: Vec3::ONE,
+        intensity: 2.5,
+        max_shadow_distance: 200.0,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: sun,
+            sun_color: Vec3::ONE,
+            look: None,
+        },
+        intensity: 0.6,
+        background: Background::Sky,
+        ..Environment::default()
+    };
+}
+
+/// The tile of the material v2 scenes' layer, in metres.
+pub const V2_TILE: f32 = 4.0;
+/// `tiling_scene`'s orthographic view: metres across its height.
+pub const TILING_VIEW: f32 = 64.0;
+
+/// R7: a flat 256 m terrain of one layer, a high-contrast texture of
+/// dark blobs on pale ground repeating every 4 m, seen straight down
+/// through an orthographic camera 64 m tall: with `anti_tiling` 0 every
+/// 4 m shows the same blobs, with 1 hexagons of it turned and moved.
+pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let handle = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 129, 129));
+    let blobs = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        let n = tiling_fbm(u, v, 4, 51) + 0.35 * tiling_fbm(u, v, 16, 53);
+        let g = if n > 0.05 { 40 } else { 215 };
+        [g, g, g, 255]
+    }));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(blobs),
+            color: Vec3::ONE,
+            roughness: 0.9,
+            tile: V2_TILE,
+            anti_tiling,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    plain_light(&mut scene);
+    scene.camera = Camera {
+        position: Vec3::new(0.3, 150.0, 0.7),
+        target: Vec3::new(0.3, 0.0, 0.7),
+        up: Vec3::NEG_Z,
+        near: 1.0,
+        far: 400.0,
+        projection: Projection::Orthographic {
+            height: TILING_VIEW,
+        },
+        exposure: Exposure::linear(0.9),
+    };
+    scene
+}
+
+/// Where `steep_scene`'s wall starts (its foot along x) and its height.
+pub const STEEP_FOOT: f32 = 0.0;
+pub const STEEP_HEIGHT: f32 = 60.0;
+
+/// R7: a 85° wall 60 m high across a 128 m terrain (its foot at x 0, its
+/// face towards -x), one layer of a black and white checker of 4 m cells
+/// over everything, seen square-on from 30 m away at mid-height: from
+/// above (`project_slope` 0) the wall's cells stretch into vertical
+/// streaks; past `project_slope` the two projections facing it keep
+/// them square.
+pub fn steep_scene(project_slope: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let n = 257u32;
+    let size = 128.0;
+    let cell = size / (n - 1) as f32;
+    let rise = 85f32.to_radians().tan();
+    let mut heights = Vec::with_capacity((n * n) as usize);
+    for _ in 0..n {
+        for c in 0..n {
+            let x = c as f32 * cell - size * 0.5;
+            heights.push(((x - STEEP_FOOT) * rise).clamp(0.0, STEEP_HEIGHT));
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    let checker = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        let on = ((u * 2.0) as u32 + (v * 2.0) as u32).is_multiple_of(2);
+        let g = if on { 230 } else { 25 };
+        [g, g, g, 255]
+    }));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(checker),
+            color: Vec3::ONE,
+            roughness: 0.9,
+            tile: V2_TILE * 2.0,
+            project_slope,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    plain_light(&mut scene);
+    // The sun from the camera's side, so the face is lit.
+    scene.light.direction_to_light = Vec3::new(-0.8, 0.5, 0.3);
+    scene.camera = camera_at(
+        Vec3::new(STEEP_FOOT - 30.0, STEEP_HEIGHT * 0.5, 0.0),
+        Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, 0.0),
+    );
     scene
 }

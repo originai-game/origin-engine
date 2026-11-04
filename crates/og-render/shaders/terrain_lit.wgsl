@@ -7,8 +7,10 @@
 // heights on the GPU, mipmapped), up to sixteen layers weighted by the
 // control map's channels times each layer's slope and altitude rule, the
 // four strongest at each pixel blended (all of them with four or fewer),
-// optionally sharpened by the layers' heights (their albedo's alpha),
-// each layer sampled by world xz (UV-scaled) or triplanar, lit like a
+// optionally sharpened by the layers' heights (their albedo's alpha, each
+// layer's own height contrast), each layer sampled by world xz, triplanar,
+// or past its projectSlope biplanar, each projection hex-tiled when it
+// asks for anti-tiling, with its macro variation, lit like a
 // StandardMaterial (cascaded shadows, local lights, image-based light),
 // caustics under the frame's water, then fog.
 
@@ -90,49 +92,360 @@ struct LayerSample {
   normal: vec3<f32>,   // world normal with the layer's detail
 };
 
-// One layer at a point: planar over world xz, or triplanar (three
-// projections blended by the normal, whiteout normal blending).
+// ── Projections ─────────────────────────────────────────────────────────
+// A layer is sampled from above (planar: world xz), by three projections
+// blended by the normal (`triplanar`), or past its `projectSlope` by the
+// two projections facing the surface most (biplanar, after Quílez,
+// "Biplanar mapping", 2020: two taps instead of three, and never the
+// projection seen edge-on, whose texels smear into streaks on a steep
+// face whatever the filtering), the planar and biplanar sampling faded
+// into each other over 10° around that slope. Planes: 0 xz (seen along
+// y), 1 zy (along x), 2 xy (along z).
+struct Projection {
+  planes: vec4<u32>,
+  w: vec4<f32>,
+  // Per entry: 0 the planar normal frame (about the surface normal),
+  // 1 whiteout blending about the plane's axis.
+  whiteout: vec4<u32>,
+  count: u32,
+};
+
+// The plane seen along axis `a` (0 x, 1 y, 2 z).
+fn axis_plane(a: u32) -> u32 {
+  return select(select(2u, 0u, a == 1u), 1u, a == 0u);
+}
+
+fn layer_projection(l: TerrainLayerGpu, n: vec3<f32>) -> Projection {
+  var o: Projection;
+  o.planes = vec4<u32>(0u);
+  o.w = vec4<f32>(0.0);
+  o.whiteout = vec4<u32>(0u);
+  o.count = 0u;
+  var biplanar = 0.0;
+  if (l.look.z > 0.0) {
+    let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
+    biplanar = smoothstep(l.look.z - 5.0, l.look.z + 5.0, angle);
+  } else if (l.mapping.y > 0.5) {
+    var w = pow(abs(n), vec3<f32>(4.0));
+    w = w / max(w.x + w.y + w.z, 1e-5);
+    o.planes = vec4<u32>(1u, 0u, 2u, 0u);
+    o.w = vec4<f32>(w, 0.0);
+    o.whiteout = vec4<u32>(1u, 1u, 1u, 0u);
+    o.count = 3u;
+    return o;
+  }
+  if (biplanar < 1.0) {
+    o.w[0] = 1.0 - biplanar;
+    o.count = 1u;
+  }
+  if (biplanar > 0.0) {
+    let a = abs(n);
+    let major = select(select(2u, 1u, a.y >= a.z), 0u, a.x >= a.y && a.x >= a.z);
+    let o1 = (major + 1u) % 3u;
+    let o2 = (major + 2u) % 3u;
+    let median = select(o2, o1, a[o1] >= a[o2]);
+    // Quílez's weights: each projection from where it starts to matter
+    // (the normal's component past 1/√3), normalised.
+    var bw = clamp((vec2<f32>(a[major], a[median]) - 0.5773) / (1.0 - 0.5773), vec2<f32>(0.0), vec2<f32>(1.0));
+    bw = bw / max(bw.x + bw.y, 1e-5) * biplanar;
+    o.planes[o.count] = axis_plane(major);
+    o.w[o.count] = bw.x;
+    o.whiteout[o.count] = 1u;
+    o.count += 1u;
+    if (bw.y > 0.0) {
+      o.planes[o.count] = axis_plane(median);
+      o.w[o.count] = bw.y;
+      o.whiteout[o.count] = 1u;
+      o.count += 1u;
+    }
+  }
+  return o;
+}
+
+fn plane_of(v: vec3<f32>, plane: u32) -> vec2<f32> {
+  if (plane == 1u) { return v.zy; }
+  if (plane == 2u) { return v.xy; }
+  return v.xz;
+}
+
+// ── Anti-tiling ─────────────────────────────────────────────────────────
+// Hex-tiling (Mikkelsen, "Practical Real-Time Hex-Tiling", JCGT 11(2),
+// 2022; ported from mmikk/hextile-demo's hextiling.h, MIT, licence in
+// third_party/hextile/): the plane is cut into a lattice of hexagons, each
+// a copy of the texture turned and moved by its own hash, every point
+// blending the three hexagons around it by its barycentric weights to the
+// seventh power, scaled towards the brighter tap so the seams do not go
+// grey. Differences from the demo: the hash is pcg2d on integer cell ids
+// (not sin) and the turn comes from it, and the lattice is placed from
+// the world's zero by f64 values the CPU computes per frame
+// (TerrainLayerGpu.hex, hex_base), so the hexagons stay where they are
+// on the ground when the frame's origin moves.
+
+const HEX_SCALE: f32 = 3.4641016; // 2√3: the demo's hexagons per repeat
+
+// Jarzynski & Olano, "Hash Functions for GPU Rendering" (JCGT 2020): pcg2d.
+fn pcg2d(v: vec2<u32>) -> vec2<u32> {
+  var u = v * 1664525u + 1013904223u;
+  u.x += u.y * 1664525u;
+  u.y += u.x * 1664525u;
+  u = u ^ (u >> vec2<u32>(16u));
+  u.x += u.y * 1664525u;
+  u.y += u.x * 1664525u;
+  u = u ^ (u >> vec2<u32>(16u));
+  return u;
+}
+
+// Four numbers in [0, 1) from a cell's ids.
+fn hex_hash(v: vec2<i32>) -> vec4<f32> {
+  let a = pcg2d(bitcast<vec2<u32>>(v));
+  let b = pcg2d(a ^ vec2<u32>(0x9e3779b9u, 0x85ebca6bu));
+  return vec4<f32>(vec4<u32>(a, b) >> vec4<u32>(8u)) / 16777216.0;
+}
+
+// A lattice vertex (skewed ids) as a point of uv.
+fn hex_centre(v: vec2<f32>) -> vec2<f32> {
+  return vec2<f32>(v.x + 0.5 * v.y, 0.8660254 * v.y) / HEX_SCALE;
+}
+
+fn turn2(v: vec2<f32>, c: vec2<f32>) -> vec2<f32> {
+  return vec2<f32>(c.x * v.x - c.y * v.y, c.y * v.x + c.x * v.y);
+}
+
+// The taps one plane takes of a layer's maps: one (plain) or three
+// (hex-tiling), with the uv at a quarter of the frequency (macro
+// variation's distance blend).
+struct PlaneTaps {
+  uv: array<vec2<f32>, 3>,
+  dx: array<vec2<f32>, 3>,
+  dy: array<vec2<f32>, 3>,
+  turn: array<vec2<f32>, 3>,  // each tap's turn: cos, sin
+  w: vec3<f32>,               // the barycentric weights (hex), or (1, 0, 0)
+  n: u32,
+  coarse_uv: vec2<f32>,
+  coarse_dx: vec2<f32>,
+  coarse_dy: vec2<f32>,
+};
+
+struct HexTap {
+  uv: vec2<f32>,
+  dx: vec2<f32>,
+  dy: vec2<f32>,
+  turn: vec2<f32>,
+};
+
+// One hexagon's tap: `v` its vertex relative to the origin's cell,
+// `base` that cell's ids, `u` the point's uv from the origin, `mf` the
+// origin's offset from its cell's centre and `c` that centre's uv.
+fn hex_tap(v: vec2<f32>, base: vec2<i32>, u: vec2<f32>, mf: vec2<f32>, c: vec2<f32>, strength: f32, gx: vec2<f32>, gy: vec2<f32>) -> HexTap {
+  let h = hex_hash(vec2<i32>(v) + base);
+  let angle = (h.x * 2.0 - 1.0) * PI * strength;
+  let turn = vec2<f32>(cos(angle), sin(angle));
+  let back = vec2<f32>(turn.x, -turn.y);
+  let cen = hex_centre(v);
+  var o: HexTap;
+  o.uv = turn2(u + mf - cen, back) + c + cen + h.zw;
+  o.dx = turn2(gx, back);
+  o.dy = turn2(gy, back);
+  o.turn = turn;
+  return o;
+}
+
+fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> PlaneTaps {
+  let k = l.mapping.x;
+  let u = plane_of(p, plane) * k;
+  let gx = plane_of(dpx, plane) * k;
+  let gy = plane_of(dpy, plane) * k;
+  var t: PlaneTaps;
+  t.coarse_uv = u * 0.25 + plane_of(l.coarse.xyz, plane);
+  t.coarse_dx = gx * 0.25;
+  t.coarse_dy = gy * 0.25;
+  if (l.look.x <= 0.0) {
+    t.n = 1u;
+    t.uv[0] = u + plane_of(l.offset.xyz, plane);
+    t.dx[0] = gx;
+    t.dy[0] = gy;
+    t.turn[0] = vec2<f32>(1.0, 0.0);
+    t.w = vec3<f32>(1.0, 0.0, 0.0);
+    return t;
+  }
+  let hf = l.hex[plane];
+  var base = l.hex_base[0].xy;
+  if (plane == 1u) { base = l.hex_base[0].zw; }
+  if (plane == 2u) { base = l.hex_base[1].xy; }
+  // The demo's TriangleGrid, from the origin's cell.
+  let st = u * HEX_SCALE;
+  let sk = vec2<f32>(st.x - 0.57735027 * st.y, 1.15470054 * st.y) + hf.xy;
+  let id = floor(sk);
+  let f = sk - id;
+  let z = 1.0 - f.x - f.y;
+  let s = step(0.0, -z);
+  let s2 = 2.0 * s - 1.0;
+  t.w = max(vec3<f32>(-z * s2, s - f.y * s2, s - f.x * s2), vec3<f32>(0.0));
+  t.n = 3u;
+  let mf = hex_centre(hf.xy);
+  let strength = clamp(l.look.x, 0.0, 1.0);
+  let a = hex_tap(id + vec2<f32>(s, s), base, u, mf, hf.zw, strength, gx, gy);
+  let b = hex_tap(id + vec2<f32>(s, 1.0 - s), base, u, mf, hf.zw, strength, gx, gy);
+  let c = hex_tap(id + vec2<f32>(1.0 - s, s), base, u, mf, hf.zw, strength, gx, gy);
+  t.uv = array<vec2<f32>, 3>(a.uv, b.uv, c.uv);
+  t.dx = array<vec2<f32>, 3>(a.dx, b.dx, c.dx);
+  t.dy = array<vec2<f32>, 3>(a.dy, b.dy, c.dy);
+  t.turn = array<vec2<f32>, 3>(a.turn, b.turn, c.turn);
+  return t;
+}
+
+// The hexagons' weights from their barycentric ones alone (no albedo to
+// weigh by).
+fn hex_weights(t: PlaneTaps) -> vec3<f32> {
+  if (t.n == 1u) { return vec3<f32>(1.0, 0.0, 0.0); }
+  let w = pow(t.w, vec3<f32>(7.0));
+  return w / max(w.x + w.y + w.z, 1e-12);
+}
+
+struct TapsAlbedo {
+  albedo: vec4<f32>,
+  w: vec3<f32>,  // the hexagons' final weights, which the normal taps reuse
+};
+
+// A plane's albedo (and height in alpha): its taps blended, then the
+// quarter-frequency tap mixed in by `coarse`.
+fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
+  var o: TapsAlbedo;
+  if (t.n == 1u) {
+    o.albedo = layer_albedo(i, t.uv[0], t.dx[0], t.dy[0]);
+    o.w = vec3<f32>(1.0, 0.0, 0.0);
+  } else {
+    let c0 = layer_albedo(i, t.uv[0], t.dx[0], t.dy[0]);
+    let c1 = layer_albedo(i, t.uv[1], t.dx[1], t.dy[1]);
+    let c2 = layer_albedo(i, t.uv[2], t.dx[2], t.dy[2]);
+    let luma = vec3<f32>(0.299, 0.587, 0.114);
+    let lum = vec3<f32>(dot(c0.rgb, luma), dot(c1.rgb, luma), dot(c2.rgb, luma));
+    var w = mix(vec3<f32>(1.0), lum, 0.6) * pow(t.w, vec3<f32>(7.0));
+    w = w / max(w.x + w.y + w.z, 1e-12);
+    o.albedo = c0 * w.x + c1 * w.y + c2 * w.z;
+    o.w = w;
+  }
+  if (coarse > 0.0) {
+    let far = layer_albedo(i, t.coarse_uv, t.coarse_dx, t.coarse_dy);
+    o.albedo = mix(o.albedo, far, 0.5 * coarse);
+  }
+  return o;
+}
+
+// A plane's tangent-space normal: its taps' slopes turned back with their
+// hexagons and blended by `w`.
+fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> vec3<f32> {
+  if (t.n == 1u) { return layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]); }
+  let m0 = layer_normal_map(i, t.uv[0], t.dx[0], t.dy[0]);
+  let m1 = layer_normal_map(i, t.uv[1], t.dx[1], t.dy[1]);
+  let m2 = layer_normal_map(i, t.uv[2], t.dx[2], t.dy[2]);
+  let d = turn2(m0.xy, t.turn[0]) / max(m0.z, 0.05) * w.x
+    + turn2(m1.xy, t.turn[1]) / max(m1.z, 0.05) * w.y
+    + turn2(m2.xy, t.turn[2]) / max(m2.z, 0.05) * w.z;
+  return normalize(vec3<f32>(d, 1.0));
+}
+
+// A plane's tangent-space normal `m` as a world normal about `n`: the
+// planar frame (the normal map's x along world x, y along world z), or
+// whiteout blending about the plane's axis.
+fn plane_normal(whiteout: u32, plane: u32, m: vec3<f32>, n: vec3<f32>, strength: f32) -> vec3<f32> {
+  if (whiteout == 0u) {
+    let t = normalize(vec3<f32>(1.0, 0.0, 0.0) - n * n.x);
+    let b = normalize(vec3<f32>(0.0, 0.0, 1.0) - n * n.z);
+    let d = vec3<f32>(m.xy * strength, m.z);
+    return t * d.x + b * d.y + n * d.z;
+  }
+  if (plane == 1u) {
+    let t = vec3<f32>(m.xy * strength + n.zy, abs(m.z) * n.x);
+    return t.zyx;
+  }
+  if (plane == 2u) {
+    return vec3<f32>(m.xy * strength + n.xy, abs(m.z) * n.z);
+  }
+  let t = vec3<f32>(m.xy * strength + n.xz, abs(m.z) * n.y);
+  return t.xzy;
+}
+
+// ── Macro variation ─────────────────────────────────────────────────────
+// What keeps a field of one layer from reading as one texture from afar:
+// a slow drift of brightness and hue over the ground (value noise over
+// world xz, measured in the layer's repeats, so it is the same wherever
+// the frame's origin is), and the texture at a quarter of its frequency
+// blended in with distance (10 to 40 repeats away).
+
+fn value_noise(x: vec2<f32>) -> f32 {
+  let i = floor(x);
+  let f = x - i;
+  let u = f * f * (3.0 - 2.0 * f);
+  let c = vec2<i32>(i);
+  let a = hex_hash(c).x;
+  let b = hex_hash(c + vec2<i32>(1, 0)).x;
+  let d = hex_hash(c + vec2<i32>(0, 1)).x;
+  let e = hex_hash(c + vec2<i32>(1, 1)).x;
+  return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
+}
+
+fn layer_coarse(l: TerrainLayerGpu, p: vec3<f32>) -> f32 {
+  if (l.look.w <= 0.0) { return 0.0; }
+  let tile = 1.0 / max(l.mapping.x, 1e-6);
+  return smoothstep(10.0 * tile, 40.0 * tile, distance(p, frame.view_pos.xyz)) * clamp(l.look.w, 0.0, 1.0);
+}
+
+fn macro_tint(l: TerrainLayerGpu, p: vec3<f32>) -> vec3<f32> {
+  if (l.look.w <= 0.0) { return vec3<f32>(1.0); }
+  let m = clamp(l.look.w, 0.0, 1.0);
+  let at = (p.xz + frame.origin.xz) * l.mapping.x;
+  let slow = value_noise(at / 16.0) * 0.65 + value_noise(at / 5.0 + vec2<f32>(17.3, 5.1)) * 0.35;
+  let hue = value_noise(at / 40.0 + vec2<f32>(3.1, 41.7));
+  let bright = 1.0 + m * 0.6 * (slow - 0.5);
+  let warm = mix(vec3<f32>(0.92, 1.0, 1.07), vec3<f32>(1.07, 1.0, 0.88), hue);
+  return bright * mix(vec3<f32>(1.0), warm, m);
+}
+
+// ── A layer at a point ──────────────────────────────────────────────────
+
+// Its albedo and height alone (the prepass: no normal map is read).
+fn sample_layer_albedo(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
+  let l = terrain.layers[i];
+  if ((u32(l.mapping.w) & 1u) == 0u) { return vec4<f32>(1.0); }
+  let proj = layer_projection(l, n);
+  let coarse = layer_coarse(l, p);
+  var a = vec4<f32>(0.0);
+  for (var k = 0u; k < proj.count; k++) {
+    let t = plane_taps(l, proj.planes[k], p, dpx, dpy);
+    a += taps_albedo(i, t, coarse).albedo * proj.w[k];
+  }
+  return a;
+}
+
+// Its albedo, height and detailed normal.
 fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
   let l = terrain.layers[i];
-  let k = l.mapping.x;
   let has_albedo = (u32(l.mapping.w) & 1u) != 0u;
   let has_normal = (u32(l.mapping.w) & 2u) != 0u;
   var s: LayerSample;
   s.albedo = vec4<f32>(1.0);
   s.normal = n;
-  if (l.mapping.y < 0.5) {
-    // World xz from the frame's origin, plus the layer's uv there.
-    let uv = p.xz * k + l.offset.xz;
-    if (has_albedo) { s.albedo = layer_albedo(i, uv, dpx.xz * k, dpy.xz * k); }
-    if (has_normal) {
-      let m = layer_normal_map(i, uv, dpx.xz * k, dpy.xz * k);
-      let t = normalize(vec3<f32>(1.0, 0.0, 0.0) - n * n.x);
-      let b = normalize(vec3<f32>(0.0, 0.0, 1.0) - n * n.z);
-      let d = vec3<f32>(m.xy * l.mapping.z, m.z);
-      s.normal = normalize(t * d.x + b * d.y + n * d.z);
-    }
-  } else {
-    var w = pow(abs(n), vec3<f32>(4.0));
-    w = w / max(w.x + w.y + w.z, 1e-5);
-    let ux = p.zy * k + l.offset.zy;
-    let uy = p.xz * k + l.offset.xz;
-    let uz = p.xy * k + l.offset.xy;
+  if (!has_albedo && !has_normal) { return s; }
+  let proj = layer_projection(l, n);
+  let coarse = layer_coarse(l, p);
+  var albedo = vec4<f32>(0.0);
+  var normal = vec3<f32>(0.0);
+  for (var k = 0u; k < proj.count; k++) {
+    let plane = proj.planes[k];
+    let t = plane_taps(l, plane, p, dpx, dpy);
+    var w = hex_weights(t);
     if (has_albedo) {
-      s.albedo = layer_albedo(i, ux, dpx.zy * k, dpy.zy * k) * w.x
-        + layer_albedo(i, uy, dpx.xz * k, dpy.xz * k) * w.y
-        + layer_albedo(i, uz, dpx.xy * k, dpy.xy * k) * w.z;
+      let a = taps_albedo(i, t, coarse);
+      albedo += a.albedo * proj.w[k];
+      w = a.w;
     }
     if (has_normal) {
-      let st = l.mapping.z;
-      var tx = layer_normal_map(i, ux, dpx.zy * k, dpy.zy * k);
-      var ty = layer_normal_map(i, uy, dpx.xz * k, dpy.xz * k);
-      var tz = layer_normal_map(i, uz, dpx.xy * k, dpy.xy * k);
-      tx = vec3<f32>(tx.xy * st + n.zy, abs(tx.z) * n.x);
-      ty = vec3<f32>(ty.xy * st + n.xz, abs(ty.z) * n.y);
-      tz = vec3<f32>(tz.xy * st + n.xy, abs(tz.z) * n.z);
-      s.normal = normalize(tx.zyx * w.x + ty.xzy * w.y + tz.xyz * w.z);
+      normal += plane_normal(proj.whiteout[k], plane, taps_normal(i, t, w), n, l.mapping.z) * proj.w[k];
     }
   }
+  if (has_albedo) { s.albedo = albedo; }
+  if (has_normal) { s.normal = normalize(normal); }
   return s;
 }
 
@@ -188,7 +501,10 @@ fn pick_layers(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> LayerPick 
   return pick;
 }
 
-// The picked layers' weights (summing to 1), sharpened by their heights.
+// The picked layers' weights (summing to 1), sharpened by their heights:
+// each layer keeps what its weight plus its height (times the terrain's
+// height blend) reaches within its window of the highest, the window
+// 0.15 narrowed by the layer's height contrast (to a tenth at 1).
 fn blend_weights(pick: LayerPick, heights_of: vec4<f32>) -> vec4<f32> {
   var w = pick.w;
   let hb = terrain.params.x;
@@ -201,7 +517,10 @@ fn blend_weights(pick: LayerPick, heights_of: vec4<f32>) -> vec4<f32> {
         top = max(top, ha[k]);
       }
     }
-    w = max(ha - vec4<f32>(top - 0.15), vec4<f32>(0.0));
+    for (var k = 0u; k < 4u; k++) {
+      let contrast = clamp(terrain.layers[pick.ids[k]].look.y, 0.0, 1.0);
+      w[k] = max(ha[k] - (top - 0.15 * (1.0 - 0.9 * contrast)), 0.0);
+    }
   }
   let sum = w.x + w.y + w.z + w.w;
   if (sum < 1e-4) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
@@ -214,6 +533,19 @@ struct TerrainLook {
   normal: vec3<f32>,
   roughness: f32,
 };
+
+// The picked layers' roughness under weights `w` (the lit pass and the
+// prepass both: their roughness is one function of the same weights).
+fn blended_roughness(pick: LayerPick, w: vec4<f32>) -> f32 {
+  if (u32(terrain.origin.w) == 0u) { return 0.9; }
+  var roughness = 0.0;
+  for (var k = 0u; k < 4u; k++) {
+    if (k < pick.n && w[k] > 0.0) {
+      roughness += terrain.layers[pick.ids[k]].color.w * w[k];
+    }
+  }
+  return roughness;
+}
 
 fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
   let p = in.world;
@@ -232,21 +564,35 @@ fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f
   let w = blend_weights(pick, heights_of);
   var albedo = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
-  var roughness = 0.0;
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && w[k] > 0.0) {
       let l = terrain.layers[pick.ids[k]];
-      albedo += samples[k].albedo.rgb * l.color.rgb * w[k];
+      albedo += samples[k].albedo.rgb * l.color.rgb * macro_tint(l, p) * w[k];
       normal += samples[k].normal * w[k];
-      roughness += l.color.w * w[k];
     }
   }
   if (count == 0u) {
     albedo = vec3<f32>(0.5);
     normal = n_geo;
-    roughness = 0.9;
   }
-  return TerrainLook(albedo, normal, roughness);
+  return TerrainLook(albedo, normal, blended_roughness(pick, w));
+}
+
+// The roughness `terrain_look` gives a fragment, from the layers'
+// heights alone: the prepass reads no normal map and blends no colour.
+fn terrain_roughness(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
+  let p = in.world;
+  let n_geo = point.normal;
+  let pick = pick_layers(p, n_geo, point.control);
+  var heights_of = vec4<f32>(1.0);
+  if (terrain.params.x > 0.0 && !pick.fallback) {
+    for (var k = 0u; k < 4u; k++) {
+      if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
+        heights_of[k] = sample_layer_albedo(pick.ids[k], p, n_geo, dpx, dpy).a;
+      }
+    }
+  }
+  return blended_roughness(pick, blend_weights(pick, heights_of));
 }
 
 // The toon ramp's three bands for the terrain (pbr.wgsl toon_ramp's built-in
@@ -447,13 +793,13 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   let point = terrain_point(in.local);
   let n = point.normal;
   // The layers' roughness as the lit pass shades it, for screen-space
-  // reflections (a terrain is never metal).
-  let look = terrain_look(in, point, dpdx(in.world), dpdy(in.world));
+  // reflections (a terrain is never metal): their weights alone.
+  let roughness = terrain_roughness(in, point, dpdx(in.world), dpdy(in.world));
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: TerrainPrepass;
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  let reflectivity = reflectivity_bits(clamp(look.roughness, 0.04, 1.0), 0.0);
+  let reflectivity = reflectivity_bits(clamp(roughness, 0.04, 1.0), 0.0);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   return o;

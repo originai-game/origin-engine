@@ -13,6 +13,8 @@ heightBlend 0.15
 layer {
   albedo "textures/terrain-grass.png"
   tile 5
+  antiTiling 1
+  macroVariation 0.5
   slope 0 30
   slopeFade 6
   altitude 1.6 1000
@@ -24,11 +26,13 @@ layer {
   tile 3
   slope 0 45
 }
-# Rock on every slope steeper than 30 degrees, projected three ways (control B).
+# Rock on every slope steeper than 30 degrees, from above below 45 degrees and
+# by the two projections facing it past them (control B).
 layer {
   albedo "textures/terrain-rock.png"
   tile 9
-  triplanar true
+  projectSlope 45
+  antiTiling 0.5
   slope 30 90
   slopeFade 6
 }
@@ -36,6 +40,7 @@ layer {
 layer {
   albedo "textures/terrain-sand.png"
   tile 4
+  antiTiling 1
   slope 0 36
   altitude -100 1.8
   altitudeFade 0.6

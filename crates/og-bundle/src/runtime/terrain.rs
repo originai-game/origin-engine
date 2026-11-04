@@ -329,6 +329,10 @@ impl Bundle {
                     altitude_fade: l.altitude_fade,
                     albedo_layer: (l.albedo_layer != format::NONE).then_some(l.albedo_layer),
                     normal_layer: (l.normal_layer != format::NONE).then_some(l.normal_layer),
+                    project_slope: l.project_slope,
+                    anti_tiling: l.anti_tiling,
+                    height_contrast: l.height_contrast,
+                    macro_variation: l.macro_variation,
                 },
             });
         }

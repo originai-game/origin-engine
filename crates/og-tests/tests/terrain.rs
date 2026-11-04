@@ -22,6 +22,7 @@ use std::sync::Arc;
 
 mod grass;
 mod impostors;
+mod material;
 mod sampling_scatter;
 mod streaming_wind;
 mod wind_models;

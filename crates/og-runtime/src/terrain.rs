@@ -968,6 +968,10 @@ fn layer_json(l: &TerrainLayer) -> Value {
         "altitudeMin": l.altitude[0],
         "altitudeMax": l.altitude[1],
         "altitudeFade": l.altitude_fade,
+        "projectSlope": l.project_slope,
+        "antiTiling": l.anti_tiling,
+        "heightContrast": l.height_contrast,
+        "macroVariation": l.macro_variation,
     })
 }
 
@@ -1010,6 +1014,10 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
             slope_fade: f(&v, "slopeFade", 4.0).max(0.0),
             altitude: [f(&v, "altitudeMin", -1.0e6), f(&v, "altitudeMax", 1.0e6)],
             altitude_fade: f(&v, "altitudeFade", 4.0).max(0.0),
+            project_slope: f(&v, "projectSlope", 0.0).clamp(0.0, 90.0),
+            anti_tiling: f(&v, "antiTiling", 0.0).clamp(0.0, 1.0),
+            height_contrast: f(&v, "heightContrast", 0.0).clamp(0.0, 1.0),
+            macro_variation: f(&v, "macroVariation", 0.0).clamp(0.0, 1.0),
         };
         Ok(())
     })() {

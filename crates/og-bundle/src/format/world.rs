@@ -542,7 +542,7 @@ row!(
     /// One layer: its textures (ranges of `strings`; [`NONE`] for none),
     /// or with the terrain's arrays its layers of them, and og-render's
     /// `TerrainLayer` fields.
-    TerrainLayerRow, "og.Terrain.layer", 2 {
+    TerrainLayerRow, "og.Terrain.layer", 3 {
         albedo_at: u32,
         albedo_len: u32,
         normal_at: u32,
@@ -563,6 +563,11 @@ row!(
         /// With the terrain's arrays: this layer's layer of each ([`NONE`]: none).
         albedo_layer: u32,
         normal_layer: u32,
+        /// og-render's `TerrainLayer` material v2 fields.
+        project_slope: f32,
+        anti_tiling: f32,
+        height_contrast: f32,
+        macro_variation: f32,
     }
 );
 

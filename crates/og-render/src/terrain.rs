@@ -32,8 +32,15 @@
 //! `height_blend` > 0 the albedo's alpha (the layer's height map) sharpens
 //! the transitions. Each pixel blends its four strongest layers (all of
 //! them with four or fewer). Weights are normalised; where every weight
-//! is 0 the first layer shows. A layer is sampled over world xz every `tile` metres
-//! or triplanar (cliffs), with an optional normal map.
+//! is 0 the first layer shows. A layer is sampled over world xz every `tile` metres,
+//! triplanar, or past its `project_slope` by the two projections facing
+//! the surface (biplanar: a steep face does not streak), with an optional
+//! normal map; `anti_tiling` hex-tiles each projection (Mikkelsen 2022,
+//! the lattice placed in f64 from the world's zero so it does not move
+//! with the render origin), `macro_variation` drifts its brightness and
+//! hue and blends in a coarser repeat far off, and `height_contrast`
+//! narrows its height-blend window. The prepass reads only the layers'
+//! weights and heights for its roughness, never their normal maps.
 //!
 //! **Holes.** [`TerrainData::holes`] cuts cells out (a cave mouth, a
 //! pit): every tile height's lowest bit carries the hole flag of the cell
@@ -367,7 +374,8 @@ pub struct TerrainLayer {
     pub roughness: f32,
     /// Metres per repeat of the textures.
     pub tile: f32,
-    /// Sample by three projections blended by the normal (cliffs).
+    /// Sample by three projections blended by the normal (cliffs), unless
+    /// `project_slope` decides.
     pub triplanar: bool,
     pub normal_strength: f32,
     /// The slopes (degrees from flat) where the layer shows, and how far
@@ -384,6 +392,21 @@ pub struct TerrainLayer {
     /// With [`Terrain::layer_arrays`]: the layer of the normal array this
     /// layer's normal map is (`None`: none).
     pub normal_layer: Option<u32>,
+    /// Breaks the texture's repeat (0 off, 1 full): each sample blends
+    /// three hexagonal tiles of the texture, each turned and moved by its
+    /// own hash (Mikkelsen's hex-tiling, `terrain_lit.wgsl`), so no period
+    /// shows across a field.
+    pub anti_tiling: f32,
+    /// How sharp the height blend is at this layer's edges, 0 to 1 (0: the
+    /// terrain's window of 0.15, 1: a tenth of it).
+    pub height_contrast: f32,
+    /// The slope in degrees past which the layer is sampled by the two
+    /// projections facing the surface most (biplanar) instead of from
+    /// above, faded over 10° around it; 0 leaves `triplanar` to decide.
+    pub project_slope: f32,
+    /// Low-frequency brightness and hue drift over the ground, and the
+    /// texture at a quarter of its frequency blended in with distance, 0 to 1.
+    pub macro_variation: f32,
 }
 
 /// Two texture arrays a terrain's layers take their maps from
@@ -420,6 +443,10 @@ impl Default for TerrainLayer {
             altitude_fade: 4.0,
             albedo_layer: None,
             normal_layer: None,
+            anti_tiling: 0.0,
+            height_contrast: 0.0,
+            project_slope: 0.0,
+            macro_variation: 0.0,
         }
     }
 }
@@ -554,6 +581,13 @@ struct LayerGpu {
     /// xyz: the layer's uv at the scene's origin, whole repeats dropped
     /// (`origin.rs`): the layers' patterns stay put when it moves.
     offset: [f32; 4],
+    /// Anti-tiling, height contrast, the biplanar slope, macro variation.
+    look: [f32; 4],
+    /// The hex-tiling lattice at the scene's origin per plane ([`hex_lattice`]).
+    hex: [[f32; 4]; 3],
+    hex_base: [[i32; 4]; 2],
+    /// xyz: the uv at the scene's origin at a quarter of the frequency.
+    coarse: [f32; 4],
 }
 
 /// `TerrainUniform` in terrain.wgsl.
@@ -1018,6 +1052,68 @@ fn terrain_passes(
     }
 }
 
+/// Hexagons per texture repeat along the lattice (terrain_lit.wgsl
+/// `HEX_SCALE`, 2√3 as Mikkelsen's demo).
+const HEX_SCALE: f64 = 3.464_101_615_137_754_6;
+
+/// Where the hex-tiling lattice of a layer of `tile` metres stands at the
+/// scene's `origin`, per projection plane (xz, zy, xy): the origin's place
+/// in its skewed cell and that cell's centre in uv (whole repeats
+/// dropped), and the cell's ids. Computed in f64 from the world's zero,
+/// so a hexagon covers the same ground wherever the origin is: the
+/// shader adds the point's uv from the origin to these.
+fn hex_lattice(origin: Vec3, tile: f32) -> ([[f32; 4]; 3], [[i32; 4]; 2]) {
+    let k = f64::from(1.0 / tile.max(1e-3));
+    let o = [
+        f64::from(origin.x),
+        f64::from(origin.y),
+        f64::from(origin.z),
+    ];
+    let mut hex = [[0.0; 4]; 3];
+    let mut ids = [[0i32; 2]; 3];
+    for (plane, (a, b)) in [(0, 2), (2, 1), (0, 1)].into_iter().enumerate() {
+        let st = [o[a] * k * HEX_SCALE, o[b] * k * HEX_SCALE];
+        let skewed = [st[0] - st[1] / 3f64.sqrt(), st[1] * 2.0 / 3f64.sqrt()];
+        let base = skewed.map(f64::floor);
+        let centre = [
+            ((base[0] + 0.5 * base[1]) / HEX_SCALE).rem_euclid(1.0),
+            (base[1] * 3f64.sqrt() * 0.5 / HEX_SCALE).rem_euclid(1.0),
+        ];
+        hex[plane] = [
+            (skewed[0] - base[0]) as f32,
+            (skewed[1] - base[1]) as f32,
+            centre[0] as f32,
+            centre[1] as f32,
+        ];
+        // Wrapping: the shader adds its cells in i32 the same way.
+        ids[plane] = base.map(|b| b.rem_euclid(4_294_967_296.0) as u32 as i32);
+    }
+    (
+        hex,
+        [
+            [ids[0][0], ids[0][1], ids[1][0], ids[1][1]],
+            [ids[2][0], ids[2][1], 0, 0],
+        ],
+    )
+}
+
+/// A layer's anti-tiling, blend and macro fields at the scene's origin.
+fn layer_look(l: &TerrainLayer, origin: Vec3) -> LayerGpu {
+    let (hex, hex_base) = hex_lattice(origin, l.tile);
+    LayerGpu {
+        look: [
+            l.anti_tiling.clamp(0.0, 1.0),
+            l.height_contrast.clamp(0.0, 1.0),
+            l.project_slope.clamp(0.0, 90.0),
+            l.macro_variation.clamp(0.0, 1.0),
+        ],
+        hex,
+        hex_base,
+        coarse: uv_offset(origin, l.tile * 4.0),
+        ..LayerGpu::default()
+    }
+}
+
 pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
 /// What terrain.wgsl's far grass needs declared (after wind_common.wgsl).
 pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
@@ -1160,6 +1256,189 @@ mod tests {
         let tail = |s: &str| s[s.find("fn band(").unwrap()..].to_string();
         assert_eq!(tail(&array), tail(&standard));
         assert!(!terrain_shadow_array_source().contains("albedo0"));
+    }
+
+    /// The lit terrain module as the renderer compiles it.
+    fn lit_module() -> naga::Module {
+        let src = crate::shaders::shader_sources()
+            .into_iter()
+            .find(|s| s.label == "terrain")
+            .expect("the terrain module");
+        naga::front::wgsl::parse_str(&src.wgsl).expect("parses")
+    }
+
+    /// Every function an entry point reaches through calls, by name.
+    fn reached(module: &naga::Module, entry: &str) -> std::collections::BTreeSet<String> {
+        fn walk(
+            module: &naga::Module,
+            body: &naga::Block,
+            out: &mut std::collections::BTreeSet<String>,
+        ) {
+            for st in body.iter() {
+                match st {
+                    naga::Statement::Call { function, .. } => {
+                        let f = &module.functions[*function];
+                        if out.insert(f.name.clone().unwrap_or_default()) {
+                            walk(module, &f.body, out);
+                        }
+                    }
+                    naga::Statement::Block(b) => walk(module, b, out),
+                    naga::Statement::If { accept, reject, .. } => {
+                        walk(module, accept, out);
+                        walk(module, reject, out);
+                    }
+                    naga::Statement::Switch { cases, .. } => {
+                        for c in cases {
+                            walk(module, &c.body, out);
+                        }
+                    }
+                    naga::Statement::Loop {
+                        body, continuing, ..
+                    } => {
+                        walk(module, body, out);
+                        walk(module, continuing, out);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let e = module
+            .entry_points
+            .iter()
+            .find(|e| e.name == entry)
+            .unwrap_or_else(|| panic!("{entry}"));
+        let mut out = Default::default();
+        walk(module, &e.function.body, &mut out);
+        out
+    }
+
+    /// The prepass writes the roughness the lit pass shades with (one
+    /// function of the layers' weights, `blended_roughness`, in both)
+    /// without reading a normal map or blending a colour: before, it ran
+    /// the whole `terrain_look`, every layer's normal taps included.
+    #[test]
+    fn the_prepass_reads_roughness_alone() {
+        let module = lit_module();
+        let prepass = reached(&module, "fs_prepass");
+        let lit = reached(&module, "fs");
+        for f in ["blended_roughness", "blend_weights", "pick_layers"] {
+            assert!(prepass.contains(f) && lit.contains(f), "{f}");
+        }
+        for f in [
+            "layer_normal_map",
+            "taps_normal",
+            "terrain_look",
+            "macro_tint",
+        ] {
+            assert!(!prepass.contains(f), "the prepass reaches {f}");
+            assert!(lit.contains(f), "the lit pass reaches {f}");
+        }
+    }
+
+    /// The layer records and the terrain's uniform have the layout the
+    /// shader reads (naga's offsets of the WGSL structs).
+    #[test]
+    fn the_terrain_uniform_matches_the_shader() {
+        use std::mem::{offset_of, size_of};
+        let module = lit_module();
+        let mut layouter = naga::proc::Layouter::default();
+        layouter.update(module.to_ctx()).expect("lays out");
+        let members = |name: &str| {
+            let (_, ty) = module
+                .types
+                .iter()
+                .find(|(_, t)| t.name.as_deref() == Some(name))
+                .unwrap_or_else(|| panic!("{name}"));
+            let naga::TypeInner::Struct { members, span } = &ty.inner else {
+                panic!("{name} is a struct");
+            };
+            (
+                members
+                    .iter()
+                    .map(|m| (m.name.clone().unwrap_or_default(), m.offset as usize))
+                    .collect::<Vec<_>>(),
+                *span as usize,
+            )
+        };
+        macro_rules! fields {
+            ($t:ty: $($f:ident),*) => { vec![$((stringify!($f).to_string(), offset_of!($t, $f))),*] };
+        }
+        assert_eq!(
+            members("TerrainLayerGpu"),
+            (
+                fields!(LayerGpu: color, mapping, slope, altitude, offset, look, hex, hex_base, coarse),
+                size_of::<LayerGpu>()
+            )
+        );
+        let (list, span) = members("TerrainUniform");
+        assert_eq!(span, size_of::<TerrainGpu>());
+        assert_eq!(
+            list,
+            fields!(TerrainGpu: model, normal, origin, extent, params, tiles, view_proj,
+                prev_view_proj, pyramid, layers, grass)
+        );
+    }
+
+    /// The hex-tiling lattice, as `plane_taps` places it from the values
+    /// [`hex_lattice`] gives, covers the same ground wherever the scene's
+    /// origin is: a world point falls in the same cell (the same hash, so
+    /// the same turn and shift) at the same uv, whole repeats aside. The
+    /// shader's arithmetic in f32 from the point relative to the origin.
+    #[test]
+    fn hexagons_stay_on_the_ground_when_the_origin_moves() {
+        const S: f32 = HEX_SCALE as f32;
+        let centre = |v: Vec2| Vec2::new(v.x + 0.5 * v.y, 0.866_025_4 * v.y) / S;
+        // Per tap: its cell's ids and the uv of the point in its copy
+        // before the turn and hash shift (both of which follow the ids).
+        let taps = |world: Vec3, origin: Vec3, tile: f32| {
+            let (hex, base) = hex_lattice(origin, tile);
+            let k = 1.0 / tile;
+            let rel = world - origin;
+            let u = Vec2::new(rel.x, rel.z) * k;
+            let hf = hex[0];
+            let st = u * S;
+            let sk =
+                Vec2::new(st.x - 0.577_350_27 * st.y, 1.154_700_5 * st.y) + Vec2::new(hf[0], hf[1]);
+            let id = sk.floor();
+            let f = sk - id;
+            let s = if 1.0 - f.x - f.y < 0.0 { 1.0 } else { 0.0 };
+            let mf = centre(Vec2::new(hf[0], hf[1]));
+            [
+                id + Vec2::new(s, s),
+                id + Vec2::new(s, 1.0 - s),
+                id + Vec2::new(1.0 - s, s),
+            ]
+            .map(|v| {
+                let cell = (
+                    (v.x as i32).wrapping_add(base[0][0]),
+                    (v.y as i32).wrapping_add(base[0][1]),
+                );
+                let cen = centre(v);
+                let local = u + mf - cen;
+                let at = Vec2::new(hf[2], hf[3]) + cen;
+                (cell, local, at - at.floor())
+            })
+        };
+        let tile = 3.7;
+        for world in [
+            Vec3::new(10.3, 2.0, -4.6),
+            Vec3::new(20_001.13, 0.0, 15_000.9),
+        ] {
+            let a = taps(world, Vec3::ZERO, tile);
+            for origin in [
+                Vec3::new(world.x - 3.3, 0.0, world.z + 7.1),
+                Vec3::new(world.x - 100.0, 50.0, world.z - 64.0),
+            ] {
+                let b = taps(world, origin, tile);
+                for ((ca, la, aa), (cb, lb, ab)) in a.iter().zip(&b) {
+                    assert_eq!(ca, cb, "{world} from {origin}");
+                    assert!((*la - *lb).length() < 2e-3, "{la} {lb}");
+                    let d = (*aa - *ab).abs();
+                    let d = d.min(Vec2::ONE - d);
+                    assert!(d.length() < 2e-3, "{aa} {ab}");
+                }
+            }
+        }
     }
 
     /// Every level's hole (the ring variant its index range draws) is

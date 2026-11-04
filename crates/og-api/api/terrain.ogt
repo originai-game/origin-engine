@@ -384,7 +384,27 @@ module terrain {
       max 1000
       unit m
     }
-    field triplanar bool "Sample by three projections blended by the normal (for cliffs)."
+    field triplanar bool "Sample by three projections blended by the normal (for cliffs). `projectSlope` above 0 decides instead."
+    field projectSlope f32 "The slope past which the layer is sampled by the two projections facing the surface most (biplanar: no projection seen edge-on, so a steep face does not streak) instead of from above, faded over 10° around it; below it, from above. 0: `triplanar` decides." {
+      min 0
+      max 90
+      unit deg
+    }
+    field antiTiling f32 "How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field heightContrast f32 "How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim)." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field macroVariation f32 "A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none." {
+      min 0
+      max 1
+      unit ratio
+    }
     field normalStrength f32 "How strongly its normal map bends the surface." {
       default 1
       min 0

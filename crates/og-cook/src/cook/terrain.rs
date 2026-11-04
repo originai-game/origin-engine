@@ -43,6 +43,10 @@
 //!   slopeFade 6
 //!   altitude -1000000 185         # metres above the terrain's origin
 //!   altitudeFade 25
+//!   projectSlope 50               # past 50° sampled by the two projections facing the face (0: triplanar decides)
+//!   antiTiling 1                  # hex-tiling: no visible repeat (0 to 1)
+//!   heightContrast 0.5            # the height blend's rim at its edges, sharper (0 to 1)
+//!   macroVariation 0.5            # brightness and hue drift, and a coarser repeat far off (0 to 1)
 //! }
 //! ```
 //!
@@ -210,6 +214,15 @@ fn number(b: &Block, key: &str, default: f32) -> Result<f32, String> {
     }
 }
 
+/// A number from 0 to `max` (0 when absent).
+fn unit(b: &Block, key: &str, max: f32) -> Result<f32, String> {
+    let v = number(b, key, 0.0)?;
+    if !(0.0..=max).contains(&v) {
+        return Err(format!("'{key}' takes a number from 0 to {max}, got {v}"));
+    }
+    Ok(v)
+}
+
 fn pair(b: &Block, key: &str, default: [f32; 2]) -> Result<[f32; 2], String> {
     match numbers(b, key) {
         None => Ok(default),
@@ -355,7 +368,7 @@ const KEYS: [&str; 14] = [
     "layers",
     "layerNormals",
 ];
-const LAYER_KEYS: [&str; 13] = [
+const LAYER_KEYS: [&str; 17] = [
     "albedo",
     "normal",
     "albedoLayer",
@@ -369,6 +382,10 @@ const LAYER_KEYS: [&str; 13] = [
     "slopeFade",
     "altitude",
     "altitudeFade",
+    "projectSlope",
+    "antiTiling",
+    "heightContrast",
+    "macroVariation",
 ];
 
 pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
@@ -516,6 +533,10 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             slope_fade: number(b, "slopeFade", d.slope_fade)?,
             altitude: pair(b, "altitude", d.altitude)?,
             altitude_fade: number(b, "altitudeFade", d.altitude_fade)?,
+            project_slope: unit(b, "projectSlope", 90.0)?,
+            anti_tiling: unit(b, "antiTiling", 1.0)?,
+            height_contrast: unit(b, "heightContrast", 1.0)?,
+            macro_variation: unit(b, "macroVariation", 1.0)?,
         };
         layers.push((string_of(b, "albedo"), string_of(b, "normal"), layer));
     }
@@ -836,6 +857,10 @@ pub(super) fn cook_terrain(
                 altitude_fade: l.altitude_fade,
                 albedo_layer: l.albedo_layer.unwrap_or(format::NONE),
                 normal_layer: l.normal_layer.unwrap_or(format::NONE),
+                project_slope: l.project_slope,
+                anti_tiling: l.anti_tiling,
+                height_contrast: l.height_contrast,
+                macro_variation: l.macro_variation,
             }
         })
         .collect();

@@ -50601,11 +50601,43 @@ export interface TerrainLayerDesc {
    */
   readonly tile?: number;
   /**
-   * Sample by three projections blended by the normal (for cliffs).
+   * Sample by three projections blended by the normal (for cliffs). `projectSlope` above 0 decides instead.
    *
    * @default false
    */
   readonly triplanar?: boolean;
+  /**
+   * The slope past which the layer is sampled by the two projections facing the surface most (biplanar: no projection seen edge-on, so a steep face does not streak) instead of from above, faded over 10° around it; below it, from above. 0: `triplanar` decides.
+   *
+   * @default 0
+   * @range 0..90
+   * @unit deg (degrees)
+   */
+  readonly projectSlope?: number;
+  /**
+   * How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly antiTiling?: number;
+  /**
+   * How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim).
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly heightContrast?: number;
+  /**
+   * A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly macroVariation?: number;
   /**
    * How strongly its normal map bends the surface.
    *

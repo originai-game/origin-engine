@@ -798,6 +798,7 @@ impl TerrainRenderer {
                             at(normal),
                         ],
                         offset: uv_offset(scene.origin, l.tile),
+                        ..layer_look(l, scene.origin)
                     };
                     continue;
                 }
@@ -831,6 +832,7 @@ impl TerrainRenderer {
                     slope: [l.slope[0], l.slope[1], l.slope_fade.max(0.0), 0.0],
                     altitude: [l.altitude[0], l.altitude[1], l.altitude_fade.max(0.0), 0.0],
                     offset: uv_offset(scene.origin, l.tile),
+                    ..layer_look(l, scene.origin)
                 };
             }
             let lay = data.layout;
@@ -1142,7 +1144,7 @@ pub(crate) fn draw_levels(
 /// A layer's uv at the scene's origin, in f64 and without the whole
 /// repeats, so the layers sample the same texels wherever the origin is
 /// (`origin.rs`): zero at the world's zero.
-fn uv_offset(origin: Vec3, tile: f32) -> [f32; 4] {
+pub(super) fn uv_offset(origin: Vec3, tile: f32) -> [f32; 4] {
     // The shader's own repeats per metre (`mapping.x`, f32).
     let k = f64::from(1.0 / tile.max(1e-3));
     let at = |o: f32| (f64::from(o) * k).rem_euclid(1.0) as f32;
