@@ -625,6 +625,7 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             grass: get("og.Grass"),
             #[cfg(not(feature = "profile2d"))]
             stamp: get("og.TerrainStamp"),
+            #[cfg(not(feature = "profile2d"))]
             grass_pusher: get("og.GrassPusher"),
             #[cfg(not(feature = "profile2d"))]
             grass_type: get("og.GrassType"),
