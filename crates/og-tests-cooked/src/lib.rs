@@ -14,6 +14,7 @@
 pub mod depth_render_scenes;
 pub mod gfx;
 pub mod gltf_scenes;
+pub mod impostor_scenes;
 pub mod meshlet_scenes;
 pub mod scenes;
 pub mod terrain_scenes;

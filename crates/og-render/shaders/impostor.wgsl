@@ -137,8 +137,26 @@ fn imp_self_shadow(x: vec3<f32>, l: vec3<f32>) -> f32 {
   if (l.y <= 0.02) { return 1.0; }
   let g = imp_grid();
   let n = f32(g - 1u);
-  let at = clamp(round((imp_oct_encode(l) * 0.5 + 0.5) * n), vec2<f32>(0.0), vec2<f32>(n));
-  let f = u32(at.x) + u32(at.y) * g;
+  // The four frames about the light's direction, blended bilinearly as
+  // the view's are: one nearest frame alone is up to half a frame's step
+  // off the light (11 degrees at 8 frames a side), which moves a shadow's
+  // edge along the model (a trunk lit under its crown drew dark).
+  let c = clamp((imp_oct_encode(l) * 0.5 + 0.5) * n, vec2<f32>(0.0), vec2<f32>(n));
+  let i = min(vec2<u32>(floor(c)), vec2<u32>(g - 2u));
+  let w = c - vec2<f32>(i);
+  var lit = 0.0;
+  for (var k = 0u; k < 4u; k++) {
+    let o = vec2<u32>(k & 1u, k >> 1u);
+    let wk = select(1.0 - w.x, w.x, o.x == 1u) * select(1.0 - w.y, w.y, o.y == 1u);
+    if (wk <= 0.0) { continue; }
+    lit += wk * imp_frame_shadow(x, (i.x + o.x) + (i.y + o.y) * g);
+  }
+  return lit;
+}
+
+// How lit `x` is by frame `f` of the depth atlas seen as a map from its
+// direction: 0 where a covered texel stands ahead of it.
+fn imp_frame_shadow(x: vec3<f32>, f: u32) -> f32 {
   let uv = imp_frame_uv(x, f);
   if (any(abs(uv) > vec2<f32>(1.0))) { return 1.0; }
   let a = imp_atlas(f, uv);
