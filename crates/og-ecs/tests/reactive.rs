@@ -504,8 +504,13 @@ fn brute(points: &[(Entity, [f32; 3])], c: [f32; 3]) -> Vec<(f64, Entity)> {
     let mut v: Vec<(f64, Entity)> = points
         .iter()
         .map(|(e, p)| {
+            // Squared by multiplying, as the index does: `powi` is the host's
+            // (MSVC's debug build rounds 480 squares in a million differently).
             let d: f64 = (0..3)
-                .map(|k| (f64::from(p[k]) - f64::from(c[k])).powi(2))
+                .map(|k| {
+                    let d = f64::from(p[k]) - f64::from(c[k]);
+                    d * d
+                })
                 .sum();
             (d.sqrt(), *e)
         })
