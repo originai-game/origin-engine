@@ -117,6 +117,62 @@ impl GltfSource {
     }
 }
 
+/// Every skinned mesh node's bind pose in model space, by glTF node index
+/// (format's `NodeBindRow`): its skin's first joint's rest transform (the
+/// joints' parents' transforms from the scene's root) times that joint's
+/// inverse bind matrix (identity without them). glTF ignores a skinned
+/// mesh node's own transform, so this, not the node's, places its
+/// vertices at rest: for its bounds, its levels' errors and a draw
+/// without the pose.
+pub(crate) fn skin_binds(src: &GltfSource) -> std::collections::BTreeMap<usize, Mat4> {
+    let doc = &src.doc;
+    let n = doc.nodes().count();
+    let mut parent = vec![usize::MAX; n];
+    for node in doc.nodes() {
+        for c in node.children() {
+            parent[c.index()] = node.index();
+        }
+    }
+    let local = |i: usize| {
+        let (t, r, s) = doc
+            .nodes()
+            .nth(i)
+            .expect("in range")
+            .transform()
+            .decomposed();
+        Mat4::from_scale_rotation_translation(Vec3::from(s), Quat::from_array(r), Vec3::from(t))
+    };
+    let world = |mut i: usize| {
+        let mut m = Mat4::IDENTITY;
+        let mut steps = 0;
+        while i != usize::MAX && steps <= n {
+            m = local(i) * m;
+            i = parent[i];
+            steps += 1;
+        }
+        m
+    };
+    let mut out = std::collections::BTreeMap::new();
+    for node in doc.nodes() {
+        let (Some(skin), Some(_)) = (node.skin(), node.mesh()) else {
+            continue;
+        };
+        let Some(joint) = skin.joints().next() else {
+            continue;
+        };
+        let reader = skin.reader(|b| Some(&src.buffers[b.index()].0[..]));
+        let ibm = reader
+            .read_inverse_bind_matrices()
+            .and_then(|mut m| m.next())
+            .map_or(Mat4::IDENTITY, |m| Mat4::from_cols_array_2d(&m));
+        let bind = world(joint.index()) * ibm;
+        if bind.is_finite() && bind.determinant().abs() > 1e-12 {
+            out.insert(node.index(), bind);
+        }
+    }
+    out
+}
+
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(s.len() * 3 / 4);
     let (mut acc, mut bits) = (0u32, 0u32);

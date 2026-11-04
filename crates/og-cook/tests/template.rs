@@ -545,11 +545,13 @@ fn meshes_keep_their_triangles_and_bounds() {
         let (mut lo, mut hi) = (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN));
         for n in model.scene_nodes(model.default_scene.unwrap()) {
             if let Some(m) = model.nodes[n].mesh {
-                for p in model.meshes[m].primitives.clone() {
-                    for v in &model.primitives[p].vertices {
-                        let w = world[n].transform_point3(glam::Vec3::from(v.position));
-                        lo = lo.min(w);
-                        hi = hi.max(w);
+                for at in model.node_draws(&world, n) {
+                    for p in model.meshes[m].primitives.clone() {
+                        for v in &model.primitives[p].vertices {
+                            let w = at.transform_point3(glam::Vec3::from(v.position));
+                            lo = lo.min(w);
+                            hi = hi.max(w);
+                        }
                     }
                 }
             }

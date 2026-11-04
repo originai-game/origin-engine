@@ -28,6 +28,7 @@ mod mesh_flash;
 mod mid_tick_save;
 mod missing_glyphs;
 mod model_clips;
+mod model_lod;
 mod model_reload;
 mod motion_goals;
 mod motion_performance;

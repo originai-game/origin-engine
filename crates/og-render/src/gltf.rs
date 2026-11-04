@@ -351,16 +351,40 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
         .default_scene()
         .or_else(|| doc.scenes().next())
         .ok_or_else(|| RenderError::InvalidData("gltf: no scene".into()))?;
+    let local = |node: &gltf::Node| {
+        let (t, r, s) = node.transform().decomposed();
+        Mat4::from_scale_rotation_translation(Vec3::from(s), Quat::from_array(r), Vec3::from(t))
+    };
+    // Every node's rest transform from the scene's roots, for the joints.
+    let mut rest = vec![Mat4::IDENTITY; doc.nodes().count()];
     let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
     while let Some((node, parent)) = stack.pop() {
-        let (t, r, s) = node.transform().decomposed();
-        let world = parent
-            * Mat4::from_scale_rotation_translation(
-                Vec3::from(s),
-                Quat::from_array(r),
-                Vec3::from(t),
-            );
+        rest[node.index()] = parent * local(&node);
+        stack.extend(node.children().map(|c| (c, rest[node.index()])));
+    }
+    let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
+    while let Some((node, parent)) = stack.pop() {
+        let world = parent * local(&node);
+        // glTF ignores a skinned mesh node's own transform: its joints
+        // place the vertices, at rest the first joint's rest transform
+        // times its inverse bind matrix (og-cook's `skin_binds`, the same
+        // placement as a pose's palette).
+        let place = node
+            .skin()
+            .filter(|_| node.mesh().is_some())
+            .and_then(|skin| {
+                let joint = skin.joints().next()?;
+                let ibm = skin
+                    .reader(|b| Some(&buffers[b.index()]))
+                    .read_inverse_bind_matrices()
+                    .and_then(|mut m| m.next())
+                    .map_or(Mat4::IDENTITY, |m| Mat4::from_cols_array_2d(&m));
+                let bind = rest[joint.index()] * ibm;
+                (bind.is_finite() && bind.determinant().abs() > 1e-12).then_some(bind)
+            })
+            .unwrap_or(world);
         if let Some(mesh) = node.mesh() {
+            let world = place;
             for prim in mesh.primitives() {
                 if prim.mode() != gltf::mesh::Mode::Triangles {
                     continue;

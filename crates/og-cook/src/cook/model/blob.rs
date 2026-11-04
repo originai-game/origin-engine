@@ -338,6 +338,26 @@ pub fn cook(
 
     let NodeOrder { new_index, rows } = node_order(doc, &mut |s| strings.add(s))?;
     let nodes = rows;
+    // Skinned mesh nodes' bind poses, by cooked node (format's NodeBindRow).
+    let skin_binds: Vec<NodeBindRow> = super::skin_binds(src)
+        .into_iter()
+        .map(|(n, m)| {
+            let (s, r, t) = m.to_scale_rotation_translation();
+            NodeBindRow {
+                node: new_index[n],
+                tx: t.x,
+                ty: t.y,
+                tz: t.z,
+                rx: r.x,
+                ry: r.y,
+                rz: r.z,
+                rw: r.w,
+                sx: s.x,
+                sy: s.y,
+                sz: s.z,
+            }
+        })
+        .collect();
     // EXT_mesh_gpu_instancing: each instanced node's instances, in cooked node order.
     let instanced = super::ext::instances(src).map_err(CookError)?;
     let mut instances: Vec<InstanceRow> = Vec::new();
@@ -538,6 +558,9 @@ pub fn cook(
             row_hash::<VariantMappingRow>(),
         )
         .table("impostors", &impostors, row_hash::<ImpostorRow>());
+    if !skin_binds.is_empty() {
+        w.table("skin_binds", &skin_binds, row_hash::<NodeBindRow>());
+    }
     if !foliage_rows.is_empty() {
         w.table("foliage_rows", &foliage_rows, row_hash::<FoliageRow>())
             .raw("foliage", foliage, 16);
@@ -656,6 +679,8 @@ pub(super) fn scene_bounds(
 ) -> (Vec3, Vec3) {
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
     let doc = &src.doc;
+    // A skinned mesh's vertices are placed by its bind pose, not its node.
+    let binds = super::skin_binds(src);
     if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
         let mut stack: Vec<(gltf::Node, Mat4)> =
             scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
@@ -675,9 +700,10 @@ pub(super) fn scene_bounds(
                     Vec3::from(t),
                 );
             // An instanced node draws its mesh at each instance only.
-            let at: Vec<Mat4> = match instanced.get(&node.index()) {
-                Some(i) => i.iter().map(|m| world * *m).collect(),
-                None => vec![world],
+            let at: Vec<Mat4> = match (binds.get(&node.index()), instanced.get(&node.index())) {
+                (Some(b), _) => vec![*b],
+                (None, Some(i)) => i.iter().map(|m| world * *m).collect(),
+                (None, None) => vec![world],
             };
             if let Some(mesh) = node.mesh() {
                 for prim in mesh

@@ -865,7 +865,11 @@ fn placement_of(src: &GltfSource, prim: &gltf::Primitive) -> glam::Mat4 {
                 Vec3::from(t),
             );
         if node.mesh().is_some_and(|m| m.index() == mesh.index()) {
-            return world;
+            // A skinned mesh is placed by its bind pose (model.rs `skin_binds`).
+            return crate::cook::model::skin_binds(src)
+                .get(&node.index())
+                .copied()
+                .unwrap_or(world);
         }
         let mut children: Vec<_> = node.children().map(|c| (c, world)).collect();
         children.reverse();

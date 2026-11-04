@@ -736,6 +736,8 @@ pub(in crate::cook) fn extent(src: &GltfSource) -> f32 {
 fn scene_primitives(src: &GltfSource) -> Vec<(gltf::Primitive<'_>, glam::Mat4)> {
     use glam::{Mat4, Quat};
     let mut out = Vec::new();
+    // A skinned mesh is placed by its bind pose (model.rs `skin_binds`).
+    let binds = crate::cook::model::skin_binds(src);
     if let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) {
         let mut stack: Vec<(gltf::Node, Mat4)> =
             scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
@@ -748,7 +750,8 @@ fn scene_primitives(src: &GltfSource) -> Vec<(gltf::Primitive<'_>, glam::Mat4)> 
                     Vec3::from(t),
                 );
             if let Some(mesh) = node.mesh() {
-                out.extend(mesh.primitives().map(|p| (p, world)));
+                let at = binds.get(&node.index()).copied().unwrap_or(world);
+                out.extend(mesh.primitives().map(|p| (p, at)));
             }
             stack.extend(node.children().map(|c| (c, world)));
         }

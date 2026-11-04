@@ -45,6 +45,9 @@ pub struct UncookedGltf {
     nodes: Vec<CookedNode>,
     scenes: Vec<CookedScene>,
     default_scene: Option<usize>,
+    /// Per skinned mesh node (cooked order), its bind pose
+    /// ([`CookedModel::skin_binds`]).
+    skin_binds: BTreeMap<usize, Mat4>,
 }
 
 const GLB_MAGIC: u32 = 0x4654_6c67;
@@ -293,6 +296,7 @@ impl UncookedGltf {
             nodes: Vec::new(),
             scenes: Vec::new(),
             default_scene: None,
+            skin_binds: BTreeMap::new(),
         };
         model.read_meshes()?;
         model.read_materials()?;
@@ -555,6 +559,48 @@ impl UncookedGltf {
                 roots,
             });
         }
+        // Each skinned mesh node's bind pose (og-cook's `skin_binds`): its
+        // skin's first joint at rest times that joint's inverse bind.
+        let world = {
+            let mut w: Vec<Mat4> = Vec::with_capacity(self.nodes.len());
+            for n in &self.nodes {
+                let p = n.parent.map_or(Mat4::IDENTITY, |p| w[p]);
+                w.push(p * n.local());
+            }
+            w
+        };
+        let skins = list(&self.json, "skins");
+        for (old, n) in nodes.iter().enumerate() {
+            let (Some(skin), Some(_)) = (index(n, "skin"), index(n, "mesh")) else {
+                continue;
+            };
+            let skin = skins
+                .get(skin)
+                .ok_or_else(|| format!("node {old} names a skin that is not there"))?;
+            let Some(joint) = list(skin, "joints").first().and_then(Value::as_u64) else {
+                continue;
+            };
+            let joint = joint as usize;
+            if joint >= nodes.len() {
+                return Err(format!(
+                    "node {old}'s skin names a joint that is not a node"
+                ));
+            }
+            let ibm = match index(skin, "inverseBindMatrices") {
+                Some(a) => {
+                    let a = self.accessor(a)?;
+                    if a.comps != 16 || a.count == 0 {
+                        return Err(format!("node {old}'s skin has no MAT4 inverse binds"));
+                    }
+                    Mat4::from_cols_array(&a.vec::<16>(0))
+                }
+                None => Mat4::IDENTITY,
+            };
+            let bind = world[at[joint]] * ibm;
+            if bind.is_finite() && bind.determinant().abs() > 1e-12 {
+                self.skin_binds.insert(at[old], bind);
+            }
+        }
         // No scene: every parentless node is one.
         if self.scenes.is_empty() && !nodes.is_empty() {
             self.scenes.push(CookedScene {
@@ -589,6 +635,7 @@ impl UncookedGltf {
             Some("VEC2") => 2,
             Some("VEC3") => 3,
             Some("VEC4") => 4,
+            Some("MAT4") => 16,
             t => return Err(format!("accessor {i} is of type {t:?}")),
         };
         let ctype = a["componentType"].as_u64().unwrap_or(0);
@@ -773,6 +820,7 @@ impl UncookedGltf {
             max: Vec3::ZERO,
             skipped_animations: list(&self.json, "animations").len() as u32,
             skipped_skins: list(&self.json, "skins").len() as u32,
+            skin_binds: self.skin_binds,
             lights: Vec::new(),
             instances: BTreeMap::new(),
             variants: Vec::new(),
@@ -795,7 +843,9 @@ impl UncookedGltf {
                             if c & 2 == 0 { a.y } else { b.y },
                             if c & 4 == 0 { a.z } else { b.z },
                         );
-                        let w = world[n].transform_point3(corner);
+                        // A skinned mesh at its bind pose (`node_draws`).
+                        let at = model.skin_binds.get(&n).unwrap_or(&world[n]);
+                        let w = at.transform_point3(corner);
                         min = min.min(w);
                         max = max.max(w);
                     }
