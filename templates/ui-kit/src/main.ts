@@ -29,7 +29,7 @@ import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shi
 import { buildRaceScene, RaceView } from "./raceScene.ts";
 import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
 import { defineHudActions } from "./huds.ts";
-import { styleNames } from "../tools/style-names.js" with { type: "macro" };
+import { styleNames, stylePaths } from "../tools/style-names.js" with { type: "macro" };
 
 export const SCREENS = [
   "gallery", "widgets", "toasts",
@@ -51,6 +51,7 @@ export type Screen = (typeof SCREENS)[number];
  * atlas packs, then the seed styles og style new generated;
  * "default" is the engine's default style (the design language's, for prototypes). */
 export const STYLES = styleNames();
+const STYLE_PATHS = stylePaths();
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
@@ -461,7 +462,7 @@ function followSettings(world: World, tick: number, d: DemoState): void {
  * sounds) with the demo's font and icons, or the pack's. */
 function applyTheme(world: World, d: DemoState): void {
   const name = STYLES[d.style] ?? "default";
-  const loaded = name === "default" ? null : og.load.style(world, `@styles/${name}/style.ogt`);
+  const loaded = name === "default" ? null : og.load.style(world, STYLE_PATHS[name]!);
   if (loaded && !loaded.ok) throw new Error(loaded.reason);
   const style = loaded && loaded.ok ? loaded.value : null;
   const sounds: Record<string, unknown> = {};

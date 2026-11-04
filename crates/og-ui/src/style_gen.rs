@@ -374,10 +374,9 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
             dark_label
         },
     );
-    let away = if label.luminance() > 0.5 { k } else { w };
     let primary = c.seed;
-    let primary_hover = primary.mix(away, 0.08);
-    let primary_active = primary.mix(away, 0.16);
+    let primary_hover = primary.mix(if dark { w } else { k }, 0.16);
+    let primary_active = primary.mix(k, 0.28);
     let accent = c.accent.unwrap_or(if dark {
         from_hsl(h, s.max(0.6), 0.68)
     } else {
@@ -1575,7 +1574,16 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
             );
         }
     }
-    dress("Button.base[primary]", vec![PRIMARY_FILL.into()]);
+    // State-specific fills must beat both the variant and finish dressings.
+    dress("Button.base[primary]", vec!["fill primary".into()]);
+    dress(
+        "Button.base[primary][hover]",
+        vec!["fill primaryHover".into()],
+    );
+    dress(
+        "Button.base[primary][pressed]",
+        vec!["fill primaryActive".into()],
+    );
     // Every style: one selection grammar (docs/ui.md §15.5). A selected
     // chip, slot or tab is the accent's rim at the part's own rim width
     // (a hairline where the finish draws none), on the ground the widget
@@ -1670,12 +1678,6 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
     }
     out
 }
-
-/// The primary button's lit fill: from the game's primary down to its
-/// pressed tone (`primaryActive`, always the one further from its label),
-/// so any primary a game sets keeps its label at 7:1 on an atlas-free
-/// style (a flat crimson reads 6.3:1 under white at best).
-const PRIMARY_FILL: &str = "fill linear 180 primary primaryActive primaryActive primaryActive";
 
 /// Replaces block `key` of a version 2 style text with `block` (its full
 /// text), keeping everything else.
@@ -2086,6 +2088,45 @@ impl StyleChoices {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generated_primary_keeps_seed_and_changes_fill_in_each_state() {
+        use crate::dress::{DressSet, PartRef};
+        for scheme in [Scheme::Dark, Scheme::Light] {
+            for &finish in Finish::ALL {
+                let mut c = StyleChoices::for_look("review", "minimal modern", "states");
+                c.seed = Srgba::rgb(0x24, 0x40, 0x60);
+                c.scheme = scheme;
+                c.finish = finish;
+                c.dressings.clear();
+                let generated = generate(&c).unwrap();
+                let file = crate::parse_style(&generated.text).unwrap();
+                let theme = file.theme(None, [0; 6]);
+                let p = theme.palette;
+                assert_eq!(p.primary, c.seed);
+                assert_eq!(
+                    p.primary_hover.luminance() > p.primary.luminance(),
+                    scheme == Scheme::Dark,
+                    "hover moves towards the scheme's light, {finish:?}"
+                );
+                assert_ne!(p.primary_active, p.primary_hover);
+                let dress = DressSet::new(file.dressings);
+                let base = PartRef::parse("Button.base[primary]", None).unwrap();
+                for (hover, pressed, color) in [
+                    (false, false, p.primary),
+                    (true, false, p.primary_hover),
+                    (true, true, p.primary_active),
+                ] {
+                    let fills = dress.resolve(&base.in_state(hover, pressed)).draw.fills;
+                    assert_eq!(fills.len(), 1);
+                    assert_eq!(
+                        fills[0].resolve(&theme),
+                        og_render::UiPaint::Solid(color.linear())
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn every_seed_and_every_choice_generates_a_style_that_parses() {

@@ -1,3 +1,7 @@
+//! Historical opt-in contrast diagnostics, not acceptance checks. The UI
+//! re-plan (2026-11-04) removes contrast thresholds; these remain available
+//! with `--ignored` for investigating old contrast reports only.
+//!
 //! button_contrast.rs for the style packs and the games' styles: every
 //! button role's label, in every state, the three label inks (`ink`,
 //! `inkMuted`, `inkFaint`), a text field's placeholder (`inkFaint` on the
@@ -345,6 +349,7 @@ fn atlas_handle() -> TextureHandle {
 }
 
 #[test]
+#[ignore = "historical contrast diagnostic; UI packs have no contrast threshold"]
 fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
@@ -755,6 +760,7 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
 /// fill (a run-3 game's gold primary read 1.5:1 on neon); the accent
 /// badge's ink (`highlight`, the style's) left on the game's wash.
 #[test]
+#[ignore = "historical contrast diagnostic; UI packs have no contrast threshold"]
 fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
     let primaries = [
         ("gold", Srgba::rgb(255, 199, 94)),
@@ -824,6 +830,7 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
 }
 
 #[test]
+#[ignore = "historical contrast diagnostic; UI packs have no contrast threshold"]
 fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
@@ -1102,6 +1109,7 @@ fn frame_contrast(pixels: &[u8], width: u32, r: &Rect) -> Option<f32> {
 }
 
 #[test]
+#[ignore = "historical contrast diagnostic; UI packs have no contrast threshold"]
 fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() {
     let fonts = cooked_fonts();
     let mut rows = Vec::new();
