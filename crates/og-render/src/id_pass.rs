@@ -20,10 +20,23 @@
 //! clamp at the field's edges), each cell split along the diagonal the
 //! vertex shader picks, its heights read bilinearly from the finest level
 //! of the field, its holes cut per pixel where the fragment shader
-//! discards them, and its stamps' meshes beside it. Left out: scattered
-//! copies, grass, particles, strips, text and the overlay (the UI is
-//! described from its own tree), morph targets (the bind shape is drawn),
-//! and alpha (a cut-out leaf covers its whole triangle).
+//! discards them, and its stamps' meshes beside it.
+//!
+//! A grass field is drawn under its own id at **field fidelity, not blade
+//! fidelity**: the blades are generated on the GPU each frame and never
+//! read back, so the pass draws the field's coverage instead, the
+//! terrain's surface lifted half the field's tallest blade, cut per pixel
+//! where the field grows no blades (its layer's weight times its density
+//! map under one half, a hole, or past its `distance` from the camera). A
+//! pixel between two blades still answers the field, and a blade's tip
+//! above the half height answers what is behind it. Over a streamed
+//! terrain the cut reads its resident level-0 tiles (their heights,
+//! control and hole bits), so the pass stays synchronous; where none is
+//! resident the field grows nothing, as on the GPU.
+//!
+//! Left out: scattered copies, particles, strips, text and the overlay (the
+//! UI is described from its own tree), morph targets (the bind shape is
+//! drawn), and alpha (a cut-out leaf covers its whole triangle).
 
 use crate::frame::camera_frame;
 use crate::scene::{Camera, MeshData, MeshHandle, Projection, RenderScene};
@@ -46,6 +59,9 @@ pub struct IdSources {
     pub terrains: Vec<u32>,
     /// Per [`RenderScene::terrain_stamps`].
     pub stamps: Vec<u32>,
+    /// Per [`RenderScene::grass`]: each field's coverage (the module's
+    /// notes on its fidelity).
+    pub grass: Vec<u32>,
 }
 
 /// The heights of the terrains whose fields the scene does not hold (a
@@ -165,8 +181,9 @@ struct Item {
     indices: Vec<u32>,
     /// A sprite: tested against the depth, never writing it.
     sprite: bool,
-    /// A terrain's: its index in the scene's terrains and each position's
-    /// xz in the terrain's space, for its hole test per pixel.
+    /// A terrain's or a grass field's: its cut test (an index into the
+    /// pass's tests) and each position's xz in the terrain's space, which
+    /// the test reads per pixel.
     ground: Option<(usize, Vec<Vec2>)>,
 }
 
@@ -321,9 +338,8 @@ pub fn render_ids_from(
     // Terrains, laid out around the main camera as the renderer lays them
     // out for every pass of the frame, and their stamps.
     let main = crate::shaken_camera(&scene.camera, scene.shake);
-    let mut holes: Vec<Option<Box<CutTest>>> = Vec::new();
+    let mut tests: Vec<Box<CutTest>> = Vec::new();
     for (k, t) in scene.terrains.iter().enumerate() {
-        holes.push(None);
         let id = sources.terrains.get(k).copied().unwrap_or(0);
         if id == 0 || !t.visible {
             continue;
@@ -341,7 +357,7 @@ pub fn render_ids_from(
         else {
             continue;
         };
-        holes[k] = match field {
+        let hole: Option<Box<CutTest>> = match field {
             Some(d) => d
                 .holes
                 .is_some()
@@ -357,13 +373,82 @@ pub fn render_ids_from(
                 }) as Box<CutTest>
             }),
         };
+        let ground = hole.map(|hole| {
+            tests.push(hole);
+            (tests.len() - 1, locals)
+        });
         items.push(Item {
             id,
             order: (0, 0),
             positions,
             indices,
             sprite: false,
-            ground: Some((k, locals)),
+            ground,
+        });
+    }
+    // Grass fields: their coverage over their terrains (the module's notes).
+    for (i, g) in scene.grass.iter().enumerate() {
+        let id = sources.grass.get(i).copied().unwrap_or(0);
+        let Some(t) = scene
+            .terrains
+            .get(g.terrain)
+            .filter(|t| id != 0 && t.visible)
+        else {
+            continue;
+        };
+        let grass = &g.grass;
+        if !grass.usable() || grass.layer as usize >= t.layers.len().max(1) {
+            continue;
+        }
+        let (Some(layout), Some(source)) = (
+            scene.terrain_layout(t.terrain),
+            scene.terrain_sources().0.get(t.terrain.index()),
+        ) else {
+            continue;
+        };
+        let k = g.terrain;
+        let field = scene.terrain(t.terrain);
+        let raw = |c: u32, r: u32| match field {
+            Some(d) => d.heights.get((r * d.columns + c) as usize).copied(),
+            None => heights(k, c, r),
+        };
+        let lift = grass.tallest() * 0.5;
+        let far = main.far.min(grass.distance + lift);
+        let Some((positions, locals, indices)) =
+            terrain_mesh(t, layout, &raw, main.position, far, lift, &planes)
+        else {
+            continue;
+        };
+        let painted = grass.density_map.and_then(|h| scene.texture(h));
+        let (eye, reach, layer) = (main.position, grass.distance, grass.layer as usize);
+        tests.push(Box::new(move |xz: Vec2| {
+            // The ground the blades grow on: the field in memory, or a
+            // streamed terrain's resident level-0 tiles (none resident
+            // there: no blades, as on the GPU).
+            let tiles;
+            let ground: &dyn crate::scatter::Ground = match source {
+                crate::terrain::TerrainSource::Data(d, _) => d,
+                crate::terrain::TerrainSource::Stream { tiles: t, .. } => {
+                    tiles = crate::scatter::TileGround { layout, tiles: t };
+                    &tiles
+                }
+            };
+            let (Some(h), Some(false), Some(w)) =
+                (ground.height(xz), ground.hole(xz), t.weights_on(ground, xz))
+            else {
+                return true;
+            };
+            let root = t.transform.transform_point3(Vec3::new(xz.x, h, xz.y));
+            let density = painted.map_or(1.0, |m| red_at(m, xz / layout.size + 0.5));
+            root.distance(eye) > reach || w[layer] * density < 0.5
+        }));
+        items.push(Item {
+            id,
+            order: (0, 0),
+            positions,
+            indices,
+            sprite: false,
+            ground: Some((tests.len() - 1, locals)),
         });
     }
     for (i, st) in scene.terrain_stamps.iter().enumerate() {
@@ -453,7 +538,7 @@ pub fn render_ids_from(
         let ground = item
             .ground
             .as_ref()
-            .and_then(|(k, locals)| Some((holes[*k].as_deref()?, locals)));
+            .map(|(k, locals)| (&*tests[*k], locals));
         for tri in item.indices.as_chunks::<3>().0 {
             let [a, b, c] = tri.map(|k| clip.get(k as usize).copied());
             let (Some(a), Some(b), Some(c)) = (a, b, c) else {
@@ -682,8 +767,35 @@ fn frustum(m: Mat4) -> [Vec4; 6] {
     [r3 + r0, r3 - r0, r3 + r1, r3 - r1, r2, r3 - r2].map(|p| p / p.truncate().length().max(1e-20))
 }
 
+/// The red channel of an RGBA8 map at `uv` (0..1 over it, clamped),
+/// bilinear, linear (a painted grass map, as the GPU samples it).
+fn red_at(m: &crate::TextureData, uv: Vec2) -> f32 {
+    let (w, h) = (m.width.max(1), m.height.max(1));
+    let texel = |x: i64, y: i64| {
+        let (x, y) = (x.clamp(0, w as i64 - 1), y.clamp(0, h as i64 - 1));
+        let v = m
+            .rgba
+            .get(((y * w as i64 + x) * 4) as usize)
+            .copied()
+            .unwrap_or(255) as f32
+            / 255.0;
+        match m.color_space {
+            crate::ColorSpace::Srgb if v <= 0.04045 => v / 12.92,
+            crate::ColorSpace::Srgb => ((v + 0.055) / 1.055).powf(2.4),
+            crate::ColorSpace::Linear => v,
+        }
+    };
+    let s = uv.clamp(Vec2::ZERO, Vec2::ONE) * Vec2::new(w as f32, h as f32) - 0.5;
+    let i = s.floor();
+    let f = s - i;
+    let (x, y) = (i.x as i64, i.y as i64);
+    let lo = texel(x, y) + (texel(x + 1, y) - texel(x, y)) * f.x;
+    let hi = texel(x, y + 1) + (texel(x + 1, y + 1) - texel(x, y + 1)) * f.x;
+    lo + (hi - lo) * f.y
+}
+
 /// Whether a pixel whose point (a terrain's xz) is this is cut out: a
-/// terrain's hole.
+/// terrain's hole, or where a grass field grows nothing.
 type CutTest<'a> = dyn Fn(Vec2) -> bool + 'a;
 
 /// A triangle's corners' points and the test that cuts a pixel out.
@@ -1239,5 +1351,170 @@ mod tests {
                 .object(8)
                 .is_none()
         );
+    }
+
+    /// A flat terrain whose left half (x < 0) is layer 1 and right half
+    /// layer 0, with a grass field (id 7) on layer 1, 0.6 m tall, to 20 m
+    /// from the camera; seen from above its middle.
+    fn grass_scene() -> (RenderScene, IdSources) {
+        let mut data = field(|_, _| 0.0);
+        let side = 64u32;
+        let rgba: Vec<u8> = (0..side * side)
+            .flat_map(|k| {
+                if k % side < side / 2 {
+                    [0, 255, 0, 0]
+                } else {
+                    [255, 0, 0, 0]
+                }
+            })
+            .collect();
+        data.control = Some(crate::TerrainControl {
+            width: side,
+            height: side,
+            rgba: rgba.into(),
+        });
+        let (mut scene, mut ids) = terrain_scene(
+            data,
+            Mat4::IDENTITY,
+            Vec3::new(0.0, 8.0, 18.0),
+            Vec3::new(0.0, 0.0, 0.0),
+        );
+        scene.terrains[0].layers = vec![crate::TerrainLayer::default(); 2];
+        scene.grass.push(crate::GrassDraw {
+            terrain: 0,
+            grass: crate::Grass {
+                layer: 1,
+                height: 0.6,
+                distance: 20.0,
+                ..Default::default()
+            },
+        });
+        ids.grass = vec![7];
+        (scene, ids)
+    }
+
+    /// Ways this could fail: no grass in the pass (the old one drew none,
+    /// so describe never listed a field), the field drawn on its terrain's
+    /// surface (tied with the ground) or at its blades' tips instead of
+    /// the half height its fidelity states, over the whole terrain instead
+    /// of where its layer grows, past its distance, or still drawn with
+    /// its terrain hidden.
+    #[test]
+    fn a_grass_field_is_drawn_under_its_owner_id_where_it_grows() {
+        let (mut scene, ids) = grass_scene();
+        let eye = scene.camera.position;
+        let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
+        let grass = f.object(7).expect("the field shows");
+        assert!(grass.visible > 400, "{} pixels", grass.visible);
+        // The ground shows where the field does not grow.
+        assert!(f.object(5).is_some_and(|t| t.visible > 400));
+        let mut far = 0.0f32;
+        for y in 0..f.height {
+            for x in 0..f.width {
+                let Some((id, p)) = f.at(x as f32 + 0.5, y as f32 + 0.5) else {
+                    continue;
+                };
+                if id == 7 {
+                    assert!((p.y - 0.3).abs() < 0.02, "({x}, {y}) at {p}: half of 0.6 m");
+                    assert!(p.x < 0.5, "({x}, {y}) at {p}: on layer 1's half");
+                    far = far.max(p.distance(eye));
+                } else if id == 5 && p.x < -0.5 && p.distance(eye) < 19.0 {
+                    panic!("({x}, {y}) at {p}: bare ground where the field grows");
+                }
+            }
+        }
+        assert!(
+            far <= 20.0 && far > 16.0,
+            "the field reaches {far} m of its 20"
+        );
+        // A pebble lower than the half height in the meadow is hidden by
+        // it; a post taller than the blades still shows.
+        let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+        let m = scene.add_material(Material::default());
+        let low = Mat4::from_scale_rotation_translation(
+            Vec3::new(1.0, 0.2, 1.0),
+            Default::default(),
+            Vec3::new(-4.0, 0.1, 4.0),
+        );
+        let tall = Mat4::from_scale_rotation_translation(
+            Vec3::new(0.4, 3.0, 0.4),
+            Default::default(),
+            Vec3::new(-6.0, 1.5, 2.0),
+        );
+        scene.add_instance(cube, m, low);
+        scene.add_instance(cube, m, tall);
+        let mut ids2 = ids.clone();
+        ids2.instances = vec![8, 9];
+        let f = render_ids(&scene, &ids2, &|_, _, _| None, 160, 90);
+        assert!(
+            f.object(8).is_none_or(|o| o.visible == 0),
+            "the pebble is in the grass"
+        );
+        assert!(
+            f.object(9).is_some_and(|o| o.visible > 10),
+            "the post stands above it"
+        );
+        // Hidden with its terrain.
+        scene.terrains[0].visible = false;
+        assert!(
+            render_ids(&scene, &ids, &|_, _, _| None, 160, 90)
+                .object(7)
+                .is_none()
+        );
+    }
+
+    /// Ways this could fail: the density map ignored (a meadow painted
+    /// out still answering pick), read from the wrong axis (the cleared
+    /// half mirrored), or a hole in the ground keeping its grass.
+    #[test]
+    fn a_painted_out_meadow_and_a_hole_have_no_grass_in_the_pass() {
+        let (mut scene, ids) = grass_scene();
+        // Black where z > 8 (nearest the camera, inside the field's
+        // distance), white elsewhere.
+        let side = 16u32;
+        let rgba: Vec<u8> = (0..side * side)
+            .flat_map(|k| {
+                if k / side >= 10 {
+                    [0, 0, 0, 255]
+                } else {
+                    [255, 255, 255, 255]
+                }
+            })
+            .collect();
+        let map = scene.add_texture(crate::TextureData {
+            width: side,
+            height: side,
+            rgba,
+            color_space: crate::ColorSpace::Linear,
+            mips: crate::Mips::None,
+        });
+        scene.grass[0].grass.density_map = Some(map);
+        // A hole near the camera, in the meadow.
+        let handle = scene.terrains[0].terrain;
+        let mut data = scene.terrain(handle).unwrap().clone();
+        let (cx, cz) = data.cells();
+        let mut holes = vec![0u8; (cx * cz) as usize];
+        for r in 0..cz {
+            for c in 0..cx {
+                let (x, z) = (c as f32 * 0.5 - 31.75, r as f32 * 0.5 - 31.75);
+                holes[(r * cx + c) as usize] =
+                    u8::from((x + 4.0).abs() < 1.5 && (z - 6.0).abs() < 1.5);
+            }
+        }
+        data.holes = Some(holes.into());
+        scene.set_terrain(handle, data.clone());
+        let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
+        assert!(f.object(7).is_some_and(|o| o.visible > 100));
+        for y in 0..f.height {
+            for x in 0..f.width {
+                if let Some((7, p)) = f.at(x as f32 + 0.5, y as f32 + 0.5) {
+                    assert!(p.z < 8.5, "({x}, {y}) at {p}: painted out");
+                    assert!(
+                        !data.hole(Vec2::new(p.x, p.z)),
+                        "({x}, {y}) at {p}: over the hole"
+                    );
+                }
+            }
+        }
     }
 }

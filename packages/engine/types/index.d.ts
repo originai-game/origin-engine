@@ -49774,7 +49774,7 @@ export interface DescribedEntity {
   /** Its components, by name. */
   readonly archetype: readonly string[];
   /**
-   * What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`.
+   * What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`. A `grass` field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it.
    */
   readonly labels: readonly string[];
   /** The box of its visible pixels. */

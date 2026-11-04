@@ -34,6 +34,9 @@ pub(crate) struct DrawIds {
     /// Per `scene.terrain_stamps`.
     #[cfg(not(feature = "profile2d"))]
     pub stamps: Vec<u64>,
+    /// Per `scene.grass`.
+    #[cfg(not(feature = "profile2d"))]
+    pub grass: Vec<u64>,
 }
 
 pub(crate) struct RuntimeView {
@@ -112,6 +115,7 @@ impl RuntimeView {
         {
             sources.terrains = rs.ids.terrains.iter().map(|&e| id_of(e)).collect();
             sources.stamps = rs.ids.stamps.iter().map(|&e| id_of(e)).collect();
+            sources.grass = rs.ids.grass.iter().map(|&e| id_of(e)).collect();
         }
         let heights = super::terrain::id_heights(&rs);
         let frame = og_render::render_ids(scene, &sources, &heights, pw, ph);
@@ -203,7 +207,7 @@ impl RuntimeView {
 
     #[cfg(not(feature = "publish"))]
     /// What draws an entity: `model` (and its asset's path), `mesh`,
-    /// `terrain`, `terrainStamp`, `skinned`, `sprite`.
+    /// `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`.
     fn labels(&self, world: &World, e: u64) -> Vec<String> {
         let entity = Entity::from_bits(e);
         let mut labels = Vec::new();
@@ -239,6 +243,9 @@ impl RuntimeView {
         }
         if has("og.TerrainStamp") {
             labels.push("terrainStamp".into());
+        }
+        if has("og.Grass") {
+            labels.push("grass".into());
         }
         if self
             .render

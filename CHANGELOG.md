@@ -174,6 +174,16 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **Grass fields in describe and pick, at field fidelity.** The probe's
+  entity-id pass draws each og.Grass under its own entity (label `grass`):
+  not per blade (the blades live on the GPU and are never read back) but
+  as the field's coverage, the terrain's surface lifted half the tallest
+  blade, cut per pixel where the field grows nothing (its layer's weight
+  times its density map under one half, a hole, past its distance). A
+  pixel between blades answers the field; a box lower than half the
+  blades is hidden in it. Over a streamed terrain the cut reads its
+  resident level-0 tiles, so the pass stays synchronous with no readback.
+  `IdSources.grass` beside `terrains` and `stamps`.
 - **Better impostor bakes: a material atlas, backlight and self-shadow
   (G5).** The cook bakes each impostor frame 4 × 4 supersampled with its
   textures mip-filtered (a fine texture bakes to its average instead of

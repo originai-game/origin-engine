@@ -560,7 +560,11 @@ impl Terrain {
         self.weights_on(data, local).unwrap_or_else(first_layer)
     }
 
-    fn weights_on(&self, g: &dyn Ground, local: Vec2) -> Option<[f32; MAX_TERRAIN_LAYERS]> {
+    pub(crate) fn weights_on(
+        &self,
+        g: &dyn Ground,
+        local: Vec2,
+    ) -> Option<[f32; MAX_TERRAIN_LAYERS]> {
         let c = g.control(local)?;
         let n = g.normal(local)?;
         let angle = n.y.clamp(-1.0, 1.0).acos().to_degrees();

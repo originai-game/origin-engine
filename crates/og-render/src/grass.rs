@@ -214,7 +214,7 @@ impl Grass {
         self.kinds().iter().flatten().fold(0.0, |a, k| a.max(k.1))
     }
 
-    fn usable(&self) -> bool {
+    pub(crate) fn usable(&self) -> bool {
         self.density > 0.0
             && self.distance > 0.0
             && self.height > 0.0
