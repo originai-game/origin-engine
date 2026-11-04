@@ -175,24 +175,62 @@ export function withSettleDumps(commands: string): string {
     .join(";");
 }
 
+/**
+ * States of a pack the art director approved one by one, beyond its screens:
+ * each a gear frame after its commands, on the desktop, composed into
+ * kit-style-<name>-states.png. Fantasy's and scifi's selected bag cells
+ * (2026-11-04): the selection, not the tier rim, is a selected cell's one
+ * and brightest edge, for a rare (the helm) and a legendary (the greatsword),
+ * at 100 and 150 % text; the idle frame is the unselected side of each pair.
+ */
+export const STYLE_STATES: Record<string, ReadonlyArray<{ name: string; commands: readonly string[] }>> = Object.fromEntries(
+  ["fantasy", "scifi"].map((style) => [
+    style,
+    ["100", "150"].flatMap((scale) => [
+      { name: `state-gear-idle-${scale}`, commands: [`demo:text:${scale}`, "show:gear", "pat:reset"] },
+      { name: `state-gear-rare-${scale}`, commands: ["pat:select:helm"] },
+      { name: `state-gear-legendary-${scale}`, commands: ["pat:select:greatsword"] },
+    ]),
+  ]),
+);
+
+/** The states' script from `t0` (their frames settle as a screen's): its commands, without a quit, and its files. */
+function statesScript(t0: number, states: ReadonlyArray<{ name: string; commands: readonly string[] }>): { commands: string; files: string[]; end: number } {
+  const steps: string[] = [];
+  const files: string[] = [];
+  let t = t0;
+  for (const st of states) {
+    st.commands.forEach((c, k) => steps.push(`${(t + 0.05 * k).toFixed(2)}:${c}`));
+    t += STYLE_SETTLE.default ?? 1;
+    steps.push(`${t.toFixed(2)}:screenshot:${st.name}.png`);
+    files.push(`${st.name}.png`);
+    t += 0.1;
+  }
+  return { commands: steps.join(";"), files, end: t };
+}
+
 /** The playtest of one style pack on a surface (desktop by default). */
 export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
   const surface = SURFACES[on];
   const script = framesScript(0.5, STYLE_SETTLE);
   const files = script.files.filter((f) => f !== "gallery.png");
   const name = `kit-style-${style}${surface.suffix}.png`;
+  const states = on === "desktop" ? (STYLE_STATES[style] ?? []) : [];
+  const extra = statesScript(script.end, states);
+  const commands = states.length > 0 ? `${script.commands.replace(/;[\d.]+:quit$/, "")};${extra.commands};${extra.end.toFixed(2)}:quit` : script.commands;
   return playtest({
     name: `every screen in the ${style} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
     size: surface.size,
-    commands: `${surface.viewport}0.2:style:${style};${withSettleDumps(script.commands)}`,
+    commands: `${surface.viewport}0.2:style:${style};${withSettleDumps(commands)}`,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
-      for (const f of files) {
+      for (const f of [...files, ...extra.files]) {
         const screen = f.replace(/\.png$/, "");
         t.equal(unsettled(run, screen), "", `${style} ${screen} is captured with every entrance and exit settled`);
       }
       sheetCheck(run, t, files, name, surface, style);
+      if (extra.files.length > 0) sheetCheck(run, t, extra.files, `kit-style-${style}-states.png`, surface, `${style} states`);
     },
   });
 }
