@@ -19,8 +19,11 @@ For HDR, edge samples are clamped to the SDR paper-white range before
 encoding; the blend pass still samples the original float image. This
 engine adaptation keeps highlights from inflating perceptual edge thresholds.
 
-T2x uses the reference's `@SUBSAMPLE_INDICES` pair: image-space jitter
-(0.25, 0.25) / (-0.25, -0.25), area layers (1, 1, 1, 0) / (2, 2, 2, 0).
+T2x follows `Demo/DX10/Code/SMAA.cpp`'s `getJitter`, `JitteredMatrix`
+and `getSubsampleIndex`: image displacement in y-down pixels is
+(-0.25, -0.25) / (0.25, 0.25), area layers (1, 1, 1, 0) / (2, 2, 2, 0).
+The HLSL `@SUBSAMPLE_INDICES` table describes sample positions, despite
+calling them camera jitter: samples move opposite to the image translation.
 The two raw spatially filtered frames are averaged in linear display colour,
 before stylisation and UI. Its adaptation in `taa.wgsl` shares the engine's
 camera/object reprojection, bounds rejection and YCoCg neighbourhood clamp,
