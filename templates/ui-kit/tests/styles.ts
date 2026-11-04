@@ -209,7 +209,8 @@ function statesScript(t0: number, states: readonly StyleState[]): { commands: st
   let t = t0;
   for (const st of states) {
     st.commands.forEach((c, k) => steps.push(`${(t + 0.05 * k).toFixed(2)}:${c}`));
-    t += STYLE_SETTLE.default ?? 1;
+    // The settle counts from the last command (the selection a state makes), as a screen's from its show.
+    t += 0.05 * (st.commands.length - 1) + (STYLE_SETTLE.default ?? 1);
     steps.push(`${t.toFixed(2)}:screenshot:${st.name}.png`);
     files.push(`${st.name}.png`);
     t += 0.1;
@@ -224,7 +225,10 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
   const files = script.files.filter((f) => f !== "gallery.png");
   const name = `kit-style-${style}${surface.suffix}.png`;
   const states = on === "desktop" ? (STYLE_STATES[style] ?? []) : [];
-  const extra = statesScript(script.end, states);
+  // The states start once the toasts the screens queued are gone: each stays its 3200 ms (og-ui's ToastDesc
+  // default) and leaves on the pack's motion (under a second in every pack); the screens' frames end sooner.
+  const toasted = Math.max(0, ...[...script.commands.matchAll(/(?:^|;)([\d.]+):toast:/g)].map((m) => Number(m[1]) + 3.2 + 1.0));
+  const extra = statesScript(Math.max(script.end, toasted), states);
   const commands = states.length > 0 ? `${script.commands.replace(/;[\d.]+:quit$/, "")};${extra.commands};${extra.end.toFixed(2)}:quit` : script.commands;
   return playtest({
     name: `every screen in the ${style} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
