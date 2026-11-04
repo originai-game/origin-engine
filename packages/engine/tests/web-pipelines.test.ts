@@ -13,6 +13,10 @@
 // - a refused pipeline skipped for ever → made synchronously at its use
 // - a late module compiled where it was registered, or once per pipeline →
 //   made in the request's task, once
+// - a frame pipeline that reaches the browser's createRenderPipeline while the
+//   hook is on (a wgpu that took the function from the prototype at load,
+//   or one taken before the Worker installed): the first is still asynchronous,
+//   the second is named by `bypassed` from the counts the probe reports
 import { beforeAll, expect, test } from "bun:test";
 
 type Call = { method: string; arg: unknown };
@@ -46,31 +50,34 @@ class FakeBundle {
 
 let refuse = false;
 let next = 0;
-const device = {
+class FakeDevice {
   createShaderModule(desc: unknown) {
     calls.push({ method: "createShaderModule", arg: desc });
     return { module: ++next };
-  },
+  }
   createRenderPipeline(desc: unknown) {
     calls.push({ method: "createRenderPipeline", arg: desc });
     return { pipeline: "sync", desc, getBindGroupLayout: (i: number) => ({ layout: i, of: (desc as { label: string }).label }) };
-  },
+  }
   createRenderPipelineAsync(desc: unknown) {
     calls.push({ method: "createRenderPipelineAsync", arg: desc });
     return refuse ? Promise.reject(new Error("GPUPipelineError")) : Promise.resolve({ pipeline: "async", desc });
-  },
+  }
   createComputePipeline(desc: unknown) {
     calls.push({ method: "createComputePipeline", arg: desc });
     return { compute: desc };
-  },
-};
+  }
+}
+// What a wgpu that bypassed the wrappers would call: the browser's own function, taken before install.
+const browserCreate = FakeDevice.prototype.createRenderPipeline;
+const device = new FakeDevice();
 
 let p: typeof import("../src/web/pipelines.ts");
 beforeAll(async () => {
   (globalThis as Record<string, unknown>)["GPURenderPassEncoder"] = FakePass;
   (globalThis as Record<string, unknown>)["GPURenderBundleEncoder"] = FakeBundle;
   p = await import("../src/web/pipelines.ts");
-  p.install(device);
+  p.install(FakeDevice.prototype);
 });
 
 const tasks = (n: number) => new Promise<void>((r) => setTimeout(r, n));
@@ -187,4 +194,49 @@ test("outside the span pipelines are made at once, with their late modules", () 
   const compute = device.createComputePipeline({ compute: { module: m } }) as { compute: { compute: { module: unknown } } };
   expect(compute.compute.compute.module).toBe(pipeline.desc.vertex.module);
   expect(made("createShaderModule").length).toBe(1);
+});
+
+test("while the hook is on, no frame pipeline reaches the browser synchronously, however wgpu calls it", async () => {
+  await tasks(0);
+  calls.length = 0;
+  p.enable(true);
+  const before = p.stats();
+  // The function as a glue that took it from the prototype after the Worker started would call it.
+  const cached = FakeDevice.prototype.createRenderPipeline;
+  const bound = Function.prototype.call.bind(FakeDevice.prototype.createRenderPipeline) as (d: unknown, desc: unknown) => unknown;
+  p.frameSpan(true);
+  device.createRenderPipeline(desc({ module: "m" }, "structural"));
+  cached.call(device, desc({ module: "m" }, "cached"));
+  bound(device, desc({ module: "m" }, "bound"));
+  p.frameSpan(false);
+  for (let i = 0; i < 4; i++) await tasks(0);
+  expect(made("createRenderPipeline").length).toBe(0);
+  expect(made("createRenderPipelineAsync").length).toBe(3);
+  const after = p.stats();
+  expect([after.async - before.async, after.sync - before.sync, after.fallback - before.fallback, after.spans - before.spans]).toEqual([3, 0, 0, 1]);
+  expect(p.bypassed(after, 3)).toBe(null);
+  // Outside a span the same call is a synchronous one, and counted as such.
+  device.createRenderPipeline(desc({ module: "m" }, "one-shot"));
+  expect(p.stats().sync - after.sync).toBe(1);
+});
+
+test("frame pipelines that reached the browser without the wrappers are named, not hidden", () => {
+  calls.length = 0;
+  p.enable(true);
+  const s = p.stats();
+  p.frameSpan(true);
+  browserCreate.call(device, desc({ module: "m" }, "bypass"));
+  p.frameSpan(false);
+  expect(made("createRenderPipeline").length).toBe(1);
+  // A Worker whose renderer warmed pipelines in its spans while no request was ever sent.
+  const lost = { ...p.stats(), async: 0 };
+  expect(lost.spans).toBe(s.spans + 1);
+  expect(p.bypassed(lost, 4)).toMatch(/none through createRenderPipelineAsync/);
+  // Nothing warmed, no span, or the hook off: nothing to say.
+  expect(p.bypassed(lost, 0)).toBe(null);
+  expect(p.bypassed({ ...lost, spans: 0 }, 4)).toBe(null);
+  p.enable(false);
+  expect(p.bypassed(lost, 4)).toBe(null);
+  p.enable(true);
+  expect(p.bypassed(p.stats(), 4)).toBe(null);
 });

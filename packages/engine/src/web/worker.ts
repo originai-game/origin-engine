@@ -62,18 +62,21 @@ import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
 import * as pipelines from "./pipelines.ts";
+import type { PipelineStats } from "./pipelines.ts";
 
 // Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
 // renderer is made inside the wasm, so its device is met here, where the Worker asks for it).
-// Fork s60: the device makes the renderer's frame pipelines asynchronously (pipelines.ts).
+// Fork s60: GPUDevice makes the renderer's frame pipelines asynchronously (pipelines.ts), installed
+// on the prototype before the wasm's glue loads.
 {
+  const device = (globalThis as { GPUDevice?: { prototype: unknown } }).GPUDevice?.prototype;
+  if (device) pipelines.install(device as Parameters<typeof pipelines.install>[0]);
   const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
   type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
   if (proto) {
     const requestDevice = proto.requestDevice;
     proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
       const device = await requestDevice.apply(this, a);
-      pipelines.install(device as unknown as Parameters<typeof pipelines.install>[0]);
       void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
       let errors = 0;
       device.addEventListener("uncapturederror", (e) => {
@@ -862,7 +865,11 @@ export function describeHostError(e: HostError): string {
  * `present`: the first frame rendered, its pipelines compiled), and `at`,
  * the Worker's time at the first frame from its own start.
  */
-export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & { at?: number };
+export type BootPhases = Partial<Record<"wasm" | "bundle" | "create" | "attach" | "transcode" | "prime" | "settle" | "present", number>> & {
+  at?: number;
+  /** Fork s60: the render pipelines made each way (pipelines.ts), at the first frame and again when the warm-up ends, with `bypassed` when the frame pipelines lost createRenderPipelineAsync. */
+  pipelines?: PipelineStats & { bypassed?: string };
+};
 
 /** Run `game` in this Worker, driven by the shell's messages. */
 export function startWorker(game: GameToken): void {
@@ -885,13 +892,20 @@ export function startWorker(game: GameToken): void {
   /** Where the boot went (BootPhases), sent with the first frame. */
   const boot: BootPhases = {};
   let phaseAt = performance.now();
-  const phase = (name: Exclude<keyof BootPhases, "at">) => {
+  const phase = (name: Exclude<keyof BootPhases, "at" | "pipelines">) => {
     const now = performance.now();
     boot[name] = Math.round((boot[name] ?? 0) + now - phaseAt);
     phaseAt = now;
     console.info(`[og] boot stage "${name}" done in ${boot[name]} ms`);
   };
-  const firstFrameMessage = () => (console.info(`[og] first frame at ${Math.round(performance.now())} ms`), { type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
+  const firstFrameMessage = () => (console.info(`[og] first frame at ${Math.round(performance.now())} ms`), { type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()), pipelines: pipelines.stats() } });
+  /** Fork s60: the pipelines' counts once `warmed` pipelines are made, said loudly when the frame pipelines bypassed createRenderPipelineAsync. */
+  const reportPipelines = (warmed: number) => {
+    const stats = pipelines.stats();
+    const bypassed = pipelines.bypassed(stats, warmed);
+    if (bypassed) console.warn(`[og] renderer: ${bypassed}`);
+    self.postMessage({ type: "pipelines", stats: bypassed ? { ...stats, bypassed } : stats });
+  };
   /** What the trace's document records beside its events: the renderer's tier and the lanes. */
   let lastTier = "none";
   let lanesState: unknown = null;
@@ -1128,6 +1142,7 @@ export function startWorker(game: GameToken): void {
         if (covered && coveredWarmLeft && glueRef?.og_web_warm && pipelines.compiling() < WARM_COMPILING) {
           coveredWarmLeft = glueRef.og_web_warm(engine.id);
           if (coveredWarmLeft) coveredWarm++;
+          else reportPipelines(coveredWarm);
         }
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
@@ -1210,7 +1225,10 @@ export function startWorker(game: GameToken): void {
       if (more) {
         made++;
         setTimeout(step, 0);
-      } else if (made > 0) console.info(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
+      } else {
+        if (made > 0) console.info(`renderer: ${made} pipelines made behind the gate in ${Math.round(performance.now() - began)} ms`);
+        reportPipelines(made);
+      }
     };
     setTimeout(step, 0);
   };

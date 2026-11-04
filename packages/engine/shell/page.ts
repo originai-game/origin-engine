@@ -586,7 +586,8 @@ export async function play(): Promise<PlayHandle> {
   const bootSample = async () => {
     for (let i = 0; !shellRef && i < 100; i++) await new Promise((r) => setTimeout(r, 20));
     const memory = await readMemory();
-    const { at: _at, ...stages } = shellRef?.boot ?? {};
+    // The stages are milliseconds; the pipelines' counts (fork s60) stay on the probe's `boot`.
+    const { at: _at, pipelines: _pipelines, ...stages } = shellRef?.boot ?? {};
     const lanes = shellRef?.ready.lanes;
     player.sample({
       phase: "boot",

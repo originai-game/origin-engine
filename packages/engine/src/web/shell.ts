@@ -412,6 +412,12 @@ export class Shell {
         this.#onStage?.(p.id ?? "", p.fraction ?? 0);
         return;
       }
+      // Fork s60: the pipelines' counts when the warm-up ends, over the first frame's.
+      if (m.type === "pipelines") {
+        const stats = (m as { stats?: BootPhases["pipelines"] }).stats;
+        if (stats) this.boot = { ...(this.boot ?? {}), pipelines: stats };
+        return;
+      }
       if (m.type === "frame") {
         this.boot = (m as { boot?: BootPhases }).boot ?? null;
         this.#onFirstFrame?.();

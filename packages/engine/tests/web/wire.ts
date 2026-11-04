@@ -146,6 +146,11 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
     await new Promise((r) => setTimeout(r, 400));
     const t2 = await c("tick");
     check(t2.result === t1.result, `${label}: the clock holds behind the play gate`, { before: t1.result, after: t2.result });
+    // Fork s60: the first frame's pipelines went through createRenderPipelineAsync (src/web/pipelines.ts).
+    // A wgpu that reaches the browser's createRenderPipeline another way fails here, not silently slower.
+    const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
+    check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
+    if (pl && pl.spans > 0) check(pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
     // A real tap on the gate (the middle of the frame) starts it.
     await page.tap(400, 225);
     await new Promise((r) => setTimeout(r, 600));

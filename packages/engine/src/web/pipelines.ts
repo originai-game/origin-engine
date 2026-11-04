@@ -6,9 +6,11 @@
 // frame that makes dozens of pipelines (a large game's first frame) holds
 // that process, and with it the page's frames and the WebGPU queue, for as
 // long as they all take. `createRenderPipelineAsync` compiles on Dawn's
-// worker threads. wgpu's WebGPU backend only calls the synchronous one, and
-// it calls it as a method of the device (wasm-bindgen's structural calls),
-// so the Worker gives each device it hands the wasm its own methods:
+// worker threads. wgpu's WebGPU backend only calls the synchronous one, as a
+// method of the device (wasm-bindgen's structural calls), so the Worker
+// replaces the methods on GPUDevice.prototype when it starts, before the
+// wasm's glue loads (a glue that took the function from the prototype at
+// load gets these too):
 //
 // - While the renderer makes its frame pipelines (og-render's
 //   `set_frame_pipelines_hook`, `span`), `createRenderPipeline` asks for
@@ -26,6 +28,12 @@
 //   registered them; any other use makes it then.
 //
 // Off (the default), every call goes straight to the browser.
+//
+// A wgpu that reached the browser's createRenderPipeline some other way would
+// lose all this silently: frames would compile synchronously again. So the
+// pipelines made each way are counted (`stats`), the Worker sends them with
+// the first frame (BootPhases `pipelines`, the probe's `boot`), and `bypassed`
+// names the loss: warm pipelines made inside a span that no request heard.
 
 /** The asynchronous requests sent to the browser in one task. */
 export const PER_TASK = 2;
@@ -60,8 +68,37 @@ let pending = 0;
 let skipped = 0;
 const queue: Slot[] = [];
 let draining = false;
-/** The browser's own methods, by device: what the wrappers call. */
-const own = new WeakMap<object, { createShaderModule: Device["createShaderModule"]; createRenderPipeline: Device["createRenderPipeline"] }>();
+/** The browser's own methods, taken from the prototype at `install`: what the wrappers call. */
+let native: { createShaderModule: Device["createShaderModule"]; createRenderPipeline: Device["createRenderPipeline"] } | null = null;
+
+/** The render pipelines made each way since the Worker started. */
+export interface PipelineStats {
+  /** Asked for with createRenderPipelineAsync (inside a frame span). */
+  async: number;
+  /** Made with createRenderPipeline outside a frame span (one-shot passes, or the hook off). */
+  sync: number;
+  /** Asked for asynchronously, then made with createRenderPipeline at a use that could not wait (a bundle, a bind group layout, a refused one). */
+  fallback: number;
+  /** Frame spans the renderer opened (og-render's hook). */
+  spans: number;
+}
+const counts: PipelineStats = { async: 0, sync: 0, fallback: 0, spans: 0 };
+
+/** A copy of the counts so far. */
+export function stats(): PipelineStats {
+  return { ...counts };
+}
+
+/**
+ * Why the frame pipelines did not compile asynchronously although the hook is on, or null: the
+ * renderer opened frame spans and `warmed` pipelines were made in them (og-render's warm makes
+ * its render pipelines inside one), yet no request reached createRenderPipelineAsync, so they
+ * went to the browser some way that bypassed these wrappers.
+ */
+export function bypassed(s: PipelineStats, warmed: number): string | null {
+  if (!enabled || s.spans === 0 || warmed === 0 || s.async > 0) return null;
+  return `${warmed} pipelines were made inside the renderer's frame spans, but none through createRenderPipelineAsync: wgpu reached the browser's createRenderPipeline without src/web/pipelines.ts, so frames compile synchronously`;
+}
 
 /** Asynchronous pipelines and late modules on or off (the Worker: on the web, once the wasm is in). */
 export function enable(on: boolean): void {
@@ -70,6 +107,7 @@ export function enable(on: boolean): void {
 
 /** The renderer begins (true) or ends (false) making its frame pipelines (og_web_frame_pipelines). */
 export function frameSpan(on: boolean): void {
+  if (on && span === 0) counts.spans++;
   span = Math.max(0, span + (on ? 1 : -1));
 }
 
@@ -87,7 +125,7 @@ export function takeSkipped(): number {
 
 /** A late module's module, made now when it was not yet. */
 function lateMade(late: LateModule): unknown {
-  late.made ??= own.get(late.device as object)!.createShaderModule.call(late.device, late.desc);
+  late.made ??= native!.createShaderModule.call(late.device, late.desc);
   return late.made;
 }
 
@@ -105,7 +143,10 @@ function bindModules(desc: Descriptor): Descriptor {
 
 /** A stand-in's pipeline, made now with `createRenderPipeline` when it was not yet. */
 function made(slot: Slot): unknown {
-  slot.made ??= own.get(slot.device as object)!.createRenderPipeline.call(slot.device, bindModules(slot.desc));
+  if (!slot.made) {
+    counts.fallback++;
+    slot.made = native!.createRenderPipeline.call(slot.device, bindModules(slot.desc));
+  }
   return slot.made;
 }
 
@@ -124,6 +165,7 @@ async function drain(): Promise<void> {
           pending--;
           continue;
         }
+        counts.async++;
         let promise: Promise<unknown>;
         try {
           promise = slot.device.createRenderPipelineAsync(bindModules(slot.desc));
@@ -147,14 +189,14 @@ async function drain(): Promise<void> {
   }
 }
 
-/** Gives `device` the wrappers above (once; their behaviour follows `enable` and `frameSpan`). */
-export function install(device: Device): void {
-  if (own.has(device as object)) return;
-  const createShaderModule = device.createShaderModule;
-  const createRenderPipeline = device.createRenderPipeline;
-  const createComputePipeline = device.createComputePipeline;
-  own.set(device as object, { createShaderModule, createRenderPipeline });
-  device.createShaderModule = function (this: Device, desc: unknown) {
+/** Gives GPUDevice's prototype `proto` the wrappers above (once; their behaviour follows `enable` and `frameSpan`). */
+export function install(proto: Device): void {
+  if (native) return;
+  const createShaderModule = proto.createShaderModule;
+  const createRenderPipeline = proto.createRenderPipeline;
+  const createComputePipeline = proto.createComputePipeline;
+  native = { createShaderModule, createRenderPipeline };
+  proto.createShaderModule = function (this: Device, desc: unknown) {
     if (!enabled) return createShaderModule.call(this, desc);
     const late: LateModule = { device: this, desc, made: undefined };
     return {
@@ -163,8 +205,11 @@ export function install(device: Device): void {
       getCompilationInfo: () => (lateMade(late) as { getCompilationInfo(): Promise<unknown> }).getCompilationInfo(),
     };
   };
-  device.createRenderPipeline = function (this: Device, desc: Descriptor) {
-    if (!(enabled && span > 0)) return createRenderPipeline.call(this, bindModules(desc));
+  proto.createRenderPipeline = function (this: Device, desc: Descriptor) {
+    if (!(enabled && span > 0)) {
+      counts.sync++;
+      return createRenderPipeline.call(this, bindModules(desc));
+    }
     const slot: Slot = { device: this, desc, made: undefined, refused: false };
     pending++;
     queue.push(slot);
@@ -175,7 +220,7 @@ export function install(device: Device): void {
       getBindGroupLayout: (index: number) => (made(slot) as { getBindGroupLayout(i: number): unknown }).getBindGroupLayout(index),
     };
   };
-  device.createComputePipeline = function (this: Device, desc: Descriptor) {
+  proto.createComputePipeline = function (this: Device, desc: Descriptor) {
     return createComputePipeline.call(this, bindModules(desc));
   };
   patchEncoders();
