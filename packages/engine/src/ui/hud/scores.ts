@@ -11,9 +11,18 @@
 // Gate 3 (portraits in the order they act, the current one larger).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props, ut, tsFit, stepSize } from "./core.ts";
+import { luminance, a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props, ut, tsFit, stepSize } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
+
+/**
+ * The bright end of a HUD readout's ink: white over a dark HUD ground, the
+ * pack's ink over a light one (a light pack's `hud` plate, where white and a
+ * white-mixed gradient lose their contrast).
+ */
+function hudLight(): Rgba {
+  return luminance(role("hud")) > 0.36 ? role("ink") : WHITE;
+}
 
 function pingLevel(ms: number): "good" | "fair" | "poor" {
   return ms > 200 ? "poor" : ms > 100 ? "fair" : "good";
@@ -285,7 +294,7 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
         const bx = broken ? (t - brokeAt) / msToTicks(600) : 0;
         // Broken, the count goes red and the word says so: the break reads in
         // a still frame, not only in the shake.
-        const ink = broken ? role("danger") : mile ? role("gold") : shown >= 50 ? role("danger") : shown >= 25 ? role("warn") : WHITE;
+        const ink = broken ? role("danger") : mile ? role("gold") : shown >= 50 ? role("danger") : shown >= 25 ? role("warn") : hudLight();
         // Late in the fall the whole group drops and fades together.
         const fall = broken ? { transform: { y: reduced() ? 0 : Math.max(0, bx - 0.5) * 2 * u(24) }, opacity: Math.min(1, 2 - 2 * bx) } : {};
         text("Count", String(shown), { step: countStep, font: "display", color: lit(ink), nowrap: true, outline: 1.6 }, {
@@ -345,7 +354,7 @@ export function judgement(id: string, desc: Api.JudgementDesc = {}): void {
         const y = reduced() ? 0 : miss ? u(18) * easeOut(x) : -u(10) * easeOut(x);
         const grad: Api.Gradient | undefined = tier === 0 ? {
           type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 },
-          stops: [{ offset: 0, color: lit(mix(ink, WHITE, 0.6)) }, { offset: 0.55, color: lit(ink) }, { offset: 1, color: lit(mix(ink, { r: 0.6, g: 0.3, b: 0, a: 1 }, 0.5)) }],
+          stops: [{ offset: 0, color: lit(hudLight() === WHITE ? mix(ink, WHITE, 0.6) : ink) }, { offset: 0.55, color: lit(ink) }, { offset: 1, color: lit(mix(ink, { r: 0.6, g: 0.3, b: 0, a: 1 }, 0.5)) }],
         } : undefined;
         text("Word", ev.text ?? "", { step: ts(30, true), font: "display", color: lit(miss ? mix(ink, { r: 0.5, g: 0.5, b: 0.5, a: 1 }, 0.4) : ink), nowrap: true, outline: 1.4, ...(grad ? { gradient: grad } : {}) }, {
           transform: { scaleX: s, scaleY: s, y },

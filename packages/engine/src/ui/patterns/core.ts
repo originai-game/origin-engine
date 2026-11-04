@@ -713,6 +713,21 @@ export function st(px0: number): Api.TypeStepName {
  * a number inside a badge that grows less than the text does (a cost gem at
  * 200 % text keeps its digits inside it).
  */
+/** The largest step of the ramp no larger than `box` px: a numeral that fills its coin or gem, whatever the ramp. */
+export function stFill(box: number): Api.TypeStepName {
+  const ramp = frame().theme.typeRamp;
+  let best: Api.TypeStepName = "xs";
+  let bestSize = 0;
+  for (const s of STEPS) {
+    const size = ramp[s]?.size ?? 0;
+    if (size <= box && size > bestSize) {
+      best = s;
+      bestSize = size;
+    }
+  }
+  return best;
+}
+
 export function stIn(px0: number, box: number): Api.TypeStepName {
   const ramp = frame().theme.typeRamp;
   const want = st(px0);
@@ -833,13 +848,16 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const h = Math.max(touch ? 44 : 0, u(size === "lg" ? 48 : size === "sm" ? 32 : 40));
   const fillRole: Api.ThemeColor | null = v === "primary" ? "primary" : v === "danger" ? "danger" : v === "premium" ? "gold" : v === "secondary" ? "control" : null;
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
-  const ink = v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
+  // Disabled, a filled button drops to the muted plate with dim ink: a primary keeping its accent with its label dimmed
+  // read as a broken active button (Send with an empty draft, Apply with nothing changed).
+  const muted = !!d.disabled && fillRole !== null && fillRole !== "control";
+  const ink = muted ? role("inkMuted") : v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
   // Glass: a dark pane the scene shows through with a bright rim, for the second action beside a primary or premium
   // one (Summon ×1, Reroll, Banish): every secondary button at rest wears it, so the pair reads as one family.
   const accentRaised = v === "primary" && !d.disabled && d.selected === undefined;
   // A toggle not set (Banish unarmed) is glass too; set, it takes its selected fill.
   const glassy = v === "glass" || (v === "secondary" && !d.disabled && !d.selected);
-  const base = glassy ? { ...mix(role("panel"), role("shadow"), 0.45), a: 0.74 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
+  const base = glassy ? { ...mix(role("panel"), role("shadow"), 0.45), a: 0.74 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" || muted ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
   // A call to action stands out of its screen (End turn, Summon, Done): a raised face over a ledge, lifting under the
   // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
   const raised = !!base && !d.disabled && ((d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || !!d.raised)) || glassy);

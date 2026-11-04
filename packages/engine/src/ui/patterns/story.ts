@@ -18,7 +18,7 @@ import type * as Api from "@origingame/engine";
 import { speechBubble } from "../world/tags.ts";
 import { tps } from "../feedback/core.ts";
 import {
-  artSlot, clamp, fill, flags, frame, glow, grow, hex, kit, keyHash, line, mix, over, paint, px, role, rtl, shadow, spring, st, still, surface,
+  accent, artSlot, clamp, fill, flags, frame, glow, grow, hex, kit, keyHash, line, mix, over, paint, px, role, rtl, shadow, spring, st, still, surface,
   symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 
@@ -224,13 +224,17 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   // The line: the name over it in the display face, the words typed out, the chevron or the voice's bars after it.
   const captionW = box ? Math.min(W - u(phone ? 24 : 64), u(1100)) : portrait ? W - u(32) : Math.min(Math.round(W * 0.62), u(980));
   const lineStep: Api.TypeStepName = phone ? st(18) : box ? st(24) : st(26);
+  // On a phone with choices the caption rises over them, off the shade onto the open scene: it carries its own soft
+  // dark plate there, so the line reads at 4.5:1 on any backdrop (a pale sky left it at 2.3:1).
+  const rises = portrait && waiting && done;
+  const plated = !box && rises;
   kit.open("Caption", {
     direction: "column",
     width: px(captionW),
     gap: u(box ? 10 : 8),
     // Stretched, never centred by its rows' width: a row fitted to a right-to-left line overran the screen.
     cross: "stretch",
-    padding: box ? { left: u(28), right: u(28), top: u(26), bottom: u(22) } : xy(0, 0),
+    padding: box ? { left: u(28), right: u(28), top: u(26), bottom: u(22) } : plated ? xy(u(14), u(10)) : xy(0, 0),
     part: box ? "Conversation.box" : "Conversation.caption",
     partClass: box ? "panel" : "badge",
   });
@@ -242,12 +246,22 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
       strokes: [line(1, token("ink", 0.1))],
       effects: [shadow(u(10), u(30), 0.55)],
     });
+  } else if (plated) {
+    // Feathered by its shadow, so it reads as the shade lifted behind the words rather than a box.
+    kit.setDraw({
+      shape: { kind: "rect", radii: [u(12), u(12), u(12), u(12)] },
+      // The shadow's colour at 0.86 whatever the token's own alpha: cream ink stays at 4.5:1 even over white.
+      fills: [{ kind: "solid", color: paint({ ...role("shadow"), a: 0.86 }) }],
+      effects: [shadow(0, u(18), 0.5)],
+    });
   }
   const named = v.speaker.name !== "";
   if (named && !box) {
     // The name in the display face, tracked wide, in muted ink: it labels the line without competing with it.
     kit.row("Head", { gap: u(10), cross: "center", align: "center", width: grow() }, () => {
-      text("Name", v.speaker.name.toLocaleUpperCase(), { step: st(phone ? 13 : 16), font: "display", color: mix(ink, role("inkMuted"), 0.35), nowrap: true });
+      // On its plate the name takes the body step in the accent: at 13 px a pixel face's name read as a speck.
+      const nameInk = plated ? accent() : mix(ink, role("inkMuted"), 0.35);
+      text("Name", v.speaker.name.toLocaleUpperCase(), { step: plated ? "base" : st(phone ? 13 : 16), font: "display", color: nameInk, nowrap: true });
       if (voicing) voiceCue("Voice", mix(ink, role("inkMuted"), 0.35));
     });
   }
@@ -273,7 +287,7 @@ export function conversation(id: string, desc: Api.ConversationDesc): Api.Conver
   const toolsB = kit.bounds(`${base}/Tools`);
   const toolsFoot = toolsB && toolsB.height > 0 ? Math.round(toolsB.height) + u(phone ? 8 : 20) + u(12) : u(76);
   const stackH = chB && chB.height > 0 ? Math.round(chB.height) : choicesH;
-  const capInsets = portrait && waiting && done ? { centerX: true, bottom: capBottom + stackH + u(16) } : { centerX: true, bottom: capBottom };
+  const capInsets = rises ? { centerX: true, bottom: capBottom + stackH + u(16) } : { centerX: true, bottom: capBottom };
   over({ insets: capInsets, z: 2 });
   // The caption's height (last tick's): the plate sits on its top edge and the choices stack above it.
   const capH = kit.bounds(kit.lastPath())?.height ?? u(90);

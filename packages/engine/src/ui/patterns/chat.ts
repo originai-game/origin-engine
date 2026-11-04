@@ -54,7 +54,7 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
   // The tabs: a chip per channel, its name in its ink while shown, its unread count (the highlight for a mention).
   if (typing && channels.length > 1) {
     if (desc.title && !hud) text("Title", desc.title, { step: phone ? "xl2" : "xl3", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow() });
-    kit.openScroll("Tabs", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal", part: "Chat.tabs", partClass: "panel" } as never);
+    kit.openScroll("Tabs", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal", hideBars: true, part: "Chat.tabs", partClass: "panel" } as never);
     kit.open("Row", { direction: "row", gap: u(4), cross: "center" });
     for (const c of channels) {
       const k = c.key ?? "";

@@ -9,7 +9,7 @@ import type * as Api from "@origingame/engine";
 import {
   firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, pointer, px, rarityColor, rememberRoom,
-  role, safeWidth, shadow, st, still, stIn, surface, symbol, text, token, u, vgrad, xy, type Mut,
+  role, safeWidth, shadow, st, still, stFill, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
 import { rtl } from "../containers/base.ts";
 import { cardFace } from "./cards.ts";
@@ -153,7 +153,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     // collection's room), the search and the sort under them.
     if (portrait || ts > 1.25) {
       kit.column("Filters", { width: grow(), gap: u(6) }, () => {
-        kit.openScroll("Chips", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal" } as never);
+        kit.openScroll("Chips", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal", hideBars: true } as never);
         kit.open("Row", { direction: "row", gap: u(10), cross: "center" });
         costs();
         rarities();
@@ -221,7 +221,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         const g = Math.round(Math.max(22, cw * 0.17) * Math.min(1.4, ts));
         kit.open("InDeck", { width: px(g), height: px(g), align: "center", cross: "center", part: "DeckBuilder.inDeck", partClass: "badge" });
         kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("primary") }], strokes: [line(Math.max(1.5, u(2)), token("shadow", 0.7), "outside")], effects: [glow(u(6), token("primary", 0.5), 0)] });
-        text("Value", String(n), { step: stIn(14, Math.round(g * 0.62)), font: "display", nowrap: true, color: "onPrimary" });
+        text("Value", String(n), { step: stFill(Math.round(g * 0.62)), font: "display", nowrap: true, color: "onPrimary" });
         kit.close();
         over({ insets: { end: Math.max(3, Math.round(pad * 0.5)), top: Math.max(3, Math.round(pad * 0.5)) }, inert: true, z: 8 });
       }
@@ -341,7 +341,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       const g = Math.round(u(26) * Math.min(1.4, ts));
       kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: "DeckBuilder.cost", partClass: "badge" });
       kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.36, y: 0.3 }, to: { x: 0.62, y: 0.62 }, stops: [{ offset: 0, color: token("highlight") }, { offset: 1, color: { ...mix(role("highlight"), role("well"), 0.55) } as never }] }], strokes: [line(1, token("shadow", 0.7), "outside")] } as Api.DrawDesc);
-      text("Value", c.cost != null ? String(c.cost) : "–", { step: stIn(14, Math.round(g * 0.62)), font: "display", nowrap: true });
+      text("Value", c.cost != null ? String(c.cost) : "–", { step: stFill(Math.round(g * 0.62)), font: "display", nowrap: true });
       kit.close();
       symbol("Tier", "gem", u(12), tier);
       text("Name", c.name ?? k, big ? { step: st(15), maxLines: 2, ellipsis: true, width: grow() } : { step: st(15), nowrap: true, ellipsis: true, width: grow() });

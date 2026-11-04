@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, hex, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
-  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, stIn, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
+  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, stFill, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 
 // ── the hand's state ────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): 
       effects: [shadow(2, 5, 0.6)],
     });
     if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
-    else text("Value", `${c.cost}`, { step: stIn(g >= u(40) ? 22 : 16, Math.round(g * 0.62)), color: tone, font: "display", nowrap: true });
+    else text("Value", `${c.cost}`, { step: stFill(Math.round(g * 0.62)), color: tone, font: "display", nowrap: true });
     kit.close();
     // Seated inside the card's corner, so the frame's line never runs through it.
     const seat = Math.max(3, Math.round(pad * 0.5));
