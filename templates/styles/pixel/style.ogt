@@ -37,8 +37,8 @@ palette {
   danger "#ff8080"
   info "#5dc2ff"
   health "#6bd36b"
-  mana "#0a84ff"
-  xp "#bf5af2"
+  mana "#3097ff"
+  xp "#c76ff4"
   gold "#ffcd4a"
 }
 colors {
@@ -86,6 +86,7 @@ typography {
   heading 36 44 0 400 display
   body 24 32 0 400 body
   label 12 16 0 400 body
+  button 24 32 0 400 body
   caption 12 16 0 400 body
   numeric 24 32 0 400 numeric
 }
@@ -164,9 +165,16 @@ ramp {
   xl 36 44
   xl2 36 44
   xl3 48 56
+  xl4 36 44
+  xl5 36 44
+  xl6 48 56
+  xl7 48 56
+  xl8 60 68
   displaySm 48 56
   displayMd 60 68
   displayLg 72 80
+  displayXl 48 56
+  displayXl2 60 68
 }
 fonts {
   body "@styles/cjk/FusionPixel12-zhHans.ttf"
@@ -180,7 +188,6 @@ icons "icons.png" 8 4 {
 }
 soft 252 104 64 64 24
 divider 4 172 128 24 128 24 line
-flourish 136 172 64 24 32 12 primary 0
 tile 204 172 64 64 16 16 0.06 6
 textShadow display 2 2 0 "#000000c0"
 textShadow body 1 1 0 "#00000080"

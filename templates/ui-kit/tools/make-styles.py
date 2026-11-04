@@ -371,15 +371,17 @@ def pixel_pack():
             controlStrong="#4c4570", primary="#ffcd4a", primaryHover="#ffdb75", primaryActive="#e6ad1f", onPrimary="#14111f",
             primarySoft="#ffcd4a25", highlight="#ffd86b", focus="#ffcd4a", knob="#5b5480", hud="#221e38f2", scrim="#0a0812b3",
             shadow="#00000099", sheen="#ffffff52", success="#6bd36b", warn="#ffa53d", danger="#ff8080", info="#5dc2ff",
-            health="#6bd36b", mana="#0a84ff", xp="#bf5af2", gold="#ffcd4a",
+            health="#6bd36b", mana="#3097ff", xp="#c76ff4", gold="#ffcd4a",
         ),
         radius=dict(small=0, control=0, bar=0, panel=0),
         # Fusion Pixel 12, Latin and Chinese on one 12-pixel grid (`pixel 12`
         # in its import): every size a whole multiple of 12, size the only
         # step of the hierarchy (the art director's ramp C, 2026-11-03).
         ramp=dict(xs=(12, 16), meta=(12, 16), caption=(12, 16), sm=(12, 16), body=(24, 32), reading=(24, 32), base=(24, 32),
-                  lg=(24, 32), xl=(36, 44), xl2=(36, 44), xl3=(48, 56), displaySm=(48, 56), displayMd=(60, 68), displayLg=(72, 80)),
-        typography=dict(display=(72, 80), title=(48, 56), heading=(36, 44), body=(24, 32), label=(12, 16), caption=(12, 16),
+                  lg=(24, 32), xl=(36, 44), xl2=(36, 44), xl3=(48, 56),
+                  xl4=(36, 44), xl5=(36, 44), xl6=(48, 56), xl7=(48, 56), xl8=(60, 68),
+                  displaySm=(48, 56), displayMd=(60, 68), displayLg=(72, 80), displayXl=(48, 56), displayXl2=(60, 68)),
+        typography=dict(display=(72, 80), title=(48, 56), heading=(36, 44), body=(24, 32), label=(12, 16), button=(24, 32), caption=(12, 16),
                         numeric=(24, 32)),
         # A phone's display takes the next multiple down, 60.
         phone_display=(60, 68),
@@ -388,7 +390,7 @@ def pixel_pack():
                    numeric="@styles/cjk/FusionPixel12-zhHans.ttf", cjk="FusionPixel12-zhHans.ttf", cjkDisplay="FusionPixel12-zhHans.ttf"),
         slices=dict(panel=(8,), card=(4,), button=(6,), buttonHover=(6,), buttonPressed=(6,), buttonDisabled=(6,),
                     field=(4,), slot=(4,), tooltip=(4,), hud=(4,), track=(4,), fill=(4,)),
-        scale=1, divider=(128, 24, "line"), flourish=(32, 12, "primary", 0),
+        scale=1, divider=(128, 24, "line"),
         tile=(16, 16, 0.06, 6, ["panel"]),
         shadows=dict(panel=(6, 6, 0, 0, "#000000b0"), card=(4, 4, 0, 0, "#00000080"), button=(0, 4, 0, 0, "#000000a0"),
                      hud=(3, 3, 0, 0, "#00000080"), tooltip=(3, 3, 0, 0, "#00000080")),
@@ -441,7 +443,7 @@ def cartoon_pack():
             controlStrong="#ffecb5", primary="#8c360f", primaryHover="#933a10", primaryActive="#772d0b", onPrimary="#fff4dc",
             primarySoft="#8c360f40", highlight="#9b3a09", focus="#3fa7ff", knob="#ffffff", hud="#fff4dcf5", scrim="#1a0f3ccc",
             shadow="#2b1a4a99", sheen="#ffffff52", success="#06681b", warn="#7b5102", danger="#6a0a16", info="#2256af",
-            health="#06681b", mana="#007aff", xp="#af52de", gold="#a24112",
+            health="#06681b", mana="#0069db", xp="#a236d9", gold="#a24112",
         ),
         radius=dict(small=6, control=6, bar=6, panel=10),
         ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 26), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
@@ -894,10 +896,16 @@ def tokens_lines(s):
                  numeric="numeric")
     steps = dict(display="displayLg", title="displaySm", heading="xl", body="body", label="body", caption="caption",
                  numeric="lg")
+    # A button's step only where it differs from the label's (og-ui reads label for it otherwise).
+    if "button" in s.get("typography", {}):
+        roles = list(steps)
+        roles.insert(roles.index("label") + 1, "button")
+        steps = {r: steps.get(r, "body") for r in roles}
     L.append("typography {")
     for role, step in steps.items():
         size, lh = s.get("typography", {}).get(role) or ramp[step]
-        head = f"  {role} {size} {lh} {t['tracking'].get(role, 0)} {t['weights'][role]} {fonts[role]}"
+        base = "label" if role == "button" else role
+        head = f"  {role} {size} {lh} {t['tracking'].get(base, 0)} {t['weights'][base]} {fonts[base]}"
         if "typography" in s:
             # A grid's sizes as given; only the display steps down on a phone.
             if role == "display" and s.get("phone_display"):

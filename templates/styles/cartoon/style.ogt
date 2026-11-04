@@ -37,8 +37,8 @@ palette {
   danger "#6a0a16"
   info "#2256af"
   health "#06681b"
-  mana "#007aff"
-  xp "#af52de"
+  mana "#0069db"
+  xp "#a236d9"
   gold "#a24112"
 }
 colors {

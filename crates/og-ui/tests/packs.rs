@@ -267,6 +267,28 @@ fn every_built_in_style_is_version_2_with_colour_tokens_that_read_on_its_panels(
                 ));
             }
         }
+        // The resource inks are text too ("+1,240 XP" at body size on a
+        // results panel): 4.5:1 on the panel, as body text.
+        let pal = &t.palette;
+        for (what, ink) in [
+            ("health", pal.health),
+            ("mana", pal.mana),
+            ("xp", pal.xp),
+            ("gold", pal.gold),
+        ] {
+            let r = ink.contrast(pal.panel);
+            if r < 4.5 {
+                failures.push(format!("{name}: {what} reads {r:.2}:1 on its panel"));
+            }
+        }
+        // A button's words are never a speck on its plate: at least the
+        // label step, and in a pixel face (label is a HUD's 12) the body.
+        use og_ui::tokens::TypeRole as R;
+        let size = |r: R| t.tokens.typography.get(r, Breakpoint::Desktop).size;
+        assert!(size(R::Button) >= size(R::Label), "{name}");
+        if name == "pixel" {
+            assert_eq!((size(R::Label), size(R::Button)), (12.0, size(R::Body)));
+        }
         // The widgets still draw from the version 1 values: the corners of
         // the four classes version 1 had are its radii.
         use og_ui::tokens::ElementClass as E;

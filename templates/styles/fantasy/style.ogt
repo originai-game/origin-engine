@@ -36,7 +36,7 @@ palette {
   warn "#e0a240"
   danger "#ec7860"
   info "#78a6e0"
-  health "#d0483a"
+  health "#d55d51"
   mana "#4a8ae8"
   xp "#b77ae8"
   gold "#e6b85e"
