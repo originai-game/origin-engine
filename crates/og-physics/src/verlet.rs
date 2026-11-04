@@ -201,6 +201,18 @@ impl ClothState {
         }
     }
 
+    /// Every point at rest on the entity, at rest (SIMULATION_VISUAL: the
+    /// renderer simulates the cloth; the tick carries this shape).
+    pub fn hold(&mut self, cloth: &Cloth, origin: Vec3, rotation: Quat) {
+        let (cols, rows) = self.dims();
+        for y in 0..rows {
+            for x in 0..cols {
+                self.points[(y * cols + x) as usize] = Self::rest(cloth, origin, rotation, x, y);
+            }
+        }
+        self.previous.clone_from(&self.points);
+    }
+
     /// The grid's size as built.
     pub fn dims(&self) -> (u32, u32) {
         (self.columns.clamp(2, 64), self.rows.clamp(2, 64))

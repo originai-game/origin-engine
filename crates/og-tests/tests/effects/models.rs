@@ -492,6 +492,7 @@ fn deformed_vertices_replace_the_mesh() {
                 targets: std::sync::Arc::new(vec![Vec3::new(1., 2., -3.); n]),
                 world,
                 output_transform: Mat4::IDENTITY,
+                visual: None,
             };
             let mut before = previous.clone().unwrap_or_else(|| garment.clone());
             before.output_transform = world.inverse() * before.world;
@@ -524,6 +525,108 @@ fn deformed_vertices_replace_the_mesh() {
     bad.deformed_vertices[0].positions.pop();
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
+}
+
+/// A visual garment (SIMULATION_VISUAL) is moved on the GPU from its
+/// skinned pose: a cylinder skirt held at its top ring and blown along +x
+/// for 40 ticks flares out on its lee side past its skin (its windward
+/// side is held by the backstop, as a body inside would), while the same
+/// garment the tick simulates (`visual: None`) draws at its points.
+#[test]
+fn a_visual_garment_is_simulated_on_the_gpu_from_its_skin() {
+    let desc = small();
+    let (mesh, _) = fx::skinned_cylinder(0.3, 24, 24);
+    let n = mesh.vertices.len();
+    let rest: Vec<Vec3> = mesh
+        .vertices
+        .iter()
+        .map(|v| Vec3::from(v.position))
+        .collect();
+    let topology = std::sync::Arc::new(og_render::GarmentTopology {
+        rest: rest.clone(),
+        normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
+        skin: vec![([0, 0, 0, 0], [1., 0., 0., 0.]); n],
+        triangles: mesh.indices.as_chunks::<3>().0.to_vec(),
+        vertices: (0..n).map(|i| (i as u32, 1.)).collect(),
+    });
+    let top = fx::CYLINDER_HEIGHT - 0.05;
+    let reach: Vec<f32> = rest
+        .iter()
+        .map(|p| if p.y >= top { 0.0 } else { 0.8 })
+        .collect();
+    let body = og_render::VisualBody {
+        pinned: (0..n as u32)
+            .filter(|&i| reach[i as usize] <= 0.0)
+            .collect(),
+        reach: reach.into(),
+        backstop: 0.05,
+        substeps: 24,
+        wind: Vec3::new(14.0, 0.0, 0.0),
+        stiffness: 0.9,
+        garment: Some(og_render::VisualGarment {
+            rest: std::sync::Arc::new(rest.clone()),
+            normals: topology.normals.clone().into(),
+        }),
+        ..Default::default()
+    };
+    let draw = |visual: bool| {
+        let mut scene = RenderScene::new();
+        let m = scene.add_material(Material {
+            base_color: [0.8, 0.3, 0.5, 1.0],
+            ..Default::default()
+        });
+        let h = scene.add_skinned_mesh(
+            mesh.clone(),
+            og_render::SkinData {
+                joints: vec![[0; 4]; n],
+                weights: vec![[0.0; 4]; n],
+            },
+        );
+        scene
+            .joint_palettes
+            .push(JointPalette::from(vec![Mat4::IDENTITY]));
+        scene.deformed_vertices.push(og_render::DeformedVertices {
+            garment: Some(og_render::GarmentDeformation {
+                key: (7, 0),
+                topology: topology.clone(),
+                palette: std::sync::Arc::new(vec![Mat4::IDENTITY]),
+                points: std::sync::Arc::new(rest.clone()),
+                targets: std::sync::Arc::new(rest.clone()),
+                world: Mat4::IDENTITY,
+                output_transform: Mat4::IDENTITY,
+                visual: visual.then(|| std::sync::Arc::new(body.clone())),
+            }),
+            ..Default::default()
+        });
+        let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
+        inst.deformed = Some(0);
+        scene.skinned_instances.push(inst);
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 1.2, 6.0),
+            target: Vec3::new(0.0, 1.2, 0.0),
+            ..Default::default()
+        };
+        scene.tick_rate = 60.0;
+        let (img, _, _) = run(&desc, &mut scene, 40, |s, f| s.tick = u64::from(f));
+        img
+    };
+    let right = |img: &RgbaImage, rows: std::ops::Range<u32>| {
+        rows.filter_map(|y| (0..320).rev().find(|&x| luma(px(img, x, y)) > 20.0))
+            .max()
+            .unwrap_or(0)
+    };
+    let skin = draw(false);
+    let blown = draw(true);
+    save("visual-garment", &blown);
+    // The bottom half of the frame holds the skirt's hem.
+    let (a, b) = (right(&skin, 90..170), right(&blown, 90..170));
+    println!("hem's right edge: skin {a}, blown {b}");
+    assert!(a > 0, "the skin is drawn");
+    assert!(b >= a + 4, "the hem stayed on the skin ({a} -> {b})");
+    // The top ring is pinned: it stays where the skin draws it.
+    let (a, b) = (right(&skin, 20..40), right(&blown, 20..40));
+    assert!(a.abs_diff(b) <= 3, "the pinned top moved ({a} -> {b})");
 }
 
 /// Blendshapes: a target that pushes the cylinder's top up draws it taller

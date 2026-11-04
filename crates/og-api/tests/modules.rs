@@ -112,8 +112,8 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.TweenCompleted", 1, 0xe394841eee68bb0a),
     ("og.Vehicle", 2, 0x45a35b63ff56d1d2),
     ("og.VehicleWheel", 1, 0xc3aa8551ae5e84c4),
-    ("og.SoftBody", 1, 0x3bcfc31a2cb8077b),
-    ("og.Garment", 1, 0xd263e6bb0f6b7520),
+    ("og.SoftBody", 2, 0x7bf95aa6492a7430),
+    ("og.Garment", 2, 0x5812872c397f36c1),
     ("og.Buoyancy", 1, 0xbac81201027997a5),
     ("og.Velocity", 1, 0x70aff545497a9c4d),
 ];

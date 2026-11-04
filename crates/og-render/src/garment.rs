@@ -28,6 +28,10 @@ pub struct GarmentDeformation {
     pub world: Mat4,
     /// Converts a saved frame to the current instance's space for CPU fallback.
     pub output_transform: Mat4,
+    /// Simulated on the GPU (og.Garment's SIMULATION_VISUAL): `points` are
+    /// then the skinned targets and the renderer moves the points from
+    /// there, for looks only; reach and pins are per welded point.
+    pub visual: Option<Arc<crate::VisualBody>>,
 }
 
 impl GarmentDeformation {
@@ -114,6 +118,7 @@ mod tests {
             world: Mat4::from_translation(Vec3::splat(20.))
                 * Mat4::from_scale(Vec3::new(2., 3., 4.)),
             output_transform: Mat4::IDENTITY,
+            visual: None,
         };
         let d = g.evaluate();
         assert_eq!(

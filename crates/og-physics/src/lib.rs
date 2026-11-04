@@ -531,6 +531,10 @@ pub struct ClothPoints {
     pub columns: u32,
     pub rows: u32,
     pub points: Vec<Vec3>,
+    /// The points `pins` holds to the entity, ascending.
+    pub pinned: Vec<u32>,
+    /// Whether it hangs in the xy plane (the 2D profile).
+    pub flat: bool,
 }
 
 /// An og.SoftBody's points and its surface's triangles, three indices each.
@@ -538,6 +542,10 @@ pub struct ClothPoints {
 pub struct SoftBodyPoints {
     pub points: Vec<Vec3>,
     pub indices: Vec<u32>,
+    /// The points `pinTop` holds to the entity, ascending.
+    pub pinned: Vec<u32>,
+    /// Whether it was built in the xy plane (the 2D profile: a ring).
+    pub flat: bool,
 }
 
 /// A height field's heights (relative to its entity's y), row-major, rows along +z.
@@ -1384,6 +1392,11 @@ impl PhysicsSystem {
             .map(|r| r.points.clone()))
     }
 
+    /// og.Physics.gravity as the last step applied it (`None` before it).
+    pub fn gravity(&self) -> Option<Vec3> {
+        with_sim!(self.shared, |s| Some(s.gravity()))
+    }
+
     /// The points of the og.Cloth on `entity`.
     pub fn cloth_points(&self, entity: Entity) -> Option<ClothPoints> {
         with_sim!(self.shared, |s| s.cloths.get(&entity.to_bits()).map(|c| {
@@ -1392,6 +1405,12 @@ impl PhysicsSystem {
                 columns,
                 rows,
                 points: c.points.clone(),
+                pinned: (0..rows)
+                    .flat_map(|y| (0..columns).map(move |x| (x, y)))
+                    .filter(|&(x, y)| verlet::pinned(c.pins, x, y, columns))
+                    .map(|(x, y)| y * columns + x)
+                    .collect(),
+                flat: s.flat(),
             }
         }))
     }
@@ -1404,6 +1423,8 @@ impl PhysicsSystem {
                 SoftBodyPoints {
                     points: b.points.clone(),
                     indices: b.triangles.iter().flatten().copied().collect(),
+                    pinned: b.pinned().to_vec(),
+                    flat: b.flat(),
                 }
             }
         ))

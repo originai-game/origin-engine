@@ -262,6 +262,9 @@ impl Renderer {
             },
             transparency: Transparency::Weighted,
             gpu_crowds: crowd_indirect,
+            visual_simulation: ribbons_gpu::GpuTrails::supported(
+                adapter.get_downlevel_capabilities().flags,
+            ),
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(
@@ -643,6 +646,9 @@ impl Renderer {
         let garments = surfaces
             .as_ref()
             .map(|_| crate::garment_gpu::Pipelines::new(&device));
+        let visual = surfaces
+            .as_ref()
+            .map(|_| crate::visual_sim::VisualPipelines::new(&device));
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
@@ -1124,6 +1130,7 @@ impl Renderer {
             trails: ribbons::Trails::default(),
             gpu_trails,
             surfaces,
+            visual,
             garments,
             prev_view_proj: None,
             previous_time: None,

@@ -875,6 +875,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             });
         }
     }
+    // og.Physics.gravity, for the bodies the renderer simulates.
+    let gravity = physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0));
     // Cloth: a double-sided mesh of its points, replaced every frame.
     for (e, v) in rows(world, layouts.cloth.as_ref()) {
         if !on(&v, "visible", true) {
@@ -900,6 +902,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 rows: c.rows,
             },
         );
+        if visual(&v) {
+            let body = og_render::VisualBody {
+                pinned: c.pinned.into(),
+                substeps: small_steps(&v, 1, 8),
+                damping: f(&v, "damping", 0.985),
+                gravity: gravity * f(&v, "gravityScale", 1.0),
+                wind: super::fx::vec3(&v["wind"]),
+                gust: f(&v, "gust", 0.6),
+                radius: f(&v, "radius", 0.04),
+                friction: f(&v, "friction", 0.0),
+                thickness: f(&v, "thickness", 0.0),
+                stiffness: 1.0,
+                bending: CLOTH_BENDING,
+                plane: c.flat.then(|| c.points.first().map_or(0.0, |p| p.z)),
+                ..Default::default()
+            };
+            scene.set_visual_body(handle, Some(Arc::new(body)));
+        }
         let material = super::fx::handle_index(&v["material"])
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
@@ -933,6 +953,26 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }
         };
         scene.set_simulation_surface(handle, mesh, og_render::SimulationSurface::SoftBody);
+        if visual(&v) {
+            let body = og_render::VisualBody {
+                pinned: s.pinned.into(),
+                substeps: small_steps(&v, 2, 8),
+                damping: f(&v, "damping", 0.995),
+                gravity: gravity * f(&v, "gravityScale", 1.0),
+                radius: f(&v, "thickness", 0.03),
+                friction: f(&v, "friction", 0.3),
+                stiffness: f(&v, "stiffness", 1.0),
+                pressure: f(&v, "pressure", 1.0),
+                volume_stiffness: if f(&v, "pressure", 1.0) > 0.0 {
+                    f(&v, "volumeStiffness", 1.0)
+                } else {
+                    0.0
+                },
+                plane: s.flat.then(|| s.points.first().map_or(0.0, |p| p.z)),
+                ..Default::default()
+            };
+            scene.set_visual_body(handle, Some(Arc::new(body)));
+        }
         let material = super::fx::handle_index(&v["material"])
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
@@ -949,6 +989,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         keys.push((e, u32::MAX));
     }
     keys
+}
+
+/// The bending of a cloth the renderer simulates (og.Cloth has no field
+/// for it; the tick's solve has no bending): enough to round its folds.
+const CLOTH_BENDING: f32 = 0.2;
+
+/// Whether a Cloth, SoftBody or Garment row is SIMULATION_VISUAL.
+pub(crate) fn visual(v: &Value) -> bool {
+    v["simulation"].as_u64() == Some(u64::from(og_physics::SIMULATION_VISUAL))
+}
+
+/// The GPU solver's small steps per tick for a row's `substeps` and
+/// `iterations` (defaults given): twice their product, so its one pass a
+/// step converges as the tick's iterations would (Macklin et al. 2019).
+pub(crate) fn small_steps(v: &Value, substeps: u64, iterations: u64) -> u32 {
+    let s = v["substeps"].as_u64().unwrap_or(substeps).clamp(1, 16);
+    let i = v["iterations"].as_u64().unwrap_or(iterations).clamp(1, 64);
+    (2 * s * i).clamp(4, 96) as u32
 }
 
 /// og.WeatherState drawn: the lit surfaces' wetness, puddles and snow,

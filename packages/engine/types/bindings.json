@@ -3771,6 +3771,11 @@
           "name": "visible",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "simulation",
+          "column": "u32",
+          "default": 0
         }
       ]
     },
@@ -3865,6 +3870,11 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "simulation",
+          "column": "u32",
+          "default": 0
         }
       ]
     },
@@ -3971,6 +3981,11 @@
           "name": "visible",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "simulation",
+          "column": "u32",
+          "default": 0
         },
         {
           "name": "volume",

@@ -108,8 +108,9 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// saves held it is at a later version (og-audio's og.AudioSource and
 /// og.AudioBusFx, version 2: the bus graph and the bus effects;
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
-/// version 2: breaking; og.Vehicle, version 2: the drivetrain; the
-/// runtime's og.VideoPlayer, version 2: an f64 time).
+/// version 2: breaking; og.Vehicle, version 2: the drivetrain; og.Cloth,
+/// og.SoftBody and og.Garment, version 2: simulation; the runtime's
+/// og.VideoPlayer, version 2: an f64 time).
 pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
@@ -121,6 +122,10 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Vehicle" => og_physics::Vehicle::schema().version,
         // R9: 64 blendshape weights (`influences`).
         "og.Blendshapes" => og_anim::Blendshapes::schema().version,
+        // simulation (gameplay or visual).
+        "og.Cloth" => og_physics::Cloth::schema().version,
+        "og.SoftBody" => og_physics::SoftBody::schema().version,
+        "og.Garment" => og_physics::Garment::schema().version,
         crate::video::PLAYER => crate::video::PLAYER_VERSION,
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.

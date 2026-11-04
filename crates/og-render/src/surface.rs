@@ -126,7 +126,7 @@ pub(crate) struct SurfacePipelines {
 }
 
 pub(crate) struct SurfaceMesh {
-    source: wgpu::Buffer,
+    pub(crate) source: wgpu::Buffer,
     topology: wgpu::Buffer,
     // The topology is static across simulation steps; rebuild only on edits.
     indices: Vec<u32>,
@@ -136,6 +136,8 @@ pub(crate) struct SurfaceMesh {
     level: u32,
     pub(crate) previous: wgpu::Buffer,
     initialized: std::cell::Cell<bool>,
+    /// The GPU simulation writing `source` (a visual body), if it is one.
+    pub(crate) visual: Option<crate::visual_sim::VisualMesh>,
 }
 
 impl SurfacePipelines {
@@ -248,6 +250,7 @@ impl SurfacePipelines {
             level,
             previous,
             initialized: std::cell::Cell::new(false),
+            visual: None,
             vertices: mesh.vertices.len() as u32,
             triangles: mesh.indices.len() as u32 / 3,
         }
@@ -302,6 +305,7 @@ impl SurfaceMesh {
             + self.topology.size()
             + u64::from(self.vertices) * 16
             + self.previous.size()
+            + self.visual.as_ref().map_or(0, |v| v.bytes())
     }
 }
 

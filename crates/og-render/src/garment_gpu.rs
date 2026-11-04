@@ -1,6 +1,7 @@
 //! The garment's visual pose only. Four compute bindings; the lit and
 //! prepass shaders keep reading their existing deformation palette slots.
 
+use crate::visual_sim::{Topology, VisualMesh, VisualPipelines};
 use crate::{Deferred, GarmentDeformation, GarmentTopology};
 use std::{collections::HashMap, sync::Arc};
 
@@ -12,11 +13,16 @@ pub(crate) struct Mesh {
     adjacency: wgpu::Buffer,
     points: wgpu::Buffer,
     initialized: bool,
+    /// The GPU simulation of a visual garment (SIMULATION_VISUAL).
+    visual: Option<VisualMesh>,
 }
 
 impl Mesh {
     pub(crate) fn bytes(&self) -> u64 {
-        self.input.size() + self.adjacency.size() + self.points.size()
+        self.input.size()
+            + self.adjacency.size()
+            + self.points.size()
+            + self.visual.as_ref().map_or(0, VisualMesh::bytes)
     }
 }
 
@@ -112,6 +118,7 @@ impl Pipelines {
         draws: &[(u32, u32)],
         output: &wgpu::Buffer,
         previous: Option<u32>,
+        visual: Option<&VisualPipelines>,
     ) {
         cache.retain(|key, _| {
             draws.iter().any(|&(d, _)| {
@@ -151,10 +158,10 @@ impl Pipelines {
                 layout: &self.layout,
                 entries: &entries,
             });
-            for (pipeline, count) in [
-                (&self.pose, g.topology.rest.len()),
-                (&self.scatter, g.topology.vertices.len()),
-            ] {
+            // A visual garment's points are its solver's, from this frame's
+            // skinned pose (its targets); the scatter then draws them.
+            let solver = visual.filter(|v| simulate(device, queue, v, mesh, g, scene).is_some());
+            let dispatch = |encoder: &mut crate::Encoder, pipeline, count: usize| {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("garment draw"),
                     timestamp_writes: None,
@@ -163,7 +170,12 @@ impl Pipelines {
                 pass.set_bind_group(0, &group, &[]);
                 let groups = (count as u32).div_ceil(64);
                 pass.dispatch_workgroups(groups.min(65535), groups.div_ceil(65535), 1);
+            };
+            match solver {
+                Some(v) => v.encode(encoder, mesh.visual.as_ref().expect("simulated"), true),
+                None => dispatch(encoder, self.pose.get(), g.topology.rest.len()),
             }
+            dispatch(encoder, self.scatter.get(), g.topology.vertices.len());
             mesh.initialized = true;
         }
     }
@@ -200,8 +212,61 @@ impl Pipelines {
                 mapped_at_creation: false,
             }),
             initialized: false,
+            visual: None,
         }
     }
+}
+
+/// Prepares a visual garment's solve this frame into `mesh.points`; None
+/// for a garment the tick simulates, or one without its collider list or
+/// shapes this frame (it then draws its skinned pose).
+fn simulate(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pipelines: &VisualPipelines,
+    mesh: &mut Mesh,
+    g: &GarmentDeformation,
+    scene: &crate::RenderScene,
+) -> Option<()> {
+    let Some(body) = g.visual.as_deref() else {
+        mesh.visual = None;
+        return None;
+    };
+    let shapes = body.garment.as_ref()?;
+    let n = g.topology.rest.len();
+    let list = *pipelines.garment_lists.get(&g.key)?;
+    if shapes.rest.len() != n || shapes.normals.len() != n || g.targets.len() != n {
+        return None;
+    }
+    let triangles = &g.topology.triangles;
+    if mesh
+        .visual
+        .as_ref()
+        .is_none_or(|v| !v.topology.matches(None, body, &shapes.rest, triangles))
+    {
+        let topology = Topology::build(None, body, &shapes.rest, triangles);
+        mesh.visual = Some(pipelines.mesh(device, queue, topology));
+    }
+    let dt = if scene.tick_rate > 0.0 {
+        1.0 / scene.tick_rate
+    } else {
+        1.0 / 60.0
+    };
+    let Mesh { visual, points, .. } = mesh;
+    pipelines.prepare(
+        device,
+        queue,
+        visual.as_mut().expect("made above"),
+        body,
+        &g.targets,
+        &shapes.normals,
+        scene.tick,
+        dt,
+        list,
+        g.world,
+        points,
+    );
+    Some(())
 }
 
 fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool) -> Vec<[f32; 4]> {

@@ -51,6 +51,8 @@ pub struct RenderScene {
     mesh_foliage: Vec<Option<std::sync::Arc<crate::meshlet::MeshFoliage>>>,
     /// Coarse simulation surfaces; never clustered, skinned or compact.
     pub(crate) mesh_surfaces: Vec<Option<crate::SimulationSurface>>,
+    /// Per simulation surface: the GPU visual body it is ([`RenderScene::set_visual_body`]).
+    pub(crate) mesh_visual: Vec<Option<std::sync::Arc<crate::VisualBody>>>,
     /// Draw segments per coarse cloth/soft-body edge; zero selects two, 1–8.
     pub cloth_subdivisions: u32,
     textures: Vec<TextureSource>,
@@ -151,14 +153,16 @@ pub struct RenderScene {
     pub interpolation: Option<f32>,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
-    /// What CPU-simulated particles with collision bounce off (the CPU
-    /// path's stand-in for the depth buffer the compute path reads;
-    /// [`crate::ParticleCollider`]). Empty by default.
-    pub particle_colliders: Vec<crate::ParticleCollider>,
+    /// The scene's solid shapes ([`crate::SceneCollider`]): what
+    /// CPU-simulated particles with collision bounce off (the CPU path's
+    /// stand-in for the depth buffer the compute path reads) and what
+    /// visual bodies ([`crate::VisualBody`]) meet on the GPU. Empty by
+    /// default.
+    pub colliders: Vec<crate::SceneCollider>,
     /// Fine pieces of broken props, simulated and drawn on the GPU only
     /// ([`crate::DebrisPiece`], `debris.rs`): each drawn by instances of
     /// [`RenderScene::instances`] whose transforms the GPU writes. They
-    /// collide with [`RenderScene::particle_colliders`]. Empty by default.
+    /// collide with [`RenderScene::colliders`]. Empty by default.
     pub debris: Vec<crate::DebrisPiece>,
     /// Systems the host simulated itself (its tick ran
     /// [`crate::CpuParticles::advance`] to read their events), by

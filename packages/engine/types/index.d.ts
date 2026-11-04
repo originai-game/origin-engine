@@ -10056,6 +10056,10 @@ export interface RenderCapabilities {
    */
   readonly visibilityBufferRefused: string | null;
   /**
+   * Whether visual bodies simulate here (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL): the device runs compute and reads storage in the vertex stage (every WebGPU, Metal, Vulkan and DX12 device). Where false they draw their rest shape, as their points read in the tick; false without a renderer.
+   */
+  readonly visualSimulation: boolean;
+  /**
    * Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host.
    */
   readonly world3d: boolean;
@@ -14421,6 +14425,16 @@ export interface Rope {
   visible: boolean;
 }
 
+/**
+ * `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default.
+ */
+export declare const SIMULATION_GAMEPLAY: 0;
+
+/**
+ * `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU (XPBD in small steps), for looks only, never read back. The tick leaves it unsolved: its points (og.physics.clothPoints, softBodyPoints, garmentPoints) are its rest shape carried rigidly by the entity (a garment's: the skinned pose), SoftBody.volume stays 1 and SoftBody.center is that shape's mean, so gameplay reads a stable proxy and a headless server pays nothing. The drawn motion runs on tick time: frames that skip ticks step those too, up to eight, and a world restored, rolled back or more than eight ticks ahead starts again from the rest shape. It meets the colliders drawn this frame (og.Collider boxes, spheres, capsules and height fields; convex, cylinder and triangle-mesh shapes are passed through) and, with thickness, itself. Where RenderCapabilities.visualSimulation is false (no compute or no vertex storage) it draws that rest shape.
+ */
+export declare const SIMULATION_VISUAL: 1;
+
 /** `Cloth.pins` bit: the whole top row is pinned. */
 export declare const PIN_TOP: 1;
 
@@ -14546,6 +14560,12 @@ export interface Cloth {
    * @default true
    */
   visible: boolean;
+  /**
+   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   *
+   * @range 0..1
+   */
+  simulation: number;
 }
 
 /**
@@ -14661,6 +14681,12 @@ export interface Garment {
    * @tunable
    */
   friction: number;
+  /**
+   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   *
+   * @range 0..1
+   */
+  simulation: number;
 }
 
 /** `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). */
@@ -14801,6 +14827,12 @@ export interface SoftBody {
    * @default true
    */
   visible: boolean;
+  /**
+   * SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).
+   *
+   * @range 0..1
+   */
+  simulation: number;
   /**
    * Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated.
    *
@@ -50253,15 +50285,15 @@ export declare namespace og {
   /**
    * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
    */
-  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
+  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32"> }, Cloth>;
   /**
    * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red or alpha is 0, stay on the skinned pose; red times alpha between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment; paint the alpha over a white colour to keep a textured garment's colours, which the red would tint, since an opaque material does not show the alpha). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied.
    */
-  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32"> }, Garment>;
+  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"u32"> }, Garment>;
   /**
    * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
    */
-  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
+  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
   /**
    * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
    */

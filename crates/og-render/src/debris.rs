@@ -25,7 +25,7 @@
 //! each other or with the simulation's convex chunks.
 
 use crate::RenderScene;
-use crate::particles::ParticleCollider;
+use crate::particles::SceneCollider;
 use glam::{Mat4, Quat, Vec3};
 use std::collections::HashMap;
 
@@ -560,7 +560,7 @@ impl DebrisLayer {
                 owners.push(s);
             }
         }
-        let colliders: &[ParticleCollider] = &scene.particle_colliders;
+        let colliders: &[SceneCollider] = &scene.colliders;
         let (words, lists) = crate::scene_colliders::pack(colliders, &bounds);
         let mut by_slot = vec![u32::MAX; self.count as usize];
         for (s, l) in owners.iter().zip(lists) {
@@ -737,7 +737,7 @@ mod tests {
             mapped_at_creation: false,
         });
         let mut scene = RenderScene::default();
-        scene.particle_colliders.push(ParticleCollider::Plane {
+        scene.colliders.push(SceneCollider::Plane {
             normal: Vec3::Y,
             offset: 0.0,
         });

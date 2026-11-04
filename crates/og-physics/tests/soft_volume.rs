@@ -221,6 +221,70 @@ fn pin_top_hangs_a_soft_volume_from_its_entity() {
     assert!((top.x - 1.0).abs() < 1e-4, "the top moved to {top}");
 }
 
+/// SIMULATION_VISUAL leaves the solve to the renderer: the tick carries the
+/// rest shape rigidly with the entity (no fall, no wind, no squash), the
+/// written volume stays 1 and the centre is the shape's mean, while a
+/// gameplay body beside it still falls. The old step solved both.
+#[test]
+fn visual_soft_bodies_and_cloths_carry_their_rest_shape_with_the_entity() {
+    let (mut w, p) = world(Physics::default(), 1);
+    floor(&mut w);
+    let visual = ball(
+        &mut w,
+        3.0,
+        SoftBody {
+            simulation: SIMULATION_VISUAL,
+            stiffness: 0.3,
+            ..SoftBody::default()
+        },
+    );
+    let gameplay = w.spawn((at(3.0, 3.0, 0.0), SoftBody::default())).unwrap();
+    let flag = w
+        .spawn((
+            at(-3.0, 4.0, 0.0),
+            Cloth {
+                columns: 6,
+                rows: 5,
+                spacing: 0.2,
+                pins: PIN_TOP_CORNERS,
+                wind: Vec3::new(0.0, 0.0, 12.0),
+                simulation: SIMULATION_VISUAL,
+                ..Cloth::default()
+            },
+        ))
+        .unwrap();
+    run(&mut w, 90);
+    let turn = Quat::from_rotation_y(0.7);
+    w.insert(visual, rotated(at(1.0, 2.5, -1.0), turn)).unwrap();
+    w.insert(flag, rotated(at(-2.0, 4.5, 0.0), turn)).unwrap();
+    run(&mut w, 30);
+    let pts = p.soft_body_points(visual).unwrap().points;
+    assert_eq!(pts.len(), 162);
+    let centre = Vec3::new(1.0, 2.5, -1.0);
+    for q in &pts {
+        let r = (*q - centre).length();
+        assert!((r - 0.5).abs() < 1e-4, "a point is {r} from the centre");
+    }
+    let s = w.get::<SoftBody>(visual).unwrap();
+    assert_eq!(s.volume, 1.0);
+    assert!((s.center - centre).length() < 1e-4, "centre {}", s.center);
+    let fell = w.get::<SoftBody>(gameplay).unwrap().center.y;
+    assert!(fell < 0.6, "the gameplay ball beside it fell to {fell}");
+    let c = p.cloth_points(flag).unwrap();
+    assert_eq!(c.pinned, vec![0, 5]);
+    for y in 0..5 {
+        for x in 0..6 {
+            let rest =
+                Vec3::new(-2.0, 4.5, 0.0) + turn * Vec3::new(x as f32, -(y as f32), 0.0) * 0.2;
+            let q = c.points[y * 6 + x];
+            assert!(
+                (q - rest).length() < 1e-4,
+                "point {x},{y} at {q}, rest {rest}"
+            );
+        }
+    }
+}
+
 #[test]
 fn a_world_that_never_names_og_soft_body_does_not_register_it() {
     let (w, _p) = support::world(Physics::default(), 1);

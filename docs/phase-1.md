@@ -4260,7 +4260,7 @@ README §Shadows and antialiasing by tier.
   `cascadeBlend`; `RenderCapabilities.maxShadowedLights` and
   `pointShadows`.
 - **Particles** (6fb84fd): the CPU path (WebGL2) bounces off
-  `RenderScene::particle_colliders`, which og-runtime fills from og.Collider
+  `RenderScene::colliders`, which og-runtime fills from og.Collider
   boxes, spheres and terrain height fields.
 - **Scenes** (556b838, 4ddf4f2): shadows-soft, point-shadows-paraboloid,
   shadows-local-8, fxaa, taa-sharp on `metal` and `vulkan-cpu` (RMSE 0.00135

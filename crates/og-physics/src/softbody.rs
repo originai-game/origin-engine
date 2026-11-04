@@ -355,6 +355,25 @@ impl SoftState {
         })
     }
 
+    /// Every point at rest on the entity, at rest (SIMULATION_VISUAL).
+    pub fn hold(&mut self, origin: Vec3, rotation: Quat) {
+        let rotation = if self.flat { Quat::IDENTITY } else { rotation };
+        for (p, r) in self.points.iter_mut().zip(&self.rest) {
+            *p = origin + rotation * *r;
+        }
+        self.previous.clone_from(&self.points);
+    }
+
+    /// The points `pinTop` holds, ascending.
+    pub fn pinned(&self) -> &[u32] {
+        &self.pinned
+    }
+
+    /// Whether it is a ring in the xy plane (2D).
+    pub fn flat(&self) -> bool {
+        self.flat
+    }
+
     /// Its volume (2D: area) now.
     pub fn volume(&self) -> f32 {
         if self.flat {

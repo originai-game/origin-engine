@@ -237,9 +237,9 @@ fn cpu_particles_bounce_off_the_scene_colliders() {
         particles: ParticleSimulation::Cpu,
         ..small()
     };
-    let run_with = |colliders: Vec<og_render::ParticleCollider>| {
+    let run_with = |colliders: Vec<og_render::SceneCollider>| {
         let mut scene = collision_scene(true);
-        scene.particle_colliders = colliders;
+        scene.colliders = colliders;
         let (_, stats, r) = run(&desc, &mut scene, 90, |s, f| fx::tick_all(s, f as u64));
         let live: Vec<_> = r
             .read_particles(1)
@@ -258,15 +258,15 @@ fn cpu_particles_bounce_off_the_scene_colliders() {
     let (without, _, skipped) = run_with(Vec::new());
     assert!(without < -1.0, "without colliders the lowest is {without}");
     assert_eq!(skipped, 1);
-    let plane = og_render::ParticleCollider::Plane {
+    let plane = og_render::SceneCollider::Plane {
         normal: Vec3::Y,
         offset: 0.0,
     };
-    let field = og_render::ParticleCollider::HeightField {
+    let field = og_render::SceneCollider::HeightField {
         data: og_render::TerrainData::flat(Vec2::splat(40.0), 9, 9),
         transform: Mat4::IDENTITY,
     };
-    let block = og_render::ParticleCollider::Box {
+    let block = og_render::SceneCollider::Box {
         transform: Mat4::from_translation(Vec3::new(0.0, -1.0, 0.0)),
         half_extents: Vec3::new(10.0, 1.0, 10.0),
     };

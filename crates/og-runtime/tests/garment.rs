@@ -81,6 +81,9 @@ impl Hooks for Disk {
 struct Seen {
     deformed: Vec<(usize, bool)>,
     plain: usize,
+    /// Garments the renderer is asked to simulate (SIMULATION_VISUAL),
+    /// with each one's reach per point and skin normals per point.
+    visual: Vec<(usize, usize)>,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -96,6 +99,17 @@ impl RenderBackend for Recorder {
         let mut s = self.0.borrow_mut();
         s.deformed.clear();
         s.plain = 0;
+        s.visual = scene
+            .deformed_vertices
+            .iter()
+            .filter_map(|d| d.garment.as_ref()?.visual.as_ref())
+            .map(|b| {
+                (
+                    b.reach.len(),
+                    b.garment.as_ref().map_or(0, |g| g.normals.len()),
+                )
+            })
+            .collect();
         for i in &scene.skinned_instances {
             match i.deformed {
                 Some(d) => {
@@ -225,4 +239,42 @@ fn a_garment_at_rest_keeps_the_skins_bind_shape() {
             );
         }
     }
+}
+
+/// SIMULATION_VISUAL: the tick keeps the garment on its skin (its points
+/// are its targets, untouched by gravity), and the renderer is handed the
+/// solver's settings, one reach and one skin normal per welded point.
+#[test]
+fn a_visual_garment_stays_on_the_skin_and_is_simulated_by_the_renderer() {
+    let desc = |distance, simulation| json!({"mesh":0,"maxDistance":distance,"pinTop":0,"simulation":simulation});
+    let (skin, _) = run(20, "models/scaled.glb", desc(0.0, 0), false);
+    let (cloth, _) = run(20, "models/scaled.glb", desc(0.3, 0), false);
+    let (visual, seen) = run(20, "models/scaled.glb", desc(0.3, 1), false);
+    let sag = |a: &[[f64; 3]], b: &[[f64; 3]]| {
+        a.iter()
+            .zip(b)
+            .map(|(a, b)| (0..3).map(|k| (a[k] - b[k]).abs()).fold(0.0, f64::max))
+            .fold(0.0, f64::max)
+    };
+    let last = skin.last().unwrap();
+    assert!(!last.is_empty());
+    // Gameplay cloth sags under gravity; the visual one stays on its skin.
+    assert!(
+        sag(last, cloth.last().unwrap()) > 1e-2,
+        "gameplay cloth did not move"
+    );
+    assert!(
+        sag(last, visual.last().unwrap()) < 1e-5,
+        "the tick moved a visual garment"
+    );
+    assert!(
+        !seen.visual.is_empty(),
+        "the renderer was not asked to simulate it"
+    );
+    let n = last.len();
+    assert!(
+        seen.visual.iter().all(|&v| v == (n, n)),
+        "{:?} for {n} points",
+        seen.visual
+    );
 }

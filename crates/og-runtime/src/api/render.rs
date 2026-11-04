@@ -273,6 +273,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "upscalers": crate::extract::UPSCALERS,
                 "transparency": info.as_ref().map_or("weighted", |i| crate::transparency_name(i.transparency)),
                 "gpuCrowds": info.as_ref().is_some_and(|i| i.gpu_crowds),
+                "visualSimulation": info.as_ref().is_some_and(|i| i.visual_simulation),
                 "world3d": og_render::WORLD_3D,
                 "exrDecode": crate::uncooked::EXR_DECODE,
                 "visibilityBuffer": info.is_some() && b.visibility_buffer_refused().is_none(),
@@ -286,7 +287,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
         .to_string()
 }
 

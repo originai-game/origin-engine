@@ -798,7 +798,7 @@ pub const SOFT_MESH: u32 = 2;
 /// state (the og.physics block's trailer), og.physics.softBodyPoints reads
 /// them and the renderer draws the surface.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.SoftBody")]
+#[reflect(name = "og.SoftBody", version = 2)]
 pub struct SoftBody {
     /// SOFT_SPHERE 0, SOFT_BOX 1, SOFT_MESH 2.
     #[reflect(min = 0, max = 2)]
@@ -849,6 +849,9 @@ pub struct SoftBody {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
+    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
+    #[reflect(min = 0, max = 1)]
+    pub simulation: u32,
     /// Written: its volume (2D: area) now over its rest volume: below 1 squashed.
     #[reflect(default = 1)]
     pub volume: f32,
@@ -877,6 +880,7 @@ impl Default for SoftBody {
             pin_top: 0.0,
             material: 0,
             visible: true,
+            simulation: SIMULATION_GAMEPLAY,
             volume: 1.0,
             center: Vec3::ZERO,
         }
@@ -895,7 +899,7 @@ impl Default for SoftBody {
 /// before each step; its points are world state (the og.physics block's
 /// trailer).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Garment")]
+#[reflect(name = "og.Garment", version = 2)]
 pub struct Garment {
     /// The glTF mesh of the entity's model that is the garment.
     pub mesh: u32,
@@ -938,6 +942,9 @@ pub struct Garment {
     /// How much of its sliding a point touching a solid loses each step.
     #[reflect(min = 0, max = 1, tunable)]
     pub friction: f32,
+    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
+    #[reflect(min = 0, max = 1)]
+    pub simulation: u32,
 }
 
 impl Default for Garment {
@@ -957,6 +964,7 @@ impl Default for Garment {
             gust: 0.6,
             radius: 0.0,
             friction: 0.0,
+            simulation: SIMULATION_GAMEPLAY,
         }
     }
 }
@@ -1033,6 +1041,14 @@ impl Default for Rope {
     }
 }
 
+/// `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: in the
+/// physics step on the CPU, world state (the default).
+pub const SIMULATION_GAMEPLAY: u32 = 0;
+/// `Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: by the
+/// renderer on the GPU, for looks only; the tick carries its rest shape
+/// rigidly with the entity (a garment's: the skinned pose).
+pub const SIMULATION_VISUAL: u32 = 1;
+
 /// `Cloth.pins` bit: the whole top row is pinned.
 pub const PIN_TOP: u32 = 1;
 /// `Cloth.pins` bit: the top-left and top-right corners are pinned.
@@ -1052,7 +1068,7 @@ pub const PIN_TOP_RINGS: u32 = 8;
 /// its points are world state. Drawn as a double-sided mesh with
 /// `material` (og.render.standardMaterial; 0: a plain cloth colour).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Cloth")]
+#[reflect(name = "og.Cloth", version = 2)]
 pub struct Cloth {
     /// Points across.
     #[reflect(min = 2, max = 64, default = 12)]
@@ -1105,6 +1121,9 @@ pub struct Cloth {
     /// Whether the renderer draws it.
     #[reflect(default = 1)]
     pub visible: bool,
+    /// SIMULATION_GAMEPLAY 0 (in the tick) or SIMULATION_VISUAL 1 (on the GPU, for looks only).
+    #[reflect(min = 0, max = 1)]
+    pub simulation: u32,
 }
 
 impl Default for Cloth {
@@ -1125,6 +1144,7 @@ impl Default for Cloth {
             friction: 0.0,
             material: 0,
             visible: true,
+            simulation: SIMULATION_GAMEPLAY,
         }
     }
 }

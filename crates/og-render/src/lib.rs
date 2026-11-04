@@ -290,6 +290,8 @@ mod stylise_object;
 mod surface;
 pub use surface::SimulationSurface;
 mod sea_wakes;
+mod visual_sim;
+pub use visual_sim::{VisualBody, VisualGarment};
 mod targets;
 mod terrain;
 mod terrain_error;
@@ -359,8 +361,8 @@ pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
     Burst, ChildParticles, ColorCurve, CpuParticles, Curve, EmitterHandle, EmitterShape,
     MAX_CURVE_KEYS, MAX_SUB_EMITTERS, ParticleAlign, ParticleBlend, ParticleClock,
-    ParticleCollider, ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind,
-    ParticleNoise, ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode,
+    ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleNoise,
+    ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SceneCollider, SheetMode,
     SimulationSpace, SpriteSheet, SubEmitter, mesh_points,
 };
 pub use points::Points;
@@ -678,6 +680,8 @@ pub struct Renderer {
     gpu_trails: Option<ribbons_gpu::GpuTrails>,
     surfaces: Option<surface::SurfacePipelines>,
     garments: Option<garment_gpu::Pipelines>,
+    /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
+    visual: Option<visual_sim::VisualPipelines>,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
     /// The last drawn clock, including frames with no simulation tick.

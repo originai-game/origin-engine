@@ -751,9 +751,9 @@ impl ParticleRenderer {
             let sprite_mode = matches!(e.render, ParticleRender::Sprite { .. });
             // The CPU path bounces world-space billboards off the scene's
             // colliders; sprite systems and a scene without colliders pass through.
-            let colliders: &[crate::particles::ParticleCollider] =
+            let colliders: &[crate::particles::SceneCollider] =
                 if e.collision.is_some() && e.space == SimulationSpace::World && !sprite_mode {
-                    &scene.particle_colliders
+                    &scene.colliders
                 } else {
                     &[]
                 };

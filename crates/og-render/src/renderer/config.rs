@@ -439,6 +439,10 @@ pub struct RenderInfo {
     /// draw through the CPU's skinned lists, the same members at the same
     /// levels.
     pub gpu_crowds: bool,
+    /// Whether visual bodies ([`crate::VisualBody`]) simulate: the device
+    /// runs compute and reads storage in the vertex stage. Without, they
+    /// draw their rest shape.
+    pub visual_simulation: bool,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters

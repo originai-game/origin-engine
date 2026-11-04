@@ -291,6 +291,8 @@ impl Renderer {
                     .unwrap_or_default(),
             );
         }
+        // Every simulation surface is uploaded, new ones too.
+        self.refresh_visual(scene);
         self.sync_assets(scene)?;
         let revisions = scene.lut_revisions();
         for (i, &revision) in revisions.iter().enumerate() {

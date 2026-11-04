@@ -1,4 +1,4 @@
-//! The scene's colliders ([`crate::RenderScene::particle_colliders`]) as a
+//! The scene's colliders ([`crate::RenderScene::colliders`]) as a
 //! compute kernel reads them: [`pack`] writes each collider near one of a
 //! set of boxes as a record, with a list per box of the records near it,
 //! and `shaders/scene_colliders.wgsl` pushes a point out of a list's
@@ -11,14 +11,14 @@
 //! then each record, 8 vec4s: kind (u32 bits in x) and its shape; then the
 //! lists, each a count and record indices; then the height fields'
 //! samples. Kinds: 0 plane (unit normal, offset), 1 sphere (centre,
-//! radius), 2 capsule (reserved), 3 oriented box (centre; three unit axes
+//! radius), 2 capsule (one end and the radius, the other end), 3 oriented box (centre; three unit axes
 //! with their half extents in w), 4 a height field's patch under the
 //! boxes (world to local rows, local to world rows, then origin x and z,
 //! the cell and the samples per row and rows (u32 bits, 16:16); x of the
 //! head's y: its first sample's word; z: the field's vertical scale's
 //! reciprocal).
 
-use crate::particles::ParticleCollider;
+use crate::particles::SceneCollider;
 use glam::Vec3;
 
 /// The most samples a height field's patch has a side.
@@ -28,16 +28,20 @@ const PATCH: u32 = 64;
 /// as the module docs say, and each box's list (its first word: a count
 /// then record indices; `u32::MAX` when nothing is near it).
 pub(crate) fn pack(
-    colliders: &[ParticleCollider],
+    colliders: &[SceneCollider],
     bounds: &[(Vec3, Vec3)],
 ) -> (Vec<[f32; 4]>, Vec<u32>) {
-    let meets = |c: &ParticleCollider, (lo, hi): (Vec3, Vec3)| -> bool {
+    let meets = |c: &SceneCollider, (lo, hi): (Vec3, Vec3)| -> bool {
         match c {
-            ParticleCollider::Plane { .. } => true,
-            ParticleCollider::Sphere { center, radius } => {
+            SceneCollider::Plane { .. } => true,
+            SceneCollider::Sphere { center, radius } => {
                 (center.clamp(lo, hi) - *center).length() <= *radius
             }
-            ParticleCollider::Box {
+            SceneCollider::Capsule { a, b, radius } => {
+                let r = Vec3::splat(*radius);
+                (a.min(*b) - r).cmple(hi).all() && (a.max(*b) + r).cmpge(lo).all()
+            }
+            SceneCollider::Box {
                 transform,
                 half_extents,
             } => {
@@ -47,7 +51,7 @@ pub(crate) fn pack(
                     .fold(Vec3::ZERO, |s, v| s + v);
                 (c - r).cmple(hi).all() && (c + r).cmpge(lo).all()
             }
-            ParticleCollider::HeightField { .. } => true,
+            SceneCollider::HeightField { .. } => true,
         }
     };
     let mut records: Vec<[[f32; 4]; 8]> = Vec::new();
@@ -61,7 +65,7 @@ pub(crate) fn pack(
         let mut r = [[0.0f32; 4]; 8];
         let kind = |k: u32| f32::from_bits(k);
         match c {
-            ParticleCollider::Plane { normal, offset } => {
+            SceneCollider::Plane { normal, offset } => {
                 let n = normal.normalize_or_zero();
                 if n == Vec3::ZERO {
                     continue;
@@ -69,11 +73,16 @@ pub(crate) fn pack(
                 r[0][0] = kind(0);
                 r[1] = n.extend(*offset / normal.length()).to_array();
             }
-            ParticleCollider::Sphere { center, radius } => {
+            SceneCollider::Sphere { center, radius } => {
                 r[0][0] = kind(1);
                 r[1] = center.extend(*radius).to_array();
             }
-            ParticleCollider::Box {
+            SceneCollider::Capsule { a, b, radius } => {
+                r[0][0] = kind(2);
+                r[1] = a.extend(*radius).to_array();
+                r[2] = b.extend(0.0).to_array();
+            }
+            SceneCollider::Box {
                 transform,
                 half_extents,
             } => {
@@ -90,7 +99,7 @@ pub(crate) fn pack(
                         .to_array();
                 }
             }
-            ParticleCollider::HeightField { data, transform } => {
+            SceneCollider::HeightField { data, transform } => {
                 // A patch of the field under the boxes, in its own space:
                 // at most PATCH samples a side.
                 let inv = transform.inverse();
@@ -194,15 +203,15 @@ mod tests {
     #[test]
     fn a_box_far_from_every_bound_is_left_out_and_lists_name_their_records() {
         let colliders = [
-            ParticleCollider::Plane {
+            SceneCollider::Plane {
                 normal: Vec3::Y * 2.0,
                 offset: 1.0,
             },
-            ParticleCollider::Box {
+            SceneCollider::Box {
                 transform: Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0)),
                 half_extents: Vec3::splat(0.5),
             },
-            ParticleCollider::Sphere {
+            SceneCollider::Sphere {
                 center: Vec3::new(0.0, 1.0, 0.0),
                 radius: 0.5,
             },
@@ -224,5 +233,42 @@ mod tests {
         assert_eq!(list(lists[1]), [0, 1]);
         // The plane's normal is unit and its offset scaled with it.
         assert_eq!(words[1 + 1], [0.0, 1.0, 0.0, 0.5]);
+    }
+
+    #[test]
+    fn a_capsule_meets_the_boxes_its_segment_reaches_and_a_box_keeps_its_scale() {
+        let colliders = [
+            SceneCollider::Capsule {
+                a: Vec3::new(0.0, 0.0, 3.0),
+                b: Vec3::new(0.0, 2.0, 3.0),
+                radius: 0.3,
+            },
+            SceneCollider::Box {
+                transform: Mat4::from_scale_rotation_translation(
+                    Vec3::new(2.0, 1.0, 1.0),
+                    glam::Quat::from_rotation_y(0.5),
+                    Vec3::ZERO,
+                ),
+                half_extents: Vec3::splat(0.5),
+            },
+        ];
+        // Just out of the capsule's reach (z 3 - 0.3), then just inside it.
+        let far = (Vec3::new(-0.2, 1.0, 2.0), Vec3::new(0.2, 1.2, 2.65));
+        let near = (Vec3::new(-0.2, 1.0, 2.0), Vec3::new(0.2, 1.2, 2.75));
+        let (words, lists) = pack(&colliders, &[far, near]);
+        let base = words[0][1].to_bits() as usize;
+        let word = |w: usize| words[w / 4][w % 4].to_bits();
+        let list = |l: u32| -> Vec<u32> {
+            if l == u32::MAX {
+                return Vec::new();
+            }
+            let at = base + l as usize;
+            (0..word(at)).map(|k| word(at + 1 + k as usize)).collect()
+        };
+        assert_eq!(list(lists[0]), Vec::<u32>::new());
+        assert_eq!(list(lists[1]), [0]);
+        assert_eq!(words[1][0].to_bits(), 2, "the capsule is kind 2");
+        assert_eq!(words[1 + 1], [0.0, 0.0, 3.0, 0.3]);
+        assert_eq!(words[1 + 2][..3], [0.0, 2.0, 3.0]);
     }
 }

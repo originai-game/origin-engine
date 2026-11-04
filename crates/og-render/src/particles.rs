@@ -282,7 +282,7 @@ pub enum ParticleAlign {
 }
 
 /// Particles bounce off the depth buffer in compute (turning the depth
-/// prepass on), and off [`crate::RenderScene::particle_colliders`] on the
+/// prepass on), and off [`crate::RenderScene::colliders`] on the
 /// CPU path ([`ParticleSimulation::Cpu`], sprite-mode emitters); a CPU
 /// system with no colliders to meet passes through and
 /// [`crate::FrameStats::particle_collision_skipped`] counts it, as does a
@@ -331,7 +331,7 @@ pub enum ParticleEventKind {
     #[default]
     Death,
     /// Bounced off a collider ([`ParticleEmitter::collision`], the CPU path's
-    /// [`ParticleCollider`]s) at more than [`IMPACT_SPEED`].
+    /// [`SceneCollider`]s) at more than [`IMPACT_SPEED`].
     Collision,
 }
 
@@ -618,7 +618,7 @@ pub enum ParticleSimulation {
     #[default]
     Auto,
     /// Always on the CPU, on any backend: the state is Rust's to read and
-    /// collides with [`crate::RenderScene::particle_colliders`] instead of
+    /// collides with [`crate::RenderScene::colliders`] instead of
     /// the depth buffer.
     Cpu,
 }
@@ -1042,13 +1042,14 @@ fn spawn(
     }
 }
 
-/// What CPU-simulated particles bounce off ([`crate::RenderScene::particle_colliders`]):
-/// the scene's ground and solid shapes as the host knows them (og-runtime
-/// gives its static colliders and terrains' height fields). A particle
+/// A solid shape of the scene ([`crate::RenderScene::colliders`]): what
+/// CPU-simulated particles bounce off and visual bodies meet, the scene's
+/// ground and solid shapes as the host knows them (og-runtime gives its
+/// og.Collider boxes, spheres, capsules and terrains' height fields). A particle
 /// bounces when a step carries it from outside a shape to inside: one born
 /// inside (sparks from a brazier's box) leaves freely.
 #[derive(Clone, Debug, PartialEq)]
-pub enum ParticleCollider {
+pub enum SceneCollider {
     /// Solid below the plane `normal · p = offset` (`normal` need not be
     /// normalized): an endless ground.
     Plane {
@@ -1065,6 +1066,13 @@ pub enum ParticleCollider {
         center: Vec3,
         radius: f32,
     },
+    /// The points within `radius` of the segment `a`..`b` (og.Collider's
+    /// SHAPE_CAPSULE: a character).
+    Capsule {
+        a: Vec3,
+        b: Vec3,
+        radius: f32,
+    },
     /// A height field placed as [`crate::Terrain::transform`] places it
     /// (centred, along its x and z): solid below its surface, within its
     /// rectangle.
@@ -1074,20 +1082,26 @@ pub enum ParticleCollider {
     },
 }
 
-impl ParticleCollider {
+impl SceneCollider {
     /// Whether `p` is inside, and the outward normal there (for a box, of
     /// the face nearest `from`, where the particle came from).
     fn hit(&self, from: Vec3, p: Vec3) -> Option<Vec3> {
         match self {
-            ParticleCollider::Plane { normal, offset } => {
+            SceneCollider::Plane { normal, offset } => {
                 let n = normal.normalize_or_zero();
                 (n != Vec3::ZERO && n.dot(p) < *offset / normal.length()).then_some(n)
             }
-            ParticleCollider::Sphere { center, radius } => {
+            SceneCollider::Sphere { center, radius } => {
                 let d = p - *center;
                 (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
             }
-            ParticleCollider::Box {
+            SceneCollider::Capsule { a, b, radius } => {
+                let ab = *b - *a;
+                let t = ((p - *a).dot(ab) / ab.length_squared().max(1e-12)).clamp(0.0, 1.0);
+                let d = p - (*a + ab * t);
+                (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
+            }
+            SceneCollider::Box {
                 transform,
                 half_extents,
             } => {
@@ -1112,7 +1126,7 @@ impl ParticleCollider {
                         .normalize_or(Vec3::Y),
                 )
             }
-            ParticleCollider::HeightField { data, transform } => {
+            SceneCollider::HeightField { data, transform } => {
                 let inv = transform.inverse();
                 let l = inv.transform_point3(p);
                 let half = data.size * 0.5;
@@ -1134,7 +1148,7 @@ impl ParticleCollider {
 /// by `friction`, and the step taken again from `before`. Whether it
 /// bounced.
 fn collide(
-    colliders: &[ParticleCollider],
+    colliders: &[SceneCollider],
     c: ParticleCollision,
     before: Vec3,
     pos: &mut Vec3,
@@ -1185,7 +1199,7 @@ fn integrate(
     dt: f32,
     time: f32,
     seed: u32,
-    colliders: &[ParticleCollider],
+    colliders: &[SceneCollider],
     origin: Vec3,
 ) -> bool {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
@@ -1304,7 +1318,7 @@ impl CpuParticles {
         sys: &ParticleSystem,
         tick_rate: f32,
         points: &[[f32; 4]],
-        colliders: &[ParticleCollider],
+        colliders: &[SceneCollider],
         subs: &[Option<&ParticleEmitter>],
         mut events: Option<&mut Vec<ParticleEvent>>,
     ) -> u32 {

@@ -14,7 +14,7 @@
 //! canvas) add `Frame.origin` back, so their patterns stay put.
 
 use crate::RenderScene;
-use crate::particles::ParticleCollider;
+use crate::particles::SceneCollider;
 use glam::{Mat4, Vec2, Vec3};
 
 fn moved(m: &mut Mat4, d: Vec3) {
@@ -105,12 +105,16 @@ impl RenderScene {
         for p in &mut self.particles {
             moved(&mut p.transform, d);
         }
-        for c in &mut self.particle_colliders {
+        for c in &mut self.colliders {
             match c {
-                ParticleCollider::Plane { normal, offset } => *offset += normal.dot(d),
-                ParticleCollider::Box { transform, .. }
-                | ParticleCollider::HeightField { transform, .. } => moved(transform, d),
-                ParticleCollider::Sphere { center, .. } => *center += d,
+                SceneCollider::Plane { normal, offset } => *offset += normal.dot(d),
+                SceneCollider::Box { transform, .. }
+                | SceneCollider::HeightField { transform, .. } => moved(transform, d),
+                SceneCollider::Sphere { center, .. } => *center += d,
+                SceneCollider::Capsule { a, b, .. } => {
+                    *a += d;
+                    *b += d;
+                }
             }
         }
         for p in &mut self.debris {

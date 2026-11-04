@@ -7379,6 +7379,18 @@
           "doc": "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
         },
         {
+          "name": "SIMULATION_GAMEPLAY",
+          "type": "u32",
+          "value": 0,
+          "doc": "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
+        },
+        {
+          "name": "SIMULATION_VISUAL",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU (XPBD in small steps), for looks only, never read back. The tick leaves it unsolved: its points (og.physics.clothPoints, softBodyPoints, garmentPoints) are its rest shape carried rigidly by the entity (a garment's: the skinned pose), SoftBody.volume stays 1 and SoftBody.center is that shape's mean, so gameplay reads a stable proxy and a headless server pays nothing. The drawn motion runs on tick time: frames that skip ticks step those too, up to eight, and a world restored, rolled back or more than eight ticks ahead starts again from the rest shape. It meets the colliders drawn this frame (og.Collider boxes, spheres, capsules and height fields; convex, cylinder and triangle-mesh shapes are passed through) and, with thickness, itself. Where RenderCapabilities.visualSimulation is false (no compute or no vertex storage) it draws that rest shape."
+        },
+        {
           "name": "PIN_TOP",
           "type": "u32",
           "value": 1,
@@ -30449,6 +30461,10 @@
           ],
           "description": "What the device said when it refused the visibility buffer's resolve pipelines (Chrome on the Pixel 10's PowerVR D-Series answers VK_ERROR_UNKNOWN), or null."
         },
+        "visualSimulation": {
+          "type": "boolean",
+          "description": "Whether visual bodies simulate here (og.Cloth, og.SoftBody and og.Garment with SIMULATION_VISUAL): the device runs compute and reads storage in the vertex stage (every WebGPU, Metal, Vulkan and DX12 device). Where false they draw their rest shape, as their points read in the tick; false without a renderer."
+        },
         "world3d": {
           "type": "boolean",
           "description": "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
@@ -30484,6 +30500,7 @@
         "exrDecode",
         "visibilityBuffer",
         "visibilityBufferRefused",
+        "visualSimulation",
         "world3d"
       ],
       "additionalProperties": false
@@ -35442,6 +35459,15 @@
           "type": "boolean",
           "description": "Whether the renderer draws it.",
           "default": true
+        },
+        "simulation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "additionalProperties": false
@@ -35568,6 +35594,15 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-tunable": true
+        },
+        "simulation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "additionalProperties": false
@@ -35711,6 +35746,15 @@
           "type": "boolean",
           "description": "Whether the renderer draws it.",
           "default": true
+        },
+        "simulation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
         },
         "volume": {
           "type": "number",

@@ -176,7 +176,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2299 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2301 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -2099,6 +2099,8 @@ Field units the docs and Tune use.
 | [`SheetEdge`](ui.md#type-SheetEdge) | enum | ui | — |
 | [`SheetResult`](ui.md#type-SheetResult) | struct | ui | — |
 | [`Side`](render.md#type-Side) | enum | render | — |
+| [`SIMULATION_GAMEPLAY`](physics.md#const-SIMULATION_GAMEPLAY) | constant | physics | — |
+| [`SIMULATION_VISUAL`](physics.md#const-SIMULATION_VISUAL) | constant | physics | — |
 | [`Size`](ui.md#type-Size) | union | ui | — |
 | [`SizeRange`](ui.md#type-SizeRange) | struct | ui | — |
 | [`Skeleton2DBox`](anim.md#type-Skeleton2DBox) | struct | anim | — |

@@ -32,6 +32,22 @@ is one line here, written at the merge that changes
   pixel leaves out (LEAN) and their change across it, and bounded by the
   sun's disc: a glitter path of sparkles.
 
+- **Visual simulation on the GPU for cloth, soft bodies and garments.**
+  `og.Cloth`, `og.SoftBody` and `og.Garment` gain `simulation`:
+  `SIMULATION_GAMEPLAY` (0, the default, unchanged) or
+  `SIMULATION_VISUAL` (1). A visual body is simulated by the renderer
+  with XPBD in small steps, one compute workgroup per body, against the
+  scene's colliders (spheres, boxes, capsules, height fields), and
+  nothing is read back. The tick then carries the rest shape with the
+  entity (cloth points and garment points stay on their rest shape or
+  skin, a soft body keeps `volume` 1 and its rest `center`), so gameplay
+  never reads a looks-only motion. A frame steps the ticks since the one
+  it last drew (eight at most); a world that went back or jumped further
+  starts again with a 60-tick preroll. Where the device has no compute
+  or vertex storage (`og.render.capabilities().visualSimulation` false)
+  a visual body draws its rest shape (a garment its skin). New fields;
+  the default keeps every existing game as it was.
+
 - **Destruction: fine debris throws rubble chips in its own material.**
   Each fine piece the debris layer flies (og.Destructible.debris) now
   throws four to six chips of its own as GPU rigid bodies: thick convex

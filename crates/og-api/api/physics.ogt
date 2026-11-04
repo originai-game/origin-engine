@@ -981,6 +981,8 @@ module physics {
     }
   }
 
+  const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
+  const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU (XPBD in small steps), for looks only, never read back. The tick leaves it unsolved: its points (og.physics.clothPoints, softBodyPoints, garmentPoints) are its rest shape carried rigidly by the entity (a garment's: the skinned pose), SoftBody.volume stays 1 and SoftBody.center is that shape's mean, so gameplay reads a stable proxy and a headless server pays nothing. The drawn motion runs on tick time: frames that skip ticks step those too, up to eight, and a world restored, rolled back or more than eight ticks ahead starts again from the rest shape. It meets the colliders drawn this frame (og.Collider boxes, spheres, capsules and height fields; convex, cylinder and triangle-mesh shapes are passed through) and, with thickness, itself. Where RenderCapabilities.visualSimulation is false (no compute or no vertex storage) it draws that rest shape."
   const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
   const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
   const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
@@ -1060,6 +1062,10 @@ module physics {
     field visible bool "Whether the renderer draws it." {
       default true
     }
+    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+      min 0
+      max 1
+    }
   }
 
   component Garment {
@@ -1136,6 +1142,10 @@ module physics {
       min 0
       max 1
       tunable true
+    }
+    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+      min 0
+      max 1
     }
   }
 
@@ -1226,6 +1236,10 @@ module physics {
     field material Material "The material it is drawn with (og.render.standardMaterial); 0 is a plain one."
     field visible bool "Whether the renderer draws it." {
       default true
+    }
+    field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+      min 0
+      max 1
     }
     field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated." {
       default 1

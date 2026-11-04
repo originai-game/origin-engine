@@ -150,6 +150,13 @@ impl GarmentState {
         }
     }
 
+    /// Every point on its target, at rest (SIMULATION_VISUAL).
+    pub fn hold(&mut self, pose: &GarmentPose) {
+        self.points.clone_from(&pose.targets);
+        self.previous.clone_from(&pose.targets);
+        self.targets.clone_from(&pose.targets);
+    }
+
     /// One tick of `substeps` steps towards `pose`: integrate with gravity
     /// and a gusting wind, then `iterations` passes of edges, bends, the
     /// reach and backstop around the targets (moved from the last tick's

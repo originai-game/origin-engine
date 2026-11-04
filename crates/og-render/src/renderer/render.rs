@@ -3996,6 +3996,13 @@ impl Renderer {
         // The wind field and the trample map step before any pass reads them.
         self.wind_field.encode(&mut encoder);
         self.trample.encode(&mut encoder);
+        if let Some(pipelines) = &self.visual {
+            for mesh in &self.cache.meshes {
+                if let Some(v) = mesh.surface.as_ref().and_then(|s| s.visual.as_ref()) {
+                    pipelines.encode(&mut encoder, v, false);
+                }
+            }
+        }
         if let Some(pipelines) = &self.surfaces {
             for mesh in &self.cache.meshes {
                 if let Some(surface) = &mesh.surface {
@@ -4014,6 +4021,7 @@ impl Renderer {
                     &skinned.garments,
                     self.palette.buffer(),
                     skinned_motion.map(|_| joints_drawn),
+                    self.visual.as_ref(),
                 );
             } else {
                 self.cache.garments.clear();

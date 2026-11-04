@@ -56,8 +56,9 @@ pub(crate) struct Weld {
 pub(crate) struct Garments {
     /// Welds by (model asset handle bits, glTF mesh).
     pub welds: BTreeMap<(u64, u32), Weld>,
-    /// Each entity's garment (model asset, mesh), as the last tick posed it.
-    pub posed: BTreeMap<u64, (u64, u32)>,
+    /// Each entity's garment (model asset, mesh, component), as the last
+    /// tick posed it.
+    pub posed: BTreeMap<u64, (u64, u32, Garment)>,
 }
 
 fn key_of(id: &str, mesh: u32) -> u64 {
@@ -288,7 +289,7 @@ pub(crate) fn schedule(
                             scale: s.abs().max_element(),
                         },
                     );
-                    rs.fx.garments.posed.insert(e.to_bits(), (asset, g.mesh));
+                    rs.fx.garments.posed.insert(e.to_bits(), (asset, g.mesh, g));
                 }
             }
             Ok(())
@@ -322,7 +323,7 @@ pub(crate) fn deformed(
     palette: &[Mat4],
 ) -> BTreeMap<usize, (MeshHandle, og_render::DeformedVertices)> {
     let mut out = BTreeMap::new();
-    let Some(&(posed, mesh)) = fx.garments.posed.get(&entity) else {
+    let Some(&(posed, mesh, garment)) = fx.garments.posed.get(&entity) else {
         return out;
     };
     if posed != asset {
@@ -341,9 +342,34 @@ pub(crate) fn deformed(
     if sim.points.len() != n || sim.targets.len() != n {
         return out;
     }
+    // SIMULATION_VISUAL: the renderer simulates it from this frame's
+    // skinned pose (the tick's points are its targets), for looks only.
+    let (points, targets, visual) = if garment.simulation == og_physics::SIMULATION_VISUAL {
+        let (posed, normals) = pose(w, palette);
+        let turn = Mat4::from_quat(world.to_scale_rotation_translation().1);
+        let targets: std::sync::Arc<Vec<Vec3>> =
+            std::sync::Arc::new(posed.iter().map(|p| world.transform_point3(*p)).collect());
+        let body = visual_body(
+            &garment,
+            w,
+            world,
+            normals
+                .iter()
+                .map(|n| turn.transform_vector3(*n).normalize_or_zero())
+                .collect(),
+            physics
+                .and_then(|p| p.gravity())
+                .unwrap_or(Vec3::new(0.0, -9.81, 0.0)),
+        );
+        (targets.clone(), targets, Some(std::sync::Arc::new(body)))
+    } else {
+        (
+            std::sync::Arc::new(sim.points.to_vec()),
+            std::sync::Arc::new(sim.targets.to_vec()),
+            None,
+        )
+    };
     let palette = std::sync::Arc::new(palette.to_vec());
-    let points = std::sync::Arc::new(sim.points.to_vec());
-    let targets = std::sync::Arc::new(sim.targets.to_vec());
     for (k, &p) in w.prims.iter().enumerate() {
         let zero = match w.zero[k] {
             Some(h) => h,
@@ -372,12 +398,71 @@ pub(crate) fn deformed(
                 targets: targets.clone(),
                 world,
                 output_transform: Mat4::IDENTITY,
+                visual: visual.clone(),
             }),
             ..Default::default()
         };
         out.insert(p, (zero, vertices));
     }
     out
+}
+
+/// A visual garment's solver settings: the component's, with each welded
+/// point's reach as the tick's rule gives it (its freedom times
+/// `maxDistance`, 0 within `pinTop` of the top at rest) and the skin's
+/// normals in the world this frame (`normals`), which hold the backstop.
+fn visual_body(
+    g: &Garment,
+    w: &Weld,
+    world: Mat4,
+    normals: Vec<Vec3>,
+    gravity: Vec3,
+) -> og_render::VisualBody {
+    let top = w.rig.rest.iter().fold(f32::MIN, |m, p| m.max(p.y));
+    let pin = g.pin_top.max(0.0);
+    let max = g.max_distance.max(0.0);
+    let reach: Vec<f32> = w
+        .rig
+        .rest
+        .iter()
+        .zip(&w.rig.freedom)
+        .map(|(p, f)| {
+            if pin > 0.0 && p.y >= top - pin {
+                0.0
+            } else {
+                f.clamp(0.0, 1.0) * max
+            }
+        })
+        .collect();
+    let pinned = (0..reach.len() as u32)
+        .filter(|&i| reach[i as usize] <= 0.0)
+        .collect();
+    // Rest lengths at the drawn scale: the bind shape placed in the world.
+    let rest = w
+        .rig
+        .rest
+        .iter()
+        .map(|p| world.transform_point3(*p))
+        .collect();
+    og_render::VisualBody {
+        pinned,
+        reach: reach.into(),
+        backstop: g.backstop.max(0.0),
+        substeps: (2 * g.substeps.clamp(1, 16) * g.iterations.clamp(1, 64)).clamp(4, 96),
+        damping: g.damping,
+        gravity: gravity * g.gravity_scale,
+        wind: g.wind,
+        gust: g.gust,
+        radius: g.radius,
+        friction: g.friction,
+        stiffness: g.stiffness,
+        bending: g.bending,
+        garment: Some(og_render::VisualGarment {
+            rest: std::sync::Arc::new(rest),
+            normals: std::sync::Arc::new(normals),
+        }),
+        ..Default::default()
+    }
 }
 
 #[cfg(test)]
@@ -507,7 +592,7 @@ mod tests {
         fx.models.insert(7, info.clone());
         fx.skins.insert(info.id.clone(), skin);
         let w = welded(&mut fx, &scene, 7, 3).unwrap().clone();
-        fx.garments.posed.insert(1, (7, 3));
+        fx.garments.posed.insert(1, (7, 3, Garment::default()));
         // No physics: nothing to draw.
         let palette = [Mat4::IDENTITY, Mat4::IDENTITY];
         assert!(deformed(&mut fx, &mut scene, None, 1, 7, Mat4::IDENTITY, &palette).is_empty());
@@ -522,6 +607,7 @@ mod tests {
             targets: std::sync::Arc::new(rest.clone()),
             world: Mat4::IDENTITY,
             output_transform: Mat4::IDENTITY,
+            visual: None,
         }
         .evaluate();
         for (p, &point) in drawn.positions.iter().zip(&w.point_of[0]) {

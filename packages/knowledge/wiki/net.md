@@ -22,7 +22,7 @@ module net {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 27782</sub>
+<sub>`api.ogt` line 27797</sub>
 
 ## Contents
 
@@ -80,7 +80,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 27973</sub>
+<sub>`api.ogt` line 27988</sub>
 
 <a id="fn-shape"></a>
 
@@ -110,7 +110,7 @@ fn shape {
 }
 ```
 
-<sub>`api.ogt` line 27980</sub>
+<sub>`api.ogt` line 27995</sub>
 
 <a id="fn-submitInput"></a>
 
@@ -143,7 +143,7 @@ fn submitInput {
 }
 ```
 
-<sub>`api.ogt` line 27987</sub>
+<sub>`api.ogt` line 28002</sub>
 
 <a id="fn-command"></a>
 
@@ -176,7 +176,7 @@ fn command {
 }
 ```
 
-<sub>`api.ogt` line 27996</sub>
+<sub>`api.ogt` line 28011</sub>
 
 <a id="fn-commands"></a>
 
@@ -207,7 +207,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 28005</sub>
+<sub>`api.ogt` line 28020</sub>
 
 <a id="fn-status"></a>
 
@@ -235,7 +235,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 28013</sub>
+<sub>`api.ogt` line 28028</sub>
 
 <a id="fn-resimulating"></a>
 
@@ -263,7 +263,7 @@ fn resimulating {
 }
 ```
 
-<sub>`api.ogt` line 28019</sub>
+<sub>`api.ogt` line 28034</sub>
 
 <a id="fn-finalHash"></a>
 
@@ -293,7 +293,7 @@ fn finalHash {
 }
 ```
 
-<sub>`api.ogt` line 28025</sub>
+<sub>`api.ogt` line 28040</sub>
 
 <a id="fn-hash"></a>
 
@@ -321,7 +321,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 28032</sub>
+<sub>`api.ogt` line 28047</sub>
 
 ## Components, resources and events
 
@@ -392,7 +392,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 27803</sub>
+<sub>`api.ogt` line 27818</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -433,7 +433,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 27847</sub>
+<sub>`api.ogt` line 27862</sub>
 
 <a id="record-Desync"></a>
 
@@ -458,7 +458,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 27866</sub>
+<sub>`api.ogt` line 27881</sub>
 
 <a id="record-SeatDropped"></a>
 
@@ -485,7 +485,7 @@ event SeatDropped {
 }
 ```
 
-<sub>`api.ogt` line 27873</sub>
+<sub>`api.ogt` line 27888</sub>
 
 <a id="record-SeatRejoined"></a>
 
@@ -510,7 +510,7 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 27881</sub>
+<sub>`api.ogt` line 27896</sub>
 
 <a id="record-PeerStalled"></a>
 
@@ -537,7 +537,7 @@ event PeerStalled {
 }
 ```
 
-<sub>`api.ogt` line 27888</sub>
+<sub>`api.ogt` line 27903</sub>
 
 ## Types
 
@@ -562,7 +562,7 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 27790</sub>
+<sub>`api.ogt` line 27805</sub>
 
 <a id="type-InputDesc"></a>
 
@@ -592,7 +592,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 27897</sub>
+<sub>`api.ogt` line 27912</sub>
 
 <a id="type-NetShapeDesc"></a>
 
@@ -622,7 +622,7 @@ struct NetShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 27907</sub>
+<sub>`api.ogt` line 27922</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -653,7 +653,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 27919</sub>
+<sub>`api.ogt` line 27934</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -728,7 +728,7 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 27932</sub>
+<sub>`api.ogt` line 27947</sub>
 
 ## Column kinds
 
@@ -747,4 +747,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 27796</sub>
+<sub>`api.ogt` line 27811</sub>

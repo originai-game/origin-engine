@@ -706,7 +706,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::probes::extract_light_volumes(world, rs, &mut h);
     // Scattered copies are instances too, keyed by their terrain cell.
     keys.extend(super::terrain::extract(world, rs, &mut h));
-    particle_colliders(world, rs, &mut h);
+    colliders(world, rs, &mut h);
     let vp = super::fx::viewport(rs);
     // The camera's shake, punch, kick and zones (on the frame only), then
     // og.Sprite rows, floating texts and tile layers.
@@ -986,17 +986,18 @@ fn throw_chips(
     }
 }
 
-/// The colliders CPU-simulated particles bounce off
-/// (`RenderScene::particle_colliders`): every og.Collider that is a box, a
-/// sphere or a terrain's height field, placed as physics places it, while
-/// a particle system of the frame has collision. The compute path reads the
-/// depth buffer instead; `ParticleSimulation::Cpu` and sprite-mode
+/// The colliders CPU-simulated particles bounce off, visual bodies meet and
+/// the debris layer's pieces land on (`RenderScene::colliders`): every
+/// og.Collider that is a box, a sphere, a capsule or a terrain's height
+/// field, placed as physics places it, while the frame has debris, a
+/// visual body or a particle system with collision. The compute path reads
+/// the depth buffer instead; `ParticleSimulation::Cpu` and sprite-mode
 /// emitters read these, so their sparks bounce on the ground and on solid
 /// shapes too.
-fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
-    rs.scene.particle_colliders.clear();
-    // The debris layer's pieces land on them too (og_render::DebrisPiece).
+fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
+    rs.scene.colliders.clear();
     let colliding = !rs.scene.debris.is_empty()
+        || rs.scene.has_visual_bodies()
         || rs.scene.particles.iter().any(|s| {
             rs.scene
                 .emitter(s.emitter)
@@ -1018,14 +1019,23 @@ fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let local = Mat4::from_rotation_translation(q, vec3(&v["offset"]));
         let m = world_m * local;
         let collider = match v["shape"].as_u64().unwrap_or(0) {
-            0 => og_render::ParticleCollider::Box {
+            0 => og_render::SceneCollider::Box {
                 transform: m,
                 half_extents: vec3(&v["size"]) * 0.5,
             },
             1 => {
                 let scale = world_m.to_scale_rotation_translation().0.max_element();
-                og_render::ParticleCollider::Sphere {
+                og_render::SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
+                    radius: f(&v, "radius", 0.5) * scale,
+                }
+            }
+            2 => {
+                let scale = world_m.to_scale_rotation_translation().0.max_element();
+                let half = f(&v, "height", 1.0) * 0.5;
+                og_render::SceneCollider::Capsule {
+                    a: m.transform_point3(Vec3::new(0.0, -half, 0.0)),
+                    b: m.transform_point3(Vec3::new(0.0, half, 0.0)),
                     radius: f(&v, "radius", 0.5) * scale,
                 }
             }
@@ -1034,10 +1044,10 @@ fn particle_colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 let Some(data) = super::terrain::field_of_geometry(&rs.terrain, geometry) else {
                     continue;
                 };
-                og_render::ParticleCollider::HeightField { data, transform: m }
+                og_render::SceneCollider::HeightField { data, transform: m }
             }
             _ => continue,
         };
-        rs.scene.particle_colliders.push(collider);
+        rs.scene.colliders.push(collider);
     }
 }

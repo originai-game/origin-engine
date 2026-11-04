@@ -199,6 +199,102 @@ impl Renderer {
         }
     }
 
+    /// Plans and writes the frame of every visual body: the simulation
+    /// surfaces the scene made visual ([`RenderScene::set_visual_body`]),
+    /// their rest shapes this tick, the colliders near them and their
+    /// conservative bounds. After [`Renderer::refresh_meshes`].
+    pub(crate) fn refresh_visual(&mut self, scene: &RenderScene) {
+        let Renderer {
+            visual,
+            cache,
+            device,
+            queue,
+            ..
+        } = self;
+        let Some(pipelines) = visual.as_mut() else {
+            return;
+        };
+        let mut bodies = Vec::new();
+        for (i, gpu) in cache.meshes.iter_mut().enumerate() {
+            let Some(surface) = gpu.surface.as_mut() else {
+                continue;
+            };
+            let Some(body) = scene.mesh_visual.get(i).and_then(Option::as_ref) else {
+                surface.visual = None;
+                continue;
+            };
+            let kind = scene.mesh_surfaces[i];
+            let (rest, triangles) = crate::visual_sim::rest_of(&scene.meshes()[i]);
+            if surface
+                .visual
+                .as_ref()
+                .is_none_or(|v| !v.topology.matches(kind, body, &rest, &triangles))
+            {
+                let topology = crate::visual_sim::Topology::build(kind, body, &rest, &triangles);
+                surface.visual = Some(pipelines.mesh(device, queue, topology));
+            }
+            let v = surface.visual.as_mut().expect("made above");
+            v.bounds = crate::visual_sim::grown_bounds(&rest, v.topology.margin);
+            let (lo, hi) = v.bounds;
+            gpu.bounds = Some(((lo + hi) * 0.5, (hi - lo) * 0.5));
+            bodies.push((i, rest));
+        }
+        // Visual garments: within their reach of this frame's skinned pose.
+        let garments: Vec<_> = scene
+            .deformed_vertices
+            .iter()
+            .filter_map(|d| d.garment.as_ref())
+            .filter_map(|g| {
+                let body = g.visual.as_ref()?;
+                let reach = body.reach.iter().fold(0.0f32, |m, &r| m.max(r));
+                let margin = reach + body.radius.max(0.0) + body.backstop.max(0.0);
+                Some((g.key, crate::visual_sim::grown_bounds(&g.targets, margin)))
+            })
+            .collect();
+        pipelines.garment_lists.clear();
+        if bodies.is_empty() && garments.is_empty() {
+            return;
+        }
+        let mut bounds: Vec<_> = bodies
+            .iter()
+            .map(|&(i, _)| {
+                let s = cache.meshes[i].surface.as_ref().expect("a surface");
+                s.visual.as_ref().expect("a visual body").bounds
+            })
+            .collect();
+        bounds.extend(garments.iter().map(|&(_, b)| b));
+        let mut lists = pipelines.write_colliders(device, queue, &scene.colliders, &bounds);
+        let garment_lists = lists.split_off(bodies.len());
+        pipelines.garment_lists = garments
+            .iter()
+            .map(|&(key, _)| key)
+            .zip(garment_lists)
+            .collect();
+        let dt = if scene.tick_rate > 0.0 {
+            1.0 / scene.tick_rate
+        } else {
+            1.0 / 60.0
+        };
+        for ((i, rest), list) in bodies.into_iter().zip(lists) {
+            let body = scene.mesh_visual[i].as_ref().expect("visual");
+            let surface = cache.meshes[i].surface.as_mut().expect("a surface");
+            let crate::surface::SurfaceMesh { source, visual, .. } = surface;
+            pipelines.prepare(
+                device,
+                queue,
+                visual.as_mut().expect("a visual body"),
+                body,
+                &rest,
+                &[],
+                scene.tick,
+                dt,
+                list,
+                Mat4::IDENTITY,
+                source,
+            );
+        }
+    }
+
     /// Uploads meshes the scene replaced since they were last uploaded: in
     /// place when the sizes match, else as new buffers.
     pub(crate) fn refresh_meshes(&mut self, scene: &RenderScene) {
@@ -210,7 +306,8 @@ impl Renderer {
             if let Some(kind) = scene.mesh_surfaces[i] {
                 let level = surface::subdivisions(scene.cloth_subdivisions);
                 if let Some(surface) = gpu.surface.as_ref().filter(|s| s.matches(source, level)) {
-                    if gpu.revision != revision {
+                    // A visual body's vertices are its GPU simulation's.
+                    if gpu.revision != revision && scene.mesh_visual[i].is_none() {
                         surface.update(&self.queue, source);
                     }
                     let gpu = &mut self.cache.meshes[i];

@@ -372,6 +372,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "crowd-5k" => |g, _| crowd_perf(g, 5_000),
         "crowd-20k" => |g, _| crowd_perf(g, 20_000),
         "crowd-50k" => |g, _| crowd_perf(g, 50_000),
+        // Visual bodies on the GPU (og-render's VisualBody): banners in a
+        // gusting wind, a sheet draped over a ball, a jelly and a balloon,
+        // after TICKS ticks one frame each.
+        "visual-bodies" => |g, _| {
+            g.scene = crate::visual_scenes::visual_bodies_scene(true);
+            g.desc.antialias = Antialias::Taa;
+            g.frames = crate::visual_scenes::TICKS;
+            g.update = Some(crate::visual_scenes::next_tick);
+            Ok(())
+        },
         // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
         "cascades-200m" => |g, _| {
             g.scene = cascades_200m(true);

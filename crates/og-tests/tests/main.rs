@@ -39,5 +39,6 @@ mod targets;
 mod terrain;
 mod ui;
 mod upload;
+mod visual_bodies;
 mod wasm;
 mod weather_surfaces;

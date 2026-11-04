@@ -528,6 +528,16 @@ pub(crate) struct Sim {
 }
 
 impl Sim {
+    /// Whether this is the 2D profile (points stay in their entity's plane).
+    pub(crate) fn flat(&self) -> bool {
+        super::DIM == 2
+    }
+
+    /// og.Physics.gravity as the last step applied it.
+    pub(crate) fn gravity(&self) -> Vec3 {
+        unv(self.world.gravity)
+    }
+
     /// Moves everything the simulation keeps in the world by `s.d`
     /// (og.WorldOrigin, R12), in place: every body's pose (a kinematic
     /// body's target with it) and every parentless collider's, the joints

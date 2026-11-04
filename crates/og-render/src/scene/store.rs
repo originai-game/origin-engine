@@ -27,6 +27,7 @@ impl RenderScene {
             mesh_clusters: Vec::new(),
             mesh_foliage: Vec::new(),
             mesh_surfaces: Vec::new(),
+            mesh_visual: Vec::new(),
             cloth_subdivisions: 0,
             textures: Vec::new(),
             texture_revisions: Vec::new(),
@@ -95,7 +96,7 @@ impl RenderScene {
             frame_seconds: 1.0 / 60.0,
             interpolation: None,
             particles: Vec::new(),
-            particle_colliders: Vec::new(),
+            colliders: Vec::new(),
             debris: Vec::new(),
             hosted_particles: Vec::new(),
             trails: Vec::new(),
@@ -1007,6 +1008,7 @@ impl RenderScene {
             self.mesh_clusters[i] = None;
             self.mesh_foliage[i] = None;
             self.mesh_surfaces[i] = None;
+            self.mesh_visual[i] = None;
         } else {
             self.meshes.push(mesh);
             self.skins.push(None);
@@ -1016,6 +1018,7 @@ impl RenderScene {
             self.mesh_clusters.push(None);
             self.mesh_foliage.push(None);
             self.mesh_surfaces.push(None);
+            self.mesh_visual.push(None);
         }
         MeshHandle::from_parts(i, generation)
     }
@@ -1038,6 +1041,7 @@ impl RenderScene {
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
         self.mesh_surfaces[i] = None;
+        self.mesh_visual[i] = None;
         self.mesh_slots.remove(i, reuse);
         true
     }
@@ -1064,6 +1068,7 @@ impl RenderScene {
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
         self.mesh_surfaces[i] = None;
+        self.mesh_visual[i] = None;
         true
     }
 
@@ -1101,6 +1106,38 @@ impl RenderScene {
         self.mesh_encodings[handle.index()] = VertexEncoding::Full;
         self.mesh_surfaces[handle.index()] = Some(kind);
         true
+    }
+
+    /// Makes a simulation surface a visual body: the renderer simulates it
+    /// on the GPU from the coarse mesh last given to
+    /// [`RenderScene::set_simulation_surface`], which is then its rest
+    /// shape and its pinned points' targets this tick, and draws that
+    /// simulation (never read back). `None` draws the mesh as given again.
+    /// Cleared with the surface (give it after each
+    /// `set_simulation_surface`). False unless `handle` is a live
+    /// simulation surface.
+    pub fn set_visual_body(
+        &mut self,
+        handle: MeshHandle,
+        body: Option<std::sync::Arc<crate::VisualBody>>,
+    ) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation()) || self.mesh_surfaces[i].is_none() {
+            return false;
+        }
+        self.mesh_visual[i] = body;
+        true
+    }
+
+    /// Whether the frame has a visual body ([`RenderScene::set_visual_body`]
+    /// or a garment's [`crate::GarmentDeformation::visual`]): the host then
+    /// gives [`RenderScene::colliders`].
+    pub fn has_visual_bodies(&self) -> bool {
+        self.mesh_visual.iter().any(Option::is_some)
+            || self
+                .deformed_vertices
+                .iter()
+                .any(|d| d.garment.as_ref().is_some_and(|g| g.visual.is_some()))
     }
 
     /// Gives a mesh its levels cut into clusters (the cook's: og-bundle's

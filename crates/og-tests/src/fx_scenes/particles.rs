@@ -466,12 +466,10 @@ pub fn particles_lit_scene() -> RenderScene {
         23,
         0,
     ));
-    scene
-        .particle_colliders
-        .push(og_render::ParticleCollider::Plane {
-            normal: Vec3::Y,
-            offset: 0.0,
-        });
+    scene.colliders.push(og_render::SceneCollider::Plane {
+        normal: Vec3::Y,
+        offset: 0.0,
+    });
     // A brazier and the haze over it.
     let brazier = scene.add_mesh(shapes::cuboid(Vec3::new(0.7, 0.5, 0.7)));
     let coals = scene.add_material(Material {

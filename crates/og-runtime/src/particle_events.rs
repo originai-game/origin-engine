@@ -18,8 +18,8 @@ use glam::{Mat4, Quat, Vec3};
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_render::{
-    CpuParticles, ParticleClock, ParticleCollider, ParticleEmitter, ParticleEvent,
-    ParticleEventKind, ParticleState, ParticleSystem, SimulationSpace,
+    CpuParticles, ParticleClock, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleState,
+    ParticleSystem, SceneCollider, SimulationSpace,
 };
 use serde_json::{Value, json};
 use std::any::Any;
@@ -183,13 +183,13 @@ impl Places<'_> {
 }
 
 /// The boxes and spheres of og.Collider, as the renderer's CPU path
-/// places them (`extract::frame::particle_colliders`; a terrain's height
+/// places them (`extract::frame::colliders`; a terrain's height
 /// field is the renderer's alone).
 fn colliders(
     ctx: &SystemContext<'_>,
     places: &Places<'_>,
     query: usize,
-) -> og_core::Result<Vec<ParticleCollider>> {
+) -> og_core::Result<Vec<SceneCollider>> {
     let Some((id, l)) = &places.r.collider else {
         return Ok(Vec::new());
     };
@@ -204,11 +204,11 @@ fn colliders(
                     v3(&v["offset"], Vec3::ZERO),
                 );
             out.push(match v["shape"].as_u64().unwrap_or(0) {
-                0 => ParticleCollider::Box {
+                0 => SceneCollider::Box {
                     transform: m,
                     half_extents: v3(&v["size"], Vec3::ONE) * 0.5,
                 },
-                1 => ParticleCollider::Sphere {
+                1 => SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
                     radius: v["radius"].as_f64().map_or(0.5, |x| x as f32)
                         * world.to_scale_rotation_translation().0.max_element(),
@@ -256,7 +256,7 @@ fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og
     let mut hosted = lock(state);
     let Hosted { emitters, systems } = &mut *hosted;
     let mut live = Vec::new();
-    let mut solid: Option<Vec<ParticleCollider>> = None;
+    let mut solid: Option<Vec<SceneCollider>> = None;
     let mut events = Vec::new();
     for e in rows {
         let v = r.systems.1.decode(&ctx.get_bytes(e, r.systems.0)?);
@@ -285,7 +285,7 @@ fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og
             tick,
             time_scale: ctx.group_dt(groups.as_ref(), e, 1.0),
         };
-        let colliders: &[ParticleCollider] =
+        let colliders: &[SceneCollider] =
             if em.collision.is_some() && em.space == SimulationSpace::World {
                 if solid.is_none() {
                     solid = Some(colliders(ctx, &places, next)?);

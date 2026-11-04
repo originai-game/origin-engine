@@ -808,13 +808,21 @@ pub(crate) fn soft(
             sim.cloths
                 .insert(key, ClothState::new(cloth, *position, rotation));
         }
+        if cloth.simulation == SIMULATION_VISUAL {
+            // The renderer simulates it; the tick carries its rest shape.
+            sim.cloths
+                .get_mut(&key)
+                .expect("built above")
+                .hold(cloth, *position, rotation);
+            continue;
+        }
         cloths.insert(key, (cloth, *position, rotation));
     }
     let colliders = &sim.world.colliders;
     let mut jobs: Vec<_> = sim
         .cloths
         .iter_mut()
-        .map(|(k, s)| (s, &cloths[k]))
+        .filter_map(|(k, s)| cloths.get(k).map(|c| (s, c)))
         .collect();
     let work = jobs
         .iter()
@@ -852,14 +860,22 @@ pub(crate) fn soft(
                     .map_err(|e| e.context(format!("og.SoftBody of entity {key}")))?;
             sim.ext.softs.insert(key, state);
         }
-        softs.insert(key, (body, *position, *rotation));
+        if body.simulation == SIMULATION_VISUAL {
+            sim.ext
+                .softs
+                .get_mut(&key)
+                .expect("built above")
+                .hold(*position, *rotation);
+        } else {
+            softs.insert(key, (body, *position, *rotation));
+        }
     }
     let colliders = &sim.world.colliders;
     let mut jobs: Vec<_> = sim
         .ext
         .softs
         .iter_mut()
-        .map(|(k, s)| (s, &softs[k]))
+        .filter_map(|(k, s)| softs.get(k).map(|b| (s, b)))
         .collect();
     let work = jobs
         .iter()
@@ -876,10 +892,11 @@ pub(crate) fn soft(
         let near = Near::around(colliders, min, max, body.thickness * 2.0 + 0.5);
         state.step(body, dt, gravity, position, rotation, &near);
     });
-    for (e, ..) in &scene.softs {
+    for (e, _, _, body) in &scene.softs {
         let s = &sim.ext.softs[&e.to_bits()];
-        let body = softs[&e.to_bits()].0;
-        let volume = if s.rest_volume > 0.0 {
+        let volume = if body.simulation == SIMULATION_VISUAL {
+            1.0
+        } else if s.rest_volume > 0.0 {
             s.volume() / s.rest_volume
         } else {
             1.0
@@ -929,7 +946,15 @@ pub(crate) fn soft(
                     crate::garment::GarmentState::new(garment, *rig_key, rig, pose),
                 );
             }
-            garments.insert(key, (garment, pose));
+            if garment.simulation == SIMULATION_VISUAL {
+                sim.ext
+                    .garments
+                    .get_mut(&key)
+                    .expect("built above")
+                    .hold(pose);
+            } else {
+                garments.insert(key, (garment, pose));
+            }
         }
         let colliders = &sim.world.colliders;
         let mut jobs: Vec<_> = sim
