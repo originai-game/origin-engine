@@ -4,8 +4,8 @@
 //! (`v`, `pose`, `unpose`, `angvel`, ...) defined beside it.
 
 use super::{
-    PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, flat, from_heightfield, from_mesh, pose,
-    primitive, rp, unangvel, unpose, unv, v,
+    PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, chunk_cache, field_chunk, flat,
+    from_heightfield, from_mesh, pose, primitive, rp, unangvel, unpose, unv, v,
 };
 use super::{VehicleState, ext};
 use crate::gather::{Body, Scene};
@@ -72,6 +72,9 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
             format!("og.Collider.shape 6 (SHAPE_HEIGHTFIELD, a terrain's height field): {why}"),
         ));
     }
+    if let Some(k) = crate::key_chunk(c.shape) {
+        return chunk_shape(c.mesh, k, s, shared);
+    }
     if let Some(shape) = primitive(c, s)? {
         return Ok(shape);
     }
@@ -124,6 +127,70 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
     Ok(built)
 }
 
+/// Chunk `k` of height field `mesh` at scale `s` (positive), from the
+/// chunk cache or built into it.
+fn chunk_shape(mesh: u64, k: u32, s: Vec3, shared: &mut Shared) -> Result<rp::SharedShape> {
+    let field = shared.heightfields.get(&mesh).cloned().ok_or_else(|| {
+        Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "og.Collider.mesh {mesh} is not a height field registered with PhysicsSystem::set_heightfield"
+            ),
+        )
+    })?;
+    let key = crate::chunk_key(
+        ShapeKey {
+            shape: SHAPE_HEIGHTFIELD,
+            mesh,
+            scale: s.to_array().map(f32::to_bits),
+        },
+        k,
+    );
+    if let Some(shape) = chunk_cache(shared).get(&key) {
+        return Ok(shape.clone());
+    }
+    let built = field_chunk(&field, s, k);
+    chunk_cache(shared).insert(key, built.clone());
+    Ok(built)
+}
+
+/// The chunks a static collider is built as: for a height field of more
+/// than one chunk ([`crate::FIELD_CHUNK`]), the field; `None` for every
+/// other collider (one rapier collider).
+fn chunked(c: &Collider, shared: &Shared) -> Option<Arc<crate::HeightfieldDesc>> {
+    if c.shape != SHAPE_HEIGHTFIELD || shared.heightfields_absent.is_some() {
+        return None;
+    }
+    let f = shared.heightfields.get(&c.mesh)?;
+    let (cx, cz) = crate::field_chunks(f.columns, f.rows);
+    (cx * cz > 1).then(|| f.clone())
+}
+
+/// Chunk `k` of a static height-field collider `c` at world pose `at`.
+fn chunk_collider(
+    c: &Collider,
+    f: &crate::HeightfieldDesc,
+    k: u32,
+    scale: Vec3,
+    at: rp::Pose,
+    entity: Entity,
+    shared: &mut Shared,
+) -> Result<rp::ColliderBuilder> {
+    for (what, x) in [
+        ("friction", c.friction),
+        ("restitution", c.restitution),
+        ("density", c.density),
+    ] {
+        if !(x >= 0.0 && x.is_finite()) {
+            return Err(invalid(what, x).context(format!("entity {entity}")));
+        }
+    }
+    let shape = chunk_shape(c.mesh, k, scale.abs(), shared)
+        .map_err(|e| e.context(format!("entity {entity}")))?;
+    let local = at * pose(crate::chunk_offset(f, scale, k), Quat::IDENTITY);
+    Ok(builder(c, shape, local, entity, 0.0))
+}
+
 fn groups(c: &Collider) -> rp::InteractionGroups {
     rp::InteractionGroups::new(
         rp::Group::from_bits_retain(c.layers),
@@ -152,6 +219,17 @@ fn collider(
         }
     }
     let shape = shape(c, scale, shared).map_err(|e| e.context(format!("entity {entity}")))?;
+    Ok(builder(c, shape, local, entity, body_mass))
+}
+
+/// [`collider`] with its shape built.
+fn builder(
+    c: &Collider,
+    shape: rp::SharedShape,
+    local: rp::Pose,
+    entity: Entity,
+    body_mass: f32,
+) -> rp::ColliderBuilder {
     let mut b = rp::ColliderBuilder::new(shape)
         .position(local)
         .friction(c.friction)
@@ -168,7 +246,7 @@ fn collider(
         // A sensor also notices kinematic and static colliders.
         b = b.active_collision_types(rp::ActiveCollisionTypes::all());
     }
-    Ok(b)
+    b
 }
 
 /// A body's collider with its centre of mass moved by
@@ -295,6 +373,10 @@ pub(crate) struct SimExt {
     pub(crate) softs: IdMap<u64, crate::softbody::SoftState>,
     /// The garments' points and edges, by entity (og.Garment).
     pub(crate) garments: IdMap<u64, crate::garment::GarmentState>,
+    /// Each static height-field collider built in chunks
+    /// ([`crate::FIELD_CHUNK`]), by entity: its chunks' colliders in chunk
+    /// order (the first is its [`TrackedStatic::handle`]).
+    pub(crate) fields: IdMap<u64, Vec<rp::ColliderHandle>>,
 }
 
 /// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
@@ -314,6 +396,7 @@ pub(crate) const EXT_HOOKS: u16 = 3;
 pub(crate) const EXT_VEHICLES: u16 = 4;
 pub(crate) const EXT_SOFTS: u16 = 5;
 pub(crate) const EXT_GARMENTS: u16 = 6;
+pub(crate) const EXT_FIELDS: u16 = 7;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -352,6 +435,12 @@ impl SimExt {
             crate::encode(&mut bytes, &list).expect("garments serialize into memory");
             out.push((EXT_GARMENTS, bytes));
         }
+        if !self.fields.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &Vec<rp::ColliderHandle>)> = self.fields.iter().collect();
+            crate::encode(&mut bytes, &list).expect("field chunks serialize into memory");
+            out.push((EXT_FIELDS, bytes));
+        }
         out
     }
 
@@ -388,6 +477,10 @@ impl SimExt {
                 let list: Vec<(u64, crate::garment::GarmentState)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.garments = list.into_iter().collect();
+            } else if tag == EXT_FIELDS {
+                let list: Vec<(u64, Vec<rp::ColliderHandle>)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.fields = list.into_iter().collect();
             }
         }
         Ok(ext)
@@ -1240,11 +1333,19 @@ fn sync<'s>(
         retain_live(compounds, &live, |_| {});
     }
     let live = sorted_keys(scene.statics.iter().map(|s| s.entity.to_bits()));
+    if !ext.fields.is_empty() {
+        retain_live(&mut ext.fields, &live, |chunks| {
+            for &h in &chunks[1..] {
+                w.remove_collider(h);
+            }
+        });
+    }
     retain_live(tracked_statics, &live, |t| {
         w.remove_collider(t.handle);
     });
 
     let stale = std::mem::take(&mut shared.stale_meshes);
+    let edits = std::mem::take(&mut shared.field_edits);
     let stale_mesh = |c: &Collider| {
         matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
             && stale.contains(&c.mesh)
@@ -1303,22 +1404,78 @@ fn sync<'s>(
     for s in &scene.statics {
         let key = s.entity.to_bits();
         let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
+        let field = chunked(&s.collider, shared);
+        let fields = &mut ext.fields;
+        let same = |t: &TrackedStatic| t.collider == s.collider && t.scale == s.scale;
+        // A static field whose every change was a region edit rebuilds
+        // only the chunks the edits reached, in chunk order.
+        let partial = field.as_ref().and_then(|f| {
+            let chunks = fields.get(&key)?;
+            let (cx, cz) = crate::field_chunks(f.columns, f.rows);
+            let edited = edits.get(&s.collider.mesh);
+            (chunks.len() == (cx * cz) as usize && (!stale_mesh(&s.collider) || edited.is_some()))
+                .then(|| edited.cloned().unwrap_or_default())
+        });
         match tracked_statics.get_mut(&key) {
             Some(t)
-                if t.collider == s.collider && t.scale == s.scale && !stale_mesh(&s.collider) =>
+                if same(t)
+                    && (partial.is_some() || (field.is_none() && !stale_mesh(&s.collider))) =>
             {
-                if t.position != s.position || t.quaternion != s.quaternion {
-                    w.colliders[t.handle].set_position(at);
-                    t.position = s.position;
-                    t.quaternion = s.quaternion;
+                let moved = t.position != s.position || t.quaternion != s.quaternion;
+                match (&field, fields.get_mut(&key)) {
+                    (Some(f), Some(chunks)) => {
+                        for k in partial.unwrap_or_default() {
+                            let h = &mut chunks[k as usize];
+                            w.remove_collider(*h);
+                            let c =
+                                chunk_collider(&s.collider, f, k, s.scale, at, s.entity, shared)?;
+                            *h = w.colliders.insert(c);
+                        }
+                        t.handle = chunks[0];
+                        if moved {
+                            for (k, &h) in chunks.iter().enumerate() {
+                                let local = at
+                                    * pose(
+                                        crate::chunk_offset(f, s.scale, k as u32),
+                                        Quat::IDENTITY,
+                                    );
+                                w.colliders[h].set_position(local);
+                            }
+                        }
+                    }
+                    _ if moved => w.colliders[t.handle].set_position(at),
+                    _ => {}
                 }
+                t.position = s.position;
+                t.quaternion = s.quaternion;
             }
             _ => {
                 if let Some(t) = tracked_statics.remove(&key) {
                     w.remove_collider(t.handle);
                 }
-                let c = collider(&s.collider, s.scale, at, s.entity, 0.0, shared)?;
-                let handle = w.colliders.insert(c);
+                if let Some(chunks) = fields.remove(&key) {
+                    for &h in &chunks[1..] {
+                        w.remove_collider(h);
+                    }
+                }
+                let handle = match &field {
+                    Some(f) => {
+                        let (cx, cz) = crate::field_chunks(f.columns, f.rows);
+                        let mut chunks = Vec::with_capacity((cx * cz) as usize);
+                        for k in 0..cx * cz {
+                            let c =
+                                chunk_collider(&s.collider, f, k, s.scale, at, s.entity, shared)?;
+                            chunks.push(w.colliders.insert(c));
+                        }
+                        let first = chunks[0];
+                        fields.insert(key, chunks);
+                        first
+                    }
+                    None => {
+                        let c = collider(&s.collider, s.scale, at, s.entity, 0.0, shared)?;
+                        w.colliders.insert(c)
+                    }
+                };
                 tracked_statics.insert(
                     key,
                     TrackedStatic {
@@ -1480,7 +1637,20 @@ fn after_step(
             CollisionStarted::default(),
         ));
     }
-    let touching = sorted(touching, pairs);
+    let mut touching = sorted(touching, pairs);
+    // A body on two chunks of one field touches its entity once: the
+    // hardest hit stands for the pair.
+    if !ext.fields.is_empty() {
+        let fields = &ext.fields;
+        touching.dedup_by(|later, kept| {
+            let same = later.0 == kept.0
+                && (fields.contains_key(&kept.0.a) || fields.contains_key(&kept.0.b));
+            if same && later.1.impulse > kept.1.impulse {
+                kept.1 = later.1;
+            }
+            same
+        });
+    }
 
     // Each body read back by ranges of bodies on the lanes (rapier's
     // bodies read only), the rest rule decided there; then, in body order,
@@ -1715,6 +1885,19 @@ impl QueryWorld {
             }
         }
         for s in &scene.statics {
+            // A field built in chunks is queried as its chunks, as stepped.
+            if let Some(f) = chunked(&s.collider, shared) {
+                let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
+                let (cx, cz) = crate::field_chunks(f.columns, f.rows);
+                for k in 0..cx * cz {
+                    let built =
+                        chunk_collider(&s.collider, &f, k, s.scale, at, s.entity, shared)?.build();
+                    let aabb = built.compute_aabb();
+                    let h = q.colliders.insert(built);
+                    q.broad.set_aabb(&params, h, aabb);
+                }
+                continue;
+            }
             placed.push((
                 s.entity,
                 None,
@@ -1954,9 +2137,20 @@ pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
             }
         }
     }
-    for t in sim.statics.values() {
-        if from_asset(&t.collider) {
-            keyed.insert(t.handle.into_raw_parts(), asset_key(&t.collider, t.scale));
+    for (key, t) in sim.statics.iter() {
+        if !from_asset(&t.collider) {
+            continue;
+        }
+        let whole = asset_key(&t.collider, t.scale);
+        match sim.ext.fields.get(key) {
+            Some(chunks) => {
+                for (k, &h) in chunks.iter().enumerate() {
+                    keyed.insert(h.into_raw_parts(), crate::chunk_key(whole, k as u32));
+                }
+            }
+            None => {
+                keyed.insert(t.handle.into_raw_parts(), whole);
+            }
         }
     }
     if keyed.is_empty() {

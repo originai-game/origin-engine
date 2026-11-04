@@ -90,24 +90,55 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
 /// A height field's shape, scaled: parry's heights by row (z) and column
 /// (x), using the same adaptive diagonal as og-render; a hole's cell removed.
 pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp::SharedShape> {
+    let all = ([0, f.columns - 1], [0, f.rows - 1]);
+    Ok(field_rect(f, s, all))
+}
+
+/// Chunk `k` of a height field ([`crate::FIELD_CHUNK`]), scaled: the
+/// field's heights, diagonals and holes over the chunk's cells, centred on
+/// the chunk ([`crate::chunk_offset`] places it).
+pub(crate) fn field_chunk(f: &crate::HeightfieldDesc, s: Vec3, k: u32) -> rp::SharedShape {
+    field_rect(f, s, crate::chunk_samples(f, k))
+}
+
+pub(crate) fn chunk_cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedShape> {
+    &mut shared.chunks3
+}
+
+/// The height field over columns `c0..=c1` and rows `r0..=r1` of `f`.
+fn field_rect(
+    f: &crate::HeightfieldDesc,
+    s: Vec3,
+    ([c0, c1], [r0, r1]): ([u32; 2], [u32; 2]),
+) -> rp::SharedShape {
     use rapier3d::parry::shape::{HeightField, HeightFieldCellStatus};
     use rapier3d::parry::utils::Array2;
-    let (rows, cols) = (f.rows as usize, f.columns as usize);
+    let cols = f.columns as usize;
+    let (c0, c1, r0, r1) = (c0 as usize, c1 as usize, r0 as usize, r1 as usize);
+    let (nr, nc) = (r1 - r0 + 1, c1 - c0 + 1);
+    let h = &f.heights;
     // Column-major: element (row, column) at row + column · rows.
-    let mut data = vec![0.0; rows * cols];
-    for r in 0..rows {
-        for c in 0..cols {
-            data[r + c * rows] = f.heights[r * cols + c];
+    let mut data = vec![0.0; nr * nc];
+    for r in 0..nr {
+        for c in 0..nc {
+            data[r + c * nr] = h[(r0 + r) * cols + c0 + c];
         }
     }
+    let extent = if (nc, nr) == (cols, f.rows as usize) {
+        f.size
+    } else {
+        crate::field_cell(f) * og_core::glam::Vec2::new((nc - 1) as f32, (nr - 1) as f32)
+    };
     let mut field = HeightField::new(
-        Array2::new(rows, cols, data),
-        rp::Vector::new(f.size.x * s.x, s.y, f.size.y * s.z),
+        Array2::new(nr, nc, data),
+        rp::Vector::new(extent.x * s.x, s.y, extent.y * s.z),
     );
-    for r in 0..rows - 1 {
-        for c in 0..cols - 1 {
-            let hole = f.holes.as_ref().is_some_and(|h| h[r * (cols - 1) + c] != 0);
-            let h = &f.heights;
+    for r in r0..r1 {
+        for c in c0..c1 {
+            let hole = f
+                .holes
+                .as_ref()
+                .is_some_and(|holes| holes[r * (cols - 1) + c] != 0);
             let mut status = HeightFieldCellStatus::empty();
             if og_core::math::heightfield_zigzag(
                 h[r * cols + c],
@@ -120,10 +151,10 @@ pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp
             if hole {
                 status |= HeightFieldCellStatus::CELL_REMOVED;
             }
-            field.set_cell_status(r, c, status);
+            field.set_cell_status(r - r0, c - c0, status);
         }
     }
-    Ok(rp::SharedShape::new(field))
+    rp::SharedShape::new(field)
 }
 
 /// A shape built from a registered mesh, scaled.

@@ -473,6 +473,28 @@ fn set_heightfield(eng: &Engine, geometry: u64, d: &TerrainData) -> Result<(), S
     Ok(())
 }
 
+/// [`set_heightfield`] after an edit that changed the heights only inside
+/// `lo`..`hi` (the terrain's space).
+fn edit_heightfield(
+    eng: &Engine,
+    geometry: u64,
+    d: &TerrainData,
+    lo: Vec2,
+    hi: Vec2,
+) -> Result<(), String> {
+    let field = heightfield(d);
+    let physics = eng.state.borrow().physics.clone();
+    if let Some(p) = physics {
+        p.edit_heightfield(geometry, field.clone(), lo, hi)
+            .map_err(|e| e.reason().to_string())?;
+    }
+    eng.state
+        .borrow_mut()
+        .physics_heightfields
+        .insert(geometry, field);
+    Ok(())
+}
+
 fn info(index: usize, t: &LoadedTerrain) -> Value {
     let (lo, hi) = t.range();
     let size = t.size();
@@ -979,7 +1001,11 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
             rs.terrain.streamer.forget(i);
         }
         if collision {
-            set_heightfield(eng, GEOMETRY_BASE + i as u64, &data)?;
+            match region {
+                // Physics rebuilds only the chunks of its colliders under it.
+                Some((lo, hi)) => edit_heightfield(eng, GEOMETRY_BASE + i as u64, &data, lo, hi)?,
+                None => set_heightfield(eng, GEOMETRY_BASE + i as u64, &data)?,
+            }
         }
         let (lo, hi) = data.range();
         let stamp = b["stamp"].as_u64().unwrap_or(0);

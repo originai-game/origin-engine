@@ -309,3 +309,178 @@ fn holes_are_cut_out_of_the_field() {
     bad.holes = Some(Arc::from(vec![0u8; 9 * 5]));
     assert!(p.set_heightfield(1, bad).is_err());
 }
+
+/// A field of more than one chunk (256 cells a side) is built as one
+/// collider per chunk: rays answer the same surface on both sides of a
+/// chunk's edge, and a region edit rebuilds only the chunks under it. A
+/// crate asleep on a chunk the edit does not reach stays asleep (its
+/// ground was not rebuilt, so rapier kept its contact); the crate over the
+/// edit falls onto the lowered ground.
+#[test]
+fn an_edit_rebuilds_only_the_chunks_of_a_large_field_under_it() {
+    let settings = Physics {
+        sleep_ticks: 20,
+        ..Physics::default()
+    };
+    let (mut w, p) = world(settings, 1);
+    // 601 × 601 samples, 0.5 m apart: 3 × 3 chunks, their edges at
+    // samples 256 and 512 (x and z of -22 m and 106 m).
+    let size = Vec2::splat(300.0);
+    let slope = |x: f32, z: f32| 0.05 * x + 0.03 * z;
+    let f = field(601, 601, size, slope);
+    p.set_heightfield(9, f.clone()).unwrap();
+    spawn_static(&mut w, at(0.0, 0.0, 0.0), terrain_collider(9));
+    run(&mut w, 1);
+    for (x, z) in [
+        (-22.0f32, 3.3f32),
+        (-22.25, 3.3),
+        (-21.75, 3.3),
+        (106.0, 106.0),
+        (-140.2, 140.7),
+        (5.0, -22.0),
+    ] {
+        let y = down(&p, &w, x, z).expect("the field").point.y;
+        assert!((y - slope(x, z)).abs() < 1e-3, "{x},{z}: {y}");
+    }
+    // A crate on the far chunk, one over the middle chunk's ground.
+    let crate_at = |w: &mut World, x: f32, z: f32| {
+        spawn_body(
+            w,
+            at(x, slope(x, z) + 0.6, z),
+            RigidBody::default(),
+            Collider::cuboid(Vec3::splat(1.0)),
+        )
+    };
+    let far = crate_at(&mut w, -120.0, -120.0);
+    let near = crate_at(&mut w, 40.0, 40.0);
+    run(&mut w, 120);
+    let sleeping = |w: &World, e| w.get::<RigidBody>(e).unwrap().sleeping;
+    assert!(
+        sleeping(&w, far) && sleeping(&w, near),
+        "both crates came to rest asleep"
+    );
+    let rested = transform(&w, far).position;
+
+    // Lower a 4 m square under the near crate by 3 m.
+    let mut heights = f.heights.to_vec();
+    for r in 0..601usize {
+        for c in 0..601usize {
+            let (x, z) = (c as f32 * 0.5 - 150.0, r as f32 * 0.5 - 150.0);
+            if (x - 40.0).abs() <= 2.0 && (z - 40.0).abs() <= 2.0 {
+                heights[r * 601 + c] -= 3.0;
+            }
+        }
+    }
+    let edited = HeightfieldDesc {
+        heights: Arc::from(heights),
+        ..f
+    };
+    p.edit_heightfield(9, edited, Vec2::new(38.0, 38.0), Vec2::new(42.0, 42.0))
+        .unwrap();
+    run(&mut w, 1);
+    assert!(
+        sleeping(&w, far),
+        "the far crate's ground was rebuilt: it woke"
+    );
+    assert!(
+        !sleeping(&w, near),
+        "the edited ground woke the crate on it"
+    );
+    // Beside the crate, inside the lowered square.
+    let y = down(&p, &w, 41.5, 41.5).unwrap().point.y;
+    assert!(
+        (y - (slope(41.5, 41.5) - 3.0)).abs() < 1e-3,
+        "the edit: {y}"
+    );
+    run(&mut w, 120);
+    let fell = transform(&w, near).position.y;
+    assert!(
+        (fell - (slope(40.0, 40.0) - 3.0 + 0.5)).abs() < 0.2,
+        "the near crate rests on the lowered ground at {fell}"
+    );
+    assert_eq!(transform(&w, far).position, rested);
+}
+
+/// A snapshot of a field in chunks carries each chunk by its key, not its
+/// heights, and restores to the same world.
+#[test]
+fn a_field_in_chunks_saves_by_its_asset_and_restores() {
+    let (mut w, p) = world(Physics::default(), 1);
+    let f = field(301, 513, Vec2::new(150.0, 256.0), |x, z| {
+        0.02 * x - 0.04 * z
+    });
+    p.set_heightfield(5, f.clone()).unwrap();
+    spawn_static(&mut w, at(0.0, 1.0, 0.0), terrain_collider(5));
+    let ball = spawn_body(
+        &mut w,
+        at(0.0, 4.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.5),
+    );
+    run(&mut w, 30);
+    let saved = w.snapshot();
+    let hash = w.world_hash();
+    // 301 × 513 heights are 600 KiB: the save holds none of them.
+    assert!(
+        saved.len() < 64 * 1024,
+        "the snapshot is {} bytes",
+        saved.len()
+    );
+    run(&mut w, 60);
+
+    let (mut r, rp) = world(Physics::default(), 2);
+    rp.set_heightfield(5, f).unwrap();
+    r.restore(&saved).unwrap();
+    assert_eq!(r.world_hash(), hash);
+    assert_eq!(r.snapshot(), saved, "a restored world saves the same bytes");
+    run(&mut r, 60);
+    assert_eq!(r.world_hash(), w.world_hash());
+    let y = transform(&r, ball).position.y;
+    assert!(y > -10.0 && y < 4.0, "the ball is on the field at {y}");
+}
+
+/// A ball rolling over the edge between two chunks of a field touches the
+/// field throughout: it starts touching once and never stops, though it
+/// lies on both chunks' colliders at the edge.
+#[test]
+fn a_ball_rolls_over_a_chunks_edge_touching_the_field_once() {
+    let (mut w, p) = world(Physics::default(), 1);
+    // 601 × 601 flat samples 0.5 m apart: a chunk edge at x = -22 m.
+    p.set_heightfield(9, field(601, 601, Vec2::splat(300.0), |_, _| 0.0))
+        .unwrap();
+    let ground = spawn_static(&mut w, at(0.0, 0.0, 0.0), terrain_collider(9));
+    let ball = w
+        .spawn((
+            at(-24.0, 0.5, 3.0),
+            RigidBody::dynamic(),
+            Collider::sphere(0.5),
+            Velocity {
+                linear: Vec3::new(2.0, 0.0, 0.0),
+                ..Velocity::default()
+            },
+        ))
+        .unwrap();
+    let (mut started, mut ended) = (0, 0);
+    for _ in 0..120 {
+        w.step().unwrap();
+        let involves = |a: u64, b: u64| {
+            let e = [a, b];
+            e.contains(&ground.to_bits()) && e.contains(&ball.to_bits())
+        };
+        started += w
+            .pending_events::<CollisionStarted>()
+            .unwrap()
+            .iter()
+            .filter(|c| involves(c.a, c.b))
+            .count();
+        ended += w
+            .pending_events::<CollisionEnded>()
+            .unwrap()
+            .iter()
+            .filter(|c| involves(c.a, c.b))
+            .count();
+    }
+    let x = transform(&w, ball).position.x;
+    assert!(x > -21.4, "the ball rolled over the edge, to {x}");
+    assert_eq!((started, ended), (1, 0));
+}

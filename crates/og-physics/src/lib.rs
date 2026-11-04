@@ -285,6 +285,22 @@ pub(crate) struct ShapeKey {
     pub scale: [u32; 3],
 }
 
+/// The key of chunk `chunk` of the height field `key` names
+/// ([`FIELD_CHUNK`]): the chunk plus 1 in the shape code's bits from 8
+/// (a save's [`Hole`] names a chunk so); a code with none there is the
+/// whole field.
+pub(crate) fn chunk_key(key: ShapeKey, chunk: u32) -> ShapeKey {
+    ShapeKey {
+        shape: SHAPE_HEIGHTFIELD | ((chunk + 1) << 8),
+        ..key
+    }
+}
+
+/// The chunk a shape code names ([`chunk_key`]), if it is a chunk's.
+pub(crate) fn key_chunk(shape: u32) -> Option<u32> {
+    (shape & 0xff == SHAPE_HEIGHTFIELD && shape >> 8 != 0).then(|| (shape >> 8) - 1)
+}
+
 /// Where a saved simulation's bytes lack an asset shape: at byte `at` of
 /// the cut bytes, the shape `key` names (rebuilt from the registered mesh
 /// or height field when the save is decoded; `sim::save`).
@@ -341,6 +357,20 @@ pub(crate) struct Shared {
     pub mesh_source: Option<MeshSource>,
     /// Height fields by handle (assets, like meshes).
     pub heightfields: IdMap<u64, Arc<HeightfieldDesc>>,
+    /// Per stale height field whose every change since the last step was a
+    /// region edit ([`PhysicsSystem::edit_heightfield`]): the chunks those
+    /// edits reached, which are all its static colliders rebuild. A stale
+    /// field without an entry is rebuilt whole.
+    pub field_edits: IdMap<u64, BTreeSet<u32>>,
+    /// The chunk shapes of static height-field colliders of more than one
+    /// chunk ([`FIELD_CHUNK`]), keyed like the shape cache with the chunk in
+    /// the key's shape code ([`chunk_key`]); outside the cache's limit, so
+    /// a large field's chunks are never cleared together.
+    #[cfg(feature = "physics3d")]
+    pub chunks3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
+    /// Never filled (height fields are 3D only); the step is written once.
+    #[cfg(feature = "physics2d")]
+    pub chunks2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
     /// Why no height field can be registered in this build
     /// ([`PhysicsSystem::refuse_heightfields`]): every SHAPE_HEIGHTFIELD
     /// collider is refused with it.
@@ -509,6 +539,73 @@ pub(crate) fn arc(from: Vec3, to: Vec3) -> Quat {
 /// tick would otherwise grow the cache without bound).
 pub(crate) const SHAPE_CACHE_LIMIT: usize = 1024;
 
+/// Cells per side of one chunk of a static height-field collider. A field
+/// of more cells along x or z is built as one rapier collider per chunk
+/// (each a height field over its square, sharing its border samples with
+/// its neighbours), so a region edit ([`PhysicsSystem::edit_heightfield`])
+/// rebuilds only the chunks under it: parry's height field cannot change
+/// its heights in place. A field of one chunk is one collider, as before.
+pub(crate) const FIELD_CHUNK: u32 = 256;
+
+/// The chunks along x and z of a height field of `columns` × `rows`
+/// heights ([`FIELD_CHUNK`]).
+pub(crate) fn field_chunks(columns: u32, rows: u32) -> (u32, u32) {
+    (
+        (columns.max(2) - 1).div_ceil(FIELD_CHUNK),
+        (rows.max(2) - 1).div_ceil(FIELD_CHUNK),
+    )
+}
+
+/// The heights chunk `k` covers (row by row, [`field_chunks`]'s x first):
+/// its first and last column and row, inclusive.
+pub(crate) fn chunk_samples(f: &HeightfieldDesc, k: u32) -> ([u32; 2], [u32; 2]) {
+    let (cx, _) = field_chunks(f.columns, f.rows);
+    let (i, j) = (k % cx, k / cx);
+    let c0 = i * FIELD_CHUNK;
+    let r0 = j * FIELD_CHUNK;
+    (
+        [c0, (c0 + FIELD_CHUNK).min(f.columns - 1)],
+        [r0, (r0 + FIELD_CHUNK).min(f.rows - 1)],
+    )
+}
+
+/// A height field's spacing between samples along x and z.
+pub(crate) fn field_cell(f: &HeightfieldDesc) -> Vec2 {
+    Vec2::new(
+        f.size.x / (f.columns - 1) as f32,
+        f.size.y / (f.rows - 1) as f32,
+    )
+}
+
+/// Where chunk `k`'s centre lies from its field's, in the frame of a
+/// collider at `scale`.
+pub(crate) fn chunk_offset(f: &HeightfieldDesc, scale: Vec3, k: u32) -> Vec3 {
+    let ([c0, c1], [r0, r1]) = chunk_samples(f, k);
+    let centre = field_cell(f) * Vec2::new((c0 + c1) as f32, (r0 + r1) as f32) * 0.5 - f.size * 0.5;
+    Vec3::new(centre.x, 0.0, centre.y) * scale.abs()
+}
+
+/// The chunks whose heights a change inside `lo`..`hi` (the field's own
+/// space: metres, centred on it) can reach, ascending. A sample on a
+/// chunk's edge belongs to both chunks beside it.
+pub(crate) fn chunks_under(f: &HeightfieldDesc, lo: Vec2, hi: Vec2) -> Vec<u32> {
+    let (cx, cz) = field_chunks(f.columns, f.rows);
+    let span = |a: f32, b: f32, size: f32, n: u32, chunks: u32| {
+        let cell = size / (n - 1) as f32;
+        let at = |x: f32| ((x + size * 0.5) / cell).clamp(0.0, (n - 1) as f32);
+        let (s0, s1) = (at(a).floor() as u32, at(b).ceil() as u32);
+        (
+            s0.saturating_sub(1) / FIELD_CHUNK,
+            (s1 / FIELD_CHUNK).min(chunks - 1),
+        )
+    };
+    let (i0, i1) = span(lo.x, hi.x, f.size.x, f.columns, cx);
+    let (j0, j1) = span(lo.y, hi.y, f.size.y, f.rows, cz);
+    (j0..=j1)
+        .flat_map(|j| (i0..=i1).map(move |i| j * cx + i))
+        .collect()
+}
+
 /// The handle to an installed physics system: mesh registration and scene
 /// queries. Cloning shares the same system.
 #[derive(Clone)]
@@ -658,6 +755,7 @@ impl StateBlock for PhysicsState {
         let mut shared = lock(&self.0);
         // The restored colliders are as saved, whatever was registered before.
         shared.stale_meshes.clear();
+        shared.field_edits.clear();
         shared.pushes.clear();
         #[cfg(feature = "physics3d")]
         {
@@ -957,6 +1055,7 @@ impl PhysicsSystem {
         }
         shared.meshes.insert(handle, Arc::new(mesh));
         shared.stale_meshes.insert(handle);
+        shared.field_edits.remove(&handle);
         #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
         #[cfg(feature = "physics2d")]
@@ -993,6 +1092,96 @@ impl PhysicsSystem {
     /// registered again. New heights (a terrain edit) rebuild the colliders
     /// made from it at the next step; the same heights change nothing.
     pub fn set_heightfield(&self, handle: u64, field: HeightfieldDesc) -> Result<()> {
+        self.check_heightfield(handle, &field)?;
+        if field.heights.iter().any(|h| !h.is_finite()) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("height field {handle}: its size must be positive and its heights finite"),
+            ));
+        }
+        let mut shared = lock(&self.shared);
+        if shared
+            .heightfields
+            .get(&handle)
+            .is_some_and(|f| **f == field)
+        {
+            return Ok(());
+        }
+        shared.heightfields.insert(handle, Arc::new(field));
+        shared.stale_meshes.insert(handle);
+        shared.field_edits.remove(&handle);
+        #[cfg(feature = "physics3d")]
+        {
+            shared.shapes3.retain(|k, _| k.mesh != handle);
+            shared.chunks3.retain(|k, _| k.mesh != handle);
+        }
+        Ok(())
+    }
+
+    /// Registers new heights for height field `handle` that differ from
+    /// the ones registered only inside `lo`..`hi` (the field's own space:
+    /// metres, centred on it; a terrain edit's rectangle), with the same
+    /// columns, rows and size. Its static colliders rebuild at the next
+    /// step only the chunks ([`FIELD_CHUNK`] cells a side) under the
+    /// rectangle, keeping the others and their contacts; a field of one
+    /// chunk, or one not registered yet, is set whole as
+    /// [`set_heightfield`](Self::set_heightfield) does. Heights outside the
+    /// rectangle are taken as they are, unchecked.
+    pub fn edit_heightfield(
+        &self,
+        handle: u64,
+        field: HeightfieldDesc,
+        lo: Vec2,
+        hi: Vec2,
+    ) -> Result<()> {
+        let same_shape = {
+            let shared = lock(&self.shared);
+            shared.heightfields.get(&handle).is_some_and(|f| {
+                (f.columns, f.rows, f.size, f.holes.is_some())
+                    == (field.columns, field.rows, field.size, field.holes.is_some())
+            })
+        };
+        let (cx, cz) = field_chunks(field.columns, field.rows);
+        if !same_shape || cx * cz <= 1 || !(lo.is_finite() && hi.is_finite()) {
+            return self.set_heightfield(handle, field);
+        }
+        self.check_heightfield(handle, &field)?;
+        let chunks = chunks_under(&field, lo.min(hi), lo.max(hi));
+        for &k in &chunks {
+            let ([c0, c1], [r0, r1]) = chunk_samples(&field, k);
+            for r in r0..=r1 {
+                let row = &field.heights
+                    [(r * field.columns + c0) as usize..=(r * field.columns + c1) as usize];
+                if row.iter().any(|h| !h.is_finite()) {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!("height field {handle}: its heights must be finite"),
+                    ));
+                }
+            }
+        }
+        let mut shared = lock(&self.shared);
+        let whole_pending =
+            shared.stale_meshes.contains(&handle) && !shared.field_edits.contains_key(&handle);
+        shared.heightfields.insert(handle, Arc::new(field));
+        shared.stale_meshes.insert(handle);
+        #[cfg(feature = "physics3d")]
+        {
+            // A body's collider is the whole field: built again.
+            shared.shapes3.retain(|k, _| k.mesh != handle);
+            shared.chunks3.retain(|k, _| {
+                k.mesh != handle
+                    || key_chunk(k.shape).is_some_and(|c| chunks.binary_search(&c).is_err())
+            });
+        }
+        if !whole_pending {
+            shared.field_edits.entry(handle).or_default().extend(chunks);
+        }
+        Ok(())
+    }
+
+    /// Refuses a height field this build or its dimensions cannot take.
+    fn check_heightfield(&self, handle: u64, field: &HeightfieldDesc) -> Result<()> {
         if let Some(why) = lock(&self.shared).heightfields_absent {
             return Err(Error::new(
                 ErrorKind::Invalid,
@@ -1034,26 +1223,12 @@ impl PhysicsSystem {
                 ),
             ));
         }
-        if !(field.size.x > 0.0 && field.size.y > 0.0 && field.size.is_finite())
-            || field.heights.iter().any(|h| !h.is_finite())
-        {
+        if !(field.size.x > 0.0 && field.size.y > 0.0 && field.size.is_finite()) {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!("height field {handle}: its size must be positive and its heights finite"),
             ));
         }
-        let mut shared = lock(&self.shared);
-        if shared
-            .heightfields
-            .get(&handle)
-            .is_some_and(|f| **f == field)
-        {
-            return Ok(());
-        }
-        shared.heightfields.insert(handle, Arc::new(field));
-        shared.stale_meshes.insert(handle);
-        #[cfg(feature = "physics3d")]
-        shared.shapes3.retain(|k, _| k.mesh != handle);
         Ok(())
     }
 
@@ -1116,8 +1291,11 @@ impl PhysicsSystem {
         shared.baked3.remove(&handle);
         shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);
+        shared.field_edits.remove(&handle);
         #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
+        #[cfg(feature = "physics3d")]
+        shared.chunks3.retain(|k, _| k.mesh != handle);
         #[cfg(feature = "physics2d")]
         shared.shapes2.retain(|k, _| k.mesh != handle);
     }

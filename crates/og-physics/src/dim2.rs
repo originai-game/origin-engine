@@ -142,6 +142,14 @@ pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<
     ))
 }
 
+pub(crate) fn field_chunk(_f: &crate::HeightfieldDesc, _s: Vec3, _k: u32) -> rp::SharedShape {
+    unreachable!("height fields are refused in 2D before they are built")
+}
+
+pub(crate) fn chunk_cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedShape> {
+    &mut shared.chunks2
+}
+
 pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     if shape == SHAPE_TRIMESH {
         return outline_shape(mesh, s);

@@ -27,6 +27,18 @@ is one line here, written at the merge that changes
   queries handle negative bearings; sign correction precedes error correction.
   `og ui sheet <pack|kit>` is an on-demand baseline tool, never a gate step.
 
+- **Terrain collision follows an edit's region (terrain v2, T6).** A
+  static SHAPE_HEIGHTFIELD collider over more than 256 cells a side is
+  built as one collider per 256-cell chunk, and `og.terrain.edit` and
+  `og.terrain.stamp` hand physics the rectangle they changed
+  (`PhysicsSystem::edit_heightfield`): the next step rebuilds only the
+  chunks under it, so bodies elsewhere keep their contacts and sleep. A
+  1 m brush on a 4097 × 4097 field steps in 1.5 ms where rebuilding the
+  field took 83 ms. A body on two chunks touches the terrain once (one
+  CollisionStarted). Worlds whose collision terrain is over 257 samples a
+  side save and hash differently from before (their colliders are the
+  chunks); smaller ones are unchanged.
+
 - **UI extensions and authored data packs (phase 0).** `og ui add/list/eject`
   and `og style add` discover directory extensions with `extension.json`.
   Installed documents cook as ordinary assets on both hosts; kits export
