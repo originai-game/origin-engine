@@ -74,6 +74,14 @@ export interface ShellConfig {
   readonly gate: "tap" | "none";
   readonly madeWith: boolean;
   readonly serviceWorker: boolean;
+  /** Fork s61: the progress caption per boot stage (`fetch`, `transcode`, `prime`, `present`); absent: "Loading". */
+  readonly stageLabels?: Readonly<Record<string, string>>;
+  /**
+   * Fork s61: "page": the page draws the loading screen itself (the engine's boot splash stays hidden) from
+   * the window events og:progress {value, stage, fraction}, og:stage {id, fraction} (the game's own stages),
+   * og:first-frame and og:failed {message}; absent or "engine": the splash.
+   */
+  readonly bootScreen?: "engine" | "page";
   /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
   readonly expect: { readonly wasm: number; readonly cooked: number; readonly lanes: number };
   /**
@@ -168,6 +176,8 @@ export function readConfig(doc: Document = document): ShellConfig {
     gate: c.gate === "none" ? "none" : "tap",
     madeWith: c.madeWith !== false,
     serviceWorker: c.serviceWorker === true,
+    ...(c.stageLabels && typeof c.stageLabels === "object" ? { stageLabels: c.stageLabels } : {}),
+    ...(c.bootScreen === "page" ? { bootScreen: "page" as const } : {}),
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
     files: c.files && typeof c.files === "object" ? c.files : {},
   };
@@ -335,6 +345,10 @@ export async function play(): Promise<PlayHandle> {
   const boot = $("og-boot");
   const mark = boot?.querySelector<SVGSVGElement>(".og-mark") ?? null;
   const label = $("og-boot-label");
+  // Fork s61: the page's own loading screen (bootScreen "page") hears the boot through window events.
+  const pageBoot = config.bootScreen === "page";
+  const emit = (type: string, detail?: unknown) => dispatchEvent(new CustomEvent(type, { detail }));
+  if (pageBoot && boot) boot.hidden = true;
   const badge = $("og-made-with");
   if (badge) badge.hidden = !config.madeWith;
   const back = $<HTMLButtonElement>("og-back");
@@ -386,7 +400,7 @@ export async function play(): Promise<PlayHandle> {
   let progress = 0;
   let genesisDone = !mark || matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const showProgress = () => {
-    if (!mark || !genesisDone || phase !== "loading") return;
+    if (pageBoot || !mark || !genesisDone || phase !== "loading") return;
     if (mark.dataset["motion"] !== "progress") mark.dataset["motion"] = "progress";
     const percent = Math.round(progress * 100);
     mark.querySelector<SVGElement>("[data-part=wipe]")?.style.setProperty("stroke-dashoffset", String(100 - percent));
@@ -402,11 +416,17 @@ export async function play(): Promise<PlayHandle> {
     showProgress();
   }, 1200);
   let phase: "loading" | "gate" | "playing" | "failed" = "loading";
-  const setProgress = (value: number) => {
+  let caption = T.loading;
+  const STAGE_CLASS: Record<string, string> = { wasm: "fetch", bundle: "fetch", fetch: "fetch", transcode: "transcode", ready: "prime", prime: "prime", present: "present" };
+  const setProgress = (value: number, stage?: string, fraction?: number) => {
+    if (stage !== undefined) emit("og:progress", { value, stage, fraction: fraction ?? value });
+    // Fork s61: the stage's caption, when the build names one (og-config stageLabels).
+    const named = stage === undefined ? undefined : config.stageLabels?.[STAGE_CLASS[stage] ?? stage];
+    if (named) caption = named;
     if (value <= progress) return;
     progress = Math.min(1, value);
     boot?.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
-    if (label) label.textContent = `${T.loading} ${Math.round(progress * 100)}%`;
+    if (label) label.textContent = `${caption} ${Math.round(progress * 100)}%`;
     player.loading(progress);
     showProgress();
   };
@@ -418,6 +438,7 @@ export async function play(): Promise<PlayHandle> {
   const fail = async (title: string, message: string, after: boolean, retryable = true, cause?: HostError) => {
     if (phase === "failed") return;
     phase = "failed";
+    emit("og:failed", { message });
     if (after) player.crash("EngineCrash", message, context ? crashFields(cause ?? { kind: "error", message, tick: null, lane: null, location: null }, context, lastMemory) : undefined);
     else player.fail("engine_start", message, retryable);
     let dump = "";
@@ -625,7 +646,8 @@ export async function play(): Promise<PlayHandle> {
       ...(config.project === undefined ? {} : { project: config.project }),
       dprCap: config.dprCap,
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
-      onProgress: (v) => setProgress(v),
+      onProgress: (v, stage, fraction) => setProgress(v, stage, fraction),
+      ...(pageBoot ? { onStage: (id: string, fraction: number) => emit("og:stage", { id, fraction }) } : {}),
       onLog: (lines) => log.push(lines),
       onCrash: (message, error) => void fail(readied ? T.stopped : T.startFailed, message, readied, true, error),
       telemetry,
@@ -634,6 +656,7 @@ export async function play(): Promise<PlayHandle> {
       onFirstFrame: () => {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
+        emit("og:first-frame");
         ready();
         if (telemetry) void bootSample();
       },
@@ -806,6 +829,19 @@ export async function play(): Promise<PlayHandle> {
   if (roomLink && !byPlayer) shell.setRooms(null, roomLink);
 
   // ── ready: reveal, then the gate ─────────────────────────────────────
+  // Fork s61: the gate shows once the first frame is drawn (behind it: the first tick, the
+  // textures' uploads, the pipelines), not when the bytes are in: Play then leads to a picture.
+  // With no gate (og-config gate "none") the game starts at once instead: it runs its own loading
+  // screen behind which the first frames draw (one bar from the page's first paint to the game's click).
+  if (!harness && config.gate !== "none" && !firstFrameAt && shell.ready.tier !== "none")
+    await new Promise<void>((r) => {
+      const t = setInterval(() => {
+        if (firstFrameAt || phase === "failed") {
+          clearInterval(t);
+          r();
+        }
+      }, 100);
+    });
   setProgress(1);
   boot?.setAttribute("data-done", "");
   setTimeout(() => boot && phase !== "failed" && (boot.hidden = true), 300);

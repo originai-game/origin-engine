@@ -62,6 +62,25 @@ import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
 
+// Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
+// renderer is made inside the wasm, so its device is met here, where the Worker asks for it).
+{
+  const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
+  type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
+  if (proto) {
+    const requestDevice = proto.requestDevice;
+    proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
+      const device = await requestDevice.apply(this, a);
+      void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
+      let errors = 0;
+      device.addEventListener("uncapturederror", (e) => {
+        if (errors++ < 20) console.error(`[og] WebGPU error: ${e.error?.message}`);
+      });
+      return device;
+    };
+  }
+}
+
 interface Start {
   type: "start";
   glue: string;
@@ -80,6 +99,8 @@ interface Start {
   ring?: SharedArrayBuffer;
   rpc?: RpcRings;
   autoplay?: boolean;
+  /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
+  stages?: boolean;
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
   /** The Basis transcoder's script and module. */
@@ -313,7 +334,44 @@ const tellLoadFailure = (url: string, e: unknown) => {
   }
 };
 
+/**
+ * Fork s61: each boot stage's share of the progress bar, so it does not sit at 100 % once the
+ * bytes are in: the download (wasm, bundle, fetch) 0-70 %, the Basis transcode 70-85 %, the first
+ * tick 85-92 %, the first frame (its pipelines) 92-100 %.
+ */
+export const BOOT_SPANS: Readonly<Record<string, readonly [number, number]>> = {
+  wasm: [0, 0.7],
+  bundle: [0, 0.7],
+  fetch: [0, 0.7],
+  transcode: [0.7, 0.85],
+  ready: [0.85, 0.85],
+  prime: [0.85, 0.92],
+  present: [0.92, 1],
+};
+
+/** A stage's fraction (0 to 1) as a place on the whole bar. */
+export function onBar(stage: string, value: number): number {
+  const [a, b] = BOOT_SPANS[stage] ?? [0, 1];
+  return a + (b - a) * Math.max(0, Math.min(1, value));
+}
+
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
+  // Fork s61: a fetch that failed (not refused: HTTP 4xx) is tried again, up to 5 times, backing off;
+  // its bytes already counted come off the progress first.
+  for (let attempt = 0; ; attempt++) {
+    const before = received ? received.loaded : 0;
+    try {
+      return await bytesOnce(url, received, onChunk);
+    } catch (e) {
+      if (received) received.loaded = before;
+      if (attempt >= 5 || /HTTP 4\d\d/.test(String(e))) throw e;
+      console.warn(`fetch ${url} failed (${e instanceof Error ? e.message : String(e)}), retry ${attempt + 1}`);
+      await new Promise((ok) => setTimeout(ok, 500 * 2 ** attempt));
+    }
+  }
+}
+
+async function bytesOnce(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
   // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
   // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
   const r = await fetch(url.replaceAll("#", "%23"), typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
@@ -474,18 +532,20 @@ export async function transcodeBundle(
   progress: (value: number, stage: string) => void,
   received?: Received,
 ): Promise<Preloaded> {
+  void received;
   const used: string[] = [];
   let transcoder: BasisTranscoder | null = null;
   let transcoded = 0;
+  const total = fetched.textures.length;
   // The wasm keeps the bundle it parsed last (og-host-web `bundle_of`, s58): the manifest's text
   // crosses once, and "" names it in every later call.
   let manifest = fetched.manifest;
-  for (const [i, t] of fetched.textures.entries()) {
+  for (const t of fetched.textures) {
     const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
     if (manifest !== null) manifest = "";
     if (ktx2.length > 0) {
       transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
-      const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, manifest!, t.id, t.bytes);
+      const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, "", t.id, t.bytes);
       const out = transcodeKtx2(transcoder, ktx2, isTextureFormat(target) ? target : "rgba8");
       if (out.format === "rgba8") {
         glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
@@ -495,8 +555,9 @@ export async function transcodeBundle(
       }
       if (!used.includes(out.format)) used.push(out.format);
       transcoded++;
+      // Fork s61: by texture, as a fraction of the stage (the Worker places it on the bar).
+      if (transcoded % 8 === 0 || transcoded === total) progress(transcoded / Math.max(1, total), "transcode");
     }
-    if (!received) progress(0.8 + 0.2 * ((i + 1) / fetched.textures.length), "transcode");
   }
   return { files: fetched.files, failed: fetched.failed, textures: transcoded, textureFormat: used.length ? used.join("+") : "rgba8" };
 }
@@ -718,8 +779,9 @@ export function startWorker(game: GameToken): void {
     const now = performance.now();
     boot[name] = Math.round((boot[name] ?? 0) + now - phaseAt);
     phaseAt = now;
+    console.info(`[og] boot stage "${name}" done in ${boot[name]} ms`);
   };
-  const firstFrameMessage = () => ({ type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
+  const firstFrameMessage = () => (console.info(`[og] first frame at ${Math.round(performance.now())} ms`), { type: "frame", first: true, boot: { ...boot, at: Math.round(performance.now()) } });
   /** What the trace's document records beside its events: the renderer's tier and the lanes. */
   let lastTier = "none";
   let lanesState: unknown = null;
@@ -1030,6 +1092,14 @@ export function startWorker(game: GameToken): void {
   };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
+  // Fork s61: a game that draws its loading screen with the page (og-config bootScreen "page") reports its
+  // own stages there (`ogBootStage(id, fraction)`: og:stage on the page), and asks whether the frames still
+  // wait for anything before it calls its loading done (`ogBootIdle()`).
+  const pageStages = () => {
+    const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
+    g.ogBootStage = (id, fraction = 0) => self.postMessage({ type: "og-stage", id, fraction });
+    g.ogBootIdle = () => true;
+  };
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
     if (!engine || playing || settling) return;
@@ -1124,9 +1194,12 @@ export function startWorker(game: GameToken): void {
     if (data.type === "start") {
       try {
         if (data.telemetry) frameCounter = new FrameCounter();
+        if (data.stages) pageStages();
         const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
+        // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
+        // texture, the first tick, and the first frame's pipelines (present below).
         const progress = (value: number, stage: string) =>
-          self.postMessage({ type: "progress", value: Math.min(1, value), stage, loaded: received.loaded, total: received.total });
+          self.postMessage({ type: "progress", value: onBar(stage, value), fraction: Math.max(0, Math.min(1, value)), stage, loaded: received.loaded, total: received.total });
         progress(0, "wasm");
         phaseAt = performance.now();
         // The wasm streams through a counting body, so its bytes move the bar while it compiles.
@@ -1257,6 +1330,7 @@ export function startWorker(game: GameToken): void {
             primed = true;
           }
           phase("prime");
+          progress(1, "prime");
           // The platform's answers to the first tick's reads (the saved language, a slot's
           // meta) applied behind the gate: before the first frame while they come quickly,
           // then each settling tick drawn as it lands (settle.ts).
