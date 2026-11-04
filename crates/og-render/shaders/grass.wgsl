@@ -189,6 +189,20 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // The light through a backlit blade: dimmed by its translucency, tinted by its colour.
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
   var color = direct * select(vec3<f32>(1.0), through, backlit);
+  // Looking into the sun through a blade, the light it scatters forward
+  // (lighting.wgsl leaf_forward, the shared leaf lobe): the glow along
+  // backlit blades. Tinted by Beer-Lambert through the blade, its colour
+  // raised to its thickness, so the thin tips pass a brighter, warmer
+  // light than the roots (Ghost of Tsushima's and Breath of the Wild's
+  // sunlit grass). Lit, not toon.
+  // Far blades light as the ground, with no lobe of their own.
+  if (backlit && frame.outline_style.z < 0.5) {
+    let thickness = mix(1.0, 0.75, in.shading.z);
+    let tint = pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(thickness));
+    let back = max(-dot(n0, l), 0.0);
+    let lobe = 1.5 * grass.base_color.w * back * leaf_forward(n0, v, l) * (1.0 - in.far);
+    color += lobe * tint * frame.light_color.rgb * shadow;
+  }
   color += surface_local_lights(in.clip.xy, s, p, n0, v);
   // Far blades light as the ground (`far`), under the sky alike.
   var occlusion = mix(in.shading.x, 1.0, in.far);

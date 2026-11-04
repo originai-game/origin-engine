@@ -508,8 +508,13 @@ struct Surface {
 fn leaf_transmission(s: Surface, n: vec3f, v: vec3f, l: vec3f) -> vec3f {
   if (s.translucency <= 0.0) { return vec3f(0.0); }
   let back = max(-dot(n, l), 0.0);
-  let through = pow(max(dot(v, -normalize(l + n * 0.3)), 0.0), 6.0);
-  return s.albedo * (1.0 - s.metallic) * s.translucency * back * (3.0 * through + 0.16);
+  return s.albedo * (1.0 - s.metallic) * s.translucency * back * (3.0 * leaf_forward(n, v, l) + 0.16);
+}
+
+// The lobe's forward-scattered part alone, 0..1: strongest looking through
+// the leaf (normal `n`, towards the eye `v`) into the light `l`.
+fn leaf_forward(n: vec3f, v: vec3f, l: vec3f) -> f32 {
+  return pow(max(dot(v, -normalize(l + n * 0.3)), 0.0), 6.0);
 }
 
 // Bias a thin leaf towards the incident light on either side. Offsetting
