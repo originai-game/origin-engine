@@ -1144,7 +1144,7 @@ worth keeping) is kept for later model runs in a second private bucket,
 `origin-generated-assets` (same project and endpoint, versioned, encrypted).
 The same user may put, get and list there, never delete; a put must send
 `x-amz-server-side-encryption: AES256`. Layout (its `README.md` holds it):
-`meshy/motion/<operation-id>/clip.fbx` with `task.json` (prompt, Meshy task
+`meshy/motion/<operation-id>/clip.<fbx|bvh>` (the original bytes and format) with `task.json` (prompt, Meshy task
 ID, gateway media ID, bytes, sha256) under the original operation ID,
 `meshy/model/<operation-id>/…`, `training/<run>/…`, `scenes/<scene>/…`.
 
