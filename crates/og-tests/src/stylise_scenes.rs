@@ -177,6 +177,7 @@ pub fn paint_scene() -> RenderScene {
         canvas_scale: 1.0,
         canvas_space: StyliseSpace::Screen,
         canvas_world_scale: 0.0,
+        ..Paint::DEFAULT
     });
     scene
 }
@@ -381,6 +382,7 @@ pub fn surface_scene() -> RenderScene {
         canvas_scale: 1.0,
         canvas_space: StyliseSpace::Surface,
         canvas_world_scale: 96.0,
+        ..Paint::DEFAULT
     });
     scene.stylise.ink = Some(Ink {
         threshold: 0.5,

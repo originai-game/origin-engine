@@ -184,6 +184,78 @@ pub fn wire_edges(mesh: &MeshData) -> Vec<[u32; 2]> {
     edges
 }
 
+/// The feature edges of a mesh (a vector or neon wireframe): its borders
+/// and the edges whose two faces meet at more than `angle_degrees`, the
+/// triangles welded by position first, so a mesh split at its uv seams or
+/// hard edges (a cooked or flat-shaded mesh) shows no seam and its hard
+/// edges are found across the split. Each edge once, by the vertex indices
+/// of its first triangle. 0 is every edge ([`wire_edges`]). A cube gives
+/// its 12 edges, a smooth sphere none.
+pub fn feature_edges(mesh: &MeshData, angle_degrees: f32) -> Vec<[u32; 2]> {
+    if angle_degrees <= 0.0 {
+        return wire_edges(mesh);
+    }
+    let n = mesh.vertices.len() as u32;
+    let cos = angle_degrees.to_radians().cos();
+    // Welded ids by position, to a millionth of the mesh's size (a seam's
+    // two copies of a vertex differ in the last bits: cos 2π is not 1).
+    let extent = mesh.vertices.iter().fold(0.0f32, |m, v| {
+        v.position.iter().fold(m, |m, c| m.max(c.abs()))
+    });
+    let eps = (extent * 1e-6).max(1e-12);
+    let mut weld: HashMap<[i64; 3], u32> = HashMap::new();
+    let ids: Vec<u32> = mesh
+        .vertices
+        .iter()
+        .map(|v| {
+            let key = v.position.map(|c| (c / eps).round() as i64);
+            let next = weld.len() as u32;
+            *weld.entry(key).or_insert(next)
+        })
+        .collect();
+    // Per welded edge: its first vertex pair and its faces' normals.
+    let mut faces: HashMap<[u32; 2], ([u32; 2], Vec<Vec3>)> = HashMap::new();
+    let mut order: Vec<[u32; 2]> = Vec::new();
+    for t in mesh.indices.as_chunks::<3>().0 {
+        if t.iter().any(|&i| i >= n) {
+            continue;
+        }
+        // A triangle two of whose corners weld (a sphere's pole) has no
+        // face: its normal would be noise.
+        let w = t.map(|i| ids[i as usize]);
+        if w[0] == w[1] || w[1] == w[2] || w[2] == w[0] {
+            continue;
+        }
+        let p = t.map(|i| Vec3::from(mesh.vertices[i as usize].position));
+        let normal = (p[1] - p[0]).cross(p[2] - p[0]);
+        if normal.length_squared() <= 1e-24 {
+            continue;
+        }
+        let normal = normal.normalize();
+        for (a, b) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+            let (wa, wb) = (ids[a as usize], ids[b as usize]);
+            let key = [wa.min(wb), wa.max(wb)];
+            let e = faces.entry(key).or_insert_with(|| {
+                order.push(key);
+                ([a.min(b), a.max(b)], Vec::new())
+            });
+            e.1.push(normal);
+        }
+    }
+    order
+        .into_iter()
+        .filter_map(|k| {
+            let (pair, normals) = &faces[&k];
+            let feature = match normals.as_slice() {
+                [_] => true,
+                [a, b] => a.dot(*b) < cos,
+                _ => true,
+            };
+            feature.then_some(*pair)
+        })
+        .collect()
+}
+
 /// The frame's instances, by where they draw.
 #[derive(Default)]
 pub(crate) struct LineFrame {
@@ -257,8 +329,9 @@ pub(crate) struct LineRenderer {
     /// Overlay pipelines: in the output's format and its sRGB view's.
     output: Sampled<wgpu::RenderPipeline>,
     linear: Option<Sampled<wgpu::RenderPipeline>>,
-    /// Per mesh index: its revision and unique edges (wireframe).
-    edges: HashMap<usize, (u64, Edges)>,
+    /// Per mesh index and feature angle (its bits): the mesh's revision
+    /// and its edges (wireframe).
+    edges: HashMap<(usize, u32), (u64, Edges)>,
 }
 
 /// The lines module (`crate::shaders` validates it).
@@ -402,15 +475,16 @@ impl LineRenderer {
 
     /// Builds and uploads the frame's instances: the scene's line and point
     /// sets and its wireframe instances (`wire(material index)`: the
-    /// material's wireframe colour, `None` for a material drawn as
-    /// triangles; `any_wire`: some material is).
+    /// material's wireframe colour and feature angle ([`feature_edges`]),
+    /// `None` for a material drawn as triangles; `any_wire`: some
+    /// material is).
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         scene: &RenderScene,
         any_wire: bool,
-        wire: impl Fn(usize) -> Option<[f32; 4]>,
+        wire: impl Fn(usize) -> Option<([f32; 4], f32)>,
     ) -> LineFrame {
         let mut groups: [Vec<LineInstance>; 3] = Default::default();
         // Per scene slot: (mask, first in the slot, count) of each set.
@@ -452,9 +526,9 @@ impl LineRenderer {
         if any_wire {
             let live: std::collections::HashSet<usize> =
                 scene.instances.iter().map(|i| i.mesh.index()).collect();
-            self.edges.retain(|m, _| live.contains(m));
+            self.edges.retain(|(m, _), _| live.contains(m));
             for (i, inst) in scene.instances.iter().enumerate() {
-                let Some(color) = wire(inst.material.index()) else {
+                let Some((color, angle)) = wire(inst.material.index()) else {
                     continue;
                 };
                 let before = groups[0].len();
@@ -462,11 +536,12 @@ impl LineRenderer {
                     continue;
                 };
                 let revision = scene.mesh_revision(inst.mesh.index());
-                let edges = match self.edges.get(&inst.mesh.index()) {
+                let key = (inst.mesh.index(), angle.to_bits());
+                let edges = match self.edges.get(&key) {
                     Some((r, e)) if *r == revision => e.clone(),
                     _ => {
-                        let e = std::rc::Rc::new(wire_edges(mesh));
-                        self.edges.insert(inst.mesh.index(), (revision, e.clone()));
+                        let e = std::rc::Rc::new(feature_edges(mesh, angle));
+                        self.edges.insert(key, (revision, e.clone()));
                         e
                     }
                 };
@@ -671,5 +746,19 @@ mod tests {
         // The box's faces have vertices of their own: 6 faces of 4 sides
         // and the diagonal their two triangles share, each edge once.
         assert_eq!(wire_edges(&shapes::cuboid(Vec3::ONE)).len(), 6 * 5);
+    }
+
+    /// Feature edges: a box (its faces' vertices split) gives its 12 edges
+    /// and no face diagonal, a smooth sphere none (its seam welded), a
+    /// flat quad its 4 borders; at 0 every edge. Ways this could fail: no
+    /// weld (the box's 24 face sides all borders), the diagonal counted
+    /// (its two faces are coplanar), the sphere's seam left open.
+    #[test]
+    fn feature_edges_keep_the_creases_and_borders_only() {
+        let cube = shapes::cuboid(Vec3::ONE);
+        assert_eq!(feature_edges(&cube, 30.0).len(), 12);
+        assert_eq!(feature_edges(&cube, 0.0).len(), 6 * 5);
+        assert_eq!(feature_edges(&shapes::sphere(48, 32), 30.0).len(), 0);
+        assert_eq!(feature_edges(&shapes::plane(1.0, 1.0), 30.0).len(), 4);
     }
 }

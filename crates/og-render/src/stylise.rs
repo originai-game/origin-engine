@@ -12,13 +12,16 @@
 
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
-/// `dither`, `halftone`, `hatching`, `paint`, `ink`, `inkDepth`,
+/// `dither`, `halftone`, `hatching`, `paint`, `paintDetail` (the painterly
+/// filter's object edges and detail), `ink`, `inkDepth`,
 /// `depthBands`, `retro3d`, `surfaceSpace` (the canvas, hatching and
 /// halftone laid on surfaces, [`StyliseSpace::Surface`]) and `objectSpace`
 /// (laid in each instance's own space, [`StyliseSpace::Object`])
 /// ([`Stylise`]);
 /// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance`,
-/// `flatShading` and `surface` ([`MaterialStyle`]).
+/// `flatShading`, `surface`, `toonAmbient` (with the anti-aliased bands and
+/// the metals' bands), `outlinePlace` (lines outside the silhouette) and
+/// `wireframe` ([`MaterialStyle`]).
 pub const STYLISE_DRAWN: &[&str] = &[
     "pixel",
     "posterize",
@@ -27,6 +30,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "halftone",
     "hatching",
     "paint",
+    "paintDetail",
     "ink",
     "inkDepth",
     "depthBands",
@@ -41,6 +45,9 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "outlineDistance",
     "flatShading",
     "surface",
+    "toonAmbient",
+    "outlinePlace",
+    "wireframe",
 ];
 
 pub use crate::scene::PaletteHandle;
@@ -214,12 +221,18 @@ pub struct Hatching {
     pub depth: f32,
 }
 
-/// Painterly smoothing, pigment pooling and a canvas.
+/// Painterly smoothing, pigment pooling and a canvas (stylise.wgsl
+/// `paint`): an anisotropic Kuwahara filter with eight sectors over a
+/// smoothed structure tensor (Kyprianidis 2009 and 2010, Acerola's port),
+/// which keeps coherent structure (edges, thin lines) and paints over
+/// incoherent texture, aware of objects and of detail where the frame has
+/// the depth-normal prepass.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Paint {
-    /// The Kuwahara radius in logical pixels (0: no smoothing).
+    /// The filter's radius in logical pixels (0: no smoothing).
     pub radius: f32,
-    /// 0 square cells, 1 strokes along the image's edges.
+    /// 0 round brush cells, 1 thin strokes along coherent structure (the
+    /// ellipse's α from 1 at 0.5 to its floor at 1).
     pub anisotropy: f32,
     pub edge_darkening: f32,
     pub bleed: f32,
@@ -234,13 +247,49 @@ pub struct Paint {
     /// Canvas texels per metre on surfaces ([`StyliseSpace::Surface`]);
     /// 0 is [`DEFAULT_CANVAS_WORLD_SCALE`].
     pub canvas_world_scale: f32,
+    /// How far detail keeps its shape, 0 to 1: a pixel's radius shrinks by
+    /// its detail (its material's `paintDetail`, or `character_detail` on
+    /// a skinned instance) times this, and no tap crosses an object's edge.
+    /// Above 0 the frame runs the prepass when it draws meshes; 0 paints
+    /// every pixel alike, over the objects' edges.
+    pub detail: f32,
+    /// The detail of a skinned instance's pixels (a character's face and
+    /// hands), 0 to 1, where its material sets no more.
+    pub character_detail: f32,
 }
+
+/// [`Paint::detail`]'s default: detail keeps its shape fully.
+pub const DEFAULT_PAINT_DETAIL: f32 = 1.0;
+
+/// [`Paint::character_detail`]'s default: a character keeps most of its
+/// face and hands (a fifth of the radius left).
+pub const DEFAULT_CHARACTER_DETAIL: f32 = 0.8;
 
 /// [`Paint::canvas_world_scale`] when it is 0: a 256² canvas repeats every
 /// two metres.
 pub const DEFAULT_CANVAS_WORLD_SCALE: f32 = 128.0;
 
 impl Paint {
+    /// The IDL's defaults: every field off but the detail awareness.
+    pub const DEFAULT: Paint = Paint {
+        radius: 0.0,
+        anisotropy: 0.0,
+        edge_darkening: 0.0,
+        bleed: 0.0,
+        canvas: None,
+        canvas_strength: 0.0,
+        canvas_scale: 1.0,
+        canvas_space: StyliseSpace::Screen,
+        canvas_world_scale: 0.0,
+        detail: DEFAULT_PAINT_DETAIL,
+        character_detail: DEFAULT_CHARACTER_DETAIL,
+    };
+
+    /// Whether the filter reads the prepass's object ids and detail.
+    pub fn detail_aware(&self) -> bool {
+        self.radius > 0.0 && self.detail > 0.0
+    }
+
     /// Whether the canvas is drawn on surfaces (the frame runs the prepass).
     pub fn canvas_on_surfaces(&self) -> bool {
         self.canvas_space.on_surfaces() && self.canvas.is_some() && self.canvas_strength > 0.0
@@ -343,7 +392,7 @@ impl Retro3d {
 
 /// Stylised defaults for every lit material that leaves the field at its
 /// own default (the IDL's `MaterialStyle`).
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MaterialStyle {
     pub toon: bool,
     pub gradient_map: Option<crate::TextureHandle>,
@@ -370,6 +419,83 @@ pub struct MaterialStyle {
     /// Its pattern's size in metres of the mesh's own space (0: the
     /// surface's own, [`MaterialSurface::scale`]).
     pub surface_scale: f32,
+    /// How smooth a toon material's ambient light (the environment and
+    /// the hemisphere light) stays: 0 one flat colour, the light from
+    /// above and below averaged (MToon's equalised ambient), with a flat
+    /// reflection of the environment, so the bands sit on flat colour;
+    /// 1 the smooth PBR ambient and reflections.
+    pub toon_ambient: f32,
+    /// The toon bands' and highlight's edges, anti-aliased over this many
+    /// pixels (lilToon's screen-space smoothing); 0 hard steps.
+    pub toon_softness: f32,
+    /// Where outlines lie against the shape (the outline pass, and
+    /// `ArtLine.place`).
+    pub outline_place: OutlinePlace,
+    /// Every lit material drawn as its feature edges (`wireframe_angle`),
+    /// in its colour plus its emissive light: vector and neon looks.
+    pub wireframe: bool,
+    /// The crease angle of `wireframe` in degrees (0: every edge).
+    pub wireframe_angle: f32,
+}
+
+/// Where an outline lies against its object's silhouette.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum OutlinePlace {
+    /// On the object's own pixels, inside its silhouette.
+    #[default]
+    Inside,
+    /// On the pixels round it, outside its silhouette: the shape keeps
+    /// its own pixels whole.
+    Outside,
+    /// Half its width each side.
+    Both,
+}
+
+impl OutlinePlace {
+    /// The shader's code: 0 inside, 1 outside, 2 both.
+    pub(crate) fn code(self) -> f32 {
+        match self {
+            OutlinePlace::Inside => 0.0,
+            OutlinePlace::Outside => 1.0,
+            OutlinePlace::Both => 2.0,
+        }
+    }
+}
+
+/// [`MaterialStyle::wireframe_angle`]'s default (the IDL's): creases past
+/// 30 degrees, so a smooth surface keeps only its silhouette's borders.
+pub const DEFAULT_WIREFRAME_ANGLE: f32 = 30.0;
+
+/// [`MaterialStyle::toon_softness`]'s default (the IDL's): one pixel.
+pub const DEFAULT_TOON_SOFTNESS: f32 = 1.0;
+
+impl Default for MaterialStyle {
+    /// Off, as the IDL's defaults: no field changes a material; a toon
+    /// material's bands are anti-aliased over a pixel and its ambient flat.
+    fn default() -> Self {
+        MaterialStyle {
+            toon: false,
+            gradient_map: None,
+            shadow_tint: [0.0; 3],
+            shadow_tint_amount: 0.0,
+            shadow_darkness: 0.0,
+            rim_color: [0.0; 3],
+            rim_intensity: 0.0,
+            rim_power: 0.0,
+            outline_color: [0.0; 3],
+            outline_width: 0.0,
+            outline_distance: 0.0,
+            flat_shading: false,
+            surface: MaterialSurface::None,
+            surface_strength: 0.0,
+            surface_scale: 0.0,
+            toon_ambient: 0.0,
+            toon_softness: DEFAULT_TOON_SOFTNESS,
+            outline_place: OutlinePlace::Inside,
+            wireframe: false,
+            wireframe_angle: DEFAULT_WIREFRAME_ANGLE,
+        }
+    }
 }
 
 /// A made surface the material style lays on every lit material: its
@@ -418,6 +544,7 @@ impl MaterialStyle {
             || self.rim_intensity > 0.0
             || self.outline_width > 0.0
             || self.flat_shading
+            || self.wireframe
             || self.surface_on()
     }
 
@@ -635,15 +762,9 @@ mod tests {
         let mut s = Stylise::default();
         assert!(!s.on_surfaces());
         let paint = Paint {
-            radius: 0.0,
-            anisotropy: 0.0,
-            edge_darkening: 0.0,
-            bleed: 0.0,
-            canvas: None,
             canvas_strength: 0.5,
-            canvas_scale: 1.0,
             canvas_space: StyliseSpace::Surface,
-            canvas_world_scale: 0.0,
+            ..Paint::DEFAULT
         };
         s.paint = Some(paint);
         assert!(!s.on_surfaces(), "a surface canvas without a texture");

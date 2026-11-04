@@ -138,6 +138,42 @@ is one line here, written at the merge that changes
   terrain file takes the same keys per layer. All default to 0: a terrain
   that does not set them draws as before. The terrain prepass now reads only
   the layers' weights and heights for its roughness, never their normal maps.
+- **Stylisation: line, toon and paint.** Render-only; a game that sets
+  none of the new members draws as before except where noted.
+  - `Stylise.paintRadius` is now an anisotropic Kuwahara filter with eight
+    sectors over a smoothed structure tensor (Acerola's port, MIT, in
+    `third_party/acerola-postprocessing`), in the frame and in the cook's
+    texel-space paint alike: thin lines and edges keep their shape, noise
+    and grass paint over, no rectangular sector artefacts. Every painterly
+    look's frames move. Pigment pooling (`paintEdgeDarkening`) is a
+    pigment density at region rims (MNPR).
+  - New `Stylise.paintDetail` (default 1) and `paintCharacterDetail`
+    (default 0.8), `StandardMaterialDesc.paintDetail`: no stroke crosses
+    an object's edge, and detail (a material's, a skinned mesh's face and
+    hands) keeps its shape; with them a painted 3D frame runs the
+    depth-normal prepass. The site's close-shot `paintRadius` workaround
+    is no longer needed.
+  - Toon: metals band in their own colour (the toon diffuse no longer
+    loses 1 − metallic), a toon highlight sized by roughness; new
+    `MaterialStyle.toonAmbient` (default 0: flat ambient and reflection
+    under toon, which changes every toon look's frames; 1 the former PBR
+    ambient) and `toonSoftness` (default 1 px: anti-aliased band edges).
+  - New enum `OutlinePlace` and `MaterialStyle.outlinePlace` (default
+    inside, as before): outside and both draw the silhouette line round
+    the object through a jump flood (Ben Golus's wide outlines), round and
+    anti-aliased at any width; the outline pass's line is coverage
+    anti-aliased. `ArtLine` (width, colour, `distanceFalloff`, `place`)
+    outlines meshes under the contract where MaterialStyle sets no outline.
+  - New `StandardMaterialDesc.wireframeAngle` and `MaterialStyle.wireframe`,
+    `wireframeAngle` (default 30): wireframes of feature edges only
+    (creases and borders); the neon-vector look uses them.
+  - `ArtMotion.squash` sets og.tween.squash's default impact under the
+    contract (0.5 the preset's own, 1 rubber hose).
+  - `RenderCapabilities.stylise` gains `paintDetail`, `toonAmbient`,
+    `outlinePlace` and `wireframe`. The prepass's reflectivity channel
+    carries the painterly detail byte above its 16 bits (ssr.wgsl reads
+    the low bits).
+
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

@@ -258,9 +258,10 @@ pub use skin::{
 pub use sky_physical::PhysicalAtmosphere;
 pub use sprite_mesh::{SpriteInfluence, SpriteMesh, SpriteMeshVertex, SpriteSkin};
 pub use stylise::{
-    DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
-    MAX_PALETTE_COLORS, MaterialStyle, MaterialSurface, Paint, Palette, PaletteHandle, PixelFit,
-    PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
+    DEFAULT_CANVAS_WORLD_SCALE, DEFAULT_CHARACTER_DETAIL, DEFAULT_PAINT_DETAIL,
+    DEFAULT_TOON_SOFTNESS, DEFAULT_WIREFRAME_ANGLE, DepthBands, DitherPattern, Halftone, Hatching,
+    Ink, MAX_PALETTE_COLORS, MaterialStyle, MaterialSurface, OutlinePlace, Paint, Palette,
+    PaletteHandle, PixelFit, PixelScale, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{

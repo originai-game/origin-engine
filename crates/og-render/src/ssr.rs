@@ -75,7 +75,10 @@ fn pack(roughness: f32, metalness: f32) -> f32 {
 mod tests {
     use super::*;
 
-    fn unpack(g: f32) -> (f32, f32) {
+    /// ssr.wgsl's `ssr_surface`: the low 16 bits (the painterly detail
+    /// byte lies above them).
+    fn unpack(packed: f32) -> (f32, f32) {
+        let g = packed - (packed / 65536.0).floor() * 65536.0;
         let metal = (g / 256.0).floor();
         ((g - metal * 256.0) / 255.0, metal / 255.0)
     }
@@ -88,9 +91,12 @@ mod tests {
         for r in 0..=255 {
             for m in [0, 1, 128, 254, 255] {
                 let (rough, metal) = (r as f32 / 255.0, m as f32 / 255.0);
-                let (gloss, back) = unpack(pack(rough, metal));
-                assert!((gloss - (1.0 - rough)).abs() < 1e-6, "{r} {m}");
-                assert!((back - metal).abs() < 1e-6, "{r} {m}");
+                // With every painterly detail byte above it (pbr_prepass.wgsl).
+                for detail in [0.0, 1.0, 127.0, 255.0] {
+                    let (gloss, back) = unpack(pack(rough, metal) + 65536.0 * detail);
+                    assert!((gloss - (1.0 - rough)).abs() < 1e-6, "{r} {m} {detail}");
+                    assert!((back - metal).abs() < 1e-6, "{r} {m} {detail}");
+                }
             }
         }
         assert_eq!(unpack(0.0), (0.0, 0.0));

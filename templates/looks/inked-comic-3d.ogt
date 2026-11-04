@@ -8,6 +8,7 @@ MaterialStyle {
   toon true
   outlineWidth 3
   outlineDistance 8
+  outlinePlace outside
   outlineColor "#0a0810"
 }
 Stylise {

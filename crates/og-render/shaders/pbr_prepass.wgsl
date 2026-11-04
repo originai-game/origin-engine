@@ -62,7 +62,11 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, in.uv).b;
   let roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, in.uv).g;
   let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, unlit);
-  o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
+  // Above the reflectivity's 16 bits, the painterly filter's detail byte
+  // (stylise.wgsl paint_detail): the material's paintDetail in 7 bits, bit 7
+  // a skinned instance (a character). At most 2^24, exact in an f32.
+  let detail = u32(round(clamp(material.uv[3].z, 0.0, 1.0) * 127.0)) | (((in.object >> 8u) & 1u) << 7u);
+  o.depth = vec4<f32>(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity + 65536.0 * f32(detail), 0.0, 1.0);
   // The material style's outline distance: nearer than it the line grows,
   // up to four times its width (a ground a metre under the camera is not
   // lined 30 px wide), farther it thins in proportion (never for an
@@ -73,7 +77,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
     let depth = max(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
     width = clamp(width * frame.outline_style.x / depth, 0.5, min(31.0, width * 4.0));
   }
-  o.outline = outline_bytes(material.outline.rgb, width, in.object);
+  o.outline = outline_bytes(material.outline.rgb, width, in.object & 255u);
   return o;
 }
 

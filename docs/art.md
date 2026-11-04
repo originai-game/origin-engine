@@ -266,7 +266,18 @@ their zero value:
   the toon model and the textures, not the plumbing: metals never band,
   ambient and IBL stay smooth, band edges alias (the toon model work of
   the stylisation plan), and linear mesh textures kept their photographic
-  colours (closed by §2.3's palette limits on every colour texture).
+  colours (closed by §2.3's palette limits on every colour texture). The toon model
+  is now rebuilt (the stylisation's line, toon and paint round): metals
+  band in their own colour with a toon highlight, `MaterialStyle.toonAmbient`
+  0 keeps the ambient flat under the bands, `toonSoftness` anti-aliases the
+  band edges, and the preset's outline lies outside the silhouette
+  (`outlinePlace`).
+- **Mesh lines from `ArtLine`**: where the frame's MaterialStyle sets no
+  outline, the contract's line outlines the meshes: its width, colour,
+  `distanceFalloff` and `place` (`MaterialStyle.outlinePlace`: inside, or
+  outside and both through a jump flood of the silhouettes).
+- **`ArtMotion.squash`**: og.tween.squash's default impact (0.5 the
+  preset's own, 1 rubber hose).
 
 ### 2.5 Check: the style measured
 

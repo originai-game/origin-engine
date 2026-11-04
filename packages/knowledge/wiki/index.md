@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2398 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2400 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1768,6 +1768,8 @@ Field units the docs and Tune use.
 | [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OrbMeterDesc`](ui.md#type-OrbMeterDesc) | desc struct | ui | — |
 | [`Orientation`](ui.md#type-Orientation) | enum | ui | — |
+| [`OutlinePlace`](render.md#type-OutlinePlace) | enum | render | — |
+| [`OutlinePlace()`](render.md#column-OutlinePlace) | column kind | render | — |
 | [`OverheadBar`](ui.md#type-OverheadBar) | desc struct | ui | — |
 | [`OverheadBarsDesc`](ui.md#type-OverheadBarsDesc) | desc struct | ui | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |

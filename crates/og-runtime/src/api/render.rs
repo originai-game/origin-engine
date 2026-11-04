@@ -72,6 +72,8 @@ pub(crate) fn material(
     set!(flatShading, flag("flatShading"));
     set!(wireframe, flag("wireframe"));
     set!(alphaToCoverage, flag("alphaToCoverage"));
+    set!(paintDetail, num("paintDetail"));
+    set!(wireframeAngle, num("wireframeAngle"));
     if let Some(v) = desc["foliage"]["translucency"].as_f64() {
         m.foliage.x = v as f32;
     }

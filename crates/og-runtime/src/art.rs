@@ -10,7 +10,10 @@
 //!   nearest) draw through og-render's `TextureFilter::CleanEdge`.
 //! - `ArtLine.width`: the default of `Sprite.outline` for a sprite whose
 //!   texture the cook did not line, where the contract sets
-//!   `ArtPixels.unit` (a logical pixel to measure the line in).
+//!   `ArtPixels.unit` (a logical pixel to measure the line in); and the
+//!   meshes' outline (`MaterialStyle.outlineWidth`, its colour, its
+//!   distance falloff and `outlinePlace` from `ArtLine.place`) where the
+//!   frame's MaterialStyle sets no outline of its own ([`mesh_line`]).
 //! - `ArtPalette.colors` with `strict`: the UI's icons tinted to the
 //!   nearest palette colour (an icon atlas is a distance field, which the
 //!   cook does not conform).
@@ -37,6 +40,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 pub(crate) struct ArtFrame {
     /// `ArtLine.width` and `color`, where `ArtPixels.unit` is set.
     pub line: Option<(f32, [f32; 3])>,
+    /// `ArtLine` round meshes: its width, colour, place and distance.
+    pub mesh_line: Option<MeshLine>,
     /// `ArtPixels.unit`: logical pixels per world unit (0 none).
     pub unit: f32,
     /// `ArtPixels.logicalHeight`.
@@ -47,6 +52,30 @@ pub(crate) struct ArtFrame {
     pub pixel_perfect: bool,
     /// `ArtPalette.colors` when `strict` (sRGB).
     pub strict: Vec<[u8; 3]>,
+}
+
+/// `ArtLine` as the meshes' outline takes it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct MeshLine {
+    pub width: f32,
+    pub color: [f32; 3],
+    pub place: og_render::OutlinePlace,
+    pub distance: f32,
+}
+
+/// The meshes' outline under the contract: `ArtLine` fills the frame's
+/// material style where the style sets no outline width of its own (a
+/// look's MaterialStyle outline, or a game's, wins whole: its width, colour,
+/// distance and place).
+pub(crate) fn mesh_line(art: &ArtFrame, style: &mut og_render::MaterialStyle) {
+    let Some(l) = art.mesh_line else { return };
+    if style.outline_width > 0.0 {
+        return;
+    }
+    style.outline_width = l.width.min(31.0);
+    style.outline_color = l.color;
+    style.outline_distance = l.distance;
+    style.outline_place = l.place;
 }
 
 /// The contract's drawing state, kept on the render state.
@@ -137,10 +166,19 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
     } else {
         Vec::new()
     };
+    let line_color = rgb(&line["color"], Vec3::from(OUTLINE_COLOR)).to_array();
     ArtFrame {
-        line: (width > 0.0 && unit > 0.0).then(|| {
-            let c = rgb(&line["color"], Vec3::from(OUTLINE_COLOR));
-            (width, [c.x, c.y, c.z])
+        line: (width > 0.0 && unit > 0.0).then_some((width, line_color)),
+        mesh_line: (width > 0.0).then(|| MeshLine {
+            width,
+            color: line_color,
+            // ArtLinePlace's order: outside (its zero value), inside, both.
+            place: match variant(&line["place"], &["outside", "inside", "both"]) {
+                1 => og_render::OutlinePlace::Inside,
+                2 => og_render::OutlinePlace::Both,
+                _ => og_render::OutlinePlace::Outside,
+            },
+            distance: f(&line, "distanceFalloff", 0.0).max(0.0),
         }),
         unit,
         logical_height: u(&pixels, "logicalHeight", 0),
@@ -380,17 +418,50 @@ pub(crate) fn angle(pitch: f32, yaw: f32) -> Quat {
     Quat::from_rotation_y(yaw.to_radians()) * Quat::from_rotation_x(-pitch.to_radians())
 }
 
+/// og.tween.squash's default impact under the contract's
+/// `ArtMotion.squash` (`amount`, 0 to 1; 0: no constraint, the preset's
+/// own (1.25, 0.8)): the preset's squash scaled so 0.5 is the preset and
+/// 1 rubber hose, (1.5, 0.6); z stays 0 (at rest).
+pub(crate) fn squash_impact(amount: f32) -> Vec3 {
+    let base = Vec3::new(1.25, 0.8, 0.0);
+    if amount <= 0.0 {
+        return base;
+    }
+    let k = amount.min(1.0) / 0.5;
+    Vec3::new(1.0 + (base.x - 1.0) * k, 1.0 + (base.y - 1.0) * k, 0.0)
+}
+
+/// The contract's `ArtMotion.squash` (0 without the contract or the
+/// resource), read as the camera's field of view is: from the running
+/// system's frame or the world, whether or not the system declared it
+/// (a default, never a value the tick depends on beyond the call).
+pub(crate) fn squash_amount(eng: &Engine) -> f32 {
+    if !contract(eng) {
+        return 0.0;
+    }
+    resource_field(eng, "og.ArtMotion", "squash", 0.0)
+}
+
 fn camera_fov(eng: &Engine) -> Option<f32> {
+    Some(resource_field(eng, "og.Camera", "fov", 50.0))
+}
+
+/// A resource's number field, `default` when the resource is absent.
+fn resource_field(eng: &Engine, name: &str, field: &str, default: f32) -> f32 {
+    resource_json(eng, name).map_or(default, |v| f(&v, field, default))
+}
+
+fn resource_json(eng: &Engine, name: &str) -> Option<Value> {
     let st = eng.state.borrow();
     let layout = st
         .layouts
-        .get("og.Camera")
+        .get(name)
         .filter(|l| l.kind == RecordKind::Resource)?
         .clone();
     let id = st
         .names_by_id
         .iter()
-        .position(|n| n == "og.Camera")
+        .position(|n| n == name)
         .map(|i| og_ecs::SchemaId::from_index(i as u32))?;
     drop(st);
     let bytes = match super::engine::running(eng.id) {
@@ -401,7 +472,7 @@ fn camera_fov(eng: &Engine) -> Option<f32> {
         }
         None => eng.world().ok()?.resource_bytes(id).ok()?,
     };
-    Some(f(&layout.decode(&bytes), "fov", 50.0))
+    Some(layout.decode(&bytes))
 }
 
 #[cfg(test)]
@@ -421,6 +492,52 @@ mod tests {
         assert_eq!(red, lin([139, 172, 15]));
         assert_eq!(nearest(&greens, [1.0, 1.0, 1.0]), lin([155, 188, 15]));
         assert_eq!(nearest(&greens, [0.0, 0.0, 0.0]), lin([15, 56, 15]));
+    }
+
+    /// ArtLine lines the meshes where the frame's MaterialStyle sets no
+    /// outline: its width, colour, falloff and place (outside, ArtLine's
+    /// zero value, is not the style's inside); a style's own outline wins
+    /// whole, its place included.
+    #[test]
+    fn the_contract_s_line_outlines_meshes_where_the_style_does_not() {
+        let line = MeshLine {
+            width: 2.5,
+            color: [0.1, 0.0, 0.2],
+            place: og_render::OutlinePlace::Outside,
+            distance: 12.0,
+        };
+        let art = ArtFrame {
+            mesh_line: Some(line),
+            ..ArtFrame::default()
+        };
+        let mut style = og_render::MaterialStyle::default();
+        mesh_line(&art, &mut style);
+        assert_eq!(style.outline_width, 2.5);
+        assert_eq!(style.outline_color, [0.1, 0.0, 0.2]);
+        assert_eq!(style.outline_distance, 12.0);
+        assert_eq!(style.outline_place, og_render::OutlinePlace::Outside);
+        let mut own = og_render::MaterialStyle {
+            outline_width: 1.0,
+            ..Default::default()
+        };
+        mesh_line(&art, &mut own);
+        assert_eq!(own.outline_width, 1.0);
+        assert_eq!(own.outline_place, og_render::OutlinePlace::Inside);
+        let mut none = og_render::MaterialStyle::default();
+        mesh_line(&ArtFrame::default(), &mut none);
+        assert_eq!(none, og_render::MaterialStyle::default());
+    }
+
+    /// ArtMotion.squash sets og.tween.squash's default impact: 0 is the
+    /// preset's own, 0.5 the same, 0.8 more (1.4, 0.68), 1 rubber hose.
+    #[test]
+    fn the_contract_s_squash_scales_the_default_impact() {
+        let close = |a: Vec3, b: Vec3| (a - b).length() < 1e-5;
+        assert!(close(squash_impact(0.0), Vec3::new(1.25, 0.8, 0.0)));
+        assert!(close(squash_impact(0.5), Vec3::new(1.25, 0.8, 0.0)));
+        assert!(close(squash_impact(0.8), Vec3::new(1.4, 0.68, 0.0)));
+        assert!(close(squash_impact(1.0), Vec3::new(1.5, 0.6, 0.0)));
+        assert!(close(squash_impact(0.1), Vec3::new(1.05, 0.96, 0.0)));
     }
 
     #[test]

@@ -92,9 +92,18 @@ impl Renderer {
                 ]
             }),
             outline_color: global_outline.map_or([0.0; 4], |o| o.color),
-            outline: match global_outline {
-                Some(o) => [o.width.max(0.0), o.depth_threshold, o.normal_threshold, 1.0],
-                None => [0.0, 0.04, 0.4, 0.0],
+            // w: where silhouette lines lie (MaterialStyle::outline_place).
+            outline: {
+                let place = scene.stylise.material.outline_place.code();
+                match global_outline {
+                    Some(o) => [
+                        o.width.max(0.0),
+                        o.depth_threshold,
+                        o.normal_threshold,
+                        place,
+                    ],
+                    None => [0.0, 0.04, 0.4, place],
+                }
             },
             dof: dof.map_or([0.0; 4], |d| {
                 [

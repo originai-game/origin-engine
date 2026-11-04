@@ -213,6 +213,12 @@
       "value": "MaterialSurface"
     },
     {
+      "name": "OutlinePlace",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "OutlinePlace"
+    },
+    {
       "name": "StyliseSpace",
       "array": "Uint32Array",
       "stride": 1,
@@ -9712,6 +9718,18 @@
           "name": "depthBits",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "paintDetail",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "paintCharacterDetail",
+          "column": "f32",
+          "default": 0.8,
+          "tunable": true
         }
       ]
     },
@@ -9812,6 +9830,33 @@
           "name": "surfaceScale",
           "column": "f32",
           "default": 0
+        },
+        {
+          "name": "toonAmbient",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "toonSoftness",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "outlinePlace",
+          "column": "OutlinePlace",
+          "default": "inside"
+        },
+        {
+          "name": "wireframe",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "wireframeAngle",
+          "column": "f32",
+          "default": 30
         }
       ]
     },

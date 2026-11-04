@@ -1,12 +1,16 @@
 type look
 version 1
 ---
-# Bright outlines that bloom: glowing tubes on a dark scene.
+# Glowing vector lines on a dark scene: every lit material drawn as its
+# feature edges (creases past 30 degrees and its borders) in its colour and
+# emissive light, blooming, with a bright outline round the silhouettes.
 name "Neon vector-like graphics"
 ui "cyber"
 MaterialStyle {
   outlineWidth 2
   outlineColor "#40f0ff"
+  wireframe true
+  wireframeAngle 30
 }
 RenderSettings {
   bloom true

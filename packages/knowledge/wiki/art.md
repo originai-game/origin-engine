@@ -16,7 +16,7 @@ module art {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 29782</sub>
+<sub>`api.ogt` line 29840</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 29887</sub>
+<sub>`api.ogt` line 29945</sub>
 
 <a id="record-ArtPixels"></a>
 
@@ -121,7 +121,7 @@ resource ArtPixels {
 }
 ```
 
-<sub>`api.ogt` line 29903</sub>
+<sub>`api.ogt` line 29961</sub>
 
 <a id="record-ArtTexels"></a>
 
@@ -154,7 +154,7 @@ resource ArtTexels {
 }
 ```
 
-<sub>`api.ogt` line 29922</sub>
+<sub>`api.ogt` line 29980</sub>
 
 <a id="record-ArtShape"></a>
 
@@ -205,7 +205,7 @@ resource ArtShape {
 }
 ```
 
-<sub>`api.ogt` line 29936</sub>
+<sub>`api.ogt` line 29994</sub>
 
 <a id="record-ArtLine"></a>
 
@@ -242,7 +242,7 @@ resource ArtLine {
 }
 ```
 
-<sub>`api.ogt` line 29965</sub>
+<sub>`api.ogt` line 30023</sub>
 
 <a id="record-ArtMotion"></a>
 
@@ -256,7 +256,7 @@ Token `og.ArtMotion`, registered under the schema name `og.ArtMotion`; its value
 |---|---|---|---|---|---|---|
 | `stepFps` | `number` | `0` | 0 … 120 | `hz` | — | Clips and flipbooks advance this many times a second whatever the tick, holding each pose between (12 is on twos at 24 fps, 8 on threes); 0 is smooth, no constraint. |
 | `maxFrames` | `number` | `0` | ≥ 0 | — | — | The most frames one clip or flipbook may hold; 0 is no limit. |
-| `squash` | `number` | `0` | 0 … 1 | `ratio` | — | The default squash and stretch of the style's movement (og.tween presets, landings, hits): 0 rigid, 1 as rubber hose. |
+| `squash` | `number` | `0` | 0 … 1 | `ratio` | — | The default squash and stretch of the style's movement: og.tween.squash's impact where a call leaves it out, 0.5 the preset's own (1.25, 0.8), 1 as rubber hose (1.5, 0.6); 0 is no constraint (the preset's own). |
 
 ```ogt
 resource ArtMotion {
@@ -269,7 +269,7 @@ resource ArtMotion {
   field maxFrames u32 "The most frames one clip or flipbook may hold; 0 is no limit." {
     min 0
   }
-  field squash f32 "The default squash and stretch of the style's movement (og.tween presets, landings, hits): 0 rigid, 1 as rubber hose." {
+  field squash f32 "The default squash and stretch of the style's movement: og.tween.squash's impact where a call leaves it out, 0.5 the preset's own (1.25, 0.8), 1 as rubber hose (1.5, 0.6); 0 is no constraint (the preset's own)." {
     min 0
     max 1
     unit ratio
@@ -277,7 +277,7 @@ resource ArtMotion {
 }
 ```
 
-<sub>`api.ogt` line 29982</sub>
+<sub>`api.ogt` line 30040</sub>
 
 <a id="record-ArtCamera"></a>
 
@@ -326,7 +326,7 @@ resource ArtCamera {
 }
 ```
 
-<sub>`api.ogt` line 29999</sub>
+<sub>`api.ogt` line 30057</sub>
 
 ## Types
 
@@ -355,7 +355,7 @@ enum ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 29787</sub>
+<sub>`api.ogt` line 29845</sub>
 
 <a id="type-ArtFilter"></a>
 
@@ -380,7 +380,7 @@ enum ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 29802</sub>
+<sub>`api.ogt` line 29860</sub>
 
 <a id="type-ArtMips"></a>
 
@@ -405,7 +405,7 @@ enum ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 29816</sub>
+<sub>`api.ogt` line 29874</sub>
 
 <a id="type-ArtNormals"></a>
 
@@ -432,7 +432,7 @@ enum ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 29830</sub>
+<sub>`api.ogt` line 29888</sub>
 
 <a id="type-ArtLinePlace"></a>
 
@@ -457,7 +457,7 @@ enum ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 29845</sub>
+<sub>`api.ogt` line 29903</sub>
 
 <a id="type-ArtBrush"></a>
 
@@ -482,7 +482,7 @@ enum ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 29859</sub>
+<sub>`api.ogt` line 29917</sub>
 
 <a id="type-ArtProjection"></a>
 
@@ -507,7 +507,7 @@ enum ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 29873</sub>
+<sub>`api.ogt` line 29931</sub>
 
 ## Column kinds
 
@@ -532,7 +532,7 @@ column ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 29795</sub>
+<sub>`api.ogt` line 29853</sub>
 
 ```ogt
 column ArtFilter {
@@ -543,7 +543,7 @@ column ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 29809</sub>
+<sub>`api.ogt` line 29867</sub>
 
 ```ogt
 column ArtMips {
@@ -554,7 +554,7 @@ column ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 29823</sub>
+<sub>`api.ogt` line 29881</sub>
 
 ```ogt
 column ArtNormals {
@@ -565,7 +565,7 @@ column ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 29838</sub>
+<sub>`api.ogt` line 29896</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -576,7 +576,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 29852</sub>
+<sub>`api.ogt` line 29910</sub>
 
 ```ogt
 column ArtBrush {
@@ -587,7 +587,7 @@ column ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 29866</sub>
+<sub>`api.ogt` line 29924</sub>
 
 ```ogt
 column ArtProjection {
@@ -598,4 +598,4 @@ column ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 29880</sub>
+<sub>`api.ogt` line 29938</sub>

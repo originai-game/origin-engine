@@ -426,6 +426,16 @@ fn fs_ao_upsample(in: VsOut) -> @location(0) vec4<f32> {
 // that depth (never nearer than d0), so a plane is lined only where it
 // ends. A neighbour of another object, facing another way (a step,
 // another face, a curved rim) or the sky is tested against d0 as before.
+//
+// MaterialStyle.outlinePlace (fxp.outline.w: 0 inside, 1 outside, 2 both)
+// moves the silhouette's line: inside here; outside on the pixels round
+// the object (the jump flood below, fs_outline_seed to fs_outline_wide),
+// so the shape keeps its own pixels and a far character is not blacked
+// out by its own line; both, half each side. Creases stay inside.
+//
+// The line is anti-aliased by coverage: the test runs at half a pixel
+// inside and outside the width and the two are averaged, so a slanted or
+// fractional edge takes an intermediate value instead of a binary step.
 @fragment
 fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -447,27 +457,164 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let d0 = depth_at(px);
   if (is_sky(d0)) { return c; }
   let n0 = world_normal(px);
-  var edges = 0.0;
-  for (var i = 0u; i < 8u; i++) {
-    let a = f32(i) * FX_PI * 0.25;
-    let step = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * width));
-    let q = px + step;
+  let place = u32(fxp.outline.w + 0.5);
+  // The silhouette's share inside: all of it, none (outside) or half.
+  let inside = select(select(width, 0.5 * width, place == 2u), 0.0, place == 1u);
+  var cover = 0.0;
+  for (var ring = 0; ring < 2; ring++) {
+    let r = select(width + 0.5, max(width - 0.5, 1.0), ring == 0);
+    let ri = select(inside + 0.5, max(inside - 0.5, 1.0), ring == 0);
+    var edges = 0.0;
+    for (var i = 0u; i < 8u; i++) {
+      let a = f32(i) * FX_PI * 0.25;
+      let dir = vec2<f32>(cos(a), sin(a));
+      // The crease test at the line's width; the silhouette's at its
+      // inside share.
+      let step = vec2<i32>(round(dir * r));
+      let q = px + step;
+      let d = depth_at(q);
+      if (abs(d - d0) < d0 * fxp.outline.y * 4.0
+          && (!own || outline_texel(q).w != id.w)
+          && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
+        edges += 1.0;
+        continue;
+      }
+      if (inside <= 0.0) { continue; }
+      let si = vec2<i32>(round(dir * ri));
+      let qs = px + si;
+      let ds = depth_at(qs);
+      let back = px - si;
+      let planar = !is_sky(ds)
+          && outline_texel(qs).w == id.w && outline_texel(back).w == id.w
+          && dot(world_normal(qs), n0) > 0.999 && dot(world_normal(back), n0) > 0.999;
+      let ahead = select(d0, surface_ahead(d0, depth_at(back)), planar);
+      if (ds > ahead * (1.0 + fxp.outline.y)) {
+        edges += 1.0;
+      }
+    }
+    cover += 0.5 * clamp(edges, 0.0, 1.0);
+  }
+  let k = cover * color.a;
+  return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
+}
+
+// --- outlines outside the silhouette: a jump flood -----------------------
+//
+// Wide outlines round objects (Ben Golus, "The Quest for Very Wide
+// Outlines", 2020; the jump flood algorithm of Rong and Tan 2006,
+// re-implemented from their descriptions): every pixel finds the nearest
+// silhouette pixel of an outlined object in log2 passes, and is lined where
+// that object lies in front of it within its width, the coverage from the
+// true distance, so a line of any width up to 31 pixels is round at the
+// corners and anti-aliased.
+//
+// The field (Rgba32Float, outline-jfa.a/b): x the offset to the nearest
+// seed, packed ((dx + 64) + 128 (dy + 64)), -1 none; y the seed's line,
+// its 5:6:5 colour in the low 16 bits and its width in eighths of a pixel
+// above them; z the seed's depth; w the pixel's own depth (carried along).
+
+fn jfa_pack(o: vec2<i32>) -> f32 {
+  return f32((o.x + 64) + 128 * (o.y + 64));
+}
+
+fn jfa_unpack(p: f32) -> vec2<i32> {
+  let v = i32(p);
+  return vec2<i32>(v % 128 - 64, v / 128 - 64);
+}
+
+fn jfa_field(px: vec2<i32>) -> vec4<f32> {
+  return textureLoad(tex_depth, px, 0);
+}
+
+// The seeds: the pixels of an outlined object on its silhouette (a
+// neighbour farther by the depth threshold, or the sky), each carrying its
+// line (its own, else the scene's).
+@fragment
+fn fs_outline_seed(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let d0 = depth_at(px);
+  let none = vec4<f32>(-1.0, 0.0, 0.0, d0);
+  if (is_sky(d0)) { return none; }
+  let id = outline_texel(px);
+  var width = f32(id.z) / 8.0;
+  var packed = (id.x << 8u) | id.y;
+  if (width <= 0.0) {
+    width = fxp.outline.x;
+    let c = vec3<u32>(round(clamp(fxp.outline_color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)) * vec3<f32>(31.0, 63.0, 31.0)));
+    packed = (c.r << 11u) | (c.g << 5u) | c.b;
+  }
+  if (width <= 0.0) { return none; }
+  var silhouette = false;
+  for (var i = 0; i < 4; i++) {
+    let o = select(select(vec2<i32>(0, -1), vec2<i32>(0, 1), i == 2), select(vec2<i32>(-1, 0), vec2<i32>(1, 0), i == 0), i < 2);
+    let q = clamp(px + o, vec2<i32>(0), vec2<i32>(fxp.screen.xy) - 1);
     let d = depth_at(q);
-    let back = px - step;
-    let planar = !is_sky(d)
-        && outline_texel(q).w == id.w && outline_texel(back).w == id.w
-        && dot(world_normal(q), n0) > 0.999 && dot(world_normal(back), n0) > 0.999;
-    let ahead = select(d0, surface_ahead(d0, depth_at(back)), planar);
-    if (d > ahead * (1.0 + fxp.outline.y)) {
-      edges += 1.0;
-    } else if (abs(d - d0) < d0 * fxp.outline.y * 4.0
-        && (!own || outline_texel(q).w != id.w)
-        && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
-      edges += 1.0;
+    if (is_sky(d) || d > d0 * (1.0 + fxp.outline.y)) { silhouette = true; }
+  }
+  if (!silhouette) { return none; }
+  let line = f32(packed) + 65536.0 * round(clamp(width, 0.0, 31.875) * 8.0);
+  return vec4<f32>(jfa_pack(vec2<i32>(0)), line, d0, d0);
+}
+
+// One jump of `k` pixels: the nearest seed among the pixel's own and its
+// eight neighbours' at k.
+fn jfa_step(px: vec2<i32>, k: i32) -> vec4<f32> {
+  let size = vec2<i32>(fxp.screen.xy);
+  let here = jfa_field(px);
+  var best = here;
+  var best_d = 1e9;
+  if (here.x >= 0.0) { best_d = length(vec2<f32>(jfa_unpack(here.x))); }
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
+      if (x == 0 && y == 0) { continue; }
+      let step = vec2<i32>(x, y) * k;
+      let q = px + step;
+      if (any(q < vec2<i32>(0)) || any(q >= size)) { continue; }
+      let r = jfa_field(q);
+      if (r.x < 0.0) { continue; }
+      let o = jfa_unpack(r.x) + step;
+      if (any(abs(o) > vec2<i32>(63))) { continue; }
+      let d = length(vec2<f32>(o));
+      if (d < best_d) {
+        best_d = d;
+        best = vec4<f32>(jfa_pack(o), r.y, r.z, here.w);
+      }
     }
   }
-  let k = clamp(edges, 0.0, 1.0) * color.a;
-  return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
+  return best;
+}
+
+@fragment
+fn fs_jfa_16(in: VsOut) -> @location(0) vec4<f32> { return jfa_step(vec2<i32>(in.pos.xy), 16); }
+@fragment
+fn fs_jfa_8(in: VsOut) -> @location(0) vec4<f32> { return jfa_step(vec2<i32>(in.pos.xy), 8); }
+@fragment
+fn fs_jfa_4(in: VsOut) -> @location(0) vec4<f32> { return jfa_step(vec2<i32>(in.pos.xy), 4); }
+@fragment
+fn fs_jfa_2(in: VsOut) -> @location(0) vec4<f32> { return jfa_step(vec2<i32>(in.pos.xy), 2); }
+@fragment
+fn fs_jfa_1(in: VsOut) -> @location(0) vec4<f32> { return jfa_step(vec2<i32>(in.pos.xy), 1); }
+
+// The line outside: a pixel behind its nearest seed (or the sky) within the
+// seed's width (half of it with place both), covered by how far inside the
+// width its distance to the seed pixel's edge lies.
+@fragment
+fn fs_outline_wide(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let c = textureLoad(tex_a, px, 0);
+  let r = jfa_field(px);
+  if (r.x < 0.0) { return c; }
+  let o = jfa_unpack(r.x);
+  if (o.x == 0 && o.y == 0) { return c; }
+  if (!(is_sky(r.w) || r.w > r.z * (1.0 + fxp.outline.y))) { return c; }
+  let line = u32(r.y);
+  var width = f32(line >> 16u) / 8.0;
+  if (u32(fxp.outline.w + 0.5) == 2u) { width *= 0.5; }
+  let packed = line & 65535u;
+  let color = vec3<f32>(f32(packed >> 11u) / 31.0, f32((packed >> 5u) & 63u) / 63.0, f32(packed & 31u) / 31.0);
+  let dist = length(vec2<f32>(o)) - 0.5;
+  let k = clamp(width - dist + 0.5, 0.0, 1.0);
+  return vec4<f32>(mix(c.rgb, color, k), c.a);
 }
 
 // Where the surface at a pixel of depth `d0` goes on one step ahead, from

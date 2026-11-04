@@ -3,6 +3,7 @@
 use super::*;
 
 impl Renderer {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn write_frame_stylise_uniform(
         &self,
         st: &Stylise,
@@ -11,6 +12,7 @@ impl Renderer {
         upscale: u32,
         grid_offset: (u32, u32),
         lens: Option<LensDistortion>,
+        prepass: bool,
     ) {
         {
             // The chain's frame: the output's under TAAU (its prepass
@@ -172,6 +174,14 @@ impl Renderer {
                     let amount = l.amount.clamp(-1.0, 1.0);
                     let fit = 1.0 / (1.0 + amount.max(0.0) * far);
                     [amount, fit, l.center.x, l.center.y]
+                }),
+                paint2: pt.filter(|p| p.detail_aware()).map_or([0.0; 4], |p| {
+                    [
+                        p.detail.clamp(0.0, 1.0),
+                        p.character_detail.clamp(0.0, 1.0),
+                        prepass as u32 as f32,
+                        0.0,
+                    ]
                 }),
             };
             self.post.write_stylise(&self.queue, &u);

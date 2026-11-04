@@ -539,7 +539,10 @@ impl Renderer {
                 flat: material.flatShading != 0,
                 wireframe: (material.wireframe != 0).then(|| {
                     let c = material.color + material.emissive * material.emissiveIntensity;
-                    [c.x, c.y, c.z, material.opacity]
+                    (
+                        [c.x, c.y, c.z, material.opacity],
+                        material.wireframeAngle.clamp(0.0, 180.0),
+                    )
                 }),
             };
             let gpu = GpuMaterial {

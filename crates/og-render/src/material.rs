@@ -103,7 +103,7 @@ impl UvTransform {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 9)]
+#[reflect(name = "og.StandardMaterial", version = 10)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -214,6 +214,11 @@ pub struct StandardMaterial {
     /// `PostEffects::outline`, if any). Turns the outline pass on.
     #[reflect(min = 0.0, max = 31.0, default = 0.0, tunable)]
     pub outlineWidth: f32,
+    /// How much of its detail the painterly filter keeps on this material
+    /// (`Stylise::paint`, `Paint::detail`): 0 painted at the full radius,
+    /// 1 kept as drawn (a face, a hand, a sign's lettering).
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub paintDetail: f32,
     /// Leaf lighting: x translucency, y canopy dome-normal blend. Zero
     /// preserves ordinary surface shading; neither needs another texture.
     #[reflect(min = 0.0, max = 1.0, default = [0.0, 0.0], tunable)]
@@ -332,6 +337,11 @@ pub struct StandardMaterial {
     /// cast no shadow.
     #[reflect(min = 0.0, max = 1.0, default = 0.0)]
     pub wireframe: u32,
+    /// With `wireframe`: only the mesh's feature edges, its borders and the
+    /// edges whose faces meet at more than this many degrees (a vector or
+    /// neon outline of its form); 0 every triangle edge.
+    #[reflect(min = 0.0, max = 180.0, default = 0.0, tunable)]
+    pub wireframeAngle: f32,
     /// The uv offset `map` is sampled with, as three.js Texture.offset
     /// and glTF `KHR_texture_transform`: uv' = offset + rotate(rotation) *
     /// (repeat * uv), glTF's order.
@@ -427,6 +437,7 @@ impl Default for StandardMaterial {
             dissolveScale: 4.0,
             outlineColor: Vec3::ZERO,
             outlineWidth: 0.0,
+            paintDetail: 0.0,
             foliage: Vec2::ZERO,
             clearcoat: 0.0,
             clearcoatRoughness: 0.0,
@@ -460,6 +471,7 @@ impl Default for StandardMaterial {
             normalMapLayer: 0,
             styled: 1,
             wireframe: 0,
+            wireframeAngle: 0.0,
             mapOffset: Vec2::ZERO,
             mapRepeat: Vec2::ONE,
             mapRotation: 0.0,
@@ -930,7 +942,8 @@ pub(crate) struct MaterialUniform {
     /// Each slot's uv transform ([`StandardMaterial::uv_transforms`]'s
     /// order) as two rows: `[a, b, c, d]` (`u' = a u + b v`, `v' = c u +
     /// d v`) and `[tx, ty, 0, 0]`. Array materials use the base-map
-    /// translation row's spare zw for their base/normal array layers.
+    /// translation row's spare zw for their base/normal array layers;
+    /// `uv[3].z` (the metalness slot's spare) holds `paintDetail`.
     pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
@@ -973,6 +986,10 @@ pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> Stan
     }
     if style.flat_shading && s.flatShading == 0 {
         s.flatShading = 1;
+    }
+    if style.wireframe && s.wireframe == 0 {
+        s.wireframe = 1;
+        s.wireframeAngle = style.wireframe_angle.max(0.0);
     }
     s
 }
@@ -1051,7 +1068,11 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             m.foliage.x.clamp(0.0, 1.0),
             m.foliage.y.clamp(0.0, 1.0),
         ],
-        uv: uv_rows(&m.uv_transforms()),
+        uv: {
+            let mut uv = uv_rows(&m.uv_transforms());
+            uv[3][2] = m.paintDetail.clamp(0.0, 1.0);
+            uv
+        },
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
         previous_custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],
     }

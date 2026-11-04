@@ -6,10 +6,13 @@
 // turning towards the camera. tex_a: the lit image.
 
 // The prepass's reflectivity (tex_depth.g): x the gloss (1 - roughness),
-// y the metalness, packed in 255ths with the metalness times 256 above.
+// y the metalness, packed in 255ths with the metalness times 256 above,
+// in the low 16 bits (the painterly detail byte lies above them,
+// pbr_prepass.wgsl).
 fn ssr_surface(px: vec2<i32>) -> vec2<f32> {
   let size = vec2<i32>(textureDimensions(tex_depth));
-  let g = textureLoad(tex_depth, clamp(px, vec2<i32>(0), size - 1), 0).g;
+  let packed = textureLoad(tex_depth, clamp(px, vec2<i32>(0), size - 1), 0).g;
+  let g = packed - floor(packed / 65536.0) * 65536.0;
   let metal = floor(g / 256.0);
   return vec2<f32>((g - metal * 256.0) / 255.0, metal / 255.0);
 }

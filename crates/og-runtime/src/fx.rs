@@ -329,6 +329,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         draw,
         settings: render_settings,
         textures,
+        art,
         ..
     } = rs;
     let layouts = &draw.fx;
@@ -545,6 +546,8 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             lights: f(&p, "lights", d.lights),
         });
     }
+    // The art contract's line round meshes (ArtLine, art.rs).
+    super::art::mesh_line(&art.frame, &mut scene.stylise.material);
     if let Some(g) = resource(world, layouts.global_illumination.as_ref())
         && on(&g, "enabled", false)
         && gi_allowed(Some(&g), fx.gi_preset)
@@ -722,6 +725,12 @@ fn stylise(
             canvas_scale: f(&s, "paintCanvasScale", 1.0),
             canvas_space: space(&s["paintCanvasSpace"]),
             canvas_world_scale: f(&s, "paintCanvasWorldScale", 128.0),
+            detail: f(&s, "paintDetail", og_render::DEFAULT_PAINT_DETAIL),
+            character_detail: f(
+                &s,
+                "paintCharacterDetail",
+                og_render::DEFAULT_CHARACTER_DETAIL,
+            ),
         };
         if paint.radius > 0.0
             || paint.edge_darkening > 0.0
@@ -780,6 +789,15 @@ fn stylise(
             )),
             surface_strength: f(&m, "surfaceStrength", 1.0),
             surface_scale: f(&m, "surfaceScale", 0.0),
+            toon_ambient: f(&m, "toonAmbient", 0.0),
+            toon_softness: f(&m, "toonSoftness", og_render::DEFAULT_TOON_SOFTNESS),
+            outline_place: match variant(&m["outlinePlace"], &["inside", "outside", "both"]) {
+                1 => og_render::OutlinePlace::Outside,
+                2 => og_render::OutlinePlace::Both,
+                _ => og_render::OutlinePlace::Inside,
+            },
+            wireframe: on(&m, "wireframe", false),
+            wireframe_angle: f(&m, "wireframeAngle", og_render::DEFAULT_WIREFRAME_ANGLE),
         };
     }
     out

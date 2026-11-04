@@ -338,9 +338,9 @@ to 200 does.
 | **Voxel** (`voxel-worlds`) | `voxel` (the cube edge), `normals flat` | one `og.render.boxGeometry` of the edge placed on the grid by `mergeGeometries` (every position a whole multiple of the edge, in the model's own space), one merge per palette colour; a turned part stays on the grid (rebuild its cells, never rotate the merge); or a `.vox` model from a voxel editor (og-build §7) | `flatShading: true`, one palette colour per merge |
 | **Clay bevel** (`sculpted-clay`, `miniature-diorama`) | `bevel` (metres), `normals smooth` | soft volumes: lathes whose profiles round every corner with two or three extra points, `og.render.capsuleGeometry` for limbs, `extrudeGeometry` with `bevelThickness` and `bevelSize` at the contract's bevel and `bevelSegments` 3 or more, lumps of `sphereGeometry` merged; no knife edge anywhere | matte (`roughness` 0.6 to 0.9, `metalness` 0), saturated flat colours; a fingerprint or tool texture only where the style's checks ask for it |
 | **Paper fold** (`paper-craft`) | `normals flat` | sheets, not solids: `extrudeGeometry` of an og.Shape outline at a card's thickness (`depth` 0.002 to 0.01, `bevelEnabled: false`), each panel its own part turned about its fold line (a pivot on the crease), or `shapeGeometry` for a single sheet; volumes are boxes and prisms folded from those panels | `flatShading: true`, `roughness` 1, one flat colour per sheet, `side: "double"` on single sheets |
-| **Wireframe** (`neon-vector`) | a palette of black and 2 to 4 hues; the line is the shape | edges, not faces: `og.render.tubeGeometry` through the `points` of each line that draws the silhouette (`radius` 0.01 to 0.03, `radialSegments` 4 to 6), merged per hue; or a low-poly solid with `wireframe: true` for one-pixel lines (every triangle edge shows, so keep it to the polyhedra) | `unlit: true`, `emissive` at a palette hue with `emissiveIntensity` 2 to 4 so the look's bloom lights it; faces, where there are any, near-black |
+| **Wireframe** (`neon-vector`) | a palette of black and 2 to 4 hues; the line is the shape | edges, not faces: `og.render.tubeGeometry` through the `points` of each line that draws the silhouette (`radius` 0.01 to 0.03, `radialSegments` 4 to 6), merged per hue; or any solid with `wireframe: true` and `wireframeAngle` 30 for one-pixel lines along its feature edges only (its creases and borders: a box's 12 edges, a smooth body's open rims; the look's `MaterialStyle.wireframe` does this for every lit material) | `unlit: true`, `emissive` at a palette hue with `emissiveIntensity` 2 to 4 so the look's bloom lights it; faces, where there are any, near-black |
 
-The voxel and the wireframe recipes, as a factory's parts:
+The voxel, wireframe, clay and diorama recipes, as a factory's parts:
 
 ```ts
 /** A voxel tree: cells on a 0.1 m grid (ArtShape.voxel), one merge per palette colour. */
@@ -374,6 +374,49 @@ function neonGate(world: World, root: Entity) {
   }));
   const e = must(world.spawn({ name: "gate", parent: root }));
   world.insert(e, og.Mesh, { geometry: frame, material: glow });
+}
+```
+
+A clay figure is formed, not a primitive with a clay skin: soft masses
+that overlap and swell where a thumb pressed them, no straight edge, and
+the look's `MaterialStyle.surface clay` gives the skin. A diorama is a
+tabletop: a thick base with a bevelled rim and a visible side, the scene
+standing on it, seen from the look's `ArtCamera` (pitch 30 to 60).
+
+```ts
+/** A clay figure: overlapping lumps (spheres scaled into blobs) and capsule limbs, nothing hard-edged. */
+function clayFigure(world: World, root: Entity, body: Material, accent: Material) {
+  const lump = must(og.render.sphereGeometry(world, { radius: 0.5, widthSegments: 24, heightSegments: 16 }));
+  const limb = must(og.render.capsuleGeometry(world, { radius: 0.07, height: 0.22, capSegments: 6, radialSegments: 12 }));
+  const torso = must(og.render.mergeGeometries(world, {
+    parts: [
+      { geometry: lump, position: { x: 0, y: 0.35, z: 0 }, scale: { x: 0.5, y: 0.6, z: 0.42 } },
+      { geometry: lump, position: { x: 0, y: 0.18, z: 0.02 }, scale: { x: 0.56, y: 0.38, z: 0.48 } },
+      { geometry: lump, position: { x: 0, y: 0.78, z: 0 }, scale: { x: 0.36, y: 0.34, z: 0.34 } },
+      { geometry: limb, position: { x: -0.24, y: 0.4, z: 0 }, quaternion: { x: 0, y: 0, z: 0.26, w: 0.97 } },
+      { geometry: limb, position: { x: 0.24, y: 0.4, z: 0 }, quaternion: { x: 0, y: 0, z: -0.26, w: 0.97 } },
+    ],
+  }));
+  const nose = must(og.render.mergeGeometries(world, {
+    parts: [{ geometry: lump, position: { x: 0, y: 0.78, z: 0.17 }, scale: { x: 0.08, y: 0.07, z: 0.08 } }],
+  }));
+  for (const [name, geometry, material] of [["torso", torso, body], ["nose", nose, accent]] as const) {
+    const e = must(world.spawn({ name, parent: root }));
+    world.insert(e, og.Mesh, { geometry, material });
+  }
+}
+
+/** A diorama base: a thick bevelled slab whose side shows, the scene's ground its top face. */
+function dioramaBase(world: World, root: Entity, top: Material, side: Material) {
+  const outline = new og.Shape().moveTo(-1.5, -1).lineTo(1.5, -1).lineTo(1.5, 1).lineTo(-1.5, 1).closePath();
+  const slab = must(og.render.extrudeGeometry(world, { shapes: outline, depth: 0.25, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 3 }));
+  const lawn = must(og.render.extrudeGeometry(world, { shapes: outline, depth: 0.02, bevelEnabled: false }));
+  // Extruded along +Z: turned -90° about x so the slab lies flat, its top at y 0.
+  const flat = { x: -0.7071, y: 0, z: 0, w: 0.7071 };
+  const e = must(world.spawn({ name: "base", parent: root }));
+  world.insert(e, og.Mesh, { geometry: must(og.render.mergeGeometries(world, { parts: [{ geometry: slab, position: { x: 0, y: -0.29, z: 0 }, quaternion: flat }] })), material: side });
+  const g = must(world.spawn({ name: "lawn", parent: root }));
+  world.insert(g, og.Mesh, { geometry: must(og.render.mergeGeometries(world, { parts: [{ geometry: lawn, position: { x: 0, y: -0.02, z: 0 }, quaternion: flat }] })), material: top });
 }
 ```
 

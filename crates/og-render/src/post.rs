@@ -65,6 +65,9 @@ pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 /// reflections (`ssr.rs`; the prepass's own, 0 elsewhere).
 pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The outline jump flood's field (fxpost.wgsl `fs_outline_seed`): the
+/// nearest seed's packed offset, its line, its depth and the pixel's own.
+pub(crate) const JFA_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 /// The AO texture with contact shadows (fxpost.wgsl `fs_contact`): the AO
 /// in r, the contact lights' masks in gba.
@@ -218,6 +221,10 @@ pub(crate) struct StyliseUniform {
     /// scale that keeps a barrel's farthest corner on the image, zw the
     /// centre.
     pub lens: [f32; 4],
+    /// The paint pass's detail awareness: x `Paint::detail`, y
+    /// `Paint::character_detail`, z 1 when the prepass is bound (object
+    /// ids and the detail byte), w 0.
+    pub paint2: [f32; 4],
 }
 
 /// The grid the surface patterns are measured from (metres): a whole
@@ -541,6 +548,13 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_ao_upsample", AO_FORMAT),
     ("fs_contact", CONTACT_FORMAT),
     ("fs_outline", HDR_FORMAT),
+    ("fs_outline_seed", JFA_FORMAT),
+    ("fs_jfa_16", JFA_FORMAT),
+    ("fs_jfa_8", JFA_FORMAT),
+    ("fs_jfa_4", JFA_FORMAT),
+    ("fs_jfa_2", JFA_FORMAT),
+    ("fs_jfa_1", JFA_FORMAT),
+    ("fs_outline_wide", HDR_FORMAT),
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),
     ("fs_dof_composite", HDR_FORMAT),

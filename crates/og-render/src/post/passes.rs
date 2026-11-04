@@ -134,7 +134,9 @@ impl PostPasses {
         // the parameters, the palette, the canvas and its repeating sampler,
         // the blue-noise tile, the prepass's view depth and normals (ink on
         // depth edges; placeholders without a prepass) and the object
-        // pass's positions (object space; a zero texel without one).
+        // pass's positions (object space; a zero texel without one) and
+        // the outline target's object ids (the paint pass's object edges;
+        // black without a prepass).
         let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("stylise"),
             entries: &[
@@ -155,6 +157,7 @@ impl PostPasses {
                         multisampled: false,
                     },
                 ),
+                layout_entry(10, float_texture(false)),
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);

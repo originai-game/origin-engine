@@ -85,6 +85,10 @@ pub(crate) struct FrameUniform {
     pub env_dome: [[f32; 4]; 2],
     /// Current and previous drawn foliage winds, packed as seven vec4s each.
     pub foliage_wind: [crate::foliage::FoliageWind; 2],
+    /// `MaterialStyle`'s toon model: x the band edges' softness in pixels
+    /// (`toon_softness`, 0: hard steps), y how smooth a toon material's
+    /// ambient light stays (`toon_ambient`), zw unused.
+    pub toon: [f32; 4],
 }
 
 /// The camera's matrices for one frame.

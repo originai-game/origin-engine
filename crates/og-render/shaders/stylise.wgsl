@@ -3,10 +3,11 @@
 // pass from one LDR target into the next (or the output, encoding to sRGB
 // in the shader where the output is not an sRGB format):
 //
-//   paint     painterly smoothing (a Kuwahara filter, its sectors turned
-//             along the image's edges by `anisotropy`), pigment pooling at
-//             the edges, colour bleeding, a canvas laid over the frame or,
-//             in surface or object space, on the surfaces;
+//   paint     painterly smoothing (an anisotropic Kuwahara filter over a
+//             smoothed structure tensor, aware of objects and detail),
+//             pigment pooling at the edges, colour bleeding, a canvas laid
+//             over the frame or, in surface or object space, on the
+//             surfaces;
 //   lines     cross-hatching from the tone (and, with `hatchingDepth`, the
 //             prepass's contours), halftone dots on a rotated grid (both
 //             over the frame or, in surface or object space, on the
@@ -45,6 +46,7 @@ struct Stylise {
   surface: vec4<f32>,         // where the canvas (x), hatching (z) and halftone (w) lie: 0 screen, 1 world, 2 object space; y: canvas texels per metre
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
   lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
+  paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound (object ids, detail), w: 0
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -56,6 +58,7 @@ struct Stylise {
 @group(0) @binding(7) var pre_depth: texture_2d<f32>;   // the prepass view depth (R32Float); far without a prepass
 @group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
 @group(0) @binding(9) var pre_object: texture_2d<u32>;  // the object pass (stylise_object.wgsl): position bits, packed normal; 0 without
+@group(0) @binding(10) var pre_outline: texture_2d<f32>;  // the prepass's outline target (Rgba8Unorm): a the object id; 0 without
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -301,60 +304,177 @@ fn gradient(px: vec2<i32>) -> vec2<f32> {
   return vec2<f32>((tr + 2.0 * r + br) - (tl + 2.0 * l + bl), (bl + 2.0 * b + br) - (tl + 2.0 * t + tr));
 }
 
-// A Kuwahara filter: of the four sectors round the pixel, the mean of the
-// one with the least variance, so flat regions merge into strokes while
-// edges stay sharp. `anisotropy` turns and stretches the sectors along the
-// edge through the pixel.
-fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32) -> vec3<f32> {
-  let r = i32(ceil(radius));
-  let g = gradient(px);
-  let mag = length(g);
-  var angle = 0.0;
-  var stretch = 1.0;
-  if (anisotropy > 0.0 && mag > 1e-3) {
-    // Strokes run along the edge: perpendicular to the gradient.
-    angle = atan2(g.y, g.x) + 1.5707963;
-    stretch = 1.0 + anisotropy * 2.0;
+// The painterly filter (stylise.rs `Paint`), as the cook's texel-space
+// paint (og-cook conform/texture2d/paint.rs, the same algorithm and
+// constants, so the frame and the cook agree):
+//
+// 1. the structure tensor: Sobel derivatives of the colour, their outer
+//    products summed over the channels and smoothed by a Gaussian (sigma
+//    2, radius 3): the stroke's direction and how coherent the structure
+//    is (Kyprianidis, Kang and Döllner 2009);
+// 2. the anisotropic Kuwahara filter with eight sectors and polynomial
+//    weights (Kyprianidis 2010), its ellipse along the stroke, squeezed
+//    across it by the anisotropy: a port of Garrett Gunnell's (Acerola)
+//    AnisotropicKuwahara.shader, MIT (third_party/acerola-postprocessing).
+//    Coherent structure (an edge, a thin line) keeps its shape in a thin
+//    ellipse along itself; incoherent texture (grass, noise) is painted
+//    over in a round one;
+// 3. detail awareness, from the prepass where the frame has one: no tap
+//    crosses an object's edge (the outline target's id), and a pixel's
+//    detail (its material's paintDetail, or Stylise.paintCharacterDetail
+//    on a skinned instance: faces and hands) shrinks the radius, to the
+//    source itself at 1;
+// 4. pigment pooling as a density at the rims of regions (MNPR,
+//    Montesdeoca et al. 2018), bleeding, and the canvas.
+const PAINT_TENSOR_RADIUS: i32 = 3;
+const PAINT_TENSOR_SIGMA: f32 = 2.0;
+const PAINT_SHARPNESS: f32 = 8.0;
+const PAINT_HARDNESS: f32 = 8.0;
+const PAINT_ZERO_CROSSING: f32 = 0.58;
+const PAINT_ALPHA_FLOOR: f32 = 0.25;
+
+// The stroke frame at a pixel: the direction along the structure, its
+// anisotropy (0 to 1) and edge strength (the larger eigenvalue's root).
+struct PaintFrame {
+  dir: vec2<f32>,
+  aniso: f32,
+  edge: f32,
+};
+
+fn paint_frame(px: vec2<i32>) -> PaintFrame {
+  // The 9 x 9 block the 7 x 7 Sobel window reads, loaded once.
+  var block: array<vec3<f32>, 81>;
+  for (var j = -4; j <= 4; j++) {
+    for (var i = -4; i <= 4; i++) {
+      block[(j + 4) * 9 + i + 4] = load(px + vec2<i32>(i, j));
+    }
   }
-  let ca = cos(angle);
-  let sa = sin(angle);
-  var best = vec3<f32>(0.0);
-  var best_var = 1e9;
-  for (var s = 0; s < 4; s++) {
-    let sx = select(-1, 1, (s & 1) == 1);
-    let sy = select(-1, 1, (s & 2) == 2);
-    var sum = vec3<f32>(0.0);
-    var sum2 = vec3<f32>(0.0);
-    var n = 0.0;
-    for (var y = 0; y <= r; y++) {
-      for (var x = 0; x <= r; x++) {
-        // The sector's offset, turned and stretched along the stroke.
-        let o = vec2<f32>(f32(x * sx), f32(y * sy));
-        let t = vec2<f32>(o.x * ca - o.y * sa, o.x * sa + o.y * ca);
-        let e = vec2<f32>(t.x * stretch, t.y / stretch);
-        if (length(e) > radius * stretch) { continue; }
-        let c = load(px + vec2<i32>(round(e)));
-        sum += c;
-        sum2 += c * c;
-        n += 1.0;
+  var t = vec3<f32>(0.0);
+  var weight = 0.0;
+  for (var j = -PAINT_TENSOR_RADIUS; j <= PAINT_TENSOR_RADIUS; j++) {
+    for (var i = -PAINT_TENSOR_RADIUS; i <= PAINT_TENSOR_RADIUS; i++) {
+      let k = (j + 4) * 9 + i + 4;
+      let sx = ((block[k - 9 + 1] + 2.0 * block[k + 1] + block[k + 9 + 1])
+        - (block[k - 9 - 1] + 2.0 * block[k - 1] + block[k + 9 - 1])) * 0.25;
+      let sy = ((block[k + 9 - 1] + 2.0 * block[k + 9] + block[k + 9 + 1])
+        - (block[k - 9 - 1] + 2.0 * block[k - 9] + block[k - 9 + 1])) * 0.25;
+      let g = exp(-f32(i * i + j * j) / (2.0 * PAINT_TENSOR_SIGMA * PAINT_TENSOR_SIGMA));
+      t += vec3<f32>(dot(sx, sx), dot(sx, sy), dot(sy, sy)) * g;
+      weight += g;
+    }
+  }
+  t /= weight;
+  let root = sqrt((t.x - t.z) * (t.x - t.z) + 4.0 * t.y * t.y);
+  let l1 = 0.5 * (t.x + t.z + root);
+  let l2 = 0.5 * (t.x + t.z - root);
+  let v = vec2<f32>(l1 - t.x, -t.y);
+  var f: PaintFrame;
+  f.dir = select(vec2<f32>(0.0, 1.0), v / max(length(v), 1e-12), length(v) > 1e-12);
+  f.aniso = select(0.0, (l1 - l2) / (l1 + l2), l1 + l2 > 1e-12);
+  f.edge = sqrt(max(l1, 0.0));
+  return f;
+}
+
+// The outline target's object id under a pixel (0: none; also without a
+// prepass, st.paint2.z 0, where every tap counts).
+fn paint_object(px: vec2<i32>) -> u32 {
+  if (st.paint2.z < 0.5) { return 0u; }
+  let size = vec2<i32>(textureDimensions(pre_outline));
+  return u32(round(textureLoad(pre_outline, prepass_px(px, size), 0).a * 255.0));
+}
+
+// How much of its detail a pixel keeps (0 painted at the full radius, 1 the
+// source itself): the prepass's detail byte (pbr_prepass.wgsl: above the
+// reflectivity's 16 bits, the material's paintDetail in 7 bits, bit 7 a
+// skinned instance) times Stylise.paintDetail.
+fn paint_detail(px: vec2<i32>) -> f32 {
+  if (st.paint2.z < 0.5 || st.paint2.x <= 0.0) { return 0.0; }
+  let size = vec2<i32>(textureDimensions(pre_depth));
+  let g = textureLoad(pre_depth, prepass_px(px, size), 0).g;
+  let byte = u32(floor(g / 65536.0));
+  let material = f32(byte & 127u) / 127.0;
+  let character = select(0.0, st.paint2.y, (byte & 128u) != 0u);
+  return clamp(max(material, character) * st.paint2.x, 0.0, 1.0);
+}
+
+// The anisotropic Kuwahara filter of `radius` at a pixel (`f` its stroke
+// frame), leaving out taps on another object.
+fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<f32> {
+  var a = radius;
+  var b = radius;
+  if (anisotropy > 0.0) {
+    let alpha = max((1.0 - min(anisotropy, 1.0)) / anisotropy, PAINT_ALPHA_FLOOR);
+    a = radius * clamp((alpha + f.aniso) / alpha, 0.1, 2.0);
+    b = radius * clamp(alpha / (alpha + f.aniso), 0.1, 2.0);
+  }
+  // phi = -atan2(dir.y, dir.x): the rotation taking the stroke onto x.
+  let cos_phi = f.dir.x;
+  let sin_phi = -f.dir.y;
+  let max_x = i32(sqrt(a * a * cos_phi * cos_phi + b * b * sin_phi * sin_phi));
+  let max_y = i32(sqrt(a * a * sin_phi * sin_phi + b * b * cos_phi * cos_phi));
+  let zeta = 1.0 / max(radius, 1.0);
+  let sin_zc = sin(PAINT_ZERO_CROSSING);
+  let eta = (zeta + cos(PAINT_ZERO_CROSSING)) / (sin_zc * sin_zc);
+  let own = paint_object(px);
+  var m: array<vec4<f32>, 8>;
+  var s: array<vec3<f32>, 8>;
+  for (var y = -max_y; y <= max_y; y++) {
+    for (var x = -max_x; x <= max_x; x++) {
+      let o = vec2<f32>(f32(x), f32(y));
+      var v = vec2<f32>((cos_phi * o.x - sin_phi * o.y) * 0.5 / a, (sin_phi * o.x + cos_phi * o.y) * 0.5 / b);
+      if (dot(v, v) > 0.25) { continue; }
+      let q = px + vec2<i32>(x, y);
+      if (paint_object(q) != own) { continue; }
+      let c = clamp(load(q), vec3<f32>(0.0), vec3<f32>(1.0));
+      var w: array<f32, 8>;
+      var sum = 0.0;
+      for (var h = 0; h < 2; h++) {
+        let vxx = zeta - eta * v.x * v.x;
+        let vyy = zeta - eta * v.y * v.y;
+        let z = vec4<f32>(max(0.0, v.y + vxx), max(0.0, -v.x + vyy), max(0.0, -v.y + vxx), max(0.0, v.x + vyy));
+        let zz = z * z;
+        w[h] = zz.x;
+        w[2 + h] = zz.y;
+        w[4 + h] = zz.z;
+        w[6 + h] = zz.w;
+        sum += zz.x + zz.y + zz.z + zz.w;
+        v = 0.70710678 * vec2<f32>(v.x - v.y, v.x + v.y);
+      }
+      let g = exp(-3.125 * dot(v, v)) / max(sum, 1e-12);
+      for (var k = 0; k < 8; k++) {
+        let wk = w[k] * g;
+        m[k] += vec4<f32>(c * wk, wk);
+        s[k] += c * c * wk;
       }
     }
-    let mean = sum / max(n, 1.0);
-    let v = sum2 / max(n, 1.0) - mean * mean;
-    let variance = v.r + v.g + v.b;
-    if (variance < best_var) {
-      best_var = variance;
-      best = mean;
-    }
   }
-  return best;
+  var out = vec4<f32>(0.0);
+  for (var k = 0; k < 8; k++) {
+    if (m[k].w <= 0.0) { continue; }
+    let mean = m[k].rgb / m[k].w;
+    let var3 = abs(s[k] / m[k].w - mean * mean);
+    let sigma2 = var3.r + var3.g + var3.b;
+    let w = 1.0 / (1.0 + pow(PAINT_HARDNESS * 1000.0 * sigma2, 0.5 * PAINT_SHARPNESS));
+    out += vec4<f32>(mean * w, w);
+  }
+  if (out.w <= 0.0) { return load(px); }
+  return clamp(out.rgb / out.w, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn paint(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   var c = load(px);
+  var f: PaintFrame;
+  f.dir = vec2<f32>(0.0, 1.0);
+  f.aniso = 0.0;
+  f.edge = 0.0;
+  if (st.paint.x > 0.0 || st.paint.z > 0.0) {
+    f = paint_frame(px);
+  }
   if (st.paint.x > 0.0) {
-    c = kuwahara(px, st.paint.x, st.paint.y);
+    // Detail shrinks the radius: at 1 the ellipse holds the pixel alone.
+    let radius = st.paint.x * (1.0 - paint_detail(px));
+    c = kuwahara(px, radius, st.paint.y, f);
   }
   if (st.paint.w > 0.0) {
     // Wet in wet: colour from a ring two radii out bleeds in.
@@ -363,9 +483,10 @@ fn paint(in: VsOut) -> vec3<f32> {
     c = mix(c, around, st.paint.w * 0.5);
   }
   if (st.paint.z > 0.0) {
-    // Pigment pools where the colour changes: darker at the edges of regions.
-    let g = length(gradient(px));
-    c *= 1.0 - st.paint.z * clamp(g * 1.5, 0.0, 1.0) * 0.6;
+    // Pigment pools at the rims of regions: a denser pigment there, the
+    // colour raised to 1 + density, so the rim darkens and keeps its hue.
+    let density = st.paint.z * clamp(f.edge * 2.0, 0.0, 1.0);
+    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + density));
   }
   if (st.offset.z > 0.5 && st.canvas.x > 0.0) {
     var grain = 0.0;

@@ -58,6 +58,15 @@ pub(crate) enum FramePass {
     /// Glowing sprites into the glow buffer.
     Glow,
     Outline,
+    /// The outline jump flood's seeds (fxpost.wgsl `fs_outline_seed`):
+    /// with `MaterialStyle::outline_place` outside or both, the
+    /// silhouette pixels of outlined objects into `outline-jfa.a`.
+    OutlineSeed,
+    /// Jump `i` of [`JFA_STEPS`] (`fs_jfa_<step>`), between
+    /// `outline-jfa.a` and `outline-jfa.b`.
+    OutlineJump(u32),
+    /// The lines outside the silhouettes from the flood (`fs_outline_wide`).
+    OutlineWide,
     Taa,
     /// The sharpening after TAA (into `hdr.sharp`; the history stays soft).
     TaaSharpen,
@@ -115,6 +124,22 @@ pub(crate) enum FramePass {
     SmaaBlend,
     SmaaResolve,
     Upscale,
+}
+
+/// The outline jump flood's steps in pixels, one pass each (fxpost.wgsl
+/// `fs_jfa_<step>`): from half the widest line (31.875 px) down, with a
+/// second step of 1 (JFA+1, Rong and Tan 2006) for the last ties.
+pub(crate) const JFA_STEPS: [u32; 6] = [16, 8, 4, 2, 1, 1];
+
+/// The jump flood target jump `i` reads and the one it writes: from the
+/// seeds' `outline-jfa.a`, back and forth, the last (an even count) back
+/// in `.a`, which `OutlineWide` reads.
+pub(crate) fn jfa_targets(i: u32) -> (&'static str, &'static str) {
+    if i.is_multiple_of(2) {
+        ("outline-jfa.a", "outline-jfa.b")
+    } else {
+        ("outline-jfa.b", "outline-jfa.a")
+    }
 }
 
 /// The passes after the tonemap that `passes` holds, in the order they run.
@@ -203,6 +228,9 @@ impl FramePass {
             FramePass::Ssr => "ssr".into(),
             FramePass::Glow => "glow".into(),
             FramePass::Outline => "outline".into(),
+            FramePass::OutlineSeed => "outline-seed".into(),
+            FramePass::OutlineJump(i) => format!("outline-jump.{i}"),
+            FramePass::OutlineWide => "outline-wide".into(),
             FramePass::Taa => "taa".into(),
             FramePass::TaaSharpen => "taa-sharpen".into(),
             FramePass::DofCoc => "dof-coc".into(),
@@ -360,7 +388,9 @@ pub(super) fn lit_names(passes: &[FramePass]) -> LitNames {
     } else {
         base
     };
-    let main = if has(FramePass::Outline) {
+    let main = if has(FramePass::OutlineWide) {
+        "hdr.wide"
+    } else if has(FramePass::Outline) {
         "hdr.outline"
     } else {
         lit
@@ -636,8 +666,13 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Ssr) {
         g.transient("hdr.ssr", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
+    if has(FramePass::OutlineSeed) {
+        g.transient("outline-jfa.a", desc(w, h, JFA_FORMAT, 1, attach_bind))
+            .transient("outline-jfa.b", desc(w, h, JFA_FORMAT, 1, attach_bind));
+    }
     for (pass, name) in [
         (FramePass::Outline, "hdr.outline"),
+        (FramePass::OutlineWide, "hdr.wide"),
         (FramePass::TaaSharpen, "hdr.sharp"),
         (FramePass::DofComposite, "hdr.dof"),
         (FramePass::MotionBlur, "hdr.mb"),
@@ -859,6 +894,20 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 &[names.lit, "gbuffer", "lindepth", "outline-id"],
                 &["hdr.outline"],
             ),
+            FramePass::OutlineSeed => g.pass(
+                name,
+                &["lindepth", "gbuffer", "outline-id"],
+                &["outline-jfa.a"],
+            ),
+            FramePass::OutlineJump(i) => {
+                let (read, write) = jfa_targets(i);
+                g.pass(name, &[read, "gbuffer"], &[write])
+            }
+            FramePass::OutlineWide => g.pass(
+                name,
+                &["hdr.outline", "outline-jfa.a", "gbuffer"],
+                &["hdr.wide"],
+            ),
             // With a prepass TAA binds its velocity and view depth.
             // The OIT revealage is its reactive mask (taa.wgsl).
             FramePass::Taa => {
@@ -1008,7 +1057,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                     reads.push("smaa.weights");
                 }
                 if matches!(p, FramePass::Paint | FramePass::Lines) && prepass {
-                    reads.extend(["lindepth", "gbuffer"]);
+                    reads.extend(["lindepth", "gbuffer", "outline-id"]);
                     if cfg.object_space {
                         reads.push("object-space");
                     }
@@ -1307,6 +1356,44 @@ mod tests {
             let vis = &plan.physical()[plan.slot("flare.vis").unwrap()];
             assert_eq!((vis.width, vis.height), (FLARE_LIGHTS as u32, 1));
         }
+    }
+
+    /// Outlines outside the silhouette: the seeds, six jumps back and forth
+    /// between the flood's two targets and the composite run in that order
+    /// after the outline pass, the last jump writes the `.a` the composite
+    /// reads (an odd step count would leave the field in `.b`, the
+    /// composite reading the next-to-last jump), and TAA takes the
+    /// composite's image.
+    #[test]
+    fn the_outline_flood_runs_between_the_outline_pass_and_taa() {
+        let mut passes = vec![
+            FramePass::Prepass,
+            FramePass::Main,
+            FramePass::Outline,
+            FramePass::OutlineSeed,
+        ];
+        passes.extend((0..JFA_STEPS.len() as u32).map(FramePass::OutlineJump));
+        passes.extend([FramePass::OutlineWide, FramePass::Taa, FramePass::Tonemap]);
+        let plan = build_graph(&passes, &cfg(true, false)).compile().unwrap();
+        let names = plan.ordered_names();
+        let at = |name: &str| names.iter().position(|&n| n == name).unwrap();
+        assert!(at("outline") < at("outline-seed"));
+        for i in 0..JFA_STEPS.len() {
+            let before = if i == 0 {
+                "outline-seed".to_string()
+            } else {
+                format!("outline-jump.{}", i - 1)
+            };
+            assert!(at(&before) < at(&format!("outline-jump.{i}")));
+        }
+        assert!(at(&format!("outline-jump.{}", JFA_STEPS.len() - 1)) < at("outline-wide"));
+        assert!(at("outline-wide") < at("taa"));
+        assert_eq!(jfa_targets(JFA_STEPS.len() as u32 - 1).1, "outline-jfa.a");
+        assert_eq!(lit_names(&passes).main, "hdr.wide");
+        let format = |name| plan.slot(name).map(|s| plan.physical()[s].format);
+        assert_eq!(format("outline-jfa.a"), Some(JFA_FORMAT));
+        assert_eq!(format("outline-jfa.b"), Some(JFA_FORMAT));
+        assert_ne!(plan.slot("outline-jfa.a"), plan.slot("outline-jfa.b"));
     }
 
     /// Contact shadows write `ao` (the AO in r, the lights' masks in gba),

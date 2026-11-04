@@ -42,6 +42,19 @@ fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
   return textureSample(t, material_sampler, at);
 }
 
+// toon_aa for a fragment whose N·L towards the sun is `n_dot_l`: called in
+// uniform control flow (screen derivatives); with ANALYTIC (the visibility
+// buffer's resolve, whose neighbours are other triangles) a fixed hundredth
+// per pixel.
+fn toon_edges(n_dot_l: f32) {
+  let px = frame.toon.x;
+  if (ANALYTIC) {
+    toon_aa = 0.01 * px;
+  } else {
+    toon_aa = clamp(fwidth(n_dot_l), 1e-4, 0.25) * px;
+  }
+}
+
 fn world_dx(p: vec3<f32>) -> vec3<f32> {
   if (ANALYTIC) { return analytic_dx; }
   return dpdx(p);
@@ -294,6 +307,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
     shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
+  if (EFFECTS && material.toon.x > 0.5) {
+    toon_edges(dot(n, l));
+  }
   var color: vec3<f32>;
   if (EFFECTS && material.toon.x > 0.5) {
     color = toon_light(s, n, v, l, shadow) * frame.light_color.rgb;
@@ -349,13 +365,27 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // The baked lightmap or light volumes where there are (lightmap.rs), at
   // the environment's intensity; the hemisphere light adds at its own.
   let irradiance = ambient_irradiance(ambient_light(select(n, ambient_normal(in.clip.xy, n), EFFECTS), in.world_pos), in.world_pos, n);
-  let diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
+  var diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
   let r = reflect(-v, n);
   let mip = s.roughness * frame.params.y;
   // Relit by the realtime light volumes where there are (lightmap.rs).
   let prefiltered = gi_reflected(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
+  var specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
+  if (EFFECTS && material.toon.x > 0.5 && frame.toon.y < 1.0) {
+    // Toon ambient (frame.toon.y 0): one flat colour, the light from above
+    // and below averaged (MToon's equalised ambient), and the environment's
+    // reflection as its roughest, flat colour at f0, so the ramp's bands sit
+    // on flat colour instead of the PBR gradient that washed them out.
+    let up = vec3<f32>(0.0, 1.0, 0.0);
+    let flat_irradiance = 0.5 * (
+      ambient_irradiance(ambient_light_level(up, in.world_pos), in.world_pos, up) + ambient_irradiance(ambient_light_level(-up, in.world_pos), in.world_pos, -up));
+    let flat_hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
+    let flat_diffuse = (flat_irradiance * frame.params.x + flat_hemi) * s.albedo;
+    let flat_specular = reflected_light(up, in.world_pos, frame.params.y) * s.f0 * frame.params.x;
+    diffuse_ibl = mix(flat_diffuse, diffuse_ibl, frame.toon.y);
+    specular_ibl = mix(flat_specular, specular_ibl, frame.toon.y);
+  }
   let ao_sample = material_sample(ao_tex, UV_AO, uv).r;
   // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
   // diffuse_ibl and specular_ibl already).

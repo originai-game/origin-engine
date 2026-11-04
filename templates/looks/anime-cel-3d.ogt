@@ -10,6 +10,7 @@ MaterialStyle {
   shadowTintAmount 0.7
   outlineWidth 2.5
   outlineDistance 10
+  outlinePlace outside
   outlineColor "#141028"
 }
 RenderSettings {

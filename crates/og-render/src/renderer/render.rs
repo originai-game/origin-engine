@@ -243,6 +243,11 @@ impl Renderer {
             || depth_bands.is_some()
             || ink_depth
             || scene.stylise.on_surfaces()
+            // The painterly filter's object edges and detail, where meshes
+            // are drawn (a 2D scene's prepass would hold nothing).
+            || (WORLD_3D
+                && scene.stylise.paint.is_some_and(|p| p.detail_aware())
+                && !(batches.is_empty() && skinned_batches.is_empty()))
             || outline
             || dof.is_some()
             || motion_blur.is_some()
@@ -2206,6 +2211,12 @@ impl Renderer {
             origin: scene.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
             foliage_wind: crate::foliage::foliage_winds(scene, self.previous_wind).1,
+            toon: [
+                scene.stylise.material.toon_softness.clamp(0.0, 4.0),
+                scene.stylise.material.toon_ambient.clamp(0.0, 1.0),
+                0.0,
+                0.0,
+            ],
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
@@ -2649,6 +2660,12 @@ impl Renderer {
         }
         if outline {
             passes.push(FramePass::Outline);
+            // Lines outside the silhouettes: the jump flood (fxpost.wgsl).
+            if scene.stylise.material.outline_place != crate::OutlinePlace::Inside {
+                passes.push(FramePass::OutlineSeed);
+                passes.extend((0..post::JFA_STEPS.len() as u32).map(FramePass::OutlineJump));
+                passes.push(FramePass::OutlineWide);
+            }
         }
         if taa {
             passes.push(FramePass::Taa);
@@ -2769,7 +2786,15 @@ impl Renderer {
                 .map_or(u64::MAX, |t| t.index() as u64);
             scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40)
         };
-        self.write_frame_stylise_uniform(st, scene, (&camera, &cam), upscale, grid_offset, lens);
+        self.write_frame_stylise_uniform(
+            st,
+            scene,
+            (&camera, &cam),
+            upscale,
+            grid_offset,
+            lens,
+            prepass,
+        );
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));

@@ -200,7 +200,8 @@ struct PrepassOut {
   @location(4) local_pos: vec3<f32>,
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
-  // Which object this is (`object_id`), for the outline pass.
+  // Which object this is (`object_id`), for the outline pass; bit 8 set
+  // on a skinned instance (vs_prepass_skinned).
   @location(8) @interpolate(flat) object: u32,
 };
 
@@ -394,35 +395,68 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
     }
   }
   var p = prepass_vertex_from(model, prev, now, before);
-  // The instance's, not the skinned vertex's (its joints move it).
-  p.object = object_id(i.m0, i.m1, i.m2, i.m3);
+  // The instance's, not the skinned vertex's (its joints move it); bit 8
+  // marks a skinned instance, a character, whose face and hands the
+  // painterly filter keeps (Stylise.paintCharacterDetail, pbr_prepass.wgsl).
+  p.object = object_id(i.m0, i.m1, i.m2, i.m3) | 256u;
   return p;
 }
 
 // False for materials and frames without effects: their code folds away.
 override EFFECTS: bool = true;
 
+// The width of a toon band's edge in N·L (half of it each side), from the
+// fragment's screen derivatives times the style's softness in pixels
+// (frame.toon.x; lilToon's anti-aliased shading): set by the lit fragment
+// before it shades (pbr_fs.wgsl toon_edges), 0 for hard steps.
+var<private> toon_aa: f32 = 0.0;
+
+// A toon step at `edge`: 0 below, 1 above, over toon_aa (hard without).
+fn toon_step(x: f32, edge: f32) -> f32 {
+  if (toon_aa <= 0.0) { return select(0.0, 1.0, x > edge); }
+  return smoothstep(edge - toon_aa, edge + toon_aa, x);
+}
+
 // The toon ramp: N·L (times shadow) to the light received, from the
-// gradient map's first row without filtering, or three built-in bands.
+// gradient map's first row without filtering, or three built-in bands;
+// each band edge anti-aliased over toon_aa.
 fn toon_ramp(x: f32) -> f32 {
   let t = clamp(x, 0.0, 1.0);
   if (material.toon.x < 1.5) {
     let w = i32(textureDimensions(gradient_tex).x);
-    let i = clamp(i32(t * f32(w)), 0, w - 1);
-    return textureLoad(gradient_tex, vec2<i32>(i, 0), 0).r;
+    let p = t * f32(w);
+    let i = clamp(i32(p), 0, w - 1);
+    let here = textureLoad(gradient_tex, vec2<i32>(i, 0), 0).r;
+    if (toon_aa <= 0.0) { return here; }
+    // The texel boundary nearer p blends into its neighbour over the edge.
+    let f = p - floor(p);
+    let hw = max(toon_aa * f32(w), 1e-4);
+    if (f < 0.5) {
+      let before = textureLoad(gradient_tex, vec2<i32>(max(i - 1, 0), 0), 0).r;
+      return mix(before, here, smoothstep(-hw, hw, f));
+    }
+    let after = textureLoad(gradient_tex, vec2<i32>(min(i + 1, w - 1), 0), 0).r;
+    return mix(here, after, smoothstep(-hw, hw, f - 1.0));
   }
-  return select(select(0.22, 0.6, t > 0.08), 1.0, t > 0.45);
+  return 0.22 + 0.38 * toon_step(t, 0.08) + 0.4 * toon_step(t, 0.45);
 }
 
-// Cel-shaded light: the ramp on the diffuse, a hard specular highlight.
+// Cel-shaded light: the ramp on the colour and a toon highlight. A metal
+// bands as a dielectric does, in its own colour (f0): the PBR diffuse's
+// (1 - metallic) would leave it only its reflection, which never bands.
+// The highlight is a band of the Blinn-Phong lobe, as large as the
+// roughness makes it, anti-aliased, in f0's colour at the lobe's
+// normalised peak, shadowed.
 fn toon_light(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32) -> vec3<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   let band = toon_ramp(n_dot_l * shadow);
   let h = normalize(v + l);
   let shine = exp2(10.0 * (1.0 - s.roughness) + 1.0);
-  let spec = smoothstep(0.48, 0.52, pow(max(dot(n, h), 0.0), shine) * shadow);
-  let kd = (1.0 - s.metallic) * s.albedo / PI;
-  return kd * band + s.f0 * spec * (1.0 - s.roughness);
+  let lobe = pow(max(dot(n, h), 0.0), shine) * shadow * select(0.0, 1.0, n_dot_l > 0.0);
+  let spec = toon_step(lobe, 0.5);
+  let peak = min((shine + 2.0) / 8.0, 4.0);
+  let kd = mix(s.albedo, s.f0, s.metallic) / PI;
+  return kd * band + s.f0 * spec * peak * mix(1.0 - s.roughness, 1.0, s.metallic);
 }
 
 // The material style's shadow darkness (frame.outline_style.y): what a

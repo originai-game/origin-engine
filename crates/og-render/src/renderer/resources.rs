@@ -235,8 +235,10 @@ pub(crate) struct GpuMaterial {
     pub(crate) lean: bool,
     /// Flat-shaded: its normals come from screen derivatives.
     pub(crate) flat: bool,
-    /// Drawn as its triangles' edges in this colour (`lines.rs`), not as triangles.
-    pub(crate) wireframe: Option<[f32; 4]>,
+    /// Drawn as its triangles' edges in this colour (`lines.rs`), not as
+    /// triangles: every edge, or with a feature angle above 0 its borders
+    /// and creases past that angle (`lines::feature_edges`).
+    pub(crate) wireframe: Option<([f32; 4], f32)>,
 }
 
 pub(crate) struct GpuTexture {

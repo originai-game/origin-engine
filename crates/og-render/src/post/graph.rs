@@ -294,11 +294,15 @@ impl FrameGraph {
                 self.try_view("object-space")
                     .filter(|_| lines)
                     .unwrap_or(&passes.no_object),
+                // The object ids the paint pass keeps its taps within.
+                self.try_view("outline-id")
+                    .filter(|_| lines)
+                    .unwrap_or(&passes.black),
             )
         };
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
-            let (depth, normals, object) = prepass_of(p);
+            let (depth, normals, object, ids) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
                 group(
                     "fxaa",
@@ -354,6 +358,7 @@ impl FrameGraph {
                         tex(depth),
                         tex(normals),
                         tex(object),
+                        tex(ids),
                     ],
                 )
             };
@@ -540,6 +545,15 @@ impl FrameGraph {
                 FramePass::Outline => {
                     pair(&|_| fx_group(self.view(names.lit), self.view("outline-id")))
                 }
+                FramePass::OutlineSeed => pair(&|_| fx_group(black, self.view("outline-id"))),
+                // The flood's field in the depth's slot (unfilterable).
+                FramePass::OutlineJump(i) => {
+                    let (read, _) = super::plan::jfa_targets(i);
+                    pair(&|_| fx_group_depth(black, self.view(read), black))
+                }
+                FramePass::OutlineWide => pair(&|_| {
+                    fx_group_depth(self.view("hdr.outline"), self.view("outline-jfa.a"), black)
+                }),
                 FramePass::DofCoc => pair(&|slot| fx_after(stage(names.aa, slot), black)),
                 FramePass::DofBlur => pair(&|_| fx_after(self.view("dof.coc"), black)),
                 FramePass::DofComposite => {
@@ -641,6 +655,18 @@ impl FrameGraph {
             FramePass::AoUpsample => Some(("fs_ao_upsample", ao)),
             FramePass::Contact => Some(("fs_contact", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
+            FramePass::OutlineSeed => Some(("fs_outline_seed", "outline-jfa.a")),
+            FramePass::OutlineJump(i) => Some((
+                match super::plan::JFA_STEPS[i as usize] {
+                    16 => "fs_jfa_16",
+                    8 => "fs_jfa_8",
+                    4 => "fs_jfa_4",
+                    2 => "fs_jfa_2",
+                    _ => "fs_jfa_1",
+                },
+                super::plan::jfa_targets(i).1,
+            )),
+            FramePass::OutlineWide => Some(("fs_outline_wide", "hdr.wide")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
             FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
             FramePass::DofComposite => Some(("fs_dof_composite", "hdr.dof")),
@@ -870,6 +896,9 @@ impl FrameGraph {
             | FramePass::AoUpsample
             | FramePass::Contact
             | FramePass::Outline
+            | FramePass::OutlineSeed
+            | FramePass::OutlineJump(_)
+            | FramePass::OutlineWide
             | FramePass::DofCoc
             | FramePass::DofBlur
             | FramePass::DofComposite
