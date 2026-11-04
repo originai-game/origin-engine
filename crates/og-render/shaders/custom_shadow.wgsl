@@ -30,9 +30,10 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: Custo
 }
 
 @fragment
-fn fs_hooked(in: CustomOut) -> @location(0) vec4<f32> {
+fn fs_hooked(in: CustomOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
+  if (shadow_culled(front)) { discard; }
   let cut = custom_cut(custom_surface(in, vec3<f32>(0.0)));
   if (cut) { discard; }
   if (shadow_pass.light.w > 0.0) {

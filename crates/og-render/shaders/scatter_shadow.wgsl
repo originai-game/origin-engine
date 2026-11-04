@@ -26,9 +26,10 @@ fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
 }
 
 @fragment
-fn fs_shadow(in: ScatterShadowOut) -> @location(0) vec4<f32> {
+fn fs_shadow(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
+  if (shadow_culled(front)) { discard; }
   let base_uv = material_uv(UV_MAP, in.uv);
   let a = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a;
   if ((material.emissive.w >= 0.0 && a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
