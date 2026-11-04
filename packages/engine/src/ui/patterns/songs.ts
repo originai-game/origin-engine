@@ -14,6 +14,7 @@ import {
   shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 import { cornerTag } from "./rewards.ts";
+import { stepSize } from "../feedback/core.ts";
 
 /** Seconds as m:ss. */
 function mmss(s: number): string {
@@ -145,8 +146,14 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
       });
     }
     // The charts: a chip each, its name in caps over its level; the selected lit with a rim and a bar under it.
-    // One row of chips sharing the width (a chart never wraps under its neighbours).
-    kit.open("Charts", { direction: "row", gap: u(phone ? 6 : 10), width: grow() });
+    // A row of chips sharing the width. When their names outgrow it (large text, long names) they keep their widths:
+    // compact, the row scrolls sideways (a chart never wraps under its neighbours, the wheel keeps the height); beside
+    // the jacket, in the detail's own scroll, they wrap. The sideways scroller's width as laid last tick.
+    const chipGap = u(phone ? 6 : 10);
+    if (compact) {
+      kit.openScroll("Charts", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal", hideBars: true } as never);
+      kit.open("Chips", { direction: "row", gap: chipGap, width: { kind: "fit", min: kit.bounds(recallPath(`${id}~charts`))?.width || W } });
+    } else kit.open("Charts", { direction: "row", gap: chipGap, width: grow(), wrap: true });
     charts.forEach((c) => {
       const on = !!chart && chart.key === c.key;
       const ix = lastInteraction(c.key ?? "");
@@ -187,6 +194,10 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
       }
     });
     kit.close();
+    if (compact) {
+      kit.close();
+      rememberPath(`${id}~charts`, kit.lastPath());
+    }
     kit.semantics({ role: "radiogroup", name: song?.title ?? "" });
     // The best (on a phone in portrait it is a line in the head, so the wheel keeps its room): the score in tabular numerals, the grade in the display face, the full combo badge, the accuracy ring.
     if (!compact) kit.row("Best", { width: grow(), gap: u(phone ? 14 : 28), cross: "center", wrap: true, part: "Songs.score", partClass: "badge" }, () => {
@@ -211,17 +222,42 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
     kit.close();
   };
 
+  // The wheel's rows take their words' height (at 200 % text the design's row is too short for a title over an artist).
+  const lh = (s: Api.TypeStepName): number => stepSize(s).line;
+  // A row's end stacks its lock or New tag over its BPM.
+  const rowWords = (sel: boolean, marked: boolean): number => u(16) + Math.max(lh(st(sel ? 20 : 16)) + u(2) + lh(st(13)), (marked ? Math.max(u(16), u(6) + lh(st(12))) + u(4) : 0) + lh(st(sel ? 18 : 15)));
+  const rowDesign = u(phone ? 64 : 84);
+  const bigDesign = Math.round(rowDesign * (portrait ? 1 : 1.22));
+  const rowH = Math.max(rowDesign, rowWords(false, songs.some((s) => s.locked || s.isNew)));
+  const big = Math.max(Math.round(rowH * (portrait ? 1 : 1.22)), rowWords(true, !!song && (!!song.locked || !!song.isNew)));
+  const gap = u(phone ? 6 : 10);
+  const colGap = u(phone ? 12 : 28);
+
   if (portrait) {
-    kit.row("Top", { width: grow(), gap: u(14), cross: "center" }, () => {
-      left();
-      kit.column("Side", { width: grow(), gap: u(4) }, () => {
-        text("Title", song?.title ?? "", { step: "xl3", font: "display", heading: true, maxLines: 2, width: grow() });
-        kit.props(fade);
-        text("Artist", song?.artist ?? "", { step: st(15), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
-        if ((song?.bpm ?? 0) > 0) text("Stats", `${desc.bpmLabel ?? "BPM"} ${Math.round(song!.bpm!)} · ${mmss(song?.seconds ?? 0)}`, { step: st(13), font: "mono", color: "inkMuted", nowrap: true });
-        if ((song?.best ?? 0) > 0) text("Best", [`${desc.bestLabel ?? "Best score"} ${grouped(song!.best!)}`, song?.grade ?? ""].filter(Boolean).join(" · "), { step: st(13), font: "mono", nowrap: true, ellipsis: true, width: grow() });
+    // The head (the song's jacket and words) scrolls in the height the charts, the wheel's selected row, the preview and
+    // Play leave it, so at large text none of them is pushed past the screen; their heights as laid last tick, before
+    // that a guess. Short of its title's first line it is left out: the selected row names the song.
+    const laid = (k: string, guess: number): number => kit.bounds(recallPath(`${id}~${k}`))?.height || guess;
+    const chartsH = laid("detail", u(12) + lh(st(11)) + lh(st(20)));
+    const previewH = laid("preview", u(20) + Math.max(u(44), u(30) + u(4) + lh(st(12))));
+    const playH = laid("play", Math.max(44, u(48)));
+    const headRoom = H - chartsH - big - previewH - playH - colGap * 4;
+    if (headRoom >= lh("xl3")) {
+      kit.openScroll("Head", { width: grow(), height: { kind: "fit", max: headRoom }, padding: xy(0, 0), fade: 24, fadeInto: "shadow" } as never);
+      kit.row("Top", { width: grow(), gap: u(14), cross: "center" }, () => {
+        left();
+        kit.column("Side", { width: grow(), gap: u(4) }, () => {
+          text("Title", song?.title ?? "", { step: "xl3", font: "display", heading: true, maxLines: 2, width: grow() });
+          kit.props(fade);
+          text("Artist", song?.artist ?? "", { step: st(15), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+          if ((song?.bpm ?? 0) > 0) text("Stats", `${desc.bpmLabel ?? "BPM"} ${Math.round(song!.bpm!)} · ${mmss(song?.seconds ?? 0)}`, { step: st(13), font: "mono", color: "inkMuted", nowrap: true });
+          if ((song?.best ?? 0) > 0) text("Best", [`${desc.bestLabel ?? "Best score"} ${grouped(song!.best!)}`, song?.grade ?? ""].filter(Boolean).join(" · "), { step: st(13), font: "mono", nowrap: true, ellipsis: true, width: grow() });
+        });
       });
-    });
+      kit.close();
+    }
+    detail(true);
+    rememberPath(`${id}~detail`, kit.lastPath());
   }
   if (!portrait) {
     // The jacket and the detail side by side, the preview's bar, the accuracy ring and Play across their foot.
@@ -238,22 +274,20 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
         play(px(u(220)));
       });
     });
-  } else detail(true);
+  }
 
   // The wheel: the rows around the selected one, leaning away and fading as they go; gliding as the selection moves.
   const ww = portrait ? W : Math.round(W * 0.32);
   // The wheel grows into the room the column leaves it; its rows are placed by the height it had last tick.
-  // Before it has a height, a guess short of the room (a row built past the edge would stand off the screen for a tick).
-  const room = portrait ? Math.max(u(200), H - jacket - u(260)) : H;
+  // Before it has a height, a guess short of the room (a row built past the edge would stand off the screen for a tick):
+  // on a phone in portrait the selected row alone, the least it is kept.
+  const room = portrait ? big : H;
   const laidWheel = kit.bounds(recallPath(`${id}~wheel`))?.height ?? 0;
-  const wh = laidWheel > 0 ? Math.min(laidWheel, room) : Math.round(room * 0.8);
-  const rowH = u(phone ? 64 : 84);
-  const big = Math.round(rowH * (portrait ? 1 : 1.22));
-  const gap = u(phone ? 6 : 10);
+  const wh = Math.max(big, laidWheel > 0 ? (portrait ? laidWheel : Math.min(laidWheel, room)) : Math.round(room * (portrait ? 1 : 0.8)));
   // Whole rows only: a row the wheel's edge would cut stays unbuilt (the wheel does not clip, so a cut row would stand
   // over the head or the detail).
   const reach = Math.max(0, Math.floor((wh / 2 - big / 2) / (rowH + gap)));
-  kit.open("Wheel", { width: px(ww), height: grow(), part: "Songs.wheel", partClass: "panel" });
+  kit.open("Wheel", { width: px(ww), height: { kind: "grow", min: big }, part: "Songs.wheel", partClass: "panel" });
   for (let k = Math.max(0, si - reach); k <= Math.min(songs.length - 1, si + reach); k++) {
     const s = songs[k]!;
     const off = k - si;
@@ -294,7 +328,8 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
         strokes: sel ? [line(u(2), token("focus"))] : ix.hovered || ix.focused ? [line(u(1.5), token("ink", 0.35))] : [line(1, token("ink", 0.08))],
         effects: [shadow(u(sel ? 8 : 3), u(sel ? 22 : 10), 0.5), ...(sel ? [glow(u(8), token("focus", 0.4), 0)] : [])],
       });
-      const aj = h - u(16);
+      // The row's jacket keeps the design's size as the row grows with its words, so they keep their width.
+      const aj = Math.min(h, sel ? bigDesign : rowDesign) - u(16);
       artSlot("Jacket", "Songs.rowJacket", { texture: s.jacket ?? null, kind: "jacket", width: px(aj), height: px(aj), radius: Math.max(4, t.small) }, () => {
         if (s.locked) {
           kit.open("Dim", { width: grow(), height: grow() });
@@ -338,7 +373,10 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   rememberPath(`${id}~wheel`, kit.lastPath());
   kit.semantics({ role: "listbox", name: song?.title ?? "Songs" });
   kit.remember(`~g.f.${id}`, 1);
-  if (portrait) previewBar(W);
+  if (portrait) {
+    previewBar(W);
+    rememberPath(`${id}~preview`, kit.lastPath());
+  }
 
   // Tab and the bumpers step the chart among the open ones; confirm on the wheel plays.
   const open = charts.filter((c) => !c.locked);
@@ -348,7 +386,10 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
     out.difficulty = open[(at + step + open.length) % open.length]!.key ?? null;
     kit.feedback("tab", -1);
   }
-  if (portrait) play(grow());
+  if (portrait) {
+    play(grow());
+    rememberPath(`${id}~play`, kit.lastPath());
+  }
   if (out.refused) {
     kit.remember("~g.rt", tick);
     kit.remember("~g.rk", keyHash(out.refused));
