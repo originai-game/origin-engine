@@ -10,12 +10,27 @@
 //! reads one storage buffer (each pixel's record slot, then the records)
 //! and one uniform beside the lit pipelines' own: no texture, as the lit
 //! fragment stage already samples 15 of WebGPU's 16.
+//!
+//! The resolve's pipelines are made inside error scopes. A device that
+//! refuses one (the Pixel 10's PowerVR D-Series driver answers
+//! VK_ERROR_UNKNOWN to the lit resolve, a valid pipeline its compiler does
+//! not fit: tests/evidence/compat/android/) turns the visibility buffer off
+//! for good, and its clusters draw on the hardware path as they do with
+//! `RenderScene::visibility_buffer` off; until the device has answered
+//! (the web answers on a later frame) the soft clusters are not resolved.
+//! Drawing with a refused pipeline invalidated the whole frame's commands.
 
 use super::{
     RECORD_ROWS, RECORD_ROWS_EXTRA, RasterParams, WORKGROUPS_PER_ROW, buffer, entry, storage,
 };
 use crate::Side;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
+
+/// A pipeline's error scope, until the device answers it.
+type Check = Pin<Box<dyn Future<Output = Option<wgpu::Error>>>>;
 
 pub(crate) struct VisBuffer {
     layout: wgpu::BindGroupLayout,
@@ -36,6 +51,11 @@ pub(crate) struct VisBuffer {
     /// The resolve's lit pipelines by `effects`, and its prepass one.
     pub(crate) lit: HashMap<bool, wgpu::RenderPipeline>,
     pub(crate) prepass: Option<wgpu::RenderPipeline>,
+    /// The resolve's pipelines' error scopes the device has not answered.
+    checks: Vec<Check>,
+    /// What the device said when it refused one: the visibility buffer is
+    /// off from then on.
+    refused: Option<String>,
 }
 
 /// What [`VisBuffer::encode`] reads this frame.
@@ -143,7 +163,40 @@ impl VisBuffer {
             resolve_group: None,
             lit: HashMap::new(),
             prepass: None,
+            checks: Vec::new(),
+            refused: None,
         }
+    }
+
+    /// Whether the soft clusters can be resolved: no resolve pipeline was
+    /// refused and the device has answered for every one made. Polls the
+    /// answers first; a refusal forgets the pipelines and is logged once.
+    pub fn usable(&mut self) -> bool {
+        let mut cx = Context::from_waker(Waker::noop());
+        let mut refused = None;
+        self.checks.retain_mut(|c| match c.as_mut().poll(&mut cx) {
+            Poll::Ready(Some(e)) => {
+                refused.get_or_insert_with(|| e.to_string());
+                false
+            }
+            Poll::Ready(None) => false,
+            Poll::Pending => true,
+        });
+        if let Some(e) = refused {
+            log::warn!(
+                "og-render: the device refused the visibility buffer's resolve; its clusters draw on the hardware path: {e}"
+            );
+            self.checks.clear();
+            self.clear_pipelines();
+            self.refused = Some(e);
+        }
+        self.ready()
+    }
+
+    /// No resolve pipeline refused and every one answered for, as last
+    /// polled: the draw resolves the soft clusters only then.
+    pub fn ready(&self) -> bool {
+        self.refused.is_none() && self.checks.is_empty()
     }
 
     /// Rasterises the frame's soft list into `encoder` and makes the
@@ -268,6 +321,12 @@ impl VisBuffer {
         prepass: bool,
         samples: u32,
     ) {
+        if self.refused.is_some() {
+            return;
+        }
+        // Inner first: a validation error, else the driver's own (internal).
+        let internal = device.push_error_scope(wgpu::ErrorFilter::Internal);
+        let validation = device.push_error_scope(wgpu::ErrorFilter::Validation);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("meshlet resolve"),
             bind_group_layouts: &[
@@ -311,11 +370,88 @@ impl VisBuffer {
                 Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),
             ));
         }
+        self.checks.push(Box::pin(validation.pop()));
+        self.checks.push(Box::pin(internal.pop()));
+        // Native devices answer at once: a refusal is known before the draw.
+        let _ = self.usable();
     }
 
     /// Forgets the resolve's pipelines (the lit module changed).
     pub fn clear_pipelines(&mut self) {
         self.lit.clear();
         self.prepass = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_resolve_pipeline_the_device_refuses_turns_the_visibility_buffer_off() {
+        // The backend a renderer picks (RenderDesc's default).
+        let instance = crate::RenderDesc::default().backend.instance();
+        let adapter = pollster::block_on(instance.request_adapter(&Default::default()))
+            .expect("a GPU adapter (og-render's tests draw on the GPU)");
+        let (device, _queue) =
+            pollster::block_on(adapter.request_device(&Default::default())).expect("a device");
+        let wind = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: None,
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba16Float,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&Default::default());
+        let mut vis = VisBuffer::new(&device, wind);
+        assert!(vis.usable(), "nothing asked of the device yet");
+        let empty = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[],
+        });
+        // A lit module without the resolve's entry points: the device
+        // refuses its pipelines as the PowerVR driver refuses the real one.
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(
+                "@vertex fn vs() -> @builtin(position) vec4<f32> { return vec4<f32>(0.0); }".into(),
+            ),
+        });
+        vis.ensure_pipelines(
+            &device,
+            [&empty, &empty, &empty],
+            &module,
+            [false, true],
+            true,
+            1,
+        );
+        // Native devices answer at once: no pipeline is left to draw with.
+        assert!(!vis.usable());
+        assert!(vis.lit.is_empty() && vis.prepass.is_none());
+        assert!(
+            vis.refused
+                .as_deref()
+                .is_some_and(|e| e.contains("fs_meshlet_resolve") || e.contains("entry")),
+            "{:?}",
+            vis.refused.as_deref()
+        );
+        // Asked again (a later frame's soft list), it makes none.
+        vis.ensure_pipelines(
+            &device,
+            [&empty, &empty, &empty],
+            &module,
+            [false],
+            false,
+            1,
+        );
+        assert!(vis.lit.is_empty() && !vis.usable());
     }
 }
