@@ -90,6 +90,10 @@ what remains to launch, `docs/release.md`.
   one documented entry per module, names that follow one convention, and the
   three.js vocabulary (`Vector3`, transforms, material parameters, glTF
   loading) wherever it does not contradict engine semantics.
+- **wgpu is used as published (the owner, 2026-11-04).** The engine
+  depends on the crates.io wgpu and never vendors or patches it; a
+  speed-up or fix that seems to need a change inside wgpu is built in the
+  engine's own code (og-render, og-host-web) instead.
 - **Rendering never blocks the engine thread on the web.** The engine runs in
   a Worker with an OffscreenCanvas; the main thread owns input and the shell.
 - **Brand is one ink.** The boot splash, loading state and "made with" mark
