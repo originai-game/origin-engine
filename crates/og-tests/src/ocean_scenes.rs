@@ -19,6 +19,8 @@ pub const OCEAN_SCENES: &[&str] = &[
     "water-flow-map",
     "water-ocean-dusk-storm",
     "water-ocean-night",
+    "water-shore",
+    "water-shore-storm",
 ];
 
 /// The sea's tick (a minute and a half in, at 60 a second).
@@ -185,6 +187,50 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             sea_haze(&mut scene);
             scene.camera = metered(Vec3::new(0.0, 4.0, 0.0), -2.5);
         }
+        // W1: a breeze's sea rolling in on a 1:20 sandy beach, seen from
+        // the water 160 m out: the swell fading in the shallows, the shore
+        // trains breaking parallel to the beach into surf.
+        "water-shore" => {
+            physical_light(&mut scene, 15.0, earth);
+            beach(&mut scene, sea(Vec2::new(1.5, -8.0), 0.6), 1.0);
+            sea_haze(&mut scene);
+            scene.camera = Camera {
+                position: Vec3::new(0.0, 6.0, 60.0),
+                target: Vec3::new(0.0, 0.0, -100.0),
+                far: 5000.0,
+                exposure: Exposure::linear(0.8),
+                ..Default::default()
+            };
+        }
+        // The same beach in a gale under an overcast: higher trains
+        // breaking further out, the surf zone white.
+        "water-shore-storm" => {
+            physical_light(&mut scene, 13.0, earth);
+            let clouds = Clouds {
+                coverage: 0.95,
+                density: 0.09,
+                color: Vec3::splat(0.5),
+                base: 700.0,
+                layer: 0.0,
+                ..Clouds::default()
+            };
+            clouds.light_scene(&mut scene);
+            if let Some(f) = scene.fog.as_mut() {
+                (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
+            }
+            scene.clouds = Some(clouds);
+            let mut gale = sea(Vec2::new(4.0, -15.0), 1.0);
+            gale.deep = Vec3::new(0.012, 0.035, 0.035);
+            beach(&mut scene, gale, 1.5);
+            sea_haze(&mut scene);
+            scene.camera = Camera {
+                position: Vec3::new(0.0, 8.0, 60.0),
+                target: Vec3::new(0.0, 0.0, -100.0),
+                far: 5000.0,
+                exposure: Exposure::linear(1.0),
+                ..Default::default()
+            };
+        }
         other => panic!("no ocean scene {other}"),
     }
     scene
@@ -308,4 +354,83 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     scene.tick = 90;
     scene.tick_rate = 60.0;
     scene.fog = None::<Fog>;
+}
+
+/// The beach's extent (m) and samples a side (2 m apart).
+const BEACH: f32 = 600.0;
+const BEACH_SAMPLES: u32 = 301;
+/// Where the waterline crosses x = 0 (z, m).
+pub const BEACH_LINE: f32 = -100.0;
+
+/// The beach's height at (x, z): a 1:20 slope rising towards -z, its
+/// waterline at z = [`BEACH_LINE`] bowed by a cove of 15 m along x, the sea
+/// floor levelling at 30 m down.
+pub fn beach_height(x: f32, z: f32) -> f32 {
+    let cove = 15.0 * (x / 140.0).cos();
+    ((BEACH_LINE + cove - z) / 20.0).max(-30.0)
+}
+
+/// The beach's seabed for a sea at y = 0, as og.Water.seabed builds it
+/// (og-runtime seabed.rs: the terrain's heights on its own grid).
+pub fn beach_shore() -> og_core::ocean::Shore {
+    let n = BEACH_SAMPLES;
+    let cell = BEACH / (n - 1) as f32;
+    let depth: Vec<f32> = (0..n * n)
+        .map(|i| {
+            let (x, z) = (
+                -BEACH * 0.5 + (i % n) as f32 * cell,
+                -BEACH * 0.5 + (i / n) as f32 * cell,
+            );
+            -beach_height(x, z)
+        })
+        .collect();
+    og_core::ocean::Shore::new(Vec2::splat(-BEACH * 0.5), cell, n, n, &depth).expect("a shore")
+}
+
+/// The beach in `scene` (its terrain, sand and rock by slope) under the sea
+/// `water`, its seabed the beach's and its trains `strength` high.
+fn beach(scene: &mut RenderScene, mut water: Water, strength: f32) {
+    use og_render::{Terrain, TerrainControl, TerrainData};
+    use std::sync::Arc;
+    let n = BEACH_SAMPLES;
+    let cell = BEACH / (n - 1) as f32;
+    let heights: Vec<f32> = (0..n * n)
+        .map(|i| {
+            beach_height(
+                -BEACH * 0.5 + (i % n) as f32 * cell,
+                -BEACH * 0.5 + (i / n) as f32 * cell,
+            )
+        })
+        .collect();
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(BEACH),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        // Sand (blue) with rock (green) left to its slope rule.
+        control: Some(TerrainControl {
+            width: 2,
+            height: 2,
+            rgba: Arc::from([0u8, 255, 255, 0].repeat(4)),
+        }),
+        holes: None,
+    });
+    let layers = crate::terrain_scenes::island_layers(scene);
+    scene.terrains.push(Terrain {
+        layers,
+        height_blend: 0.6,
+        ..Terrain::new(handle)
+    });
+    let field = std::sync::Arc::new(beach_shore());
+    let sea = og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+    water.shore = Some(og_render::WaterShore {
+        origin: field.origin,
+        trains: og_core::ocean::ShoreTrains::new(sea.significant_height(), strength, 0.0),
+        field,
+        foam: 1.0,
+    });
+    // A shore to foam at, and a bed to colour by.
+    water.foam_width = 0.35;
+    water.depth_fade = 6.0;
+    scene.water.push(water);
 }

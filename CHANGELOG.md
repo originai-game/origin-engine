@@ -304,6 +304,13 @@ is one line here, written at the merge that changes
   passes agree. Doc changes only on `TerrainScatter.fade` and `impostor`;
   frames with fading scatter move. `dump_render` adds `antialias`,
   `frameIndex` and `taaHistoryFrames`.
+- **Shore-aware sea (W1).** `og.Water` adds `seabed` (an og.Terrain
+  entity), `shore`, `shoreWaveLength` and `shoreFoam`. Over a seabed every
+  wave shoals by `tanh(k d)` and the sea holds under its breaking height
+  (H_s ≤ 0.78 d); shore trains roll in parallel to the beach and break
+  into surf, and the sand the surf runs up is wet. `og.physics.waterHeight`
+  and og.Buoyancy ride the same shoaled sea, deterministically; the
+  renderer draws it from the same field. Off by default (seabed 0).
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

@@ -571,10 +571,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         materials,
         geometries,
         textures,
+        terrain,
         ..
     } = rs;
     let layouts = &draw.atmo;
     let physics = layouts.physics.as_ref();
+    // The terrains a sea's seabed is read from (none in the 2D profile).
+    #[cfg(not(feature = "profile2d"))]
+    let terrain_layout = draw.terrain.as_ref();
+    #[cfg(feature = "profile2d")]
+    let terrain_layout = None;
     // 3D water, with its wave heights when the entity has them.
     for (e, v) in rows(world, layouts.water.as_ref()) {
         let entity = Entity::from_bits(e);
@@ -663,6 +669,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             swell: f(&v, "swell", 1.0),
             choppiness: f(&v, "choppiness", 0.6),
             endless: v["endless"].as_bool().unwrap_or(false),
+            shore: seabed(world, terrain, terrain_layout, entity, &v, mesh.is_some()),
         });
     }
     // 2D water over its spring line.
@@ -944,6 +951,38 @@ fn lightning_and_surfaces(
 }
 
 /// The solve's coarse draw mesh; the renderer owns normals and refinement.
+/// og.Water.seabed's coast for the frame (W1): what the tick floats bodies
+/// on (`super::seabed::coast`, read the same way from the same components,
+/// at the entity's world position as og-physics places the water), in the
+/// frame's coordinates before the render origin moves them.
+fn seabed(
+    world: &World,
+    terrains: &super::terrain::TerrainState,
+    terrain_layout: Option<&super::codec::Layout>,
+    entity: Entity,
+    v: &Value,
+    over_mesh: bool,
+) -> Option<og_render::WaterShore> {
+    if over_mesh {
+        return None;
+    }
+    let r = super::physics_ext::Reader::World(world);
+    let (position, _, _) = r.pose(entity)?;
+    let sea = og_core::ocean::Ocean::new(
+        vec2(&v["wind"], Vec2::ZERO),
+        f(v, "swell", 1.0),
+        f(v, "choppiness", 0.6),
+    );
+    let (field, trains) =
+        super::seabed::coast(terrains, terrain_layout, &r, v, position, sea.as_ref())?;
+    Some(og_render::WaterShore {
+        origin: field.origin,
+        field,
+        trains,
+        foam: f(v, "shoreFoam", 1.0),
+    })
+}
+
 fn soft_mesh(points: &[Vec3], indices: &[u32]) -> MeshData {
     let vertices = points
         .iter()

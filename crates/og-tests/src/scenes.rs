@@ -227,6 +227,8 @@ pub const SCENES: &[&str] = &[
     "water-flow-map",
     "water-ocean-dusk-storm",
     "water-ocean-night",
+    "water-shore",
+    "water-shore-storm",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -1216,7 +1218,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "water-ocean-sunset"
         | "water-flow-map"
         | "water-ocean-dusk-storm"
-        | "water-ocean-night" => |g, name| {
+        | "water-ocean-night"
+        | "water-shore"
+        | "water-shore-storm" => |g, name| {
             g.scene = crate::ocean_scenes::ocean_scene(name);
             Ok(())
         },

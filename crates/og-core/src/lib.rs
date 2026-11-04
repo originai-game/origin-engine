@@ -9,6 +9,7 @@
 //! | [`rng`] | [`Rng`], the deterministic generator shared with the platform scaffolds |
 //! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
 //! | [`ocean`] | [`ocean::Ocean`], a wind's sea of Gerstner waves, its displacement and its height at a point |
+//! | [`shore`] | [`shore::Shore`], a sea's seabed: its depth and distance to the waterline, and the trains rolling in |
 //! | [`time`] | [`Time`], the fixed-tick clock |
 //! | [`hash`] | [`hash::StableHasher`], the stable 64-bit hash for world and layout hashes |
 //! | [`sort`] | [`sort::sort_by`] and its siblings: the engine's one stable sort, compiled once |
@@ -37,6 +38,7 @@ pub mod ogt;
 pub mod procgen;
 pub mod reflect;
 pub mod rng;
+pub mod shore;
 pub mod sort;
 pub mod time;
 

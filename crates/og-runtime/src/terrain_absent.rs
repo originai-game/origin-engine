@@ -159,3 +159,28 @@ pub fn og_terrain_set_layer(
 ) -> String {
     absent()
 }
+
+/// No terrain, no seabed (the full module's `seabed_grid`).
+pub(crate) fn seabed_grid(
+    _t: &TerrainState,
+    _index: usize,
+    _m: glam::Mat4,
+    _lo: glam::Vec2,
+    _hi: glam::Vec2,
+) -> Option<SeabedGrid> {
+    None
+}
+
+pub(crate) struct SeabedGrid {
+    pub origin: glam::Vec2,
+    pub cell: f32,
+    pub columns: u32,
+    pub rows: u32,
+    pub key: u64,
+}
+
+impl SeabedGrid {
+    pub(crate) fn heights(&self, _t: &TerrainState) -> Vec<f32> {
+        Vec::new()
+    }
+}

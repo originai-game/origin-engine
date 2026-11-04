@@ -302,7 +302,10 @@ impl<'a> Reader<'a> {
 
     /// Every row of a component, decoded, in entity order (as
     /// [`super::fx::rows`]); in a system, an error when it is undeclared.
-    fn rows(&self, layout: Option<&super::codec::Layout>) -> Result<Vec<(u64, Value)>, String> {
+    pub(crate) fn rows(
+        &self,
+        layout: Option<&super::codec::Layout>,
+    ) -> Result<Vec<(u64, Value)>, String> {
         let c = match self {
             Reader::World(w) => return Ok(rows(w, layout)),
             Reader::System(c) => c,
@@ -362,6 +365,20 @@ impl<'a> Reader<'a> {
         );
         Some(at)
     }
+
+    /// An entity's world position and rotation (its og.Transform after its
+    /// parents') and its own scale: what places an og.Water's seabed.
+    pub(crate) fn pose(&self, e: Entity) -> Option<(Vec3, Quat, Vec3)> {
+        use og_physics::{Parent, Transform};
+        let t = self.get::<Transform>(e)?;
+        let (at, q) = og_physics::world_pose(
+            e,
+            (t.position, t.quaternion),
+            |c| self.get::<Parent>(c).map(|p| Entity::from_bits(p.entity)),
+            |p| self.get::<Transform>(p),
+        );
+        Some((at, q, t.scale))
+    }
 }
 
 /// The world's og.Water bodies in entity order (those drawn over a mesh
@@ -369,11 +386,12 @@ impl<'a> Reader<'a> {
 /// position, its sea (og.Water.wind) and og.WorldOrigin's zero. What
 /// og.Buoyancy floats on and og.physics.waterHeight adds.
 pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::WaterBody>, String> {
-    let (layout, origin) = {
+    let (layout, origin, terrain) = {
         let st = eng.state.borrow();
         (
             st.layouts.get("og.Water").cloned(),
             st.layouts.get(crate::origin::RESOURCE).cloned(),
+            st.layouts.get("og.Terrain").cloned(),
         )
     };
     let rows = r.rows(layout.as_ref())?;
@@ -387,16 +405,25 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
         .filter_map(|(id, v)| {
             let position = r.position(Entity::from_bits(id))?;
             let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
+            let sea = og_core::ocean::Ocean::new(
+                pair("wind", 0.0),
+                f(&v, "swell", 1.0),
+                f(&v, "choppiness", 0.6),
+            );
             Some(og_physics::WaterBody {
                 entity: id,
                 position,
                 size: pair("size", 16.0),
                 segments: f(&v, "segments", 1.0).max(1.0) as u32,
-                sea: og_core::ocean::Ocean::new(
-                    pair("wind", 0.0),
-                    f(&v, "swell", 1.0),
-                    f(&v, "choppiness", 0.6),
+                shore: super::seabed::coast(
+                    &eng.render.borrow().terrain,
+                    terrain.as_ref(),
+                    r,
+                    &v,
+                    position,
+                    sea.as_ref(),
                 ),
+                sea,
                 zero,
             })
         })

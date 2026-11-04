@@ -9,7 +9,7 @@
 use glam::{Vec2, Vec3};
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage, TextureData};
 use og_tests::gfx;
-use og_tests::ocean_scenes::{OCEAN_SCENES, flow_map_scene, ocean_scene};
+use og_tests::ocean_scenes::{BEACH_LINE, OCEAN_SCENES, beach_height, flow_map_scene, ocean_scene};
 use og_tests::scenes;
 use std::path::PathBuf;
 
@@ -470,4 +470,150 @@ fn a_flow_map_turns_the_flow_and_one_way_is_the_flow_itself() {
             "a map across the stream is not the flow down it (normal map {normal_map})"
         );
     }
+}
+
+/// The image row (of `height`) where the level surface at world z `z`
+/// (x = 0, y = 0) lies, seen through `scene`'s camera.
+fn row_of(scene: &RenderScene, z: f32, height: u32) -> u32 {
+    let cam = &scene.camera;
+    let fov = match cam.projection {
+        og_render::Projection::Perspective { fov_y_degrees } => fov_y_degrees.to_radians(),
+        _ => panic!("a perspective camera"),
+    };
+    let ahead = cam.target - cam.position;
+    let pitch = ahead.y.atan2(Vec2::new(ahead.x, ahead.z).length());
+    let to = Vec3::new(0.0, 0.0, z) - cam.position;
+    let angle = to.y.atan2(Vec2::new(to.x, to.z).length());
+    let y = (angle - pitch).tan() / (fov * 0.5).tan();
+    ((0.5 - 0.5 * y) * height as f32).round() as u32
+}
+
+/// The image row (of `height`) of the point (0, `y`, `z`) through `scene`'s camera.
+fn row_of_height(scene: &RenderScene, z: f32, y: f32, height: u32) -> u32 {
+    let mut lifted = ocean_scene("water-shore");
+    lifted.camera = scene.camera;
+    lifted.camera.position.y -= y;
+    lifted.camera.target.y -= y;
+    row_of(&lifted, z, height)
+}
+
+/// W1: a sea feels the beach under it. Along the waterline the shore
+/// trains break into surf: over a tenth of the 10 m band of water seaward
+/// of the waterline is white foam, where the same sea without its surf
+/// (shoreFoam 0) has next to none; and no swell reaches up the dry beach
+/// (the sand there is never under the drawn sea: before, the open sea's
+/// metres-high crests ran through the beach); the sand the surf runs up is
+/// wet, darker than the dry beach above it.
+#[test]
+fn the_surf_breaks_along_the_waterline() {
+    for name in ["water-shore", "water-shore-storm"] {
+        check(name);
+        let scene = ocean_scene(name);
+        let img = frame(&scene);
+        // The waterline at x = 0 (the cove's middle) and 10 m out from it.
+        let line = BEACH_LINE + 15.0;
+        assert_eq!(beach_height(0.0, line), 0.0);
+        let (top, bottom) = (
+            row_of(&scene, line, img.height),
+            row_of(&scene, line + 10.0, img.height),
+        );
+        let open = mean(&lumas(&img, 440, bottom + 20, 840, bottom + 60));
+        let white = |img: &RgbaImage| {
+            let mut n = 0;
+            for y in top..bottom {
+                for x in 440..840 {
+                    let p = px(img, x, y);
+                    let (lo, hi) = (p[0].min(p[1]).min(p[2]), p[0].max(p[1]).max(p[2]));
+                    if luma(p) > 1.6 * open && lo > 0.75 * hi {
+                        n += 1;
+                    }
+                }
+            }
+            n as f32 / ((bottom - top) * 400) as f32
+        };
+        let surf = white(&img);
+        let mut calm = ocean_scene(name);
+        for w in &mut calm.water {
+            if let Some(s) = &mut w.shore {
+                s.foam = 0.0;
+            }
+            w.foam_width = 0.0;
+        }
+        let none = white(&frame(&calm));
+        println!(
+            "{name}: rows {top}..{bottom}, {:.1} % surf, {:.1} % without",
+            surf * 100.0,
+            none * 100.0
+        );
+        assert!(
+            surf > 0.1,
+            "{name}: {:.1} % of the band foams",
+            surf * 100.0
+        );
+        // The surf wets the sand just above the waterline, darker than the
+        // dry beach further up (weather_surface.wgsl shore_wetness).
+        let sand = |z: f32| {
+            let y = row_of_height(&scene, z, beach_height(0.0, z), img.height);
+            mean(&lumas(&img, 560, y - 2, 720, y + 2))
+        };
+        let (wet, dry) = (sand(line - 2.0), sand(line - 30.0));
+        println!("{name}: wet sand {wet}, dry {dry}");
+        assert!(
+            wet < 0.8 * dry,
+            "{name}: the sand by the surf ({wet}) is not darker than up the beach ({dry})"
+        );
+        assert!(
+            none < 0.25 * surf,
+            "{name}: {:.1} % foams without its surf",
+            none * 100.0
+        );
+    }
+}
+
+/// W1: floaters in the shallows ride the sea that is drawn there. Over the
+/// beach's 1:20 slope, from 0.2 m to 8 m of water, the shoaled waves and
+/// shore trains the GPU draws (read back, `Renderer::sea_heights`) are the
+/// tick's (og_core's `Ocean::surface_near`, what og.Buoyancy floats bodies
+/// on over og.Water.seabed) to 2 cm, at several times.
+#[test]
+fn shallow_floaters_sit_in_the_drawn_shoaled_sea() {
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut failures = Vec::new();
+    for (k, extra) in [0u64, 37, 95].into_iter().enumerate() {
+        let mut scene = ocean_scene("water-shore-storm");
+        scene.tick += extra;
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let water = scene.water[0].clone();
+        let shore = water.shore.clone().expect("a seabed");
+        let sea =
+            og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+        let coast = og_core::ocean::Coast {
+            shore: &shore.field,
+            trains: shore.trains,
+            zero: glam::DVec2::ZERO,
+        };
+        let extent = water.size.max_element();
+        let even = extent / og_core::ocean::grid_segments(water.segments, extent) as f32;
+        let line = BEACH_LINE + 15.0;
+        let points: Vec<Vec2> = [0.2f32, 0.5, 1.0, 2.0, 4.0, 8.0]
+            .iter()
+            .map(|d| Vec2::new(3.0 * k as f32, line + 20.0 * d))
+            .collect();
+        let drawn = renderer.sea_heights(&points).expect("the sea's heights");
+        let seconds = scene.tick as f64 / 60.0;
+        for (p, [_, swell, _]) in points.iter().zip(&drawn) {
+            let cell = og_core::ocean::grid_cell(*p, water.size * 0.5, even);
+            let at = glam::DVec2::new(f64::from(p.x), f64::from(p.y));
+            let tick = sea.surface_near(at, seconds, cell, Some(&coast)).height;
+            println!("{seconds} s at {p}: drawn {swell:+.3} m, the tick's {tick:+.3} m");
+            if (swell - tick).abs() >= 0.02 {
+                failures.push(format!(
+                    "{seconds} s at {p}: drawn {swell} m, the tick's {tick} m"
+                ));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

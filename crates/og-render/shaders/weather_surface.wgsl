@@ -101,14 +101,28 @@ fn weather_open(p: vec3<f32>, geo: vec3<f32>) -> f32 {
   return smoothstep(0.1, 0.9, open / 25.0);
 }
 
+// How wet a sea's surf leaves `p` (frame coordinates; W1, water.rs shore_wet): everything over its seabed up to the
+// band its surf runs up, the band's top ragged, drying above it.
+fn shore_wetness(p: vec3<f32>) -> f32 {
+  let s = frame.shore_wet;
+  if (s.z <= 0.0) { return 0.0; }
+  let a = frame.shore_area;
+  if (any(p.xz < a.xy) || any(p.xz > a.zw)) { return 0.0; }
+  let q = p + frame.origin.xyz;
+  let ragged = (weather_fbm(q.xz * 0.35) - 0.5) * 0.6 * s.y;
+  return s.z * (1.0 - smoothstep(0.55 * s.y, s.y, p.y - s.x + ragged));
+}
+
 fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>) -> Weathered {
   var o: Weathered;
   o.s = s_in;
   o.n = n_in;
   var w = frame.weather;
-  if (max(max(w.x, w.y), w.z) <= 0.0) { return o; }
-  // Under a roof: dry, no puddles, no snow (the drip line softened).
-  w *= weather_open(p_frame, geo);
+  let shore = shore_wetness(p_frame);
+  if (max(max(w.x, w.y), w.z) <= 0.0 && shore <= 0.0) { return o; }
+  // Under a roof: dry, no puddles, no snow (the drip line softened). The surf's wet reaches under one.
+  if (max(max(w.x, w.y), w.z) > 0.0) { w *= weather_open(p_frame, geo); }
+  w.x = max(w.x, shore);
   if (max(max(w.x, w.y), w.z) <= 0.0) { return o; }
   let p = p_frame + frame.origin.xyz;
   let up = clamp(geo.y, 0.0, 1.0);

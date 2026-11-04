@@ -77,6 +77,7 @@ mod save;
 mod save_migrations;
 #[cfg(not(feature = "publish"))]
 mod scene_save;
+mod seabed;
 mod story;
 mod stream;
 #[cfg(not(feature = "profile2d"))]

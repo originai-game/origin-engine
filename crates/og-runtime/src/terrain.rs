@@ -57,6 +57,16 @@ pub(crate) struct LoadedTerrain {
     pub lod: TerrainLod,
     pub cast_shadows: bool,
     pub collision: bool,
+    /// Its heights' version, new at its load, each edit and each restore's
+    /// reset, unique across engines: what a seabed made from it is keyed by
+    /// ([`seabed_grid`]).
+    pub generation: u64,
+}
+
+/// A terrain heights' version no other has had ([`LoadedTerrain::generation`]).
+fn next_generation() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 /// The edits made since the world began, in order: (terrain asset id, the
@@ -247,6 +257,7 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
                 continue;
             }
             t.edited = false;
+            t.generation = next_generation();
             t.tiles.borrow_mut().clear();
             t.field = if t.collision {
                 Some(t.cooked.field().map_err(|e| e.to_string())?)
@@ -579,6 +590,7 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<Value, String> {
         lod: cooked.lod,
         cast_shadows: cooked.cast_shadows,
         collision: cooked.collision,
+        generation: next_generation(),
     };
     let value = info(index, &t);
     rs.terrain.loaded.push(t);
@@ -773,6 +785,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
         t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
     }
     t.edited = true;
+    t.generation = next_generation();
     let d = t.field.as_mut().expect("decoded above");
     let c = Vec2::new(center.x, center.z);
     let half = d.size * 0.5;
@@ -1484,4 +1497,95 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         );
     }
     Vec::new()
+}
+
+/// The heights of a terrain under a sea (og.Water.seabed, W1): the terrain
+/// at load index `index`, placed by `m`, sampled as world heights on a grid
+/// over the world xz rectangle `lo` to `hi` (its part over the terrain),
+/// at the terrain's own spacing or coarser (at most 1025 samples a side;
+/// [`SeabedGrid::heights`]). Off the terrain the seabed is unknown and taken
+/// to be far below. With a key for what makes it (the terrain's heights'
+/// version, its placement, the rectangle), so the tick and the frame share
+/// one field and rebuild it only when one changes.
+pub(crate) fn seabed_grid(
+    t: &TerrainState,
+    index: usize,
+    m: Mat4,
+    lo: Vec2,
+    hi: Vec2,
+) -> Option<SeabedGrid> {
+    let terrain = t.loaded.get(index)?;
+    let size = terrain.size();
+    let half = size * 0.5;
+    let (along, _) = scales(m);
+    // The terrain's footprint in the world, cut to the rectangle.
+    let (mut tlo, mut thi) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
+    for (x, z) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+        let w = m.transform_point3(Vec3::new(x * half.x, 0.0, z * half.y));
+        tlo = tlo.min(Vec2::new(w.x, w.z));
+        thi = thi.max(Vec2::new(w.x, w.z));
+    }
+    let (lo, hi) = (lo.max(tlo), hi.min(thi));
+    if !(hi.x > lo.x && hi.y > lo.y) {
+        return None;
+    }
+    let l = terrain.cooked.layout;
+    let spacing = (size.x / (l.columns.max(2) - 1) as f32) * along;
+    let extent = (hi - lo).max_element();
+    let cell = spacing.max(extent / 1024.0).max(1e-3);
+    let columns = (((hi.x - lo.x) / cell).ceil() as u32 + 1).max(2);
+    let rows = (((hi.y - lo.y) / cell).ceil() as u32 + 1).max(2);
+    let mut key = og_core::hash::StableHasher::new();
+    key.write_u64(terrain.generation);
+    for v in m.to_cols_array().iter().chain(&[lo.x, lo.y, hi.x, hi.y]) {
+        key.write_u32(v.to_bits());
+    }
+    Some(SeabedGrid {
+        origin: lo,
+        cell,
+        columns,
+        rows,
+        key: key.finish(),
+        index,
+        m,
+    })
+}
+
+impl SeabedGrid {
+    /// The world heights of its samples, row-major from `origin`.
+    pub(crate) fn heights(&self, t: &TerrainState) -> Vec<f32> {
+        let Some(terrain) = t.loaded.get(self.index) else {
+            return vec![f32::MIN; (self.columns * self.rows) as usize];
+        };
+        let half = terrain.size() * 0.5;
+        let inverse = self.m.inverse();
+        let (deep, _) = terrain.range();
+        let (m, lo, cell, columns, rows) =
+            (self.m, self.origin, self.cell, self.columns, self.rows);
+        terrain.with_heights(|h| {
+            (0..rows)
+                .flat_map(|r| (0..columns).map(move |c| (c, r)))
+                .map(|(c, r)| {
+                    let w = lo + Vec2::new(c as f32, r as f32) * cell;
+                    let p = inverse.transform_point3(Vec3::new(w.x, 0.0, w.y));
+                    let p = Vec2::new(p.x, p.z);
+                    let inside = p.x.abs() <= half.x && p.y.abs() <= half.y;
+                    let local = if inside { h(p) } else { deep - 1000.0 };
+                    m.transform_point3(Vec3::new(p.x, local, p.y)).y
+                })
+                .collect()
+        })
+    }
+}
+
+/// [`seabed_grid`]'s grid: `columns` × `rows` samples from `origin` (world
+/// xz) `cell` metres apart, and the key of what makes its heights.
+pub(crate) struct SeabedGrid {
+    pub origin: Vec2,
+    pub cell: f32,
+    pub columns: u32,
+    pub rows: u32,
+    pub key: u64,
+    index: usize,
+    m: Mat4,
 }

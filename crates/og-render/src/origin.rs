@@ -15,7 +15,7 @@
 
 use crate::RenderScene;
 use crate::particles::ParticleCollider;
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 
 fn moved(m: &mut Mat4, d: Vec3) {
     m.w_axis += d.extend(0.0) * m.w_axis.w;
@@ -158,6 +158,9 @@ impl RenderScene {
         }
         for w in &mut self.water {
             moved(&mut w.transform, d);
+            if let Some(s) = &mut w.shore {
+                s.origin += Vec2::new(d.x, d.z);
+            }
         }
         for t in &mut self.terrain_stamps {
             moved(&mut t.transform, d);

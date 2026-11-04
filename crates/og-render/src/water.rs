@@ -189,6 +189,22 @@ pub struct Water {
     /// (`water_ripples.rs`); on a sea it calms the FFT's chop under each
     /// og.Buoyancy hull (the tick floats none on it). `None`: neither.
     pub wakes: Option<Arc<WaterWakes>>,
+    /// W1: the seabed under the sea (og.Water.seabed): the waves shoal and
+    /// break over it and the shore trains roll in, as the tick floats bodies
+    /// on them (og-physics' `WaterBody::shore`). `None`: the open sea.
+    pub shore: Option<WaterShore>,
+}
+
+/// A sea's seabed ([`Water::shore`]): the field (`og_core::shore`), the
+/// trains rolling in on it, where the field's sample (0, 0) lies in the
+/// scene's frame (moved with it by `RenderScene::rebase`; the field's own
+/// origin is the tick's frame) and how much surf foams where they break.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WaterShore {
+    pub field: Arc<og_core::ocean::Shore>,
+    pub trains: og_core::ocean::ShoreTrains,
+    pub origin: Vec2,
+    pub foam: f32,
 }
 
 impl Default for Water {
@@ -228,6 +244,7 @@ impl Default for Water {
             choppiness: 0.6,
             endless: false,
             wakes: None,
+            shore: None,
         }
     }
 }
@@ -336,6 +353,101 @@ struct WaterGpu {
     /// (frame xz) and its own x axis (xz), then its half extents.
     hulls: [[f32; 4]; 2 * MAX_HULLS],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    /// The seabed ([`Water::shore`], [`shore_gpu`]): its sample (0, 0) in
+    /// the frame's xz, its cell, 1 with one; its columns and rows, the
+    /// trains' wavenumber and amplitude; their phase now, the surf's foam.
+    shore: [[f32; 4]; 3],
+}
+
+/// [`WaterGpu::shore`] of `water` at the tick's `seconds`.
+fn shore_gpu(water: &Water, seconds: f64) -> [[f32; 4]; 3] {
+    let Some(s) = water.shore.as_ref().filter(|_| water.mesh.is_none()) else {
+        return [[0.0; 4]; 3];
+    };
+    let t = &s.trains;
+    [
+        [s.origin.x, s.origin.y, s.field.cell, 1.0],
+        [
+            s.field.columns as f32,
+            s.field.rows as f32,
+            t.k,
+            t.amplitude,
+        ],
+        [
+            t.omega,
+            og_core::ocean::Ocean::train_phase(t, seconds),
+            s.foam.max(0.0),
+            0.0,
+        ],
+    ]
+}
+
+/// The tick's coast of `water`'s sea in the scene whose frame's zero is at
+/// `origin` (absolute world): its seabed, the trains, and the absolute
+/// world xz of the zero of the frame the field was made in.
+fn coast(water: &Water, origin: Vec3) -> Option<og_core::ocean::Coast<'_>> {
+    let s = water.shore.as_ref()?;
+    let shift = s.origin - s.field.origin;
+    Some(og_core::ocean::Coast {
+        shore: &s.field,
+        trains: s.trains,
+        zero: glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)) + shift.as_dvec2(),
+    })
+}
+
+/// The texture of `water`'s seabed among this frame's `shores` (made in
+/// `prepare`), or `none`.
+fn shore_view<'a>(
+    shores: &'a [(Arc<og_core::ocean::Shore>, wgpu::TextureView)],
+    none: &'a wgpu::TextureView,
+    water: &Water,
+) -> &'a wgpu::TextureView {
+    water
+        .shore
+        .as_ref()
+        .filter(|_| water.mesh.is_none())
+        .and_then(|ws| shores.iter().find(|(f, _)| Arc::ptr_eq(f, &ws.field)))
+        .map_or(none, |(_, v)| v)
+}
+
+/// The seabed's texture: per sample its depth, distance and the distance's
+/// gradient, rgba32float (read with textureLoad and filtered in water.wgsl
+/// `shore_at`, as `Shore::sample` filters them, so both read the same).
+fn shore_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    field: &og_core::ocean::Shore,
+) -> (wgpu::Texture, wgpu::TextureView) {
+    let size = wgpu::Extent3d {
+        width: field.columns,
+        height: field.rows,
+        depth_or_array_layers: 1,
+    };
+    let t = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("water shore"),
+        size,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba32Float,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    if field.columns * field.rows > 0 {
+        let texels: Vec<[f32; 4]> = field.texels.iter().map(|v| v.to_array()).collect();
+        queue.write_texture(
+            t.as_image_copy(),
+            bytemuck::cast_slice(&texels),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(field.columns * 16),
+                rows_per_image: None,
+            },
+            size,
+        );
+    }
+    let v = t.create_view(&Default::default());
+    (t, v)
 }
 
 /// The scene's clock for the sea, in f64 seconds: its tick over its rate,
@@ -786,6 +898,11 @@ pub(crate) struct WaterRenderer {
     ripple_sampler: wgpu::Sampler,
     sampler: wgpu::Sampler,
     flat: wgpu::TextureView,
+    /// A seabed of one sample, bound where a surface has none.
+    no_shore: wgpu::TextureView,
+    /// The seabeds' textures ([`shore_texture`]) of this frame's surfaces,
+    /// with the fields they hold (shared by surfaces and the foam's pass).
+    shores: Vec<(Arc<og_core::ocean::Shore>, wgpu::TextureView)>,
     slots: Vec<Slot>,
     /// The ripples' compute, made with the first surface that ripples;
     /// `compute` false (an adapter without compute shaders): none, the
@@ -904,6 +1021,18 @@ impl WaterRenderer {
                 tex(8, true),
                 // The flow map (Water::flow_map; the fallback without).
                 tex(9, true),
+                // The seabed (Water::shore; one sample without), read by the vertices and the height probe too.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 10,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
+                        .union(wgpu::ShaderStages::COMPUTE),
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let module =
@@ -1017,7 +1146,26 @@ impl WaterRenderer {
             ..Default::default()
         });
         let flat = height_texture(device, 1).1;
+        let no_shore = {
+            let t = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("water no shore"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba32Float,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            t.create_view(&Default::default())
+        };
         WaterRenderer {
+            no_shore,
+            shores: Vec::new(),
             ripple_sampler,
             layout,
             pipeline,
@@ -1075,6 +1223,19 @@ impl WaterRenderer {
             });
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
+        // The seabeds of this frame's surfaces, each uploaded once.
+        let fields: Vec<&Arc<og_core::ocean::Shore>> = waters
+            .iter()
+            .filter_map(|w| w.shore.as_ref().map(|s| &s.field))
+            .collect();
+        self.shores
+            .retain(|(f, _)| fields.iter().any(|g| Arc::ptr_eq(f, g)));
+        for f in fields {
+            if !self.shores.iter().any(|(g, _)| Arc::ptr_eq(f, g)) {
+                let (_, view) = shore_texture(device, queue, f);
+                self.shores.push((f.clone(), view));
+            }
+        }
         let (sea_segments, sea_cascades) = sea_tier(quality);
         let sea = self.fft_sea(device, queue, waters, sea_cascades, seconds, camera, origin);
         let levels = clipmap(camera.position, origin, sea_segments);
@@ -1131,6 +1292,7 @@ impl WaterRenderer {
                 }
                 _ => slot.ripples = None,
             }
+            let shore_view = shore_view(&self.shores, &self.no_shore, water);
             let normal_view = water.normal_map.and_then(textures);
             let flow_view = water.flow_map.and_then(textures);
             // With a flow map the flow's length is the speed: three.js'
@@ -1239,6 +1401,7 @@ impl WaterRenderer {
                 },
                 foam_uv: foam_uv(origin, water.wind, seconds),
                 swell,
+                shore: shore_gpu(water, seconds),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
@@ -1300,6 +1463,10 @@ impl WaterRenderer {
                     wgpu::BindGroupEntry {
                         binding: 9,
                         resource: wgpu::BindingResource::TextureView(flow_view.unwrap_or(fallback)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: wgpu::BindingResource::TextureView(shore_view),
                     },
                 ],
             });
@@ -1377,6 +1544,7 @@ impl WaterRenderer {
                     wgpu::BindingResource::Sampler(&self.ripple_sampler),
                     tex(white),
                     tex(water.flow_map.and_then(textures).unwrap_or(white)),
+                    tex(shore_view(&self.shores, &self.no_shore, water)),
                 ];
                 let entries: Vec<wgpu::BindGroupEntry> = entries
                     .into_iter()
@@ -1481,6 +1649,9 @@ impl WaterRenderer {
             world(origin),
             &foam_sea,
             &|at| ocean_gpu(water, at, origin).1,
+            (shore_view(&self.shores, &self.no_shore, water), &|at| {
+                shore_gpu(water, at)
+            }),
         );
         queue.submit([encoder.finish()]);
         Some(info)
@@ -1731,7 +1902,9 @@ pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3
         let local = w.transform.inverse().transform_point3(eye);
         let sea = ocean(w).map_or(0.0, |sea| {
             let at = (eye + origin).as_dvec3();
-            sea.height(glam::DVec2::new(at.x, at.z), seconds)
+            let at = glam::DVec2::new(at.x, at.z);
+            sea.surface_near(at, seconds, 0.0, coast(w, origin).as_ref())
+                .height
         });
         local.x.abs() <= w.size.x * 0.5
             && local.z.abs() <= w.size.y * 0.5
@@ -1760,10 +1933,12 @@ pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
 /// `FrameUniform::caustics` (height, strength, scale, fade; then the xz
 /// rectangle; then the two cell layers at the scene's `origin`, each its
 /// whole cells and the rest, so the pattern stays put when it moves:
-/// `origin.rs`). Zero without one.
-pub(crate) fn caustics(waters: &[Water], origin: Vec3) -> [[f32; 4]; 4] {
+/// `origin.rs`); zero without one. Then the wet shore ([`shore_wet`]).
+pub(crate) fn caustics(waters: &[Water], origin: Vec3) -> [[f32; 4]; 6] {
+    let mut rows = [[0.0; 4]; 6];
+    [rows[4], rows[5]] = shore_wet(waters);
     let Some(w) = waters.iter().find(|w| w.caustics > 0.0) else {
-        return [[0.0; 4]; 4];
+        return rows;
     };
     let (_, at) = plane(w);
     let mut lo = Vec2::splat(f32::MAX);
@@ -1784,11 +1959,44 @@ pub(crate) fn caustics(waters: &[Water], origin: Vec3) -> [[f32; 4]; 4] {
         let (wx, wz) = (x.floor(), z.floor());
         [wx as f32, wz as f32, (x - wx) as f32, (z - wz) as f32]
     };
-    [
+    rows[..4].copy_from_slice(&[
         [at.y, w.caustics, scale, 0.15],
         [lo.x, lo.y, hi.x, hi.y],
         cells(1.0),
         cells(f64::from(1.37f32)),
+    ]);
+    rows
+}
+
+/// How much a wet shore is darkened at full wetness (weather_surface.wgsl:
+/// a porous surface's albedo times 1 - 0.7 of this; wet sand is about half
+/// as bright as dry).
+const SHORE_WET: f32 = 0.7;
+
+/// The shore the first sea with a seabed wets (W1, weather_surface.wgsl
+/// `shore_wetness`): its rest level, the band its surf runs up (half the
+/// sea's significant height times the trains' strength, the run-up of a
+/// gentle beach: Stockdon et al. 2006's R2 ≈ 0.4–0.6 Hs), how wet; and the
+/// seabed's xz rectangle in the frame. Zero without one.
+fn shore_wet(waters: &[Water]) -> [[f32; 4]; 2] {
+    let Some((w, s)) = waters
+        .iter()
+        .filter(|w| w.mesh.is_none())
+        .find_map(|w| Some((w, w.shore.as_ref()?)))
+    else {
+        return [[0.0; 4]; 2];
+    };
+    let (_, at) = plane(w);
+    // The trains' amplitude is a quarter of Hs times their strength.
+    let band = (2.0 * s.trains.amplitude).max(0.15);
+    let hi = s.origin
+        + Vec2::new(
+            (s.field.columns.max(1) - 1) as f32,
+            (s.field.rows.max(1) - 1) as f32,
+        ) * s.field.cell;
+    [
+        [at.y, band, SHORE_WET * s.foam.clamp(0.0, 1.0).max(0.5), 1.0],
+        [s.origin.x, s.origin.y, hi.x, hi.y],
     ]
 }
 
@@ -1910,7 +2118,11 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
 
 /// The water module after the frame group and the lighting.
 pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
-    format!("{frame_wgsl}{lighting_wgsl}{}", wgsl3d!("water.wgsl"))
+    format!(
+        "{frame_wgsl}{lighting_wgsl}{}{}",
+        crate::ocean_fft::SHORE_WGSL,
+        wgsl3d!("water.wgsl")
+    )
 }
 
 /// The lake's four layers' uv at `origin` (water.wgsl `map_slope`: world
@@ -2207,5 +2419,39 @@ mod tests {
         let mut calm = water.clone();
         calm.wind = Vec2::ZERO;
         assert_eq!(ocean_gpu(&calm, seconds, Vec3::ZERO).0, [0.0; 4]);
+    }
+
+    /// The shore a sea with a seabed wets (W1): the band its surf runs up,
+    /// half the sea's significant height times the trains' strength, over
+    /// its seabed's rectangle in the frame, which moves with the frame's
+    /// render origin as the field does; none without a seabed.
+    #[test]
+    fn a_seabed_wets_the_shore_its_surf_runs_up() {
+        let depth: Vec<f32> = (0..16 * 8).map(|i| 5.0 - (i % 16) as f32).collect();
+        let field = Arc::new(
+            og_core::ocean::Shore::new(Vec2::new(-10.0, 4.0), 2.0, 16, 8, &depth).unwrap(),
+        );
+        let sea = Water {
+            transform: Mat4::from_translation(Vec3::new(0.0, 1.5, 0.0)),
+            wind: Vec2::new(10.0, 0.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            caustics(std::slice::from_ref(&sea), Vec3::ZERO)[4],
+            [0.0; 4]
+        );
+        let hs = ocean(&sea).unwrap().significant_height();
+        let mut beach = sea;
+        beach.shore = Some(WaterShore {
+            trains: og_core::ocean::ShoreTrains::new(hs, 1.0, 0.0),
+            origin: field.origin + Vec2::new(3.0, -1.0),
+            field,
+            foam: 1.0,
+        });
+        let rows = caustics(&[beach], Vec3::ZERO);
+        assert_eq!(rows[4][0], 1.5);
+        assert!((rows[4][1] - 0.5 * hs).abs() < 1e-4, "{:?}", rows[4]);
+        assert!(rows[4][2] > 0.0);
+        assert_eq!(rows[5], [-7.0, 3.0, 23.0, 17.0]);
     }
 }

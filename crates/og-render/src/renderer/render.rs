@@ -2428,7 +2428,7 @@ impl Renderer {
             u.view_pos = mirrored.position.extend(0.0).to_array();
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = f.axes();
-            u.caustics = [[0.0; 4]; 4];
+            u.caustics = [[0.0; 4]; 6];
             u.cluster = self.reflection_clusters[k].params;
             self.queue
                 .write_buffer(&self.reflection_buffer[k], 0, bytemuck::bytes_of(&u));

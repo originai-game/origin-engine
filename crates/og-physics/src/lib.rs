@@ -413,7 +413,10 @@ pub(crate) struct Shared {
 /// rest level), flat or raised by its `sea` (og.Water.wind), whose waves
 /// are the absolute world's (`zero`, og.WorldOrigin's, added to a point)
 /// as its grid of `segments` cells a side draws them
-/// ([`og_core::ocean::Ocean::height_on_grid`]).
+/// ([`og_core::ocean::Ocean::height_on_grid`]). With a `shore` (W1: the
+/// seabed og.Water.seabed names, in the frame's xz, and the trains rolling
+/// in on it) the sea feels the depth ([`og_core::ocean::Ocean::surface_near`]):
+/// a body in the shallows rides the shoaled, broken sea the renderer draws.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterBody {
     pub entity: u64,
@@ -422,6 +425,7 @@ pub struct WaterBody {
     pub segments: u32,
     pub sea: Option<og_core::ocean::Ocean>,
     pub zero: og_core::glam::DVec3,
+    pub shore: Option<(Arc<og_core::ocean::Shore>, og_core::ocean::ShoreTrains)>,
 }
 
 impl WaterBody {
@@ -451,10 +455,19 @@ impl WaterBody {
         let extent = self.size.max_element();
         let segments = og_core::ocean::grid_segments(self.segments.max(1), extent);
         let cell = og_core::ocean::grid_cell(local, half, extent / segments as f32);
-        Some(sea.surface_on_grid(
+        let coast = self
+            .shore
+            .as_ref()
+            .map(|(shore, trains)| og_core::ocean::Coast {
+                shore,
+                trains: *trains,
+                zero: og_core::glam::DVec2::new(self.zero.x, self.zero.z),
+            });
+        Some(sea.surface_near(
             og_core::glam::DVec2::new(x + self.zero.x, z + self.zero.z),
             seconds,
             cell,
+            coast.as_ref(),
         ))
     }
 }

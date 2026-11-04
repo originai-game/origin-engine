@@ -48,6 +48,7 @@ mod restored_event;
 mod review_views;
 mod scatter_model_space;
 mod scene_string;
+mod seabed;
 mod shadow_flags;
 mod sky_off;
 mod sprite_arrays;

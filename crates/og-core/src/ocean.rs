@@ -28,6 +28,7 @@
 //! games and far places keep their precision.
 
 use crate::math::{self, DVec2, Vec2, Vec3};
+pub use crate::shore::{Shore, ShorePoint, ShoreTrains};
 
 /// How many waves a sea sums.
 pub const OCEAN_WAVES: usize = 32;
@@ -189,15 +190,87 @@ impl Ocean {
     /// [`Ocean::displacement`] as a grid of `cell`-metre cells draws it:
     /// each wave times [`grid_keep`] (0: every wave whole).
     pub fn displacement_on_grid(&self, p: Vec2, phases: &[f32; OCEAN_WAVES], cell: f32) -> Vec3 {
+        self.displaced(p, phases, cell, &Shoaling::OPEN)
+    }
+
+    /// The displacement at rest point `p` with the seabed's `shoal` there.
+    fn displaced(&self, p: Vec2, phases: &[f32; OCEAN_WAVES], cell: f32, shoal: &Shoaling) -> Vec3 {
         let mut d = Vec3::ZERO;
-        for (w, &phase) in self.waves.iter().zip(phases) {
+        for ((w, &phase), &f) in self.waves.iter().zip(phases).zip(&shoal.open) {
             let (s, c) = math::sin_cos(w.k * w.direction.dot(p) + phase);
-            let keep = grid_keep(w.k, cell);
+            let keep = grid_keep(w.k, cell) * f;
             d.x += w.direction.x * w.lean * c * keep;
             d.y += w.amplitude * s * keep;
             d.z += w.direction.y * w.lean * c * keep;
         }
+        if shoal.amplitude > 0.0 {
+            let (s, c) = math::sin_cos(shoal.phase);
+            let keep = grid_keep(shoal.k, cell);
+            d.x += shoal.inshore.x * shoal.lean * c * keep;
+            d.y += shoal.amplitude * s * keep;
+            d.z += shoal.inshore.y * shoal.lean * c * keep;
+        }
         d
+    }
+
+    /// How the seabed `at` a point (`None`: the open sea) changes this sea
+    /// there, with `trains` rolling in: each wave shoaled by `tanh(k d)`
+    /// (Crest's and the TMA spectrum's depth attenuation: none in water
+    /// deeper than half its length, all of it on the beach), the trains
+    /// risen in the shallows, and the whole capped at the breaking height,
+    /// a significant height of 0.78 d (McCowan's limit, which the surf zone
+    /// saturates at). Near the seabed grid's edge it fades to the open sea.
+    /// `trains_phase` is their (φ - ω t) mod 2π now ([`Ocean::train_phase`]).
+    pub fn shoaling(
+        &self,
+        at: Option<ShorePoint>,
+        trains: &ShoreTrains,
+        trains_phase: f32,
+    ) -> Shoaling {
+        let Some(sp) = at else {
+            return Shoaling::OPEN;
+        };
+        let depth = sp.depth.max(0.0);
+        let mut out = Shoaling::OPEN;
+        let mut var = 0.0;
+        for (f, w) in out.open.iter_mut().zip(&self.waves) {
+            *f = 1.0 + (tanh(w.k * depth) - 1.0) * sp.inside;
+            var += (w.amplitude * *f) * (w.amplitude * *f) * 0.5;
+        }
+        let a_s = trains.amplitude * trains.rise(depth) * sp.coherence * sp.inside;
+        var += a_s * a_s * 0.5;
+        let hs = 4.0 * var.sqrt();
+        let limit = 0.78 * depth;
+        let cap = if hs > limit {
+            1.0 + (limit / hs - 1.0) * sp.inside
+        } else {
+            1.0
+        };
+        let mut open_steep = 0.0;
+        for (f, w) in out.open.iter_mut().zip(&self.waves) {
+            *f *= cap;
+            open_steep += w.k * w.lean * *f;
+        }
+        out.amplitude = a_s * cap;
+        if out.amplitude > 0.0 {
+            // Gerstner's steepness Q = k · lean, what the open sea leaves
+            // of 0.95 so the sum never folds over.
+            let q = trains.steepness(depth).min((0.95 - open_steep).max(0.0));
+            out.lean = (q / trains.k).min(3.0 * out.amplitude);
+            out.k = trains.k;
+            out.omega = trains.omega;
+            out.inshore = sp.inshore;
+            // Their crests are the lines of equal distance to the waterline,
+            // travelling inshore (down the distance).
+            out.phase = trains_phase - trains.k * sp.distance;
+        }
+        out
+    }
+
+    /// The shore trains' phase (φ - ω t) mod 2π at `seconds`, in f64.
+    pub fn train_phase(trains: &ShoreTrains, seconds: f64) -> f32 {
+        (f64::from(trains.phase) - f64::from(trains.omega) * seconds)
+            .rem_euclid(std::f64::consts::TAU) as f32
     }
 
     /// The surface's height over its rest plane at the absolute world
@@ -223,24 +296,60 @@ impl Ocean {
     /// a fixed point at the wave's phase speed, while the water itself
     /// only turns over in its orbit).
     pub fn surface_on_grid(&self, at: DVec2, seconds: f64, cell: f32) -> SurfacePoint {
+        self.surface_near(at, seconds, cell, None)
+    }
+
+    /// [`Ocean::surface_on_grid`] near a `coast` (`None`: the open sea):
+    /// every wave shoaled by the seabed under the rest point it comes from
+    /// ([`Ocean::shoaling`]), the shore trains rolling in on top.
+    pub fn surface_near(
+        &self,
+        at: DVec2,
+        seconds: f64,
+        cell: f32,
+        coast: Option<&Coast<'_>>,
+    ) -> SurfacePoint {
         let phases = self.phases(seconds, at);
+        let trains_phase = coast.map_or(0.0, |c| Ocean::train_phase(&c.trains, seconds));
+        let frame = coast.map(|c| (at - c.zero).as_vec2());
+        let shoal_at = |rest: Vec2| match (coast, frame) {
+            (Some(c), Some(f)) => self.shoaling(c.shore.sample(f + rest), &c.trains, trains_phase),
+            _ => Shoaling::OPEN,
+        };
         let mut rest = Vec2::ZERO;
         for _ in 0..8 {
-            let d = self.displacement_on_grid(rest, &phases, cell);
+            let d = self.displaced(rest, &phases, cell, &shoal_at(rest));
             rest = -Vec2::new(d.x, d.z);
         }
+        let shoal = shoal_at(rest);
         let mut point = SurfacePoint {
-            height: self.displacement_on_grid(rest, &phases, cell).y,
+            height: self.displaced(rest, &phases, cell, &shoal).y,
             ..SurfacePoint::default()
         };
         // The phase falls by ω a second: d/dt of (lean cos θ, A sin θ).
-        for (w, &phase) in self.waves.iter().zip(&phases) {
-            let (s, c) = math::sin_cos(w.k * w.direction.dot(rest) + phase);
-            let keep = grid_keep(w.k, cell);
-            let (wv, wa) = (keep * w.omega, keep * w.omega * w.omega);
-            let lean = Vec3::new(w.direction.x * w.lean, 0.0, w.direction.y * w.lean);
-            point.velocity += lean * (s * wv) - Vec3::Y * (w.amplitude * c * wv);
-            point.acceleration += -lean * (c * wa) - Vec3::Y * (w.amplitude * s * wa);
+        let mut orbit =
+            |dir: Vec2, k: f32, omega: f32, amplitude: f32, lean: f32, theta: f32, f: f32| {
+                let (s, c) = math::sin_cos(theta);
+                let keep = grid_keep(k, cell) * f;
+                let (wv, wa) = (keep * omega, keep * omega * omega);
+                let lean = Vec3::new(dir.x * lean, 0.0, dir.y * lean);
+                point.velocity += lean * (s * wv) - Vec3::Y * (amplitude * c * wv);
+                point.acceleration += -lean * (c * wa) - Vec3::Y * (amplitude * s * wa);
+            };
+        for ((w, &phase), &f) in self.waves.iter().zip(&phases).zip(&shoal.open) {
+            let theta = w.k * w.direction.dot(rest) + phase;
+            orbit(w.direction, w.k, w.omega, w.amplitude, w.lean, theta, f);
+        }
+        if shoal.amplitude > 0.0 {
+            orbit(
+                shoal.inshore,
+                shoal.k,
+                shoal.omega,
+                shoal.amplitude,
+                shoal.lean,
+                shoal.phase,
+                1.0,
+            );
         }
         point
     }
@@ -263,6 +372,52 @@ pub struct SurfacePoint {
     pub height: f32,
     pub velocity: Vec3,
     pub acceleration: Vec3,
+}
+
+/// A sea near a shore ([`Ocean::surface_near`]): the seabed under it, the
+/// trains rolling in on it, and the absolute world xz of the zero of the
+/// frame the seabed's grid lies in (og.WorldOrigin's).
+#[derive(Clone, Copy, Debug)]
+pub struct Coast<'a> {
+    pub shore: &'a Shore,
+    pub trains: ShoreTrains,
+    pub zero: DVec2,
+}
+
+/// What the seabed under a point does to the sea there ([`Ocean::shoaling`]):
+/// each open wave's factor (amplitude and lean), and the shore train's
+/// amplitude, lean, wavenumber, frequency, direction and phase there.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Shoaling {
+    pub open: [f32; OCEAN_WAVES],
+    pub amplitude: f32,
+    pub lean: f32,
+    pub k: f32,
+    pub omega: f32,
+    pub inshore: Vec2,
+    pub phase: f32,
+}
+
+impl Shoaling {
+    /// The open sea: every wave whole, no trains.
+    pub const OPEN: Shoaling = Shoaling {
+        open: [1.0; OCEAN_WAVES],
+        amplitude: 0.0,
+        lean: 0.0,
+        k: 0.0,
+        omega: 0.0,
+        inshore: Vec2::ZERO,
+        phase: 0.0,
+    };
+}
+
+/// tanh, deterministic on every host ([`math::exp`]'s).
+pub fn tanh(x: f32) -> f32 {
+    if x >= 0.0 {
+        1.0 - 2.0 / (math::exp(2.0 * x) + 1.0)
+    } else {
+        -tanh(-x)
+    }
 }
 
 /// How much of a wave of wavenumber `k` a grid of `cell`-metre cells
@@ -458,5 +613,67 @@ mod tests {
         // The surface moves with time: a crest travels down the wind.
         let p = DVec2::new(3.0, 0.0);
         assert_ne!(sea.height(p, 0.0), sea.height(p, 0.5));
+    }
+
+    /// A 1:20 beach (W1): the sea feels the seabed. At 1 m of water the
+    /// surface's crest to trough over a minute stays under the breaking
+    /// height, 0.78 m (the open sea's there is metres); the trains roll in
+    /// parallel to the beach; on the beach above the waterline the sea is
+    /// flat; far outside the seabed's grid the sea is the open sea's.
+    #[test]
+    fn a_sea_shoals_and_breaks_on_a_beach() {
+        let sea = Ocean::new(Vec2::new(12.0, 0.0), 1.0, 0.8).expect("a sea");
+        // Depth (400 - x) / 20: the waterline at x = 400, 2 m cells.
+        let (c, r) = (301u32, 41u32);
+        let depth: Vec<f32> = (0..c * r)
+            .map(|i| (400.0 - (i % c) as f32 * 2.0) / 20.0)
+            .collect();
+        let shore = Shore::new(Vec2::new(0.0, -40.0), 2.0, c, r, &depth).expect("a shore");
+        let trains = ShoreTrains::new(sea.significant_height(), 1.0, 30.0);
+        let coast = Coast {
+            shore: &shore,
+            trains,
+            zero: DVec2::ZERO,
+        };
+        let range = |x: f64, coast: Option<&Coast>| {
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for i in 0..600 {
+                let h = sea
+                    .surface_near(DVec2::new(x, 3.0), f64::from(i) * 0.1, 0.0, coast)
+                    .height;
+                lo = lo.min(h);
+                hi = hi.max(h);
+            }
+            hi - lo
+        };
+        let shallow = range(380.0, Some(&coast));
+        let open = range(380.0, None);
+        assert!(
+            shallow < 0.78,
+            "crest to trough {shallow} m in 1 m of water"
+        );
+        assert!(open > 2.0, "the open sea's {open} m");
+        // Deeper water carries more of the sea.
+        assert!(range(200.0, Some(&coast)) > 2.0 * shallow);
+        // Dry: flat.
+        assert_eq!(range(500.0, Some(&coast)), 0.0);
+        // The trains run in along the beach's normal: at 2 m of water their
+        // crests are where the distance says, the same along the beach.
+        let alone = Ocean {
+            waves: [OceanWave::default(); OCEAN_WAVES],
+        };
+        let a = alone
+            .surface_near(DVec2::new(360.0, -20.0), 7.0, 0.0, Some(&coast))
+            .height;
+        let b = alone
+            .surface_near(DVec2::new(360.0, 15.0), 7.0, 0.0, Some(&coast))
+            .height;
+        assert!(a.abs() > 1e-3 && (a - b).abs() < 1e-4, "{a} vs {b}");
+        // Outside the grid, the open sea.
+        let far = DVec2::new(-500.0, 0.0);
+        assert_eq!(
+            sea.surface_near(far, 3.0, 0.0, Some(&coast)),
+            sea.surface_on_grid(far, 3.0, 0.0)
+        );
     }
 }

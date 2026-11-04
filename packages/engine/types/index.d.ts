@@ -17036,6 +17036,36 @@ export interface Water {
    * A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale).
    */
   endless: boolean;
+  /**
+   * The og.Terrain entity whose heights are the sea's floor (0: none, the open sea everywhere): the sea feels the depth over it, each wave fading where the water is shallower than half its length and the whole held under its breaking height (a significant height of 0.78 times the depth), so it never runs through a beach; trains of waves roll in parallel to the shore and break into surf (shore, shoreFoam). og.physics.waterHeight and og.Buoyancy read the same shoaled sea: a boat in the shallows rides what is drawn there. Read when the water, the terrain's placement or its edits change.
+   */
+  seabed: Entity;
+  /**
+   * How high the trains rolling in on the seabed's shores are, times a quarter of the sea's significant height (0: none; the waves still shoal).
+   *
+   * @default 1
+   * @range 0..4
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  shore: number;
+  /**
+   * The trains' length from crest to crest (0: 40 m).
+   *
+   * @range 0..400
+   * @unit m (metres)
+   * @tunable
+   */
+  shoreWaveLength: number;
+  /**
+   * How much surf foams where the trains break and the water runs shallow over the seabed (0: none).
+   *
+   * @default 1
+   * @range 0..2
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  shoreFoam: number;
 }
 
 /**
@@ -49826,7 +49856,7 @@ export declare namespace og {
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */

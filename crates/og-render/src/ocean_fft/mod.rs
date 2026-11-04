@@ -42,13 +42,20 @@ pub fn foam_layer(cascades: u32) -> u32 {
 const FFT_WGSL: &str = wgsl3d!("ocean_fft.wgsl");
 const MIPS_WGSL: &str = wgsl3d!("ocean_fft_mips.wgsl");
 const FOAM_WGSL: &str = wgsl3d!("ocean_foam.wgsl");
+/// The seabed's shoaling (W1), prepended to water.wgsl and ocean_foam.wgsl.
+pub(crate) const SHORE_WGSL: &str = wgsl3d!("shore.wgsl");
+
+/// The foam's module: the seabed's shoaling, then ocean_foam.wgsl.
+fn foam_source() -> String {
+    format!("{SHORE_WGSL}{FOAM_WGSL}")
+}
 
 /// The WGSL modules of this pass, for the shader check.
-pub fn sources() -> [(&'static str, &'static str); 3] {
+pub fn sources() -> [(&'static str, String); 3] {
     [
-        ("ocean fft", FFT_WGSL),
-        ("ocean fft mips", MIPS_WGSL),
-        ("ocean foam", FOAM_WGSL),
+        ("ocean fft", FFT_WGSL.to_string()),
+        ("ocean fft mips", MIPS_WGSL.to_string()),
+        ("ocean foam", foam_source()),
     ]
 }
 
@@ -94,7 +101,11 @@ struct Foam {
     /// the next.
     history: wgpu::Texture,
     update: wgpu::ComputePipeline,
-    update_group: wgpu::BindGroup,
+    /// The update's bindings but the seabed's (W1: the sea's `Water::shore`
+    /// texture, bound as each advance's [`Foam::group`]).
+    update_layout: wgpu::BindGroupLayout,
+    update_views: [wgpu::TextureView; 3],
+    sampler: wgpu::Sampler,
     detail: wgpu::ComputePipeline,
     detail_group: wgpu::BindGroup,
     /// The micro-structure is made with the first step.
@@ -385,7 +396,8 @@ impl FftOcean {
     /// foam step is submitted on its own, after the fields at its own time
     /// ([`foam`]: the steps since the last frame, or the warm-up after a
     /// restart). `eye` is the camera's absolute world xz (the frame's plus
-    /// `origin`), `swell` og_core's waves at a time (`WaterGpu::swell`).
+    /// `origin`), `swell` og_core's waves at a time (`WaterGpu::swell`),
+    /// `shore` the seabed's texture and its rows at a time (`WaterGpu::shore`).
     #[allow(clippy::too_many_arguments)]
     pub fn advance(
         &mut self,
@@ -397,7 +409,9 @@ impl FftOcean {
         origin: glam::DVec2,
         sea: &foam::FoamSea,
         swell: &dyn Fn(f64) -> [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+        shore: (&wgpu::TextureView, &dyn Fn(f64) -> [[f32; 4]; 3]),
     ) {
+        let group = self.foam.group(device, shore.0);
         let now = (seconds / foam::STEP).floor() as i64;
         let steps = match self.foam.last {
             Some((last, _)) if now >= last && now - last <= foam::GAP => {
@@ -430,6 +444,7 @@ impl FftOcean {
                 self.cascades,
                 sea,
                 swell(at),
+                shore.1(at),
             );
             queue.write_buffer(&self.foam.uniform, 0, bytemuck::bytes_of(&u));
             {
@@ -438,7 +453,7 @@ impl FftOcean {
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.foam.update);
-                pass.set_bind_group(0, &self.foam.update_group, &[]);
+                pass.set_bind_group(0, &group, &[]);
                 pass.dispatch_workgroups(foam::RES / 8, foam::RES / 8, 2);
             }
             let first = foam_layer(self.cascades);
@@ -594,6 +609,17 @@ impl Foam {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                // The seabed (shore.wgsl), its texels read with textureLoad.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let detail_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -619,39 +645,13 @@ impl Foam {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        let m = module("ocean foam", FOAM_WGSL);
+        let m = module("ocean foam", &foam_source());
         let update = pipeline("ocean foam", &update_layout, &m, "update");
         let detail = pipeline("ocean foam detail", &detail_layout, &m, "detail");
         let history_view = history.create_view(&wgpu::TextureViewDescriptor {
             label: Some("ocean foam history"),
             dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
-        });
-        let update_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ocean foam"),
-            layout: &update_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&waves),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&history_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&out),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-            ],
         });
         let detail_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ocean foam detail"),
@@ -665,11 +665,51 @@ impl Foam {
             uniform,
             history,
             update,
-            update_group,
+            update_layout,
+            update_views: [waves, history_view, out],
+            sampler,
             detail,
             detail_group,
             detail_made: false,
             last: None,
         }
+    }
+}
+
+impl Foam {
+    /// The update's bind group with the seabed `shore` (one texel of none).
+    fn group(&self, device: &wgpu::Device, shore: &wgpu::TextureView) -> wgpu::BindGroup {
+        let [waves, history, out] = &self.update_views;
+        let view = wgpu::BindingResource::TextureView;
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ocean foam"),
+            layout: &self.update_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: view(waves),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: view(history),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: view(out),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: view(shore),
+                },
+            ],
+        })
     }
 }

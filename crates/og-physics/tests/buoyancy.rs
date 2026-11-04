@@ -34,6 +34,7 @@ fn lake() -> WaterBody {
         segments: 64,
         sea: None,
         zero: DVec3::ZERO,
+        shore: None,
     }
 }
 
@@ -232,6 +233,66 @@ fn a_hull_rides_the_waves_the_same_through_a_restore_and_a_second_run() {
     r.restore(&saved).unwrap();
     run(&mut r, 300);
     assert_eq!(bits(&r, e), bits(&w, e), "a restore diverges");
+}
+
+/// A breezy sea over a 1:20 beach (W1): a buoy in half a metre of water
+/// rides the shoaled, broken sea there, far less than its twin out in deep
+/// water, the same bit for bit on a second run.
+#[test]
+fn a_buoy_in_the_shallows_rides_less_than_in_deep_water() {
+    use og_core::ocean::{Shore, ShoreTrains};
+    // The waterline at x = 210, 1 m cells from x = -100.
+    let (c, r) = (401u32, 81u32);
+    let depth: Vec<f32> = (0..c * r)
+        .map(|i| (210.0 - ((i % c) as f32 - 100.0)) / 20.0)
+        .collect();
+    let shore = Shore::new(Vec2::new(-100.0, -40.0), 1.0, c, r, &depth).expect("a shore");
+    let ocean = Ocean::new(Vec2::new(12.0, 0.0), 1.0, 0.8);
+    let trains = ShoreTrains::new(ocean.unwrap().significant_height(), 1.0, 30.0);
+    let water = WaterBody {
+        sea: ocean,
+        size: Vec2::splat(6000.0),
+        segments: 256,
+        shore: Some((std::sync::Arc::new(shore), trains)),
+        ..lake()
+    };
+    let ride = || {
+        let (mut w, p) = world(9);
+        p.set_waters(vec![water.clone()]);
+        let buoy = |w: &mut World, x: f32| {
+            floater(
+                w,
+                at(x, 0.5, 0.0),
+                Vec3::splat(0.4),
+                0.5,
+                Buoyancy::default(),
+            )
+        };
+        // 0.5 m of water at x = 200; the deep one off the seabed's grid.
+        let (shallow, deep) = (buoy(&mut w, 200.0), buoy(&mut w, -400.0));
+        let mut ys = (Vec::new(), Vec::new());
+        for _ in 0..900 {
+            w.step().unwrap();
+            ys.0.push(transform(&w, shallow).position.y);
+            ys.1.push(transform(&w, deep).position.y);
+        }
+        (bits(&w, shallow), bits(&w, deep), ys)
+    };
+    let (a, b, (shallow, deep)) = ride();
+    let span = |y: &[f32]| {
+        let (lo, hi) = y[300..]
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        hi - lo
+    };
+    let (s, d) = (span(&shallow), span(&deep));
+    assert!(d > 1.0, "the deep buoy rides {d} m");
+    assert!(
+        s < 0.5 && s < 0.25 * d,
+        "the shallow buoy rides {s} m against {d} m"
+    );
+    let (a2, b2, _) = ride();
+    assert_eq!((a, b), (a2, b2), "two runs differ");
 }
 
 #[test]

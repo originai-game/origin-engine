@@ -42,8 +42,9 @@ pub(crate) struct FrameUniform {
     pub atmosphere: crate::atmosphere::AtmosphereGpu,
     /// The water's caustics: (height, strength, scale, fade), then the
     /// surface's xz rectangle, then its two cell layers at the frame's
-    /// origin (`water.rs`).
-    pub caustics: [[f32; 4]; 4],
+    /// origin; then the shore a sea's surf wets (its level, the band's
+    /// height, how wet) and its seabed's xz rectangle (`water.rs`).
+    pub caustics: [[f32; 4]; 6],
     /// x: the sun's shadow softness (0: hard PCF), y: 1 when point lights'
     /// shadows are paraboloid hemispheres, z, w: unused.
     pub shadow: [f32; 4],

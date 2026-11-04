@@ -60,6 +60,9 @@ struct Frame {
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
   caustics_cells: array<vec4<f32>, 2>,  // the two cell layers at the frame's origin: xy whole cells, zw the rest (origin.rs)
+  // W1: the shore a sea's surf wets (water.rs caustics; weather_surface.wgsl shore_wetness).
+  shore_wet: vec4<f32>,       // x: the sea's rest level, y: how high above it the surf wets (m), z: how wet (0: none)
+  shore_area: vec4<f32>,      // its seabed's xz rectangle: xy min, zw max
   shadow: vec4<f32>,          // x: the sun's softness (0: hard), y: 1 when point lights' shadows are paraboloids, z: how much of the sun's shadow the cover scattered away (0: none), w: 1 + the drawn frame of 16 under TAA (0: not temporal)
   // Stylisation (stylise.rs): the retro-3D vertex path and the material style.
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)

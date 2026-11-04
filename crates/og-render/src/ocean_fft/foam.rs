@@ -88,6 +88,7 @@ pub(super) struct FoamGpu {
     cascades: [[f32; 4]; 3],
     bands: [f32; 4],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    shore: [[f32; 4]; 3],
 }
 
 /// The camera's texel on each level (absolute world xz over the texel).
@@ -109,6 +110,7 @@ pub(super) fn step_gpu(
     cascades: u32,
     sea: &FoamSea,
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    shore: [[f32; 4]; 3],
 ) -> FoamGpu {
     let far = 1 << 24;
     let snap = std::array::from_fn(|l| {
@@ -137,6 +139,7 @@ pub(super) fn step_gpu(
         cascades: sea.cascades,
         bands: sea.bands,
         swell,
+        shore,
     }
 }
 

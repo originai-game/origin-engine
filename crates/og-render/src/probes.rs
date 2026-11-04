@@ -632,7 +632,7 @@ pub(crate) fn face_uniform(
     // and the light volumes' intensity over params.x).
     u.view_up[3] = 1.0 - base.params[0].max(0.0);
     u.cluster = [0.0; 4];
-    u.caustics = [[0.0; 4]; 4];
+    u.caustics = [[0.0; 4]; 6];
     u.stylise = [0.0; 4];
     u.probe = [[0.0; 4]; 3];
     u

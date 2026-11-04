@@ -755,6 +755,27 @@ module atmosphere {
       tunable true
     }
     field endless bool "A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale)."
+    field seabed Entity "The og.Terrain entity whose heights are the sea's floor (0: none, the open sea everywhere): the sea feels the depth over it, each wave fading where the water is shallower than half its length and the whole held under its breaking height (a significant height of 0.78 times the depth), so it never runs through a beach; trains of waves roll in parallel to the shore and break into surf (shore, shoreFoam). og.physics.waterHeight and og.Buoyancy read the same shoaled sea: a boat in the shallows rides what is drawn there. Read when the water, the terrain's placement or its edits change."
+    field shore f32 "How high the trains rolling in on the seabed's shores are, times a quarter of the sea's significant height (0: none; the waves still shoal)." {
+      default 1
+      min 0
+      max 4
+      unit ratio
+      tunable true
+    }
+    field shoreWaveLength f32 "The trains' length from crest to crest (0: 40 m)." {
+      min 0
+      max 400
+      unit m
+      tunable true
+    }
+    field shoreFoam f32 "How much surf foams where the trains break and the water runs shallow over the seabed (0: none)." {
+      default 1
+      min 0
+      max 2
+      unit ratio
+      tunable true
+    }
   }
 
   component Water2D {

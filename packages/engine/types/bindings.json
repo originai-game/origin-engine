@@ -4729,6 +4729,29 @@
           "name": "endless",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "seabed",
+          "column": "Entity",
+          "default": 0
+        },
+        {
+          "name": "shore",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "shoreWaveLength",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "shoreFoam",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
         }
       ]
     },
