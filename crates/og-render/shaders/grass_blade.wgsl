@@ -29,6 +29,7 @@ struct GrassUniform {
   dry_color: vec4<f32>,   // rgb: dry grass, w: roughness
   variation: vec4<f32>,   // x: colour variation, y: dryness, z: patch size (m), w: the field's distance (m)
   rows: vec4<u32>,      // rows of each level of detail
+  canopy: vec4<f32>,    // x: the canopy's extinction (per metre), y: its top (m): grass.wgsl grass_canopy
   // Per kind of blade, the field's own first (grass.rs Grass::kinds):
   // [2k] rgb its roots' colour, w its curve; [2k + 1] rgb its tips'.
   kinds: array<vec4<f32>, 8>,

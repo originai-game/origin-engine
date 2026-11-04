@@ -453,3 +453,61 @@ fn a_thinned_field_shrinks_blades_rather_than_popping_them() {
         "a thinned blade changed {changed} px of a {tallest} px blade"
     );
 }
+
+/// G5: under a sun 10 degrees up, a dense meadow (one colour root to tip,
+/// no sky light) is more than twice as bright at its tips as at its roots:
+/// the canopy between a blade's foot and the sun, and the blades' own
+/// cascade shadows (now cast by default), darken it from inside. Seen from
+/// the side through an orthographic camera, so each screen row is one
+/// height above the ground. Before G5 a blade was lit alike root to tip
+/// (no canopy, no shadows by default): a ratio near 1.
+#[test]
+fn a_low_sun_darkens_the_meadow_towards_its_roots() {
+    let mut scene = trample_scene();
+    let g = &mut scene.grass[0].grass;
+    g.distance = 30.0;
+    g.height = 0.5;
+    g.height_variation = 0.0;
+    g.density = 400.0;
+    g.base_color = Vec3::new(0.3, 0.5, 0.15);
+    g.tip_color = g.base_color;
+    g.translucency = 0.0;
+    g.cast_shadows = og_render::Grass::default().cast_shadows;
+    scene.light.cast_shadows = true;
+    let up = 10f32.to_radians();
+    scene.light.direction_to_light = Vec3::new(0.0, up.sin(), up.cos());
+    scene.camera = Camera {
+        position: Vec3::new(-20.0, 0.25, 0.0),
+        target: Vec3::new(0.0, 0.25, 0.0),
+        near: 0.1,
+        far: 60.0,
+        projection: Projection::Orthographic { height: 0.8 },
+        ..Default::default()
+    };
+    let (img, _) = render(&scene);
+    keep("grass-low-sun", &img);
+    // Rows 0.8 m tall over the frame's height, centred 0.25 m up: the
+    // band 0.02..0.1 m over the ground and the band 0.38..0.46 m.
+    let row = |y: f32| ((0.25 + 0.4 - y) / 0.8 * img.height as f32) as u32;
+    let band = |lo: f32, hi: f32| {
+        let (mut sum, mut n) = (0.0, 0);
+        for y in row(hi)..row(lo) {
+            for x in 0..img.width {
+                let c = px(&img, x, y);
+                if c[1] > 2.0 {
+                    sum += luma(c);
+                    n += 1;
+                }
+            }
+        }
+        (sum / n.max(1) as f32, n)
+    };
+    let (roots, nr) = band(0.02, 0.1);
+    let (tips, nt) = band(0.38, 0.46);
+    println!("luma at the roots {roots:.2} ({nr} px), at the tips {tips:.2} ({nt} px)");
+    assert!(nr > 1000 && nt > 1000, "the field covers both bands");
+    assert!(
+        tips > 2.0 * roots,
+        "tips {tips:.2} against roots {roots:.2}"
+    );
+}

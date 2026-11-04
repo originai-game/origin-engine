@@ -138,6 +138,12 @@ is one line here, written at the merge that changes
   terrain file takes the same keys per layer. All default to 0: a terrain
   that does not set them draws as before. The terrain prepass now reads only
   the layers' weights and heights for its roughness, never their normal maps.
+- **Grass shadows by default, self-shadowed canopy (G5).** Behaviour
+  change: `Grass.castShadows` now defaults to true, and blades cast into
+  the sun's first two cascades instead of one. Every blade is also
+  shaded by the field's own canopy between it and the sun (Beer-Lambert
+  through the blades' density and width), so dense grass darkens towards
+  its roots under a low sun. Grass frames move.
 - **Scatter placement rules and GPU culling (G4).** og.TerrainScatter
   gains `noiseScale`/`noiseThreshold` (patches), `footprint` and
   `priority` (later scatters keep clear of earlier ones' copies),

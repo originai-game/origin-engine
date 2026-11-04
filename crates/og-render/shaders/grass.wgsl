@@ -30,6 +30,8 @@ struct GrassOut {
   // How far into the field's distance the blade stands (0 near, 1 where
   // it lights as the ground under it does).
   @location(6) far: f32,
+  // How high above its root this point of the blade stands (m).
+  @location(7) above: f32,
 };
 
 fn grass_eye(previous: bool) -> GrassEye {
@@ -59,6 +61,7 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   let average = grass_far_color(grass.base_color.rgb, grass.tip_color.rgb);
   o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
   o.shading = vec3<f32>(grass_occlusion(v.t), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
+  o.above = max(v.world.y - r.blade.root.y, 0.0);
   o.cur_clip = grass.view_proj * vec4<f32>(v.world, 1.0);
   // Where the blade stood last frame: its last bend and flutter.
   let p = grass_vertex(r, grass_eye(true));
@@ -101,6 +104,21 @@ fn grass_transmittance(p: vec3<f32>) -> f32 {
 
 // How fast light dims through a canopy of blades (per metre).
 const GRASS_EXTINCTION: f32 = 1.6;
+
+// The sunlight left at a point `above` metres over its root after
+// crossing the field's own canopy towards the sun `l` (G5): the canopy a
+// slab from the ground to grass.canopy.y, as thick along the ray as the
+// point is deep in it over the sun's height, its extinction the blades'
+// density times their width (Beer-Lambert through a turbid layer: Monsi
+// and Saeki's law of light in a plant canopy, 1953, the leaf area along
+// the ray standing for their leaf area index). Self-shadowing the
+// cascades are too coarse to draw: dense grass darkens towards its roots,
+// the more the lower the sun. Far blades light as the ground (`far`).
+fn grass_canopy(above: f32, l: vec3<f32>, far: f32) -> f32 {
+  let deep = max(grass.canopy.y - above, 0.0);
+  let path = deep / max(l.y, 0.08);
+  return mix(exp(-grass.canopy.x * path), 1.0, far);
+}
 
 // The toon ramp's three bands (terrain_lit.wgsl terrain_band).
 fn grass_band(t: f32) -> f32 {
@@ -146,6 +164,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
     shadow = cascade_shadow_lookup(p, n, n_dot_l, false);
     // Lit from behind, the light comes through the blades in the way.
     if (backlit) { shadow = max(shadow, grass_transmittance(p)); }
+    shadow *= grass_canopy(in.above, l, in.far);
   }
   var direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   var tinted = (1.0 - shadow) * n_dot_l;

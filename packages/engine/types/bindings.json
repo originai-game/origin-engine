@@ -7132,7 +7132,7 @@
         {
           "name": "castShadows",
           "column": "bool",
-          "default": false
+          "default": true
         },
         {
           "name": "seed",

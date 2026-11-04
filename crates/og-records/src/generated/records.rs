@@ -29149,7 +29149,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "castShadows",
                 column: "bool",
-                default: "false",
+                default: "true",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -29158,7 +29158,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Whether the blades cast the sun's shadows (near the camera, into the first cascade)."),
+                doc: doc!("Whether the blades cast the sun's shadows (near the camera, into the first two cascades). Either way a blade is shaded by the field's own canopy between it and the sun, darker towards the roots the denser the field and the lower the sun."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
