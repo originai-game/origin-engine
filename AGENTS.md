@@ -181,9 +181,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `["model:claude-opus-5-5", "effort:medium"]` (the owner, 2026-11-01;
   high before), the project ref
   `origingame/origin-engine`, and its base commit named in the prompt;
-  never Fable or another model, never a mode picked for the task. One
-  exception (the owner, 2026-11-01): splitting oversized source files
-  runs in Amp `high` mode threads, briefed to move code verbatim (only
+  never Fable or another model, never a mode picked for the task. Only
+  macrunner runs in Amp `high` mode; every other new thread, splitting
+  oversized source files included, is a Claude Code thread (the owner,
+  2026-11-04), and an Amp `high` thread other than macrunner is archived
+  once its in-flight work lands, its open items going into a new Claude
+  Code thread's brief. A file split is briefed to move code verbatim (only
   `mod`, `use` and visibility edits; no new checks, error handling,
   helpers, renames or comments) and reviewed by the coordinator with
   `git diff --color-moved` before merging. A
