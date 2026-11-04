@@ -25,6 +25,31 @@ brands, logos or likenesses.
   - female: operation skyreach-traveller-f-rig-1, task 01a1a0ca-b7c8-7515-9c95-f2708636e3d5, height 1.66 m
   - Result: ~62k triangles, 24 joints, PBR (base colour, normal, metallic-roughness). Humanoid map: `rigs/meshy.ogt`.
 
+### The traveller's cloak (og.Garment)
+
+`traveller.glb` is the male rig above, split by `../../tools/split-cloak.ts`
+into two skinned meshes on one skin: `Body` (glTF mesh 0) and `Cloak`
+(mesh 1, ~8.4k triangles, ~4.8k welded cloth points). The cloak is chosen
+by the base colour's vermilion. The rim strips that only the cloak holds
+go with it, but not whole limbs (the arms are shells that the drapes
+touch). It is simplified without meshopt's permissive mode, so no
+triangle spans the texture atlas, and its seam to the body is locked.
+COLOR_0's alpha is og.Garment's freedom: 0 at the seam, on the hood and
+collar, rising to 1 by the hips. Then WebP at 1024 and meshopt geometry,
+quantized over the scene's volume: the two meshes share one skin, whose
+inverse bind matrices can carry only one quantization offset (per-mesh
+volumes, the default, tear the body and the cloak apart once the skeleton
+leaves the bind pose):
+
+    bun tools/split-cloak.ts traveller-rigged.glb cloak.glb
+    bunx @gltf-transform/cli@4 optimize cloak.glb tex.glb --compress false \
+      --texture-compress webp --texture-size 1024 \
+      --simplify false --join false --instance false --flatten false --palette false
+    bunx @gltf-transform/cli@4 meshopt tex.glb assets/models/traveller.glb --quantization-volume scene
+
+The ragged hem and the back vent (the opening down the cloak's centre) are
+Meshy's modelling, present on the unsplit rig too.
+
 ## Terrain textures (`../textures/`)
 
 `generate_image` (gpt-image-2.5-sunburst), "Seamless tileable square

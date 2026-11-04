@@ -120,6 +120,8 @@ function start(world: World): void {
   const body = must(world.instantiate(must(og.load.gltf(world, model)), { name: "traveller", position: at }));
   must(world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" }));
   must(world.insert(body, og.MotionAgent, { rig, drive: true }));
+  // The cloak (mesh 1, split from the body by tools/split-cloak.ts) swings in the wind; its freedom is painted in its vertex alpha.
+  must(world.insert(body, og.Garment, { mesh: 1, maxDistance: 0.25, bending: 0.3, iterations: 6 }));
   must(og.motion.face(world, body, { heading: Math.PI + 0.25, duration: 0.1 }));
   must(og.motion.pose(world, body, { pose: "idle", duration: 600 }));
   scene.traveller = body;

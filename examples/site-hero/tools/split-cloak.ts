@@ -92,18 +92,21 @@ const morph = (m: Uint8Array, radius: number, grow: boolean): Uint8Array => {
   return pass(pass(m, 1, 0), 0, 1);
 };
 mask = morph(morph(mask, 6, true), 6, false);
+// Near the cloak's colour: the mask grown further, for its rim strips.
+const near = morph(mask, 16, true);
 
 const pos = prim.getAttribute("POSITION")!;
 const uv = prim.getAttribute("TEXCOORD_0")!;
 const indices = prim.getIndices()!;
 const count = pos.getCount();
 const at = (a: Accessor, i: number) => a.getElement(i, []);
-const inMask = (i: number) => {
+const texel = (i: number) => {
   const [u, v] = at(uv, i) as [number, number];
   const x = Math.min(tw - 1, Math.max(0, Math.floor((u - Math.floor(u)) * tw)));
   const y = Math.min(th - 1, Math.max(0, Math.floor((v - Math.floor(v)) * th)));
-  return mask[y * tw + x] === 1;
+  return y * tw + x;
 };
+const inMask = (i: number) => mask[texel(i)] === 1;
 
 // Triangles: cloak when at least two of its corners are.
 const tri = indices.getArray()!;
@@ -187,6 +190,21 @@ const pointOf = new Int32Array(count);
   const cloakPoint = new Set(cloakTris.map((i) => pointOf[i]!));
   const touches = new Set<number>();
   for (const i of bodyTris) if (cloakPoint.has(pointOf[i]!)) touches.add(find(i));
+  // Only strips of the cloak's own colour: most of an island's corners
+  // near the vermilion (cuffs, belts and skin that touch it stay body).
+  const red = new Map<number, [number, number]>();
+  for (const i of bodyTris) {
+    const c = find(i);
+    const [a, n] = red.get(c) ?? [0, 0];
+    red.set(c, [a + (near[texel(i)] === 1 ? 1 : 0), n + 1]);
+  }
+  // And only strips: a whole limb (the arms are shells of their own that
+  // the cloak's drapes touch, a fifth of the cloak's size each) stays body.
+  const strip = (cloakTris.length / 3) * 0.05;
+  for (const c of [...touches]) {
+    const [a, n] = red.get(c)!;
+    if (a < 0.6 * n || size.get(c)! > strip) touches.delete(c);
+  }
   const kept: number[] = [];
   let moved = 0;
   for (let t = 0; t < bodyTris.length; t += 3) {
@@ -246,9 +264,11 @@ const valence = (tris: number[]) => {
 console.log("cloak edge valence before simplifying", valence(cloakTris));
 
 // Simplified: the cloth is simulated point by point, so a quarter of
-// Meshy's dense remesh (its folds and edges kept; across UV seams too,
-// weighing the UVs so the texture stays put), the seam to the body locked
-// so no crack opens.
+// Meshy's dense remesh (its folds and edges kept, weighing the UVs so the
+// texture stays put), the seam to the body locked so no crack opens. Not
+// across UV seams (meshopt's permissive mode): a triangle collapsed over
+// one spans the atlas and draws other parts' texels, the dark angular
+// panels the back showed.
 {
   const n0 = local.length;
   const positions = new Float32Array(n0 * 3);
@@ -263,7 +283,7 @@ console.log("cloak edge valence before simplifying", valence(cloakTris));
   const localTris = new Uint32Array(cloakTris.map((i) => used.get(i)!));
   const target = Math.floor((localTris.length * Number(process.env.SPLIT_CLOAK_KEEP ?? 0.25)) / 3) * 3;
   const [simplified, error] = MeshoptSimplifier.simplifyWithAttributes(
-    localTris, positions, 3, attributes, 5, [1, 1, 1, 1, 1], lock, target, 0.01, ["Permissive"],
+    localTris, positions, 3, attributes, 5, [1, 1, 1, 1, 1], lock, target, Number(process.env.SPLIT_CLOAK_ERROR ?? 0.02), [],
   );
   console.log(`simplified ${localTris.length / 3} to ${simplified.length / 3} triangles, error ${error.toFixed(4)}`);
   cloakTris = [...simplified].map((k) => local[k]!);
