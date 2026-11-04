@@ -146,6 +146,44 @@ mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
 
+thread_local! {
+    /// Fork s60: the host's hook around the frame pipelines
+    /// ([`set_frame_pipelines_hook`]).
+    static FRAME_PIPELINES_HOOK: std::cell::Cell<Option<fn(bool)>> = const { std::cell::Cell::new(None) };
+    /// How many [`frame_pipelines`] spans are open (only the outermost calls the hook).
+    static FRAME_PIPELINES_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Fork s60: `hook(true)` before the renderer makes its frame pipelines
+/// (the materials' lit, shadow and prepass pipelines, the particles',
+/// [`Renderer::warm`]'s) and `hook(false)` after, on this thread; `None`
+/// (the default) calls nothing. The web host makes the render pipelines
+/// asked for in between with `createRenderPipelineAsync` and skips the
+/// draws of one not made yet (packages/engine/src/web/pipelines.ts), so a
+/// frame that meets dozens of new pipelines does not hold the browser's GPU
+/// process while they compile. One-shot passes (mips, IBL, captures) make
+/// theirs outside it, at once: their draws must not be skipped.
+pub fn set_frame_pipelines_hook(hook: Option<fn(bool)>) {
+    FRAME_PIPELINES_HOOK.with(|c| c.set(hook));
+}
+
+/// Runs `f`, which makes frame pipelines, inside the host's hook.
+fn frame_pipelines<R>(f: impl FnOnce() -> R) -> R {
+    let Some(hook) = FRAME_PIPELINES_HOOK.with(|c| c.get()) else {
+        return f();
+    };
+    let depth = FRAME_PIPELINES_DEPTH.with(|d| d.replace(d.get() + 1));
+    if depth == 0 {
+        hook(true);
+    }
+    let r = f();
+    FRAME_PIPELINES_DEPTH.with(|d| d.set(depth));
+    if depth == 0 {
+        hook(false);
+    }
+    r
+}
+
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit, the
 /// default). A texture past it is drawn from a 1x1 stand-in (mid grey and
 /// transparent for colour, a flat normal for a two-channel map, white

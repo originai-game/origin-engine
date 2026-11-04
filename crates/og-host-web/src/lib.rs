@@ -77,6 +77,8 @@ thread_local! {
     /// (s58): a boot's hundreds of texture calls parse the 0.5 MB manifest
     /// once, not twice per texture.
     static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
+    /// The Worker's frame-pipeline span (fork s60, `og_web_frame_pipelines`).
+    static FRAME_SPAN: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
@@ -966,6 +968,25 @@ pub fn og_web_lose_device(engine: u32) -> bool {
 #[wasm_bindgen]
 pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
+}
+
+/// Fork s60: the Worker's `span(on)`, called when the renderer begins and
+/// ends making its frame pipelines (og-render `set_frame_pipelines_hook`);
+/// `null` calls nothing. The Worker makes the pipelines asked for in between
+/// with `createRenderPipelineAsync` (src/web/pipelines.ts).
+#[wasm_bindgen]
+pub fn og_web_frame_pipelines(span: Option<js_sys::Function>) {
+    let on = span.is_some();
+    FRAME_SPAN.with(|cell| *cell.borrow_mut() = span);
+    og_render::set_frame_pipelines_hook(on.then_some(frame_span as fn(bool)));
+}
+
+fn frame_span(on: bool) {
+    FRAME_SPAN.with(|cell| {
+        if let Some(f) = cell.borrow().as_ref() {
+            let _ = f.call1(&JsValue::NULL, &JsValue::from_bool(on));
+        }
+    });
 }
 
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit); a

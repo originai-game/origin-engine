@@ -61,9 +61,11 @@ import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscod
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
 import { Trace, unixMs } from "../trace.ts";
+import * as pipelines from "./pipelines.ts";
 
 // Fork s61: a lost WebGPU device and its first validation errors are said in the console (the
 // renderer is made inside the wasm, so its device is met here, where the Worker asks for it).
+// Fork s60: the device makes the renderer's frame pipelines asynchronously (pipelines.ts).
 {
   const proto = (globalThis as { GPUAdapter?: { prototype: { requestDevice(...a: unknown[]): Promise<GPUDeviceLike> } } }).GPUAdapter?.prototype;
   type GPUDeviceLike = { lost: Promise<{ reason: string; message: string }>; addEventListener(t: string, f: (e: { error?: { message?: string } }) => void): void };
@@ -71,6 +73,7 @@ import { Trace, unixMs } from "../trace.ts";
     const requestDevice = proto.requestDevice;
     proto.requestDevice = async function (this: unknown, ...a: unknown[]) {
       const device = await requestDevice.apply(this, a);
+      pipelines.install(device as unknown as Parameters<typeof pipelines.install>[0]);
       void device.lost.then((l) => console.error(`[og] WebGPU device lost: reason=${l.reason} message=${l.message}`));
       let errors = 0;
       device.addEventListener("uncapturederror", (e) => {
@@ -240,6 +243,8 @@ export interface WebExtras {
   og_web_display_interval?(engine: number, ms: number): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
+  /** Fork s60: `span(on)` around the renderer's frame pipelines (og-render set_frame_pipelines_hook), which pipelines.ts makes asynchronously. */
+  og_web_frame_pipelines?(span: ((on: boolean) => void) | null): void;
   /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */
   og_web_upload_budget?(bytes: number): void;
   /** Fork s63: the textures still drawn from their stand-ins after the last frame. */
@@ -1113,8 +1118,8 @@ export function startWorker(game: GameToken): void {
         pumpRoom(engine);
         if (typeof answered.tick === "number") lastTick = answered.tick;
         // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
-        // (og-render warm) are made here, one a frame.
-        if (covered && coveredWarmLeft && glueRef?.og_web_warm) {
+        // (og-render warm) are made here, one a frame, at most two compiling (s60).
+        if (covered && coveredWarmLeft && glueRef?.og_web_warm && pipelines.compiling() < 2) {
           coveredWarmLeft = glueRef.og_web_warm(engine.id);
           if (coveredWarmLeft) coveredWarm++;
         }
@@ -1183,6 +1188,12 @@ export function startWorker(game: GameToken): void {
     let made = 0;
     const step = () => {
       if (playing || crashed || !engine) return;
+      // Fork s60: with the pipelines asynchronous a warm call returns at once; at most two
+      // compile at a time, so the ones a frame needs are not queued behind every pass's.
+      if (pipelines.compiling() >= 2) {
+        setTimeout(step, 50);
+        return;
+      }
       let more: boolean;
       try {
         more = warm(engine.id);
@@ -1199,13 +1210,15 @@ export function startWorker(game: GameToken): void {
   };
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   let settling = false;
-  /** Whether the last frame drew less than the scene: textures still drawn from their stand-ins (s63). */
-  const frameWaits = () => (glueRef?.og_web_textures_deferred?.() ?? 0) > 0;
-  /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when. */
-  let waiting = { frames: 0, since: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
+  /** Textures still drawn from their stand-ins (s63). */
+  const texturesWaiting = () => (glueRef?.og_web_textures_deferred?.() ?? 0) > 0;
+  /** Whether the last frame drew less than the scene: pipelines compiling or draws skipped for them (s60), textures waiting (s63). */
+  const frameWaits = () => pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || texturesWaiting();
+  /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when, the most pipelines compiling. */
+  let waiting = { frames: 0, since: 0, most: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
   // Fork s61: a game that draws its loading screen with the page (og-config bootScreen "page") reports its
   // own stages there (`ogBootStage(id, fraction)`: og:stage on the page), and asks whether the frames still
-  // wait for textures to upload (s63) before it calls its loading done (`ogBootIdle()`).
+  // wait for pipelines compiling (s60) or textures to upload (s63) before it calls its loading done (`ogBootIdle()`).
   const pageStages = () => {
     const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
     // Fork s70: the page's loading screen hides the canvas until the game calls its loading done, so the
@@ -1220,7 +1233,7 @@ export function startWorker(game: GameToken): void {
       }
       self.postMessage({ type: "og-stage", id, fraction });
     };
-    g.ogBootIdle = () => !frameWaits();
+    g.ogBootIdle = () => pipelines.compiling() === 0 && !texturesWaiting();
   };
   /** One rendered frame without a tick: the first frame behind the play gate. */
   const present = () => {
@@ -1230,12 +1243,25 @@ export function startWorker(game: GameToken): void {
       if (!answered.ok) return crash(answered.reason ?? "the engine refused a frame");
       relay(answered);
       if (!firstFrame && answered.rendered !== false) {
-        // Fork s63: textures still waiting need frames to upload them: the next one at once, each
-        // its own task; the first frame is the first one drawn whole.
+        // A frame that drew less than the scene is drawn again, each try its own task: once no
+        // pipeline compiles (s60, polled without drawing: a frame meanwhile only slows them), or at
+        // once while textures wait to upload (s63). The first frame is the first one drawn whole.
         if (frameWaits()) {
           if (!waiting.since) waiting.since = performance.now();
           waiting.frames++;
-          if (!waiting.again) waiting.again = setTimeout(() => ((waiting.again = 0), present()), 0);
+          const bar = () => {
+            waiting.most = Math.max(waiting.most, pipelines.compiling());
+            self.postMessage({ type: "progress", value: onBar("present", 1 - pipelines.compiling() / Math.max(1, waiting.most)), stage: "present" });
+          };
+          bar();
+          const poll = () => {
+            waiting.again = 0;
+            if (pipelines.compiling() > 0) {
+              bar();
+              waiting.again = setTimeout(poll, 50);
+            } else present();
+          };
+          if (!waiting.again) waiting.again = setTimeout(poll, pipelines.compiling() > 0 ? 50 : 0);
           flushLog();
           return;
         }
@@ -1385,6 +1411,11 @@ export function startWorker(game: GameToken): void {
         glueRef = glue;
         // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
         glue.og_web_upload_budget?.(UPLOAD_BUDGET);
+        // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts).
+        if (glue.og_web_frame_pipelines) {
+          pipelines.enable(true);
+          glue.og_web_frame_pipelines(pipelines.frameSpan);
+        }
         // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
         if (covered) glue.og_web_covered?.(true);
         phase("wasm");

@@ -422,7 +422,12 @@ impl Renderer {
     }
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches need.
+    /// Fork s60: asynchronous on the WebGPU tier while the host asks for it.
     pub(crate) fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+        frame_pipelines(|| self.ensure_pipelines_now(batches, skinned, prepass));
+    }
+
+    fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
         let all = batches
             .iter()
             .map(|b| (b, false))
