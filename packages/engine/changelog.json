@@ -499,6 +499,10 @@
     ],
     "fixed": [
       {
+        "member": "og ui eject <kit>/<document>",
+        "summary": "Ejecting a kit document copied the whole kit beside it (its TypeScript, manifest, skill and review sheet); it now copies the document with its companion documents and assets only."
+      },
+      {
         "member": "rpg.conversation, strategy.resourceBar (kits)",
         "summary": "On a phone in portrait the conversation's caption and choices traded room every tick and the caption rose over the tools; the choices now take a fixed share of the room. A resource bar laid in the flow folds to its box, not to the screen."
       },

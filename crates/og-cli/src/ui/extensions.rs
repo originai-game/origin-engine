@@ -312,7 +312,18 @@ pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String>
     }
     // Keep sibling documents/assets at the same relative paths. Existing game
     // edits of companions stay; --force replaces only the requested document.
+    // A kit's code, manifest, skill and review sheet are not a document's
+    // companions: `og ui add` installs those.
+    let skill_dir = Path::new(&extension.manifest.skill).parent();
     for companion in files(&extension.directory)? {
+        let kit_only = companion == Path::new("extension.json")
+            || companion.starts_with("sheet")
+            || companion.extension().is_some_and(|e| e == "ts")
+            || skill_dir.is_some_and(|d| !d.as_os_str().is_empty() && companion.starts_with(d))
+            || companion == Path::new(&extension.manifest.skill);
+        if kit_only {
+            continue;
+        }
         let dest = destination.join(&companion);
         if dest.exists() && dest != target {
             continue;
