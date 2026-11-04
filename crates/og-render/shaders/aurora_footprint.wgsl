@@ -17,7 +17,7 @@
 struct Params {
   head: vec4<f32>,  // x side, y radius (km), z curtains, w points per curtain
   look: vec4<f32>,  // x the strip's snapshot (0..3), y the sheet's half-width (km), z the red spread (km), w its scale
-  curtain: array<vec4<f32>, 6>,  // x characteristic energy (keV)
+  curtain: array<vec4<f32>, 6>,  // x characteristic energy (keV), y the rays' seed, z their contrast
   points: array<vec4<f32>, 768>,  // xy about the viewer (km), z the strip along (periods), w brightness
 };
 
@@ -41,6 +41,46 @@ fn segment_distance(x: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
   let ab = b - a;
   let h = clamp(dot(x - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
   return length(x - a - ab * h);
+}
+
+fn hash(a: u32, b: u32) -> f32 {
+  var h = a * 747796405u + b * 2891336453u + 0x9e3779b9u;
+  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+  h = (h >> 22u) ^ h;
+  return f32(h & 0xffffffu) / 16777216.0;
+}
+
+// The arc's rays at `a` km along it, its mean 1: field-aligned beams two
+// to five kilometres wide (the fine structure of discrete arcs: Hallinan &
+// Davis, Planet. Space Sci. 18, 1970), one in a 5 km cell where they
+// bunch, few where they thin (a 40 km clumping), with gaps of the arc's
+// diffuse glow between. Each beam is a Gaussian widened by `blur` (the
+// texel's extent along the arc) with its column kept: the field is
+// filtered exactly, never aliasing into a comb; far off, where the
+// texels are wider than the beams, it fades to its mean.
+fn rays(a: f32, blur: f32, seed: u32) -> f32 {
+  let cell = 5.0;
+  let b = min(blur, 3.0);
+  let i0 = i32(floor(a / cell));
+  var sum = 0.0;
+  for (var k = -2; k <= 2; k++) {
+    let i = i0 + k;
+    let j = bitcast<u32>(i);
+    let g = f32(i) / 8.0;
+    let g0 = floor(g);
+    let f = smoothstep(0.0, 1.0, g - g0);
+    let clump = mix(hash(bitcast<u32>(i32(g0)), seed ^ 0x51u), hash(bitcast<u32>(i32(g0) + 1), seed ^ 0x51u), f);
+    if (hash(j, seed) > mix(0.1, 0.95, clump)) { continue; }
+    let at = (f32(i) + hash(j, seed ^ 0x2au)) * cell;
+    let sigma = 0.8 + 1.2 * hash(j, seed ^ 0x3bu);
+    let h = hash(j, seed ^ 0x4cu);
+    let bright = 0.25 + 2.0 * h * h;
+    let s2 = sigma * sigma + b * b;
+    sum += bright * sigma * inverseSqrt(s2) * exp(-0.5 * (a - at) * (a - at) / s2);
+  }
+  // The mean: presence 0.525, brightness 0.917, column sqrt(2 pi) 1.4 per 5 km.
+  let mean = 0.525 * 0.917 * 2.5066 * 1.4 / cell;
+  return mix(sum / mean, 1.0, smoothstep(3.0, 8.0, blur));
 }
 
 @compute @workgroup_size(8, 8)
@@ -141,7 +181,10 @@ fn main(
       let gx = vec2<f32>(dot(e_r, t), dot(e_r, side_dir)) * k;
       let gy = vec2<f32>(dot(e_t, t), dot(e_t, side_dir)) * k;
       let dye = dot(textureSampleGrad(strip, strip_sampler, vec2<f32>(best[c].y, across), gx, gy), weights);
-      let f = dye * best[c].z;
+      // The texel's extent along the arc, as a Gaussian's sigma (km).
+      let blur = 0.3 * length(vec2<f32>(dot(e_r, t), dot(e_t, t)));
+      let ray = rays(best[c].y * period, blur, u32(params.curtain[c].y));
+      let f = dye * best[c].z * mix(1.0, ray, params.curtain[c].z);
       flux += f;
       energy += f * params.curtain[c].x;
       weight += f;

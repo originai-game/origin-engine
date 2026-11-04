@@ -65,6 +65,9 @@ const TABLE_OCTAVES: f64 = 0.67;
 /// The soft electrons' share of the energy flux and their characteristic
 /// energy (keV), beside the primaries ([`emission_rows_of`]).
 const SOFT_SHARE: f64 = 0.1;
+/// The primaries' accelerating potential in units of the characteristic
+/// energy, at keV energies ([`emission_rows_of`]).
+const ACCELERATION: f64 = 1.6;
 const SOFT_E0: f64 = 0.25;
 /// The strip's cells along and across the curtain.
 const STRIP_X: usize = 256;
@@ -233,7 +236,16 @@ impl Aurora {
             let bright = 1.0 / (1.0 + 0.45 * c as f64);
             let pulse = (40.0 + 50.0 * rng.unit(), rng.unit() * std::f64::consts::TAU);
             let noise_seed = rng.next();
-            p.curtain[c] = [energy as f32, 0.0, 0.0, 0.0];
+            // Rays: none on a quiet arc, most on an active one, fewer
+            // where the curls of a breakup take over.
+            let a = f64::from(activity);
+            let rays = 0.65 * smooth(0.0, 0.15, a) * (1.0 - 0.6 * smooth(0.5, 1.0, a));
+            p.curtain[c] = [
+                energy as f32,
+                (noise_seed & 0xffff) as f32,
+                rays as f32,
+                0.0,
+            ];
             // The strip's shift along the curve (drift wraps by whole periods).
             let shift = (offset * period - drift * t).rem_euclid(period);
             let mut u = 0.0;
@@ -412,23 +424,44 @@ fn energies() -> impl Iterator<Item = (f64, f64)> {
 /// the k-th energy of [`energies`].
 fn emission_rows_of(e0: f64, heights: &[f64], deposits: &[Vec<f64>]) -> Vec<[f64; 3]> {
     let dz = (TABLE_TOP - TABLE_BOTTOM) / heights.len() as f64;
-    // The spectrum: the primaries' Maxwellian at `e0` and, with a tenth of
+    // The spectrum: the primaries and, with a tenth of
     // the energy flux, the soft electrons that come down with every
     // discrete arc (secondaries and degraded primaries returning from the
     // ionosphere below, trapped and reflected above the accelerating
     // region: Evans, J. Geophys. Res. 79, 1974), a Maxwellian of 0.25 keV.
     // They deposit high, where the red line glows: an arc's top fades from
     // green into a faint red even when its primaries are hard.
+    //
+    // A discrete arc's primaries have fallen through a field-aligned
+    // potential (the inverted V: Evans 1974): an accelerated Maxwellian,
+    // nothing below the potential V and a source temperature kT above it
+    // (Strickland, Meier, Hecht & Christensen, J. Geophys. Res. 94, 1989).
+    // At keV energies V = 1.6 e0 and kT = 0.2 e0, whose mean energy is a
+    // Maxwellian of e0's (2 e0), so `energy` keeps its meaning; lacking
+    // the Maxwellian's high tail, the primaries stop within a few
+    // kilometres of one depth, the sharp, bright lower edge of an arc, the
+    // light fading upward. Soft precipitation (diffuse aurora, the cusp)
+    // is not accelerated: below 1.5 keV the potential fades out, the mean
+    // energy kept, to a plain Maxwellian at 0.5 keV.
     let maxwellian = |e: f64, k: f64| e * (-e / k).exp();
-    let flux = |k: f64| -> f64 { energies().map(|(e, de)| maxwellian(e, k) * e * de).sum() };
-    let (primary, soft) = (flux(e0), flux(SOFT_E0));
+    let a = smooth(0.5, 1.5, e0);
+    let (v, kt) = (ACCELERATION * a * e0, (1.0 - ACCELERATION * a / 2.0) * e0);
+    let accelerated = |e: f64| {
+        if e >= v {
+            e * (-(e - v) / kt).exp()
+        } else {
+            0.0
+        }
+    };
+    let flux = |f: &dyn Fn(f64) -> f64| -> f64 { energies().map(|(e, de)| f(e) * e * de).sum() };
+    let (primary, soft) = (flux(&accelerated), flux(&|e| maxwellian(e, SOFT_E0)));
     let deposit: Vec<f64> = deposits
         .iter()
         .map(|row| {
             energies()
                 .zip(row)
                 .map(|((e, de), a)| {
-                    let n = (1.0 - SOFT_SHARE) * maxwellian(e, e0) / primary
+                    let n = (1.0 - SOFT_SHARE) * accelerated(e) / primary
                         + SOFT_SHARE * maxwellian(e, SOFT_E0) / soft;
                     n * a * de
                 })
@@ -1124,6 +1157,28 @@ mod tests {
         let low = rows[at(90.0)];
         let mid = rows[at(115.0)];
         assert!(low[0] / low[1] > 1.5 * mid[0] / mid[1], "{low:?} {mid:?}");
+    }
+
+    /// An arc's lower edge is its sharpest: below the green peak the light
+    /// rises from a tenth to full within 10 km, and above it takes over
+    /// twice as far to fall to a fifth (the accelerated primaries stop
+    /// within a few kilometres of one depth).
+    #[test]
+    fn the_arcs_lower_edge_is_sharp() {
+        let n = 640;
+        let rows = emission_rows(2.0, n);
+        let height =
+            |k: usize| TABLE_BOTTOM + (k as f64 + 0.5) * (TABLE_TOP - TABLE_BOTTOM) / n as f64;
+        let g = rows.iter().map(|r| r[1]).fold(0.0, f64::max);
+        let k = rows.iter().position(|r| r[1] == g).expect("a peak");
+        let below = (0..k)
+            .rev()
+            .find(|&j| rows[j][1] < 0.1 * g)
+            .expect("an edge");
+        let above = (k..n).find(|&j| rows[j][1] < 0.2 * g).expect("a top");
+        let (rise, fall) = (height(k) - height(below), height(above) - height(k));
+        assert!(rise < 10.0, "rise {rise} km");
+        assert!(fall > 2.0 * rise, "rise {rise} km fall {fall} km");
     }
 
     /// The lines' colours: the green line green, the red one red, the
