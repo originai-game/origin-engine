@@ -13,6 +13,7 @@ import {
   artSlot, btn, clamp, eyebrow, fill, flags, frame, glow, grow, inkOn, keyHash, kit, lastInteraction, line, mix, over, paint, pointer, px, recallPath, rememberPath,
   rememberRoom, role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, teamColor, text, timerRing, token, u, vgrad, vstate, xy, safeHeight, safeWidth, type Mut, type Rgba,
 } from "./core.ts";
+import { stepSize } from "../feedback/core.ts";
 
 /** What a character card shows: its art, its name and the lines under it, how it stands. */
 interface Figure {
@@ -21,6 +22,8 @@ interface Figure {
   sub: string;
   width: number;
   height: number;
+  /** The name's step: the larger on a card the room makes wide, whatever the text size. */
+  big: boolean;
   /** The art's point kept in view; the face by default. */
   focal?: Api.Vector2;
   /** Lit in the accent: the local player, the one picked. */
@@ -64,7 +67,7 @@ function figureCard(f: Figure, foot?: () => void): void {
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
   kit.open("Plate", { direction: "column", width: grow(), gap: u(2), padding: { left: u(14), right: u(14), top: 0, bottom: u(12) }, part: `${f.part.split(".")[0]}.plate`, partClass: "badge" });
-  text("Name", f.name, { step: st(f.width >= u(180) ? 22 : 18), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow(), color: f.dim ? "inkMuted" : "ink" });
+  text("Name", f.name, { step: st(f.big ? 22 : 18), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow(), color: f.dim ? "inkMuted" : "ink" });
   if (f.sub) text("Sub", f.sub, { step: st(14), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
   foot?.();
   kit.close();
@@ -141,20 +144,28 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   const footH = Math.round(u(phone ? 140 : 150) * Math.min(1.5, ts));
   const cols = portrait ? 2 : Math.max(1, seats);
   const rows = Math.ceil(seats / cols);
-  // The room the lineup was given last tick (it grows between the head and the foot, which grow with the text), else an estimate.
-  // Never more than the room left under the head and over the foot: cards taller than the lineup inflate its laid
-  // height, and taking that back fed the overflow forward a few px a tick (the phone lobby ran 181 px off the screen).
+  // The room the lineup was given last tick (it grows between the head and the foot, which grow with the text), else an
+  // estimate. The lineup scrolls, so its laid height is the room the column leaves it, never what its cards ask.
   const laidH = kit.bounds(recallPath(`${id}~lineup`))?.height ?? 0;
-  const roomLeft = H - footH - u(phone ? 60 : 96);
-  const lineH = laidH > 0 ? Math.min(laidH, roomLeft) : roomLeft;
-  const roomH = Math.max(u(120), (lineH - u(8) - (rows - 1) * gap) / rows / (me && !portrait ? 1.12 : 1));
+  const lineH = laidH > 0 ? laidH : H - footH - u(phone ? 60 : 96);
+  // A card's plate from the type ramp: the name, the line under it and the ready foot over the bottom padding, with the
+  // crown's corner and a strip of the face above it. A card never stands shorter than its plate with the name and the
+  // ready word (at 200 % text the plate ran up over the head and the card above); a card too short for the line under
+  // the name drops it (names win over marks), and the lineup scrolls when such cards outgrow its room.
+  const lineOf = (s: Api.TypeStepName): number => stepSize(s).line;
+  const lean = u(12) + lineOf(st(22)) + u(2) + u(6) + Math.max(u(14), lineOf(st(13))) + u(44);
+  const full = lean + u(2) + lineOf(st(14));
+  const roomH = Math.max(lean, (lineH - u(8) - (rows - 1) * gap) / rows / (me && !portrait ? 1.12 : 1));
+  // The widest a card may stand, from the room's width and the seats alone: the name's step follows it, not the card's
+  // width, which narrows with the rows' height as the text grows (at 200 % the names fell a step, growing 1.6 times).
   const maxW = portrait ? (W - gap) / 2 : Math.min(u(250), (W - gap * (cols - 1)) / (cols + (me ? 0.12 : 0)));
   // On a phone in portrait the cards take the column's width and stand as tall as the rows allow (a squarer card, its
   // face over the plate), rather than narrowing to keep their aspect and leaving a gutter at each side.
   const cw = Math.floor(portrait ? maxW : Math.min(maxW, roomH / 1.75));
-  const ch = Math.floor(Math.min(roomH, cw * (portrait ? 1.25 : 1.75)));
+  const ch = Math.max(lean, Math.floor(Math.min(roomH, cw * (portrait ? 1.25 : 1.75))));
   const big = (m: Api.LobbyMember | null): number => (m?.you && !portrait ? 1.12 : 1);
-  kit.open("Lineup", { direction: "row", width: grow(), height: grow(), gap, wrap: portrait, align: "center", cross: portrait ? "start" : "end", part: "Lobby.lineup", partClass: "panel" });
+  kit.openScroll("Room", { width: grow(), height: grow(), gap: 0, padding: xy(0, 0) } as never);
+  kit.open("Lineup", { direction: "row", width: grow(), height: { kind: "fit", min: Math.max(0, lineH) }, gap, wrap: portrait, align: "center", cross: portrait ? "start" : "end", padding: { left: 0, right: 0, top: u(8), bottom: 0 }, part: "Lobby.lineup", partClass: "panel" });
   members.forEach((m, i) => {
     const key = m.key || `m${i}`;
     const k = big(m);
@@ -182,10 +193,10 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
         state: [{ group: "ready", state: m.ready ? "ready" : "waiting" }],
       },
     }, () => {
-      // A card too short for its plate at a large text size keeps the name and the ready word (names win over marks);
-      // the level and title stay in its spoken name.
-      const tight = h < u(110) * ts;
-      figureCard({ texture: m.portrait, name: m.name ?? "", sub: tight ? "" : sub, width: w, height: h, lit: !!m.you, hot: ix.hovered || ix.focused, dim: false, part: "Lobby.member" }, () => {
+      // A card too short for its whole plate at a large text size keeps the name and the ready word (names win over
+      // marks); the level and title stay in its spoken name.
+      const tight = h < full;
+      figureCard({ texture: m.portrait, name: m.name ?? "", sub: tight ? "" : sub, width: w, height: h, big: maxW >= u(180), lit: !!m.you, hot: ix.hovered || ix.focused, dim: false, part: "Lobby.member" }, () => {
         // The ready foot: a tick in success and the word, or the muted word (a status in its place).
         kit.row("Foot", { width: grow(), gap: u(6), cross: "center", padding: { left: 0, right: 0, top: u(6), bottom: 0 }, part: `Lobby.foot${flags(m.ready && "ready")}`, partClass: "badge" }, () => {
           if (m.ready && !m.status) symbol("Tick", "check", u(14), role("success"));
@@ -231,7 +242,8 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
       kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("ink", 0.08) }], strokes: [line(u(1.5), token("ink", 0.3))] });
       symbol("Mark", "plus", u(20), role("ink"), { weight: Math.max(2, u(2.4)) });
       kit.close();
-      text("Label", (desc.inviteLabel ?? "Invite").toLocaleUpperCase(), { step: st(14), font: "display", color: "inkMuted", nowrap: true });
+      // Narrower than its word at a large text size, the seat cuts the word rather than laying it over the next card.
+      text("Label", (desc.inviteLabel ?? "Invite").toLocaleUpperCase(), { step: st(14), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: "center" });
     });
     if (r.clicked) {
       out.invite = s;
@@ -239,8 +251,9 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
     }
   }
   kit.close();
-  rememberPath(`${id}~lineup`, kit.lastPath());
   kit.semantics({ role: "list", name: desc.title ?? "Party" });
+  kit.close();
+  rememberPath(`${id}~lineup`, kit.lastPath());
 
   // The foot: the mode card at the start, the one call to action at the end (under the thumb on a phone).
   kit.open("Bar", { direction: portrait ? "column" : "row", width: grow(), gap: u(phone ? 10 : 18), cross: portrait ? "stretch" : "center", part: "Lobby.bar", partClass: "panel" });
@@ -477,7 +490,18 @@ function slash(id: string, w: number, h: number): void {
   over({ insets: { start: 0, top: 0 }, inert: true, z: 2 });
 }
 
-/** A side's splash: the character's art filling it, a scrim at its foot under the role, the name and the description. */
+/** A splash's name step: the display face, a step smaller on a narrow splash. */
+function splashName(width: number): Api.TypeStepName {
+  return width >= u(320) ? "displayMd" : "xl4";
+}
+
+/**
+ * A side's splash: the character's art filling it, a scrim at its foot under the role, the name and the description.
+ * The words take what the splash leaves under the player's tag, from the type ramp: the name first (a second line only
+ * where it wraps and there is room), then the role, then as many lines of the description as fit, up to three. A splash
+ * too short for the tag over the name drops the tag (the tile carries it, the action says Locked in). At 200 % text the
+ * words of a 92 px phone splash ran 300 px up over the screen's header and the timer.
+ */
 function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor, side: "start" | "end", width: number, height: number, desc: Api.CharacterSelectDesc): void {
   const { t } = frame();
   const team = teamColor(c.team ?? 0);
@@ -490,6 +514,21 @@ function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor,
   const justConfirmed = !!c.confirmed && conf === 0 && !still();
   const r = Math.max(6, t.panel);
   const radii: [number, number, number, number] = [r, r, r, r];
+  const lineOf = (s: Api.TypeStepName): number => stepSize(s).line;
+  const nameStep = splashName(width);
+  const nameL = lineOf(nameStep);
+  const tagH = Math.max(lineOf(st(15)) + 2 * u(3), c.confirmed ? lineOf(st(12)) + 2 * u(3) : 0);
+  let room = height - u(18);
+  const tagged = room - (u(14) + tagH + u(8)) >= nameL;
+  if (tagged) room -= u(14) + tagH + u(8);
+  // Whether the name wraps, by an estimate of the face's advance (0.6 em a character).
+  const wraps = [...(e?.name ?? "")].length * stepSize(nameStep).size * 0.6 > width - u(40);
+  const nameLines = wraps && room >= 2 * nameL ? 2 : 1;
+  room -= nameLines * nameL;
+  const roleL = lineOf("caption") + u(4);
+  const showRole = !!e?.role && room >= roleL;
+  if (showRole) room -= roleL;
+  const descLines = e?.description ? clamp(Math.floor((room - u(4)) / lineOf(st(15))), 0, 3) : 0;
   kit.open(id, { direction: "column", width: px(width), height: px(height), part: `Select.splash${flags(c.you ? "you" : "rival", c.confirmed && "confirmed")}`, partClass: "card" });
   kit.setDraw({ shape: { kind: "rect", radii }, fills: [vgrad([[0, paint(mix(role("panel"), team, 0.28))], [1, token("panel")]])], effects: [shadow(u(10), u(28), 0.5)] });
   artSlot("Art", "Select.art", { texture: e?.splash ?? e?.portrait ?? null, kind: "splash", width: px(width), height: px(height), radius: radii, focal: { x: 0.5, y: 0.28 } });
@@ -500,13 +539,13 @@ function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor,
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
   kit.open("Words", { direction: "column", width: grow(), gap: u(4), padding: { left: u(20), right: u(20), top: 0, bottom: u(18) }, cross: side === "end" ? "end" : "start" });
-  if (e?.role) eyebrow("Role", e.role, mix(team, role("ink"), 0.5));
-  text("Name", e?.name ?? "", { step: width >= u(320) ? "displayMd" : "xl4", font: "display", heading: true, maxLines: 2, width: grow(), align: side === "end" ? "end" : "start" });
+  if (showRole) eyebrow("Role", e!.role!, mix(team, role("ink"), 0.5));
+  text("Name", e?.name ?? "", { step: nameStep, font: "display", heading: true, ...(nameLines > 1 ? { maxLines: 2 } : { nowrap: true, ellipsis: true }), width: grow(), align: side === "end" ? "end" : "start" });
   if (justConfirmed) kit.props({ enter: { values: [{ prop: "scale", value: 1.18 }], transition: spring("emphasis") } });
-  if (e?.description) text("Description", e.description, { step: st(15), color: "inkMuted", maxLines: 3, width: grow(), align: side === "end" ? "end" : "start" });
+  if (descLines > 0) text("Description", e!.description!, { step: st(15), color: "inkMuted", maxLines: descLines, width: grow(), align: side === "end" ? "end" : "start" });
   kit.close();
   over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true, z: 2 });
-  kit.row("Head", { gap: u(8), cross: "center" }, () => {
+  if (tagged) kit.row("Head", { gap: u(8), cross: "center" }, () => {
     playerTag("Tag", c.name ?? c.key ?? "", team, true);
     if (c.confirmed) {
       kit.row("Locked", { gap: u(4), cross: "center", padding: xy(u(8), u(3)), part: "Select.lockedIn", partClass: "badge" }, () => {
@@ -516,7 +555,7 @@ function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor,
       });
     }
   });
-  over(side === "end" ? { insets: { end: u(14), top: u(14) }, inert: true, z: 3 } : { insets: { start: u(14), top: u(14) }, inert: true, z: 3 });
+  if (tagged) over(side === "end" ? { insets: { end: u(14), top: u(14) }, inert: true, z: 3 } : { insets: { start: u(14), top: u(14) }, inert: true, z: 3 });
   kit.close();
   kit.semantics({ role: "region", name: `${c.name ?? c.key}: ${e?.name ?? ""}` });
 }
@@ -557,24 +596,34 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
   rememberPath(`${id}~head`, kit.lastPath());
 
   // Sizes: the splashes beside the grid (a third of the width each with a rival, two fifths alone), above it on a phone in portrait.
+  // The stage is exactly what the head and the foot leave (as they were laid last tick, else an estimate), so the foot's
+  // action stays inside the room whatever the text size (at 200 % a stage of at least 200 px put Lock in under the
+  // phone's safe area).
   const headH = kit.bounds(recallPath(`${id}~head`))?.height ?? u(60);
-  const footH = Math.round(u(phone ? 52 : 60) * Math.min(1.5, ts));
-  const stageH = Math.max(u(200), H - headH - footH - u(phone ? 24 : 40));
+  const footH = kit.bounds(recallPath(`${id}~foot`))?.height ?? Math.round(u(phone ? 52 : 60) * Math.min(1.5, ts));
+  const stageH = Math.max(u(60), H - headH - footH - u(phone ? 24 : 40));
   const splashW = portrait ? W : Math.round(W * (rival ? 0.3 : 0.4));
-  const splashH = portrait ? Math.round(stageH * 0.46) : stageH;
   const gridW = portrait ? W : W - splashW * (rival ? 2 : 1) - u(24) * (rival ? 2 : 1);
   const gap = u(phone ? 6 : 10);
   const cols = desc.columns && desc.columns > 0 ? desc.columns : Math.max(portrait ? 4 : 3, Math.floor((gridW - u(12) + gap) / (u(96) + gap)));
   const tw = Math.floor((gridW - u(12) - gap * (cols - 1)) / cols);
   const th = Math.round(tw * 1.18);
+  // On a phone the splash keeps at least its name's line and leaves the grid under it a whole row of tiles; where the
+  // stage holds not both it stands down and the grid takes the stage (the pick's name is on its tile, Lock in under it):
+  // at 200 % text under a tall header a display name's line left the grid a 29 px strip.
+  const splashMin = stepSize(splashName(W)).line + u(26);
+  const splashH = !portrait ? stageH : stageH - splashMin - u(12) >= th + u(12) ? Math.min(stageH - th - u(24), Math.max(Math.round(stageH * 0.46), splashMin)) : 0;
 
   kit.open("Stage", { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(portrait ? 12 : 24), part: "Select.stage", partClass: "panel" });
-  if (me) splashPanel("Start", byKey.get(me.entry ?? "") ?? null, me, "start", splashW, splashH, desc);
+  if (me && splashH > 0) splashPanel("Start", byKey.get(me.entry ?? "") ?? null, me, "start", splashW, splashH, desc);
   // The roster: whole rows, scrolling when they outgrow the room.
   const tiles = [...roster.map((e) => e.key ?? ""), ...(desc.randomLabel ? ["Random"] : [])];
   const rows = Math.ceil(tiles.length / cols);
-  const roomH = portrait ? stageH - splashH - u(12) : stageH;
-  const wholeH = Math.min(rows * (th + gap) - gap, Math.max(th, Math.floor((roomH + gap) / (th + gap)) * (th + gap) - gap));
+  const roomH = portrait ? stageH - (me && splashH > 0 ? splashH + u(12) : 0) : stageH;
+  // Whole rows within the room less the roster's padding; a room under one row (a phone at 200 % text) shows the row it
+  // can, cut, rather than pushing the foot off.
+  const whole = Math.floor((roomH - u(12) + gap) / (th + gap)) * (th + gap) - gap;
+  const wholeH = Math.min(rows * (th + gap) - gap, whole >= th ? whole : Math.max(0, roomH - u(12)));
   let hot = "";
   kit.openScroll("Roster", { width: px(gridW), height: px(wholeH + u(12)), gap, padding: xy(u(6), u(6)), part: "Select.roster" } as never);
   for (let row = 0; row < rows; row++) {
@@ -657,6 +706,7 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
       kit.feedback("confirm", -1);
     }
   });
+  rememberPath(`${id}~foot`, kit.lastPath());
   if (me?.confirmed && kit.back()) {
     out.cancelled = true;
     kit.feedback("back", -1);
@@ -826,7 +876,19 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
         });
       });
     };
-    kit.open(key, { direction: "column", width: px(colW), height: portrait ? null : grow(), gap: u(phone ? 6 : 8), cross: end && !portrait ? "end" : "stretch", part: `Draft.team${flags(end ? "end" : "start")}`, partClass: "panel" });
+    // A column's slots share what its name and its bans leave, from the type ramp, and grow with the text: never shorter
+    // than the character's line, as tall as both lines where the room allows, else the player's line drops (it stays in
+    // the slot's spoken name). Slots a fixed 104 px tall at 200 % text ran each one's words over the next and the name.
+    const lineOf = (s: Api.TypeStepName): number => stepSize(s).line;
+    const colGap = u(phone ? 6 : 8);
+    const n = Math.max(1, picks.length);
+    const bansH = bans.length > 0 ? Math.max(u(40), lineOf("caption")) + colGap : 0;
+    const fitH = Math.floor((H - Math.max(u(18), lineOf(st(16))) - colGap - bansH - (n - 1) * colGap) / n);
+    const wordsLean = lineOf(st(17)) + 2 * u(8);
+    const wordsFull = wordsLean + lineOf(st(13));
+    const slotH = portrait ? 0 : Math.max(u(64), wordsLean, Math.min(Math.max(u(104), wordsFull), fitH));
+    const withPlayer = slotH >= wordsFull;
+    kit.open(key, { direction: "column", width: px(colW), height: portrait ? null : grow(), gap: colGap, cross: end && !portrait ? "end" : "stretch", part: `Draft.team${flags(end ? "end" : "start")}`, partClass: "panel" });
     // On a phone in portrait the bans stand at the end of the team's name row, so both teams leave the roster its room.
     kit.row("Name", { width: grow(), gap: u(8), cross: "center", align: end && !portrait ? "end" : "start" }, () => {
       kit.open("Bar", { width: px(u(4)), height: px(u(18)), radius: 2, background: paint(team) });
@@ -834,7 +896,6 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
       text("Text", tm.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, color: mix(team, role("ink"), 0.55), ...(portrait ? { width: grow() } : {}) });
       if (portrait) banRow();
     });
-    const slotH = portrait ? 0 : Math.max(u(64), Math.min(u(104), (H - u(120)) / Math.max(1, picks.length) - u(8)));
     kit.open("Picks", { direction: portrait ? "row" : "column", width: grow(), gap: u(phone ? 6 : 8) });
     picks.forEach((p, i) => {
       const e = p.entry ? byKey.get(p.entry) : undefined;
@@ -883,7 +944,7 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
       }
       kit.column("Words", { gap: 0, width: grow(), padding: xy(u(portrait ? 4 : 12), u(portrait ? 4 : 8)), cross: end && !portrait ? "end" : "start" }, () => {
         if (!portrait || e) text("Character", e?.name ?? "", { step: st(portrait ? 11 : 17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: end && !portrait ? "end" : "start", color: p.locked ? "ink" : "inkMuted" });
-        if (!portrait) text("Player", p.player ?? "", { step: st(13), color: p.you ? mix(team, role("ink"), 0.5) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: end ? "end" : "start" });
+        if (!portrait && withPlayer) text("Player", p.player ?? "", { step: st(13), color: p.you ? mix(team, role("ink"), 0.5) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: end ? "end" : "start" });
       });
       over(portrait ? { insets: { start: 0, end: 0, bottom: 0 }, inert: true, z: 2 } : { insets: { start: 0, end: 0, centerY: true }, inert: true, z: 2 });
       kit.close();
@@ -932,8 +993,9 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
   // Whole rows: the room the roster was given last tick, cut to the rows it holds whole.
   const room = kit.bounds(recallPath(`${id}~room`))?.height ?? th * 3;
   const fitRows = Math.max(1, Math.floor((room - u(12) + gap) / (th + gap)));
-  // A room under one row (a phone at 200 % text) shows the row it can, cut: still the grid, never pushing the action off.
-  const viewH = Math.min(rows, fitRows) * (th + gap) - gap + u(12);
+  // A room under one row (a phone at 200 % text) shows the row it can, cut: still the grid, never pushing the action off
+  // nor standing under it (the view a whole row tall laid its names under the action).
+  const viewH = Math.min(room, Math.min(rows, fitRows) * (th + gap) - gap + u(12));
   kit.open("Room", { direction: "column", width: grow(), height: grow() });
   let focusKey = "";
   kit.openScroll("Roster", { width: grow(), height: px(viewH), gap, padding: xy(u(6), u(6)), part: "Draft.roster" } as never);
