@@ -41,3 +41,10 @@ gate scheduler, bound worker counts, and verify through the normal lane.
 Do not edit a shell script while it is running. Bash can resume reading at
 an old byte offset after a long loop, so an otherwise valid edit can break
 the active invocation. Wait for the gate to exit before editing its script.
+
+## 2026-11-04 — Land ready heads in batches
+
+Stack the ready heads, regenerate once, and run quick once for the stack.
+Run the targeted Metal checks together; return only a failing head to its
+author. Heads arriving during the gate join the next stack. Record approved
+references in the next stack instead of putting them behind more code heads.
