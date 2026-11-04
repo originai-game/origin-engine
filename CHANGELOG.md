@@ -40,10 +40,16 @@ is one line here, written at the merge that changes
     normals.
 - **Shadows: weather, filtering and the box-base leak.** A cloud cover or
   og.Weather's dimming now reaches the sun's shadow too: the light it
-  scatters fills in up to 65 % of the umbra and softens the edges (PCSS)
-  under an overcast, where the shadows stayed hard and black; a broken sky
-  draws as before. The sun's PCSS spiral turns per pixel and, under TAA,
-  per frame (interleaved gradient noise) instead of printing rings. Point
+  scatters fills in up to 65 % of the umbra where the sky over it is open
+  (under a roof it stays shade) and softens the edges (PCSS) under an
+  overcast, where the shadows stayed hard and black; a broken sky draws as
+  before. The sun's hard shadows filter with a 3×3 tent over the
+  receiver's plane (Isidoro's receiver-plane bias) instead of a 2×2 PCF,
+  so edges no longer step texel by texel and thin casters keep their
+  shadows; grass and scattered copies keep the 2×2. A soft sun's
+  penumbra is the light's convolved with that filter. The sun's PCSS
+  spiral turns per pixel and, under TAA, per frame (interleaved gradient
+  noise) instead of printing rings. Point
   and spot shadows on lit surfaces filter over 7×7 texels away from the
   caster, hardening to the 3×3 tent at contact, so a far edge no longer
   steps texel by texel. A closed, single-sided receiver compares its
