@@ -499,6 +499,10 @@
     ],
     "fixed": [
       {
+        "member": "rpg.conversation, strategy.resourceBar (kits)",
+        "summary": "On a phone in portrait the conversation's caption and choices traded room every tick and the caption rose over the tools; the choices now take a fixed share of the room. A resource bar laid in the flow folds to its box, not to the screen."
+      },
+      {
         "member": "world.restore (og.nav)",
         "summary": "A restored grid or navmesh keeps the edit count its agents planned on. A restore rebuilds a mesh's obstacles, areas and links (or a grid's costs) with edits of its own, so its count only matched the saved paths by chance, and when it did not every agent planned again on the tick after a load (the same motion, a different world hash). The count is now set back from the saved paths; a nav edited after its newest path was planned also writes its count in the og.nav trailer (tag 4), so a path that was stale at the save is stale after it. A state whose paths are current saves byte for byte as before."
       },
