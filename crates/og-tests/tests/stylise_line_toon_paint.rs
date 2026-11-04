@@ -227,14 +227,17 @@ fn outlines_outside_ink_round_the_silhouette() {
         in_on > 300 && in_off < in_on / 20,
         "inside: {in_on} on, {in_off} off"
     );
-    // Anti-aliased: some pixels off the box are between the ground and red.
+    // Anti-aliased: some pixels off the box are between the ground (grey,
+    // 149 in sRGB) and the line (red, green 0): green part way down, red
+    // above it. A hard edge leaves none.
     let partial = (0..H)
         .flat_map(|y| (0..W).map(move |x| (x, y)))
         .filter(|&(x, y)| {
             let c = px(&outside, x, y);
-            !on_box(x, y) && c[0] > 70 && c[0] < 150 && c[1] < 60
+            !on_box(x, y) && c[1] > 20 && c[1] < 130 && c[0] > c[1] + 15
         })
         .count();
+    println!("outside: {partial} pixels part way round the rim");
     assert!(partial > 20, "the rim is covered by degrees ({partial})");
 }
 

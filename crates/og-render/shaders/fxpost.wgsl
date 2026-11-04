@@ -494,7 +494,11 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
     }
     cover += 0.5 * clamp(edges, 0.0, 1.0);
   }
-  let k = cover * color.a;
+  // A line narrower than a pixel (outlineDistance's falloff far off)
+  // covers its width of it: the rings test at least a pixel out, and
+  // without this a ground's far edge kept a full line along the horizon
+  // (stylise-outline-ground) where the width had fallen to a tenth.
+  let k = cover * color.a * clamp(width, 0.0, 1.0);
   return vec4<f32>(mix(c.rgb, color.rgb, k), c.a);
 }
 

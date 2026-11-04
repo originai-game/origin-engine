@@ -400,6 +400,10 @@ fn paint_detail(px: vec2<i32>) -> f32 {
 // The anisotropic Kuwahara filter of `radius` at a pixel (`f` its stroke
 // frame), leaving out taps on another object.
 fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<f32> {
+  // Under half a pixel the ellipse holds the pixel alone: the source as
+  // drawn. At 0 (paintDetail 1) the taps' ellipse coordinates divided by
+  // it, and the NaN weights drew the material black.
+  if (radius < 0.5) { return load(px); }
   var a = radius;
   var b = radius;
   if (anisotropy > 0.0) {
