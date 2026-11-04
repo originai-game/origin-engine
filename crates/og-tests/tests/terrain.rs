@@ -452,14 +452,25 @@ fn an_edit_changes_the_drawn_surface() {
         .render(&whole, &RenderTarget::Offscreen)
         .expect("render");
     let reference = fresh.read_offscreen().expect("capture");
+    keep("edit-before", &before);
+    keep("edit-after", &after);
+    keep("edit-whole", &reference);
     assert!(
         rmse(&after, &reference) < 0.002,
         "the edit in place draws the edited field: {}",
         rmse(&after, &reference)
     );
     let (mx, my) = project(&scene.camera, Vec3::new(centre.x, ground + 8.0, centre.y));
+    // Per pixel, not the regions' means: the mound's rock and the grass
+    // and far rock it covers have about the same mean luma.
     let changed = |x0: u32, y0: u32, x1: u32, y1: u32| {
-        (mean(&before, x0, y0, x1, y1) - mean(&after, x0, y0, x1, y1)).abs()
+        let mut sum = 0.0;
+        for y in y0..y1 {
+            for x in x0..x1 {
+                sum += (luma(px(&before, x, y)) - luma(px(&after, x, y))).abs();
+            }
+        }
+        sum / ((x1 - x0) * (y1 - y0)) as f32
     };
     assert!(
         changed(mx - 20, my - 10, mx + 20, my + 10) > 5.0,

@@ -789,8 +789,10 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
     let mut scene = RenderScene::new();
     let handle = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 129, 129));
     let blobs = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        // Both octaves lie in 0..1 (mean about 0.47): blobs over the
+        // upper part of their sum, a little under half the ground.
         let n = tiling_fbm(u, v, 4, 51) + 0.35 * tiling_fbm(u, v, 16, 53);
-        let g = if n > 0.05 { 40 } else { 215 };
+        let g = if n > 0.65 { 40 } else { 215 };
         [g, g, g, 255]
     }));
     scene.terrains.push(Terrain {
