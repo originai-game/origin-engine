@@ -20,6 +20,12 @@ exist.
   own other files. The realism wave (R, `docs/release.md` F10) starts once
   U8 has merged; R1, R2, R4, R5 and R8 started early beside wave B to use
   the eight slots (the owner, 2026-11-02). G2 and G3 fill the slots as they free.
+- **UI is judged by its look (the owner, 2026-11-04).** Contrast is not
+  checked for now: `og ui check` contrast findings hold nothing and are
+  not fix-forward items. UI lands on quick plus the art director's
+  aesthetic review against commercial games (material, hierarchy, real
+  art, the pack's identity, selection, typography, the scene behind the
+  HUD), tracked in its ranked gap list.
 - **Threads.** At most eight sub-threads at once, `external-agent:claude-code`
   on Opus 5.5 medium (AGENTS.md); file-splitting threads in Amp `high`.
   Each stream is one thread on one branch from `origin/main`, owns the
