@@ -98,6 +98,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let dissolve_edge = dissolve.rgb;
   // Blended materials keep their alpha; opaque ones write 1 (alpha-to-coverage ones their coverage).
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
+  if (frame.light_color.w > 6.5) { return debug_unsupported(in.clip.xy); }
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
     let e = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
@@ -109,6 +110,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
       return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);
     }
+    if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, alpha); }
+    if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
   let metalness_sample = material_sample(metalness_tex, UV_METALNESS, uv);

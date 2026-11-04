@@ -549,6 +549,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     color = mix(color, material.flash.rgb, material.toon.w);
   }
   color = look_flash(color, in.look);
+  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(s.albedo, 1.0); }
+  if (frame.light_color.w > 3.5) { return debug_unsupported(in.clip.xy); }
   if (frame.light_color.w > 1.5) {
     let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);

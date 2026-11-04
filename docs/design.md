@@ -890,6 +890,24 @@ term by term. Debug draw is rendering: it is not world state, it never
 feeds the tick, and the `debug` module is left out of publish builds,
 whose frames draw none of the lit image's views.
 
+Shading diagnostics never silently substitute the beauty image. An
+unsupported 3D surface/view pair draws an eight-pixel magenta/black checker.
+`dump_render.debugCoverage` lists the supported paths for the selected view;
+all other paths are explicitly unsupported. Terrain and grass expose albedo,
+cascades and separate diffuse IBL, specular IBL and direct light. Terrain's
+AO is unsupported (it does not bind screen AO). Scatter exposes albedo and
+screen AO; impostors and custom shaders expose albedo. Physical materials
+expose albedo, cascades and screen AO, but not separated lighting terms.
+Water exposes screen AO; sky, particles, ribbons and 3D fluids use the
+unsupported checker. Meshlet foliage uses the standard material shader.
+Decals are part of the receiving standard/physical surface, so their albedo
+and lighting follow that surface's diagnostic. Terrain-specific modes are
+unsupported on non-terrain surfaces. Sprites, 2D fluids, lines, points and UI
+do not implement shading diagnostics and are named as unsupported in the
+dump. The physics, nav, bounds and lod modes remain overlays over beauty:
+only colliders, navigation, mesh instances and og.Model respectively are
+their subjects; other paths do not claim overlay coverage.
+
 Levels of detail, reflection probes and screen-space reflections (depth
 S6).
 

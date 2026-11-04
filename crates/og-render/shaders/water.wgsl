@@ -751,6 +751,9 @@ fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs(in: WaterOut) -> @location(0) vec4<f32> {
+  if (frame.light_color.w > 0.5 && (frame.light_color.w < 1.5 || frame.light_color.w > 2.5)) {
+    return debug_unsupported(in.clip.xy);
+  }
   let t = frame.time.x;
   // (The map's gradients are taken in uniform control flow: the branch is on a uniform.)
   var slope = wave_slope(in.local, t);

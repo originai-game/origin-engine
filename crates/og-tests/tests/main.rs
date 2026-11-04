@@ -7,6 +7,7 @@
 mod atmosphere;
 mod cluster_compute;
 mod culling;
+mod debug_views;
 mod effects;
 mod exposure;
 mod fluids3d;

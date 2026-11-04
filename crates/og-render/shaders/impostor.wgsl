@@ -129,6 +129,11 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   }
   var o: ImpostorLit;
   o.depth = imp_depth(surface.world);
+  if (frame.light_color.w > 0.5) {
+    o.color = debug_unsupported(in.clip.xy);
+    if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { o.color = vec4<f32>(surface.albedo, 1.0); }
+    return o;
+  }
   let mode = u32(material.flags.w);
   let emissive = material.emissive.rgb;
   if ((mode & 2u) != 0u) {

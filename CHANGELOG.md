@@ -15,6 +15,10 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Debug shading coverage.** Terrain and grass now expose albedo and
+  separated lighting terms. Unsupported 3D shading diagnostics draw a
+  magenta/black checker instead of beauty shading or an unrelated term.
+  `dump_render.debugCoverage` states supported paths and overlay scope.
 - **Model skin diagnostics.** Missing model skin data and incompatible
   palette counts, joint order or inverse bind matrices warn in the log and
   appear as `render.skinIssue` in entity probes and dumps. Equivalent rigs

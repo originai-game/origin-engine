@@ -111,6 +111,14 @@ fn grass_band(t: f32) -> f32 {
 @fragment
 fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let p = in.world;
+  let view = u32(frame.light_color.w);
+  if (view > 6u) { return debug_unsupported(in.clip.xy); }
+  if (view == 1u) { return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0); }
+  if (view == 2u) {
+    let ao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
+    return vec4<f32>(vec3<f32>(select(1.0, ao, grass_fx.ao.x > 0.5)), 1.0);
+  }
+  if (view == 3u) { return vec4<f32>(in.color, 1.0); }
   // Two-sided: the back face is lit with the flipped normal.
   let n0 = normalize(mix(normalize(in.normal) * select(-1.0, 1.0, front), vec3<f32>(0.0, 1.0, 0.0), 0.85 * in.far));
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -166,6 +174,9 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let r = reflect(-v, n0);
   let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
+  if (view == 4u) { return vec4<f32>((vec3<f32>(1.0) - f_ibl) * irradiance * s.albedo * occlusion, 1.0); }
+  if (view == 5u) { return vec4<f32>(prefiltered * (f_ibl * lut.x + lut.y) * occlusion, 1.0); }
+  if (view == 6u) { return vec4<f32>(color, 1.0); }
   color += ((vec3<f32>(1.0) - f_ibl) * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * occlusion;
   return vec4<f32>(apply_fog(color, p), 1.0);
 }

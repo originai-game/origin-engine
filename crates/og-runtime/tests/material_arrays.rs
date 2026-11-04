@@ -277,6 +277,18 @@ fn a_terrain_samples_its_layer_arrays() {
     assert!(regions[0]["triangleSpacingLocal"].as_f64().unwrap() > 0.0);
     assert_eq!(regions.last().unwrap()["seam"]["morph"], json!(false));
     for (name, expected) in [
+        ("physics", og_render::DebugView::None),
+        ("nav", og_render::DebugView::None),
+        ("bounds", og_render::DebugView::None),
+        ("lod", og_render::DebugView::None),
+        ("cascades", og_render::DebugView::Cascades),
+        ("ao", og_render::DebugView::AmbientOcclusion),
+        ("albedo", og_render::DebugView::Albedo),
+        ("iblDiffuse", og_render::DebugView::IblDiffuse),
+        ("iblSpecular", og_render::DebugView::IblSpecular),
+        ("direct", og_render::DebugView::DirectLight),
+        ("aoDepth", og_render::DebugView::AoDepth),
+        ("aoRaw", og_render::DebugView::AoRaw),
         ("terrain", og_render::DebugView::Terrain),
         ("terrainLayers", og_render::DebugView::TerrainLayers),
         ("terrainMip", og_render::DebugView::TerrainMip),
@@ -289,5 +301,32 @@ fn a_terrain_samples_its_layer_arrays() {
         assert_eq!(scheduled["scheduled"], json!(1), "{scheduled}");
         frame(engine);
         assert_eq!(seen.borrow().debug, expected);
+        og_runtime::og_engine_probe_commands(engine, "0:dump_render".into());
+        frame(engine);
+        let outputs: Value =
+            serde_json::from_str(&og_runtime::og_engine_take_outputs(engine)).unwrap();
+        let output = outputs
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|o| o["kind"] == "json")
+            .unwrap();
+        let dump: Value = serde_json::from_str(output["data"].as_str().unwrap()).unwrap();
+        assert_eq!(dump["debugView"], name);
+        let coverage = &dump["debugCoverage"];
+        assert_eq!(coverage["otherPaths"], "unsupported", "{dump}");
+        assert!(
+            !coverage["supported"].as_array().unwrap().is_empty(),
+            "{dump}"
+        );
+        if name == "bounds" || name == "lod" {
+            assert!(
+                !coverage["supported"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&json!("terrain")),
+                "{dump}"
+            );
+        }
     }
 }

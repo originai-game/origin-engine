@@ -70,6 +70,54 @@ fn render_view(view: &str) -> og_render::DebugView {
     }
 }
 
+/// Explicit coverage for paths with no shading diagnostic or overlay.
+pub(crate) fn debug_coverage(view: &str) -> serde_json::Value {
+    let supported: &[&str] = match view {
+        "none" => return serde_json::Value::Null,
+        "physics" => &["colliders"],
+        "nav" => &["navigation"],
+        "bounds" => &["mesh instances"],
+        "lod" => &["og.Model"],
+        "terrain" | "terrainLayers" | "terrainMip" => &["terrain"],
+        "albedo" => &[
+            "standard",
+            "physical",
+            "custom",
+            "terrain",
+            "grass",
+            "scatter",
+            "impostors",
+            "decals on standard/physical",
+        ],
+        "ao" | "aoDepth" | "aoRaw" => &[
+            "standard",
+            "physical",
+            "grass",
+            "scatter",
+            "water",
+            "decals on standard/physical",
+        ],
+        "cascades" => &[
+            "standard lit",
+            "physical",
+            "terrain",
+            "grass",
+            "decals on standard/physical",
+        ],
+        "iblDiffuse" | "iblSpecular" | "direct" => {
+            &["standard lit", "terrain", "grass", "decals on standard"]
+        }
+        _ => &[],
+    };
+    serde_json::json!({
+        "supported": supported,
+        "otherPaths": "unsupported",
+        "unsupportedShading": "magenta/black checker for 3D surfaces; sprites, 2D fluids, lines, points and UI have no shading diagnostics",
+        "overlays": "physics/nav/bounds/lod retain beauty shading; only the listed subjects receive the overlay",
+        "decals": "part of the receiving standard/physical surface, not a separate shading pass",
+    })
+}
+
 /// A debug label (`og.debug.text`).
 struct DebugText {
     until: u64,

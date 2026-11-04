@@ -38,6 +38,7 @@ fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
 
 @fragment
 fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   // The view ray through the pixel: near point to far point (perspective and orthographic).
   let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
   let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
@@ -512,6 +513,7 @@ fn aurora_air(d: vec3<f32>, viewer: f32) -> vec3<f32> {
 // reflections and the ambient light.
 @fragment
 fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   let dir = view_dir(in.ndc);
   var sky = sky_look(dir);
   if (scatter_on()) { sky = sky_physical_look(dir); }

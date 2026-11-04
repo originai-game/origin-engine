@@ -8,6 +8,14 @@
 const CASCADES: u32 = 4u;
 const LOCAL_SHADOW_LAYERS: u32 = 96u;
 
+// Magenta/black checker: this surface has no implementation of the selected
+// diagnostic. Never substitute beauty shading for a missing diagnostic term.
+fn debug_unsupported(pixel: vec2<f32>) -> vec4<f32> {
+  let cell = vec2<u32>(pixel) / 8u;
+  let bright = ((cell.x + cell.y) & 1u) == 0u;
+  return vec4<f32>(select(vec3<f32>(0.0), vec3<f32>(1.0, 0.0, 1.0), bright), 1.0);
+}
+
 struct LocalLight {
   position_range: vec4<f32>,  // xyz: position, w: range
   color_kind: vec4<f32>,      // rgb: color * intensity, w: 0 point, 1 spot

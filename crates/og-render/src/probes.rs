@@ -617,6 +617,9 @@ pub(crate) fn face_uniform(
     at: Vec3,
 ) -> FrameUniform {
     let mut u = *base;
+    // A diagnostic reads the light, never becomes light in the captured
+    // environment (also used by the live sky capture).
+    u.light_color[3] = 0.0;
     u.view_proj = f.view_proj.to_cols_array_2d();
     u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
     u.view_pos = at.extend(0.0).to_array();

@@ -207,6 +207,7 @@ fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   }
   c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
   if (c.a <= 0.0) { discard; }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return c;
 }
 
@@ -238,6 +239,7 @@ fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
     w *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
   }
   if (w <= 0.0) { discard; }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   let size = vec2<i32>(textureDimensions(scene_color));
   // Screen rows run down: the bend's +y is up.
   let shift = vec2<f32>(bend.x, -bend.y) * emitter.look.y * f32(size.y) * w;
@@ -267,5 +269,6 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
   }
   c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return c;
 }

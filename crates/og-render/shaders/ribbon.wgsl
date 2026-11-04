@@ -107,5 +107,6 @@ fn fs(in: RibbonOut) -> @location(0) vec4<f32> {
   }
   c.a *= fog_keep(in.world);
   if (c.a <= 0.0) { discard; }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return c;
 }

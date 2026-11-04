@@ -349,6 +349,12 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let weathered = weather_surface(s, n, n_geo, p);
   s = weathered.s;
   n = weathered.n;
+  if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
+    return debug_unsupported(in.clip.xy);
+  }
+  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) {
+    return vec4<f32>(s.albedo, 1.0);
+  }
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
 
   let l = normalize(frame.light_dir.xyz);
@@ -389,7 +395,13 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let r = reflect(-v, n);
   let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y);
+  let diffuse_ibl = kd_ibl * irradiance * s.albedo;
+  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
+  let view = u32(frame.light_color.w);
+  if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
+  if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }
+  if (view == 6u) { return vec4<f32>(color, 1.0); }
+  color += diffuse_ibl + specular_ibl;
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
     return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0);

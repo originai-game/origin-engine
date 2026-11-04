@@ -103,6 +103,12 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     discard;
   }
   let out_a = select(1.0, coverage, a2c);
+  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
+  if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
+    let ao = textureSampleLevel(scatter_ssao, scatter_fx_sampler, in.clip.xy * scatter_fx.screen.zw, 0.0).r;
+    return vec4<f32>(vec3<f32>(select(1.0, ao, scatter_fx.ao.x > 0.5)), out_a);
+  }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
   if ((mode & 2u) != 0u) {
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);

@@ -152,6 +152,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "triangles": st.triangles,
                 "renderMs": (st.render_ms * 1000.0).round() / 1000.0,
                 "debugView": super::geometry::current_view(&rs),
+                "debugCoverage": super::geometry::debug_coverage(super::geometry::current_view(&rs)),
                 "lodLevels": &levels[..last],
                 // The fraction of the way from the tick before the last to
                 // the last the frame was drawn at (RenderSettings.interpolate),

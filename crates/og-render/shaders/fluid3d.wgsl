@@ -219,5 +219,6 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   var o: CompositeOut;
   o.color = vec4<f32>(apply_fog(out, p), 1.0);
   o.depth = clamp(c.z / c.w, 0.0, 1.0);
+  if (frame.light_color.w > 0.5) { o.color = debug_unsupported(in.pos.xy); }
   return o;
 }

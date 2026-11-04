@@ -42,6 +42,8 @@ fn fs(in: CustomOut) -> @location(0) vec4<f32> {
   if (custom_cut(out)) { discard; }
   let mode = u32(material.flags.w);
   let alpha = select(1.0, out.color.a, (mode & 4u) != 0u);
+  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(out.color.rgb, alpha); }
+  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   if (!CUSTOM_LIT) {
     return vec4<f32>(apply_fog(out.color.rgb + out.emissive, in.world), alpha);
   }
