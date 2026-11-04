@@ -181,21 +181,29 @@ export function withSettleDumps(commands: string): string {
  * kit-style-<name>-states.png. Fantasy's and scifi's selected bag cells
  * (2026-11-04): the selection, not the tier rim, is a selected cell's one
  * and brightest edge, for a rare (the helm) and a legendary (the greatsword),
- * at 100 and 150 % text; the idle frame is the unselected side of each pair.
+ * at 100 and 150 % text; the idle frame is the unselected side of each pair
+ * (pat:reset selects the helm, so idle clears it). `selected` is the bag item
+ * the frame's dump must show selected, and the only one ("" none).
  */
-export const STYLE_STATES: Record<string, ReadonlyArray<{ name: string; commands: readonly string[] }>> = Object.fromEntries(
+export interface StyleState {
+  name: string;
+  commands: readonly string[];
+  selected: string;
+}
+
+export const STYLE_STATES: Record<string, readonly StyleState[]> = Object.fromEntries(
   ["fantasy", "scifi"].map((style) => [
     style,
     ["100", "150"].flatMap((scale) => [
-      { name: `state-gear-idle-${scale}`, commands: [`demo:text:${scale}`, "show:gear", "pat:reset"] },
-      { name: `state-gear-rare-${scale}`, commands: ["pat:select:helm"] },
-      { name: `state-gear-legendary-${scale}`, commands: ["pat:select:greatsword"] },
+      { name: `state-gear-idle-${scale}`, commands: [`demo:text:${scale}`, "show:gear", "pat:reset", "pat:select:"], selected: "" },
+      { name: `state-gear-rare-${scale}`, commands: ["pat:select:helm"], selected: "helm" },
+      { name: `state-gear-legendary-${scale}`, commands: ["pat:select:greatsword"], selected: "greatsword" },
     ]),
   ]),
 );
 
 /** The states' script from `t0` (their frames settle as a screen's): its commands, without a quit, and its files. */
-function statesScript(t0: number, states: ReadonlyArray<{ name: string; commands: readonly string[] }>): { commands: string; files: string[]; end: number } {
+function statesScript(t0: number, states: readonly StyleState[]): { commands: string; files: string[]; end: number } {
   const steps: string[] = [];
   const files: string[] = [];
   let t = t0;
@@ -230,6 +238,14 @@ export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"
         t.equal(unsettled(run, screen), "", `${style} ${screen} is captured with every entrance and exit settled`);
       }
       sheetCheck(run, t, files, name, surface, style);
+      // Each state shows its selection and no other, read from the dump at its frame's tick.
+      for (const st of states) {
+        const shown = run
+          .json<{ elements: Array<{ path?: string; states?: string[] }> }>(`${st.name}.settle.json`)
+          .elements.filter((e) => /\/Bag\/Cells\/[^/]+$/.test(e.path ?? "") && (e.states ?? []).includes("selected"))
+          .map((e) => e.path!.split("/").pop()!);
+        t.equal(shown.join(","), st.selected, `${style} ${st.name} has ${st.selected || "nothing"} selected in the bag`);
+      }
       if (extra.files.length > 0) sheetCheck(run, t, extra.files, `kit-style-${style}-states.png`, surface, `${style} states`);
     },
   });
