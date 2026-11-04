@@ -262,11 +262,41 @@ export interface GachaFeatured {
    */
   readonly rarity?: Rarity;
   /**
+   * The game's own tier (SSR, SR, R; any number of tiers), over rarity: its colour and rank. Null takes rarity's.
+   *
+   * @default null
+   */
+  readonly tier?: GachaTier | null;
+  /**
    * Its portrait (art kind portrait), in its tile; without it the style's placeholder figure.
    *
    * @default null
    */
   readonly image?: Texture | null;
+}
+
+/**
+ * A game's own rarity tier, for a gacha whose tiers are not the engine's six (SSR, SR, R; a ten-tier ladder).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GachaTier {
+  /**
+   * Its word in the player's language (SSR); empty takes the rarity's.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * How rare it is, as the pips of the engine's rarities count (common 1 … mythic 6): higher sorts first, and 5 and up shine and burst. Absent takes the rarity's.
+   */
+  readonly rank?: number;
+  /**
+   * Its colour, "#rrggbb"; empty takes the rarity's colour from the style.
+   *
+   * @default ""
+   */
+  readonly color?: string;
 }
 
 /**
@@ -305,6 +335,12 @@ export interface PullItem {
    * @default "none"
    */
   readonly rarity?: Rarity;
+  /**
+   * The game's own tier (SSR, SR, R; any number of tiers), over rarity: its colour, its word on the reveal and its rank (the pull's order, the charge's tint, the burst from rank 5). Null takes rarity's.
+   *
+   * @default null
+   */
+  readonly tier?: GachaTier | null;
   /**
    * Its art (art kind character or item).
    *

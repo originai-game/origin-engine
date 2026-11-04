@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import { accent, artSlot, btn, clamp, fit, flags, pct, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips, role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba, type TimeWords, cornerTag, plainText } from "@origingame/engine/ui-parts/screen";
-import type { GachaBannerDesc, GachaBannerResult, PullItem, PullPhase, PullSequenceDesc, PullSequenceResult } from "../types.ts";
+import type { GachaBannerDesc, GachaBannerResult, GachaTier, PullItem, PullPhase, PullSequenceDesc, PullSequenceResult } from "../types.ts";
 
 const fill = (template: string, v: Record<string, string | number>): string => template.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? `${v[k]}` : m));
 
@@ -26,8 +26,14 @@ export function stars(id: string, n: number, size: number, color: Rgba, lit = n,
   kit.semantics({ role: "image", name: `${n} stars` });
 }
 
-/** The colour a pull's tier is felt in: the style's rarity colour, else the primary. */
-const tierInk = (r: Api.Rarity | undefined): Rgba => rarityColor(r) ?? role("primary");
+/** Something drawn in a tier: an engine rarity, or the game's own tier over it. */
+type Tiered = { readonly rarity?: Api.Rarity; readonly tier?: GachaTier | null } | null | undefined;
+
+/** The colour a pull's tier is felt in: the game's tier colour, else the style's rarity colour, else the primary. */
+const tierInk = (x: Tiered): Rgba => (x?.tier?.color ? hex(x.tier.color) : rarityColor(x?.rarity)) ?? role("primary");
+
+/** How rare it is: the game's tier rank, else the rarity's pips (5 and up shine and burst as legendary does). */
+const tierRank = (x: Tiered): number => x?.tier?.rank ?? rarityPips(x?.rarity);
 
 // ── the banner ──────────────────────────────────────────────────────────
 
@@ -197,9 +203,9 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
         const tileH = u(short ? 52 : portrait ? 104 : 84);
         kit.open("Units", { direction: portrait ? "row" : "column", gap: u(portrait ? 12 : 6), width: grow() });
         feat.forEach((f, k) => {
-          const ink = tierInk(f.rarity);
+          const ink = tierInk(f);
           const tierLight = (h: number, strength: number, shade = 0): void => {
-            const ink = mix(tierInk(f.rarity), role("shadow"), shade);
+            const ink = mix(tierInk(f), role("shadow"), shade);
             // Undressed (a style's badge dress would lay its own flat fill over the gradient): light rising from the
             // foot, quadratic, so it reads as glow on the art and not as a coloured block.
             kit.open("Tier", { width: grow(), height: px(Math.round(h)) });
@@ -224,7 +230,7 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
             // The tier's light over the lower 40 % of the portrait (55 % at the foot, none at its top), and the name and
             // stars on a dark contact shadow over it, never on the colour itself.
             // Legendary is the one hot spot: lower tiers rise to 45 %, a little toward their shade.
-            tierLight(tileH * 0.4, rarityPips(f.rarity) >= 5 ? 0.55 : 0.45, rarityPips(f.rarity) >= 5 ? 0 : 0.18);
+            tierLight(tileH * 0.4, tierRank(f) >= 5 ? 0.55 : 0.45, tierRank(f) >= 5 ? 0 : 0.18);
             over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
             kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(14), bottom: u(5) } }, () => {
               kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.4, token("shadow", 0.42)], [1, token("shadow", 0.7)]])] });
@@ -326,7 +332,7 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
   // in portrait its row leads the list).
   const lead = feat[0];
   if (lead && !portrait) {
-    const ink = tierInk(lead.rarity);
+    const ink = tierInk(lead);
     kit.column("Spotlight", { gap: u(6), cross: "end", width: px(Math.round(vp.width * 0.36)), part: `Gacha.spotlight${flags(`rarity=${lead.rarity ?? "none"}`)}`, partClass: "badge" }, () => {
       text("Name", lead.name ?? "", { step: st(short ? 36 : 64), heading: true, font: "display", align: "end", width: grow(), maxLines: 2 });
       if (lead.title) text("Title", lead.title, { step: st(short ? 14 : 18), color: mix(ink, role("ink"), 0.55), font: "display", align: "end", width: grow(), maxLines: 2 });
@@ -408,7 +414,7 @@ export function pullSequence(id: string, desc: PullSequenceDesc): PullSequenceRe
     phase = p;
     t0 = tick;
   };
-  const top = items.reduce<PullItem | null>((b, x) => (!b || rarityPips(x.rarity) > rarityPips(b.rarity) ? x : b), null);
+  const top = items.reduce<PullItem | null>((b, x) => (!b || tierRank(x) > tierRank(b) ? x : b), null);
   const reduced = still();
   if (phase === 1 && (reduced || tick - t0 >= CHARGE)) go(2);
 
@@ -495,7 +501,7 @@ export function pullSequence(id: string, desc: PullSequenceDesc): PullSequenceRe
     if (phase === 2 && shown !== idx + keyHash(`${tok}`) * 64) {
       const it = items[idx]!;
       out.revealed = it.key ?? null;
-      kit.feedback(rarityPips(it.rarity) >= 5 ? "success" : "reward", -1);
+      kit.feedback(tierRank(it) >= 5 ? "success" : "reward", -1);
     }
   }
   kit.remember("~p.shown", phase === 2 ? idx + keyHash(`${tok}`) * 64 : -1);
@@ -515,7 +521,7 @@ export function pullSequence(id: string, desc: PullSequenceDesc): PullSequenceRe
 function charge(top: PullItem | null, dt: number, W: number, H: number): void {
   const k = still() ? 1 : clamp(dt / CHARGE, 0, 1);
   const ease = 1 - (1 - k) ** 3;
-  const target = tierInk(top?.rarity);
+  const target = tierInk(top);
   // The first third is the primary's light; it turns to the tier's after it, so the tier is felt before it shows.
   const ink = mix(role("primary"), target, clamp((k - 0.3) / 0.4, 0, 1));
   const d = Math.round(Math.min(W, H) * (0.12 + 0.5 * ease));
@@ -528,7 +534,7 @@ function charge(top: PullItem | null, dt: number, W: number, H: number): void {
 /** One result large: its art, then its name, kind and stars landing one by one, a burst from legendary. */
 function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string, newLabel: string): void {
   const { phone } = frame();
-  const ink = tierInk(it.rarity);
+  const ink = tierInk(it);
   const landscape = W > H;
   const artH = Math.round(Math.min(H * (landscape ? 0.62 : 0.5), u(560)));
   const artW = Math.round(artH * 0.72);
@@ -536,7 +542,7 @@ function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: 
   kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "scale", value: 0.7 }, { prop: "rotate", value: -0.08 }], transition: spring("emphasis") } });
   // Behind the card, in its tier's colour: a glow and rays turning slowly (still under reduced motion), wider and
   // brighter the higher the tier, so the result is felt before it is read.
-  const pipsN = rarityPips(it.rarity);
+  const pipsN = tierRank(it);
   kit.open("Stage", { width: px(artW), height: px(artH) });
   // The light is one radial bloom centred on the card, about 1.6 times its height across and never wider than about
   // 40 % of the screen, falling smoothly to nothing (no disc's edge, no wash over half the screen): the banner's scene
@@ -585,7 +591,7 @@ function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: 
   kit.close();
   kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
     // The tier in a word as well as in colour and stars (Legendary · Character): the word in the tier's ink, bold.
-    const tierWord = it.rarityLabel || (it.rarity && it.rarity !== "none" ? it.rarity[0]!.toUpperCase() + it.rarity.slice(1) : "");
+    const tierWord = it.tier?.label || it.rarityLabel || (it.rarity && it.rarity !== "none" ? it.rarity[0]!.toUpperCase() + it.rarity.slice(1) : "");
     if (tierWord || it.kind) {
       kit.row("Kind", { gap: u(8), cross: "center" }, () => {
         if (tierWord) kit.richText("Tier", `[b]${tierWord.toLocaleUpperCase().replace(/\[/g, "[[")}[/b]`, { step: st(15), color: paint(mix(ink, hex("#ffffff"), 0.15)), font: "display", nowrap: true } as Api.RichTextDesc);
@@ -605,7 +611,7 @@ function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: 
     stars("Stars", ns, u(phone ? 16 : 22), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
     // Legendary and above: a burst from the stars as the last one lands (from the stars, not the art, so its rays
     // stay fine and clear of the art and its tag).
-    if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 12, color: paint(mix(ink, role("ink"), 0.25)), radius: u(phone ? 90 : 140), delayMs: 320 + ns * 110 });
+    if (tierRank(it) >= 5 && !still()) kit.burst({ count: 12, color: paint(mix(ink, role("ink"), 0.25)), radius: u(phone ? 90 : 140), delayMs: 320 + ns * 110 });
     if (it.extra) text("Extra", it.extra, { step: st(15), color: "highlight", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
   });
   kit.close();
@@ -634,7 +640,7 @@ function summary(items: readonly PullItem[], desc: PullSequenceDesc, W: number, 
   const newLabel = desc.newLabel ?? "NEW";
   const { viewport: vp, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
-  const order = items.map((x, i) => ({ x, i })).sort((a, b) => rarityPips(b.x.rarity) - rarityPips(a.x.rarity) || a.i - b.i).map((e) => e.x);
+  const order = items.map((x, i) => ({ x, i })).sort((a, b) => tierRank(b.x) - tierRank(a.x) || a.i - b.i).map((e) => e.x);
   const n = order.length;
   // A phone in portrait: two columns, one at large text (a long word must fit beside the art).
   const cols = portrait ? ((frame().theme.textScale ?? 1) >= 1.5 ? 1 : 2) : Math.min(5, n);
@@ -653,9 +659,9 @@ function summary(items: readonly PullItem[], desc: PullSequenceDesc, W: number, 
   kit.openScroll("Grid", { width: px(cols * tw + (cols - 1) * gap + u(12)), height: tall ? grow() : null, padding: { left: u(6), right: u(6), top: u(14), bottom: u(10) }, gap: 0 });
   kit.open("Tiles", { direction: "row", wrap: true, gap, width: px(cols * tw + (cols - 1) * gap), align: "center" });
   order.forEach((it, k) => {
-    const ink = tierInk(it.rarity);
+    const ink = tierInk(it);
     kit.open(it.key ?? kit.idi("Tile", k), { width: px(tw), direction: portrait ? "row" : "column", gap: u(8), padding: xy(u(8), u(8)), cross: portrait ? "center" : "stretch", part: `Pull.tile${flags(`rarity=${it.rarity ?? "none"}`, it.isNew && "new")}`, partClass: "card" });
-    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(mix(role("panelRaised"), ink, 0.24)) }, { offset: 0.4, color: paint(mix(role("panelRaised"), ink, 0.04)) }, { offset: 1, color: token("panel") }] }], strokes: [line(1, token("shadow", 0.6), "outside")], ...(rarityPips(it.rarity) >= 5 ? { effects: [glow(u(12), paint(ink, 0.6), 1)] } : {}) });
+    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(mix(role("panelRaised"), ink, 0.24)) }, { offset: 0.4, color: paint(mix(role("panelRaised"), ink, 0.04)) }, { offset: 1, color: token("panel") }] }], strokes: [line(1, token("shadow", 0.6), "outside")], ...(tierRank(it) >= 5 ? { effects: [glow(u(12), paint(ink, 0.6), 1)] } : {}) });
     artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: portrait ? px(artH) : grow(), height: px(artH), radius: u(6) });
     kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "start" : "center" }, () => {
       text("Name", it.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });

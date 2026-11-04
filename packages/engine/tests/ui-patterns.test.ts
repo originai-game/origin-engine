@@ -757,11 +757,11 @@ const PULL: PullItem[] = [
   { key: "p3", name: "Bow", stars: 4, rarity: "epic", extra: "+2 Star Shards" },
 ];
 
-function pull() {
+function pull(items: PullItem[] = PULL) {
   let token = 0;
   const results: PullSequenceResult[] = [];
   const engine = run(() => {
-    const r = gacha.pullSequence("Pull", { token, items: PULL, againPrice: 1600 });
+    const r = gacha.pullSequence("Pull", { token, items, againPrice: 1600 });
     results.push(r);
     if (r.done) token = 0;
   });
@@ -788,6 +788,23 @@ test("pullSequence: a new token charges, then reveals each result in order, then
   expect(p.last().phase).toBe("summary");
   const tiles = elements(p.engine).filter((e) => e.role === "listitem").sort((a, b) => a.y - b.y || a.x - b.x).map((e) => e.path.split("/").at(-1));
   expect(tiles).toEqual(["p2", "p3", "p1"]);
+});
+
+test("pullSequence: a game's own tier outranks the engine's rarities and names itself on the reveal", () => {
+  // Wrong: the tier ignored (the legendary first, the rarity's word), or its rank read as pips of six.
+  const p = pull([
+    { key: "p1", name: "Aria", stars: 5, rarity: "legendary" },
+    { key: "p2", name: "Nyx", stars: 6, rarity: "common", tier: { label: "UR", rank: 9, color: "#ff4fd8" } },
+  ]);
+  p.start(1);
+  p.engine.advance(100);
+  p.tap();
+  expect(p.last().index).toBe(1);
+  expect(elements(p.engine).map((e) => e.text).join(" ")).toContain("UR");
+  p.tap();
+  expect(p.last().phase).toBe("summary");
+  const tiles = elements(p.engine).filter((e) => e.role === "listitem").sort((a, b) => a.y - b.y || a.x - b.x).map((e) => e.path.split("/").at(-1));
+  expect(tiles).toEqual(["p2", "p1"]);
 });
 
 test("pullSequence: a unit seen for the first time wears the game's word for new", () => {

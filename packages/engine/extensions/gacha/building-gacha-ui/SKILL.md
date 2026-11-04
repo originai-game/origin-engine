@@ -37,6 +37,11 @@ if (r.pull) token = startPull(r.pull);
 Call them from the system that builds the game's UI each tick. Generic
 pieces stay in `og.ui`: the store (`og.ui.storeFront`), reward choice, cards, celebrations, counters and timers.
 
+Tiers are the game's. A unit or pull item takes the engine's `rarity`
+(common … mythic), or its own `tier: { label: "SSR", rank: 6, color:
+"#ffcc33" }` over it: the label is the word on the reveal, the colour
+tints it, and the rank orders the summary (5 and up shine and burst).
+
 ## Change it
 
 1. `og ui add gacha` copies the kit into `assets/ui-kits/gacha/`. The copy
