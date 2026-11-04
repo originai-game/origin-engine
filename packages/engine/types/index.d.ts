@@ -50612,7 +50612,11 @@ export interface Grass {
    * @tunable
    */
   flutter: number;
-  /** Whether the blades cast the sun's shadows (near the camera, into the first cascade). */
+  /**
+   * Whether the blades cast the sun's shadows (near the camera, into the first two cascades). Either way a blade is shaded by the field's own canopy between it and the sun, darker towards the roots the denser the field and the lower the sun.
+   *
+   * @default true
+   */
   castShadows: boolean;
   /**
    * Another seed places the blades elsewhere.

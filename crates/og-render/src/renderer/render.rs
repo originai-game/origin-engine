@@ -1481,7 +1481,7 @@ impl Renderer {
         let grass_casts = grass_frame.casts();
         let overlay_in = |slot: usize, f: &Frustum| {
             unculled_overlay
-                || (slot == 0 && grass_casts)
+                || (slot < grass::SHADOW_CASCADES && grass_casts)
                 || (terrain_casters
                     && terrain_draws
                         .iter()
@@ -4204,8 +4204,8 @@ impl Renderer {
                     None,
                     false,
                 );
-                stats.draw_calls += n; // Grass casts into the first cascade only (grass.rs).
-                if slot == 0 {
+                stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
+                if slot < grass::SHADOW_CASCADES {
                     stats.draw_calls +=
                         self.grass
                             .draw(pass, grass::GrassPass::Shadow, &grass_frame, None);

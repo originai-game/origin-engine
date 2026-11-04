@@ -104,7 +104,7 @@ pub struct Grass {
     pub sway: f32,
     pub stiffness: f32,
     pub flutter: f32,
-    /// Blades cast shadows into the first cascade.
+    /// Blades cast shadows into the first [`SHADOW_CASCADES`] cascades.
     pub cast_shadows: bool,
     pub seed: u32,
     /// Seconds trampled blades take to stand again (`trample.rs`).
@@ -174,7 +174,7 @@ impl Default for Grass {
             sway: 1.0,
             stiffness: 0.5,
             flutter: 0.3,
-            cast_shadows: false,
+            cast_shadows: true,
             seed: 1,
             recovery: 4.0,
             types: [None; 3],
@@ -245,6 +245,13 @@ pub const LOD_ROWS: [u32; 3] = [7, 3, 1];
 const GUST_SHEEN: f32 = 1.5;
 /// The narrowest a blade draws (px).
 const MIN_WIDTH_PX: f32 = 1.0;
+/// The sun's cascades blades cast into (G5): the near field's two, where
+/// a blade's shadow is wider than a texel.
+pub(crate) const SHADOW_CASCADES: usize = 2;
+/// How much of a blade's width blocks a ray crossing the field's canopy
+/// (the canopy's extinction is blades per square metre times their width
+/// times this, per metre of the ray).
+const CANOPY_BLOCKING: f32 = 0.5;
 /// How far a blade seen edge-on turns towards the eye.
 const TURN_TO_EYE: f32 = 0.4;
 
@@ -601,6 +608,7 @@ struct DrawGpu {
     dry_color: [f32; 4],
     variation: [f32; 4],
     rows: [u32; 4],
+    canopy: [f32; 4],
     kinds: [[f32; 4]; 8],
     wind: WindFieldGpu,
 }
@@ -1371,6 +1379,15 @@ impl GrassRenderer {
                 dry_color,
                 variation,
                 rows: [lod_rows[0], lod_rows[1], lod_rows[2], 0],
+                // The canopy the sun crosses to reach a blade's lower part
+                // (grass.wgsl grass_canopy): its extinction per metre and
+                // its top, the field's mean blade height.
+                canopy: [
+                    g.density.max(0.0) * g.width.max(0.0) * CANOPY_BLOCKING,
+                    g.height * (1.0 - 0.5 * g.height_variation.clamp(0.0, 1.0)),
+                    0.0,
+                    0.0,
+                ],
                 kinds: kinds_draw(&g),
                 wind,
             };
@@ -1726,7 +1743,7 @@ mod tests {
             &lit_source(),
             "GrassUniform",
             fields!(DrawGpu: view_proj, prev_view_proj, eye, forward, origin, limits, sun, shape,
-                base_color, tip_color, dry_color, variation, rows, kinds, wind),
+                base_color, tip_color, dry_color, variation, rows, canopy, kinds, wind),
             size_of::<DrawGpu>(),
         );
         check(
