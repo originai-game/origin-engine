@@ -14,7 +14,7 @@ module transform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1481</sub>
+<sub>`api.ogt` line 1484</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 1568</sub>
+<sub>`api.ogt` line 1571</sub>
 
 <a id="fn-decompose"></a>
 
@@ -92,7 +92,7 @@ fn decompose {
 }
 ```
 
-<sub>`api.ogt` line 1576</sub>
+<sub>`api.ogt` line 1579</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -126,7 +126,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1582</sub>
+<sub>`api.ogt` line 1585</sub>
 
 <a id="fn-fromAxisAngle"></a>
 
@@ -156,7 +156,7 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 1592</sub>
+<sub>`api.ogt` line 1595</sub>
 
 ## Components, resources and events
 
@@ -188,7 +188,7 @@ component Transform {
 }
 ```
 
-<sub>`api.ogt` line 1485</sub>
+<sub>`api.ogt` line 1488</sub>
 
 <a id="record-Parent"></a>
 
@@ -209,7 +209,7 @@ component Parent {
 }
 ```
 
-<sub>`api.ogt` line 1497</sub>
+<sub>`api.ogt` line 1500</sub>
 
 <a id="record-MatrixWorld"></a>
 
@@ -232,7 +232,7 @@ component MatrixWorld {
 }
 ```
 
-<sub>`api.ogt` line 1502</sub>
+<sub>`api.ogt` line 1505</sub>
 
 <a id="record-WorldOrigin"></a>
 
@@ -285,7 +285,7 @@ resource WorldOrigin {
 }
 ```
 
-<sub>`api.ogt` line 1523</sub>
+<sub>`api.ogt` line 1526</sub>
 
 <a id="record-OriginShifted"></a>
 
@@ -321,7 +321,7 @@ event OriginShifted {
 }
 ```
 
-<sub>`api.ogt` line 1551</sub>
+<sub>`api.ogt` line 1554</sub>
 
 ## Types
 
@@ -348,7 +348,7 @@ enum WorldOriginPlane {
 }
 ```
 
-<sub>`api.ogt` line 1509</sub>
+<sub>`api.ogt` line 1512</sub>
 
 ## Column kinds
 
@@ -367,4 +367,4 @@ column WorldOriginPlane {
 }
 ```
 
-<sub>`api.ogt` line 1516</sub>
+<sub>`api.ogt` line 1519</sub>

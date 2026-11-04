@@ -36,6 +36,7 @@ mod atmosphere;
 mod baked;
 mod codec;
 mod describe;
+mod destruction;
 mod display;
 mod e6;
 mod engine;
@@ -112,6 +113,10 @@ pub use atmosphere::{
 };
 pub use baked::og_render_baked_lighting;
 pub use codec::{Kind, Layout, RecordKind};
+pub use destruction::{
+    og_destruction_capabilities, og_destruction_damage, og_destruction_explode,
+    og_destruction_fracture, og_destruction_info,
+};
 pub use display::{
     lose_device, og_render_display, og_render_reset_display, og_render_set_display,
     set_display_interval, set_fullscreen, set_mouse_report, set_power_preference,

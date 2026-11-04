@@ -1289,6 +1289,16 @@ export interface HostAbi<A, V> {
   og_motion_presentation(world: number, entity: number): string;
   /** `og.motion.poses` */
   og_motion_poses(): string;
+  /** `og.destruction.damage` */
+  og_destruction_damage(world: number, entity: number, desc: string | undefined): string;
+  /** `og.destruction.explode` */
+  og_destruction_explode(world: number, desc: string | undefined): string;
+  /** `og.destruction.fracture` */
+  og_destruction_fracture(world: number, entity: number): string;
+  /** `og.destruction.info` */
+  og_destruction_info(world: number, entity: number): string;
+  /** `og.destruction.capabilities` */
+  og_destruction_capabilities(world: number): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1913,6 +1923,11 @@ export const SYMBOLS: readonly string[] = [
   "og_motion_capabilities",
   "og_motion_presentation",
   "og_motion_poses",
+  "og_destruction_damage",
+  "og_destruction_explode",
+  "og_destruction_fracture",
+  "og_destruction_info",
+  "og_destruction_capabilities",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",
@@ -2154,6 +2169,18 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_motion_presentation(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.motion.presentation", "entity", entity);
       return abi.og_motion_presentation(world, entity);
+    },
+    og_destruction_damage(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.destruction.damage", "entity", entity);
+      return abi.og_destruction_damage(world, entity, desc);
+    },
+    og_destruction_fracture(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.destruction.fracture", "entity", entity);
+      return abi.og_destruction_fracture(world, entity);
+    },
+    og_destruction_info(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.destruction.info", "entity", entity);
+      return abi.og_destruction_info(world, entity);
     },
   };
 }

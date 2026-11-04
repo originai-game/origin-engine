@@ -1445,10 +1445,24 @@ pub trait MotionApi: Wire {
     fn og_motion_poses(&self) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi {}
+/// `destruction`: packages/knowledge/wiki/destruction.md.
+pub trait DestructionApi: Wire {
+    /// `og.destruction.damage`
+    fn og_destruction_damage(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.destruction.explode`
+    fn og_destruction_explode(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.destruction.fracture`
+    fn og_destruction_fracture(&self, world: u32, entity: f64) -> String;
+    /// `og.destruction.info`
+    fn og_destruction_info(&self, world: u32, entity: f64) -> String;
+    /// `og.destruction.capabilities`
+    fn og_destruction_capabilities(&self, world: u32) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2072,6 +2086,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_motion_capabilities",
     "og_motion_presentation",
     "og_motion_poses",
+    "og_destruction_damage",
+    "og_destruction_explode",
+    "og_destruction_fracture",
+    "og_destruction_info",
+    "og_destruction_capabilities",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

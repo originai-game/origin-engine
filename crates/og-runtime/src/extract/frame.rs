@@ -331,6 +331,48 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // hysteresis), so both paths draw the same picture.
     rs.scene.instance_levels.clear();
     rs.scene.impostors.clear();
+    // A fractured destructible's model is drawn by its chunks (og.Chunk):
+    // each its node of the model at its own transform, with the model's look.
+    let fractured: IdMap<u64, crate::destruction::Drawn> =
+        crate::destruction::drawn(layouts.engine)
+            .into_iter()
+            .map(|d| (d.entity, d))
+            .collect();
+    let (chunked, model_parts): (Vec<_>, Vec<_>) = model_parts
+        .into_iter()
+        .partition(|m| fractured.contains_key(&m.0));
+    for (e, asset, parts, look, _, _) in chunked {
+        let nodes = rs
+            .fx
+            .models
+            .get(&asset)
+            .map(|i| i.part_nodes.clone())
+            .unwrap_or_default();
+        for &(chunk, node, centre) in &fractured[&e].chunks {
+            let w = h.world_of(chunk) * Mat4::from_translation(-centre);
+            for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+                if nodes.get(k) != Some(&(node as usize)) {
+                    continue;
+                }
+                if rs.scene.meshlet_drawable(mesh, material) {
+                    let at = rs.scene.instances.len();
+                    rs.scene.instance_levels.resize(at + 1, u8::MAX);
+                    rs.scene.instance_levels[at] = 0;
+                }
+                rs.scene.instances.push(og_render::Instance {
+                    mesh,
+                    material,
+                    transform: w * local,
+                    material_layer: None,
+                    fx: look.fx,
+                    cast_shadows: look.cast,
+                    receive_shadows: look.receive,
+                    sway: 0.0,
+                });
+                keys.push((chunk, k as u32));
+            }
+        }
+    }
     for (e, asset, mut parts, mut look, bias, sway) in model_parts {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {

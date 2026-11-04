@@ -17,6 +17,7 @@ mod cells;
 mod contact_hit;
 mod cookie_cap;
 mod crowd;
+mod destruction;
 mod display;
 mod drop_shadows;
 mod garment;

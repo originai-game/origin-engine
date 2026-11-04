@@ -7679,6 +7679,115 @@
           "tunable": true
         }
       ]
+    },
+    {
+      "id": 100,
+      "name": "Destructible",
+      "schema": "og.Destructible",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "toughness",
+          "column": "f32",
+          "default": 800,
+          "tunable": true
+        },
+        {
+          "name": "strength",
+          "column": "f32",
+          "default": 30000,
+          "tunable": true
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1000,
+          "tunable": true
+        },
+        {
+          "name": "impactThreshold",
+          "column": "f32",
+          "default": 30,
+          "tunable": true
+        },
+        {
+          "name": "impactRadius",
+          "column": "f32",
+          "default": 0.4,
+          "tunable": true
+        },
+        {
+          "name": "anchored",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "dust",
+          "column": "ParticleEmitter",
+          "default": 0
+        },
+        {
+          "name": "sparks",
+          "column": "ParticleEmitter",
+          "default": 0
+        },
+        {
+          "name": "fractured",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "broken",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "loose",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "name": "Chunk",
+      "schema": "og.Chunk",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "destructible",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "chunk",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "level",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "body",
+          "column": "Entity",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "looseTick",
+          "column": "u32",
+          "default": 4294967295,
+          "readonly": true
+        }
+      ]
     }
   ],
   "resources": [
@@ -11445,6 +11554,42 @@
           "default": false
         }
       ]
+    },
+    {
+      "id": 39,
+      "name": "Destruction",
+      "schema": "og.Destruction",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "maxChunks",
+          "column": "u32",
+          "default": 256,
+          "tunable": true
+        },
+        {
+          "name": "debrisVolume",
+          "column": "f32",
+          "default": 0.004,
+          "tunable": true
+        },
+        {
+          "name": "debrisLifetime",
+          "column": "f32",
+          "default": 8,
+          "tunable": true
+        },
+        {
+          "name": "fxLifetime",
+          "column": "f32",
+          "default": 3
+        },
+        {
+          "name": "stressIterations",
+          "column": "u32",
+          "default": 48
+        }
+      ]
     }
   ],
   "events": [
@@ -12854,6 +12999,53 @@
         },
         {
           "name": "silentMs",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Fractured",
+      "schema": "og.Fractured",
+      "module": "destruction",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "body",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "chunks",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "volume",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "mass",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "cause",
           "type": "u32",
           "default": 0
         }
@@ -26159,6 +26351,116 @@
       "name": "poses",
       "params": [],
       "returns": "List<String>",
+      "publish": true
+    },
+    {
+      "id": 620,
+      "kind": "fn",
+      "path": "og.destruction.damage",
+      "symbol": "og_destruction_damage",
+      "module": "destruction",
+      "name": "damage",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "DamageDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 621,
+      "kind": "fn",
+      "path": "og.destruction.explode",
+      "symbol": "og_destruction_explode",
+      "module": "destruction",
+      "name": "explode",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ExplosionDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 622,
+      "kind": "fn",
+      "path": "og.destruction.fracture",
+      "symbol": "og_destruction_fracture",
+      "module": "destruction",
+      "name": "fracture",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 623,
+      "kind": "fn",
+      "path": "og.destruction.info",
+      "symbol": "og_destruction_info",
+      "module": "destruction",
+      "name": "info",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<DestructibleInfo>",
+      "publish": true
+    },
+    {
+      "id": 624,
+      "kind": "fn",
+      "path": "og.destruction.capabilities",
+      "symbol": "og_destruction_capabilities",
+      "module": "destruction",
+      "name": "capabilities",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "DestructionCapabilities",
       "publish": true
     }
   ],

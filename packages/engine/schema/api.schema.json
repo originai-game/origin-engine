@@ -25,6 +25,9 @@
     "rpm": "revolutions per minute",
     "perSecond": "a rate per second: the fraction of a value that decays in one second",
     "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)",
+    "m3": "cubic metres",
+    "pascal": "pascals: newtons per square metre, a stress",
+    "newtonSecondPerM2": "newton-seconds per square metre: an impulse spread over an area",
     "db": "decibels",
     "evPerSecond": "exposure stops (EV) per second of simulation time",
     "bpm": "beats per minute"
@@ -19728,6 +19731,168 @@
           "params": [],
           "returns": "List<String>",
           "returnsDoc": "The names.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
+      "name": "destruction",
+      "doc": "Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.\n**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.\n**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.\n3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Destructible",
+        "Chunk",
+        "Fractured",
+        "Destruction",
+        "DamageDesc",
+        "ExplosionDesc",
+        "DestructibleInfo",
+        "DestructionCapabilities"
+      ],
+      "consts": [
+        {
+          "name": "CAUSE_IMPACT",
+          "type": "u32",
+          "value": 0,
+          "doc": "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
+        },
+        {
+          "name": "CAUSE_DAMAGE",
+          "type": "u32",
+          "value": 1,
+          "doc": "Fractured.cause: og.destruction.damage."
+        },
+        {
+          "name": "CAUSE_EXPLOSION",
+          "type": "u32",
+          "value": 2,
+          "doc": "Fractured.cause: og.destruction.explode."
+        },
+        {
+          "name": "CAUSE_STRESS",
+          "type": "u32",
+          "value": 3,
+          "doc": "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
+        },
+        {
+          "name": "CAUSE_SHATTER",
+          "type": "u32",
+          "value": 4,
+          "doc": "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
+        },
+        {
+          "name": "CAUSE_FRACTURE",
+          "type": "u32",
+          "value": 5,
+          "doc": "Fractured.cause: og.destruction.fracture."
+        }
+      ],
+      "functions": [
+        {
+          "name": "damage",
+          "doc": "Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.Destructible, or one of its chunks."
+            },
+            {
+              "name": "desc",
+              "type": "DamageDesc",
+              "optional": true,
+              "doc": "Where, how far and how much."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is neither, or a point that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "explode",
+          "doc": "An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "ExplosionDesc",
+              "optional": true,
+              "doc": "Its centre, reach, damage and push."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a point that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "fracture",
+          "doc": "Break every bond of a destructible at once (this tick, as damage): its anchored chunks stay, the rest fall.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.Destructible."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without one.",
+          "publish": true
+        },
+        {
+          "name": "info",
+          "doc": "How much of a destructible stands.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with og.Destructible."
+            }
+          ],
+          "returns": "Result<DestructibleInfo>",
+          "returnsDoc": "Refused for an entity without one, or one whose model is not loaded or has no fracture.",
+          "publish": true
+        },
+        {
+          "name": "capabilities",
+          "doc": "What destruction does on this device.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "DestructionCapabilities",
           "publish": true
         }
       ],
@@ -79815,6 +79980,405 @@
         "backend",
         "reason",
         "modelBytes"
+      ],
+      "additionalProperties": false
+    },
+    "Destructible": {
+      "x-og-kind": "component",
+      "x-og-module": "destruction",
+      "description": "Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.\nScale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.",
+      "type": "object",
+      "properties": {
+        "toughness": {
+          "type": "number",
+          "description": "How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000.",
+          "default": 800,
+          "minimum": 0,
+          "x-og-unit": "newtonSecondPerM2",
+          "x-og-tunable": true
+        },
+        "strength": {
+          "type": "number",
+          "description": "The stress its bonds hold in tension and shear before they weaken (compression holds eight times as much, and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off.",
+          "default": 30000,
+          "minimum": 0,
+          "x-og-unit": "pascal",
+          "x-og-tunable": true
+        },
+        "density": {
+          "type": "number",
+          "description": "The chunks' density: their mass as bodies and their weight in the stress solver.",
+          "default": 1000,
+          "minimum": 1,
+          "x-og-unit": "kgPerM3",
+          "x-og-tunable": true
+        },
+        "impactThreshold": {
+          "type": "number",
+          "description": "A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit.",
+          "default": 30,
+          "minimum": 0,
+          "x-og-unit": "newtonSecond",
+          "x-og-tunable": true
+        },
+        "impactRadius": {
+          "type": "number",
+          "description": "How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it).",
+          "default": 0.4,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "anchored": {
+          "type": "boolean",
+          "description": "Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls.",
+          "default": true
+        },
+        "dust": {
+          "$ref": "#/$defs/ParticleEmitter",
+          "description": "An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none.",
+          "default": 0
+        },
+        "sparks": {
+          "$ref": "#/$defs/ParticleEmitter",
+          "description": "An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none.",
+          "default": 0
+        },
+        "fractured": {
+          "type": "boolean",
+          "description": "Written: true from its first break (the model hidden, its chunks drawn).",
+          "default": false,
+          "readOnly": true
+        },
+        "broken": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: its bonds broken so far.",
+          "default": 0,
+          "readOnly": true
+        },
+        "loose": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Written: its chunks that have broken loose and still exist.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Chunk": {
+      "x-og-kind": "component",
+      "x-og-module": "destruction",
+      "description": "One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.",
+      "type": "object",
+      "properties": {
+        "destructible": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Destructible it belongs to.",
+          "default": 0,
+          "readOnly": true
+        },
+        "chunk": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its index in the fracture asset.",
+          "default": 0,
+          "readOnly": true
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "1 a support chunk, 2 a chunk's child.",
+          "default": 0,
+          "readOnly": true
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity whose og.RigidBody moves it: its own, its island's body, or 0 while anchored.",
+          "default": 0,
+          "readOnly": true
+        },
+        "looseTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it broke loose; 4294967295 while anchored.",
+          "default": 4294967295,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Fractured": {
+      "x-og-kind": "event",
+      "x-og-module": "destruction",
+      "description": "An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. Sent in the order the islands broke.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Destructible."
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The island's body: the entity with its og.RigidBody."
+        },
+        "chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its chunks."
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it broke: the centre of its broken bonds.",
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "volume": {
+          "type": "number",
+          "description": "Its volume.",
+          "x-og-unit": "m3"
+        },
+        "mass": {
+          "type": "number",
+          "description": "Its mass.",
+          "x-og-unit": "kg"
+        },
+        "cause": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "What broke it: one of the CAUSE_* codes."
+        }
+      },
+      "required": [
+        "entity",
+        "body",
+        "chunks",
+        "point",
+        "volume",
+        "mass",
+        "cause"
+      ],
+      "additionalProperties": false
+    },
+    "Destruction": {
+      "x-og-kind": "resource",
+      "x-og-module": "destruction",
+      "description": "The world's destruction budgets.",
+      "type": "object",
+      "properties": {
+        "maxChunks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most loose chunks alive at once, over every destructible: past it the oldest loose islands (the smallest first among those that broke in the same tick) despawn, each with every chunk it carries.",
+          "default": 256,
+          "minimum": 1,
+          "maximum": 4096,
+          "x-og-tunable": true
+        },
+        "debrisVolume": {
+          "type": "number",
+          "description": "A loose island smaller than this is debris: it despawns debrisLifetime after it broke loose.",
+          "default": 0.004,
+          "minimum": 0,
+          "x-og-unit": "m3",
+          "x-og-tunable": true
+        },
+        "debrisLifetime": {
+          "type": "number",
+          "description": "How long debris lasts (0: until maxChunks takes it).",
+          "default": 8,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "fxLifetime": {
+          "type": "number",
+          "description": "How long a dust or sparks burst's entity lasts before og.destruction despawns it.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "stressIterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The stress solver's iterations a destructible a tick (Blast's maxIter): more settles larger structures in one tick.",
+          "default": 48,
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    },
+    "DamageDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "A radial damage for og.destruction.damage.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it lands, in world space.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "How far it reaches; it falls linearly to nothing here from innerRadius.",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "innerRadius": {
+          "type": "number",
+          "description": "Within this the bonds take the whole amount.",
+          "default": 0.1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The damage, as an impulse through a bond (Destructible.toughness says how much a square metre takes).",
+          "default": 500,
+          "minimum": 0,
+          "x-og-unit": "newtonSecond"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ExplosionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "destruction",
+      "description": "An explosion for og.destruction.explode.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its centre, in world space.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "How far it reaches.",
+          "default": 3,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "innerRadius": {
+          "type": "number",
+          "description": "Within this everything takes the whole damage and push.",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "damage": {
+          "type": "number",
+          "description": "The damage to every destructible's bonds in reach, as og.destruction.damage's amount.",
+          "default": 3000,
+          "minimum": 0,
+          "x-og-unit": "newtonSecond"
+        },
+        "impulse": {
+          "type": "number",
+          "description": "The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does.",
+          "default": 200,
+          "minimum": 0,
+          "x-og-unit": "newtonSecond"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DestructibleInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "destruction",
+      "description": "What a destructible holds and how much of it stands (og.destruction.info).",
+      "type": "object",
+      "properties": {
+        "chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its support chunks."
+        },
+        "children": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Their children, all told."
+        },
+        "bonds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bonds of its support graph."
+        },
+        "intact": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bonds not yet broken."
+        },
+        "islands": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its islands now."
+        },
+        "anchored": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its support chunks still held to the world."
+        },
+        "health": {
+          "type": "number",
+          "description": "Its bonds' remaining health over their total, 1 intact to 0 rubble.",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "chunks",
+        "children",
+        "bonds",
+        "intact",
+        "islands",
+        "anchored",
+        "health"
+      ],
+      "additionalProperties": false
+    },
+    "DestructionCapabilities": {
+      "x-og-kind": "struct",
+      "x-og-module": "destruction",
+      "description": "What destruction does on this device.",
+      "type": "object",
+      "properties": {
+        "visualDebris": {
+          "type": "boolean",
+          "description": "Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it)."
+        }
+      },
+      "required": [
+        "visualDebris"
       ],
       "additionalProperties": false
     }

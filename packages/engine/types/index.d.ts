@@ -48164,6 +48164,364 @@ export interface MotionCapabilities {
 
 
 
+// ── destruction ─────────────────────────────────────────────────
+// Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
+// **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
+// **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
+// 3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
+
+/**
+ * Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold.
+ */
+export declare const CAUSE_IMPACT: 0;
+
+/** Fractured.cause: og.destruction.damage. */
+export declare const CAUSE_DAMAGE: 1;
+
+/** Fractured.cause: og.destruction.explode. */
+export declare const CAUSE_EXPLOSION: 2;
+
+/** Fractured.cause: the stress solver: a part that could no longer hold its own weight. */
+export declare const CAUSE_STRESS: 3;
+
+/**
+ * Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole.
+ */
+export declare const CAUSE_SHATTER: 4;
+
+/** Fractured.cause: og.destruction.fracture. */
+export declare const CAUSE_FRACTURE: 5;
+
+/**
+ * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
+ * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
+ *
+ * The value of the `Destructible` component (token `og.Destructible`).
+ */
+export interface Destructible {
+  /**
+   * How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000.
+   *
+   * @default 800
+   * @range 0..
+   * @unit newtonSecondPerM2 (newton-seconds per square metre: an impulse spread over an area)
+   * @tunable
+   */
+  toughness: number;
+  /**
+   * The stress its bonds hold in tension and shear before they weaken (compression holds eight times as much, and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off.
+   *
+   * @default 30000
+   * @range 0..
+   * @unit pascal (pascals: newtons per square metre, a stress)
+   * @tunable
+   */
+  strength: number;
+  /**
+   * The chunks' density: their mass as bodies and their weight in the stress solver.
+   *
+   * @default 1000
+   * @range 1..
+   * @unit kgPerM3 (kilograms per cubic metre (per square metre in the 2D profile))
+   * @tunable
+   */
+  density: number;
+  /**
+   * A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit.
+   *
+   * @default 30
+   * @range 0..
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   * @tunable
+   */
+  impactThreshold: number;
+  /**
+   * How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it).
+   *
+   * @default 0.4
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  impactRadius: number;
+  /**
+   * Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls.
+   *
+   * @default true
+   */
+  anchored: boolean;
+  /**
+   * An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none.
+   */
+  dust: ParticleEmitter;
+  /**
+   * An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none.
+   */
+  sparks: ParticleEmitter;
+  /**
+   * Written: true from its first break (the model hidden, its chunks drawn).
+   *
+   * @readonly written by the engine
+   */
+  readonly fractured: boolean;
+  /**
+   * Written: its bonds broken so far.
+   *
+   * @readonly written by the engine
+   */
+  readonly broken: number;
+  /**
+   * Written: its chunks that have broken loose and still exist.
+   *
+   * @readonly written by the engine
+   */
+  readonly loose: number;
+}
+
+/**
+ * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
+ *
+ * The value of the `Chunk` component (token `og.Chunk`).
+ */
+export interface Chunk {
+  /**
+   * The og.Destructible it belongs to.
+   *
+   * @readonly written by the engine
+   */
+  readonly destructible: Entity;
+  /**
+   * Its index in the fracture asset.
+   *
+   * @readonly written by the engine
+   */
+  readonly chunk: number;
+  /**
+   * 1 a support chunk, 2 a chunk's child.
+   *
+   * @readonly written by the engine
+   */
+  readonly level: number;
+  /**
+   * The entity whose og.RigidBody moves it: its own, its island's body, or 0 while anchored.
+   *
+   * @readonly written by the engine
+   */
+  readonly body: Entity;
+  /**
+   * The tick it broke loose; 4294967295 while anchored.
+   *
+   * @default 4294967295
+   * @readonly written by the engine
+   */
+  readonly looseTick: number;
+}
+
+/**
+ * An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. Sent in the order the islands broke.
+ *
+ * The payload of the `Fractured` event (token `og.Fractured`).
+ */
+export interface Fractured {
+  /** The og.Destructible. */
+  readonly entity: Entity;
+  /** The island's body: the entity with its og.RigidBody. */
+  readonly body: Entity;
+  /** Its chunks. */
+  readonly chunks: number;
+  /**
+   * Where it broke: the centre of its broken bonds.
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  readonly point: Vector3;
+  /**
+   * Its volume.
+   *
+   * @unit m3 (cubic metres)
+   */
+  readonly volume: number;
+  /**
+   * Its mass.
+   *
+   * @unit kg (kilograms)
+   */
+  readonly mass: number;
+  /** What broke it: one of the CAUSE_* codes. */
+  readonly cause: number;
+}
+
+/**
+ * The world's destruction budgets.
+ *
+ * The `Destruction` resource (token `og.Destruction`).
+ */
+export interface Destruction {
+  /**
+   * The most loose chunks alive at once, over every destructible: past it the oldest loose islands (the smallest first among those that broke in the same tick) despawn, each with every chunk it carries.
+   *
+   * @default 256
+   * @range 1..4096
+   * @tunable
+   */
+  maxChunks: number;
+  /**
+   * A loose island smaller than this is debris: it despawns debrisLifetime after it broke loose.
+   *
+   * @default 0.004
+   * @range 0..
+   * @unit m3 (cubic metres)
+   * @tunable
+   */
+  debrisVolume: number;
+  /**
+   * How long debris lasts (0: until maxChunks takes it).
+   *
+   * @default 8
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  debrisLifetime: number;
+  /**
+   * How long a dust or sparks burst's entity lasts before og.destruction despawns it.
+   *
+   * @default 3
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  fxLifetime: number;
+  /**
+   * The stress solver's iterations a destructible a tick (Blast's maxIter): more settles larger structures in one tick.
+   *
+   * @default 48
+   * @range 1..1000
+   */
+  stressIterations: number;
+}
+
+/**
+ * A radial damage for og.destruction.damage.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DamageDesc {
+  /**
+   * Where it lands, in world space.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly point?: Vector3;
+  /**
+   * How far it reaches; it falls linearly to nothing here from innerRadius.
+   *
+   * @default 0.4
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Within this the bonds take the whole amount.
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly innerRadius?: number;
+  /**
+   * The damage, as an impulse through a bond (Destructible.toughness says how much a square metre takes).
+   *
+   * @default 500
+   * @range 0..
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly amount?: number;
+}
+
+/**
+ * An explosion for og.destruction.explode.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ExplosionDesc {
+  /**
+   * Its centre, in world space.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly point?: Vector3;
+  /**
+   * How far it reaches.
+   *
+   * @default 3
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Within this everything takes the whole damage and push.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly innerRadius?: number;
+  /**
+   * The damage to every destructible's bonds in reach, as og.destruction.damage's amount.
+   *
+   * @default 3000
+   * @range 0..
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly damage?: number;
+  /**
+   * The push outwards given to every loose chunk in reach, as an impulse at its centre, falling off as the damage does.
+   *
+   * @default 200
+   * @range 0..
+   * @unit newtonSecond (newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second)
+   */
+  readonly impulse?: number;
+}
+
+/** What a destructible holds and how much of it stands (og.destruction.info). */
+export interface DestructibleInfo {
+  /** Its support chunks. */
+  readonly chunks: number;
+  /** Their children, all told. */
+  readonly children: number;
+  /** The bonds of its support graph. */
+  readonly bonds: number;
+  /** The bonds not yet broken. */
+  readonly intact: number;
+  /** Its islands now. */
+  readonly islands: number;
+  /** Its support chunks still held to the world. */
+  readonly anchored: number;
+  /**
+   * Its bonds' remaining health over their total, 1 intact to 0 rubble.
+   *
+   * @range 0..1
+   */
+  readonly health: number;
+}
+
+/** What destruction does on this device. */
+export interface DestructionCapabilities {
+  /**
+   * Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it).
+   */
+  readonly visualDebris: boolean;
+}
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -53980,5 +54338,67 @@ export declare namespace og {
      * @returns The names.
      */
     function poses(): readonly string[];
+  }
+  /**
+   * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
+   * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
+   */
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  /**
+   * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
+   */
+  const Chunk: ComponentType<{ readonly destructible: FieldSpec<"Entity">; readonly chunk: FieldSpec<"u32">; readonly level: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly looseTick: FieldSpec<"u32"> }, Chunk>;
+  /**
+   * An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. Sent in the order the islands broke.
+   */
+  const Fractured: EventType<Fractured>;
+  /** The world's destruction budgets. */
+  const Destruction: ResourceType<{ readonly maxChunks: FieldSpec<"u32">; readonly debrisVolume: FieldSpec<"f32">; readonly debrisLifetime: FieldSpec<"f32">; readonly fxLifetime: FieldSpec<"f32">; readonly stressIterations: FieldSpec<"u32"> }, Destruction>;
+  /**
+   * Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
+   * **Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
+   * **What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Dust and sparks: the og.Destructible's `dust` and `sparks` emitters burst at each break. Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
+   * 3D profile only. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
+   */
+  namespace destruction {
+    /**
+     * Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step.
+     *
+     * @param world The world.
+     * @param entity An entity with og.Destructible, or one of its chunks.
+     * @param desc Where, how far and how much.
+     * @returns Refused for an entity that is neither, or a point that is not finite.
+     */
+    function damage(world: World, entity: Entity, desc?: DamageDesc): Result<void>;
+    /**
+     * An explosion: damage to every destructible in reach (as og.destruction.damage), then a push outwards to their loose chunks. Applied by og.destruction this tick, as damage. Push other bodies with og.physics.applyImpulse.
+     *
+     * @param world The world.
+     * @param desc Its centre, reach, damage and push.
+     * @returns Refused for a point that is not finite.
+     */
+    function explode(world: World, desc?: ExplosionDesc): Result<void>;
+    /**
+     * Break every bond of a destructible at once (this tick, as damage): its anchored chunks stay, the rest fall.
+     *
+     * @param world The world.
+     * @param entity An entity with og.Destructible.
+     * @returns Refused for an entity without one.
+     */
+    function fracture(world: World, entity: Entity): Result<void>;
+    /**
+     * How much of a destructible stands.
+     *
+     * @param world The world.
+     * @param entity An entity with og.Destructible.
+     * @returns Refused for an entity without one, or one whose model is not loaded or has no fracture.
+     */
+    function info(world: World, entity: Entity): Result<DestructibleInfo>;
+    /**
+     * What destruction does on this device.
+     *
+     * @param world The world.
+     */
+    function capabilities(world: World): DestructionCapabilities;
   }
 }

@@ -2679,6 +2679,7 @@ dependencies = [
 name = "og-runtime"
 version = "0.7.7"
 dependencies = [
+ "bincode",
  "glam 0.34.1",
  "image",
  "miniz_oxide 0.8.9",
@@ -2689,6 +2690,7 @@ dependencies = [
  "og-bundle",
  "og-cook",
  "og-core",
+ "og-destruct",
  "og-ecs",
  "og-geom",
  "og-i18n",

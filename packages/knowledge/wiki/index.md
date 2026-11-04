@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 38 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 39 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -135,6 +135,12 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 |---|---|---|---|
 | [`art`](art.md) | types and tokens | kept | A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be. |
 
+### `og-destruction`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
+| [`destruction`](destruction.md) | `og.destruction.*` | kept | Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down. |
+
 ## Units
 
 Field units the docs and Tune use.
@@ -161,13 +167,16 @@ Field units the docs and Tune use.
 | `rpm` | revolutions per minute |
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
+| `m3` | cubic metres |
+| `pascal` | pascals: newtons per square metre, a stress |
+| `newtonSecondPerM2` | newton-seconds per square metre: an impulse spread over an area |
 | `db` | decibels |
 | `evPerSecond` | exposure stops (EV) per second of simulation time |
 | `bpm` | beats per minute |
 
 ## Every name
 
-2269 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2288 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -325,6 +334,12 @@ Field units the docs and Tune use.
 | [`CardVariant`](ui.md#type-CardVariant) | enum | ui | — |
 | [`CarouselDesc`](ui.md#type-CarouselDesc) | desc struct | ui | — |
 | [`CarouselResult`](ui.md#type-CarouselResult) | struct | ui | — |
+| [`CAUSE_DAMAGE`](destruction.md#const-CAUSE_DAMAGE) | constant | destruction | — |
+| [`CAUSE_EXPLOSION`](destruction.md#const-CAUSE_EXPLOSION) | constant | destruction | — |
+| [`CAUSE_FRACTURE`](destruction.md#const-CAUSE_FRACTURE) | constant | destruction | — |
+| [`CAUSE_IMPACT`](destruction.md#const-CAUSE_IMPACT) | constant | destruction | — |
+| [`CAUSE_SHATTER`](destruction.md#const-CAUSE_SHATTER) | constant | destruction | — |
+| [`CAUSE_STRESS`](destruction.md#const-CAUSE_STRESS) | constant | destruction | — |
 | [`CelebrationDesc`](ui.md#type-CelebrationDesc) | desc struct | ui | — |
 | [`CelebrationKind`](ui.md#type-CelebrationKind) | enum | ui | — |
 | [`CellRect`](procgen.md#type-CellRect) | struct | procgen | — |
@@ -408,6 +423,7 @@ Field units the docs and Tune use.
 | [`Customize`](ui.md#type-Customize) | desc struct | ui | — |
 | [`CyclerDesc`](ui.md#type-CyclerDesc) | desc struct | ui | — |
 | [`CylinderGeometryDesc`](render.md#type-CylinderGeometryDesc) | desc struct | render | — |
+| [`DamageDesc`](destruction.md#type-DamageDesc) | desc struct | destruction | — |
 | [`DamageHitDesc`](ui.md#type-DamageHitDesc) | desc struct | ui | — |
 | [`DamageKind`](ui.md#type-DamageKind) | enum | ui | — |
 | [`DamageNumbersDesc`](ui.md#type-DamageNumbersDesc) | desc struct | ui | — |
@@ -437,6 +453,8 @@ Field units the docs and Tune use.
 | [`DescribedUi`](probe.md#type-DescribedUi) | struct | probe | — |
 | [`DescribedView`](probe.md#type-DescribedView) | struct | probe | — |
 | [`Description`](probe.md#type-Description) | struct | probe | — |
+| [`DestructibleInfo`](destruction.md#type-DestructibleInfo) | struct | destruction | — |
+| [`DestructionCapabilities`](destruction.md#type-DestructionCapabilities) | struct | destruction | — |
 | [`DesyncDump`](probe.md#type-DesyncDump) | struct | probe | — |
 | [`DialogAction`](ui.md#type-DialogAction) | desc struct | ui | — |
 | [`DialogDesc`](ui.md#type-DialogDesc) | desc struct | ui | — |
@@ -515,6 +533,7 @@ Field units the docs and Tune use.
 | [`ExpectReport`](probe.md#type-ExpectReport) | struct | probe | — |
 | [`ExpectResult`](probe.md#type-ExpectResult) | struct | probe | — |
 | [`ExpectStatus`](probe.md#type-ExpectStatus) | enum | probe | — |
+| [`ExplosionDesc`](destruction.md#type-ExplosionDesc) | desc struct | destruction | — |
 | [`ExtrudeGeometryDesc`](render.md#type-ExtrudeGeometryDesc) | desc struct | render | — |
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
@@ -918,6 +937,7 @@ Field units the docs and Tune use.
 | [`og.CellMember`](stream.md#record-CellMember) | component | stream | — |
 | [`og.CharacterController`](physics.md#record-CharacterController) | component | physics | — |
 | [`og.CharacterEvent`](physics.md#record-CharacterEvent) | event | physics | — |
+| [`og.Chunk`](destruction.md#record-Chunk) | component | destruction | — |
 | [`og.Cloth`](physics.md#record-Cloth) | component | physics | — |
 | [`og.Clouds`](atmosphere.md#record-Clouds) | resource | atmosphere | — |
 | [`og.Collider`](physics.md#record-Collider) | component | physics | — |
@@ -944,6 +964,13 @@ Field units the docs and Tune use.
 | [`og.debug.text`](debug.md#fn-text) | function | debug | `og_debug_text` |
 | [`og.debug.view`](debug.md#fn-view) | function | debug | `og_debug_view` |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
+| [`og.Destructible`](destruction.md#record-Destructible) | component | destruction | — |
+| [`og.Destruction`](destruction.md#record-Destruction) | resource | destruction | — |
+| [`og.destruction.capabilities`](destruction.md#fn-capabilities) | function | destruction | `og_destruction_capabilities` |
+| [`og.destruction.damage`](destruction.md#fn-damage) | function | destruction | `og_destruction_damage` |
+| [`og.destruction.explode`](destruction.md#fn-explode) | function | destruction | `og_destruction_explode` |
+| [`og.destruction.fracture`](destruction.md#fn-fracture) | function | destruction | `og_destruction_fracture` |
+| [`og.destruction.info`](destruction.md#fn-info) | function | destruction | `og_destruction_info` |
 | [`og.Desync`](net.md#record-Desync) | event | net | — |
 | [`og.DialogueCheck`](story.md#record-DialogueCheck) | event | story | — |
 | [`og.DialogueEnded`](story.md#record-DialogueEnded) | event | story | — |
@@ -958,6 +985,7 @@ Field units the docs and Tune use.
 | [`og.Follow2D`](camera.md#record-Follow2D) | component | camera | — |
 | [`og.FollowCamera`](camera.md#record-FollowCamera) | component | camera | — |
 | [`og.FootLock`](anim.md#record-FootLock) | component | anim | — |
+| [`og.Fractured`](destruction.md#record-Fractured) | event | destruction | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
 | [`og.Garment`](physics.md#record-Garment) | component | physics | — |

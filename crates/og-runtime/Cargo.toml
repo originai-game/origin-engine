@@ -39,6 +39,8 @@ og-net = { path = "../og-net" }
 og-video = { path = "../og-video", default-features = false }
 # og.motion: the motion model on the renderer's device (GPU only, no `reference`).
 og-motion = { path = "../og-motion" }
+og-destruct = { path = "../og-destruct" }
+bincode = "1.3.3"
 
 # og.load.imageData's decoder natively (PNG and JPEG, on a worker thread),
 # and og.load.environmentData's OpenEXR (`exr`; RenderCapabilities.exrDecode);

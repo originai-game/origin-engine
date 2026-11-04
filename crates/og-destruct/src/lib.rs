@@ -20,6 +20,10 @@ use stress::{AngLin6, SolverBond, SolverNode, StressLimits, StressProcessor};
 /// No chunk (a root's parent, a leaf's children).
 pub const NONE: u32 = u32::MAX;
 
+/// How much more damage a chunk takes before it shatters than a bond of
+/// its cross-section before it breaks.
+pub const SHATTER: f32 = 3.0;
+
 /// The format version of [`FractureAsset::to_bytes`].
 pub const ASSET_VERSION: u32 = 1;
 
@@ -209,16 +213,28 @@ impl Instance {
     }
 
     /// The damage a chunk takes before it shatters into its children: its
-    /// cross-section (volume^(2/3), scaled by `scale`²) times toughness.
+    /// cross-section (volume^(2/3), scaled by `scale`²) times toughness,
+    /// times [`SHATTER`]: a hit that breaks the bonds round a chunk does
+    /// not by itself break the chunk.
     pub fn chunk_health(a: &FractureAsset, chunk: u32, scale: f32, toughness: f32) -> f32 {
-        sq_cube_root(a.chunks[chunk as usize].volume) * scale * scale * toughness
+        SHATTER * sq_cube_root(a.chunks[chunk as usize].volume) * scale * scale * toughness
     }
 
     /// Applies a radial damage to every intact bond, anchor and chunk it
     /// reaches (`scale`: the destructible's uniform scale, so areas are in
-    /// square metres). Answers whether anything took damage; a bond whose
-    /// health reaches 0 is broken.
-    pub fn damage(&mut self, a: &FractureAsset, d: &Damage, scale: f32, m: &Material) -> bool {
+    /// square metres). `place` maps a point of the model's space, on chunk
+    /// `c` (a bond's first chunk, an anchor's, a chunk's own), to the
+    /// damage's space: the chunks of a broken prop have moved apart, each
+    /// with its own transform. Answers whether anything took damage; a
+    /// bond whose health reaches 0 is broken.
+    pub fn damage(
+        &mut self,
+        a: &FractureAsset,
+        d: &Damage,
+        scale: f32,
+        m: &Material,
+        place: &dyn Fn(u32, Vec3) -> Vec3,
+    ) -> bool {
         let mut any = false;
         let tough = m.toughness.max(1e-6);
         for (k, b) in a.bonds.iter().enumerate() {
@@ -226,7 +242,7 @@ impl Instance {
             if *h <= 0.0 {
                 continue;
             }
-            let amount = d.at(b.centroid);
+            let amount = d.at(place(b.a, b.centroid));
             if amount > 0.0 {
                 *h = (*h - amount / (b.area * scale * scale * tough)).max(0.0);
                 any = true;
@@ -237,14 +253,14 @@ impl Instance {
             if *h <= 0.0 {
                 continue;
             }
-            let amount = d.at(c.anchor_centroid);
+            let amount = d.at(place(i as u32, c.anchor_centroid));
             if amount > 0.0 {
                 *h = (*h - amount / (c.anchor_area * scale * scale * tough)).max(0.0);
                 any = true;
             }
         }
         for (i, c) in a.chunks.iter().enumerate() {
-            let amount = d.at(c.centroid);
+            let amount = d.at(place(i as u32, c.centroid));
             if amount > 0.0 {
                 self.chunk_damage[i] += amount;
                 any = true;

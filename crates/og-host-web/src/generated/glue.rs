@@ -3246,3 +3246,28 @@ pub fn og_motion_presentation(world: u32, entity: f64) -> String {
 pub fn og_motion_poses() -> String {
     <Host as MotionApi>::og_motion_poses(&Host)
 }
+
+#[wasm_bindgen]
+pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_damage(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
+    <Host as DestructionApi>::og_destruction_explode(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_fracture(world: u32, entity: f64) -> String {
+    <Host as DestructionApi>::og_destruction_fracture(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_info(world: u32, entity: f64) -> String {
+    <Host as DestructionApi>::og_destruction_info(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_destruction_capabilities(world: u32) -> String {
+    <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
+}

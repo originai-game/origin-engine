@@ -506,7 +506,10 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         };
         (model, textures, impostor)
     };
-    insert_model(eng, &id, group, model, &textures, impostor, into, true).map(|(i, _)| i)
+    let (index, _) = insert_model(eng, &id, group, model, &textures, impostor, into, true)?;
+    // A prefractured model's chunks (`fracture { }`): og.destruction's.
+    super::destruction::load_asset(eng, &id, index)?;
+    Ok(index)
 }
 
 /// Place each primitive in the same model space used by its impostor bake.

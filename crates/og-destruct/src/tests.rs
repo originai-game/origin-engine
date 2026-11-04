@@ -136,34 +136,23 @@ fn radial_damage_breaks_the_bonds_within_its_reach_and_weakens_those_at_its_edge
         max_radius: 3.0,
         amount: 150.0,
     };
-    assert!(inst.damage(&a, &d, 1.0, &m));
+    assert!(inst.damage(&a, &d, 1.0, &m, &|_, p| p));
     // Bonds at x = 1, 2 (within 1 m) break; 3 takes 75, 4 nothing.
     assert_eq!(inst.bonds[0], 0.0);
     assert_eq!(inst.bonds[1], 0.0);
     assert!((inst.bonds[2] - 0.25).abs() < 1e-6, "{:?}", inst.bonds);
     assert_eq!(inst.bonds[3], 1.0);
     assert_eq!(inst.bonds[4], 1.0);
-    // Scaled up twice the bonds have four times the area: the same blast
-    // breaks none of them.
+    // Scaled up twice (the chunks' places and the bonds' areas, four
+    // times as large) the same blast at the same place breaks none.
     let mut big = Instance::new(&a);
-    let d2 = Damage {
+    let at = Damage {
         point: d.point * 2.0,
-        ..d
-    };
-    let scaled = Damage {
         min_radius: 2.0,
         max_radius: 6.0,
-        ..d2
+        ..d
     };
-    big.damage(
-        &a,
-        &Damage {
-            point: Vec3::new(1.0, 0.0, 0.0),
-            ..scaled
-        },
-        2.0,
-        &m,
-    );
+    big.damage(&a, &at, 2.0, &m, &|_, p| p * 2.0);
     assert!(big.bonds.iter().all(|&h| h > 0.0), "{:?}", big.bonds);
 }
 

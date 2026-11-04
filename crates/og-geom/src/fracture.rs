@@ -268,6 +268,18 @@ fn tri_area(m: &Mesh, t: &[u32; 3]) -> (f64, DVec3, DVec3) {
     (n.length() * 0.5, (a + b + c) / 3.0, n)
 }
 
+/// Whether `p` lies inside closed `mesh` (its winding number about `p`
+/// past one half).
+pub fn contains(mesh: &Mesh, p: DVec3) -> bool {
+    let points: Vec<DVec3> = mesh
+        .positions
+        .iter()
+        .map(|q| DVec3::from(q.map(f64::from)))
+        .collect();
+    let tris: Vec<[u32; 3]> = mesh.indices.as_chunks::<3>().0.to_vec();
+    crate::csg::winding(&points, &tris, p) > 0.5
+}
+
 /// The bounds of a mesh's positions.
 pub fn bounds(m: &Mesh) -> (DVec3, DVec3) {
     m.positions

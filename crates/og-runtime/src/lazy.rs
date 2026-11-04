@@ -127,6 +127,24 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::motion::AGENT,
         enable: crate::motion::enable,
     },
+    // og.destruction: its system and state block once a game names any of
+    // its records (TOGETHER), the last one registered enabling it.
+    Lazy {
+        name: crate::destruction::DESTRUCTIBLE,
+        enable: crate::destruction::enable,
+    },
+    Lazy {
+        name: crate::destruction::CHUNK,
+        enable: crate::destruction::enable,
+    },
+    Lazy {
+        name: crate::destruction::FRACTURED,
+        enable: crate::destruction::enable,
+    },
+    Lazy {
+        name: crate::destruction::RESOURCE,
+        enable: crate::destruction::enable,
+    },
     // G2-6: time groups, read by the modules that scale an entity's dt.
     // Naming either registers both (TOGETHER).
     Lazy {
@@ -345,6 +363,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::story::RECORDS,
     &crate::feel::vcam::RECORDS,
     &crate::weather::RECORDS,
+    &crate::destruction::RECORDS,
     &[
         crate::stream::cells::CELL,
         crate::stream::cells::MEMBER,

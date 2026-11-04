@@ -149,3 +149,21 @@ impl MotionApi for NodeHost {
         rt::og_motion_poses()
     }
 }
+
+impl DestructionApi for NodeHost {
+    fn og_destruction_damage(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_destruction_damage(world, entity, desc)
+    }
+    fn og_destruction_explode(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_destruction_explode(world, desc)
+    }
+    fn og_destruction_fracture(&self, world: u32, entity: f64) -> String {
+        rt::og_destruction_fracture(world, entity)
+    }
+    fn og_destruction_info(&self, world: u32, entity: f64) -> String {
+        rt::og_destruction_info(world, entity)
+    }
+    fn og_destruction_capabilities(&self, world: u32) -> String {
+        rt::og_destruction_capabilities(world)
+    }
+}

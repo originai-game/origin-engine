@@ -344,6 +344,31 @@ pub struct StressLimits {
 }
 
 impl StressLimits {
+    /// og.Destructible.strength's limits: `strength` in tension and shear,
+    /// eight times it in compression, each fatal at twice its elastic
+    /// limit; 0 none (the solver breaks nothing).
+    pub fn from_strength(strength: f32) -> StressLimits {
+        if strength <= 0.0 {
+            let inf = f32::INFINITY;
+            return StressLimits {
+                compression_elastic: inf,
+                compression_fatal: inf,
+                tension_elastic: inf,
+                tension_fatal: inf,
+                shear_elastic: inf,
+                shear_fatal: inf,
+            };
+        }
+        StressLimits {
+            compression_elastic: strength * 8.0,
+            compression_fatal: strength * 16.0,
+            tension_elastic: strength,
+            tension_fatal: strength * 2.0,
+            shear_elastic: strength,
+            shear_fatal: strength * 2.0,
+        }
+    }
+
     /// The share of a bond's health a stress takes in one evaluation
     /// (`ExtStressSolverImpl::generateFractureCommand`'s multiplier).
     pub fn damage(&self, stress_normal: f32, stress_shear: f32) -> f32 {

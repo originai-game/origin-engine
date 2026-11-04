@@ -3888,3 +3888,33 @@ pub fn og_motion_poses(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as MotionApi>::og_motion_poses(&Host)
 }
+
+#[napi(js_name = "og_destruction_damage")]
+pub fn og_destruction_damage(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_damage(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_destruction_explode")]
+pub fn og_destruction_explode(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_explode(&Host, world, desc)
+}
+
+#[napi(js_name = "og_destruction_fracture")]
+pub fn og_destruction_fracture(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_fracture(&Host, world, entity)
+}
+
+#[napi(js_name = "og_destruction_info")]
+pub fn og_destruction_info(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_info(&Host, world, entity)
+}
+
+#[napi(js_name = "og_destruction_capabilities")]
+pub fn og_destruction_capabilities(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as DestructionApi>::og_destruction_capabilities(&Host, world)
+}
