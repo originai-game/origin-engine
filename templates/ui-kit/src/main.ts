@@ -764,9 +764,8 @@ function chromeButtons(world: World, d: DemoState): void {
   const compact = compactChrome(label, SCREENS[d.screen]!);
   if (compact) {
     // Icon buttons at the touch size, their words their accessible names: a label is never cut. The gallery's grid
-    // (never a house: Gallery is not home); a style's set without one (the packs' 32-icon grids) its back arrow, the way
-    // to the gallery, until og-ui draws a grid mark for every set.
-    if (og.ui.iconButton("Gallery", og.ui.hasIcon("view-grid") ? "view-grid" : "back", { variant: "secondary", label }).clicked) d.screen = 0;
+    // (never a house: Gallery is not home); og-ui draws it in a style's set without one.
+    if (og.ui.iconButton("Gallery", "view-grid", { variant: "secondary", label }).clicked) d.screen = 0;
   } else if (og.ui.pushButton("Gallery", label, { variant: "secondary", width: { kind: "fit" } }).clicked) d.screen = 0;
   // The same button as the next page beside it (showcaseNext), so the two read as one pair: one size, one label.
   showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!, compact);
