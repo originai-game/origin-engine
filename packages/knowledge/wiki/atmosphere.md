@@ -72,7 +72,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 11222</sub>
+<sub>`api.ogt` line 11289</sub>
 
 ## Components, resources and events
 
@@ -949,10 +949,15 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 |---|---|---|---|---|---|---|
 | `size` | `Vector2` | `{ x: 16, y: 16 }` | — | `m` | tunable | The extent along the entity's x and z. |
 | `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights. |
+| `river` | `Path` | `0` | — | — | — | A river along this path (og.path.create or og.path.find; its points where the water runs, their height the water's level): the water is a ribbon riverWidth across down the course, drawn in place of the size grid, its current riverSpeed mid-stream along the path, turning with it and slowing to nothing at the banks; an og.Buoyancy body in it drifts with that current and floats at its level (computed in the tick, the same on every run). Where the course drops steeper than 45 degrees the water falls, a sheet streaked white, and the pool below it churns white for some three widths. 0: none. |
+| `riverWidth` | `number` | `6` | ≥ 0 | `m` | tunable | The river's width across. |
+| `riverSpeed` | `number` | `1.5` | ≥ 0 | `mps` | tunable | The river's current mid-stream; it slows to nothing at the banks. |
 | `segments` | `number` | `64` | 1 … 256 | — | — | Grid cells per side (the height field's detail). |
 | `shallow` | `Color` | `{ r: 0.55, g: 0.85, b: 0.82 }` | — | — | — | Shallow water's colour (tints what is seen through it). |
 | `deep` | `Color` | `{ r: 0.02, g: 0.09, b: 0.14 }` | — | — | — | Deep water's colour. |
 | `depthFade` | `number` | `2.5` | ≥ 0.01 | `m` | tunable | The depth over which water turns from shallow to deep. |
+| `absorption` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | How much of each colour the water absorbs per metre of light's path through it (1/m; pure sea water about 0.45 0.07 0.03, the red gone in a few metres). With absorption or scattering set, the water's body is physical: what lies below is dimmed by the path the light takes down to it and back up to the eye, and the water scatters the sun and sky it lets in back out, so shallows over sand turn turquoise and deep water dark blue-green by themselves; shallow, deep, depthFade and opacity are then unused. 0 0 0 with scattering 0 0 0: shallow and deep. |
+| `scattering` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption. |
 | `opacity` | `number` | `0.92` | 0 … 1 | `ratio` | tunable | How opaque deep water gets. |
 | `foam` | `Color` | `{ r: 0.95, g: 0.97, b: 1 }` | — | — | — | The foam's colour. |
 | `foamWidth` | `number` | `0.35` | ≥ 0 | `m` | tunable | The water depth over which foam rings geometry (0: none). |
@@ -978,6 +983,14 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | `swell` | `number` | `1` | 0 … 4 | `ratio` | tunable | The sea's height, as a fraction of a fully developed sea's for the wind. |
 | `choppiness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much. |
 | `endless` | `boolean` | `false` | — | — | — | A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale). |
+| `seabed` | `Entity` | `0` | — | — | — | The og.Terrain entity whose heights are the sea's floor (0: none, the open sea everywhere): the sea feels the depth over it, each wave fading where the water is shallower than half its length and the whole held under its breaking height (a significant height of 0.78 times the depth), so it never runs through a beach; trains of waves roll in parallel to the shore and break into surf (shore, shoreFoam). og.physics.waterHeight and og.Buoyancy read the same shoaled sea: a boat in the shallows rides what is drawn there. Read when the water, the terrain's placement or its edits change. |
+| `shore` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the trains rolling in on the seabed's shores are, times a quarter of the sea's significant height (0: none; the waves still shoal). |
+| `shoreWaveLength` | `number` | `0` | 0 … 400 | `m` | tunable | The trains' length from crest to crest (0: 40 m). |
+| `shoreFoam` | `number` | `1` | 0 … 2 | `ratio` | tunable | How much surf foams where the trains break and the water runs shallow over the seabed (0: none). |
+| `foamStreaks` | `number` | `1` | 0 … 4 | `ratio` | tunable | How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): a whitecap's dense foam bursts within seconds and leaves a thin lace that lasts some ten seconds, which the surface's convergence along the wind (Langmuir circulation, about 1 % of the wind's speed) gathers into windrows. Rendering only. |
+| `meniscus` | `number` | `2` | -1 … 16 | — | tunable | Where the camera's near plane crosses the surface (a camera bobbing at the waterline), the width in pixels of the meniscus drawn along the line between the air above and the water's fog below it, each pixel under the surface or not as the waves are there (as og.physics.waterHeight puts them); 0: the line with no meniscus; below 0: no waterline, the whole frame above or under the water as the eye is. Needs underwaterDensity. |
+| `dynamicWaves` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft, and as it moves it throws a bow wave and leaves a Kelvin wake (the 19.5 degree wedge of transverse and diverging waves deep water makes behind any moving body), with foam where those crests break and along its sides, all running at deep water's own speeds within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves and never sees these. |
+| `spray` | `number` | `1` | 0 … 4 | `ratio` | tunable | How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them. |
 
 ```ogt
 component Water {
@@ -988,6 +1001,19 @@ component Water {
     tunable true
   }
   field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights."
+  field river Path "A river along this path (og.path.create or og.path.find; its points where the water runs, their height the water's level): the water is a ribbon riverWidth across down the course, drawn in place of the size grid, its current riverSpeed mid-stream along the path, turning with it and slowing to nothing at the banks; an og.Buoyancy body in it drifts with that current and floats at its level (computed in the tick, the same on every run). Where the course drops steeper than 45 degrees the water falls, a sheet streaked white, and the pool below it churns white for some three widths. 0: none."
+  field riverWidth f32 "The river's width across." {
+    default 6
+    min 0
+    unit m
+    tunable true
+  }
+  field riverSpeed f32 "The river's current mid-stream; it slows to nothing at the banks." {
+    default 1.5
+    min 0
+    unit mps
+    tunable true
+  }
   field segments u32 "Grid cells per side (the height field's detail)." {
     default 64
     min 1
@@ -1004,6 +1030,12 @@ component Water {
     min 0.01
     unit m
     tunable true
+  }
+  field absorption Color "How much of each colour the water absorbs per metre of light's path through it (1/m; pure sea water about 0.45 0.07 0.03, the red gone in a few metres). With absorption or scattering set, the water's body is physical: what lies below is dimmed by the path the light takes down to it and back up to the eye, and the water scatters the sun and sky it lets in back out, so shallows over sand turn turquoise and deep water dark blue-green by themselves; shallow, deep, depthFade and opacity are then unused. 0 0 0 with scattering 0 0 0: shallow and deep." {
+    default 0 0 0
+  }
+  field scattering Color "How much of each colour the water scatters per metre (1/m; clear ocean about 0.002 0.004 0.008, a silty coast ten times that). See absorption." {
+    default 0 0 0
   }
   field opacity f32 "How opaque deep water gets." {
     default 0.92
@@ -1127,6 +1159,54 @@ component Water {
     tunable true
   }
   field endless bool "A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale)."
+  field seabed Entity "The og.Terrain entity whose heights are the sea's floor (0: none, the open sea everywhere): the sea feels the depth over it, each wave fading where the water is shallower than half its length and the whole held under its breaking height (a significant height of 0.78 times the depth), so it never runs through a beach; trains of waves roll in parallel to the shore and break into surf (shore, shoreFoam). og.physics.waterHeight and og.Buoyancy read the same shoaled sea: a boat in the shallows rides what is drawn there. Read when the water, the terrain's placement or its edits change."
+  field shore f32 "How high the trains rolling in on the seabed's shores are, times a quarter of the sea's significant height (0: none; the waves still shoal)." {
+    default 1
+    min 0
+    max 4
+    unit ratio
+    tunable true
+  }
+  field shoreWaveLength f32 "The trains' length from crest to crest (0: 40 m)." {
+    min 0
+    max 400
+    unit m
+    tunable true
+  }
+  field shoreFoam f32 "How much surf foams where the trains break and the water runs shallow over the seabed (0: none)." {
+    default 1
+    min 0
+    max 2
+    unit ratio
+    tunable true
+  }
+  field foamStreaks f32 "How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): a whitecap's dense foam bursts within seconds and leaves a thin lace that lasts some ten seconds, which the surface's convergence along the wind (Langmuir circulation, about 1 % of the wind's speed) gathers into windrows. Rendering only." {
+    default 1
+    min 0
+    max 4
+    unit ratio
+    tunable true
+  }
+  field meniscus f32 "Where the camera's near plane crosses the surface (a camera bobbing at the waterline), the width in pixels of the meniscus drawn along the line between the air above and the water's fog below it, each pixel under the surface or not as the waves are there (as og.physics.waterHeight puts them); 0: the line with no meniscus; below 0: no waterline, the whole frame above or under the water as the eye is. Needs underwaterDensity." {
+    default 2
+    min -1
+    max 16
+    tunable true
+  }
+  field dynamicWaves f32 "How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft, and as it moves it throws a bow wave and leaves a Kelvin wake (the 19.5 degree wedge of transverse and diverging waves deep water makes behind any moving body), with foam where those crests break and along its sides, all running at deep water's own speeds within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves and never sees these." {
+    default 1
+    min 0
+    max 4
+    unit ratio
+    tunable true
+  }
+  field spray f32 "How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them." {
+    default 1
+    min 0
+    max 4
+    unit ratio
+    tunable true
+  }
 }
 ```
 
@@ -1184,7 +1264,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 11190</sub>
+<sub>`api.ogt` line 11257</sub>
 
 ## Types
 

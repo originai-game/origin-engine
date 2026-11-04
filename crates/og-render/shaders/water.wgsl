@@ -363,6 +363,16 @@ fn sea_surf(p: vec2<f32>) -> f32 {
   return water.shore[2].z * sh.inside * clamp(max(surf, wash), 0.0, 1.0) * step(0.0, sh.depth - 1e-3);
 }
 
+// How far point p lies in the surf zone (1 inshore of the trains' breaking depth, as sea_surf; 0 offshore or with no
+// seabed), whatever the surf's foam setting.
+fn surf_zone(p: vec2<f32>) -> f32 {
+  if (water.shore[0].w < 0.5) { return 0.0; }
+  let sh = shoaling(p);
+  if (sh.inside <= 0.0) { return 0.0; }
+  let half = 3.14159265 / max(water.shore[1].z, 1e-6);
+  return sh.inside * (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(0.0, sh.depth - 1e-3);
+}
+
 fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let first = 3u * u32(water.fft.x);
   let l0 = water.foam_levels[0];
@@ -386,7 +396,14 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let ws = vec2<f32>(dot(p, wd) / stretch, dot(p, vec2<f32>(-wd.y, wd.x))) * vec2<f32>(0.035, 0.11) + water.foam_uv[1].zw;
   let streak = textureSample(heights, ripple_sampler, ws, first + 2u).a;
   let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
-  cover *= mix(smoothstep(0.25, 0.75, streak) * 1.5, 1.0, fresh_k);
+  // The old foam's structure. On the open sea, the age's streaks along the wind, faded to their mean where a pixel
+  // spans their period across it (some 0.6 m; past that they alias into a regular comb along the wind). In the surf
+  // zone, broad churning masses with the backwash's dark gaps between them: the surf's foam is churned by the bores,
+  // not drawn out by the wind (its age's streaks made the whole band a comb).
+  let streak_mod = mix(smoothstep(0.25, 0.75, streak) * 1.5, 0.75, smoothstep(0.3, 0.8, fwidth(ws.y) * 16.0));
+  let zone = surf_zone(p);
+  let masses = smoothstep(0.3, 0.7, foam_noise(p * 0.15) * 0.65 + foam_noise(p * 0.47 + vec2<f32>(3.1, 7.9)) * 0.35) * 1.4;
+  cover *= mix(mix(streak_mod, masses, zone), 1.0, fresh_k * (1.0 - 0.6 * zone));
   let pat = textureSample(heights, ripple_sampler, p * 0.23 + water.foam_uv[0].xy, first + 2u).r * 0.78
     + textureSample(heights, ripple_sampler, p * 0.71 + water.foam_uv[0].zw, first + 2u).g * 0.22;
   let fw = fwidth(pat) + 0.03;
@@ -414,9 +431,12 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let along_m = dot(p, wd);
   // (An irregular spacing too: a warp across the wind, its slope under the threads' own so each stays one line.)
   let wi = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.002, across_m * 0.0125) + 0.71, first + 2u).a;
-  let x = across_m / 3.5 + wl * 2.2 + wm * 0.45 + (wi - 0.5) * 0.5;
+  // And bent: a wander across the wind some 12 m long along it, so a streak winds as drifting foam does instead of
+  // running ruler-straight (its slope across the wind still under the threads').
+  let wb = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.02, across_m * 0.003) + 0.13, first + 2u).a;
+  let x = across_m / 3.5 + wl * 2.2 + wm * 0.45 + (wi - 0.5) * 0.5 + (wb - 0.5) * 3.0;
   let web = textureSample(heights, ripple_sampler, p * 0.53 + water.foam_uv[0].zw, first + 2u).g;
-  let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.35;
+  let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.08;
   // Each thread its own: some strong, some faint, and broken along the wind into lengths of some tens of metres (the
   // threads' centres at whole x).
   let r = spray_rand(spray_hash(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
@@ -426,16 +446,21 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   // sea against their 10 %, Monahan and O'Muircheartaigh's stage B; the threads' weights and lengths keep 0.3 of it.)
   let lace_cover = clamp(lace_amount * 3.0, 0.0, 1.0);
   // (A thread 0.4 of the spacing at most: the streaks are narrow, a metre or so.)
-  let share = 0.4 * lace_cover * clamp(r * 1.6, 0.0, 1.0) * smoothstep(0.42, 0.58, seg);
-  var lace = smoothstep(1.0 - share - lw, 1.0 - share + lw, threads);
+  let share = 0.4 * lace_cover * clamp(r * 1.6, 0.0, 1.0) * smoothstep(0.48, 0.62, seg);
+  // Soft-edged: a streak is drifting foam thinning to its sides, not a line.
+  let lsoft = lw + 0.12;
+  var lace = smoothstep(1.0 - share - lsoft, 1.0 - share + lsoft, threads);
   // Where a pixel spans the threads, the mean of their shares.
   lace = mix(lace, lace_cover * 0.12, smoothstep(0.15, 0.4, lw));
-  // Ragged, holed by the foam's own sheets and openings (a thread is foam, not paint).
-  lace *= smoothstep(0.3, 0.65, pat);
+  // Thinner and thicker along its length, over some metres (holes cut in a thin thread read as beads, and the
+  // foam sheets' finer pattern drew pores along it).
+  let thick = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.03, across_m * 0.08) + 0.29, first + 2u).a;
+  lace *= mix(0.3, 1.0, smoothstep(0.3, 0.7, thick));
   // (None where the lace holds none: the bubbles lift the threads' top past 1, which the cut at 1 would draw.)
   lace *= smoothstep(0.0, 0.05, lace_cover);
-  o.lace = lace * 0.45 * (1.0 - o.mask);
-  o.mask = max(o.mask, lace * 0.45);
+  // Faint: the old foam's film over the dark sea, well under a whitecap's cover.
+  o.lace = lace * 0.2 * (1.0 - o.mask);
+  o.mask = max(o.mask, lace * 0.2);
   o.young = fwl.g;
   o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
   return o;
@@ -843,16 +868,20 @@ fn flow_texel(uv: vec2<f32>) -> vec4<f32> {
 
 // A stream's ripples: wave fronts across the flow's direction `d` (unit), within half a radian of it, at the detail
 // waves' scale and strength.
-fn stream_slope(p: vec2<f32>, d: vec2<f32>, t: f32, fast: f32, w: f32) -> Detail {
+fn stream_slope(p: vec2<f32>, d_in: vec2<f32>, t: f32, fast: f32, w: f32, river: bool) -> Detail {
   // Where the flow is slower than the surface's flow (a flow map's still water, `fast` under 1), its ripples are
   // longer and lower; at the flow's own speed they are as before.
   let pace = mix(0.7, 1.0, smoothstep(0.3, 1.0, fast));
   let k = water.waves.x * 6.2831853 * pace;
+  // W5: a river's reach is glassy, its surface marked only by faint, irregular streaks drawn out along the current
+  // (the shear's boils and seams), not by fronts across it: fronts at one wavenumber over a long reach read, at a
+  // grazing view, as bank-to-bank bands. So its trains run along the flow (their wave vectors across it), lower.
+  let d = select(d_in, vec2<f32>(-d_in.y, d_in.x), river);
   let side = vec2<f32>(-d.y, d.x);
   var turns = array<f32, 4>(0.0, 0.45, -0.3, 0.15);
   var scales = array<f32, 4>(1.0, 1.37, 1.9, 2.71);
   var o = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
-  let a = water.waves.z * 0.25 * mix(0.55, 1.0, pace * pace);
+  let a = water.waves.z * 0.25 * mix(0.55, 1.0, pace * pace) * select(1.0, 0.35, river);
   for (var i = 0; i < 4; i++) {
     let dir = d * cos(turns[i]) + side * sin(turns[i]);
     let kk = k * scales[i];
@@ -880,8 +909,9 @@ fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32, w: f32) -> Detail {
   let ph0 = fract(t / period);
   let ph1 = fract(t / period + 0.5);
   let fast = length(f) / max(length(water.normals.yz), 1e-6);
-  let s0 = stream_slope(p - f * ph0 * period, d, t, fast, w);
-  let s1 = stream_slope(p - f * ph1 * period, d, t, fast, w);
+  let river = water.waterline.w > 0.5;
+  let s0 = stream_slope(p - f * ph0 * period, d, t, fast, w, river);
+  let s1 = stream_slope(p - f * ph1 * period, d, t, fast, w, river);
   let k = abs(ph0 - 0.5) * 2.0;
   return Detail(mix(s0.slope, s1.slope, k), mix(s0.cov, s1.cov, k));
 }
@@ -1339,7 +1369,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     // the 1/pi, lighting sunlit foam three times too bright.
     // W4: the thin lace an old whitecap leaves is wet, darker than the dry, fresh foam of a crest breaking now.
     let wet = sea_f.lace / max(sea_f.mask, 1e-3);
-    let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles) * mix(1.0, 0.65, wet);
+    // (The lace's bubbles are too fine to see apart: their mean, so a thin thread is not drawn as a chain of beads.)
+    let alb = water.foam.rgb * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
     // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
@@ -1347,8 +1378,9 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let sky_light = mix(amb_grey * 1.55, deck_up.rgb * 1.4, deck_up.a);
     let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 * 0.31831 + sky_light);
     color = mix(color, foam_lit, sea_f.mask * 0.95);
-    // The lace is a film between bubbles, not a matte sheet: the water's glitter shows through most of it.
-    color += glitter * sea_f.lace * 0.95 * 0.7;
+    // The lace is a film between bubbles, not a matte sheet: the water's glitter shows through some of it (more drew
+    // each thread as a string of glints).
+    color += glitter * sea_f.lace * 0.95 * 0.3;
   }
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
@@ -1469,11 +1501,12 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let rnd = spray_rand(h + 6u);
   var size = select(mix(0.2, 0.7, rnd), mix(0.6, 2.0, rnd), pop == 1u) * (1.0 + 1.5 * tau / life);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
-  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.8, 0.35, pop == 1u) * mix(0.6, 1.0, keep) * edge;
+  alpha *= smoothstep(start.y - 0.4, start.y + 0.2, p.y) * select(0.45, 0.3, pop == 1u) * mix(0.6, 1.0, keep) * edge;
   // At least a pixel and a half across: a smaller one is drawn that size with its coverage kept (no shimmer).
   let dist = length(p - frame.view_pos.xyz);
-  // Spray is seen near: past some 60 m (the spume's sheets 150 m) it is a haze over the crests, not sprites.
-  alpha *= 1.0 - smoothstep(select(30.0, 80.0, pop == 1u), select(60.0, 150.0, pop == 1u), dist);
+  // Spray is seen near: past some 35 m (the spume's sheets 90 m) it is a haze over the crests,
+  // not sprites (a lone droplet cloud farther out read as a dot hanging over the sea).
+  alpha *= 1.0 - smoothstep(select(15.0, 40.0, pop == 1u), select(35.0, 90.0, pop == 1u), dist);
   let scale = length(vec3<f32>(frame.view_proj[0].y, frame.view_proj[1].y, frame.view_proj[2].y));
   let floor_size = 1.5 * dist * 2.0 / max(scale * water.screen.y, 1e-6);
   if (size < floor_size) {
@@ -1485,10 +1518,17 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
   let c = corners[vi % 6u];
+  // Drawn as a wisp along its flight (three times as long as wide, the same area), not a round puff: spindrift
+  // streams off a crest, and a lone round sprite read as a dot hanging over the sea.
   let to_eye = normalize(frame.view_pos.xyz - p);
-  let right = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0));
+  let e = exp(-k * tau);
+  var vel = air + (v0 - air) * e;
+  vel.y = (v0.y + g / k) * e - g / k;
+  var along_v = vel - to_eye * dot(vel, to_eye);
+  if (dot(along_v, along_v) < 1e-6) { along_v = cross(vec3<f32>(0.0, 1.0, 0.0), to_eye) + vec3<f32>(1e-5, 0.0, 0.0); }
+  let right = normalize(along_v);
   let upv = cross(to_eye, right);
-  let world = p + (right * c.x + upv * c.y) * size * 0.5;
+  let world = p + (right * c.x * 1.73 + upv * c.y * 0.577) * size * 0.5;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
   o.world = world;
   o.corner = c;
