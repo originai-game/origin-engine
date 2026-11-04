@@ -398,6 +398,9 @@ impl Renderer {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            // Filter grazing-angle footprints along both axes. wgpu clamps
+            // this to 1 on devices without ANISOTROPIC_FILTERING.
+            anisotropy_clamp: 16,
             ..Default::default()
         });
         // Sprites and the UI's images filter anisotropically where the
