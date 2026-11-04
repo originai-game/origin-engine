@@ -7,10 +7,13 @@
 //
 // For the runner archetype's dev build (every member) and publish build (the
 // player members), each cross-origin isolated (the request ring) and not
-// (postMessage), it asserts: the unsolicited hello; hello, tick, state,
+// (postMessage), and each built twice, with the frame pipelines made
+// synchronously (the default) and with `publish { pipelines async }`, it asserts: the unsolicited hello; hello, tick, state,
 // entities, entity, capture (full and fitted) and record answers in the
 // contract's shapes; the clock held behind the play gate and released by a
-// real tap; real keyboard input reaching the engine; dev-only pause, advance,
+// real tap; the render pipelines made the way the build asked (none through
+// createRenderPipelineAsync by default, the frame's through it with async);
+// real keyboard input reaching the engine; dev-only pause, advance,
 // bounds, patch (and their `unsupported` in a publish build); `refused`
 // and `unsupported` errors; and silence for another wire version, for a page
 // told another origin and for a page told none. Then the in-page host: a
@@ -61,13 +64,17 @@ const pngSize = (b64: string) => {
 
 // ── the builds ─────────────────────────────────────────────────────────
 cookProject(project, repo);
+type Kind = "dev" | "publish";
+type Pipelines = "sync" | "async";
 const dists: Record<string, string> = {};
-for (const kind of ["dev", "publish"] as const) {
-  const out = join(work, kind);
-  const b = await webBuild(project, join(project, "src", "main.ts"), out, kind === "publish", settingsOf(project));
-  if (!b.ok) throw new Error(b.reason);
-  dists[kind] = out;
-}
+const settings = settingsOf(project);
+for (const kind of ["dev", "publish"] as const)
+  for (const pipelines of ["sync", "async"] as const) {
+    const out = join(work, pipelines === "sync" ? kind : `${kind}-async`);
+    const b = await webBuild(project, join(project, "src", "main.ts"), out, kind === "publish", { ...settings, publish: { ...settings.publish, pipelines } });
+    if (!b.ok) throw new Error(b.reason);
+    dists[`${kind} ${pipelines}`] = out;
+  }
 
 const parentHtml = (gameOrigin: string) => `<!doctype html><html><head><meta charset="utf-8"><title>wire host</title></head>
 <body style="margin:0;background:#222">
@@ -98,12 +105,12 @@ window.hellos = hellos;
 window.foreign = () => foreign;
 </script></body></html>`;
 
-async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser): Promise<void> {
-  const label = `${kind}${isolate ? " isolated" : ""}`;
+async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: Browser): Promise<void> {
+  const label = `${kind}${isolate ? " isolated" : ""}${pipelines === "async" ? " async" : ""}`;
   let told: string | null = null;
   // One server, two host names: the parent at 127.0.0.1, the game at localhost (another origin).
   const pages: Record<string, string> = {};
-  const live = serve({ dist: dists[kind]!, isolate, told: () => told, extra: pages });
+  const live = serve({ dist: dists[`${kind} ${pipelines}`]!, isolate, told: () => told, extra: pages });
   pages["/parent.html"] = parentHtml(`http://localhost:${live.port}`);
   told = `http://127.0.0.1:${live.port}`;
   const log: string[] = [];
@@ -146,11 +153,13 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
     await new Promise((r) => setTimeout(r, 400));
     const t2 = await c("tick");
     check(t2.result === t1.result, `${label}: the clock holds behind the play gate`, { before: t1.result, after: t2.result });
-    // Fork s60: the first frame's pipelines went through createRenderPipelineAsync (src/web/pipelines.ts).
-    // A wgpu that reaches the browser's createRenderPipeline another way fails here, not silently slower.
+    // Fork s60: with `pipelines async` the first frame's pipelines went through createRenderPipelineAsync
+    // (src/web/pipelines.ts): a wgpu that reaches the browser's createRenderPipeline another way fails here,
+    // not silently slower. By default none did and the renderer opened no span.
     const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
     check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
-    if (pl && pl.spans > 0) check(pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
+    if (pipelines === "async") check(!!pl && pl.spans > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
+    else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.fallback === 0 && pl.spans === 0, `${label}: by default the pipelines are made synchronously`, pl);
     // A real tap on the gate (the middle of the frame) starts it.
     await page.tap(400, 225);
     await new Promise((r) => setTimeout(r, 600));
@@ -265,7 +274,7 @@ async function run(kind: "dev" | "publish", isolate: boolean, browser: Browser):
 async function inPage(browser: Browser): Promise<void> {
   const label = "dev in-page";
   let told: string | null = null;
-  const live = serve({ dist: dists["dev"]!, isolate: false, told: () => told });
+  const live = serve({ dist: dists["dev sync"]!, isolate: false, told: () => told });
   told = `http://127.0.0.1:${live.port}`;
   const log: string[] = [];
   const page: Page = await browser.open(`http://127.0.0.1:${live.port}/game/index.html`, log);
@@ -303,7 +312,7 @@ async function inPage(browser: Browser): Promise<void> {
 
 const browser = await Browser.launch({ chrome });
 try {
-  for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, browser);
+  for (const pipelines of ["sync", "async"] as const) for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, pipelines, browser);
   await inPage(browser);
 } finally {
   await browser.close();

@@ -19,6 +19,7 @@
 //!   short_name "Runner"     # the installed app's name
 //!   color_textures etc1s    # etc1s | uastc: over `cook { color_textures }` for this export's cook
 //!   telemetry on            # on | off: field telemetry (crash details, frame times, load stages)
+//!   pipelines sync          # sync | async: the web frame pipelines with createRenderPipelineAsync
 //! }
 //! ```
 //!
@@ -86,6 +87,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "fullscreen" => json!(word(e, &file, &["off", "gesture"])?),
             "gate" => json!(word(e, &file, &["tap", "none"])?),
             "telemetry" => json!(word(e, &file, &["on", "off"])?),
+            "pipelines" => json!(word(e, &file, &["sync", "async"])?),
             "made_with" => json!(word(e, &file, &["true", "false"])? == "true"),
             "dpr_cap" => {
                 let n = e
@@ -117,7 +119,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
             "short_name" => json!(text(e, &file)?),
             other => {
                 return Err(format!(
-                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures and telemetry",
+                    "{file}:{}: publish has no `{other}`; it takes probe, out, isolation, fit, aspect, aspect_min, aspect_max, orientation, dpr_cap, fullscreen, gate, made_with, icon, short_name, color_textures, telemetry and pipelines",
                     e.line
                 ));
             }
@@ -330,6 +332,24 @@ mod tests {
         let bad = settings_of("bad", "  telemetry maybe\n").unwrap_err();
         assert!(
             bad.contains(":7: publish.telemetry is `maybe`; use one of on, off"),
+            "{bad}"
+        );
+    }
+
+    /// `pipelines async` opts the web page into asynchronous frame pipelines;
+    /// absent, the web build's default (`sync`) applies.
+    #[test]
+    fn async_pipelines_are_opt_in() {
+        let on = settings_of("pipelines", "  pipelines async\n").unwrap();
+        assert_eq!(on["publish"]["pipelines"], "async");
+        assert!(
+            settings_of("nopipelines", "  gate tap\n").unwrap()["publish"]
+                .get("pipelines")
+                .is_none()
+        );
+        let bad = settings_of("badpipelines", "  pipelines lazy\n").unwrap_err();
+        assert!(
+            bad.contains("publish.pipelines is `lazy`; use one of sync, async"),
             "{bad}"
         );
     }

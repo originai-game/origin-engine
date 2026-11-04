@@ -113,6 +113,16 @@ export interface PublishSettings {
    * with its name and fingerprint, `end`).
    */
   readonly telemetry: "on" | "off";
+  /**
+   * How the web page makes the renderer's frame pipelines (docs/web-export.md
+   * §Pipelines): `sync` (the default) with createRenderPipeline when a pass
+   * first needs one; `async` with createRenderPipelineAsync, the frame's draws
+   * of one still compiling skipped (src/web/pipelines.ts). `async` keeps a
+   * large game's first frame from holding the browser's GPU process, but on
+   * Chrome/Metal with a cold shader cache it made the first frame of a small
+   * game 2.5-5x later (the table in §Pipelines).
+   */
+  readonly pipelines: "sync" | "async";
 }
 
 export interface ProjectSettings {
@@ -139,6 +149,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   icon: null,
   shortName: null,
   telemetry: "on",
+  pipelines: "sync",
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -859,6 +870,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     fullscreen: p.fullscreen,
     gate: p.gate,
     madeWith: p.madeWith,
+    ...(p.pipelines === "async" ? { pipelines: "async" } : {}),
     serviceWorker: publish,
     expect: { wasm: wasmBytes, cooked: cookedBytes, lanes: lanes ? statSync(join(out, served("origin-engine-lanes_bg.wasm"))).size : 0 },
     files: names,

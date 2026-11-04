@@ -107,6 +107,8 @@ interface Start {
   autoplay?: boolean;
   /** Fork s61: the page draws its own loading screen and hears the game's stages (worker globals ogBootStage, ogBootIdle). */
   stages?: boolean;
+  /** Fork s60: the frame pipelines with createRenderPipelineAsync (project.ogt `publish { pipelines async }`); absent: synchronously. */
+  asyncPipelines?: boolean;
   /** The URL base whose `cooked/` bundle the engine opens (`.` next to the page). */
   root?: string;
   /** The Basis transcoder's script and module. */
@@ -1437,8 +1439,10 @@ export function startWorker(game: GameToken): void {
         glueRef = glue;
         // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
         glue.og_web_upload_budget?.(UPLOAD_BUDGET);
-        // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts).
-        if (glue.og_web_frame_pipelines) {
+        // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts),
+        // when the build asks for it: on Chrome/Metal a cold shader cache compiles them asynchronously
+        // several times slower than synchronously (docs/web-export.md §Pipelines).
+        if (data.asyncPipelines && glue.og_web_frame_pipelines) {
           pipelines.enable(true);
           glue.og_web_frame_pipelines(pipelines.frameSpan);
         }

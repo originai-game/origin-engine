@@ -581,6 +581,7 @@ publish {
   short_name "Runner"     # the installed app's name
   color_textures etc1s    # etc1s | uastc: this export's colour textures (default: cook's)
   telemetry on            # on | off: field telemetry (§Telemetry)
+  pipelines sync          # sync | async: how the frame pipelines compile (§Pipelines)
 }
 ```
 
@@ -600,6 +601,42 @@ A build replaces its output directory (`out`, or `--out`) whole, so it
 refuses one that is the project or an ancestor of it, holds a
 `project.ogt`, or is not empty and holds no `og-build.json` from an
 earlier build; a build that fails after replacing it removes what it wrote.
+
+### Pipelines
+
+`pipelines sync`, the default, makes each render pipeline with
+`createRenderPipeline` when a pass first draws with it (og-render
+`deferred.rs`), and the renderer warms the rest behind the play gate.
+`pipelines async` (fork s60, `src/web/pipelines.ts`) asks the browser for
+the frame's pipelines with `createRenderPipelineAsync`: a pass whose
+pipeline still compiles skips its draws, the first frame is drawn again
+until none does, and only then does the gate show. The renderer opens its
+frame span around the passes it draws again every frame (og-render
+`FrameSpan`, `FramePass::redrawn`); the passes whose output later frames
+keep (shadow maps, captures, IBL, mips) make theirs at once. A harness's
+`frame` call and a probe `capture` or `sweep` are always drawn whole.
+`__runtime_probe__.boot.pipelines` counts the pipelines made each way.
+
+`async` exists for a large game whose first frame meets dozens of
+pipelines, where one synchronous compile after another holds the
+browser's GPU process. It is opt-in because it costs a small game its
+boot. Measured on 2026-11-05 on macrunner with Chrome for Testing 150
+(headless, Metal), using `tests/web/dogfood.ts --boot`: the first frame
+in ms from navigation, publish build, cross-origin isolated. "Cold"
+cleared the Chrome GPU helper's Metal shader cache before each run, as a
+player's first visit does.
+
+| game | cache | `sync` (main ac5540402) | `async` (6e11b0c6e) |
+|---|---|---|---|
+| hollowbell (2d) | warm | 553, 670, 755, 823, 898 | 588, 601, 716, 851, 564 |
+| lantern-vale (3d) | warm | 712, 777, 696, 589, 529 | 5983, 851, 999, 817, 787 |
+| hollowbell | cold | 1810, 1513, 1674 | 4186, 3631, 3743 |
+| lantern-vale | cold | 1627, 1488, 1391 | 8300, 7700, 9397 |
+
+The cost is Dawn's asynchronous compile itself, not the queueing. The
+same 58 pipelines hollowbell warms behind the gate took 312 ms cold
+synchronously and 1445-1605 ms cold asynchronously; warm, both took
+300 ms.
 
 ## The shell
 

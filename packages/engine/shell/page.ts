@@ -82,6 +82,8 @@ export interface ShellConfig {
    * og:first-frame and og:failed {message}; absent or "engine": the splash.
    */
   readonly bootScreen?: "engine" | "page";
+  /** project.ogt `publish { pipelines }`: "async" makes the frame pipelines with createRenderPipelineAsync (src/web/pipelines.ts); absent: synchronously. */
+  readonly pipelines?: "async";
   /** Bytes the boot fetches; `lanes` is the lanes variant's module, 0 when the build ships none. */
   readonly expect: { readonly wasm: number; readonly cooked: number; readonly lanes: number };
   /**
@@ -178,6 +180,7 @@ export function readConfig(doc: Document = document): ShellConfig {
     serviceWorker: c.serviceWorker === true,
     ...(c.stageLabels && typeof c.stageLabels === "object" ? { stageLabels: c.stageLabels } : {}),
     ...(c.bootScreen === "page" ? { bootScreen: "page" as const } : {}),
+    ...(c.pipelines === "async" ? { pipelines: "async" as const } : {}),
     expect: { wasm: c.expect?.wasm ?? 0, cooked: c.expect?.cooked ?? 0, lanes: c.expect?.lanes ?? 0 },
     files: c.files && typeof c.files === "object" ? c.files : {},
   };
@@ -650,6 +653,7 @@ export async function play(): Promise<PlayHandle> {
       profile: config.profile,
       ...(config.project === undefined ? {} : { project: config.project }),
       dprCap: config.dprCap,
+      ...(config.pipelines === "async" ? { asyncPipelines: true } : {}),
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
       onProgress: (v, stage, fraction) => setProgress(v, stage, fraction),
       ...(pageBoot ? { onStage: (id: string, fraction: number) => emit("og:stage", { id, fraction }) } : {}),
