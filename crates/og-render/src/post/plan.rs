@@ -221,6 +221,7 @@ pub(crate) struct GraphConfig {
     /// output's under TAAU (the scene drawn at the render scale and
     /// resolved up to the output by TAA), else the scene's.
     pub post: (u32, u32),
+    pub chain_format: wgpu::TextureFormat,
     pub samples: u32,
     pub taa: bool,
     /// The 2D light map's size.
@@ -563,7 +564,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     }
     let chain = chain_passes(passes);
     for i in 0..chain.len() {
-        g.transient(ldr_name(i), desc(pw, ph, LDR_FORMAT, 1, attach_bind));
+        g.transient(ldr_name(i), desc(pw, ph, cfg.chain_format, 1, attach_bind));
     }
     if has(FramePass::SmaaBlend) {
         g.transient(
@@ -924,6 +925,7 @@ mod tests {
             width: 64,
             height: 32,
             post: (64, 32),
+            chain_format: LDR_FORMAT,
             samples: 1,
             taa,
             lightmap: (1, 1),
@@ -938,6 +940,24 @@ mod tests {
             object_space: false,
             ui_depth: false,
         }
+    }
+
+    #[test]
+    fn hdr_chain_keeps_highlights_through_fxaa_and_upscale() {
+        let passes = [
+            FramePass::Main,
+            FramePass::Tonemap,
+            FramePass::Fxaa,
+            FramePass::Upscale,
+        ];
+        let mut config = cfg(false, false);
+        config.chain_format = HDR_FORMAT;
+        let plan = build_graph(&passes, &config).compile().unwrap();
+        for i in 0..chain_passes(&passes).len() {
+            let slot = plan.slot(&ldr_name(i)).unwrap();
+            assert_eq!(plan.physical()[slot].format, HDR_FORMAT);
+        }
+        assert_eq!(plan.order(), &[0, 1, 2, 3]);
     }
 
     /// Screen-space GI in the AO passes' place: the graph compiles with and

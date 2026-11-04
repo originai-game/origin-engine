@@ -23,7 +23,11 @@ use std::collections::HashMap;
 pub(crate) const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
 /// Exposure, bloom and the tonemap, with the bloom chain's filters (shared
 /// with a view's glow, `views_glow.wgsl`).
-const POST_WGSL: &str = concat!(wgsl!("post.wgsl"), wgsl!("bloom_chain.wgsl"));
+const POST_WGSL: &str = concat!(
+    wgsl!("hdr_lpm.wgsl"),
+    wgsl!("post.wgsl"),
+    wgsl!("bloom_chain.wgsl")
+);
 const TAA_WGSL: &str = wgsl!("taa.wgsl");
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
@@ -92,6 +96,7 @@ struct PostUniform {
     flash: [f32; 4],
     extra: [f32; 4],
     unreal: [f32; 4],
+    hdr: [f32; 4],
 }
 
 /// `struct Adapt` in exposure.wgsl.
@@ -241,7 +246,7 @@ pub(crate) struct TaaUniform {
     pub upscale: [f32; 4],
 }
 
-fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
+pub(crate) fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
         visibility: wgpu::ShaderStages::FRAGMENT,
@@ -250,7 +255,7 @@ fn layout_entry(binding: u32, ty: wgpu::BindingType) -> wgpu::BindGroupLayoutEnt
     }
 }
 
-fn float_texture(filterable: bool) -> wgpu::BindingType {
+pub(crate) fn float_texture(filterable: bool) -> wgpu::BindingType {
     wgpu::BindingType::Texture {
         sample_type: wgpu::TextureSampleType::Float { filterable },
         view_dimension: wgpu::TextureViewDimension::D2,
@@ -258,7 +263,7 @@ fn float_texture(filterable: bool) -> wgpu::BindingType {
     }
 }
 
-const UNIFORM: wgpu::BindingType = wgpu::BindingType::Buffer {
+pub(crate) const UNIFORM: wgpu::BindingType = wgpu::BindingType::Buffer {
     ty: wgpu::BufferBindingType::Uniform,
     has_dynamic_offset: false,
     min_binding_size: None,
@@ -390,6 +395,8 @@ pub(crate) struct PostPasses {
     fxaa_shader: Option<wgpu::ShaderModule>,
     smaa: Option<smaa::Smaa>,
     output_format: wgpu::TextureFormat,
+    hdr: [f32; 4],
+    pub chain_format: wgpu::TextureFormat,
     /// `struct Stylise` (stylise.wgsl), written per frame.
     pub stylise_buffer: wgpu::Buffer,
     /// Repeats: the paint pass's canvas texture.
@@ -563,6 +570,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("smaa edges", smaa::EDGES),
         ("smaa weights", smaa::WEIGHTS),
         ("smaa blend", smaa::BLEND),
+        ("hdr transfer", crate::hdr::TRANSFER),
         ("stylise", STYLISE_WGSL),
         ("fx post", fx.as_str()),
     ]

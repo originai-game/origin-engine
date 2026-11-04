@@ -17,6 +17,7 @@ struct Post {
   flash: vec4<f32>,     // rgb: flash colour, w: amount (0 off)
   extra: vec4<f32>,     // x: 1 with god rays, y: 1 when the lit image's alpha is the tone-mapped fraction (untonemapped sprites), z: 1 with sharpening, w: its strength
   unreal: vec4<f32>,    // x: 1 for three.js UnrealBloomPass bloom, y: its radius, z: the first bloom level's width, w: the contrast its high pass sees
+  hdr: vec4<f32>,       // peak / paper white (0 SDR), LPM scale/bias, paper white nits
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
@@ -128,6 +129,7 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   if (post.extra.x > 0.5) {
     c += textureSampleLevel(god_rays, linear_sampler, uv, 0.0).rgb * exposure();
   }
+  if (post.hdr.x > 0.0) { return hdr_lpm(c, post.hdr); }
   if (post.mode.x > 2.5) { return neutral(c); }
   if (post.mode.x > 1.5) { return agx(c); }
   if (post.mode.x > 0.5) { return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)); }
@@ -158,10 +160,11 @@ fn grain_hash(p: vec2<u32>, seed: u32) -> f32 {
 fn graded(uv: vec2<f32>) -> vec3<f32> {
   var c = tonemapped(uv);
   if (post.grade.x > 0.0) {
+    let highlights = select(vec3<f32>(0.0), max(c - 1.0, vec3<f32>(0.0)), post.hdr.x > 0.0);
     let n = f32(textureDimensions(grade_lut).x);
     let e = clamp(srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0))), vec3<f32>(0.0), vec3<f32>(1.0));
     let graded = textureSampleLevel(grade_lut, linear_sampler, e * ((n - 1.0) / n) + 0.5 / n, 0.0).rgb;
-    c = mix(c, srgb_decode(graded), post.grade.x);
+    c = mix(c, srgb_decode(graded) + highlights, post.grade.x);
   }
   if (post.grade.y > 0.0) {
     let d = length((uv - 0.5) * 2.0) / 1.41421356;
@@ -176,19 +179,21 @@ fn graded(uv: vec2<f32>) -> vec3<f32> {
 // -sqrt(min(mn, 2 - mx) / mx) / mix(8, 5, sharp), normalised.
 fn sharpened(uv: vec2<f32>) -> vec3<f32> {
   let t = 1.0 / vec2<f32>(textureDimensions(source));
+  let center = graded(uv);
   let a = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, -t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
   let b = srgb_encode(clamp(graded(uv + vec2<f32>(-t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
-  let c = srgb_encode(clamp(graded(uv), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let c = srgb_encode(clamp(center, vec3<f32>(0.0), vec3<f32>(1.0)));
   let d = srgb_encode(clamp(graded(uv + vec2<f32>(t.x, 0.0)), vec3<f32>(0.0), vec3<f32>(1.0)));
   let e = srgb_encode(clamp(graded(uv + vec2<f32>(0.0, t.y)), vec3<f32>(0.0), vec3<f32>(1.0)));
   let mn = min(min(min(a, b), min(d, e)), c);
   let mx = max(max(max(a, b), max(d, e)), c);
   let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, vec3<f32>(1e-4)), vec3<f32>(0.0), vec3<f32>(1.0)));
   let w = amp * (-1.0 / mix(8.0, 5.0, post.extra.w));
-  return srgb_decode(clamp((c + (a + b + d + e) * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let highlights = select(vec3<f32>(0.0), max(center - 1.0, vec3<f32>(0.0)), post.hdr.x > 0.0);
+  return srgb_decode(clamp((c + (a + b + d + e) * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0))) + highlights;
 }
 
-// The display colour (linear 0..1): grading, vignette, sharpening, grain, flash.
+// Display-linear colour (paper-white units in HDR): grading, vignette, sharpening, grain, flash.
 fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
   var c: vec3<f32>;
   if (post.extra.z > 0.5) { c = sharpened(uv); } else { c = graded(uv); }
@@ -196,7 +201,8 @@ fn finished(uv: vec2<f32>, pos: vec2<f32>) -> vec3<f32> {
     let cell = vec2<u32>(pos / max(post.grain.y, 1.0));
     let g = grain_hash(cell, u32(post.grain.z * 16777216.0)) - 0.5;
     // Strongest in the mid-tones.
-    let l = dot(c, LUMA);
+    var l = dot(c, LUMA);
+    if (post.hdr.x > 0.0) { l = clamp(l, 0.0, 1.0); }
     c = max(c + vec3<f32>(g * post.grain.x * (1.0 - abs(l * 2.0 - 1.0) * 0.6)), vec3<f32>(0.0));
   }
   if (post.flash.w > 0.0) {

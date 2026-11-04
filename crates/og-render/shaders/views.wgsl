@@ -7,6 +7,7 @@ struct Resolve {
   params: vec4<f32>,  // x: exposure multiplier, y: tone curve (0 ACES, 1 none, 2 AgX, 3 Khronos PBR Neutral), z: 1 mirrored across x, w: 1 encode sRGB here
   rect: vec4<f32>,    // xy: the rect's origin in destination pixels
   depth: vec4<f32>,   // x: near, y: far, z: 1 orthographic, w: source width
+  hdr: vec4<f32>,     // display mapper (viewport only)
 };
 @group(0) @binding(1) var<uniform> r: Resolve;
 
@@ -69,4 +70,3 @@ fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let hi = 1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055;
   return select(hi, lo, c <= vec3<f32>(0.0031308));
 }
-

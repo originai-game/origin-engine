@@ -245,6 +245,8 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "tier": tier,
                 "compute": true,
                 "antialias": b.antialias(),
+                "hdrSupported": info.as_ref().is_some_and(|i| i.hdr_supported),
+                "hdr": info.as_ref().is_some_and(|i| i.hdr),
                 "maxLights": og_render::MAX_LIGHTS,
                 "maxShadowedLights": info.as_ref().map_or(0, |i| i.shadowed_lights),
                 "maxMsaaSamples": info.as_ref().map_or(0, |i| i.msaa_samples),
@@ -276,7 +278,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE }))
         .to_string()
 }
 

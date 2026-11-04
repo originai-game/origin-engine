@@ -902,6 +902,9 @@ pub fn render_options(id: u32) -> Value {
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
     let options = render_options(id);
     let mut desc = base;
+    desc.hdr = options["hdr"].as_bool().unwrap_or(false);
+    desc.paper_white_nits = options["paperWhiteNits"].as_f64().unwrap_or(0.0) as f32;
+    desc.peak_nits = options["peakNits"].as_f64().unwrap_or(0.0) as f32;
     desc.antialias = match options["antialias"].as_str().unwrap_or("tier") {
         "off" => og_render::Antialias::Off,
         "msaa4" => og_render::Antialias::Msaa4,

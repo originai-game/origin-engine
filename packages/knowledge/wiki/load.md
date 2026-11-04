@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7599</sub>
+<sub>`api.ogt` line 7604</sub>
 
 ## Contents
 
@@ -127,7 +127,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 7764</sub>
+<sub>`api.ogt` line 7769</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -157,7 +157,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7771</sub>
+<sub>`api.ogt` line 7776</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -185,7 +185,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 7778</sub>
+<sub>`api.ogt` line 7783</sub>
 
 <a id="fn-gltf"></a>
 
@@ -220,7 +220,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 7784</sub>
+<sub>`api.ogt` line 7789</sub>
 
 <a id="fn-scene"></a>
 
@@ -250,7 +250,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 7793</sub>
+<sub>`api.ogt` line 7798</sub>
 
 <a id="fn-prefab"></a>
 
@@ -280,7 +280,7 @@ fn prefab {
 }
 ```
 
-<sub>`api.ogt` line 7800</sub>
+<sub>`api.ogt` line 7805</sub>
 
 <a id="fn-font"></a>
 
@@ -310,7 +310,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 7820</sub>
+<sub>`api.ogt` line 7825</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -340,7 +340,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7827</sub>
+<sub>`api.ogt` line 7832</sub>
 
 <a id="fn-sound"></a>
 
@@ -373,7 +373,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 7834</sub>
+<sub>`api.ogt` line 7839</sub>
 
 <a id="fn-lut"></a>
 
@@ -403,7 +403,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 7842</sub>
+<sub>`api.ogt` line 7847</sub>
 
 <a id="fn-environment"></a>
 
@@ -433,7 +433,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 7849</sub>
+<sub>`api.ogt` line 7854</sub>
 
 <a id="fn-emitter"></a>
 
@@ -463,7 +463,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 7856</sub>
+<sub>`api.ogt` line 7861</sub>
 
 <a id="fn-shader"></a>
 
@@ -493,7 +493,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 7863</sub>
+<sub>`api.ogt` line 7868</sub>
 
 <a id="fn-post"></a>
 
@@ -523,7 +523,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 7870</sub>
+<sub>`api.ogt` line 7875</sub>
 
 <a id="fn-vector"></a>
 
@@ -553,7 +553,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 7877</sub>
+<sub>`api.ogt` line 7882</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -583,7 +583,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 7884</sub>
+<sub>`api.ogt` line 7889</sub>
 
 <a id="fn-texture"></a>
 
@@ -616,7 +616,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 7891</sub>
+<sub>`api.ogt` line 7896</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -649,7 +649,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 7899</sub>
+<sub>`api.ogt` line 7904</sub>
 
 <a id="fn-style"></a>
 
@@ -679,7 +679,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 7907</sub>
+<sub>`api.ogt` line 7912</sub>
 
 <a id="fn-document"></a>
 
@@ -709,7 +709,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 7914</sub>
+<sub>`api.ogt` line 7919</sub>
 
 <a id="fn-look"></a>
 
@@ -739,7 +739,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 7921</sub>
+<sub>`api.ogt` line 7926</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -769,7 +769,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 7928</sub>
+<sub>`api.ogt` line 7933</sub>
 
 <a id="fn-palette"></a>
 
@@ -799,7 +799,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 7935</sub>
+<sub>`api.ogt` line 7940</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -829,7 +829,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7942</sub>
+<sub>`api.ogt` line 7947</sub>
 
 <a id="fn-status"></a>
 
@@ -859,7 +859,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 7949</sub>
+<sub>`api.ogt` line 7954</sub>
 
 <a id="fn-error"></a>
 
@@ -889,7 +889,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 7956</sub>
+<sub>`api.ogt` line 7961</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -919,7 +919,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7963</sub>
+<sub>`api.ogt` line 7968</sub>
 
 <a id="fn-animation"></a>
 
@@ -952,7 +952,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 7970</sub>
+<sub>`api.ogt` line 7975</sub>
 
 <a id="fn-rig"></a>
 
@@ -982,7 +982,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 7978</sub>
+<sub>`api.ogt` line 7983</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -1012,7 +1012,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 7985</sub>
+<sub>`api.ogt` line 7990</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -1042,7 +1042,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 7992</sub>
+<sub>`api.ogt` line 7997</sub>
 
 <a id="fn-video"></a>
 
@@ -1072,7 +1072,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 7999</sub>
+<sub>`api.ogt` line 8004</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1102,7 +1102,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 8006</sub>
+<sub>`api.ogt` line 8011</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1132,7 +1132,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 8013</sub>
+<sub>`api.ogt` line 8018</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1162,7 +1162,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 8020</sub>
+<sub>`api.ogt` line 8025</sub>
 
 <a id="fn-imageData"></a>
 
@@ -1199,7 +1199,7 @@ fn imageData {
 }
 ```
 
-<sub>`api.ogt` line 8105</sub>
+<sub>`api.ogt` line 8110</sub>
 
 <a id="fn-gltfData"></a>
 
@@ -1239,7 +1239,7 @@ fn gltfData {
 }
 ```
 
-<sub>`api.ogt` line 8115</sub>
+<sub>`api.ogt` line 8120</sub>
 
 <a id="fn-environmentData"></a>
 
@@ -1276,7 +1276,7 @@ fn environmentData {
 }
 ```
 
-<sub>`api.ogt` line 8126</sub>
+<sub>`api.ogt` line 8131</sub>
 
 <a id="fn-environmentInfo"></a>
 
@@ -1306,7 +1306,7 @@ fn environmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8136</sub>
+<sub>`api.ogt` line 8141</sub>
 
 <a id="fn-release"></a>
 
@@ -1336,7 +1336,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 8143</sub>
+<sub>`api.ogt` line 8148</sub>
 
 <a id="fn-imageInfo"></a>
 
@@ -1366,7 +1366,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8150</sub>
+<sub>`api.ogt` line 8155</sub>
 
 <a id="fn-completions"></a>
 
@@ -1394,7 +1394,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 8157</sub>
+<sub>`api.ogt` line 8162</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1424,7 +1424,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 8163</sub>
+<sub>`api.ogt` line 8168</sub>
 
 ## Components, resources and events
 
@@ -1501,7 +1501,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 7718</sub>
+<sub>`api.ogt` line 7723</sub>
 
 <a id="record-PrefabLink"></a>
 
@@ -1532,7 +1532,7 @@ component PrefabLink {
 }
 ```
 
-<sub>`api.ogt` line 7807</sub>
+<sub>`api.ogt` line 7812</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1555,7 +1555,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 8170</sub>
+<sub>`api.ogt` line 8175</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1580,7 +1580,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 8176</sub>
+<sub>`api.ogt` line 8181</sub>
 
 ## Types
 
@@ -1596,7 +1596,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 7605</sub>
+<sub>`api.ogt` line 7610</sub>
 
 <a id="type-Font"></a>
 
@@ -1610,7 +1610,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 7606</sub>
+<sub>`api.ogt` line 7611</sub>
 
 <a id="type-Sound"></a>
 
@@ -1624,7 +1624,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 7607</sub>
+<sub>`api.ogt` line 7612</sub>
 
 <a id="type-Style"></a>
 
@@ -1638,7 +1638,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 7608</sub>
+<sub>`api.ogt` line 7613</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1652,7 +1652,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 7609</sub>
+<sub>`api.ogt` line 7614</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1677,7 +1677,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 7646</sub>
+<sub>`api.ogt` line 7651</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1707,7 +1707,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 7653</sub>
+<sub>`api.ogt` line 7658</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1736,7 +1736,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7665</sub>
+<sub>`api.ogt` line 7670</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1759,7 +1759,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7675</sub>
+<sub>`api.ogt` line 7680</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1792,7 +1792,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7682</sub>
+<sub>`api.ogt` line 7687</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1823,7 +1823,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7694</sub>
+<sub>`api.ogt` line 7699</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1854,7 +1854,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 7707</sub>
+<sub>`api.ogt` line 7712</sub>
 
 <a id="type-LoadBudget"></a>
 
@@ -1894,7 +1894,7 @@ struct LoadBudget {
 }
 ```
 
-<sub>`api.ogt` line 8027</sub>
+<sub>`api.ogt` line 8032</sub>
 
 <a id="type-ImageKind"></a>
 
@@ -1919,7 +1919,7 @@ enum ImageKind {
 }
 ```
 
-<sub>`api.ogt` line 8048</sub>
+<sub>`api.ogt` line 8053</sub>
 
 <a id="type-GltfDataDesc"></a>
 
@@ -1941,7 +1941,7 @@ struct GltfDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8055</sub>
+<sub>`api.ogt` line 8060</sub>
 
 <a id="type-ImageDataDesc"></a>
 
@@ -1965,7 +1965,7 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8061</sub>
+<sub>`api.ogt` line 8066</sub>
 
 <a id="type-EnvironmentDataDesc"></a>
 
@@ -1996,7 +1996,7 @@ struct EnvironmentDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8068</sub>
+<sub>`api.ogt` line 8073</sub>
 
 <a id="type-EnvironmentInfo"></a>
 
@@ -2021,7 +2021,7 @@ struct EnvironmentInfo {
 }
 ```
 
-<sub>`api.ogt` line 8081</sub>
+<sub>`api.ogt` line 8086</sub>
 
 <a id="type-ImageInfo"></a>
 
@@ -2044,7 +2044,7 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8089</sub>
+<sub>`api.ogt` line 8094</sub>
 
 <a id="type-LoadCompletion"></a>
 
@@ -2069,7 +2069,7 @@ struct LoadCompletion {
 }
 ```
 
-<sub>`api.ogt` line 8096</sub>
+<sub>`api.ogt` line 8101</sub>
 
 ## Column kinds
 
@@ -2092,7 +2092,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 7611</sub>
+<sub>`api.ogt` line 7616</sub>
 
 ```ogt
 column Asset {
@@ -2103,7 +2103,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 7618</sub>
+<sub>`api.ogt` line 7623</sub>
 
 ```ogt
 column Sound {
@@ -2114,7 +2114,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 7625</sub>
+<sub>`api.ogt` line 7630</sub>
 
 ```ogt
 column Font {
@@ -2125,7 +2125,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 7632</sub>
+<sub>`api.ogt` line 7637</sub>
 
 ```ogt
 column Style {
@@ -2136,4 +2136,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 7639</sub>
+<sub>`api.ogt` line 7644</sub>

@@ -307,7 +307,8 @@ const VIEWS_DEPTH_WGSL: &str = wgsl!("views_depth.wgsl");
 
 /// The colour resolve's source (`fs_color`, `fs_linear`).
 pub(crate) fn resolve_color_source() -> String {
-    format!("{VIEWS_WGSL}{VIEWS_COLOR_WGSL}")
+    let lpm = wgsl!("hdr_lpm.wgsl");
+    format!("{VIEWS_WGSL}{lpm}{VIEWS_COLOR_WGSL}")
 }
 
 /// The depth resolve's source (`fs_depth`): the view's linear depth
@@ -328,6 +329,8 @@ pub(crate) struct ResolveUniform {
     pub rect: [f32; 4],
     /// x: near, y: far, z: 1 orthographic, w: source width.
     pub depth: [f32; 4],
+    /// Display mapping for viewport destinations only; texture views retain radiance.
+    pub hdr: [f32; 4],
 }
 
 /// The resolve's entry point for a destination.
@@ -807,7 +810,7 @@ impl Views {
                 }
                 Dest::Viewport(_) => {
                     let f = viewport_format;
-                    self.pipeline(device, f, resolve_entry(f, false));
+                    self.pipeline(device, f, "fs_color");
                 }
             }
         }
@@ -881,11 +884,17 @@ impl Views {
         encoder: &mut crate::Encoder,
         plan: &ViewPlan,
         tonemap: crate::Tonemap,
+        hdr: [f32; 4],
         dest: &wgpu::TextureView,
         format: wgpu::TextureFormat,
         depth: bool,
     ) {
-        let entry = resolve_entry(format, depth);
+        let viewport = matches!(plan.dest, Dest::Viewport(_));
+        let entry = if viewport {
+            "fs_color"
+        } else {
+            resolve_entry(format, depth)
+        };
         let slot = self.slots[plan.index].as_ref().expect("made for the plan");
         let rect = match plan.dest {
             Dest::Viewport(r) => r,
@@ -910,6 +919,7 @@ impl Views {
                 plan.frame.orthographic as u32 as f32,
                 plan.size.0 as f32,
             ],
+            hdr: if viewport { hdr } else { [0.0; 4] },
         };
         queue.write_buffer(&slot.resolve_buffer, 0, bytemuck::bytes_of(&u));
         let pipeline = &self.pipelines[&(format, entry)];

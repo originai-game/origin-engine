@@ -5710,6 +5710,24 @@ export interface RenderOptions {
    */
   readonly antialias?: Antialias;
   /**
+   * Request extended-range HDR surface output. False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last.
+   *
+   * @default false
+   */
+  readonly hdr?: boolean;
+  /**
+   * HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation.
+   *
+   * @default 0
+   */
+  readonly paperWhiteNits?: number;
+  /**
+   * HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation.
+   *
+   * @default 0
+   */
+  readonly peakNits?: number;
+  /**
    * The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels; smaller saves memory on phones (three 2048 maps are 48 MB, with their depth buffer 64 MB).
    *
    * @default 2048
@@ -9582,6 +9600,14 @@ export interface RenderCapabilities {
   readonly compute: boolean;
   /** The antialiasing the device resolved RenderOptions.antialias to. */
   readonly antialias: Antialias;
+  /**
+   * Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface.
+   */
+  readonly hdrSupported: boolean;
+  /**
+   * Whether HDR output was requested and the surface configured for it. True means the LPM HDR display mapper replaces PostEffects.tonemap (including none); SDR fallback keeps the chosen operator. False without a surface; separate from hdrSupported. Paint, ink and quantization remain SDR paper/ink effects; captures are clipped SDR previews, not HDR encodings.
+   */
+  readonly hdr: boolean;
   /** How many point and spot lights one frame draws (MAX_LIGHTS on every tier). */
   readonly maxLights: number;
   /**

@@ -15,6 +15,9 @@
 //! presented frame copied into the offscreen target as well, so a capture
 //! started after it reads the frame the loop drew (`og render`'s
 //! every-frame capture on the web, through the probe's `Capture::frame`).
+//! HDR instead composes into the float offscreen target before transferring
+//! to the surface. Keeping uses that retained frame; readback produces an
+//! SDR preview with highlights clipped at paper white.
 //!
 //! A request whose frame was read hands its buffer back to the renderer,
 //! and the next capture of the same size copies into it instead of
@@ -81,6 +84,31 @@ impl Future for Mapped {
 /// The buffer of the last capture read, kept for the next one of its size.
 pub(crate) type Spare = Arc<Mutex<Option<wgpu::Buffer>>>;
 
+/// RGBA16F display-linear pixel to an SDR screenshot, not an HDR encoding.
+fn sdr_preview(pixel: &[u8]) -> [u8; 4] {
+    std::array::from_fn(|i| {
+        let value = crate::probes::f16_to_f32(u16::from_le_bytes([pixel[i * 2], pixel[i * 2 + 1]]))
+            .clamp(0.0, 1.0);
+        let encoded = if i == 3 {
+            value
+        } else if value <= 0.0031308 {
+            value * 12.92
+        } else {
+            1.055 * value.powf(1.0 / 2.4) - 0.055
+        };
+        (encoded * 255.0).round() as u8
+    })
+}
+
+#[test]
+fn hdr_preview_encodes_rgb_but_not_alpha_and_clips_highlights() {
+    // Half floats: 0.25, 2, -1, 0.5. RGB uses sRGB; alpha stays linear.
+    assert_eq!(
+        sdr_preview(&[0, 0x34, 0, 0x40, 0, 0xbc, 0, 0x38]),
+        [137, 255, 0, 128]
+    );
+}
+
 /// A capture in flight: the copy of the last offscreen frame into a
 /// buffer being mapped. Dropping it cancels the capture.
 pub struct CaptureRequest {
@@ -96,6 +124,7 @@ pub struct CaptureRequest {
     height: u32,
     padded_row: u32,
     swizzle: bool,
+    linear_half: bool,
 }
 
 impl CaptureRequest {
@@ -172,8 +201,8 @@ impl CaptureRequest {
     pub fn cancel(self) {}
 
     fn read(&mut self) -> Result<RgbaImage, RenderError> {
-        let row = self.width * 4;
-        let mut pixels = Vec::with_capacity((row * self.height) as usize);
+        let row = self.width * if self.linear_half { 8 } else { 4 };
+        let mut pixels = Vec::with_capacity((self.width * self.height * 4) as usize);
         {
             let data = self
                 .buffer
@@ -181,7 +210,13 @@ impl CaptureRequest {
                 .get_mapped_range()
                 .map_err(|e| RenderError::Readback(format!("{e:?}")))?;
             for chunk in data.chunks_exact(self.padded_row as usize) {
-                pixels.extend_from_slice(&chunk[..row as usize]);
+                if self.linear_half {
+                    for pixel in chunk[..row as usize].as_chunks::<8>().0 {
+                        pixels.extend_from_slice(&sdr_preview(pixel));
+                    }
+                } else {
+                    pixels.extend_from_slice(&chunk[..row as usize]);
+                }
             }
         }
         self.buffer.unmap();
@@ -220,9 +255,9 @@ impl Renderer {
     }
 
     /// Keep each frame presented to the surface in the offscreen target too
-    /// (one copy per frame), so [`Renderer::begin_capture`] reads the frame
-    /// the loop drew. Refused when the surface cannot be copied from (its
-    /// device lacks `COPY_SRC` on surfaces) or there is no surface (a
+    /// (one copy per SDR frame; HDR already composes there), so
+    /// [`Renderer::begin_capture`] reads the frame the loop drew. Refused when
+    /// an SDR surface cannot be copied from (no `COPY_SRC`) or there is no surface (a
     /// headless renderer draws offscreen already).
     pub fn set_keep_frame(&mut self, on: bool) -> Result<(), RenderError> {
         let Some((_, config)) = &self.surface else {
@@ -230,7 +265,7 @@ impl Renderer {
                 "keep_frame on a renderer without a surface (it draws offscreen)".into(),
             ));
         };
-        if on && !config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
+        if on && self.hdr.is_none() && !config.usage.contains(wgpu::TextureUsages::COPY_SRC) {
             return Err(RenderError::Unsupported(
                 "this device's surface frames cannot be copied (no COPY_SRC)".into(),
             ));
@@ -248,6 +283,8 @@ impl Renderer {
     /// `COPY_SRC`) into the offscreen target now: what each presented frame
     /// goes through with [`Renderer::set_keep_frame`], for a host that
     /// draws its frames elsewhere.
+    /// With HDR, `frame` must be display-linear in paper-white units, like
+    /// the retained offscreen frame, not the transferred swapchain image.
     pub fn keep_texture(&self, frame: &wgpu::Texture) {
         let mut encoder = Encoder::untimed(self.device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor {
@@ -279,10 +316,16 @@ impl Renderer {
         let (width, height) = (self.out_width, self.out_height);
         let swizzle = match self.output_format {
             wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => false,
+            wgpu::TextureFormat::Rgba16Float => false,
             wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => true,
             other => return Err(RenderError::Unsupported(format!("capture of {other:?}"))),
         };
-        let row = width * 4;
+        let linear_half = self.output_format == wgpu::TextureFormat::Rgba16Float;
+        // Both probe paths (presented-frame keeping and explicit captures)
+        // enter here and read this same retained target, never the swapchain.
+        debug_assert_eq!(self.persistent.offscreen.format(), self.output_format);
+        debug_assert!(self.hdr.is_none() || linear_half);
+        let row = width * if linear_half { 8 } else { 4 };
         let padded_row =
             row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
         let size = u64::from(padded_row * height);
@@ -353,11 +396,14 @@ impl Renderer {
             height,
             padded_row,
             swizzle,
+            linear_half,
         })
     }
 
     /// The last frame drawn to [`crate::RenderTarget::Offscreen`] as RGBA8,
-    /// rows top to bottom (BGRA outputs are swizzled). Works on every host;
+    /// rows top to bottom (BGRA outputs are swizzled). HDR captures are SDR
+    /// previews: linear paper white is sRGB white, brighter highlights clip.
+    /// They are not HDR-display validation evidence. Works on every host;
     /// natively it waits for the frames drawn before it (at most
     /// [`BACKLOG_TIMEOUT`]) and then for its copy (at most
     /// [`CAPTURE_TIMEOUT`]; [`capture_timeouts`]); in the browser it

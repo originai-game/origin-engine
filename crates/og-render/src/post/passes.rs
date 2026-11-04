@@ -36,6 +36,7 @@ impl PostPasses {
         output_format: wgpu::TextureFormat,
         antialias: Antialias,
         aa: AaOptions,
+        hdr: [f32; 4],
     ) -> PostPasses {
         let sampler_ty = wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering);
         let source_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -251,7 +252,7 @@ impl PostPasses {
             Some(additive),
         );
         // A non-sRGB output (web canvases) gets the sRGB curve in the shader.
-        let tonemap_entry = if output_format.is_srgb() {
+        let tonemap_entry = if output_format.is_srgb() || output_format == HDR_FORMAT {
             "fs"
         } else {
             "fs_srgb_encode"
@@ -437,6 +438,8 @@ impl PostPasses {
             stylise_shader: None,
             fxaa_shader: None,
             output_format,
+            hdr,
+            chain_format: if hdr[0] > 0.0 { HDR_FORMAT } else { LDR_FORMAT },
             stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
             repeat_sampler,
             sampler,
@@ -463,11 +466,11 @@ impl PostPasses {
                 &self.post_shader,
                 "fs",
                 &self.post_pl,
-                LDR_FORMAT,
+                self.chain_format,
                 None,
             ));
         }
-        let srgb = self.output_format.is_srgb();
+        let srgb = self.output_format.is_srgb() || self.output_format == HDR_FORMAT;
         for pass in chain {
             if self.chain.contains_key(&pass) {
                 continue;
@@ -514,7 +517,7 @@ impl PostPasses {
                 shader,
                 entry,
                 layout,
-                LDR_FORMAT,
+                self.chain_format,
                 None,
             );
             let to_output = fullscreen_pipeline(
@@ -651,6 +654,7 @@ impl PostPasses {
             f.color.extend(f.amount.clamp(0.0, 1.0)).to_array()
         });
         let uniform = PostUniform {
+            hdr: self.hdr,
             exposure,
             bloom,
             mode: [

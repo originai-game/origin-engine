@@ -328,6 +328,7 @@ impl Renderer {
                 encoder,
                 p,
                 tonemap,
+                [0.0; 4],
                 view,
                 format.wgpu(),
                 false,
@@ -336,7 +337,7 @@ impl Renderer {
                 let view = &self.cache.textures[d].view;
                 let f = wgpu::TextureFormat::Rgba16Float;
                 self.views
-                    .resolve(device, queue, encoder, p, tonemap, view, f, true);
+                    .resolve(device, queue, encoder, p, tonemap, [0.0; 4], view, f, true);
             }
             stats.draw_calls += 1 + depth.is_some() as u32;
         }

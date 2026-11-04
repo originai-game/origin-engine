@@ -84,6 +84,7 @@ mod fx;
 pub mod geometry;
 mod glass;
 pub mod graph;
+mod hdr;
 mod hooks;
 mod ibl;
 mod id_pass;
@@ -315,6 +316,7 @@ pub struct Renderer {
     out_width: u32,
     out_height: u32,
     output_format: wgpu::TextureFormat,
+    hdr: Option<hdr::Output>,
     /// The offscreen target's sRGB view format ([`linear_view_format`]).
     offscreen_linear: Option<wgpu::TextureFormat>,
     surface: Option<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration)>,

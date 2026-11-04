@@ -37,6 +37,25 @@ fn smaa_render_option_reaches_both_hosts_without_temporal_aa() {
     assert!(og_runtime::og_engine_destroy(engine));
 }
 
+#[test]
+fn hdr_options_reach_the_hosts_but_do_not_fabricate_surface_support() {
+    og_host_begin_bundle();
+    let game = og_game_game(Some(
+        json!({"render": {"hdr": true, "paperWhiteNits": 160, "peakNits": 1200}}).to_string(),
+    ));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let desc = og_runtime::render_desc(engine, og_render::RenderDesc::default());
+    assert!(desc.hdr);
+    assert_eq!(desc.paper_white_nits, 160.0);
+    assert_eq!(desc.peak_nits, 1200.0);
+    let caps = answer(og_render_capabilities(engine));
+    assert_eq!(caps["hdrSupported"], false);
+    assert_eq!(caps["hdr"], false);
+    assert!(og_runtime::og_engine_destroy(engine));
+}
+
 impl Hooks for NoAssets {
     fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
         Ok(String::new())
@@ -244,6 +263,8 @@ impl RenderBackend for Device {
                 supported: vec![rgba8],
             },
             pipeline_cache: false,
+            hdr_supported: false,
+            hdr: false,
             max_texture_size: 8192,
             volumetric: og_render::VolumetricMethod::Froxel,
             volumetric_lights: 64,

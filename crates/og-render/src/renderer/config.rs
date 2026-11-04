@@ -163,6 +163,12 @@ pub struct RenderDesc {
     /// The output (offscreen, surface or caller view) format. `None` picks
     /// [`DEFAULT_OUTPUT_FORMAT`] offscreen and the surface's preference on a surface.
     pub output_format: Option<wgpu::TextureFormat>,
+    /// Opt into an extended-range float surface where supported; otherwise SDR.
+    pub hdr: bool,
+    /// HDR paper white in nits; zero means 203. Relative on EDR/web.
+    pub paper_white_nits: f32,
+    /// HDR display peak in nits; zero means 1000, at least paper white.
+    pub peak_nits: f32,
     pub antialias: Antialias,
     /// The side of each directional light cascade in texels (clamped to
     /// 64..=the device's limit). 2048 by default; 1024 is the mobile
@@ -261,6 +267,9 @@ impl Default for RenderDesc {
             height: 720,
             backend: Backend::Auto,
             output_format: None,
+            hdr: false,
+            paper_white_nits: 0.0,
+            peak_nits: 0.0,
             antialias: Antialias::Off,
             shadow_map_size: SHADOW_SIZE,
             shadow_cascades: MAX_CASCADES,
@@ -297,6 +306,10 @@ pub struct RenderInfo {
     pub adapter: String,
     pub backend: wgpu::Backend,
     pub device_type: wgpu::DeviceType,
+    /// The surface supports extended-range float output (not a monitor measurement).
+    pub hdr_supported: bool,
+    /// The surface was configured for HDR. False without a surface.
+    pub hdr: bool,
     /// The antialiasing in use: `Off`, `Msaa4`, `Taa`, `Fxaa` or `Smaa`.
     pub antialias: Antialias,
     /// The samples per pixel the device multisamples the scene at:
@@ -427,7 +440,9 @@ pub enum RenderTarget<'a> {
     Offscreen,
     /// The surface the renderer was created with: acquired, drawn and presented.
     Surface,
-    /// A caller's texture view of the renderer's size and output format.
+    /// A caller's display texture view of the renderer's size and output format.
+    /// With HDR this receives the same surface transfer as `Surface`, not radiance.
+    /// Scene render-to-texture cameras use `ViewTarget::Texture` instead.
     View(&'a wgpu::TextureView),
 }
 

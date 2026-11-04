@@ -71,7 +71,8 @@ fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
 
 fn load(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(source));
-  return textureLoad(source, clamp(px, vec2<i32>(0), size - 1), 0).rgb;
+  // Paint, ink and quantization describe SDR paper/ink, even on an HDR surface.
+  return clamp(textureLoad(source, clamp(px, vec2<i32>(0), size - 1), 0).rgb, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn luma(c: vec3<f32>) -> f32 {
@@ -764,7 +765,7 @@ fn lens(in: VsOut) -> vec3<f32> {
     return vec3<f32>(0.0);
   }
   if (st.output.z > 1.5) {
-    return load(vec2<i32>(floor(uv * size)));
+    return textureLoad(source, clamp(vec2<i32>(floor(uv * size)), vec2<i32>(0), vec2<i32>(size) - 1), 0).rgb;
   }
   return textureSampleLevel(source, clamp_sampler, uv, 0.0).rgb;
 }

@@ -87,6 +87,14 @@ impl Renderer {
             .await
             .map_err(|e| RenderError::NoAdapter(format!("{:?}: {e}", desc.backend)))?;
         let caps = surface.get_capabilities(&adapter);
+        let hdr_space = desc
+            .hdr
+            .then(|| hdr::surface_space(&caps))
+            .flatten()
+            .filter(|_| {
+                desc.output_format
+                    .is_none_or(|f| f == wgpu::TextureFormat::Rgba16Float)
+            });
         // An sRGB surface where one is offered (native windows): the
         // hardware encodes and blends in linear light, as offscreen. A
         // WebGPU canvas offers none; its sRGB view (below) does the same.
@@ -97,7 +105,10 @@ impl Renderer {
                     wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
                 )
         };
-        let format = match desc.output_format {
+        let format = match hdr_space
+            .map(|_| wgpu::TextureFormat::Rgba16Float)
+            .or(desc.output_format)
+        {
             Some(f) => f,
             None => caps
                 .formats
@@ -125,7 +136,7 @@ impl Renderer {
                 wgpu::TextureUsages::RENDER_ATTACHMENT
             },
             format,
-            color_space: wgpu::SurfaceColorSpace::Auto,
+            color_space: hdr_space.unwrap_or(wgpu::SurfaceColorSpace::Srgb),
             width: desc.width.max(1),
             height: desc.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
@@ -197,6 +208,12 @@ impl Renderer {
             adapter: adapter_info.name.clone(),
             backend: adapter_info.backend,
             device_type: adapter_info.device_type,
+            hdr_supported: surface
+                .as_ref()
+                .is_some_and(|(s, _)| hdr::surface_space(&s.get_capabilities(&adapter)).is_some()),
+            hdr: surface
+                .as_ref()
+                .is_some_and(|(_, c)| c.color_space.is_hdr()),
             antialias,
             msaa_samples: samples,
             shadow_map_size: shadow_size,
@@ -801,6 +818,10 @@ impl Renderer {
         let decal_buffers = fx::DecalBuffers::new(&device);
         let sprite_fx_buffer = uniform_buffer("sprite fx", 32);
 
+        let hdr = surface
+            .as_ref()
+            .filter(|(_, c)| c.color_space.is_hdr())
+            .map(|(_, c)| hdr::Output::new(&device, desc, c.color_space, adapter_info.backend));
         let post = post::PostPasses::new(
             &device,
             &queue,
@@ -810,6 +831,7 @@ impl Renderer {
                 taa_history: desc.taa_history,
                 taa_sharpen: desc.taa_sharpen.clamp(0.0, 1.0),
             },
+            hdr.as_ref().map_or([0.0; 4], |h| h.curve),
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
@@ -913,6 +935,7 @@ impl Renderer {
             output_format,
             offscreen_linear,
             surface,
+            hdr,
             keep_frame: false,
             capture_spare: Default::default(),
             samples,

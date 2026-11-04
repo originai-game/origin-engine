@@ -1964,7 +1964,9 @@ impl Renderer {
                 self.out_width,
                 self.out_height,
                 o,
-                !self.output_format.is_srgb() && !self.has_linear_view(target),
+                !self.output_format.is_srgb()
+                    && self.output_format != HDR_FORMAT
+                    && !self.has_linear_view(target),
             );
             ui_uniform = Some(u);
         }
@@ -2616,6 +2618,7 @@ impl Renderer {
                     width: self.width,
                     height: self.height,
                     post: self.history_size(),
+                    chain_format: self.post.chain_format,
                     samples: self.samples,
                     taa,
                     lightmap: lightmap_size,
@@ -2647,7 +2650,7 @@ impl Renderer {
                 (
                     &g.pyramid_view,
                     &g.behind_view,
-                    !self.output_format.is_srgb(),
+                    !self.output_format.is_srgb() && self.output_format != HDR_FORMAT,
                 )
             });
             let depth = self
@@ -2719,10 +2722,15 @@ impl Renderer {
             }
             _ => None,
         };
-        let output: &wgpu::TextureView = match target {
+        let destination: &wgpu::TextureView = match target {
             RenderTarget::Offscreen => &self.persistent.offscreen_view,
             RenderTarget::View(v) => v,
             RenderTarget::Surface => &surface_frame.as_ref().expect("acquired above").1,
+        };
+        let output = if self.hdr.is_some() {
+            &self.persistent.offscreen_view
+        } else {
+            destination
         };
         // Where the overlay blends: the output when it is sRGB, else its sRGB
         // view where the backend has one (linear light either way), else the
@@ -4135,6 +4143,7 @@ impl Renderer {
                 &mut encoder,
                 p,
                 post_fx.tonemap,
+                self.hdr.as_ref().map_or([0.0; 4], |h| h.curve),
                 dest,
                 viewport_format,
                 false,
@@ -4160,7 +4169,7 @@ impl Renderer {
         // output. A UI blend that reads what is under it always draws into
         // the source, copied before it to what it reads.
         let runs: &[overlay::OverlayRun] = overlay_frame.as_ref().map_or(&[], |f| f.main_runs());
-        let decode = !self.output_format.is_srgb();
+        let decode = !self.output_format.is_srgb() && self.output_format != HDR_FORMAT;
         let mut rebuilds = Vec::new();
         let mut copies = Vec::new();
         let mut layered = None;
@@ -4205,7 +4214,7 @@ impl Renderer {
                     self.out_width,
                     self.out_height,
                     scene.css_height,
-                    !srgb_view && !self.output_format.is_srgb(),
+                    !srgb_view && !self.output_format.is_srgb() && self.output_format != HDR_FORMAT,
                 ),
             );
             let target = layered.unwrap_or(overlay_view.unwrap_or(output));
@@ -4273,6 +4282,14 @@ impl Renderer {
             stats.draw_calls += self.glass.blit(&mut encoder, g, output);
         }
         timings.end("overlay", overlay_at, &encoder, &stats);
+        if let Some(hdr) = &self.hdr
+            && !matches!(target, RenderTarget::Offscreen)
+        {
+            let at = timings.begin(&encoder, &stats);
+            hdr.encode(&self.device, &mut encoder, output, destination);
+            stats.draw_calls += 1;
+            timings.end("hdr-output", at, &encoder, &stats);
+        }
         let Timings {
             pass_ms,
             pass_queries,
@@ -4280,7 +4297,12 @@ impl Renderer {
         } = timings;
         let gpu_queries = encoder.used();
         self.pass_ms = pass_ms;
-        if let Some((frame, ..)) = surface_frame.as_ref().filter(|_| self.keep_frame) {
+        // HDR already rendered scene + overlay into the float offscreen target.
+        // Keep that paper-white-linear frame for capture, not the encoded surface.
+        if let Some((frame, ..)) = surface_frame
+            .as_ref()
+            .filter(|_| self.keep_frame && self.hdr.is_none())
+        {
             self.keep_presented(&mut encoder, &frame.texture);
         }
         self.queue
