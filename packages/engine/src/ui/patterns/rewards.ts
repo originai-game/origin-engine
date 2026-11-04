@@ -177,7 +177,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       kit.column("Text", { width: grow(), gap: u(4), cross: compact ? "start" : "center" }, () => {
         // A compact row's tag leads its words (standing on the corner it would cover them at large text).
         if (o.tag && compact) rewardTag(o);
-        if (o.kind) text("Kind", o.kind.toLocaleUpperCase(), { step: st(12), color: tier ? mix(edge, role("ink"), 0.45) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: compact ? "start" : "center", font: "display" });
+        if (o.kind) text("Kind", o.kind, { uppercase: true, step: st(12), color: tier ? mix(edge, role("ink"), 0.45) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: compact ? "start" : "center", font: "display" });
         text("Title", o.title ?? "", { step: st(compact ? 17 : 20), heading: true, font: "display", width: grow(), align: compact ? "start" : "center", maxLines: 2, ellipsis: true });
         // Diamonds big enough to count (about 8 px drawn).
         pips("Pips", o.rarity, u(11), 6);

@@ -497,6 +497,12 @@ pub const PROPS: &[PropSpec] = &[
         "Scene ink and separation shadow."
     ),
     p!(
+        "uppercase",
+        Ty::Bool,
+        ["label"],
+        "Uppercase in the UI's locale, as a type role with `case upper` is."
+    ),
+    p!(
         "secondary",
         Ty::Name,
         ["icon"],

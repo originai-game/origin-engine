@@ -111,7 +111,7 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
   const gold = role("gold");
   const vp = frame().viewport;
   const stageW = Math.min(420, vp.width - vp.safeArea.left - vp.safeArea.right - frame().t.gutter * 2);
-  const title = (desc.title ?? "Level up").toUpperCase();
+  const title = desc.title ?? "Level up";
   // The word fits the stage at its overshoot (1.1×): a long word or 200 % text steps down, never off the screen.
   const titleStep = fitWidth(ts(40, true), title.length * 0.6 * 1.1, stageW);
   // The level-up announces like a banner: over a pinned tooltip too, which steps under it and dims.
@@ -138,6 +138,7 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
       // The word and the level share one ink: the gold gradient under a heavy outline, which holds 4.5:1 on a light scene.
       const goldInk: Api.Gradient = { type: "linear", from: { x: 0, y: 0 }, to: { x: 0, y: 1 }, stops: [{ offset: 0, color: lit({ r: 1, g: 0.97, b: 0.8, a: 1 }) }, { offset: 0.55, color: lit(gold) }, { offset: 1, color: lit({ r: gold.r * 0.8, g: gold.g * 0.7, b: gold.b * 0.5, a: 1 }) }] };
       text("Title", title, {
+        uppercase: true,
         step: titleStep,
         font: "display",
         nowrap: true,

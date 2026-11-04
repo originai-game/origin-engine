@@ -252,6 +252,7 @@ module ui {
     field step Option.TypeStepName "The type step; null is body."
     field color Option.Paint "The ink; null is ink."
     field onScene bool "Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container."
+    field uppercase bool "Uppercase in the UI's locale before it is measured (Turkish i to İ, Greek without its accents), as a type role with `case upper` is; the probe and screen readers keep the source text. Never uppercase in game code: String.toUpperCase knows no locale."
     field align TextAlign "How the lines align."
     field nowrap bool "Keep to one line (breaking only at `\\n`)."
     field width Option.Size "Its width; null fits the text."

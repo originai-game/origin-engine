@@ -255,7 +255,7 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
     strokes: [stroke(rare && !equipped ? 1.5 : 1, rare && !equipped ? lit(rare, 0.7) : token("lineStrong", 0.8), "inside")],
     effects: [drop(12, 32, token("shadow", 0.55)), drop(2, 6, token("shadow", 0.35))],
   });
-  if (equipped) text("Eyebrow", title.toUpperCase(), { step: ts(13), color: token("inkMuted"), width: pct(1), maxLines: 2, ellipsis: true });
+  if (equipped) text("Eyebrow", title, { uppercase: true, step: ts(13), color: token("inkMuted"), width: pct(1), maxLines: 2, ellipsis: true });
   // Header: the art slot or icon, the title in its rarity's colour with pips, the subtitle.
   kit.row("Header", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
     if (!equipped && (d.image || d.icon)) {

@@ -642,6 +642,46 @@ fn uppercase_is_measured_but_source_and_editable_values_are_preserved() {
     }
 }
 
+/// A label that asks for uppercase (a component's eyebrow) gets the same
+/// locale-aware casing as a role with `case upper`, in a style whose roles
+/// leave case alone: String.toUpperCase in the component drew Turkish
+/// "izmir" as IZMIR.
+#[test]
+fn a_label_asking_for_uppercase_is_cased_in_the_uis_locale() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    for (locale, upper) in [("tr", "İZMİR"), ("en", "IZMIR")] {
+        ui.set_locale(locale);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        let caps = LabelDesc {
+            uppercase: true,
+            ..LabelDesc::default()
+        };
+        ui.label("Caps", "izmir", caps);
+        ui.label("Plain", "izmir", LabelDesc::default());
+        ui.end();
+        let drawn: Vec<String> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::Text { text, .. } => Some(text.clone()),
+                DrawCmd::StyledText { text, .. } => match &**text {
+                    DrawCmd::Text { text, .. } => Some(text.clone()),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+        assert!(drawn.iter().any(|t| t == upper), "{locale}: {drawn:?}");
+        assert!(
+            drawn.iter().any(|t| t == "izmir"),
+            "the plain label is not cased"
+        );
+        assert_eq!(ui.frame().element("Caps").unwrap().text, "izmir");
+    }
+}
+
 /// A label mirrored by its transform (scaleX −1: a right arrow drawn as a
 /// mirrored left one) keeps the mirror on its text for the overlay, which
 /// flips the glyphs. Baked into the pen like an upright scale, the mirror

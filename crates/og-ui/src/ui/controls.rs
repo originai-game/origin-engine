@@ -24,7 +24,8 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let step = desc.step.unwrap_or(t.type_ramp.body);
+        let mut step = desc.step.unwrap_or(t.type_ramp.body);
+        step.uppercase |= desc.uppercase;
         let fit = desc.fit_min.map_or_else(Vec::new, |min| {
             crate::style_file::fit_steps(&t.type_ramp, step, min)
         });

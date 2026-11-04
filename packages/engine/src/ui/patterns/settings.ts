@@ -66,7 +66,7 @@ export function settingsTree(world: Api.World, id: string, desc: Api.SettingsTre
       radius: portrait ? 999 : Math.max(4, t.small),
       semantics: { role: "tab", name: p.label ?? k, selected: on },
     }, () => {
-      text("Label", (p.label ?? k).toLocaleUpperCase(), { step: st(portrait ? 13 : 15), font: "display", nowrap: true, color: on ? "primary" : "inkMuted" });
+      text("Label", p.label ?? k, { uppercase: true, step: st(portrait ? 13 : 15), font: "display", nowrap: true, color: on ? "primary" : "inkMuted" });
       if (!portrait) {
         kit.open("Line", { width: grow(), height: px(Math.max(2, u(3))) });
         kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: on ? token("primary") : token("ink", 0) }], ...(on ? { effects: [glow(u(6), token("primary", 0.5), 0)] } : {}) });
@@ -100,7 +100,7 @@ export function settingsTree(world: Api.World, id: string, desc: Api.SettingsTre
     if (!binding) {
       kit.column("Words", { width: grow(), gap: u(2) }, () => {
         kit.row("Name", { gap: u(8), cross: "center", width: grow() }, () => {
-          text("Text", (e.label ?? k).toLocaleUpperCase(), { step: st(phone ? 14 : 15), font: "display", width: grow(), maxLines: 2, color: e.disabled ? "inkFaint" : "ink" });
+          text("Text", e.label ?? k, { uppercase: true, step: st(phone ? 14 : 15), font: "display", width: grow(), maxLines: 2, color: e.disabled ? "inkFaint" : "ink" });
           if (e.dirty) {
             kit.open("Changed", { width: px(u(8)), height: px(u(8)) });
             kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("highlight") }] });

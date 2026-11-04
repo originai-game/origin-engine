@@ -85,7 +85,7 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
         fills: [{ kind: "image", texture: desc.image, fit: "cover", tint: { token: "ink", alpha: 0.35 } }],
       }, absolute({ start: 0, top: 0 }));
     }
-    if (desc.eyebrow) text("Eyebrow", desc.eyebrow.toUpperCase(), { step: ts(14), color: kind === "title" ? token("ink") : lit(mix(bandInk, { r: 1, g: 1, b: 1, a: 1 }, 0.35)), nowrap: true, outline: 1.2 });
+    if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { uppercase: true, step: ts(14), color: kind === "title" ? token("ink") : lit(mix(bandInk, { r: 1, g: 1, b: 1, a: 1 }, 0.35)), nowrap: true, outline: 1.2 });
     // The title: a title card fades up; a wave or a plate slams in from large and settles.
     const slam = kind !== "title" && !still;
     const s = phase === "entering" && slam ? 1 + 0.9 * (1 - easeBack(x, 2.2)) : 1;
@@ -143,7 +143,7 @@ export function ribbon(id: string, desc: Api.UiRibbonDesc = {}): void {
     // The container clips the band to the chord across its corner: a longer
     // text (pseudo-locale, 200 %) moves the band out from the corner and
     // lengthens it until the chord holds the text.
-    const label = (desc.text ?? "").toUpperCase();
+    const label = desc.text ?? "";
     const st = stepSize(ts(13));
     const reach = Math.max(70, (label.length * st.size * 0.7 + 24) / Math.SQRT2);
     const bandW = Math.max(150, Math.ceil(reach * Math.SQRT2 + 40));
@@ -152,7 +152,7 @@ export function ribbon(id: string, desc: Api.UiRibbonDesc = {}): void {
       fills: [vgrad([[0, lit(fill)], [1, lit(dark)]])],
       strokes: [stroke(1, token("sheen", 0.4), "inside"), stroke(1, lit(dark), "outside", { dash: 3, gap: 2 })],
       effects: [drop(2, 4, token("shadow", 0.45))],
-    }, () => text("Text", label, { step: ts(13), font: "display", color: ink, nowrap: true }), {
+    }, () => text("Text", label, { uppercase: true, step: ts(13), font: "display", color: ink, nowrap: true }), {
       position: "absolute",
       insets: { ...(top ? { top: Math.round(reach / 2 - bandH / 2) } : { bottom: Math.round(reach / 2 - bandH / 2) }), ...(right ? { end: Math.round(reach / 2 - bandW / 2) } : { start: Math.round(reach / 2 - bandW / 2) }) },
       transform: { rotate: rot },
@@ -174,7 +174,7 @@ export function ribbon(id: string, desc: Api.UiRibbonDesc = {}): void {
       strokes: [stroke(3, lit(fill), "inside"), stroke(1.5, lit(fill, 0.8), "outside")],
       effects: [drop(4, 10, token("shadow", 0.4))],
     }, () => {
-      text("Text", (desc.text ?? "").toUpperCase(), { step: ts(22), font: "display", color: lit(fill), nowrap: true, outline: 1 });
+      text("Text", desc.text ?? "", { uppercase: true, step: ts(22), font: "display", color: lit(fill), nowrap: true, outline: 1 });
       if (age === land) kit.particles({ burst: 18, fire: true, colors: [lit(fill, 0.8), token("inkMuted")], travelMin: 20, travelMax: 70, size: { x: 5, y: 5 }, shape: "circle", from: "edges" });
       else kit.particles({ burst: 18, fire: false, colors: [lit(fill)], from: "edges" });
     }, {

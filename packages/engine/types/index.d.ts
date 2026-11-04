@@ -23277,6 +23277,12 @@ export interface LabelDesc {
    */
   readonly onScene?: boolean;
   /**
+   * Uppercase in the UI's locale before it is measured (Turkish i to İ, Greek without its accents), as a type role with `case upper` is; the probe and screen readers keep the source text. Never uppercase in game code: String.toUpperCase knows no locale.
+   *
+   * @default false
+   */
+  readonly uppercase?: boolean;
+  /**
    * How the lines align.
    *
    * @default "start"

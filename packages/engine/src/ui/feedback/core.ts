@@ -460,7 +460,7 @@ export function icon(id: string, name: string, size: number, tint: Paint, label 
     fills: [solid({ ...tint, alpha: (tint.alpha ?? 1) * 0.22 })],
     strokes: [stroke(Math.max(1.5, size / 14), tint)],
   }, () => {
-    if (name) text("Mark", name.slice(0, 1).toUpperCase(), { step: tsFit(size >= 30 ? 16 : 13, size * 0.6), color: tint, nowrap: true, font: "display" });
+    if (name) text("Mark", [...name][0] ?? "", { uppercase: true, step: tsFit(size >= 30 ? 16 : 13, size * 0.6), color: tint, nowrap: true, font: "display" });
   }, label ? { a11y: a11y("image", label) } : undefined);
 }
 

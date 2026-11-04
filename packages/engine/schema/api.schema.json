@@ -46339,6 +46339,11 @@
           "description": "Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container.",
           "default": false
         },
+        "uppercase": {
+          "type": "boolean",
+          "description": "Uppercase in the UI's locale before it is measured (Turkish i to İ, Greek without its accents), as a type role with `case upper` is; the probe and screen readers keep the source text. Never uppercase in game code: String.toUpperCase knows no locale.",
+          "default": false
+        },
         "align": {
           "$ref": "#/$defs/TextAlign",
           "description": "How the lines align.",

@@ -147,7 +147,7 @@ function card(
 
   // The words.
   kit.column("Text", { width: { kind: "grow" }, gap: 2 }, () => {
-    if (it.eyebrow) text("Eyebrow", it.eyebrow.toUpperCase(), { step: ts(13), color: lit(variant === "achievement" ? role("gold") : accent), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+    if (it.eyebrow) text("Eyebrow", it.eyebrow, { uppercase: true, step: ts(13), color: lit(variant === "achievement" ? role("gold") : accent), nowrap: true, ellipsis: true, width: { kind: "grow" } });
     kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
       // At a large text size the title wraps to a second line and the body to a third, rather than stub (§15.4).
       const big = textScale() >= 1.5;

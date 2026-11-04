@@ -371,13 +371,14 @@ const INKS: ReadonlyMap<string, number> = new Map([["ink", 1], ["inkMuted", 0.82
  * panel (LabelDesc.onScene): the ink roles become the style's sceneInk, at their emphasis, with its sceneShadow
  * separation, so a light style's dark ink never lands on dark art.
  */
-export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number; fitMin?: Api.TypeStepName; onScene?: boolean } = {}): void {
+export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number; fitMin?: Api.TypeStepName; onScene?: boolean; uppercase?: boolean } = {}): void {
   const scene = d.onScene ? INKS.get(typeof d.color === "string" ? d.color : d.color === undefined ? "ink" : "") : undefined;
   const color = scene !== undefined ? token("sceneInk", scene) : d.color === undefined ? token("ink") : typeof d.color === "string" ? token(d.color) : paint(d.color);
   kit.label(id, value, {
     step: d.step ?? "body",
     color,
     ...(d.onScene ? { onScene: true } : {}),
+    ...(d.uppercase ? { uppercase: true } : {}),
     nowrap: d.nowrap ?? false,
     ellipsis: d.ellipsis ?? false,
     align: d.align ?? "start",

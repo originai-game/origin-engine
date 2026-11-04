@@ -476,6 +476,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | The type step. |
 | `color` | paint | label, icon | Its ink. |
 | `onScene` | bool | label | Scene ink and separation shadow. |
+| `uppercase` | bool | label | Uppercase in the UI's locale, as a type role with `case upper` is. |
 | `secondary` | name | icon | The second icon layer, in the same atlas. |
 | `secondaryTint` | paint | icon | The second layer's ink; accent by default. |
 | `textAlign` | start \| center \| end | label | How its lines align. |

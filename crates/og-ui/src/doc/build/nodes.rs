@@ -226,6 +226,7 @@ impl Ui {
                     }),
                     color: r.color("color"),
                     on_scene: r.flag("onScene"),
+                    uppercase: r.flag("uppercase"),
                     align: match r.str("textAlign") {
                         Some("center") => TextAlign::Center,
                         Some("end") => TextAlign::End,

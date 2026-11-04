@@ -609,7 +609,7 @@ export function inside(r: Api.UiRect | null, x: number, y: number): boolean {
 
 /** A small caps label over a section (a pattern's eyebrow). */
 export function eyebrow(id: string, s: string, color: Api.ThemeColor | Rgba = "inkMuted"): void {
-  text(id, s.toLocaleUpperCase(), { step: "caption", color, nowrap: true, ellipsis: true, font: "display" });
+  text(id, s, { uppercase: true, step: "caption", color, nowrap: true, ellipsis: true, font: "display" });
 }
 
 /** A hairline across its parent in the line colour. */
