@@ -223,8 +223,16 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // The tail's transmittance times the front layer's (oit.rs REVEAL_FORMAT).
   let reveal = clamp(reactive.r * reactive.g, 0.0, 1.0);
   let a = 1.0 - (1.0 - taa.params.x * near) * reveal;
-  let wc = a / (1.0 + dot(cur, LUMA));
-  let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));
+  // Compute anti-flicker weights after neighbourhood clipping, using
+  // compressed luminance. Raw HDR weights erase bright subpixel coverage
+  // against dark history; compression bounds that bias to 2:1. Blend the
+  // original HDR colours below, not compressed or display-mapped colours.
+  // See Tardif, Temporal Antialiasing Starter Pack, Resolve:
+  // https://alextardif.com/TAA.html. Formula here compresses luma directly.
+  let lc = max(dot(cur, LUMA), 0.0);
+  let lh = max(dot(hist, LUMA), 0.0);
+  let wc = a / (1.0 + lc / (1.0 + lc));
+  let wh = (1.0 - a) / (1.0 + lh / (1.0 + lh));
   return vec4<f32>((cur * wc + hist * wh) / (wc + wh), (cur4.a * wc + hist_a * wh) / (wc + wh));
 }
 
