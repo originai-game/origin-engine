@@ -172,7 +172,13 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   finished its whole scope (the owner, 2026-11-02 latest: thirteen at once
   stalled threads and hit rate limits). Each wave starts fresh threads,
   each owning several related items end to end, so efficiency comes from
-  fewer threads that talk less: an author sends finished heads to
+  fewer threads that talk less. Work is cut large and submitted rarely
+  (the owner, 2026-11-04, to shorten macrunner's queue): one thread owns
+  a whole feature area, works through its items on one branch, checks
+  them on its orb, and sends macrunner one head for the area, or at most
+  a few heads at natural milestones, never one per item or per fix; a
+  review note from art or macrunner is answered on the same branch and
+  resent once. An author sends those heads to
   macrunner itself and reports to the coordinator only when an item is
   done or blocked, never per batch. Earlier instructions:
   2026-10-23, eight at once was too many while gates ran beside each
