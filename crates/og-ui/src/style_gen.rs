@@ -2102,6 +2102,8 @@ pub fn seeds() -> Vec<StyleChoices> {
                 // take the plain ink: the pill is the mark there.
                 ("Tabs.tab[selected][pill]", &["fill none", "stroke none"]),
                 ("Button.base[danger]", &["fill \"#9e0f14\"", "stroke none"]),
+                // A slider is a signal bar: twelve segments, whole ones lit.
+                ("Slider.track", &["segments 12 2"]),
             ]),
             ..seed(
                 "cyber",

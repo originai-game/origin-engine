@@ -1089,3 +1089,64 @@ fn slice_none_drops_a_less_specific_dressings_art() {
     assert!(danger.frame.slice.is_none(), "slice none");
     assert!(!danger.draw.fills.is_empty(), "its fill is what draws");
 }
+
+#[test]
+fn a_segmented_track_fills_whole_segments_along_its_ramp() {
+    // Wrong: the fill cut mid-segment at the value, every filled segment in
+    // one colour, or the segments not reaching the track's end.
+    let mut ui = dressed(
+        "dress \"Slider.track\" {\n  segments 5 4 ramp \"#ff0000\" \"#0000ff\"\n}\ndress \"Slider.fill\" {\n  stroke none\n  effect none\n}\n",
+    );
+    let mut v = 0.45;
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.slider(
+            "Volume",
+            &mut v,
+            SliderDesc {
+                width: Some(Size::Fixed(304.0)),
+                ..SliderDesc::default()
+            },
+        );
+        ui.end();
+    }
+    let e = ui.frame().element("Volume").unwrap().clone();
+    let fills: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| i.cmd.filled())
+        .filter(|(r, _)| {
+            r.x >= e.x - 0.5
+                && r.right() <= e.x + e.width + 0.5
+                && r.width < 64.0
+                && r.height < 12.0
+        })
+        .collect();
+    // Five segments of 57.6 px, 4 px apart, then two filled (0.45 × 5 is
+    // 2.25: the nearest whole segment count is 2) in red and a quarter blue.
+    let mut xs: Vec<f32> = fills.iter().map(|(r, _)| r.x.round()).collect();
+    xs.sort_by(f32::total_cmp);
+    xs.dedup();
+    assert_eq!(xs.len(), 5, "segments at {xs:?}");
+    let last = fills.iter().map(|(r, _)| r.right()).fold(0.0, f32::max);
+    assert!(
+        (last - (e.x + e.width)).abs() <= 1.0,
+        "the last segment ends at the track's end"
+    );
+    let red = Srgba::rgb(255, 0, 0);
+    let quarter = red.mix(Srgba::rgb(0, 0, 255), 0.25);
+    assert!(
+        fills.iter().any(|(_, c)| near(*c, red)),
+        "the first filled segment is the ramp's start"
+    );
+    assert!(
+        fills.iter().any(|(_, c)| near(*c, quarter)),
+        "the second a quarter along it"
+    );
+    let mid = red.mix(Srgba::rgb(0, 0, 255), 0.5);
+    assert!(
+        !fills.iter().any(|(_, c)| near(*c, mid)),
+        "no third segment filled"
+    );
+}

@@ -288,6 +288,38 @@ impl Ui {
         Rect::new(cx - fw / 2.0, cy - fh / 2.0, fw, fh)
     }
 
+    /// A track and its fill in segments, when the track's dressing sets
+    /// `segments` (else nothing, and `false`): every segment of `track` in
+    /// the track part, the nearest whole number of them to `value` in the
+    /// fill part, each in its ramp's colour.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn segment_commands(
+        &self,
+        tp: &crate::dress::PartRef,
+        fp: &crate::dress::PartRef,
+        track: Rect,
+        value: f32,
+        fills: (Srgba, Srgba),
+        alpha: f32,
+        clip: Rect,
+        cmds: &mut Vec<DrawCmd>,
+    ) -> bool {
+        let Some(seg) = self.dress.resolve(tp).draw.segments else {
+            return false;
+        };
+        let dpr = self.viewport.dpr();
+        let on = seg.filled(value);
+        for (k, r) in seg.rects(track).into_iter().enumerate() {
+            let r = r.snapped(dpr);
+            self.part_commands(tp, r, Some(fills.0), alpha, clip, cmds);
+            if (k as u32) < on {
+                let c = seg.color(k as u32, fills.1, &self.theme);
+                self.part_commands(fp, r, Some(c), alpha, clip, cmds);
+            }
+        }
+        true
+    }
+
     pub(crate) fn part_commands(
         &self,
         part: &crate::dress::PartRef,

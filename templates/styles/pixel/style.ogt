@@ -308,3 +308,6 @@ dress "Tabs.tab[selected]" {
 dress "Slot.frame[selected]" {
   stroke 2 primary inside
 }
+dress "Slider.track" {
+  segments 10 2 ramp primaryActive primary
+}

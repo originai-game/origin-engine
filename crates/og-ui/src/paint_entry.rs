@@ -737,6 +737,33 @@ pub fn ornaments_from_entry(e: &Entry) -> Result<Vec<OrnamentKind>, String> {
     Ok(out)
 }
 
+/// `segments <count> <gap> [ramp <from> <to>]` ([`crate::dress::Segments`]).
+pub fn segments_from_entry(
+    e: &Entry,
+    ctx: &AtlasContext,
+) -> Result<crate::dress::Segments, String> {
+    let mut c = Cursor::of(e, ctx);
+    let n = c.num()?;
+    if !(2.0..=64.0).contains(&n) || n.fract() != 0.0 {
+        return Err(c.err("takes a whole count of 2 to 64 segments"));
+    }
+    let gap = c.num()?;
+    if !(0.0..=32.0).contains(&gap) {
+        return Err(c.err("takes a gap of 0 to 32 CSS px"));
+    }
+    let ramp = if c.eat("ramp") {
+        Some([c.color()?, c.color()?])
+    } else {
+        None
+    };
+    c.end()?;
+    Ok(crate::dress::Segments {
+        count: n as u32,
+        gap,
+        ramp,
+    })
+}
+
 /// `sound <event> "<asset>"`.
 pub fn sound_from_entry(e: &Entry) -> Result<(SoundEvent, String), String> {
     let mut c = Cursor::new(e, 0);

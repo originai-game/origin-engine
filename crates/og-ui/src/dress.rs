@@ -47,8 +47,8 @@ use og_core::ogt::Entry;
 use std::fmt;
 
 /// The dressing keys of the UI pass's types ([`DressDraw`]).
-pub const DRAW_KEYS: [&str; 8] = [
-    "fill", "stroke", "effect", "material", "ornament", "blend", "mask", "sound",
+pub const DRAW_KEYS: [&str; 9] = [
+    "fill", "stroke", "effect", "material", "ornament", "blend", "mask", "sound", "segments",
 ];
 
 /// `Component.part[flag][key=value]…`.
@@ -271,6 +271,50 @@ pub struct DressDraw {
     /// `fill none`, `stroke none`, `effect none` ([`CLEAR_FILLS`]…): the
     /// part draws none of them, not the tokens' default.
     pub cleared: u8,
+    /// `segments <count> <gap> [ramp <from> <to>]`, on a slider's or a
+    /// meter's track: the track drawn as segments, filled whole ones.
+    pub segments: Option<Segments>,
+}
+
+/// A track drawn as `count` segments `gap` CSS px apart, its fill a whole
+/// number of segments (the nearest to the value); with `ramp`, filled
+/// segment k in `from` mixed towards `to` by k / (count − 1) (cyber's
+/// signal bars, a pixel meter's blocks).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Segments {
+    pub count: u32,
+    pub gap: f32,
+    pub ramp: Option<[ColorRef; 2]>,
+}
+
+impl Segments {
+    /// The segments' rects across `track`, start to end.
+    pub fn rects(&self, track: crate::Rect) -> Vec<crate::Rect> {
+        let n = self.count.max(1) as f32;
+        let gap = self.gap.min(track.width / n / 2.0).max(0.0);
+        let w = ((track.width - gap * (n - 1.0)) / n).max(0.0);
+        (0..self.count)
+            .map(|k| crate::Rect::new(track.x + k as f32 * (w + gap), track.y, w, track.height))
+            .collect()
+    }
+
+    /// How many segments a value 0–1 fills: the nearest whole number.
+    pub fn filled(&self, value: f32) -> u32 {
+        ((value.clamp(0.0, 1.0) * self.count as f32).round() as u32).min(self.count)
+    }
+
+    /// Filled segment `k`'s colour on its ramp, or `fill`.
+    pub fn color(&self, k: u32, fill: Srgba, theme: &Theme) -> Srgba {
+        let Some([a, b]) = &self.ramp else {
+            return fill;
+        };
+        let of = |c: &ColorRef| match c {
+            ColorRef::Token { name, alpha } => theme.color(name).map_or(fill, |c| c.fade(*alpha)),
+            ColorRef::Literal(c) => *c,
+        };
+        let t = k as f32 / (self.count.max(2) - 1) as f32;
+        of(a).mix(of(b), t)
+    }
 }
 
 /// The handle an unbound vector fill carries until its style's assets load.
@@ -364,6 +408,7 @@ impl DressDraw {
             "ornament" => self.ornaments = crate::paint_entry::ornaments_from_entry(e)?,
             "blend" => self.blend = Some(crate::paint_entry::blend_from_entry(e)?),
             "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),
+            "segments" => self.segments = Some(crate::paint_entry::segments_from_entry(e, atlas)?),
             "sound" => {
                 let (s, path) = crate::paint_entry::sound_from_entry(e)?;
                 self.sounds.retain(|(k, _)| *k != s);
@@ -654,6 +699,9 @@ impl DressSet {
             b.blend = a.blend.or(b.blend);
             if a.mask.is_some() {
                 b.mask = a.mask.clone();
+            }
+            if a.segments.is_some() {
+                b.segments = a.segments.clone();
             }
             for (e, s) in &a.sounds {
                 b.sounds.retain(|(k, _)| k != e);

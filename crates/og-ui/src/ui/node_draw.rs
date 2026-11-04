@@ -183,11 +183,14 @@ impl Ui {
         match n.widget {
             Widget::Progress { value } => {
                 let track = PartRef::new("Meter", "track", C::Bar);
-                self.part_commands(&track, rect, Some(p.control_strong), alpha, clip, cmds);
-                if value > 0.0 {
-                    let fill = PartRef::new("Meter", "fill", C::Bar).attr("kind", "primary");
-                    let r = bar(rect, value, fill);
-                    self.part_commands(&fill, r, Some(p.primary), alpha, clip, cmds);
+                let fill = PartRef::new("Meter", "fill", C::Bar).attr("kind", "primary");
+                let fills = (p.control_strong, p.primary);
+                if !self.segment_commands(&track, &fill, rect, value, fills, alpha, clip, cmds) {
+                    self.part_commands(&track, rect, Some(p.control_strong), alpha, clip, cmds);
+                    if value > 0.0 {
+                        let r = bar(rect, value, fill);
+                        self.part_commands(&fill, r, Some(p.primary), alpha, clip, cmds);
+                    }
                 }
             }
             Widget::Slider { t: v, active } => {
@@ -196,12 +199,15 @@ impl Ui {
                 let cy = rect.y + rect.height / 2.0;
                 let track = Rect::new(rect.x, cy - track_h / 2.0, rect.width, track_h).snapped(dpr);
                 let tp = PartRef::new("Slider", "track", C::Bar);
-                self.part_commands(&tp, track, Some(p.control_strong), alpha, clip, cmds);
                 let tx = rect.x + v * (rect.width - thumb).max(0.0);
                 let fp = PartRef::new("Slider", "fill", C::Bar);
-                let filled =
-                    Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr);
-                self.part_commands(&fp, filled, Some(p.primary), alpha, clip, cmds);
+                let fills = (p.control_strong, p.primary);
+                if !self.segment_commands(&tp, &fp, track, v, fills, alpha, clip, cmds) {
+                    self.part_commands(&tp, track, Some(p.control_strong), alpha, clip, cmds);
+                    let filled =
+                        Rect::new(rect.x, track.y, tx + thumb / 2.0 - rect.x, track_h).snapped(dpr);
+                    self.part_commands(&fp, filled, Some(p.primary), alpha, clip, cmds);
+                }
                 let mut knob = Rect::new(tx, cy - thumb / 2.0, thumb, thumb);
                 if active {
                     knob = knob.scaled(t.press_scale);

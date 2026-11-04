@@ -288,6 +288,9 @@ dress "Button.base[danger]" {
   fill "#9e0f14"
   stroke none
 }
+dress "Slider.track" {
+  segments 12 2
+}
 dress "Card.frame" {
   slice 99 1 96 96 20 20 20 20 authored
   tone 0.005 0.005 0.005 1
