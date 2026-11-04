@@ -152,7 +152,9 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
   if (it.equipped) marks.push(["Equipped", () => symbol("Sym", "check", mk, role("success"))]);
   if (it.fresh) marks.push(["Fresh", () => symbol("Sym", "dot", Math.round(mk * 0.6), role("warn"))]);
   if (marks.length > 0) {
-    kit.open("Marks", { direction: "row", gap: 2, padding: xy(3, 2), radius: 4, background: token("shadow", 0.6) });
+    // The marks and the count sit on the panel's ground, which the style's inks read on: a dark wash under the ink
+    // went dark on dark in a light pack (a count at 2.47:1 on cartoon).
+    kit.open("Marks", { direction: "row", gap: 2, padding: xy(3, 2), radius: 4, background: token("panel", 0.9) });
     for (const [id, draw] of marks) {
       kit.open(id, { direction: "row" });
       draw();
@@ -164,7 +166,7 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
   const stacks = (it.maxStack ?? 0) > 1;
   const count = it.count ?? 0;
   if (count >= 2 || (stacks && count >= 1)) {
-    kit.open("Count", { direction: "row", padding: xy(4, 0), radius: 4, background: token("shadow", 0.72), part: "Inventory.count", partClass: "badge" });
+    kit.open("Count", { direction: "row", padding: xy(4, 0), radius: 4, background: token("panel", 0.9), part: "Inventory.count", partClass: "badge" });
     text("Text", count.toString(), { step: st(12), nowrap: true, font: "mono", color: count >= (it.maxStack ?? Infinity) ? "warn" : "ink" });
     kit.close();
     over({ insets: { end: 3, bottom: it.charge !== undefined && it.charge !== null ? 7 : 3 }, inert: true });

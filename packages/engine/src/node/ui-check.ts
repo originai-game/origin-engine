@@ -594,9 +594,9 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     const bar = high ? 7 : 3;
     for (const b of textBoxes(opts.image, scaled, new Set(), (n) => laidInk(f, f.elements[n]!))) {
       if (b.contrast >= (high ? 7 : 4.5)) continue;
-      const i = scaled.elements.findIndex((e) => e.id === b.id && e.text === b.text);
-      if (i >= 0 && !gated(f, f.elements[i]!)) continue;
-      const path = i >= 0 ? paths[i]! : b.id;
+      const i = b.index;
+      if (!gated(f, f.elements[i]!)) continue;
+      const path = paths[i]!;
       const error = b.contrast < bar;
       add("contrast", {
         ...(error ? {} : { severity: "warning" as const }),
@@ -888,6 +888,8 @@ export const pct = (xs: number[], p: number) => {
 };
 
 export interface TextBox {
+  /** The element's index in the dump: ids repeat (every label's own "Text"), so a box is found by it. */
+  index: number;
   id: string;
   text: string;
   contrast: number;
@@ -919,21 +921,27 @@ export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">,
 }
 
 /**
- * Whether the layout draws an element's text at full ink where it can be
- * read: a run of it drawn at half its colour's alpha or more (not faded out,
+ * The luminance of the ink the layout draws an element's text in, where it
+ * can be read (null where it draws none): a run of it drawn at half its colour's alpha or more (not faded out,
  * not mid-fade) with at least 60 % of its line's height and 6 px of its width
  * in view. Such text is measured even when a scroll cuts its element, and
  * when it shows no ink at all it reads 1:1: the most invisible line is the
  * one that most needs reporting ("Inventory" in navy on indigo).
  */
-function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): boolean {
-  return f.texts.some((t) => {
-    if ((t.color[3] ?? 1) < 0.5) return false;
+function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | null {
+  // The run most in view gives the ink (a meter's label is two runs in two inks, each clipped to its part).
+  let best: number | null = null, most = 0;
+  for (const t of f.texts) {
+    if ((t.color[3] ?? 1) < 0.5) continue;
     const [bx, by, bw, bh] = t.bounds;
     const x0 = Math.max(bx, t.clip[0], e.x - 1), y0 = Math.max(by, t.clip[1], e.y - 1);
     const x1 = Math.min(bx + bw, t.clip[0] + t.clip[2], e.x + e.width + 1), y1 = Math.min(by + bh, t.clip[1] + t.clip[3], e.y + e.height + 1);
-    return y1 - y0 >= 0.6 * bh && x1 - x0 >= 6;
-  });
+    if (y1 - y0 < 0.6 * bh || x1 - x0 < 6 || (x1 - x0) * (y1 - y0) <= most) continue;
+    most = (x1 - x0) * (y1 - y0);
+    // The run's colour is linear RGB: its relative luminance directly.
+    best = 0.2126 * t.color[0]! + 0.7152 * t.color[1]! + 0.0722 * t.color[2]!;
+  }
+  return best;
 }
 
 function readsAsText(e: UiElementDump, byId: Map<string, UiElementDump>, laid = false): boolean {
@@ -982,15 +990,19 @@ function behindScrim(ui: UiDump): Set<number> {
  * letters show, not its antialiased edges diluted by the empty rest. A
  * rectangle with no ink is not drawn (covered by a transition, faded out)
  * and is left out, unless `laid` says the layout draws it at full ink: then
- * it is measured cut by a scroll too, and no ink reads 1:1. `moving`
+ * it is measured cut by a scroll too, no ink reads 1:1, and its known ink
+ * says which side of the ground the glyphs are on (a vote of the pixels is
+ * a coin toss on a textured ground: cartoon's dark "Inventory" read as
+ * light, 1.74:1 for 5.6:1). `moving`
  * (indices) are mid-transition and left out too.
  */
-export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => boolean = () => false): TextBox[] {
+export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => number | null = () => null): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
-    const drawn = laid(n);
+    const known = laid(n);
+    const drawn = known !== null;
     if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
@@ -1004,13 +1016,15 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
       lum.push(luminance(img.rgba[i]!, img.rgba[i + 1]!, img.rgba[i + 2]!));
     }
     const ground = median(lum);
-    const dev = lum.map((v) => Math.abs(v - ground));
+    // The glyphs' side of the ground: the known ink's, else the side most of the strong pixels are.
+    const side = known === null ? null : known > ground;
+    const dev = lum.map((v) => (side === null || v > ground === side ? Math.abs(v - ground) : 0));
     // The strongest ink (a few pixels short of the very farthest, so one
     // stray pixel does not set it), then the glyphs: every pixel at least
-    // half-way to it, on the side most of them are.
+    // half-way to it, on that side.
     const peak = pct(dev, 0.998);
     if (peak < 0.01) {
-      if (drawn) out.push({ id: e.id, text: e.text, contrast: 1, ink: 0 });
+      if (drawn) out.push({ index: n, id: e.id, text: e.text, contrast: 1, ink: 0 });
       continue;
     }
     let up = 0, down = 0;
@@ -1019,7 +1033,7 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
       if (lum[k]! > ground) up++;
       else down++;
     }
-    const light = up >= down;
+    const light = side ?? up >= down;
     const glyphs: number[] = [];
     for (let k = 0; k < lum.length; k++) if (dev[k]! >= peak / 2 && (lum[k]! > ground) === light) glyphs.push(dev[k]!);
     // Their cores: the farthest twentieth (what the 1 % farthest of a
@@ -1053,7 +1067,7 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
         run = 0;
       }
     }
-    out.push({ id: e.id, text: e.text, contrast: r2(contrast), ink: Math.max(0, ...runs.filter((h) => h >= 2)) });
+    out.push({ index: n, id: e.id, text: e.text, contrast: r2(contrast), ink: Math.max(0, ...runs.filter((h) => h >= 2)) });
   }
   return out;
 }

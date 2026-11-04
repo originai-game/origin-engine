@@ -181,6 +181,30 @@ test("text the layout draws at full ink that shows none fails at 1:1; text faded
   expect(contrast(frame({ elements: at([0, 0, 120, 14], true), texts: run(1, [0, 0, 120, 14]), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
 });
 
+test("a finding names the element measured, though ids repeat; known ink sets the glyphs' side on a speckled ground", () => {
+  type R4 = [number, number, number, number];
+  const width = 240, height = 40, rgba = new Uint8Array(width * height * 4);
+  // Left: dark strokes on a mid ground speckled with more light pixels than the strokes have (art behind a title).
+  // Right: the same strokes on an even ground at 1:1 (no ink).
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const glyph = x < 120 && y >= 12 && y < 28 && x >= 10 && x < 110 && x % 6 < 2;
+    const speck = x < 120 && !glyph && (x * 7 + y * 13) % 5 === 0;
+    const v = glyph ? 0 : speck ? 255 : 128;
+    rgba.set([v, v, v, 255], (y * width + x) * 4);
+  }
+  const img = { width, height, rgba };
+  const vp = { width, height, safeArea: [0, 0, 0, 0] as R4 };
+  const run = (x: number) => ({ text: "12", size: 16, bounds: [x + 10, 12, 100, 16] as R4, clip: [0, 0, width, height] as R4, color: [0, 0, 0, 1] });
+  const f = frame({
+    elements: [el("A", "", "row", "", [0, 0, 120, 40]), el("Text", "A", "label", "text", [0, 0, 120, 40], { text: "12" }), el("B", "", "row", "", [120, 0, 120, 40]), el("Text", "B", "label", "text", [120, 0, 120, 40], { text: "12" })],
+    texts: [run(0), run(120)],
+    grounds: [[0, 0, width, height]],
+  }, vp);
+  const found = checkFrame(f, cell, { image: img }).filter((x) => x.rule === "contrast");
+  // Only the right one fails, and by its own path: the left reads its dark strokes (5:1), not the speckles.
+  expect(found.map((x) => x.paths[0])).toEqual(["B/Text"]);
+});
+
 test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", () => {
   const t = (size: number) => [{ text: "Small", size, bounds: [10, 100, 40, 14] as [number, number, number, number], clip: [0, 0, 1920, 1080] as [number, number, number, number], color: [1, 1, 1, 1] }];
   const els = [el("Small", "", "label", "text", [10, 100, 40, 14], { text: "Small" })];
