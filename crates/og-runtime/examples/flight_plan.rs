@@ -1,6 +1,6 @@
 //! CPU-only experiment, not a runtime path. Inputs are source-locked plans and
 //! recorded poses; outputs are measurements. Never writes a world or an asset.
-use og_anim::{HumanoidMap, JointLimit, NONE, SkeletonAsset, Trs};
+use og_anim::{HumanoidMap, NONE, SkeletonAsset, Trs};
 use og_core::glam::{Quat, Vec3, Vec4};
 use og_motion::contract::Pose;
 use serde::Deserialize;
@@ -31,7 +31,6 @@ struct Plan {
     landing: usize,
     recovery: usize,
     up: [f32; 3],
-    heading: f32,
     contacts: Vec<Contact>,
     #[serde(default)]
     root: Vec<Root>,
@@ -207,6 +206,8 @@ fn weight(plan: &Plan, sample: usize) -> f32 {
         smooth(sample as f32 / plan.takeoff as f32)
     } else if sample <= plan.landing {
         1.0
+    } else if sample >= plan.recovery {
+        0.0
     } else {
         smooth((plan.recovery - sample) as f32 / (plan.recovery - plan.landing) as f32)
     }
@@ -217,287 +218,843 @@ fn lean(a: Vec3, b: Vec3, up: Vec3) -> f32 {
     og_core::math::atan2(d.cross(up).length(), d.dot(up)).to_degrees()
 }
 
-// Port of Daniel Holden's Spring-It-On (MIT), common.h and inertialization.c,
-// revision 4d97b497a78e40c7b47d49e8a9da27e4aa5616d6.
-// https://github.com/orangeduck/Spring-It-On
-// License: third_party/spring-it-on/LICENSE. Evaluate the initial offset at
-// absolute sample age, using og-core's deterministic exponential rather than
-// integrating state with render dt (or the upstream rational approximation).
-fn decay(x: Vec3, v: Vec3, half_life: f32, age: f32) -> Vec3 {
-    let y = 2.0 * std::f32::consts::LN_2 / (half_life + 0.00001);
-    (x + (v + x * y) * age) * og_core::math::exp(-y * age)
+// The whole-clip correction. Continuity is a hard per-joint step bound at
+// every sample (the recorded raw-root landing bound inside the landing
+// window, the raw step outside it), solved over all samples of the clip at
+// once in four stages instead of one sample at a time:
+//
+//  B. pelvis height, the one slack variable: per-sample intervals (the
+//     pelvis box, the reach of every hard contact) propagated through the
+//     step relation of the hips cluster and a knee proxy, then picked
+//     toward the generated height;
+//  CK. the legs: foot and knee particles per leg under exact bone lengths,
+//     pins and the step bound, free feet pulled toward their planned path;
+//  D. the rest of the body: position-based sweeps (upright cone on chest
+//     and head, step bound, bone lengths) around the fixed hips cluster,
+//     knees and feet, refit to rotations after every sweep.
+//
+// The rotation refit is the method of Müller, Bender, Chentanez and Macklin,
+// "A Robust Method to Extract the Rotational Part of Deformations" (MIG
+// 2016), applied per joint to its children's offsets; the position sweeps
+// are position-based dynamics projections (Müller et al. 2007). Both are
+// algorithms reimplemented here, not ported code.
+const SWEEPS: usize = 100;
+const PATH_ITERATIONS: usize = 2000;
+const MARGIN: f32 = 0.01;
+const CONE_DEGREES: f32 = 4.9;
+const FIT_ITERATIONS: usize = 4;
+const DISTANCE_PASSES: usize = 4;
+const KNEE_PROXY: f32 = 0.7;
+const REACH_EPSILON: f32 = 0.00001;
+
+struct Leg {
+    id: usize,
+    hip: usize,
+    knee: usize,
+    foot: usize,
 }
 
-fn rotation_vector(mut q: Quat) -> Vec3 {
-    if q.w < 0.0 {
-        q = -q;
-    }
-    let v = Vec3::new(q.x, q.y, q.z);
-    let length = v.length();
-    if length == 0.0 {
-        Vec3::ZERO
-    } else {
-        v * (2.0 * og_core::math::atan2(length, q.w) / length)
-    }
+/// The hips and everything below them, by the humanoid map.
+struct Body {
+    hips: usize,
+    chest: usize,
+    head: usize,
+    legs: [Leg; 2],
+    /// The hips and their descendants, parents first.
+    order: Vec<usize>,
+    children: Vec<Vec<usize>>,
+    /// Joints the body sweep never moves: the hips cluster, knees and feet.
+    fixed: Vec<bool>,
 }
 
-fn rotation(v: Vec3) -> Quat {
-    let length = v.length();
-    if length == 0.0 {
-        Quat::IDENTITY
-    } else {
-        og_core::math::quat_from_axis_angle(v / length, length)
-    }
-}
-
-fn inertialize(raw: &[Vec<Trs>], base: &[Vec<Trs>], plan: &Plan, through: usize) -> Vec<Vec<Trs>> {
-    let mut output: Vec<Vec<Trs>> = Vec::new();
-    let mut offsets = vec![(Vec3::ZERO, Vec3::ZERO, Vec3::ZERO, Vec3::ZERO); raw[0].len()];
-    let mut transition = 0;
-    let half_life = (plan.recovery - plan.landing) as f32 / 60.0;
-    for t in 0..=through {
-        let mut frame = raw[t].clone();
-        let boundary = t == plan.takeoff
-            || t == plan.landing
-            || t == plan.recovery
-            || plan.contacts.iter().any(|c| t == c.begin || t == c.end);
-        if t > 0 && boundary {
-            transition = t;
-            for j in 0..frame.len() {
-                // Smooth the correction, not the underlying recorded motion.
-                // Otherwise a change of correction also damps real root travel.
-                let delta = |p: Trs, time: usize| Trs {
-                    translation: p.translation - base[time][j].translation,
-                    rotation: p.rotation * base[time][j].rotation.conjugate(),
-                    scale: Vec3::ONE,
-                };
-                let before = delta(output[t - 1][j], t - 1);
-                let earlier = delta(output[t.saturating_sub(2)][j], t.saturating_sub(2));
-                let next_time = (t + 1).min(raw.len() - 1);
-                let next = delta(raw[next_time][j], next_time);
-                let current = delta(frame[j], t);
-                let src_v = rotation_vector(before.rotation * earlier.rotation.conjugate()) * 30.0;
-                let dst_v = rotation_vector(next.rotation * current.rotation.conjugate()) * 30.0;
-                let src_pv = (before.translation - earlier.translation) * 30.0;
-                let dst_pv = (next.translation - current.translation) * 30.0;
-                offsets[j] = (
-                    rotation_vector(
-                        rotation(src_v / 30.0) * before.rotation * current.rotation.conjugate(),
-                    ),
-                    src_v - dst_v,
-                    before.translation + src_pv / 30.0 - current.translation,
-                    src_pv - dst_pv,
-                );
+impl Body {
+    fn new(skeleton: &SkeletonAsset, map: &HumanoidMap) -> Body {
+        let node = |name: &str| map.node(name).unwrap() as usize;
+        let hips = node("hips");
+        let n = skeleton.nodes.len();
+        let mut below = vec![false; n];
+        let mut order = Vec::new();
+        let mut children = vec![Vec::new(); n];
+        for (j, s) in skeleton.nodes.iter().enumerate() {
+            if j == hips || (s.parent != NONE && below[s.parent as usize]) {
+                below[j] = true;
+                order.push(j);
+                if j != hips {
+                    children[s.parent as usize].push(j);
+                }
             }
         }
-        let age = (t - transition) as f32 / 30.0;
-        for (j, p) in frame.iter_mut().enumerate() {
-            let (r, v, x, pv) = offsets[j];
-            p.rotation = og_anim::unit(rotation(decay(r, v, half_life, age)) * p.rotation);
-            p.translation += decay(x, pv, half_life, age);
+        let legs = ["left", "right"].map(|side| Leg {
+            id: if side == "left" { 24 } else { 28 },
+            hip: node(&format!("{side}UpperLeg")),
+            knee: node(&format!("{side}LowerLeg")),
+            foot: node(&format!("{side}Foot")),
+        });
+        let mut fixed = vec![false; n];
+        fixed[hips] = true;
+        for &c in &children[hips] {
+            fixed[c] = true;
         }
-        output.push(frame);
+        for leg in &legs {
+            fixed[leg.knee] = true;
+            fixed[leg.foot] = true;
+        }
+        Body {
+            hips,
+            chest: node("chest"),
+            head: node("head"),
+            legs,
+            order,
+            children,
+            fixed,
+        }
     }
-    output
 }
 
-fn solve(
-    skeleton: &SkeletonAsset,
-    base: &[Trs],
-    map: &HumanoidMap,
-    plan: &Plan,
-    sample: usize,
-    scale: f32,
-) -> (Vec<Trs>, usize) {
-    let mut pose = base.to_vec();
-    let hips = map.node("hips").unwrap();
-    let chest = map.node("chest").unwrap();
-    let head = map.node("head").unwrap();
-    let up = Vec3::from_array(plan.up);
-    let mut conflicts = 0;
-    // Fixed-order alternating chest/head constraints. Existing FABRIK keeps
-    // translations/rest lengths; its joint-limit path handles constrained reach.
-    for _ in 0..4 {
-        for tip in [chest, head] {
-            let mut chain = vec![tip];
-            while *chain.last().unwrap() != hips {
-                chain.push(skeleton.nodes[*chain.last().unwrap() as usize].parent);
+fn contact_window(plan: &Plan, contact: &Contact) -> (usize, usize) {
+    let approach = if contact.begin >= plan.landing {
+        plan.apex
+    } else {
+        0
+    };
+    let release = if contact.end <= plan.takeoff {
+        plan.takeoff
+    } else {
+        plan.recovery
+    };
+    (approach, release)
+}
+
+/// The planned foot position at `sample`: the generated foot, approaching
+/// the authored anchor during flight before a hard contact (whose schedule
+/// never fades or follows generated flags) and leaving it after; `true`
+/// while the contact is hard.
+fn foot_target(plan: &Plan, generated: Vec3, foot: usize, sample: usize) -> (Vec3, bool) {
+    let contact = plan
+        .contacts
+        .iter()
+        .filter(|c| c.foot == foot)
+        .filter(|c| {
+            let (approach, release) = contact_window(plan, c);
+            sample >= approach && sample < release.max(c.end)
+        })
+        .min_by_key(|c| {
+            if (c.begin..c.end).contains(&sample) {
+                0
+            } else {
+                1 + if sample < c.begin {
+                    c.begin - sample
+                } else {
+                    sample - c.end
+                }
             }
-            chain.reverse();
-            let world = skeleton.model_space(&pose);
-            let origin = world[hips as usize].translation;
-            let length = (world[tip as usize].translation - origin).length();
-            let limits: Vec<_> = chain
-                .iter()
-                .map(|&joint| {
-                    Some(JointLimit {
-                        joint,
-                        swing: if joint == hips { 1.05 } else { 0.79 },
-                        twist_min: -1.57,
-                        twist_max: 1.57,
-                        ..Default::default()
-                    })
-                })
-                .collect();
-            let result = og_anim::fabrik(
-                skeleton,
-                &mut pose,
-                &chain,
-                origin + up * length,
-                12,
-                0.0001,
-                1.0,
-                &limits,
-            );
-            conflicts += usize::from(!result.reachable);
-        }
+        });
+    let Some(contact) = contact else {
+        return (generated, false);
+    };
+    let (approach, release) = contact_window(plan, contact);
+    let anchor = Vec3::from_array(contact.anchor);
+    if sample < contact.begin {
+        let w = smooth((sample - approach) as f32 / (contact.begin - approach) as f32);
+        (generated.lerp(anchor, w), false)
+    } else if sample < contact.end {
+        (anchor, true)
+    } else {
+        let w = smooth((release - sample) as f32 / (release - contact.end) as f32);
+        (generated.lerp(anchor, w), false)
     }
-    // Blend once, after convergence. Blending every alternating projection
-    // made the effective recovery curve depend on the number of iterations.
-    for (p, original) in pose.iter_mut().zip(base) {
-        p.rotation = og_anim::nlerp(original.rotation, p.rotation, weight(plan, sample));
-    }
-    conflicts += plant(skeleton, &mut pose, base, map, plan, sample, scale);
-    (pose, conflicts)
 }
 
-fn plant(
-    skeleton: &SkeletonAsset,
-    pose: &mut [Trs],
-    base: &[Trs],
-    map: &HumanoidMap,
-    plan: &Plan,
+/// Müller 2016: the rotation `r` (from its warm start) maximising
+/// Σ (r a_i)·b_i, by at most `iterations` fixed-point steps.
+fn extract(a: &[Vec3], b: &[Vec3], mut r: Quat, iterations: usize) -> Quat {
+    for _ in 0..iterations {
+        let mut numerator = Vec3::ZERO;
+        let mut denominator = 0.0;
+        for (a, b) in a.iter().zip(b) {
+            let ra = r * *a;
+            numerator += ra.cross(*b);
+            denominator += ra.dot(*b);
+        }
+        let omega = numerator / (denominator.abs() + 1e-9);
+        let angle = omega.length();
+        if angle < 1e-10 {
+            break;
+        }
+        r = og_anim::unit(og_core::math::quat_from_axis_angle(omega / angle, angle) * r);
+    }
+    r
+}
+
+/// The perpendicular knee offset of a two-bone leg at span `s`.
+fn knee_offset(l1: f32, l2: f32, s: f32) -> f32 {
+    let s = s.clamp((l1 - l2).abs() + 1e-6, l1 + l2);
+    let a = (s * s + l1 * l1 - l2 * l2) / (2.0 * s);
+    (l1 * l1 - a * a).max(0.0).sqrt()
+}
+
+/// The span of a two-bone leg whose knee sits `h` off the hip-foot line.
+fn span_for_offset(l1: f32, l2: f32, h: f32) -> f32 {
+    let h = h.min(l1.min(l2) - 1e-6);
+    (l1 * l1 - h * h).sqrt() + (l2 * l2 - h * h).sqrt()
+}
+
+fn conflict(
+    kind: &str,
     sample: usize,
-    scale: f32,
-) -> usize {
-    let hips = map.node("hips").unwrap();
-    let mut conflicts = 0;
-    let world = skeleton.model_space(pose);
-    let base_world = skeleton.model_space(base);
-    let mut targets = Vec::new();
-    for foot in [24, 28] {
-        let side = if foot == 24 { "left" } else { "right" };
-        let chain = ["UpperLeg", "LowerLeg", "Foot"]
-            .map(|bone| map.node(&format!("{side}{bone}")).unwrap());
-        let generated = base_world[chain[2] as usize];
-        let contact = plan
-            .contacts
-            .iter()
-            .filter(|c| c.foot == foot)
-            .filter(|c| {
-                let approach = if c.begin >= plan.landing {
-                    plan.apex
-                } else {
-                    0
-                };
-                let release = if c.end <= plan.takeoff {
-                    plan.takeoff
-                } else {
-                    plan.recovery
-                };
-                sample >= approach && sample < release.max(c.end)
-            })
-            .min_by_key(|c| {
-                if (c.begin..c.end).contains(&sample) {
-                    0
-                } else {
-                    1 + if sample < c.begin {
-                        c.begin - sample
+    deficit: f32,
+    detail: serde_json::Value,
+) -> serde_json::Value {
+    let mut v = json!({"kind": kind, "sample": sample, "deficit_m": deficit});
+    if let Some(map) = detail.as_object() {
+        for (k, x) in map {
+            v[k] = x.clone();
+        }
+    }
+    v
+}
+
+/// Corrects the aligned clip `base` under `plan`. `raw_step[t]` is the
+/// largest joint step of the recorded raw-root pose into sample `t`, whose
+/// landing-window maximum is the acceptance bound. Returns the corrected
+/// local poses and every hard-constraint conflict, per sample.
+fn correct(
+    skeleton: &SkeletonAsset,
+    map: &HumanoidMap,
+    base: &[Vec<Trs>],
+    plan: &Plan,
+    raw_step: &[f32],
+) -> (Vec<Vec<Trs>>, Vec<serde_json::Value>) {
+    let body = Body::new(skeleton, map);
+    let n = skeleton.nodes.len();
+    let frames = base.len();
+    assert_eq!(raw_step.len(), frames);
+    let up = Vec3::from_array(plan.up).normalize();
+    let hips = body.hips;
+    let mut conflicts = Vec::new();
+    let names = |j: usize| skeleton.nodes[j].name.clone();
+    // The aligned generated pose, model space: positions, rotations and
+    // each joint's offset in its parent's rotation frame.
+    let world: Vec<Vec<Trs>> = base.iter().map(|p| skeleton.model_space(p)).collect();
+    let position: Vec<Vec<Vec3>> = world
+        .iter()
+        .map(|w| w.iter().map(|x| x.translation).collect())
+        .collect();
+    let rotation: Vec<Vec<Quat>> = world
+        .iter()
+        .map(|w| w.iter().map(|x| x.rotation).collect())
+        .collect();
+    let offset: Vec<Vec<Vec3>> = (0..frames)
+        .map(|t| {
+            (0..n)
+                .map(|j| {
+                    let p = skeleton.nodes[j].parent;
+                    if j == hips || p == NONE {
+                        Vec3::ZERO
                     } else {
-                        sample - c.end
+                        rotation[t][p as usize].conjugate()
+                            * (position[t][j] - position[t][p as usize])
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    // The continuity bound into every sample.
+    let window = plan.landing.saturating_sub(2).max(1)..=(plan.landing + 2).min(frames - 1);
+    let landing_bound = window.clone().map(|t| raw_step[t]).fold(0.0_f32, f32::max);
+    let bound: Vec<f32> = (0..frames)
+        .map(|t| {
+            if t == 0 {
+                0.0
+            } else if window.contains(&t) {
+                landing_bound * (1.0 - MARGIN)
+            } else {
+                landing_bound.max(raw_step[t]) * (1.0 - MARGIN)
+            }
+        })
+        .collect();
+    // Legs: lengths per sample, planned foot paths, and the pelvis box.
+    let l1 = |leg: &Leg, t: usize| offset[t][leg.knee].length();
+    let l2 = |leg: &Leg, t: usize| offset[t][leg.foot].length();
+    let targets: Vec<Vec<(Vec3, bool)>> = body
+        .legs
+        .iter()
+        .map(|leg| {
+            (0..frames)
+                .map(|t| foot_target(plan, position[t][leg.foot], leg.id, t))
+                .collect()
+        })
+        .collect();
+    let box_of = |t: usize| {
+        let leg = l1(&body.legs[0], t) + l2(&body.legs[0], t);
+        (-0.25 * leg, 0.10 * leg)
+    };
+    let y0: Vec<f32> = (0..frames).map(|t| position[t][hips].y).collect();
+    let rel = |t: usize, j: usize| position[t][j] - position[t][hips];
+    // The hip joint of `leg` at pelvis height `y`.
+    let hip_at = |leg: &Leg, t: usize, y: f32| {
+        let r = rel(t, leg.hip);
+        Vec3::new(
+            position[t][hips].x + r.x,
+            y + r.y,
+            position[t][hips].z + r.z,
+        )
+    };
+
+    // ---- B. pelvis height -------------------------------------------------
+    let mut lo = vec![0.0_f32; frames];
+    let mut hi = vec![0.0_f32; frames];
+    let mut pin: Vec<Option<f32>> = vec![None; frames];
+    for t in 0..frames {
+        let (blo, bhi) = box_of(t);
+        lo[t] = y0[t] + blo;
+        hi[t] = y0[t] + bhi;
+        let mut unreachable = false;
+        for (k, leg) in body.legs.iter().enumerate() {
+            let (target, hard) = targets[k][t];
+            if !hard {
+                continue;
+            }
+            let reach = l1(leg, t) + l2(leg, t) - REACH_EPSILON;
+            let d = hip_at(leg, t, y0[t]) - target;
+            let square = reach * reach - d.x * d.x - d.z * d.z;
+            if square < 0.0 {
+                unreachable = true;
+                continue;
+            }
+            let extent = square.sqrt();
+            lo[t] = lo[t].max(y0[t] - d.y - extent);
+            hi[t] = hi[t].min(y0[t] - d.y + extent);
+        }
+        if unreachable || lo[t] > hi[t] {
+            // No height reaches every hard contact: the height minimising
+            // the largest deficit over the box (convex in y), by ternary
+            // search; the deficit is the case's reported conflict, the
+            // triangle-inequality bound on the contact error under the
+            // hard root (the hip joint rigid with the planned pelvis).
+            let deficit = |y: f32| {
+                body.legs
+                    .iter()
+                    .enumerate()
+                    .filter(|(k, _)| targets[*k][t].1)
+                    .map(|(k, leg)| {
+                        (hip_at(leg, t, y) - targets[k][t].0).length() - (l1(leg, t) + l2(leg, t))
+                    })
+                    .fold(f32::MIN, f32::max)
+            };
+            let (mut a, mut b) = (y0[t] + blo, y0[t] + bhi);
+            for _ in 0..100 {
+                let m1 = a + (b - a) / 3.0;
+                let m2 = b - (b - a) / 3.0;
+                if deficit(m1) < deficit(m2) {
+                    b = m2;
+                } else {
+                    a = m1;
+                }
+            }
+            let y = (a + b) * 0.5;
+            conflicts.push(conflict(
+                "contact reach",
+                t,
+                deficit(y),
+                json!({"pelvis_y": y}),
+            ));
+            lo[t] = y0[t] + blo;
+            hi[t] = y0[t] + bhi;
+            pin[t] = Some(y);
+        }
+    }
+    // The step relation of the hips cluster: y_t - y_{t-1} within
+    // [shift_lo, shift_hi] keeps every cluster joint's step under the bound.
+    let cluster: Vec<usize> = std::iter::once(hips)
+        .chain(body.children[hips].iter().copied())
+        .collect();
+    let mut shift_lo = vec![0.0_f32; frames];
+    let mut shift_hi = vec![0.0_f32; frames];
+    for t in 1..frames {
+        let (mut slo, mut shi) = (f32::MIN, f32::MAX);
+        for &j in &cluster {
+            let d = position[t][j] - position[t - 1][j];
+            let dxz = Vec3::new(d.x, 0.0, d.z).length();
+            let h = if dxz >= bound[t] {
+                conflicts.push(conflict(
+                    "root step",
+                    t,
+                    dxz - bound[t],
+                    json!({"joint": names(j)}),
+                ));
+                0.0
+            } else {
+                (bound[t] * bound[t] - dxz * dxz).sqrt()
+            };
+            let c = d.y - (y0[t] - y0[t - 1]);
+            slo = slo.max(-c - h);
+            shi = shi.min(-c + h);
+        }
+        if slo > shi {
+            conflicts.push(conflict("root step", t, slo - shi, json!({})));
+            slo = (slo + shi) * 0.5;
+            shi = slo;
+        }
+        shift_lo[t] = slo;
+        shift_hi[t] = shi;
+    }
+    // [lo, hi] of y_t compatible with y_{t-1}: the cluster step, and for a
+    // foot pinned at both samples the knee proxy (its perpendicular offset
+    // moving at most KNEE_PROXY of the bound; span rises with the hip).
+    let next_interval = |t: usize, y_prev: f32| -> (f32, f32) {
+        let (mut a, mut b) = (y_prev + shift_lo[t], y_prev + shift_hi[t]);
+        for (k, leg) in body.legs.iter().enumerate() {
+            let ((t0, hard0), (t1, hard1)) = (targets[k][t - 1], targets[k][t]);
+            if !(hard0 && hard1) {
+                continue;
+            }
+            let (l1, l2) = (l1(leg, t), l2(leg, t));
+            let h0 = knee_offset(l1, l2, (hip_at(leg, t - 1, y_prev) - t0).length());
+            let hb = bound[t] * KNEE_PROXY;
+            let r = rel(t, leg.hip);
+            let hj = position[t][leg.hip];
+            let dxz2 = (hj.x - t1.x) * (hj.x - t1.x) + (hj.z - t1.z) * (hj.z - t1.z);
+            let y_for_h = |h: f32| {
+                let s = span_for_offset(l1, l2, h.max(0.0));
+                (s * s >= dxz2).then(|| t1.y - r.y + (s * s - dxz2).sqrt())
+            };
+            if let Some(y) = y_for_h(h0 + hb) {
+                a = a.max(y);
+            }
+            if h0 - hb > 0.0
+                && let Some(y) = y_for_h(h0 - hb)
+            {
+                b = b.min(y);
+            }
+        }
+        (a, b)
+    };
+    // [lo, hi] of y_{t-1} within [l0, h0] that can reach y_t = y_next; the
+    // interval ends are nondecreasing in y_{t-1}, so bisection finds them.
+    let prev_interval = |t: usize, y_next: f32, l0: f32, h0: f32| -> Option<(f32, f32)> {
+        if next_interval(t, h0).1 < y_next {
+            return None;
+        }
+        let left = if next_interval(t, l0).1 >= y_next {
+            l0
+        } else {
+            let (mut a, mut b) = (l0, h0);
+            for _ in 0..60 {
+                let m = (a + b) * 0.5;
+                if next_interval(t, m).1 >= y_next {
+                    b = m;
+                } else {
+                    a = m;
+                }
+            }
+            b
+        };
+        if next_interval(t, l0).0 > y_next {
+            return None;
+        }
+        let right = if next_interval(t, h0).0 <= y_next {
+            h0
+        } else {
+            let (mut a, mut b) = (l0, h0);
+            for _ in 0..60 {
+                let m = (a + b) * 0.5;
+                if next_interval(t, m).0 <= y_next {
+                    a = m;
+                } else {
+                    b = m;
+                }
+            }
+            a
+        };
+        (left <= right).then_some((left, right))
+    };
+    for t in 1..frames {
+        let a0 = next_interval(t, lo[t - 1]).0;
+        let b1 = next_interval(t, hi[t - 1]).1;
+        let (mut nlo, mut nhi) = (lo[t].max(a0), hi[t].min(b1));
+        if nlo > nhi {
+            conflicts.push(conflict("pelvis step", t, nlo - nhi, json!({})));
+            let y = match pin[t] {
+                Some(y) => y,
+                None => ((nlo + nhi) * 0.5).clamp(lo[t], hi[t]),
+            };
+            nlo = y;
+            nhi = y;
+        }
+        lo[t] = nlo;
+        hi[t] = nhi;
+    }
+    for t in (1..frames).rev() {
+        let r0 = prev_interval(t, lo[t], lo[t - 1], hi[t - 1]);
+        let r1 = prev_interval(t, hi[t], lo[t - 1], hi[t - 1]);
+        let both: Vec<_> = [r0, r1].into_iter().flatten().collect();
+        if both.is_empty() {
+            conflicts.push(conflict("pelvis step (backward)", t, 0.0, json!({})));
+            continue;
+        }
+        let a = both.iter().map(|r| r.0).fold(f32::MAX, f32::min);
+        let b = both.iter().map(|r| r.1).fold(f32::MIN, f32::max);
+        let (nlo, nhi) = (lo[t - 1].max(a), hi[t - 1].min(b));
+        if nlo > nhi {
+            conflicts.push(conflict(
+                "pelvis step (backward)",
+                t - 1,
+                nlo - nhi,
+                json!({}),
+            ));
+            continue;
+        }
+        lo[t - 1] = nlo;
+        hi[t - 1] = nhi;
+    }
+    // Pick the heights: conflict samples first (a contact outranks the
+    // generated pose), then everything toward the generated height, the
+    // intervals staying hard.
+    let pick = |y: &mut [f32], target: &[f32], weight: &[f32], lo: &[f32], hi: &[f32]| {
+        for it in 0..PATH_ITERATIONS {
+            let pull = (1.0 - it as f32 / (0.6 * PATH_ITERATIONS as f32)).max(0.0) * 0.3;
+            if pull > 0.0 {
+                for t in 0..frames {
+                    let d = target[t] - y[t];
+                    y[t] += pull * weight[t] * d;
+                }
+            }
+            for t in 0..frames {
+                y[t] = y[t].clamp(lo[t], hi[t]);
+            }
+            for t in 1..frames {
+                let (a, b) = next_interval(t, y[t - 1]);
+                if y[t] > b {
+                    let e = y[t] - b;
+                    y[t] -= e * 0.5;
+                    y[t - 1] += e * 0.5;
+                } else if y[t] < a {
+                    let e = a - y[t];
+                    y[t] += e * 0.5;
+                    y[t - 1] -= e * 0.5;
+                }
+            }
+            for t in 0..frames {
+                y[t] = y[t].clamp(lo[t], hi[t]);
+            }
+        }
+    };
+    let target: Vec<f32> = (0..frames).map(|t| pin[t].unwrap_or(y0[t])).collect();
+    let pinned: Vec<f32> = (0..frames)
+        .map(|t| if pin[t].is_some() { 1.0 } else { 0.0 })
+        .collect();
+    let mut y: Vec<f32> = (0..frames).map(|t| y0[t].clamp(lo[t], hi[t])).collect();
+    if pin.iter().any(Option::is_some) {
+        pick(&mut y, &target, &pinned, &lo, &hi);
+        for t in 0..frames {
+            if pin[t].is_some() {
+                lo[t] = y[t];
+                hi[t] = y[t];
+            }
+        }
+    }
+    pick(&mut y, &target, &vec![1.0; frames], &lo, &hi);
+    for t in 1..frames {
+        let (a, b) = next_interval(t, y[t - 1]);
+        if y[t] > b + 1e-6 || y[t] < a - 1e-6 {
+            conflicts.push(conflict(
+                "pelvis pick",
+                t,
+                (y[t] - b).max(a - y[t]),
+                json!({}),
+            ));
+        }
+    }
+    let hips_at: Vec<Vec3> = (0..frames)
+        .map(|t| Vec3::new(position[t][hips].x, y[t], position[t][hips].z))
+        .collect();
+
+    // ---- CK. the legs ----------------------------------------------------------
+    let mut feet: Vec<Vec<Vec3>> = Vec::new();
+    let mut knees: Vec<Vec<Vec3>> = Vec::new();
+    for (k, leg) in body.legs.iter().enumerate() {
+        let hip: Vec<Vec3> = (0..frames).map(|t| hip_at(leg, t, y[t])).collect();
+        let pinned: Vec<bool> = (0..frames).map(|t| targets[k][t].1).collect();
+        let mut path: Vec<Vec3> = (0..frames).map(|t| targets[k][t].0).collect();
+        for t in 0..frames {
+            let reach = l1(leg, t) + l2(leg, t) - REACH_EPSILON;
+            let d = path[t] - hip[t];
+            let n = d.length();
+            if n > reach {
+                path[t] = hip[t] + d / n * reach;
+            }
+        }
+        let goal = path.clone();
+        // The knee seed: the generated knee projected onto its circle.
+        let mut knee: Vec<Vec3> = (0..frames)
+            .map(|t| {
+                let (l1, l2) = (l1(leg, t), l2(leg, t));
+                let d = path[t] - hip[t];
+                let s = d.length();
+                let dh = d / s;
+                let a = (s * s + l1 * l1 - l2 * l2) / (2.0 * s);
+                let h = (l1 * l1 - a * a).max(0.0).sqrt();
+                let centre = hip[t] + dh * a;
+                let mut g = position[t][leg.knee] - centre;
+                g -= dh * g.dot(dh);
+                if g.length() < 1e-6 {
+                    g = dh.cross(up);
+                }
+                if g.length() < 1e-6 {
+                    g = dh.cross(Vec3::X);
+                }
+                centre + g.normalize() * h
+            })
+            .collect();
+        let lengths = |t: usize| (l1(leg, t), l2(leg, t));
+        let settle = |t: usize, path: &mut [Vec3], knee: &mut [Vec3]| {
+            let (l1, l2) = lengths(t);
+            let d = knee[t] - hip[t];
+            knee[t] = hip[t] + d / d.length() * l1;
+            let d = path[t] - knee[t];
+            let n = d.length();
+            let correction = (n - l2) * d / n;
+            if pinned[t] {
+                knee[t] += correction;
+            } else {
+                knee[t] += correction * 0.5;
+                path[t] -= correction * 0.5;
+            }
+            let d = knee[t] - hip[t];
+            knee[t] = hip[t] + d / d.length() * l1;
+        };
+        for it in 0..PATH_ITERATIONS {
+            let pull = (1.0 - it as f32 / (0.6 * PATH_ITERATIONS as f32)).max(0.0) * 0.3;
+            if pull > 0.0 {
+                for t in 0..frames {
+                    if !pinned[t] {
+                        let d = goal[t] - path[t];
+                        path[t] += pull * d;
                     }
                 }
-            });
-        let Some(contact) = contact else {
-            targets.push((chain, generated.translation, generated.rotation));
-            continue;
-        };
-        // Approach the authored landing anchor during flight, before the hard
-        // contact begins. Contact itself never fades or follows generated flags.
-        let approach = if contact.begin >= plan.landing {
-            plan.apex
-        } else {
-            0
-        };
-        let release = if contact.end <= plan.takeoff {
-            plan.takeoff
-        } else {
-            plan.recovery
-        };
-        let w = if sample < contact.begin {
-            smooth((sample - approach) as f32 / (contact.begin - approach) as f32)
-        } else if sample < contact.end {
-            1.0
-        } else {
-            smooth((release - sample) as f32 / (release - contact.end) as f32)
-        };
-        targets.push((
-            chain,
-            generated
-                .translation
-                .lerp(Vec3::from_array(contact.anchor) * scale, w),
-            generated.rotation,
-        ));
-    }
-    // Pelvis height is the slack variable. Each leg gives an interval of
-    // feasible heights; intersect them before solving either knee. The
-    // authoritative root is not an input or an output of this operator.
-    let leg = ["leftUpperLeg", "leftLowerLeg", "leftFoot"].map(|b| map.node(b).unwrap() as usize);
-    let leg_length = (world[leg[1]].translation - world[leg[0]].translation).length()
-        + (world[leg[2]].translation - world[leg[1]].translation).length();
-    let existing = world[hips as usize].translation.y - base_world[hips as usize].translation.y;
-    let (mut low, mut high) = (-0.25 * leg_length - existing, 0.10 * leg_length - existing);
-    for &(chain, target, _) in &targets {
-        let [a, b, c] = chain.map(|n| world[n as usize].translation);
-        let reach = (b - a).length() + (c - b).length() - 0.00001;
-        let d = a - target;
-        let square = reach * reach - d.x * d.x - d.z * d.z;
-        if square < 0.0 {
-            conflicts += 1;
-            continue;
+            }
+            for _ in 0..2 {
+                for t in 0..frames {
+                    settle(t, &mut path, &mut knee);
+                }
+                for t in 1..frames {
+                    let d = knee[t] - knee[t - 1];
+                    let n = d.length();
+                    if n > bound[t] {
+                        let excess = (n - bound[t]) * d / n;
+                        knee[t] -= excess * 0.5;
+                        knee[t - 1] += excess * 0.5;
+                    }
+                    let d = path[t] - path[t - 1];
+                    let n = d.length();
+                    if n > bound[t] {
+                        let excess = (n - bound[t]) * d / n;
+                        if pinned[t] && pinned[t - 1] {
+                            continue;
+                        }
+                        if pinned[t - 1] {
+                            path[t] -= excess;
+                        } else if pinned[t] {
+                            path[t - 1] += excess;
+                        } else {
+                            path[t] -= excess * 0.5;
+                            path[t - 1] += excess * 0.5;
+                        }
+                    }
+                }
+            }
         }
-        let extent = square.sqrt();
-        low = low.max(-extent - d.y);
-        high = high.min(extent - d.y);
-    }
-    let offset = if low <= high {
-        0.0_f32.clamp(low, high)
-    } else {
-        conflicts += 1;
-        ((low + high) * 0.5).clamp(-0.25 * leg_length - existing, 0.10 * leg_length - existing)
-    };
-    let parent = skeleton.nodes[hips as usize].parent;
-    let delta = if parent == NONE {
-        Vec3::Y * offset
-    } else {
-        world[parent as usize].rotation.conjugate() * (Vec3::Y * offset)
-            / world[parent as usize].scale
-    };
-    pose[hips as usize].translation += delta;
-    for (chain, target, orientation) in targets {
-        let pole = skeleton.model_space(pose)[chain[0] as usize].translation
-            + Vec3::new(
-                og_core::math::sin(plan.heading),
-                0.0,
-                og_core::math::cos(plan.heading),
-            ) * leg_length;
-        let result = og_anim::two_bone(skeleton, pose, &chain, target, Some(pole), 1.0, &[]);
-        conflicts += usize::from(!result.reachable);
-        let world = skeleton.model_space(pose);
-        pose[chain[2] as usize].rotation =
-            world[chain[1] as usize].rotation.conjugate() * orientation;
-    }
-    assert!(
-        offset + existing >= -0.25 * leg_length - 0.000001
-            && offset + existing <= 0.10 * leg_length + 0.000001
-    );
-    for (j, (a, b)) in pose.iter().zip(base).enumerate() {
-        if j != hips as usize {
-            assert_eq!(a.translation, b.translation);
+        // Exact lengths last; the remaining step residuals are reported.
+        for t in 0..frames {
+            for _ in 0..20 {
+                settle(t, &mut path, &mut knee);
+            }
+            let (l1, l2) = lengths(t);
+            let d = knee[t] - hip[t];
+            knee[t] = hip[t] + d / d.length() * l1;
+            let d = path[t] - knee[t];
+            if !pinned[t] {
+                path[t] = knee[t] + d / d.length() * l2;
+            }
         }
-        assert_eq!(a.scale, b.scale);
+        for t in 1..frames {
+            let hard = bound[t] / (1.0 - MARGIN);
+            let n = (path[t] - path[t - 1]).length();
+            if n > hard + 1e-6 {
+                conflicts.push(conflict("foot step", t, n - hard, json!({"foot": leg.id})));
+            }
+            let n = (knee[t] - knee[t - 1]).length();
+            if n > hard + 1e-6 {
+                conflicts.push(conflict("knee step", t, n - hard, json!({"foot": leg.id})));
+            }
+        }
+        feet.push(path);
+        knees.push(knee);
     }
-    conflicts
+
+    // ---- D. the rest of the body ---------------------------------------------
+    let cone: Vec<f32> = (0..frames)
+        .map(|t| {
+            let generated = lean(position[t][hips], position[t][body.chest], up).max(lean(
+                position[t][hips],
+                position[t][body.head],
+                up,
+            ));
+            let w = weight(plan, t);
+            CONE_DEGREES.max((1.0 - w) * generated + w * CONE_DEGREES)
+        })
+        .collect();
+    let bones: Vec<(usize, usize)> = body
+        .order
+        .iter()
+        .filter(|&&j| j != hips)
+        .map(|&j| (skeleton.nodes[j].parent as usize, j))
+        .collect();
+    let mut fit: Vec<Vec<Quat>> = vec![vec![Quat::IDENTITY; n]; frames];
+    // FK from the hips over the particle targets `p`: every joint with
+    // children takes the rotation that best carries its generated offsets
+    // onto them (warm-started), leaves keep their generated rotation.
+    let refit = |t: usize, p: &[Vec3], fit: &mut [Quat]| -> (Vec<Vec3>, Vec<Quat>) {
+        let mut x = position[t].clone();
+        let mut r = rotation[t].clone();
+        for &j in &body.order {
+            if j == hips {
+                x[j] = hips_at[t];
+                continue;
+            }
+            let parent = skeleton.nodes[j].parent as usize;
+            x[j] = x[parent] + r[parent] * offset[t][j];
+            if body.children[j].is_empty() {
+                continue;
+            }
+            let a: Vec<Vec3> = body.children[j]
+                .iter()
+                .map(|&c| rotation[t][j] * offset[t][c])
+                .collect();
+            let b: Vec<Vec3> = body.children[j].iter().map(|&c| p[c] - x[j]).collect();
+            fit[j] = extract(&a, &b, fit[j], FIT_ITERATIONS);
+            r[j] = og_anim::unit(fit[j] * rotation[t][j]);
+        }
+        (x, r)
+    };
+    let legs_into = |t: usize, p: &mut [Vec3]| {
+        for (k, leg) in body.legs.iter().enumerate() {
+            p[leg.knee] = knees[k][t];
+            p[leg.foot] = feet[k][t];
+        }
+    };
+    let mut x: Vec<Vec<Vec3>> = Vec::with_capacity(frames);
+    let mut r: Vec<Vec<Quat>> = Vec::with_capacity(frames);
+    for t in 0..frames {
+        let shift = hips_at[t] - position[t][hips];
+        let mut p: Vec<Vec3> = position[t].iter().map(|&q| q + shift).collect();
+        legs_into(t, &mut p);
+        let (xt, rt) = refit(t, &p, &mut fit[t]);
+        x.push(xt);
+        r.push(rt);
+    }
+    for sweep in 0..SWEEPS {
+        let mut p = x.clone();
+        // The generated pose is the soft objective: a decaying pull toward
+        // it (shifted with the pelvis) that ends before the last sweeps, so
+        // the hard projections converge exactly from the nearest pose.
+        let pull = (1.0 - sweep as f32 / (0.6 * SWEEPS as f32)).max(0.0) * 0.3;
+        for t in 0..frames {
+            if pull > 0.0 {
+                let shift = hips_at[t] - position[t][hips];
+                for &j in &body.order {
+                    if !body.fixed[j] {
+                        let d = position[t][j] + shift - p[t][j];
+                        p[t][j] += pull * d;
+                    }
+                }
+            }
+            legs_into(t, &mut p[t]);
+            for tip in [body.chest, body.head] {
+                let v = p[t][tip] - p[t][hips];
+                if lean(p[t][hips], p[t][tip], up) > cone[t] {
+                    let length = v.length();
+                    let perpendicular = v - up * v.dot(up);
+                    let (s, c) = og_core::math::sin_cos(cone[t].to_radians());
+                    p[t][tip] = p[t][hips] + (up * c + perpendicular.normalize() * s) * length;
+                }
+            }
+        }
+        for _ in 0..DISTANCE_PASSES {
+            for t in 1..frames {
+                for &j in &body.order {
+                    if body.fixed[j] {
+                        continue;
+                    }
+                    let d = p[t][j] - p[t - 1][j];
+                    let n = d.length();
+                    if n <= bound[t] {
+                        continue;
+                    }
+                    let excess = (n - bound[t]) * d / n;
+                    p[t][j] -= excess * 0.5;
+                    p[t - 1][j] += excess * 0.5;
+                }
+            }
+            for t in 0..frames {
+                let project = |p: &mut [Vec3], parent: usize, child: usize| {
+                    if body.fixed[child] {
+                        return;
+                    }
+                    let d = p[child] - p[parent];
+                    let n = d.length();
+                    if n < 1e-12 {
+                        return;
+                    }
+                    let correction = (n - offset[t][child].length()) * d / n;
+                    if body.fixed[parent] {
+                        p[child] -= correction;
+                    } else {
+                        p[parent] += correction * 0.5;
+                        p[child] -= correction * 0.5;
+                    }
+                };
+                for &(parent, child) in bones.iter().rev() {
+                    project(&mut p[t], parent, child);
+                }
+                for &(parent, child) in &bones {
+                    project(&mut p[t], parent, child);
+                }
+            }
+        }
+        for t in 0..frames {
+            let (xt, rt) = refit(t, &p[t], &mut fit[t]);
+            x[t] = xt;
+            r[t] = rt;
+        }
+    }
+    // Back to local transforms: only rotations below the hips and the hips'
+    // translation change; every other node keeps its aligned pose.
+    let parent_of_hips = skeleton.nodes[hips].parent;
+    let output = (0..frames)
+        .map(|t| {
+            let mut pose = base[t].clone();
+            let parent = if parent_of_hips == NONE {
+                Trs::IDENTITY
+            } else {
+                world[t][parent_of_hips as usize]
+            };
+            pose[hips].translation = parent.inverse().transform_point(hips_at[t]);
+            for &j in &body.order {
+                if j != hips {
+                    let p = skeleton.nodes[j].parent as usize;
+                    pose[j].rotation = og_anim::unit(r[t][p].conjugate() * r[t][j]);
+                }
+            }
+            let check = skeleton.model_space(&pose);
+            for &j in &body.order {
+                assert!((check[j].translation - x[t][j]).length() < 1e-4);
+            }
+            pose
+        })
+        .collect();
+    (output, conflicts)
 }
 
 fn measure(
@@ -632,58 +1189,64 @@ fn evaluate(
     rig: &str,
 ) -> serde_json::Value {
     // Keep the original raw-root baseline and its continuity bound. Neither
-    // re-rooting nor a later solve may relax that recorded acceptance bound.
+    // re-rooting nor the solve may relax that recorded acceptance bound.
     let before = measure(skeleton, map, base, plan, 1.0);
-    let placed = aligned(skeleton, map, base, plan);
-    let aligned_base = measure(skeleton, map, &placed, plan, 1.0);
-    let base = &placed;
-    let mut conflicts = 0;
-    let raw: Vec<_> = base
-        .iter()
-        .enumerate()
-        .map(|(t, p)| {
-            let (p, n) = solve(skeleton, p, map, plan, t, 1.0);
-            conflicts += n;
-            p
+    let raw_world: Vec<Vec<Trs>> = base.iter().map(|p| skeleton.model_space(p)).collect();
+    let raw_step: Vec<f32> = (0..base.len())
+        .map(|t| {
+            if t == 0 {
+                0.0
+            } else {
+                raw_world[t]
+                    .iter()
+                    .zip(&raw_world[t - 1])
+                    .map(|(a, b)| (a.translation - b.translation).length())
+                    .fold(0.0_f32, f32::max)
+            }
         })
         .collect();
-    let mut corrected = inertialize(&raw, base, plan, raw.len() - 1);
-    // Upright posture has priority over the soft inertial residual. Keeping
-    // this constrained chain on its C1 target also preserves torso joint limits.
-    let mut torso = vec![map.node("head").unwrap()];
-    while *torso.last().unwrap() != map.node("hips").unwrap() {
-        torso.push(skeleton.nodes[*torso.last().unwrap() as usize].parent);
-    }
-    let project = |t: usize, p: &mut [Trs]| {
-        for &j in &torso {
-            p[j as usize].rotation = raw[t][j as usize].rotation;
-        }
-        plant(skeleton, p, &base[t], map, plan, t, 1.0)
-    };
-    for (t, p) in corrected.iter_mut().enumerate() {
-        // Inertialization cannot override a hard planned foot contact.
-        conflicts += project(t, p);
-    }
-    // Random access/seek and sparse draws are evaluated independently;
-    // equality is exact, not a float tolerance.
+    let placed = aligned(skeleton, map, base, plan);
+    let aligned_base = measure(skeleton, map, &placed, plan, 1.0);
+    let (corrected, conflicts) = correct(skeleton, map, &placed, plan, &raw_step);
+    // Random access/seek and sparse draws: the clip is a pure function of
+    // its inputs, so a second evaluation read at any sample, in any order,
+    // is equal exactly, not within a float tolerance.
+    let replay = correct(skeleton, map, &placed, plan, &raw_step).0;
     for t in (0..base.len()).rev().chain((0..base.len()).step_by(7)) {
-        let mut sought = inertialize(&raw, base, plan, t).pop().unwrap();
-        project(t, &mut sought);
-        assert_eq!(corrected[t], sought);
+        assert_eq!(corrected[t], replay[t]);
     }
     let after = measure(skeleton, map, &corrected, plan, 1.0);
     let hips = map.node("hips").unwrap() as usize;
     let pelvis_offset = corrected
         .iter()
-        .zip(base)
+        .zip(&placed)
         .map(|(a, b)| {
             (skeleton.model_space(a)[hips].translation - skeleton.model_space(b)[hips].translation)
                 .length()
         })
         .fold(0.0_f32, f32::max);
+    let deviation: Vec<f32> = corrected
+        .iter()
+        .zip(&placed)
+        .flat_map(|(a, b)| {
+            skeleton
+                .model_space(a)
+                .into_iter()
+                .zip(skeleton.model_space(b))
+                .map(|(x, y)| (x.translation - y.translation).length())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let farthest = (0..deviation.len())
+        .max_by(|&a, &b| deviation[a].total_cmp(&deviation[b]))
+        .unwrap();
     json!({"group": plan.group, "clip": plan.clip, "rig": rig,
-        "frames": base.len(), "conflicts": conflicts,
+        "frames": base.len(), "conflicts": conflicts.len(), "conflict_report": conflicts,
         "base": before, "aligned_base": aligned_base, "corrected": after, "pelvis_max_offset_m": pelvis_offset,
+        "generated_deviation_max_m": deviation[farthest],
+        "generated_deviation_max_joint": skeleton.nodes[farthest % skeleton.nodes.len()].name,
+        "generated_deviation_max_sample": farthest / skeleton.nodes.len(),
+        "generated_deviation_mean_m": deviation.iter().sum::<f32>() / deviation.len() as f32,
         "landing_step_bound_m": before["landing_max_step_m"],
         "landing_step_pass": after["landing_max_step_m"].as_f64().unwrap() <= before["landing_max_step_m"].as_f64().unwrap()+0.00001,
         "seek_replay_sparse_equal": true})
@@ -933,7 +1496,7 @@ fn main() {
         "world_replay": hash_replay(),
         "limitations": ["Prototype palette not integrated", "Gesture priority and leg limits pending",
             "Controller-owned vertical arc treatment remains open before motion.jump IDL",
-            "C1 correction does not imply bounded discrete joint steps"]})
+            "Whole-clip solve: a streaming boundary must hold the clip's samples"]})
     );
 }
 
@@ -1043,5 +1606,161 @@ mod tests {
                 < 1e-6
         );
         assert_eq!(report["samples"].as_array().unwrap().len(), 3);
+    }
+
+    /// A straight-legged SOMA-named rig: hips, a four-joint spine to the
+    /// head, two legs of equal 0.42 m bones with a toe. Legs are vertical,
+    /// so a planted foot at full reach is exactly straight.
+    fn rig() -> (SkeletonAsset, HumanoidMap) {
+        let node = |name: &str, parent: u32, offset: [f32; 3]| og_anim::SkeletonNode {
+            name: name.into(),
+            parent,
+            mesh: NONE,
+            rest: Trs::new(Vec3::from_array(offset), Quat::IDENTITY, Vec3::ONE),
+        };
+        let skeleton = SkeletonAsset {
+            nodes: vec![
+                node("Hips", NONE, [0.0, 0.95, 0.0]),
+                node("Spine1", 0, [0.0, 0.12, 0.0]),
+                node("Spine2", 1, [0.0, 0.12, 0.0]),
+                node("Chest", 2, [0.0, 0.12, 0.0]),
+                node("Neck1", 3, [0.0, 0.1, 0.0]),
+                node("Head", 4, [0.0, 0.12, 0.0]),
+                node("LeftLeg", 0, [0.1, -0.05, 0.0]),
+                node("LeftShin", 6, [0.0, -0.42, 0.0]),
+                node("LeftFoot", 7, [0.0, -0.42, 0.0]),
+                node("LeftToeBase", 8, [0.0, -0.03, 0.12]),
+                node("RightLeg", 0, [-0.1, -0.05, 0.0]),
+                node("RightShin", 10, [0.0, -0.42, 0.0]),
+                node("RightFoot", 11, [0.0, -0.42, 0.0]),
+                node("RightToeBase", 12, [0.0, -0.03, 0.12]),
+            ],
+            ..Default::default()
+        };
+        skeleton.validate().unwrap();
+        let map = HumanoidMap::with_scheme(&skeleton, "soma").unwrap();
+        (skeleton, map)
+    }
+
+    /// Twenty samples of a hop: the hips rise 8 cm over flight (takeoff 4,
+    /// apex 9, landing 14) and then sink `compression` per sample.
+    fn hop(skeleton: &SkeletonAsset, compression: f32) -> (Vec<Vec<Trs>>, Plan) {
+        let base: Vec<Vec<Trs>> = (0..20)
+            .map(|t| {
+                let mut pose = skeleton.rest_pose();
+                let arc = if (4..=14).contains(&t) {
+                    let u = (t as f32 - 9.0) / 5.0;
+                    0.08 * (1.0 - u * u)
+                } else if t > 14 {
+                    -compression * (t - 14) as f32
+                } else {
+                    0.0
+                };
+                pose[0].translation.y += arc;
+                pose
+            })
+            .collect();
+        let plan = Plan {
+            group: vec!["synthetic".into(), "hop".into()],
+            clip: "hop".into(),
+            takeoff: 4,
+            apex: 9,
+            landing: 14,
+            recovery: 18,
+            up: [0.0, 1.0, 0.0],
+            contacts: Vec::new(),
+            root: Vec::new(),
+        };
+        (base, plan)
+    }
+
+    fn with_roots(
+        skeleton: &SkeletonAsset,
+        map: &HumanoidMap,
+        base: &[Vec<Trs>],
+        mut plan: Plan,
+    ) -> Plan {
+        plan.root = roots(skeleton, map, base)
+            .into_iter()
+            .map(|r| Root {
+                position: [r.position[0], 0.0, r.position[2]],
+                yaw: r.yaw,
+            })
+            .collect();
+        plan
+    }
+
+    #[test]
+    fn landing_on_a_straight_leg_keeps_every_joint_step_under_the_raw_bound() {
+        let (skeleton, map) = rig();
+        let (base, plan) = hop(&skeleton, 0.02);
+        // The left foot plants where the generated foot lands, at full
+        // reach, then the generated pelvis sinks 2 cm a sample: solved one
+        // sample at a time the knee leaves the hip-foot line by
+        // sqrt(0.42^2 - 0.41^2) = 9.1 cm in one sample, against a raw
+        // bound of 2.9 cm (the last flight step).
+        let anchor = skeleton.model_space(&base[14])[8].translation;
+        let mut plan = with_roots(&skeleton, &map, &base, plan);
+        plan.contacts.push(Contact {
+            foot: 24,
+            begin: 14,
+            end: 20,
+            anchor: anchor.to_array(),
+        });
+        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic");
+        let bound = result["landing_step_bound_m"].as_f64().unwrap();
+        assert!((bound - 0.0288).abs() < 0.0005, "{bound}");
+        let step = result["corrected"]["landing_max_step_m"].as_f64().unwrap();
+        assert!(
+            step <= bound + 0.00001,
+            "{step} > {bound} at {} s{}",
+            result["corrected"]["landing_max_step_joint"],
+            result["corrected"]["landing_max_step_sample"]
+        );
+        assert!(result["corrected"]["contact_max_m"].as_f64().unwrap() < 0.0001);
+        assert!(result["corrected"]["flight_max_degrees"].as_f64().unwrap() <= 5.0);
+        assert_eq!(result["conflicts"], 0, "{}", result["conflict_report"]);
+        // The slack that made it possible is the pelvis, inside its box
+        // (a quarter of the 0.84 m leg), not a relaxed contact or bound.
+        let pelvis = result["pelvis_max_offset_m"].as_f64().unwrap();
+        assert!(pelvis > 0.001 && pelvis <= 0.21 + 0.000001, "{pelvis}");
+    }
+
+    #[test]
+    fn unreachable_contact_reports_its_triangle_bound_and_lands_at_it() {
+        let (skeleton, map) = rig();
+        let (base, plan) = hop(&skeleton, 0.0);
+        // An anchor 1 m ahead of the hip at the foot's height: no pelvis
+        // height in the box reaches it. The deficit is least with the
+        // pelvis at the bottom of its box (hip 0.69 - 0.06 = 0.63 m above
+        // the anchor): sqrt(1 + 0.63^2) - 0.84.
+        let foot = skeleton.model_space(&base[14])[8].translation;
+        let anchor = foot + Vec3::Z;
+        let mut plan = with_roots(&skeleton, &map, &base, plan);
+        plan.contacts.push(Contact {
+            foot: 24,
+            begin: 14,
+            end: 15,
+            anchor: anchor.to_array(),
+        });
+        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic");
+        let expected = (1.0_f64 + 0.63 * 0.63).sqrt() - 0.84;
+        let report = result["conflict_report"].as_array().unwrap();
+        let reach: Vec<_> = report
+            .iter()
+            .filter(|c| c["kind"] == "contact reach")
+            .collect();
+        assert_eq!(reach.len(), 1, "{report:?}");
+        assert_eq!(reach[0]["sample"], 14);
+        let deficit = reach[0]["deficit_m"].as_f64().unwrap();
+        assert!(
+            (deficit - expected).abs() < 0.001,
+            "{deficit} != {expected}"
+        );
+        let error = result["corrected"]["contact_max_m"].as_f64().unwrap();
+        assert!((error - expected).abs() < 0.002, "{error} != {expected}");
+        // The pelvis went to the bottom of its box for it, not beyond.
+        let pelvis = result["pelvis_max_offset_m"].as_f64().unwrap();
+        assert!((pelvis - 0.21).abs() < 0.002, "{pelvis}");
     }
 }
