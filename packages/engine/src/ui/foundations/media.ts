@@ -5,7 +5,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, clamp, control, drawn, flags, frame, grow, hasMark, kit, mix, over, paint, px, role, still, text, token, xy,
+  byText, clamp, control, drawn, flags, frame, grow, hasMark, inkOn, kit, mix, over, paint, px, role, still, text, token, xy,
 } from "../controls/base.ts";
 import { toneColor } from "./text.ts";
 import { FIGURE_KINDS, placeholderArt } from "../patterns/core.ts";
@@ -20,8 +20,10 @@ export function badgeText(b: string): string {
 /** A badge (a count, a word) or a dot over the top end corner of the element being built. */
 export function cornerBadge(id: string, badge: string, dot: boolean, size: number): void {
   if (badge) {
-    // With the text: at 200 % the count is twice as tall and so is its pill.
-    const h = byText(Math.max(16, Math.round(size * 0.62)));
+    // With the text: at 200 % the count is twice as tall and so is its pill, which is never shorter than the count's
+    // line (sized from the icon alone, a style whose small step is tall stood the count out of its pill).
+    const reach = byText(Math.max(16, Math.round(size * 0.62)));
+    const h = Math.max(reach, Math.ceil(frame().theme.typeRamp["xs"]?.lineHeight ?? 0));
     kit.open(id, {
       direction: "row",
       height: px(h),
@@ -34,9 +36,12 @@ export function cornerBadge(id: string, badge: string, dot: boolean, size: numbe
       part: "Icon.badge",
       partClass: "badge",
     });
-    text("Text", badgeText(badge), { step: "xs", color: "onPrimary", nowrap: true, font: "mono" });
+    // The count in the ink that reads on the pill: onPrimary is the primary's ink, dark on a light style's danger red.
+    text("Text", badgeText(badge), { step: "xs", color: inkOn(role("danger")), nowrap: true, font: "mono" });
     kit.close();
-    over({ insets: { top: -Math.round(h * 0.35), end: -Math.round(h * 0.35) }, z: 4, inert: true });
+    // It overhangs its host's corner by the icon's measure: a pill grown for its count grows into its host, not out
+    // over the control beside it.
+    over({ insets: { top: -Math.round(reach * 0.35), end: -Math.round(reach * 0.35) }, z: 4, inert: true });
     kit.semantics({ role: "status", name: badgeText(badge) });
   } else if (dot) {
     const d = Math.max(8, Math.round(size * 0.3));
