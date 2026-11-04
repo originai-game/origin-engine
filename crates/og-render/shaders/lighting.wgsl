@@ -145,7 +145,7 @@ fn cascade_tint(c: u32) -> vec3<f32> {
 // local_shadows_touch_their_casters' scene under a spot: the floor 1 mm
 // past the face 53 % lit under the tent with the plane, 24 % without;
 // under 1 % this way with local_wide, the floor before its lit face 98 %
-// lit 2 mm from it; a paraboloid's 5 % and 80 %, 92 % at 1 cm).
+// lit 2 mm from it; a paraboloid's 2 % and 67 %, [`local_bias`]).
 var<private> shadow_closed: bool = false;
 
 // A turn in [0, 2π) for PCSS's spiral at `texel` (a position in shadow
@@ -206,7 +206,9 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   }
   if (blockers < 0.5) { return 1.0; }
   let blocker = sum / blockers;
-  let penumbra = clamp(softness * (ref_depth - blocker) * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
+  // At least the tent's reach (pcf_tent: 1.5 texels each side, a 4x4
+  // footprint), so a soft sun is never sharper than the hard one at contact.
+  let penumbra = clamp(softness * (ref_depth - blocker) * depth_range / texel, 1.5, PCSS_MAX_TEXELS);
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, penumbra, turn);
@@ -318,9 +320,18 @@ fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>, k: f32) -> ve
 
 // The factor on a receiver's distance it is compared at: a tenth of a
 // texel towards the light (`cone.w`), or, for a closed receiver
-// ([`shadow_closed`]), a quarter of a texel past it.
-fn local_bias(light: LocalLight) -> f32 {
-  return select(1.0 - light.cone.w, 1.0 + 2.5 * light.cone.w, shadow_closed);
+// ([`shadow_closed`]), `past` texels past it: a quarter for a spot's or a
+// cube face's map, half for a paraboloid's. A paraboloid draws a caster's
+// triangles with straight edges where its projection curves them, so
+// along an edge the texels of one face are drawn as its neighbour's: at a
+// box's base its bottom face, in the floor's own plane, took texels whose
+// rays leave the box through its side, and the floor beside the base
+// compared level with them, lit (Metal: 0.29 of the light 1 cm from the
+// base; a CPU model rasterising the box's quads, 0.32, and 0.017 half a
+// texel past). The cost is a darker floor 2 mm before the box's lit face
+// (0.67 of its light, 0.80 before), inside the contact the AO darkens.
+fn local_bias(light: LocalLight, past: f32) -> f32 {
+  return select(1.0 - light.cone.w, 1.0 + 10.0 * past * light.cone.w, shadow_closed);
 }
 
 // Local shadows store distance / range; the fragment compares its own,
@@ -406,13 +417,14 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
   let offset = p + n * light.cone.z * dist * (0.25 + sin_l);
   var layer = u32(slot);
   let size = vec2<f32>(textureDimensions(local_shadow_map));
-  let k = local_bias(light);
+  let paraboloid = light.color_kind.w < 0.5 && frame.shadow.y > 0.5;
+  let k = local_bias(light, select(0.25, 0.5, paraboloid));
   let plane = wide && !shadow_closed;
   // The receiver plane, about a texel along each tangent (a 90-degree
   // face's texel at this distance; the plane is what matters, not the step).
   let t = plane_tangents(n);
   let h = dist * 2.0 / size.x;
-  if (light.color_kind.w < 0.5 && frame.shadow.y > 0.5) {
+  if (paraboloid) {
     let below = offset.y - light.position_range.y <= 0.0;
     let sigma = select(-1.0, 1.0, below);
     layer += select(1u, 0u, below);

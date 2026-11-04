@@ -792,7 +792,10 @@ fn base_strip(img: &RgbaImage, from: f32, to: f32) -> Vec<(u32, u32)> {
 /// lit there: a broken 1 px grey line along the base (shadows-local-
 /// contact, art review of 73e6c771a; a CPU model of the spot: 24 % to 53 %
 /// of the light 1 mm out). A closed receiver now compares past its depth
-/// (lighting.wgsl shadow_closed): under 1 % (5 % for a paraboloid).
+/// (lighting.wgsl shadow_closed): under 1 % in a CPU model, and 2 % for a
+/// paraboloid, which compares half a texel past to cover its straight-
+/// edged triangles' misdrawn texels (lighting.wgsl local_bias; Metal at a
+/// quarter texel: mean 0.039, 0.286 at most).
 ///
 /// Measured as the share of the light's direct light that reaches the
 /// strip, in linear light (no tonemap, sRGB decoded) with the ambient
