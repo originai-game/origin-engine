@@ -73,7 +73,7 @@ pub(crate) fn sprite_bind_group(
     )
 }
 
-/// Replaces `buffer` (a vertex buffer) with a larger one when `len` bytes
+/// Replaces `buffer` with a larger one of the same usage when `len` bytes
 /// do not fit; true when it did.
 pub(crate) fn grow(
     device: &wgpu::Device,
@@ -87,7 +87,7 @@ pub(crate) fn grow(
     *buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
         size: len.next_power_of_two(),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        usage: buffer.usage(),
         mapped_at_creation: false,
     });
     true
