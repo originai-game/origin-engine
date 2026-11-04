@@ -994,7 +994,7 @@ fn ghost_lamp_scene() -> RenderScene {
     fx::terrain(&mut scene, 60.0);
     scene.lights.push(og_render::Light {
         position: ghost_lamp(),
-        intensity: 60.0,
+        intensity: 120.0,
         range: 30.0,
         ..Default::default()
     });
@@ -1022,13 +1022,15 @@ fn ghost_lamp_scene() -> RenderScene {
 /// of its peak: the ghost of a lamp 20 m off is three times its disc (a
 /// radius of 23 pixels), not the sun's 8 % of the height (58). With the
 /// starburst on the whole flare its rays striped every ghost, and drawn at
-/// a few quarter-frame texels the texels' rows showed; both are a few
-/// pixels across at this size, under a 3 x 3 box and a pixel's step, and
-/// were averaged away at the effects tests' 320 x 180 with 2-pixel steps.
-/// The ghost stands well out from the centre: the starburst leaves the
-/// flare whole within 0.3 of the centre (post.wgsl), so a ghost there (the
+/// a few quarter-frame texels the texels' rows showed; both are a couple
+/// of pixels across at this size, read pixel by pixel across the line
+/// (a 3 x 3 box averaged the rays to a third of the rule), and were
+/// averaged away at the effects tests' 320 x 180 with 2-pixel steps. The
+/// ghost stands well out from the centre: the starburst leaves the flare
+/// whole within 0.3 of the centre (post.wgsl), so a ghost there (the
 /// pillar lamp's, which this test once read) stayed a smooth disc even
-/// under a starburst on the whole flare.
+/// under a starburst on the whole flare. The lamp is bright enough for a
+/// peak near 60 of 255, so the rays' few per cent of it clear the rule.
 #[test]
 fn lens_flare_ghosts_are_smooth_discs() {
     let desc = RenderDesc {
@@ -1053,17 +1055,28 @@ fn lens_flare_ghosts_are_smooth_discs() {
         "the ghost lands outside the starburst's smooth middle: ({mx}, {my})"
     );
     let len = (dx * dx + dy * dy).sqrt().max(1.0);
-    let (tx, ty) = (-dy / len, dx / len);
+    let (rx, ry) = (dx / len, dy / len);
+    let (tx, ty) = (-ry, rx);
     let s = std::f32::consts::FRAC_1_SQRT_2;
     for (name, (ax, ay)) in [
         ("along the circle", (tx, ty)),
         ("at 45 degrees", ((tx - ty) * s, (ty + tx) * s)),
     ] {
+        // One pixel along the line, the mean of three along the radial
+        // direction: a starburst ray runs radially, 2 pixels wide at this
+        // distance from the centre (post.wgsl's rows have 256 cells per
+        // radian), so a box across the line averaged it under the rule;
+        // along its own direction it is the same ray three times.
         let added = |t: f32| {
-            let cx = (mx as f32 + ax * t).round() as u32;
-            let cy = (my as f32 + ay * t).round() as u32;
-            let r = (cx - 1, cy - 1, cx + 2, cy + 2);
-            region(&on, r) - region(&off, r)
+            (-1..=1)
+                .map(|j| {
+                    let cx = (mx as f32 + ax * t + rx * j as f32).round() as u32;
+                    let cy = (my as f32 + ay * t + ry * j as f32).round() as u32;
+                    let r = (cx, cy, cx + 1, cy + 1);
+                    region(&on, r) - region(&off, r)
+                })
+                .sum::<f32>()
+                / 3.0
         };
         let profile: Vec<f32> = (-48..=48).map(|i| added(i as f32)).collect();
         println!("lamp's ghost {name}: {profile:?}");
@@ -1101,8 +1114,11 @@ fn lens_flare_ghosts_are_smooth_discs() {
 
 /// Under TAA a camera turning onto the sun draws its ghost where a camera
 /// held still there draws it: the flare is made after TAA from sources
-/// placed without the jitter, so it never trails or shakes with the
-/// history.
+/// placed with the frame's own camera, so it never trails behind the turn
+/// (sources placed with the previous frame's camera, as a pass fed before
+/// the camera's update would be, land a ghost's width off at this turn's
+/// speed). The jitter the sources leave out is the same on both runs' last
+/// frame, so this comparison cannot see it; it is sub-pixel.
 #[test]
 fn lens_flare_ghosts_do_not_trail_under_taa() {
     let desc = RenderDesc {
