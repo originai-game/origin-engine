@@ -227,13 +227,18 @@ fn a_streamed_tile_of_the_wrong_size_is_refused() {
 }
 
 /// The renderer draws scattered copies from cached chunks: the copies a
-/// frame draws are the CPU's placement (each 4 m cube where
-/// `Terrain::scatter` puts it, at full size), none beyond the distance, and
-/// over the fade a copy thins out by a dither across its whole footprint
-/// rather than shrinking. A second frame builds no chunk; moving on builds
-/// only the chunks that came into range.
+/// frame draws are the CPU's placement (each cube where `Terrain::scatter`
+/// puts it, at full size inside the fade), none beyond the distance, and
+/// over the fade the field shrinks and thins out: each copy draws whole
+/// (no pixel inside its footprint dropped) at a smaller size, some gone,
+/// and a frozen tick draws the same pixels frame after frame. A second
+/// frame builds no chunk; moving on builds only the chunks that came into
+/// range.
+///
+/// Broken before G1 by the static dither: a fading copy kept its full
+/// footprint with holes in it, grain that TAA cannot resolve.
 #[test]
-fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
+fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     let n = 257u32;
     let size = 1024.0f32;
     let mut scene = RenderScene::new();
@@ -290,6 +295,10 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
     let again = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     assert_eq!(again.scatter_built, 0, "a second frame builds nothing");
     assert_eq!(again.scatter_copies, first.scatter_copies);
+    // The distance fade has no temporal noise: the same tick draws the
+    // same pixels on the next frame.
+    let next = r.read_offscreen().expect("capture");
+    assert!(img.pixels == next.pixels, "a frozen tick's fade is stable");
     // Where each copy is: 3.6 pixels a metre (720 px over 200 m).
     let px_of = |p: Vec3| (640.0 + p.x * 720.0 / 200.0, 360.0 + p.z * 720.0 / 200.0);
     let red_at = |x: f32, y: f32| {
@@ -306,6 +315,7 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
         scene.camera.position,
     );
     let (mut solid, mut thinned, mut gone) = (0, 0, 0);
+    let (mut shrunk, mut faded_out) = (0, 0);
     let at_of = |m: &Mat4| m.w_axis.truncate();
     for (_, m) in &placed {
         let at = at_of(m);
@@ -318,8 +328,8 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
         }
         let d = Vec2::new(at.x, at.z).length();
         let (cx, cy) = px_of(at);
-        // A disc of 4 px inside the 3 m (10.8 px) cube's top, and its outer ring from 2.5 px.
-        let (mut inside, mut hit, mut ring) = (0, 0, 0);
+        // A disc of 4 px inside the 3 m (10.8 px) cube's top.
+        let (mut inside, mut hit) = (0, 0);
         for dy in -4i32..=4 {
             for dx in -4i32..=4 {
                 let r2 = (dx * dx + dy * dy) as f32;
@@ -329,9 +339,6 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
                 inside += 1;
                 if red_at(cx + dx as f32, cy + dy as f32) {
                     hit += 1;
-                    if r2 >= 6.25 {
-                        ring += 1;
-                    }
                 }
             }
         }
@@ -340,18 +347,45 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
             assert!(fill > 0.97, "a copy {d:.1} m out is filled {fill:.2}");
             solid += 1;
         } else if d > 60.0 && d < 74.0 {
-            // Fading (about 0.25 to 0.6 kept): thinned across the footprint, its rim still drawn.
-            assert!(
-                fill > 0.05 && fill < 0.85,
-                "a copy {d:.1} m out is filled {fill:.2}"
+            // Fading (fade 0.3 to 0.75): the copy is gone or a smaller,
+            // solid square. Its red pixels' box within 8 px of its centre
+            // (orthographic, from above: a square top) holds no hole
+            // inside its 1 px rim.
+            let (mut x0, mut y0, mut x1, mut y1) = (i32::MAX, i32::MAX, i32::MIN, i32::MIN);
+            for dy in -8i32..=8 {
+                for dx in -8i32..=8 {
+                    if red_at(cx + dx as f32, cy + dy as f32) {
+                        (x0, y0, x1, y1) = (x0.min(dx), y0.min(dy), x1.max(dx), y1.max(dy));
+                    }
+                }
+            }
+            if x0 > x1 {
+                faded_out += 1;
+                continue;
+            }
+            let mut holes = 0;
+            for dy in (y0 + 1)..y1 {
+                for dx in (x0 + 1)..x1 {
+                    if !red_at(cx + dx as f32, cy + dy as f32) {
+                        holes += 1;
+                    }
+                }
+            }
+            assert_eq!(
+                holes, 0,
+                "a copy {d:.1} m out has holes in its footprint: dithered, not shrunk"
             );
-            assert!(
-                ring > 0,
-                "a copy {d:.1} m out has lost its rim: shrunk, not dithered"
-            );
+            // 3 m at 3.6 px a metre: 10.8 px whole.
+            if (x1 - x0).max(y1 - y0) < 9 {
+                shrunk += 1;
+            }
             thinned += 1;
         }
     }
+    assert!(
+        shrunk > 0 && faded_out > 0,
+        "the fade shrinks copies ({shrunk}) and thins them out ({faded_out} gone)"
+    );
     assert!(solid > 5 && thinned > 3, "{solid} solid, {thinned} thinned");
     // Nothing past the distance: no red in the corners' ring beyond 92 m.
     for (x, y) in [(0u32, 0u32), (1279, 0), (0, 719), (1279, 719)] {

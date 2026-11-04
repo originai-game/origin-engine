@@ -1,11 +1,12 @@
 // Scattered copies over a terrain (scatter.rs): instances cached per chunk,
-// each a world transform, faded out with the distance from the camera by
-// a dither (never shrunk), swayed by the wind. Shared by the lit, prepass
-// and shadow passes.
+// each a world transform, shrunk and thinned out with the distance from the
+// camera (scatter_scale; no dither), crossfaded to their impostor by a
+// temporal blue-noise threshold (scatter_noise), swayed by the wind.
+// Shared by the lit, prepass and shadow passes, so their coverage agrees.
 
 struct ScatterUniform {
   camera: vec4<f32>,          // xyz: the camera, w: the distance copies reach (m)
-  fade: vec4<f32>,            // x: where the fade starts (m)
+  fade: vec4<f32>,            // x: where the fade starts (m), y: this render frame's turn of the crossfade noise (scatter.rs crossfade_noise_offset)
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: the wind's horizontal direction (x, z), z: the mean lean (0: still), w: the gust
@@ -16,6 +17,8 @@ struct ScatterUniform {
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
+// The blue-noise tile (blue_noise.rs): 64 x 64 thresholds, R8.
+@group(2) @binding(1) var scatter_blue_noise: texture_2d<f32>;
 
 struct ScatterVertex {
   @location(0) position: vec3<f32>,
@@ -49,11 +52,20 @@ fn scatter_near(at: vec3<f32>) -> f32 {
   return 1.0 - smoothstep(0.9 * far, far, length(at.xz - scatter.camera.xz));
 }
 
-// Whether a pixel of a copy faded to `fade` is dropped: an interleaved
-// gradient noise threshold per pixel, so the copy thins out evenly.
-fn scatter_dropped(pixel: vec2<f32>, fade: f32) -> bool {
-  let n = fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-  return n >= fade;
+// The crossfade's threshold at `pixel`: the blue-noise tile's, turned by
+// the golden ratio each render frame (scatter.rs crossfade_noise_offset),
+// so each frame is blue noise and each pixel's thresholds over frames are
+// evenly spread, which TAA resolves to the blend. In [0, 1).
+fn scatter_noise(pixel: vec2<f32>) -> f32 {
+  let p = vec2<i32>(vec2<u32>(max(pixel, vec2<f32>(0.0))) % vec2<u32>(64u));
+  let level = textureLoad(scatter_blue_noise, p, 0).r * (255.0 / 256.0) + (0.5 / 256.0);
+  return fract(level + scatter.fade.y);
+}
+
+// Whether a pixel of a copy whose mesh shows `near` (scatter_near) is
+// dropped: the impostor draws the pixels the mesh drops (imp_dropped).
+fn scatter_dropped(pixel: vec2<f32>, near: f32) -> bool {
+  return scatter_noise(pixel) >= near;
 }
 
 // A clip position outside the view: the copy's triangles are culled.
@@ -69,6 +81,30 @@ fn scatter_hash(x: u32) -> u32 {
   return h ^ (h >> 16u);
 }
 
+// A hash in [0, 1) of the copy standing at `base` (its place in the world,
+// the same wherever the frame's origin is: scatter.rs places the copies in
+// the world first).
+fn scatter_copy_unit(base: vec3<f32>) -> f32 {
+  let at = base.xz + scatter.wind_shape.zw;
+  return f32(scatter_hash(bitcast<u32>(at.x) ^ scatter_hash(bitcast<u32>(at.y))) >> 8u) / 16777216.0;
+}
+
+// How large the copy standing at `at` draws over the distance fade, 0..1:
+// each copy shrinks to nothing over its own half of the fade, its place's
+// hash choosing which, so the field thins out evenly while every copy
+// shrinks smoothly (grass.wgsl's blades thin and shrink the same way). No
+// pixel is dithered, so TAA sees no grain.
+fn scatter_scale(at: vec3<f32>) -> f32 {
+  let f = scatter_fade(at);
+  if (f >= 1.0) { return 1.0; }
+  return clamp(2.0 * f - scatter_copy_unit(at), 0.0, 1.0);
+}
+
+// `model` scaled by `s` about its origin (the copy's root).
+fn scatter_shrunk(model: mat4x4<f32>, s: f32) -> mat4x4<f32> {
+  return mat4x4<f32>(model[0] * s, model[1] * s, model[2] * s, model[3]);
+}
+
 // How the wind moves a vertex at `local` (mesh space) of the copy standing
 // at `base` with uniform scale `scale`, at the time phases `phase`
 // (scatter.rs, the module's Wind): downwind by the lean times its height
@@ -82,10 +118,8 @@ fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, phase: vec2<f32>)
     return vec3<f32>(0.0);
   }
   let dir = scatter.wind.xy;
-  // The copy's place in the world: the same bits wherever the frame's
-  // origin is (scatter.rs places the copies in the world first).
   let at = base.xz + scatter.wind_shape.zw;
-  let jitter = f32(scatter_hash(bitcast<u32>(at.x) ^ scatter_hash(bitcast<u32>(at.y))) >> 8u) / 16777216.0;
+  let jitter = scatter_copy_unit(base);
   let x = scatter.wind_shape.x * dot(at, dir) + jitter;
   let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
   let h = local.y * scale;

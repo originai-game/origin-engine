@@ -17,6 +17,7 @@ struct ScatterOut {
   @location(1) normal: vec3<f32>,
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
+  // How much of the copy draws as its mesh (scatter_near; scatter_dropped).
   @location(4) @interpolate(flat) fade: f32,
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
@@ -40,10 +41,11 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
 
 @vertex
 fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  let size = scatter_scale(i.m3);
+  let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), size);
   var o: ScatterOut;
-  o.fade = scatter_fade(i.m3) * scatter_near(i.m3);
-  let scale = length(i.m1);
+  o.fade = scatter_near(i.m3);
+  let scale = length(i.m1) * size;
   let sway = scatter_sway(v.position, i.m3, scale, scatter.wind_phase.xy);
   var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
   o.normal = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
@@ -58,7 +60,7 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
-  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), o.fade > 0.0);
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && o.fade > 0.0);
   o.world = world.xyz;
   o.local = v.position;
   o.uv = v.uv;

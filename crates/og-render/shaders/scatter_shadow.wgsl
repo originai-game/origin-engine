@@ -1,6 +1,6 @@
 // The scattered copies in the shadow passes: depth from a cascade, or
-// distance / range from a local light, like shadow.wgsl, with the copies'
-// fade dithered so their shadows thin out with them. Prepended by
+// distance / range from a local light, like shadow.wgsl, shrunk and
+// crossfaded as the lit pass draws them so their shadows match. Prepended by
 // noise.wgsl, material.wgsl (group 1: the alpha cut-off),
 // scatter_common.wgsl (group 2) and shadow_pass.wgsl (group 0, the shadow
 // pass's slot).
@@ -14,12 +14,13 @@ struct ScatterShadowOut {
 
 @vertex
 fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
-  let sway = scatter_sway(v.position, i.m3, length(i.m1), scatter.wind_phase.xy);
+  let size = scatter_scale(i.m3);
+  let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), size);
+  let sway = scatter_sway(v.position, i.m3, length(i.m1) * size, scatter.wind_phase.xy);
   let world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
   var o: ScatterShadowOut;
-  o.fade = scatter_fade(i.m3) * scatter_near(i.m3);
-  o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), o.fade > 0.0);
+  o.fade = scatter_near(i.m3);
+  o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), size > 0.0 && o.fade > 0.0);
   o.world = world.xyz;
   o.uv = v.uv;
   return o;

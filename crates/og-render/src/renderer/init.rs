@@ -872,6 +872,13 @@ impl Renderer {
                 lit_wgsl: Box::new(scatter_lit_source),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
+                blue_noise: post::texture_with_data(
+                    &device,
+                    &queue,
+                    crate::blue_noise::BLUE_NOISE_SIZE,
+                    wgpu::TextureFormat::R8Unorm,
+                    crate::blue_noise::BLUE_NOISE,
+                ),
             },
         );
         let grass = grass::GrassRenderer::new(
