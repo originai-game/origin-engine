@@ -224,6 +224,30 @@ function clouds(world: World, args: readonly string[]): void {
   must(world.resource(og.Clouds)).enabled = args[0] === "1";
 }
 
+// Diagnostic (branch site-hero-sheet-diag only): hide the cloak (the
+// traveller drawn from a copy of its model without mesh 1), the whole
+// traveller, or the ground (the terrain and the cliff rocks).
+function hide(world: World, args: readonly string[]): void {
+  const t = scene.traveller;
+  if (args[0] === "cloak") {
+    must(world.remove(t, og.Garment));
+    const m = must(world.get(t, og.Model));
+    must(world.set(t, og.Model, { ...m, asset: must(og.load.gltf(world, "models/traveller-nocloak.glb")) }));
+  } else if (args[0] === "traveller") {
+    const m = must(world.get(t, og.Model));
+    must(world.set(t, og.Model, { ...m, visible: false }));
+  } else if (args[0] === "ground") {
+    const g = world.find("meadow")!;
+    const tr = must(world.get(g, og.Terrain));
+    must(world.set(g, og.Terrain, { ...tr, visible: false }));
+    for (let k = 0; k < 6; k++) {
+      const c = world.find(`cliff-${k}`)!;
+      const m = must(world.get(c, og.Model));
+      must(world.set(c, og.Model, { ...m, visible: false }));
+    }
+  } else throw new Error("write hide:<cloak|traveller|ground>");
+}
+
 function brace(world: World, args: readonly string[]): void {
   const seconds = args.length ? Number(args[0]) : 1.5;
   if (!(seconds >= 0)) throw new Error("write brace:<seconds held>");
@@ -237,12 +261,13 @@ export default og.game({
   resources: [View],
   systems: [Frame],
   start,
-  commands: { shot, brace, cloth, clouds },
+  commands: { shot, brace, cloth, clouds, hide },
   commandHelp: {
     shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
     brace: { usage: "<seconds>", doc: "Brace against the wind and shield the eyes, held this long (1.5 s if omitted)." },
     cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
     clouds: { usage: "<0|1>", doc: "Hide the cloud sea (0) or show it (1)." },
+    hide: { usage: "<cloak|traveller|ground>", doc: "Diagnostic: hide the cloak, the traveller, or the terrain and cliff rocks." },
   },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);
