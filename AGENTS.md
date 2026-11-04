@@ -234,7 +234,13 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   macrunner, whose references already exist. DX12 and Chrome or Edge on
   studio-win, Safari, phones (iPhone, Android with Adreno and Mali) and any
   per-backend references are a compatibility phase after the features,
-  not per merge or per wave. The web stays WebGPU only, with no WebGL2
+  not per merge or per wave. **Started early (the owner, 2026-11-04):**
+  Windows (DX12, Chrome, Edge) and Android (the owner's Pixel) run now
+  on studio-win beside the feature work, each in one thread that fixes
+  engine bugs at the root, records per-backend references only for
+  legitimate differences, commits its evidence under
+  `tests/evidence/compat/` and sends heads to the art runner; Metal stays
+  the reference platform. The web stays WebGPU only, with no WebGL2
   tier, and nothing runs on lavapipe. **Authors never touch a GPU**: no
   Mac satellite, no Modal, no cloud GPU. An author checks its work on its
   orb with `cargo check -p`, the edited crates' unit tests, typecheck and
