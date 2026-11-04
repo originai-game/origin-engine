@@ -39,6 +39,13 @@ impl Ui {
                     "track",
                     crate::tokens::ElementClass::Tab,
                 )),
+                // Labels too wide for the room together (a phone at the
+                // player's 150 % text) keep their size and scroll sideways,
+                // the cut edge fading into the track; focus scrolls a tab
+                // into view (docs/ui.md §15.2: no loss of content).
+                scroll_x: true,
+                hide_bars: true,
+                fade: t.space.xl,
                 ..Element::default()
             },
         );
@@ -53,6 +60,7 @@ impl Ui {
         // 3.95:1 on it). The muted ink moves as little as it takes to read
         // 4.5:1 there (a hair over, for the bytes), else is the main ink.
         let track = t.palette.control.over_linear(self.behind(list));
+        self.nodes[list].el.fade_into = Some(track);
         let muted = t
             .palette
             .ink_muted
