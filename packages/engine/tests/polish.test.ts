@@ -311,6 +311,42 @@ test("og polish reports the string tables' missing keys as a finding for og-i18n
   expect(f?.fix ?? "").toContain("og-i18n");
 }, 300_000);
 
+test("og ui check draws a phone cell at 2 device pixels per CSS pixel and a desktop cell at 1, and records each", () => {
+  const p = join(evidence, "ui-dpr");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Dpr"\nid "dpr"\nengine "0.7.7"\nentry "src/main.ts"\n');
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineSystem } from "@origingame/engine";
+const Draw = defineSystem("Draw", {}, () => og.ui.anchor("Title", { anchor: "center" }, () => og.ui.label("Name", "Key F", { step: "body" })));
+export default og.game({
+  tick: 60,
+  systems: [Draw],
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+});
+`,
+  );
+  const out = join(p, "og-out", "ui");
+  const r = run([ogBin(), "ui", "check", p, "--screen", "title=0:screenshot:x.png", "--breakpoints", "desktop,phonePortrait", "--locales", "game", "--scales", "100", "--out", out]);
+  if (r.code !== 0 && r.code !== 1) throw new Error(r.out);
+  const check = JSON.parse(readFileSync(join(out, "check.json"), "utf8")) as { cellList: Array<{ cell: string; dpr: number; frame: string | null; uiFrame: string }> };
+  expect(check.cellList.map((c) => [c.cell.split(" ")[1], c.dpr])).toEqual([["desktop", 1], ["phonePortrait", 2]]);
+  for (const c of check.cellList) {
+    // The UI laid out at that ratio (its CSS size unchanged), and the frame, where a renderer drew one, at it.
+    const f = JSON.parse(readFileSync(join(out, c.uiFrame), "utf8")) as { viewport: { width: number; dpr: number } };
+    expect(f.viewport.dpr).toBe(c.dpr);
+    if (c.frame) {
+      const png = readFileSync(join(out, c.frame));
+      expect(new DataView(png.buffer, png.byteOffset).getUint32(16)).toBe(f.viewport.width * c.dpr);
+    }
+  }
+});
+
 test("og polish runs og ui check over the screens project.ogt declares and reports each rule with an error", () => {
   const p = join(evidence, "ui-screens");
   rmSync(p, { recursive: true, force: true });

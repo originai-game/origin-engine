@@ -33,12 +33,17 @@ import { og } from "../index.ts";
 import { cellName, checkFrame, checkLocales, checkScale, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
 
-/** The surfaces of the matrix: CSS size, DPR 1 (the sheet's), safe area, pointer. Phone and tablet as the kit's `viewport:` command lays them out. */
-export const BREAKPOINTS: Record<string, { width: number; height: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean }> = {
-  desktop: { width: 1280, height: 720, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false },
-  phonePortrait: { width: 390, height: 844, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true },
-  phoneLandscape: { width: 844, height: 390, safeArea: { left: 47, top: 0, right: 47, bottom: 21 }, coarsePointer: true },
-  tablet: { width: 820, height: 1180, safeArea: { left: 0, top: 24, right: 0, bottom: 20 }, coarsePointer: true },
+/**
+ * The surfaces of the matrix: CSS size, device pixels per CSS pixel, safe area, pointer. Phone and tablet as the
+ * kit's `viewport:` command lays them out. A phone and a tablet draw at 2, the floor of the devices they stand for
+ * (phones are 2 to 3): drawn at 1, a 12 px label's one-pixel strokes never reach their ink, and contrast measured a
+ * grey no phone shows (the coordinator, 2026-11-04). A desktop stays at 1.
+ */
+export const BREAKPOINTS: Record<string, { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean }> = {
+  desktop: { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false },
+  phonePortrait: { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true },
+  phoneLandscape: { width: 844, height: 390, dpr: 2, safeArea: { left: 47, top: 0, right: 47, bottom: 21 }, coarsePointer: true },
+  tablet: { width: 820, height: 1180, dpr: 2, safeArea: { left: 0, top: 24, right: 0, bottom: 20 }, coarsePointer: true },
 };
 
 const argv = process.argv.slice(2);
@@ -62,6 +67,8 @@ function timed(commands: string, at = 0): string[] {
 
 interface Cell extends UiCell {
   index: number;
+  /** Device pixels per CSS pixel the cell was drawn at (its breakpoint's). */
+  dpr: number;
   commands: string;
   frame: string | null;
   uiFrame: string;
@@ -159,14 +166,14 @@ async function main(): Promise<void> {
     const images = new Map<string, Image>();
     try {
       engine.attachPlatform(nativePlatform());
-      const attached = attachRenderer(engine.id, vp.width, vp.height);
+      const attached = attachRenderer(engine.id, vp.width * vp.dpr, vp.height * vp.dpr);
       if (!attached.ok) fail(attached.reason);
       const started = engine.advance(0);
       if (!started.ok) fail(started.reason);
       // The player's text size: configure keeps it through the game's own
       // configure calls (a field they leave out keeps its value).
       if (scale !== 100) og.ui.configure(engine.world, { textScale: scale / 100 });
-      og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: 1, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
+      og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: vp.dpr, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
       const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)];
       const report = engine.probe.commands(script.join(";")) as { untilTick: number } | null;
       if (!report) fail(`the script is malformed: ${script.join(";")}`);
@@ -273,7 +280,7 @@ async function main(): Promise<void> {
         }
         for (const w of r.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
         all.push(...found);
-        cells.push({ ...cell, index, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
+        cells.push({ ...cell, index, dpr: BREAKPOINTS[bp]!.dpr, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
         images.push(img as Image);
       }
     }
@@ -282,7 +289,7 @@ async function main(): Promise<void> {
   const errors = findings.filter((f) => f.severity === "error").length;
   const project_ = basename(resolve(root!));
   const rules = RULES.map((r) => ({ ...r, findings: findings.filter((f) => f.rule === r.id).length }));
-  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, errors, warnings: findings.length - errors, findings, rules }, null, 1) + "\n");
+  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, errors, warnings: findings.length - errors, findings, rules, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
   writeFileSync(join(outDir, "check.txt"), formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) (${screens.length} screen(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} breakpoint(s) × ${locales.length} locale(s) × ${scales.length} scale(s))`));
   if (mode === "preview") {
     // One sheet per screen and style: a row per breakpoint, a column per locale and scale.
