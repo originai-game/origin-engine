@@ -153,6 +153,7 @@ column Screen {
       width grow
       padding 12
       gap 8
+      background token panel
       frame panel
       column Browse {
         width grow

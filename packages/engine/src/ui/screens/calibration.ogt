@@ -42,6 +42,7 @@ column Calibration {
     width grow 0 640
     padding 24
     gap 16
+    background token panel
     frame panel
     row Steps {
       width grow

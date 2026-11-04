@@ -112,6 +112,7 @@ stack Map {
       padding 24
       gap 12
       cross center
+      background token panel
       frame panel
       interactive true
       enter pop

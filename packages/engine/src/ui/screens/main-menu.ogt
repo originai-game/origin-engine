@@ -149,6 +149,7 @@ stack Menu {
     bottom 32
     padding 16
     gap 4
+    background token panelRaised
     frame card
     interactive true
     focusable true

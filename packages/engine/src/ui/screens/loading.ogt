@@ -69,6 +69,7 @@ stack Loading {
       width grow 0 720
       padding 16
       gap 6
+      background token panel
       frame panel
       label Eyebrow {
         key "screen.loading.tip"

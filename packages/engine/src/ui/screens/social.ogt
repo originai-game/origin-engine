@@ -146,6 +146,7 @@ column Screen {
           padding 8
           gap 10
           cross center
+          background token panelRaised
           frame card
           wrap true
           panel Dot {
@@ -213,6 +214,7 @@ column Screen {
       width grow
       padding 12
       gap 4
+      background token panelRaised
       frame card
       label Name {
         text bind guild.name

@@ -220,6 +220,7 @@ column Screen {
             width grow
             padding 12
             gap 6
+            background token panelRaised
             frame card
             label Title {
               key "screen.diplomacy.youGive"
@@ -237,6 +238,7 @@ column Screen {
             width grow
             padding 12
             gap 6
+            background token panelRaised
             frame card
             label Title {
               key "screen.diplomacy.theyGive"

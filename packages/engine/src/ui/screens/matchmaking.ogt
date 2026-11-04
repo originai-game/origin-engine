@@ -54,6 +54,7 @@ column Match {
     padding 24
     gap 16
     cross center
+    background token panel
     frame panel
     on change phase play found
     column Searching {

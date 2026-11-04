@@ -82,6 +82,7 @@ column GameOver {
       padding 16
       gap 8
       cross center
+      background token panelRaised
       frame card
       visible bind offer
       label Line {

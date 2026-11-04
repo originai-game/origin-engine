@@ -181,6 +181,7 @@ column Screen {
       width grow
       padding 16
       gap 10
+      background token panel
       frame panel
       row Head {
         width grow

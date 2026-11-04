@@ -203,6 +203,7 @@ column Screen {
               padding 10
               gap 12
               cross center
+              background token panelRaised
               frame card
               column Text {
                 width grow

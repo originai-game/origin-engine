@@ -101,6 +101,7 @@ column Screen {
     width grow
     height grow
     padding 16
+    background token panel
     frame panel
     visible bind "view != \"map\""
     at phone {

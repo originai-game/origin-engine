@@ -165,6 +165,7 @@ stack Training {
     width grow 0 320
     padding 12
     gap 8
+    background token panel
     frame panel
     visible bind showPanel
     enter slideLeft 24 token enter

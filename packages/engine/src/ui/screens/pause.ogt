@@ -39,6 +39,7 @@ row Pause {
     width grow 0 400
     padding 24
     gap 16
+    background token panel
     frame panel
     at phoneLandscape {
       width grow 0 640

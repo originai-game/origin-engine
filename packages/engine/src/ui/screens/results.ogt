@@ -33,7 +33,7 @@ actions {
   confirm "Continue"
 }
 timeline land {
-  track "Panel/Head/Grade" scale {
+  track "Panel/Page/Head/Grade" scale {
     key 0 2
     key 260 0.92 out
     key 420 1 out
@@ -55,126 +55,131 @@ column Results {
     height grow 0 900
     padding 24
     gap 16
+    background token panel
     frame panel
     on appear play land
     at phone {
       padding 16
       gap 12
     }
-    row Head {
-      width grow
-      gap 16
-      cross center
-      column Text {
-        width grow
-        gap 4
-        label Title {
-          text bind title
-          step xl4
-          heading true
-          at phone {
-            step xl2
-          }
-          state outcome bind won {
-            lost {
-              ink token danger
-            }
-            won {
-              ink token gold
-            }
-          }
-        }
-        label Gained {
-          text "+{gained, grouped} XP"
-          color token xp
-        }
-      }
-      label Grade {
-        text bind grade
-        step displayLg
-        heading true
-        visible bind "grade != \"\""
-        at phone {
-          step xl4
-        }
-      }
-    }
-    row Level {
-      width grow
-      gap 12
-      cross center
-      label Value {
-        text "Level {level}"
-        step lg
-      }
-      progress Xp {
-        width grow
-        value bind xp
-      }
-    }
-    slot Celebration {
-      width grow
-    }
-    row Tabs {
-      gap 6
-      button Summary {
-        key "screen.results.summary"
-        text "Summary"
-        variant ghost
-        size small
-        at phone {
-          size medium
-        }
-        on click set tab "\"summary\""
-        state selection bind "tab == \"summary\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
-        }
-      }
-      button Graphs {
-        key "screen.results.graphs"
-        text "Graphs"
-        variant ghost
-        size small
-        at phone {
-          size medium
-        }
-        on click set tab "\"graphs\""
-        state selection bind "tab == \"graphs\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
-        }
-      }
-      button Board {
-        key "screen.results.board"
-        text "Scoreboard"
-        variant ghost
-        size small
-        at phone {
-          size medium
-        }
-        on click set tab "\"board\""
-        state selection bind "tab == \"board\"" {
-          off {
-            opacity 0.7
-          }
-          on {
-            opacity 1
-          }
-        }
-      }
-    }
     scroll Page {
       width grow
       height grow
+      gap 16
+      at phone {
+        gap 12
+      }
+      row Head {
+        width grow
+        gap 16
+        cross center
+        column Text {
+          width grow
+          gap 4
+          label Title {
+            text bind title
+            step xl4
+            heading true
+            at phone {
+              step xl2
+            }
+            state outcome bind won {
+              lost {
+                ink token danger
+              }
+              won {
+                ink token gold
+              }
+            }
+          }
+          label Gained {
+            text "+{gained, grouped} XP"
+            color token xp
+          }
+        }
+        label Grade {
+          text bind grade
+          step displayLg
+          heading true
+          visible bind "grade != \"\""
+          at phone {
+            step xl4
+          }
+        }
+      }
+      row Level {
+        width grow
+        gap 12
+        cross center
+        label Value {
+          text "Level {level}"
+          step lg
+        }
+        progress Xp {
+          width grow
+          value bind xp
+        }
+      }
+      slot Celebration {
+        width grow
+      }
+      row Tabs {
+        gap 6
+        button Summary {
+          key "screen.results.summary"
+          text "Summary"
+          variant ghost
+          size small
+          at phone {
+            size medium
+          }
+          on click set tab "\"summary\""
+          state selection bind "tab == \"summary\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Graphs {
+          key "screen.results.graphs"
+          text "Graphs"
+          variant ghost
+          size small
+          at phone {
+            size medium
+          }
+          on click set tab "\"graphs\""
+          state selection bind "tab == \"graphs\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Board {
+          key "screen.results.board"
+          text "Scoreboard"
+          variant ghost
+          size small
+          at phone {
+            size medium
+          }
+          on click set tab "\"board\""
+          state selection bind "tab == \"board\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+      }
       column Summary {
         width grow
         gap 12
@@ -214,6 +219,7 @@ column Results {
               padding 8
               gap 4
               cross center
+              background token panelRaised
               frame card
               art Art {
                 kind itemIcon

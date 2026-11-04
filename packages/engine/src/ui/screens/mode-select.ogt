@@ -70,6 +70,7 @@ column Screen {
           width grow
           padding 12
           gap 8
+          background token panelRaised
           frame card
           interactive true
           focusable true

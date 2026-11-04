@@ -87,6 +87,7 @@ column Screen {
       width grow 0 420
       padding 16
       gap 8
+      background token panel
       frame panel
       visible bind showRules
       enter slideLeft 24 token enter

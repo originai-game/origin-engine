@@ -74,6 +74,7 @@ column Screen {
           gap 4
           padding 4
           cross center
+          background token panelRaised
           frame card
           interactive true
           focusable true

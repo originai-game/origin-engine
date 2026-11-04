@@ -94,6 +94,7 @@ column Screen {
       width grow
       padding 16
       gap 8
+      background token panel
       frame panel
       label Name {
         text bind selected.name

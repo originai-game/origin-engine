@@ -43,6 +43,7 @@ column Login {
     width grow 0 760
     padding 24
     gap 16
+    background token panel
     frame panel
     enter pop
     at phone {
@@ -78,6 +79,7 @@ column Login {
           padding 8
           gap 4
           cross center
+          background token panelRaised
           frame card
           label Number {
             text "Day {d.day}"

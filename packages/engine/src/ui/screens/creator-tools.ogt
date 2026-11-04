@@ -40,6 +40,7 @@ column Editor {
     padding 8
     gap 6
     cross center
+    background token panel
     frame panel
     wrap true
     button Select {
@@ -183,6 +184,7 @@ column Editor {
       height grow
       padding 8
       gap 6
+      background token panel
       frame panel
       area tree
       at phonePortrait {
@@ -250,6 +252,7 @@ column Editor {
       height grow
       padding 8
       gap 6
+      background token panel
       frame panel
       area inspector
       at phonePortrait {
@@ -275,6 +278,7 @@ column Editor {
       height grow
       padding 8
       gap 6
+      background token panel
       frame panel
       area catalogue
       at phonePortrait {

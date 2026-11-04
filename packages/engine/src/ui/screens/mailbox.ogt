@@ -166,6 +166,7 @@ column Screen {
       width grow
       padding 16
       gap 10
+      background token panel
       frame panel
       visible bind "mails.length > 0"
       label Subject {
@@ -191,6 +192,7 @@ column Screen {
             padding 8
             gap 4
             cross center
+            background token panelRaised
             frame card
             art Art {
               kind itemIcon
