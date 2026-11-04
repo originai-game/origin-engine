@@ -1037,7 +1037,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // mesh cape), drawn as sprite-batch triangles under 2D lighting.
         #[cfg(not(target_arch = "wasm32"))]
         "skeleton-2d" => |g, _| {
-            g.scene = crate::skeleton_scenes::skeleton_scene()?;
+            g.scene = crate::skeleton_scenes::skeleton_scene(true)?;
             Ok(())
         },
         // Render-lod (depth S6; depth_render_scenes.rs): a cooked tree at

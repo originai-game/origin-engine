@@ -554,10 +554,27 @@ impl Rig2dAsset {
             pose,
             &Affine2::IDENTITY,
             ([1.0; 4], [0.0; 4]),
-            &mut out,
-            &mut indices,
+            (&mut out, &mut indices),
+            &mut None,
         );
         (out, indices)
+    }
+
+    /// The same draw order and colours as `triangles`, with weighted mesh
+    /// positions left for the renderer. Regions are already in rig units.
+    pub fn skinned_triangles(&self, pose: &Pose2d) -> (Vec<RigVertex>, Vec<u32>, RigSkin) {
+        let mut out = Vec::new();
+        let mut indices = Vec::new();
+        let mut skin = Some(RigSkin::default());
+        self.draw(
+            self.body(),
+            pose,
+            &Affine2::IDENTITY,
+            ([1.0; 4], [0.0; 4]),
+            (&mut out, &mut indices),
+            &mut skin,
+        );
+        (out, indices, skin.unwrap())
     }
 
     fn draw(
@@ -566,11 +583,16 @@ impl Rig2dAsset {
         pose: &Pose2d,
         place: &Affine2,
         tint: ([f32; 4], [f32; 4]),
-        out: &mut Vec<RigVertex>,
-        indices: &mut Vec<u32>,
+        (out, indices): (&mut Vec<RigVertex>, &mut Vec<u32>),
+        skin: &mut Option<RigSkin>,
     ) {
         let (w, h) = (self.size[0].max(1) as f32, self.size[1].max(1) as f32);
         let inv = 1.0 / self.unit;
+        let bone_base = skin.as_mut().map_or(0, |skin| {
+            let base = skin.bones.len();
+            skin.bones.extend(pose.world.iter().map(|m| place.mul(m)));
+            base
+        });
         for &s in &pose.order {
             let slot = &body.slots[s];
             let Some(a) = pose.slots[s] else { continue };
@@ -605,6 +627,9 @@ impl Rig2dAsset {
                             color,
                             offset,
                         });
+                        if let Some(skin) = skin {
+                            skin.ranges.push([0, 0]);
+                        }
                     }
                     indices.extend([0, 1, 2, 2, 3, 0].map(|i| base + i));
                 }
@@ -620,6 +645,10 @@ impl Rig2dAsset {
                     let mut k = 0usize;
                     for v in vertices {
                         let mut p = [0.0f32; 2];
+                        if let Some(skin) = skin {
+                            skin.ranges
+                                .push([skin.influences.len() as u32, v.influences.len() as u32]);
+                        }
                         for i in &v.influences {
                             let (dx, dy) = deform.map_or((0.0, 0.0), |d| {
                                 (
@@ -628,9 +657,19 @@ impl Rig2dAsset {
                                 )
                             });
                             k += 1;
-                            let q = place.apply_to(pose.world[i.bone].apply(i.x + dx, i.y + dy));
-                            p[0] += q[0] * i.weight;
-                            p[1] += q[1] * i.weight;
+                            if let Some(skin) = skin {
+                                skin.influences.push(Influence {
+                                    bone: bone_base + i.bone,
+                                    x: i.x + dx,
+                                    y: i.y + dy,
+                                    weight: i.weight,
+                                });
+                            } else {
+                                let q =
+                                    place.apply_to(pose.world[i.bone].apply(i.x + dx, i.y + dy));
+                                p[0] += q[0] * i.weight;
+                                p[1] += q[1] * i.weight;
+                            }
                         }
                         out.push(RigVertex {
                             position: [p[0] * inv, p[1] * inv],
@@ -659,8 +698,8 @@ impl Rig2dAsset {
                             child,
                             &m,
                             (color, offset),
-                            out,
-                            indices,
+                            (out, indices),
+                            skin,
                         );
                     }
                 }

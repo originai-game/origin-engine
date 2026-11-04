@@ -12,7 +12,7 @@
 //! carry.
 
 use crate::scenes::asset;
-use glam::{Vec2, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_anim::{Affine2, Rig2dAsset, Skeleton2D, Transform, skeleton_frame, skeleton_pose};
 use og_render::{
     Background, Camera, ColorSpace, Light2d, Lighting2d, Mips, RenderScene, Sprite, SpriteMesh,
@@ -33,7 +33,7 @@ const LIFT: f32 = 0.08;
 const FEET: [f32; 2] = [0.15, -0.15];
 
 /// `skeleton-2d` (module docs).
-pub fn skeleton_scene() -> Result<RenderScene, String> {
+pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
     let rig = Rig2dAsset::parse(
         std::str::from_utf8(&asset("rig2d/keeper.ogt")?).map_err(|e| e.to_string())?,
     )
@@ -87,7 +87,41 @@ pub fn skeleton_scene() -> Result<RenderScene, String> {
             .collect();
         let frame = skeleton_frame(&rig, &place, flip);
         let pose = skeleton_pose(&rig, &s, &frame, &targets);
-        let (corners, indices) = rig.triangles(&pose);
+        let (corners, indices, skin) = if skinned {
+            let (corners, indices, skin) = rig.skinned_triangles(&pose);
+            (
+                corners,
+                indices,
+                Some(og_render::SpriteSkin {
+                    bones: skin
+                        .bones
+                        .iter()
+                        .map(|bone| {
+                            let m = frame.mul(bone);
+                            Mat4::from_cols(
+                                Vec4::new(m.a, m.b, 0.0, 0.0),
+                                Vec4::new(m.c, m.d, 0.0, 0.0),
+                                Vec4::Z,
+                                Vec4::new(m.tx, m.ty, 0.0, 1.0),
+                            )
+                        })
+                        .collect(),
+                    influences: skin
+                        .influences
+                        .iter()
+                        .map(|i| og_render::SpriteInfluence {
+                            position: Vec2::new(i.x, i.y),
+                            weight: i.weight,
+                            bone: i.bone as u32,
+                        })
+                        .collect(),
+                    ranges: skin.ranges,
+                }),
+            )
+        } else {
+            let (corners, indices) = rig.triangles(&pose);
+            (corners, indices, None)
+        };
         // triangles() answers rig units: the frame without its 1 / unit.
         let to_world = frame.mul(&Affine2::trs(0.0, 0.0, 0.0, rig.unit, rig.unit));
         let vertices = corners
@@ -107,6 +141,7 @@ pub fn skeleton_scene() -> Result<RenderScene, String> {
             texture: Some(texture),
             vertices,
             indices,
+            skin,
             layer: 1,
             ..Default::default()
         });

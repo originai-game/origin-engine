@@ -14,7 +14,7 @@ use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::feel::{feel_of, set_filter};
 use super::{ok, refuse};
-use glam::{Vec2, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_anim::{IkTarget2D, Rig2dAsset, Skeleton2D, Transform};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
@@ -180,7 +180,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let frame = og_anim::skeleton_frame(&rig, &place, s.flip_x);
         let goals = targets.get(&bits).map_or(&[][..], |v| v.as_slice());
         let pose = og_anim::skeleton_pose(&rig, &s, &frame, goals);
-        let (corners, indices) = rig.triangles(&pose);
+        let (corners, indices, skin) = rig.skinned_triangles(&pose);
         if indices.is_empty() {
             continue;
         }
@@ -212,6 +212,33 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             key: 0.0,
             blend: og_render::SpriteBlend::Alpha,
             light_mask: light_masks.get(&bits).copied().unwrap_or(1),
+            skin: Some(og_render::SpriteSkin {
+                bones: skin
+                    .bones
+                    .iter()
+                    .map(|bone| {
+                        // `frame` maps rig pixels to the entity's world units.
+                        let m = frame.mul(bone);
+                        parent
+                            * Mat4::from_cols(
+                                Vec4::new(m.a, m.b, 0.0, 0.0),
+                                Vec4::new(m.c, m.d, 0.0, 0.0),
+                                Vec4::Z,
+                                Vec4::new(m.tx, m.ty, z, 1.0),
+                            )
+                    })
+                    .collect(),
+                influences: skin
+                    .influences
+                    .iter()
+                    .map(|i| og_render::SpriteInfluence {
+                        position: Vec2::new(i.x, i.y),
+                        weight: i.weight,
+                        bone: i.bone as u32,
+                    })
+                    .collect(),
+                ranges: skin.ranges,
+            }),
         });
     }
 }

@@ -13,7 +13,7 @@
 use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::{RenderScene, TextureHandle};
-use glam::{Vec2, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 
 pub(crate) const SPRITE_MESH_WGSL: &str = wgsl!("sprite_mesh.wgsl");
 
@@ -27,6 +27,24 @@ pub struct SpriteMeshVertex {
     pub uv: Vec2,
     pub color: [f32; 4],
     pub offset: [f32; 4],
+}
+
+/// One bone-local position and weight. Unlike a 3D glTF skin, a 2D rig
+/// has an independent position (and deform) for every influence.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpriteInfluence {
+    pub position: Vec2,
+    pub weight: f32,
+    pub bone: u32,
+}
+
+/// Render-only weighting of mesh vertices; an empty range uses the
+/// vertex's world position instead. Bone matrices map pixels to world space.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SpriteSkin {
+    pub bones: Vec<Mat4>,
+    pub influences: Vec<SpriteInfluence>,
+    pub ranges: Vec<[u32; 2]>,
 }
 
 /// Textured triangles drawn in the sprite order: at `layer` (lit by 2D
@@ -45,6 +63,7 @@ pub struct SpriteMesh {
     pub blend: SpriteBlend,
     /// Its 2D light layers, as [`crate::RenderScene::sprite_light_masks`].
     pub light_mask: u32,
+    pub skin: Option<SpriteSkin>,
 }
 
 impl Default for SpriteMesh {
@@ -57,6 +76,7 @@ impl Default for SpriteMesh {
             key: 0.0,
             blend: SpriteBlend::Alpha,
             light_mask: 1,
+            skin: None,
         }
     }
 }
@@ -70,12 +90,13 @@ pub(crate) struct MeshVertex {
     color: [f32; 4],
     lit: f32,
     offset: [f32; 4],
+    skin: [u32; 2],
 }
 
 pub(crate) const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<MeshVertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32, 4 => Float32x4],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32, 4 => Float32x4, 5 => Uint32x2],
 };
 
 pub(crate) const MESH_STRIDE: u64 = std::mem::size_of::<MeshVertex>() as u64;
@@ -109,6 +130,19 @@ pub(crate) fn ranges(
                 m.vertices.len()
             )));
         }
+        if let Some(s) = &m.skin
+            && (s.ranges.len() != m.vertices.len()
+                || s.ranges.iter().any(|&[first, count]| {
+                    u64::from(first) + u64::from(count) > s.influences.len() as u64
+                })
+                || s.influences
+                    .iter()
+                    .any(|i| i.bone as usize >= s.bones.len()))
+        {
+            return Err(RenderError::InvalidData(format!(
+                "sprite mesh {i}: invalid skin ranges or bones"
+            )));
+        }
         let count = m.indices.len() as u32;
         out.push((first, count));
         first += count;
@@ -117,20 +151,42 @@ pub(crate) fn ranges(
 }
 
 /// The corners of every mesh's triangles, in scene order (`ranges`).
-pub(crate) fn vertices(scene: &RenderScene, lit: impl Fn(i32, u32) -> f32) -> Vec<MeshVertex> {
+pub(crate) fn vertices(
+    scene: &RenderScene,
+    lit: impl Fn(i32, u32) -> f32,
+    gpu: bool,
+) -> Vec<MeshVertex> {
     let mut out = Vec::new();
+    let mut influence_base = 0;
     for m in &scene.sprite_meshes {
         let lit = lit(m.layer, m.light_mask);
         out.extend(m.indices.iter().map(|&i| {
             let v = &m.vertices[i as usize];
+            let mut position = v.position;
+            let mut range = [0, 0];
+            if let Some(s) = &m.skin {
+                let [first, count] = s.ranges[i as usize];
+                if gpu {
+                    range = [influence_base + first, count];
+                } else if count != 0 {
+                    position = Vec3::ZERO;
+                    for i in &s.influences[first as usize..(first + count) as usize] {
+                        position += s.bones[i.bone as usize]
+                            .transform_point3(i.position.extend(0.0))
+                            * i.weight;
+                    }
+                }
+            }
             MeshVertex {
-                position: v.position.to_array(),
+                position: position.to_array(),
                 uv: v.uv.to_array(),
                 color: v.color,
                 lit,
                 offset: v.offset,
+                skin: range,
             }
         }));
+        influence_base += m.skin.as_ref().map_or(0, |s| s.influences.len() as u32);
     }
     out
 }
@@ -140,6 +196,7 @@ pub(crate) struct SpriteMeshRenderer {
     alpha: wgpu::RenderPipeline,
     additive: wgpu::RenderPipeline,
     pub buffer: wgpu::Buffer,
+    pub skin: Option<crate::sprite_skin::SkinRenderer>,
 }
 
 impl SpriteMeshRenderer {
@@ -149,6 +206,7 @@ impl SpriteMeshRenderer {
         device: &wgpu::Device,
         layouts: [&wgpu::BindGroupLayout; 3],
         samples: u32,
+        skin: bool,
     ) -> SpriteMeshRenderer {
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("sprite mesh"),
@@ -200,6 +258,7 @@ impl SpriteMeshRenderer {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }),
+            skin: skin.then(|| crate::sprite_skin::SkinRenderer::new(device, layouts, samples)),
         }
     }
 
@@ -212,10 +271,14 @@ impl SpriteMeshRenderer {
         first: u32,
         count: u32,
     ) {
-        pass.set_pipeline(match blend {
-            SpriteBlend::Alpha => &self.alpha,
-            SpriteBlend::Additive => &self.additive,
-        });
+        if let Some(skin) = &self.skin {
+            skin.bind(pass, blend, false);
+        } else {
+            pass.set_pipeline(match blend {
+                SpriteBlend::Alpha => &self.alpha,
+                SpriteBlend::Additive => &self.additive,
+            });
+        }
         let start = first as u64 * MESH_STRIDE;
         pass.set_vertex_buffer(
             0,
@@ -259,12 +322,51 @@ mod tests {
         let mut scene = RenderScene::new();
         scene.sprite_meshes = vec![tri(0, 2), tri(3, 1)];
         assert_eq!(ranges(&scene, 0).unwrap(), [(0, 6), (6, 3)]);
-        let v = vertices(&scene, |l, _| f32::from(u8::from(l == 3)));
+        let v = vertices(&scene, |l, _| f32::from(u8::from(l == 3)), false);
         assert_eq!(v.len(), 9);
         assert_eq!((v[0].lit, v[8].lit), (0.0, 1.0));
         scene.sprite_meshes[1].indices[2] = 3;
         assert!(ranges(&scene, 0).is_err());
         scene.sprite_meshes[1].indices.pop();
         assert!(ranges(&scene, 0).is_err(), "two indices are not a triangle");
+    }
+
+    #[test]
+    fn fallback_keeps_all_influences_and_rebases_with_the_palette() {
+        let mut m = tri(0, 1);
+        m.skin = Some(SpriteSkin {
+            bones: vec![
+                Mat4::from_translation(Vec3::new(4.0, -3.0, 2.0)),
+                Mat4::from_scale(Vec3::new(2.0, -1.0, 1.0)),
+            ],
+            influences: [
+                (1.0, 2.0, 0.25, 0),
+                (2.0, 0.0, 0.125, 1),
+                (0.0, 4.0, 0.125, 0),
+                (-2.0, 3.0, 0.25, 1),
+                (0.0, 0.0, 0.25, 0),
+            ]
+            .map(|(x, y, weight, bone)| SpriteInfluence {
+                position: Vec2::new(x, y),
+                weight,
+                bone,
+            })
+            .to_vec(),
+            ranges: vec![[0, 5], [0, 0], [0, 5]],
+        });
+        let mut scene = RenderScene::new();
+        scene.sprite_meshes = vec![m.clone(), m];
+        assert!(ranges(&scene, 0).is_ok());
+        let cpu = vertices(&scene, |_, _| 0.0, false);
+        assert_eq!(cpu[0].position, [2.25, -1.625, 1.25]);
+        assert_eq!(cpu[1].position, [0.0; 3]);
+        assert_eq!(cpu[3].position, cpu[0].position);
+        let gpu = vertices(&scene, |_, _| 0.0, true);
+        assert_eq!(gpu[0].skin, [0, 5]);
+        assert_eq!(gpu[3].skin, [5, 5]);
+        scene.rebase(Vec3::new(16.0, -32.0, 8.0));
+        let rebased = vertices(&scene, |_, _| 0.0, false);
+        assert_eq!(rebased[0].position, [-13.75, 30.375, -6.75]);
+        assert_eq!(rebased[1].position, [-16.0, 32.0, -8.0]);
     }
 }

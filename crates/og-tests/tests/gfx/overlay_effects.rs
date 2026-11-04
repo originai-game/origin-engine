@@ -918,6 +918,52 @@ fn skeleton_2d_draws_rigs_as_sprite_triangles() {
     }
 }
 
+#[test]
+fn skeleton_2d_gpu_weighting_matches_cpu_triangles() {
+    let desc = built("skeleton-2d").desc;
+    for normal in [false, true] {
+        for blend in [
+            og_render::SpriteBlend::Alpha,
+            og_render::SpriteBlend::Additive,
+        ] {
+            let make = |gpu| {
+                let mut scene = og_tests::skeleton_scenes::skeleton_scene(gpu).unwrap();
+                if normal {
+                    let texture = scene.sprite_meshes[0].texture.unwrap();
+                    let n = scene.add_texture(og_render::TextureData {
+                        width: 1,
+                        height: 1,
+                        rgba: vec![190, 90, 230, 255],
+                        color_space: og_render::ColorSpace::Linear,
+                        mips: og_render::Mips::None,
+                    });
+                    assert!(scene.set_texture_normal(texture, Some(n)));
+                }
+                for m in &mut scene.sprite_meshes {
+                    m.blend = blend;
+                }
+                scene
+            };
+            let (cpu, cpu_stats) = frame(&desc, &make(false), 1);
+            let (gpu, gpu_stats) = frame(&desc, &make(true), 1);
+            assert_eq!(cpu_stats.sprite_draws, gpu_stats.sprite_draws);
+            // LBS changes arithmetic order but not the image: one channel
+            // quantum accommodates fragment rounding, not changed coverage.
+            let max = cpu
+                .pixels
+                .iter()
+                .zip(&gpu.pixels)
+                .map(|(a, b)| a.abs_diff(*b))
+                .max()
+                .unwrap();
+            assert!(
+                max <= 1,
+                "normal={normal} blend={blend:?}: max channel difference {max}"
+            );
+        }
+    }
+}
+
 /// The mean linear-ish RGB (0..255) of `img` over `x`, `y`.
 fn region_mean(img: &RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> [f64; 3] {
     let mut sum = [0.0f64; 3];

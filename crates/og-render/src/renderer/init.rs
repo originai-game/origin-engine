@@ -1040,6 +1040,9 @@ impl Renderer {
             stylise_chain: None,
             sprite_arrays: None,
             sprite_meshes: None,
+            sprite_skin_supported: sprite_skin::SkinRenderer::supported(
+                adapter.get_downlevel_capabilities().flags,
+            ),
             sprite_normals: None,
         })
     }

@@ -13,6 +13,7 @@ struct MeshIn {
   @location(2) color: vec4<f32>,
   @location(3) lit: f32,
   @location(4) offset: vec4<f32>,
+  @location(5) skin: vec2<u32>,
 };
 
 struct MeshOut {

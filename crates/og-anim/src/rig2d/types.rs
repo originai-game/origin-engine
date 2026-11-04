@@ -418,3 +418,14 @@ pub struct RigVertex {
     /// Added after the multiplier.
     pub offset: [f32; 4],
 }
+
+/// Render-only skinning inputs. Each vertex's range selects influences
+/// into `bones`; their coordinates include the pose's per-influence deform.
+/// A zero-length range leaves the region vertex in rig world units.
+#[derive(Clone, Debug, Default)]
+pub struct RigSkin {
+    /// Transforms from bone pixels into rig pixels, including child placement.
+    pub bones: Vec<Affine2>,
+    pub influences: Vec<Influence>,
+    pub ranges: Vec<[u32; 2]>,
+}

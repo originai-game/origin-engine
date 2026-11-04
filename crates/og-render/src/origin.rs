@@ -87,6 +87,11 @@ impl RenderScene {
             for v in &mut m.vertices {
                 v.position += d;
             }
+            if let Some(skin) = &mut m.skin {
+                for bone in &mut skin.bones {
+                    moved(bone, d);
+                }
+            }
         }
         for t in &mut self.tile_layers {
             t.origin += d;

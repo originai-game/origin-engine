@@ -152,6 +152,7 @@ mod sky_physical;
 mod sprite_array;
 mod sprite_mesh;
 mod sprite_normals;
+mod sprite_skin;
 mod sprites;
 mod stylise;
 mod stylise_object;
@@ -240,7 +241,7 @@ pub use skin::{
     MorphTargets, SkinData, SkinnedInstance,
 };
 pub use sky_physical::PhysicalAtmosphere;
-pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
+pub use sprite_mesh::{SpriteInfluence, SpriteMesh, SpriteMeshVertex, SpriteSkin};
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,
     MAX_PALETTE_COLORS, MaterialStyle, MaterialSurface, Paint, Palette, PaletteHandle, PixelFit,
@@ -563,6 +564,7 @@ pub struct Renderer {
     sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
     /// The sprite mesh pipelines and buffer, made on the first frame that draws one.
     sprite_meshes: Option<sprite_mesh::SpriteMeshRenderer>,
+    sprite_skin_supported: bool,
     /// The normal-mapped sprite pipelines and texture groups, made on the
     /// first frame that draws a normal-mapped texture lit.
     sprite_normals: Option<sprite_normals::SpriteNormals>,

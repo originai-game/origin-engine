@@ -57,7 +57,12 @@ impl Renderer {
                 let mesh = &scene.sprite_meshes[i as usize];
                 if let Some(group) = self.normal_group(scene, mesh.texture) {
                     let normals = self.sprite_normals.as_ref().expect("made with the group");
-                    pass.set_pipeline(normals.mesh(mesh.blend));
+                    let meshes = self.sprite_meshes.as_ref().expect("made before the pass");
+                    if let Some(skin) = &meshes.skin {
+                        skin.bind(pass, mesh.blend, true);
+                    } else {
+                        pass.set_pipeline(normals.mesh(mesh.blend));
+                    }
                     pass.set_bind_group(1, group, &[]);
                     let start = run.first as u64 * sprite_mesh::MESH_STRIDE;
                     pass.set_vertex_buffer(

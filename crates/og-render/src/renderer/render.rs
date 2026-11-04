@@ -583,7 +583,7 @@ impl Renderer {
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite_meshes.is_empty() {
-            let corners = sprite_mesh::vertices(scene, lit);
+            let corners = sprite_mesh::vertices(scene, lit, self.sprite_skin_supported);
             let meshes = self.sprite_meshes.get_or_insert_with(|| {
                 sprite_mesh::SpriteMeshRenderer::new(
                     &self.device,
@@ -593,8 +593,20 @@ impl Renderer {
                         &self.sprite_fx_layout,
                     ],
                     self.samples,
+                    self.sprite_skin_supported,
                 )
             });
+            if let Some(skin) = &mut meshes.skin {
+                skin.prepare(
+                    &self.device,
+                    &self.queue,
+                    scene,
+                    self.sprite_normals
+                        .as_ref()
+                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
+                    self.samples,
+                );
+            }
             grow_and_write(
                 &self.device,
                 &self.queue,

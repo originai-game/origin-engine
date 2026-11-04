@@ -273,6 +273,46 @@ clip wave {
     }
 
     #[test]
+    fn skin_inputs_preserve_weighted_deforms_and_child_placement() {
+        let nested = NEST.replace(
+            "  region fire {\n    slot fire\n    rect 0 0 2 2\n    at 1 0\n  }",
+            "  mesh fire {\n    slot fire\n    vertex 0 0 -1 -2\n    vertex 2 0 3 0\n    vertex 2 2 1 4\n    triangles 0 1 2\n  }",
+        );
+        for source in [ARM, nested.as_str()] {
+            let rig = Rig2dAsset::parse(source).unwrap();
+            for clip in &rig.clips {
+                for time in [0.0, 0.27, 0.75, 1.0, 2.5] {
+                    let pose = rig.pose(Some(clip), time, &[]);
+                    let (expected, indices) = rig.triangles(&pose);
+                    let (mut vertices, gpu_indices, skin) = rig.skinned_triangles(&pose);
+                    assert_eq!(indices, gpu_indices);
+                    assert_eq!(vertices.len(), skin.ranges.len());
+                    assert!(!skin.influences.is_empty());
+                    for (v, &[first, count]) in vertices.iter_mut().zip(&skin.ranges) {
+                        if count == 0 {
+                            continue;
+                        }
+                        v.position = [0.0; 2];
+                        for i in &skin.influences[first as usize..(first + count) as usize] {
+                            let p = skin.bones[i.bone].apply(i.x, i.y);
+                            for (out, p) in v.position.iter_mut().zip(p) {
+                                *out += p * i.weight / rig.unit;
+                            }
+                        }
+                    }
+                    for (a, b) in vertices.iter().zip(expected) {
+                        assert!(
+                            close(a.position, b.position, 1e-5),
+                            "{time}: {a:?} vs {b:?}"
+                        );
+                        assert_eq!((a.uv, a.color, a.offset), (b.uv, b.color, b.offset));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn trig_from_arithmetic_matches_the_library() {
         for i in -40..40 {
             let x = f64::from(i) * 0.37;
