@@ -2391,6 +2391,7 @@ dependencies = [
  "gltf",
  "image",
  "libc",
+ "og-anim",
  "og-api",
  "og-bake",
  "og-cook",

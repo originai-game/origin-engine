@@ -11,6 +11,7 @@ name = "og"
 path = "src/main.rs"
 
 [dependencies]
+og-anim = { path = "../og-anim" }
 og-api = { path = "../og-api" }
 og-idl = { path = "../og-idl" }
 og-core = { path = "../og-core" }
