@@ -672,14 +672,24 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
 // Screen-space contact shadows for the shadowed local lights (frame.rs
 // `contact_lights`): from each pixel a short ray towards each contact
 // light, marched through the prepass depth; where it passes behind a
-// surface (within the thickness), the light is hidden. They resolve what
-// the shadow maps cannot, the centimetres where a caster meets what it
-// stands on, a few texels of a local map at a few metres from the light
-// (the concept of UE's contact shadows and Bend Studio's screen-space
-// shadows, a plain march here). The AO in tex_b (AO's own target, before
-// the contact pass) passes through in r; the lights' masks go to gba
-// (1 lit, 0 hidden), which the lit shaders multiply into their map
-// shadows (lighting.wgsl `local_shadow`).
+// surface, the light is hidden. They resolve what the shadow maps cannot,
+// the centimetres where a caster meets what it stands on (the concept of
+// UE's contact shadows and Bend Studio's screen-space shadows). The AO in
+// tex_b (AO's own target, before the contact pass) passes through in r;
+// the lights' masks go to gba (1 lit, 0 hidden), which the lit shaders
+// multiply into their map shadows (lighting.wgsl `local_shadow`).
+//
+// What makes a hit (Bend's thickness test): the ray must first pass behind
+// the depth buffer by no more than a thickness, a share of the view depth
+// (a curved caster's silhouette, the ball's, is crossed some way behind
+// its visible surface) plus the ray's own change of view depth over the
+// step. A silhouette well in front of a far surface (a wall behind a
+// block) is not counted. Once in, the ray is inside the occluder: its
+// deeper samples behind the same surface count too, so a solid caster
+// hides the light fully rather than only where the ray grazed it. The steps grow quadratically from a one-pixel start along
+// the ray, so the centimetres beside a caster are sampled densely, and a
+// hit darkens by how far behind it lies over a pixel's depth (a ramp, not
+// a step), so the per-pixel jitter leaves no speckle.
 @fragment
 fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -691,8 +701,7 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   let uv = (vec2<f32>(px) + 0.5) * fxp.screen.zw;
   let p = view_pos(uv, d0);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
-  // A pixel and a half off the surface, so the ray leaves its own pixel.
-  let start = p + n * (1.5 / pixels_per_unit(d0));
+  let pixel = 1.0 / pixels_per_unit(d0);
   let params = fxp.contact[3];
   let size = vec2<i32>(textureDimensions(tex_depth));
   let size_f = vec2<f32>(size);
@@ -701,29 +710,52 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   for (var i = 0; i < 3; i++) {
     let light = fxp.contact[i];
     if (light.w < 0.5) { continue; }
-    let to = light.xyz - start;
+    // Half a pixel off the surface, then a pixel along the ray.
+    let to = light.xyz - p;
     let dist = length(to);
     if (dist < 1e-4 || dot(to, n) <= 0.0) { continue; }
     let dir = to / dist;
+    let start = p + n * (0.5 * pixel) + dir * pixel;
     let len = min(max(params.x * d0, params.y), 0.9 * dist);
-    let thickness = params.z * d0;
-    var lit = 1.0;
+    var occluded = 0.0;
+    var prev = start;
+    var prev_px = vec2<f32>(px) + 0.5;
+    var inside = false;
     for (var k = 0; k < steps; k++) {
-      let t = (f32(k) + jitter) / f32(steps);
+      let f = (f32(k) + jitter) / f32(steps);
+      let t = f * f;
       let q = start + dir * (len * t);
       let clip = fxp.proj * vec4<f32>(q, 1.0);
       if (clip.w <= 0.0) { break; }
       let ndc = clip.xy / clip.w;
       let quv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
       if (any(quv < vec2<f32>(0.0)) || any(quv > vec2<f32>(1.0))) { break; }
-      let behind = -q.z - depth_tap(quv, size, size_f);
-      if (behind > 0.0 && behind < thickness) {
-        // Fades out over the ray's last quarter, so its reach has no edge.
-        lit = smoothstep(0.75, 1.0, t);
-        break;
+      let qd = -q.z;
+      let surface = depth_tap(quv, size, size_f);
+      let behind = qd - surface;
+      // The occluder's own depth slope there, per pixel along the ray's
+      // screen direction, over the pixels this step crossed: a curved
+      // caster (a sphere's underside) recedes fast near its silhouette.
+      // The smaller of the two sides, so a silhouette's jump to what lies
+      // behind it is not taken for a slope.
+      let qpx = quv * size_f;
+      let span = max(length(qpx - prev_px), 1.0);
+      let along = (qpx - prev_px) / span;
+      let ahead = depth_tap((qpx + along) / size_f, size, size_f);
+      let back = depth_tap((qpx - along) / size_f, size, size_f);
+      let slope = min(abs(ahead - surface), abs(surface - back));
+      let thickness = params.z * qd + 2.0 * abs(q.z - prev.z) + slope * span + pixel;
+      prev = q;
+      prev_px = qpx;
+      inside = behind > 0.0 && (inside || behind < thickness);
+      if (inside) {
+        let ramp = smoothstep(0.0, 1.0 / pixels_per_unit(qd), behind);
+        // Fades out over the ray's last part, so its reach has no edge.
+        occluded = max(occluded, ramp * (1.0 - smoothstep(0.6, 1.0, f)));
+        if (occluded >= 1.0) { break; }
       }
     }
-    masks[i] = lit;
+    masks[i] = 1.0 - occluded;
   }
   return vec4<f32>(ao, masks);
 }

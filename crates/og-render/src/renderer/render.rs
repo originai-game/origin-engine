@@ -4474,14 +4474,16 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
 }
 
 /// Contact shadows' ray (fxpost.wgsl `fs_contact`, `FxPost::contact` row 3):
-/// 4 cm per metre of view depth and at least 10 cm long (a caster's foot
-/// is a few centimetres of a local light's texels), a hit within a quarter
-/// of the pixel's view depth behind the depth buffer, 16 steps. The
-/// thickness must hold a solid caster seen from its front: the ray under a
-/// 0.8 m box at 4.5 m (shadows-local-contact) passes up to 0.75 m behind
-/// the face the camera sees. A larger thickness darkens more behind thin
-/// foreground silhouettes, within the ray's length of them.
-const CONTACT_PARAMS: [f32; 4] = [0.04, 0.1, 0.25, 16.0];
+/// 8 cm per metre of view depth and at least 25 cm long, so a floor pixel
+/// a few centimetres beside a block reaches it under a steep light (the
+/// local maps' bias leaves that gap: 10 cm left an 8 px lit strip beside
+/// baked-cornell's short block); a ray enters an occluder within 8 cm per
+/// metre of view depth behind the depth buffer, plus its own depth change
+/// over the step and the occluder's own depth slope over the pixels it
+/// crossed (the shader's thickness test: 1 cm per metre alone lost the
+/// ball's contact, crossed behind its curved silhouette, and 25 cm per
+/// metre let the block's silhouette shadow the wall behind it); 16 steps.
+const CONTACT_PARAMS: [f32; 4] = [0.08, 0.25, 0.04, 16.0];
 
 /// Whether an instance was drawn elsewhere in the previous frame
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's
