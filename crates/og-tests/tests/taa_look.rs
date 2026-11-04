@@ -197,9 +197,9 @@ fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
 
 /// A static opaque stripe pattern (a triangle wave across x, about 1.5
 /// pixels a column, so TAA's neighbourhood box is wide) seen from above
-/// orthographically at 10 pixels a unit, and with `pane` a grey
-/// half-transparent pane over its middle.
-fn striped(pane: bool) -> RenderScene {
+/// orthographically at 10 pixels a unit, and a grey half-transparent pane
+/// over its middle (the scene's last instance).
+fn striped() -> RenderScene {
     use og_render::{
         Background, Camera, MeshData, Projection, StandardMaterial, Tonemap, Vertex, shapes,
     };
@@ -240,17 +240,15 @@ fn striped(pane: bool) -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(stripes, white, glam::Mat4::IDENTITY);
-    if pane {
-        let plane = scene.add_mesh(shapes::plane(6.0, 1.0));
-        let grey = scene.add_standard_material(StandardMaterial {
-            color: Vec3::splat(0.5),
-            opacity: 0.5,
-            transparent: 1,
-            unlit: 1,
-            ..Default::default()
-        });
-        scene.add_instance(plane, grey, glam::Mat4::from_translation(Vec3::Y));
-    }
+    let plane = scene.add_mesh(shapes::plane(6.0, 1.0));
+    let grey = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.5),
+        opacity: 0.5,
+        transparent: 1,
+        unlit: 1,
+        ..Default::default()
+    });
+    scene.add_instance(plane, grey, glam::Mat4::from_translation(Vec3::Y));
     scene
 }
 
@@ -286,15 +284,20 @@ fn the_oit_revealage_lowers_the_taa_history_under_a_pane() {
         return;
     }
     let mut always = Renderer::new_blocking(&desc()).expect("renderer");
-    let (bare, with) = (striped(false), striped(true));
+    // One scene for `appears`, its pane's instance taken out and put back:
+    // a second scene would be a new scene to the renderer, which drops the
+    // history with the rest of the old scene's cache.
+    let (mut scene, with) = (striped(), striped());
+    let pane = scene.instances.pop().expect("the pane");
     let mut before = 0.0;
     for f in 0..16 {
-        let (a, _) = draw(&mut appears, &bare);
+        let (a, _) = draw(&mut appears, &scene);
         let (b, _) = draw(&mut always, &with);
         before = pane_difference(&a, &b);
         assert!(f == 0 || before > 0.0, "frame {f}: the pane shows");
     }
-    let (a, history) = draw(&mut appears, &with);
+    scene.instances.push(pane);
+    let (a, history) = draw(&mut appears, &scene);
     let (b, _) = draw(&mut always, &with);
     assert!(history, "the pane's first frame blends the history");
     let after = pane_difference(&a, &b);

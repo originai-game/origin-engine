@@ -237,9 +237,18 @@ fn billboards_and_glass(pane: bool) -> RenderScene {
 /// as without). Before the debt round 3 every sprite drew after the
 /// transparent meshes, so the red one drew over the glass too and its
 /// pixels were the same with the pane as without.
+///
+/// Drawn with the linked lists (og-render's oit.rs), which composite a
+/// pixel's fragments exactly, front over back. Weighted blending, the
+/// default, resolves the green billboard and the glass behind it in one
+/// pixel as their weighted mean (about 0.7 green there), not as the green
+/// over the glass: the approximation `Transparency::Weighted` documents.
 #[test]
 fn billboards_sort_among_transparent_meshes() {
-    let desc = scenes::base_desc();
+    let desc = og_render::RenderDesc {
+        transparency: og_render::Transparency::LinkedList,
+        ..scenes::base_desc()
+    };
     let (with, _) = frame(&desc, &billboards_and_glass(true), 1);
     let (without, _) = frame(&desc, &billboards_and_glass(false), 1);
     // The billboards' centres on screen: x = 640 ± 1.2 / (depth · tan 22.5°) · 360 px.
