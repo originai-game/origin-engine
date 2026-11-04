@@ -926,14 +926,18 @@ export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">,
  * not mid-fade) with at least 60 % of its line's height and 6 px of its width
  * in view. Such text is measured even when a scroll cuts its element, and
  * when it shows no ink at all it reads 1:1: the most invisible line is the
- * one that most needs reporting ("Inventory" in navy on indigo).
+ * one that most needs reporting ("Inventory" in navy on indigo). "hidden"
+ * where the frame draws text but none of this element's at half alpha or
+ * more: faded out (a world prompt past its maxDistance) or not drawn, it is
+ * not measured, as the pixels under it are no text of its.
  */
-function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | null {
+function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | null | "hidden" {
   // The run most in view gives the ink (a meter's label is two runs in two inks, each clipped to its part).
-  let best: number | null = null, most = 0;
+  let best: number | null = null, most = 0, drawn = false;
   for (const t of f.texts) {
     if ((t.color[3] ?? 1) < 0.5) continue;
     const [bx, by, bw, bh] = t.bounds;
+    drawn ||= bx < e.x + e.width && bx + bw > e.x && by < e.y + e.height && by + bh > e.y;
     const x0 = Math.max(bx, t.clip[0], e.x - 1), y0 = Math.max(by, t.clip[1], e.y - 1);
     const x1 = Math.min(bx + bw, t.clip[0] + t.clip[2], e.x + e.width + 1), y1 = Math.min(by + bh, t.clip[1] + t.clip[3], e.y + e.height + 1);
     if (y1 - y0 < 0.6 * bh || x1 - x0 < 6 || (x1 - x0) * (y1 - y0) <= most) continue;
@@ -941,7 +945,7 @@ function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): number | 
     // The run's colour is linear RGB: its relative luminance directly.
     best = 0.2126 * t.color[0]! + 0.7152 * t.color[1]! + 0.0722 * t.color[2]!;
   }
-  return best;
+  return best === null && !drawn && f.texts.length > 0 ? "hidden" : best;
 }
 
 function readsAsText(e: UiElementDump, byId: Map<string, UiElementDump>, laid = false): boolean {
@@ -996,12 +1000,14 @@ function behindScrim(ui: UiDump): Set<number> {
  * light, 1.74:1 for 5.6:1). `moving`
  * (indices) are mid-transition and left out too.
  */
-export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => number | null = () => null): TextBox[] {
+export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => number | null | "hidden" = () => null): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
-    const known = laid(n);
+    const laidAs = laid(n);
+    if (laidAs === "hidden") continue;
+    const known = laidAs;
     const drawn = known !== null;
     if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.

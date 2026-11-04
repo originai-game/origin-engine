@@ -174,8 +174,10 @@ test("text the layout draws at full ink that shows none fails at 1:1; text faded
   const laid = contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(1), grounds: [[0, 0, 120, 40]] }, vp), blank);
   expect(laid?.severity).toBe("error");
   expect(laid?.measured).toContain("1:1");
-  // Faded out (a transition, opacity 0): not drawn, not measured.
+  // Faded out (a transition, opacity 0; a world prompt past its maxDistance): not drawn, not measured, even over
+  // pixels that read as ink (the scene's art behind it).
   expect(contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
+  expect(contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))).not.toBeDefined();
   // A scroll cuts it: most of its line in view is measured (its element is the part in view), a sliver is not.
   expect(contrast(frame({ elements: at([0, 0, 120, 40], true), texts: run(1, [0, 0, 60, 40]), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))?.severity).toBe("error");
   expect(contrast(frame({ elements: at([0, 0, 120, 14], true), texts: run(1, [0, 0, 120, 14]), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
