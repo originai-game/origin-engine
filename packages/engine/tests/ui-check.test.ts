@@ -163,6 +163,20 @@ test("contrast is measured on pixels: live text is an error under 3:1 and a warn
   expect(contrast(overScene, textImage(90, 150))).not.toBeDefined();
 });
 
+test("heavy type that fills half its box is measured against the ground round it, not its own antialiased edges", () => {
+  // White strokes three pixels in six with a mid-grey edge after each, on
+  // near-black, across most of the line's height (a heavy display face):
+  // the median falls on the edges, and read as the ground gave under 2:1.
+  const width = 120, height = 40, rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const inGlyph = y >= 8 && y < 32;
+    const v = !inGlyph ? 20 : x % 6 < 3 ? 250 : x % 6 === 3 ? 150 : 20;
+    rgba.set([v, v, v, 255], (y * width + x) * 4);
+  }
+  const f = frame({ elements: [el("Title", "", "label", "text", [0, 0, 120, 40], { text: "Gallery" })] }, { width: 120, height: 40, safeArea: [0, 0, 0, 0] });
+  expect(checkFrame(f, cell, { image: { width, height, rgba } }).find((x) => x.rule === "contrast")).not.toBeDefined();
+});
+
 test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", () => {
   const t = (size: number) => [{ text: "Small", size, bounds: [10, 100, 40, 14] as [number, number, number, number], clip: [0, 0, 1920, 1080] as [number, number, number, number], color: [1, 1, 1, 1] }];
   const els = [el("Small", "", "label", "text", [10, 100, 40, 14], { text: "Small" })];

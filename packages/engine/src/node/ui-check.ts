@@ -925,6 +925,30 @@ function behindScrim(ui: UiDump): Set<number> {
 }
 
 /**
+ * The ground of a text's `w`×`h` rectangle of luminances: their median,
+ * unless that falls between the rectangle's two tones, on neither (a
+ * heavy display face filling its line: midcore's Titan One covers half its
+ * title, and the median fell on the glyphs' antialiased edges, 1.71:1 for
+ * white on near-black). Then it is the median of the tone the rectangle's
+ * edge rows and columns are mostly on: the ground shows round a word.
+ */
+function groundOf(lum: number[], w: number, h: number): number {
+  const mid = median(lum);
+  const split = (pct(lum, 0.05) + pct(lum, 0.95)) / 2;
+  const dark = lum.filter((v) => v <= split), light = lum.filter((v) => v > split);
+  if (dark.length === 0 || light.length === 0) return mid;
+  const lo = median(dark), hi = median(light);
+  if (Math.min(mid - lo, hi - mid) < 0.25 * (hi - lo)) return mid;
+  let edgeLights = 0, edge = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (y > 0 && y < h - 1 && x > 0 && x < w - 1) continue;
+    edge++;
+    if (lum[y * w + x]! > split) edgeLights++;
+  }
+  return edgeLights * 2 >= edge ? hi : lo;
+}
+
+/**
  * The text elements of a frame: the contrast between ink and ground, and the
  * height of the ink's lines. Inside the element's rectangle (inset from its
  * rounded ends), the ground is the median luminance. The ink is measured
@@ -955,7 +979,7 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
       const i = (y * img.width + x) * 4;
       lum.push(luminance(img.rgba[i]!, img.rgba[i + 1]!, img.rgba[i + 2]!));
     }
-    const ground = median(lum);
+    const ground = groundOf(lum, w, y1 - y0);
     const dev = lum.map((v) => Math.abs(v - ground));
     // The strongest ink (a few pixels short of the very farthest, so one
     // stray pixel does not set it), then the glyphs: every pixel at least

@@ -34,6 +34,12 @@ is one line here, written at the merge that changes
   label keeps the best of the variant's ink and the scheme's two,
   deepened as little as it takes: a pressed primary in cartoon reads
   5.54:1 (was 4.62:1).
+- **og ui check and og polish: contrast of heavy type.** A text whose
+  glyphs cover about half its box (a heavy display face filling its line)
+  was measured against its own antialiased edges, the median of the box:
+  white Titan One on near-black read 1.71:1. When that median falls
+  between the box's two tones, the ground is now the tone round the word
+  (the box's edge rows and columns); other text measures as before.
 - **Model skin diagnostics.** Missing model skin data and incompatible
   palette counts, joint order or inverse bind matrices warn in the log and
   appear as `render.skinIssue` in entity probes and dumps. Equivalent rigs
