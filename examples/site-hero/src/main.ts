@@ -14,7 +14,8 @@
 // has the traveller brace against the wind and shield his eyes
 // (og.motion.react with actions/brace.ogt), `cloth:<0|1>` takes the
 // cloak's simulation off or puts it back (a diagnostic: off, the cloak is
-// drawn as skinned).
+// drawn as skinned), `clouds:<0|1>` hides the cloud sea or shows it (a
+// diagnostic for what the clouds draw over).
 //
 //   og run examples/site-hero --size 1920x1080 --commands "6:screenshot:frame0.png;6.1:quit"
 
@@ -179,6 +180,11 @@ function cloth(world: World, args: readonly string[]): void {
   else throw new Error("write cloth:<0|1>");
 }
 
+function clouds(world: World, args: readonly string[]): void {
+  if (args[0] !== "0" && args[0] !== "1") throw new Error("write clouds:<0|1>");
+  must(world.resource(og.Clouds)).enabled = args[0] === "1";
+}
+
 function brace(world: World, args: readonly string[]): void {
   const seconds = args.length ? Number(args[0]) : 1.5;
   if (!(seconds >= 0)) throw new Error("write brace:<seconds held>");
@@ -192,11 +198,12 @@ export default og.game({
   resources: [View],
   systems: [Frame],
   start,
-  commands: { shot, brace, cloth },
+  commands: { shot, brace, cloth, clouds },
   commandHelp: {
     shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
     brace: { usage: "<seconds>", doc: "Brace against the wind and shield the eyes, held this long (1.5 s if omitted)." },
     cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
+    clouds: { usage: "<0|1>", doc: "Hide the cloud sea (0) or show it (1)." },
   },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);

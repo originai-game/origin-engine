@@ -30,6 +30,6 @@ export function buildSky(world: World, eye: V3): void {
   place(world, "models/island.glb", "island-medium", v3(eye.x - 120, eye.y - 120, eye.z - 640), 30, 2.1);
   place(world, "models/islandSmall.glb", "island-small-a", v3(eye.x + 160, eye.y - 90, eye.z - 300), 9, 0.9);
   place(world, "models/islandSmall.glb", "island-small-b", v3(eye.x - 30, eye.y - 140, eye.z - 340), 7, 3.3);
-  place(world, "models/tower.glb", "tower", v3(eye.x - 1100, eye.y - 230, eye.z - 3200), 160, 0.3);
+  place(world, "models/tower.glb", "tower", v3(eye.x - 1100, eye.y - 330, eye.z - 3200), 160, 0.3);
 }
 
