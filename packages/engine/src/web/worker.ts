@@ -1063,7 +1063,8 @@ export function startWorker(game: GameToken): void {
     if (!engine) return answer(refusal(frame, "the engine has not started"), viaRing);
     let out: string;
     try {
-      out = engine.call(frame);
+      // Fork s60: a probe call that renders (capture, sweep) draws its frame whole, never one with draws skipped.
+      out = pipelines.drawnWhole(() => engine!.call(frame));
     } catch (e) {
       answer(refusal(frame, e instanceof Error ? e.message : String(e)), viaRing);
       crash(e instanceof Error ? e.message : String(e));
@@ -1079,7 +1080,7 @@ export function startWorker(game: GameToken): void {
     if (!engine) return;
     for (let i = retries.length - 1; i >= 0; i--) {
       const r = retries[i]!;
-      const out = engine.call(r.frame);
+      const out = pipelines.drawnWhole(() => engine!.call(r.frame));
       r.left--;
       if (!isPendingCapture(r.frame, out) || r.left <= 0) {
         retries.splice(i, 1);
