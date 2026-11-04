@@ -23,7 +23,7 @@ fracture {
   children 5
   pattern volume
   interior {
-    color 0.62 0.42 0.34
+    color 0.46 0.24 0.17
     roughness 0.98
   }
 }

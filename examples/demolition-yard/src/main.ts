@@ -52,7 +52,7 @@ function build(world: World): void {
   prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 6000, density: 1900, dust, sparks, debris: chips });
   prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, dust, sparks, debris: chips });
   // Wood: a dynamic crate, broken by its own landing.
-  const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 300, density: 600, impactThreshold: 40, impactRadius: 0.6, anchored: false, dust });
+  const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, dust });
   world.insert(crate, og.RigidBody, { kind: BODY_DYNAMIC, gravityScale: 0 });
   world.insert(crate, og.Collider, { shape: SHAPE_BOX, size: { x: 0.8, y: 0.8, z: 0.8 }, density: 600 });
   // Glass: weak, light, shattering at a touch.
