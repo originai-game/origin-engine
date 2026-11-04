@@ -1103,7 +1103,9 @@ impl MeshletGpu {
         // a perspective camera (retro 3D's vertices snap and its uv go
         // affine in the rasteriser too, and the material style's surface
         // takes its gradients from the records).
+        // And only while the device makes the resolve's pipelines (vis.rs).
         let soft_on = scene.visibility_buffer
+            && self.vis_buffer.usable()
             && matches!(
                 scene.camera.projection,
                 crate::Projection::Perspective { .. }
@@ -1557,7 +1559,14 @@ impl MeshletGpu {
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
         mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
     ) -> u32 {
-        let Some(group) = self.vis_buffer.resolve_group.as_ref() else {
+        // A pipeline the device has not answered for may be refused: its
+        // draw would invalidate the frame (vis.rs).
+        let Some(group) = self
+            .vis_buffer
+            .resolve_group
+            .as_ref()
+            .filter(|_| self.vis_buffer.ready())
+        else {
             return 0;
         };
         let mut n = 0;
