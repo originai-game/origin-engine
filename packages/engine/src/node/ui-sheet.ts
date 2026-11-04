@@ -94,7 +94,7 @@ const LINE = 18;
 /** Cells of one height in a grid of `cols` columns (a row each sheet row). */
 export function sheet(cells: readonly SheetCell[], cols: number, height: number, title = ""): Image {
   const thumbs = cells.map((c) => (c.image ? fit(c.image, height) : null));
-  const cw = Math.max(height / 2, ...thumbs.map((t) => t?.width ?? 0));
+  const cw = Math.max(height / 2, ...thumbs.map((t) => t?.width ?? 0), ...cells.flatMap((c) => c.lines.map((line) => [...line.toUpperCase()].length * 12)));
   cols = Math.max(1, Math.min(cols, cells.length));
   const rows = Math.ceil(cells.length / cols);
   const lines = Math.max(1, ...cells.map((c) => c.lines.length));

@@ -675,6 +675,37 @@ function banner(balance: number) {
   return { engine, results, press, current: () => current };
 }
 
+test("gachaBanner: full-bleed content reserves safe area and chrome independently of prior siblings", () => {
+  const sys = defineSystem(`UpBuild${systems++}`, {}, () => {
+    // lastPath is this unrelated element, not the banner opened below.
+    og.ui.anchor("Earlier", { anchor: "center", width: { kind: "fixed", px: 30 }, height: { kind: "fixed", px: 30 } }, () => {});
+    og.ui.anchor("Bleed", { anchor: "topLeft", offsetY: -47, margin: 0, width: { kind: "fixed", px: 390 }, height: { kind: "fixed", px: 844 } }, () => {
+      og.ui.gachaBanner("Banner", {
+        topInset: 86, title: "MOONLIT TIDE", current: "event",
+        banners: [{ key: "event", name: "Moonlit Tide" }, { key: "weapon", name: "Forged Oath" }],
+        balance: 1800, single: 160, multi: 1600, pityMax: 90, pity: 72,
+      }, () => {});
+    });
+  });
+  const created = createEngine(og.game({ systems: [sys] }) as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  try {
+    og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 1, breakpoint: "phonePortrait", coarsePointer: true, safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as never);
+    og.ui.configure(engine.world, { textScale: 1.5 });
+    engine.advance(12);
+    const main = byPath(engine, "Banner/Body/Main")!;
+    const tabs = byPath(engine, "Main/Info/Tabs")!;
+    // The chrome ends at 47 + 86; padding must remain outside the scroll.
+    expect(main.y).toBeGreaterThanOrEqual(133);
+    expect(tabs.y).toBeGreaterThanOrEqual(main.y);
+    expect(main.y + main.height).toBeLessThanOrEqual(810);
+    expect(byPath(engine, "Info/Title")!.text).toBe("MOONLIT TIDE");
+  } finally {
+    engine.destroy();
+  }
+});
+
 test("gachaBanner: a pull the purse pays is asked for; one it cannot is reported short and said so", () => {
   // Wrong: a pull asked for that the balance cannot pay (the game would spend money it has not), or short shown only by colour.
   const b = banner(1000);

@@ -55,7 +55,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   // Laid out to the screen's edges (a phone's full-bleed banner), the art runs under the status bar and the notch while
   // the words and controls keep inside the safe area, below the room the game keeps for its own chrome (topInset).
   kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Gacha.frame", partClass: "panel", radius: t.panel });
-  const self = kit.bounds(kit.lastPath());
+  const self = kit.bounds(kit.openPath());
   const sa = vp.safeArea;
   const bleed = {
     top: self ? Math.max(0, sa.top - self.y) : 0,
