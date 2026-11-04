@@ -631,21 +631,70 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     // interior edge, so no defocused background is in the probe (the old
     // 60x60 gradient-energy ROI included floor that anisotropic filtering
     // legitimately sharpens; aec2aab37).
-    let alone = |background: Vec3| {
-        let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
-        s.instances.retain(|i| {
-            let t = i.transform.w_axis;
-            (t.x - (-2.0 + 0.8 * 2.0)).abs() < 1e-3 && (t.z - (2.0 - 2.6 * 2.0)).abs() < 1e-3
-        });
+    //
+    // On it means seen, too: the nearer, defocused figures overlap it
+    // (facing the camera, the second one's arm crosses it), and an edge of
+    // theirs over it is sharp only without DOF. So a pixel counts when
+    // the figure is frontmost there (the whole scene, without DOF or
+    // bloom, changes when the figure alone is flashed white) and so is
+    // every pixel within MARGIN of it, beyond the largest blur radius,
+    // so no defocused neighbour or background spreads into the probe.
+    const MARGIN: u32 = 12;
+    let focused = |i: &og_render::Instance| {
+        let t = i.transform.w_axis;
+        (t.x - (-2.0 + 0.8 * 2.0)).abs() < 1e-3 && (t.z - (2.0 - 2.6 * 2.0)).abs() < 1e-3
+    };
+    let plain = |s: &mut RenderScene| {
         s.post.depth_of_field = None;
         s.post.bloom = None;
+    };
+    let alone = |background: Vec3| {
+        let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
+        s.instances.retain(focused);
+        plain(&mut s);
         s.environment.background = Background::Color(background);
         frame(&desc, &s).0
     };
     let (on_black, on_white) = (alone(Vec3::ZERO), alone(Vec3::ONE));
-    let on_figure = |x: u32, y: u32| {
+    let whole = |flash: bool| {
+        let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
+        plain(&mut s);
+        for i in s.instances.iter_mut().filter(|i| focused(i)) {
+            if flash {
+                i.fx = og_render::InstanceFx {
+                    flash: 1.0,
+                    flash_color: Vec3::ONE,
+                    ..og_render::InstanceFx::NONE
+                };
+            }
+        }
+        frame(&desc, &s).0
+    };
+    let (flashed, unflashed) = (whole(true), whole(false));
+    let seen = |x: u32, y: u32| {
         let (a, b) = (px(&on_black, x, y), px(&on_white, x, y));
         (0..3).all(|c| a[c].abs_diff(b[c]) <= 2)
+            && luma(px(&flashed, x, y)) - luma(px(&unflashed, x, y)) > 30.0
+    };
+    // A summed-area table of the pixels not seen around the search area,
+    // so a window's count is four reads.
+    let reach = 40 + 6 + MARGIN;
+    let (x0, y0) = (focus.0.saturating_sub(reach), focus.1.saturating_sub(reach));
+    let (w, h) = (2 * reach + 1, 2 * reach + 1);
+    let mut table = vec![0u32; ((w + 1) * (h + 1)) as usize];
+    for j in 0..h {
+        for i in 0..w {
+            let miss = !seen(x0 + i, y0 + j) as u32;
+            let k = |i: u32, j: u32| (j * (w + 1) + i) as usize;
+            table[k(i + 1, j + 1)] =
+                miss + table[k(i, j + 1)] + table[k(i + 1, j)] - table[k(i, j)];
+        }
+    }
+    // Whether every pixel of the box (inclusive) is seen.
+    let all_seen = |(ax, ay): (u32, u32), (bx, by): (u32, u32)| {
+        let k = |x: u32, y: u32| ((y - y0) * (w + 1) + (x - x0)) as usize;
+        let (ax, ay, bx, by) = (ax - MARGIN, ay - MARGIN, bx + MARGIN + 1, by + MARGIN + 1);
+        table[k(bx, by)] + table[k(ax, ay)] - table[k(ax, by)] - table[k(bx, ay)] == 0
     };
     // (x, y, step): six pixels from x along step (+1 right, -1 left).
     let at = |(x, y, step): (u32, u32, i32), i: u32| ((x as i32 + step * i as i32) as u32, y);
@@ -654,14 +703,11 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         for x in focus.0.saturating_sub(40)..focus.0 + 40 {
             for step in [1i32, -1] {
                 let run = (x, y, step);
-                let on = (0..6).all(|i| {
-                    let (px_, py) = at(run, i);
-                    on_figure(px_, py) && on_figure(px_ - 1, py) && on_figure(px_ + 1, py)
-                });
-                if !on {
+                let (first, last) = (at(run, 0), at(run, 5));
+                let (lo, hi) = ((first.0.min(last.0), y), (first.0.max(last.0), y));
+                if !all_seen(lo, hi) {
                     continue;
                 }
-                let (first, last) = (at(run, 0), at(run, 5));
                 let fall = luma(px(&sharp, first.0, first.1)) - luma(px(&sharp, last.0, last.1));
                 if best.is_none_or(|(_, f)| fall > f) {
                     best = Some((run, fall));
@@ -669,7 +715,8 @@ fn depth_of_field_blurs_outside_the_focus_band() {
             }
         }
     }
-    let (run, fall) = best.expect("the focused figure covers its projected centre");
+    let (run, fall) =
+        best.expect("the focused figure shows clear of its neighbours near its centre");
     println!("focused edge: run {run:?}, fall {fall} in the sharp frame");
     let profile = |img: &RgbaImage| -> [f32; 6] {
         std::array::from_fn(|i| {
