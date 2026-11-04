@@ -766,7 +766,13 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
 // filter, as the AO's blur, with the normal term of SVGF's): one frame's
 // per-pixel samples become a continuous darkening that stops at depth and
 // crease edges, so it never spills from a caster onto the wall behind it
-// or across a block's corner. The AO in r is already blurred: it passes.
+// or across a block's corner. A hidden tap weighs CONTACT_HIT_WEIGHT times
+// a lit one, per light: under a curved caster (a ball) only some rays find
+// it, and a plain mean washed its contact core out to a few percent, while
+// one stray hit among 25 still averages to a faint 14 %. The AO in r is
+// already blurred: it passes.
+const CONTACT_HIT_WEIGHT: f32 = 4.0;
+
 @fragment
 fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -777,17 +783,19 @@ fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
   let size = vec2<i32>(textureDimensions(tex_b));
   let scale = max(d0 * 0.04, 1e-3);
   var sum = vec3<f32>(0.0);
-  var weight = 0.0;
+  var weight = vec3<f32>(0.0);
   for (var y = -2; y <= 2; y++) {
     for (var x = -2; x <= 2; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
       let d = depth_at(q);
       if (is_sky(d)) { continue; }
-      let w = exp(-abs(d - d0) / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0);
-      sum += textureLoad(tex_b, q, 0).gba * w;
+      let m = textureLoad(tex_b, q, 0).gba;
+      let w = exp(-abs(d - d0) / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0)
+        * (1.0 + (CONTACT_HIT_WEIGHT - 1.0) * (1.0 - m));
+      sum += m * w;
       weight += w;
     }
   }
-  if (weight < 1e-5) { return center; }
-  return vec4<f32>(center.r, sum / weight);
+  if (all(weight < vec3<f32>(1e-5))) { return center; }
+  return vec4<f32>(center.r, sum / max(weight, vec3<f32>(1e-5)));
 }
