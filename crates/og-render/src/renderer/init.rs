@@ -940,6 +940,8 @@ impl Renderer {
             hdr,
             keep_frame: false,
             capture_spare: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            offscreen_submissions: Default::default(),
             samples,
             persistent,
             graph: post::FrameGraph::default(),

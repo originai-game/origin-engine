@@ -325,6 +325,9 @@ pub struct Renderer {
     keep_frame: bool,
     /// The last capture's buffer once read, for the next capture of its size.
     capture_spare: capture::Spare,
+    /// Native offscreen draws have no surface to bound their frames in flight.
+    #[cfg(not(target_arch = "wasm32"))]
+    offscreen_submissions: std::collections::VecDeque<wgpu::SubmissionIndex>,
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,

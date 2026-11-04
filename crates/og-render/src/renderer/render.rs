@@ -58,6 +58,20 @@ impl Renderer {
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }
+        // Match the surface's two-frame latency. Wait for the oldest frame,
+        // not the entire queue: motion and readbacks share this device.
+        #[cfg(not(target_arch = "wasm32"))]
+        if matches!(target, RenderTarget::Offscreen) && self.offscreen_submissions.len() == 2 {
+            self.device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: self.offscreen_submissions.front().cloned(),
+                    timeout: Some(crate::capture::BACKLOG_TIMEOUT),
+                })
+                .map_err(|e| {
+                    RenderError::Readback(format!("waiting for an offscreen frame: {e}"))
+                })?;
+            self.offscreen_submissions.pop_front();
+        }
         self.sync(scene)?;
         self.refresh_foliage_bounds(scene);
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
@@ -4320,8 +4334,13 @@ impl Renderer {
         {
             self.keep_presented(&mut encoder, &frame.texture);
         }
-        self.queue
+        let _submission = self
+            .queue
             .submit(cull_commands.into_iter().chain(Some(encoder.finish())));
+        #[cfg(not(target_arch = "wasm32"))]
+        if matches!(target, RenderTarget::Offscreen) {
+            self.offscreen_submissions.push_back(_submission);
+        }
         self.shadow_cache.submitted();
         if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
