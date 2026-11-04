@@ -244,6 +244,8 @@ export interface WebExtras {
   og_web_upload_budget?(bytes: number): void;
   /** Fork s63: the textures still drawn from their stand-ins after the last frame. */
   og_web_textures_deferred?(): number;
+  /** Fork s70: the page's loading screen covers the canvas: frames prepare without drawing (og-render set_covered). */
+  og_web_covered?(on: boolean): void;
   /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
   og_web_render_frame?(engine: number): Uint8Array;
   /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
@@ -1069,6 +1071,8 @@ export function startWorker(game: GameToken): void {
   const pacer = new FramePacer();
   let maxFps = 0;
   let toldDisplayMs = 0;
+  /** Fork s70: the page's loading screen covers the canvas; the pipelines warmed meanwhile, and whether any is left. */
+  let covered = false, coveredWarm = 0, coveredWarmLeft = true;
   const frame = (now: number) => {
     scheduled = false;
     if (!engine || crashed) return;
@@ -1108,6 +1112,12 @@ export function startWorker(game: GameToken): void {
         relay(answered);
         pumpRoom(engine);
         if (typeof answered.tick === "number") lastTick = answered.tick;
+        // Fork s70: a covered frame sets no pass, so the pipelines a pass makes when it first sets one
+        // (og-render warm) are made here, one a frame.
+        if (covered && coveredWarmLeft && glueRef?.og_web_warm) {
+          coveredWarmLeft = glueRef.og_web_warm(engine.id);
+          if (coveredWarmLeft) coveredWarm++;
+        }
         if (!firstFrame && answered.rendered !== false) {
           firstFrame = true;
           self.postMessage(firstFrameMessage());
@@ -1198,7 +1208,18 @@ export function startWorker(game: GameToken): void {
   // wait for textures to upload (s63) before it calls its loading done (`ogBootIdle()`).
   const pageStages = () => {
     const g = globalThis as { ogBootStage?: (id: string, fraction?: number) => void; ogBootIdle?: () => boolean };
-    g.ogBootStage = (id, fraction = 0) => self.postMessage({ type: "og-stage", id, fraction });
+    // Fork s70: the page's loading screen hides the canvas until the game calls its loading done, so the
+    // frames until then prepare without drawing (and make the pipelines a pass would make, warm above).
+    covered = true;
+    glueRef?.og_web_covered?.(true);
+    g.ogBootStage = (id, fraction = 0) => {
+      if (id === "done" && covered) {
+        covered = false;
+        glueRef?.og_web_covered?.(false);
+        console.info(`renderer: the page uncovered the canvas at ${Math.round(performance.now())} ms (${coveredWarm} pipelines warmed meanwhile)`);
+      }
+      self.postMessage({ type: "og-stage", id, fraction });
+    };
     g.ogBootIdle = () => !frameWaits();
   };
   /** One rendered frame without a tick: the first frame behind the play gate. */
@@ -1364,6 +1385,8 @@ export function startWorker(game: GameToken): void {
         glueRef = glue;
         // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
         glue.og_web_upload_budget?.(UPLOAD_BUDGET);
+        // Fork s70: frames prepare without drawing while the page's loading screen covers the canvas.
+        if (covered) glue.og_web_covered?.(true);
         phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);

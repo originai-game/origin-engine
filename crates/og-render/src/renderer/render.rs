@@ -2992,6 +2992,17 @@ impl Renderer {
             );
         }
 
+        // Fork s70: a covered surface's frame ends prepared: its passes would
+        // only be decoded and validated by the browser's GPU process for a
+        // canvas nobody sees.
+        if matches!(target, RenderTarget::Surface)
+            && COVERED.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            if let Some(gc) = self.gpu_cull.as_mut().filter(|_| gpu_cull) {
+                gc.dropped();
+            }
+            return Ok(FrameStats::default());
+        }
         let surface_frame = match target {
             RenderTarget::Surface => {
                 let (surface, config) = self.surface.as_ref().ok_or_else(|| {

@@ -793,6 +793,16 @@ impl GpuCulling {
             .map(|exact| (exact, applied))
     }
 
+    /// A frame whose commands were dropped unsubmitted (a covered surface,
+    /// fork s70): the readback it would have copied into is free again.
+    pub fn dropped(&mut self) {
+        for r in &mut self.readbacks {
+            if std::mem::take(&mut r.unmapped) {
+                r.layout = None;
+            }
+        }
+    }
+
     /// After the frame's submit: maps the readback it copied into.
     pub fn after_submit(&mut self) {
         for r in &mut self.readbacks {

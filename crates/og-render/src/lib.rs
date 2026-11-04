@@ -167,6 +167,19 @@ pub fn textures_deferred() -> u32 {
     TEXTURES_DEFERRED.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Fork s70: the page covers the surface (a loading screen over the canvas),
+/// so a frame to it prepares what it would draw (the scene's buffers and
+/// texture uploads, the pipelines its batches need, the frame graph) and
+/// encodes, submits and presents nothing.
+static COVERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Set fork s70's covered surface (the web host: while the page's loading
+/// screen hides the canvas). Frames to an offscreen target or a view draw as
+/// ever.
+pub fn set_covered(on: bool) {
+    COVERED.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// The bytes a texture source uploads (a render target: none).
 fn source_upload_bytes(source: &TextureSource) -> u64 {
     match source {
