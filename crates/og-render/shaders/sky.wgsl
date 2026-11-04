@@ -301,8 +301,13 @@ fn cloud_air(color: vec3<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let sun_dir = normalize(frame.sky_sun_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(sun_dir.x, 0.0, sun_dir.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let above = 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(frame.sky_scatter[3].x + c[0].z * 0.001, sun_dir.y);
-  let base = vec3<f32>(dot(sun_side, luma) * sky_scale * 0.21 + dot(above, luma) * 0.02) * c[2].rgb * 2.0;
+  // In the hue of the light falling on it (a dusk's lavender, warmer
+  // towards the glow), greyed by the cover as the march greys a cloud's
+  // ambient: a cloud scatters every wavelength alike.
+  let lit_base = (mix(view_side, sun_side, 0.5) * sky_scale * 0.21 + above * 0.02) * c[2].rgb * 2.0;
+  let base = mix(lit_base, vec3<f32>(dot(lit_base, luma)), c[0].x * 0.7);
   let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
   let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
   let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
