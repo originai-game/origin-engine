@@ -66,7 +66,8 @@ export class Browser {
     });
   }
 
-  static async launch(o: { chrome?: string; width?: number; height?: number; flags?: string[] } = {}): Promise<Browser> {
+  /** `webgpu` false leaves out the switches that turn WebGPU on (unsupported.ts turns it off). */
+  static async launch(o: { chrome?: string; width?: number; height?: number; flags?: string[]; webgpu?: boolean } = {}): Promise<Browser> {
     // os.tmpdir(): TMPDIR else /tmp on Unix, %TEMP% on Windows (where "/tmp" is \tmp on the current drive).
     const profile = mkdtempSync(join(tmpdir(), "og-cdp-"));
     const proc = Bun.spawn(
@@ -77,7 +78,8 @@ export class Browser {
         "--lang=en-US", "--accept-lang=en-US",
         `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
         ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
-        "--enable-unsafe-webgpu", "--enable-features=WebGPU", "--ignore-gpu-blocklist", "--disable-gpu-vsync",
+        ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", "--enable-features=WebGPU"]),
+        "--ignore-gpu-blocklist", "--disable-gpu-vsync",
         "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
         ...(o.flags ?? []),
         "about:blank",

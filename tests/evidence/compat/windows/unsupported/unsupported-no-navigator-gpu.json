@@ -1,0 +1,53 @@
+{
+ "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+ "flags": [],
+ "card": {
+  "hidden": false,
+  "title": "This browser does not support WebGPU",
+  "text": "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS. (navigator.gpu is missing)",
+  "reload": false,
+  "ink": "rgb(20, 22, 27)",
+  "canvas": false
+ },
+ "messages": [
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "hello",
+   "substrate": "origin-engine"
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "sample",
+   "substrate": "origin-engine",
+   "phase": "unsupported",
+   "renderer": "none",
+   "reason": "navigator.gpu is missing",
+   "engine": "0.7.7",
+   "build": "db66de9e7647b75b",
+   "browser": {
+    "name": "chrome",
+    "major": 156,
+    "os": "windows"
+   },
+   "device": {
+    "class": "desktop",
+    "cores": 12,
+    "memory": 32,
+    "dpr": 1,
+    "touch": false
+   },
+   "gpu": null
+  },
+  {
+   "og": "player",
+   "protocol": 2,
+   "kind": "fail",
+   "code": "engine_start",
+   "message": "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS. (navigator.gpu is missing)",
+   "retryable": false
+  }
+ ],
+ "log": []
+}
