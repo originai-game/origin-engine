@@ -79,6 +79,29 @@ Results (Meshy GLBs, then gltf-transform optimize: meshopt geometry, WebP textur
 - tower.glb: media 47e4acc44f93b6d81903e317f7ee8cf3, 12.3 MB to 0.61 MB
 - islandSmall.glb: media 828ef658f420e7eed8d149417fde1686, 12.8 MB to 0.66 MB
 
+## Cliff rock (`cliff.glb`): the face below the meadow's edge
+
+The height field's wall is opaque and triplanar-textured, but seen edge-on from
+the close shot it reads as a pale, stretched sheet with a sawtooth lip. Six
+turned and scaled instances of one authored rock stand along the edge instead
+(`dressCliff` in `src/main.ts`).
+
+Concept: `generate_image` (gpt-image-2.5-sunburst), media
+506b92d8fbb3567bd5442d37c86beee3, "Single isolated 3D game asset reference,
+three-quarter view, plain light grey background. Stylised fantasy in the spirit
+of Zelda Tears of the Kingdom and Genshin Impact, hand-painted look, clean
+readable shapes. A tall section of sea-cliff rock face about 40 m tall and 30 m
+wide: warm sandstone and cool lilac-grey layered strata, broken into stepped
+ledges and vertical fractures, a few deep cracks and small overhangs, thin
+tufts of sage-green grass and moss clinging to the ledges, a flat grassy top
+edge, the base breaking into rough boulders. One side is the cliff face; the
+back is roughly flat. Original design, no text."
+Then Meshy image-to-3D (meshy-6, triangle topology, remesh, textured, PBR, 40k):
+operation skyreach-prop-cliff-img-1, task 01a1a460-0114-7029-a500-24a3d45acecf.
+Result: media 8e5e3cd6a823b2e53d2c08d9a06ae62f, 13.7 MB, then gltf-transform
+optimize (meshopt, WebP at 1024) to 0.90 MB. Archived under
+`meshy/model/skyreach-prop-cliff-img-1/` in origin-generated-assets.
+
 ## Wildflowers (`flowers/`): replacing the code-built flowers
 
 Concepts: `generate_image` (gpt-image-2.5-sunburst), "Single isolated 3D game

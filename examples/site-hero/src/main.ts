@@ -113,6 +113,8 @@ function start(world: World): void {
   must(world.insert(meadow, og.Grass, { ...grass, layer: 0, seed: 1 }));
   const edge = must(world.spawn({ name: "grass-edge" }));
   must(world.insert(edge, og.Grass, { ...grass, layer: 1, density: 220, height: 0.42, seed: 2 }));
+  dressCliff(world);
+
   // Wildflowers on the flowered edge: the authored daisy, bellflower and
   // buttercup clumps (assets/models/flowers, SOURCE.md), scattered and
   // swaying in the wind; past 12 m their octahedral impostors.
@@ -144,6 +146,43 @@ function start(world: World): void {
   cam.far = 60000;
   must(world.resource(og.RenderSettings)).sky = true;
   scene.paint = must(world.resource(og.Stylise)).paintRadius;
+}
+
+/** Where the meadow ends falls along (outward, level): the cliff's face turns this way. */
+const OUTWARD = { x: -0.6, z: -0.8 };
+
+/**
+ * The cliff's face: the authored rock (models/cliff.glb, Meshy, SOURCE.md),
+ * a column of strata about 1.9 units tall and 1.56 deep, its sandstone face
+ * towards +z. The height field's wall is opaque rock, but seen edge-on from
+ * the close shot it reads as a pale stretched sheet with a sawtooth lip; the
+ * authored rock stands in front of it along the edge, each piece turned and
+ * sized differently. The edge is found from the terrain itself: walking out
+ * from the meadow until the ground falls away.
+ */
+function dressCliff(world: World): void {
+  const yaw = Math.atan2(OUTWARD.x, OUTWARD.z);
+  [-34, -16, 2, 18, 36, 56].forEach((x0, k) => {
+    // A point well inside the meadow (the edge runs near z = -1.5 - 0.75 x),
+    // then outward until the ground drops 4 m.
+    let x = x0 - OUTWARD.x * 12;
+    let z = -1.5 - 0.75 * x0 - OUTWARD.z * 12;
+    const lip = ground(world, x, z);
+    for (let i = 0; i < 160 && ground(world, x, z) > lip - 4; i++) {
+      x += OUTWARD.x * 0.25;
+      z += OUTWARD.z * 0.25;
+    }
+    const top = ground(world, x - OUTWARD.x * 3, z - OUTWARD.z * 3);
+    const size = 27 + ((k * 7) % 5) * 2.5;
+    // The height field's face falls about 6 m per metre out from the edge: the
+    // rock's front stands 9 m out (proud of the face for its top 50 m), its
+    // grassy top 3 m under the lip, a ledge stepping down from the meadow.
+    const back = 0.78 * size - 9;
+    const at = v3(x - OUTWARD.x * back, top - 3 - 0.95 * size, z - OUTWARD.z * back);
+    const turn = yaw + (((k * 5) % 7) / 6 - 0.5) * 0.9;
+    const e = must(world.instantiate(must(og.load.gltf(world, "models/cliff.glb")), { name: `cliff-${k}`, position: at }));
+    must(world.set(e, og.Transform, { position: at, scale: { x: size, y: size, z: size }, quaternion: og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, turn) }));
+  });
 }
 
 const Frame = defineSystem("Frame", { reads: [View, og.Transform], writes: [og.Camera, og.Stylise] }, (_q, _time, world) => {
