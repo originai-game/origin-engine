@@ -218,6 +218,10 @@ test("pad reach: options inside a focusable listbox are reached through it; outs
   expect(rules(inside)).not.toContain("focus-reach");
   const loose = frame({ a11y: { focused: "Hand", focusOrder: ["Hand"], nodes: [{ path: "Hand", parent: "", role: "group", name: "Hand", states: ["focusable"], rect: [0, 80, 400, 120] }, opt("Hand/Strike", "Hand")] } });
   expect(rules(loose)).toContain("focus-reach");
+  // A stepper's − and + step the spinbutton the pad reaches as one stop (Left and Right): reached through it.
+  const btn = (path: string) => ({ path, parent: "Amount", role: "button", name: path, states: [], rect: [40, 100, 40, 40] as [number, number, number, number] });
+  const spin = frame({ a11y: { focused: "Amount", focusOrder: ["Amount"], nodes: [{ path: "Amount", parent: "", role: "spinbutton", name: "Amount", states: ["focusable"], rect: [0, 100, 200, 40] }, btn("Amount/Dec"), btn("Amount/Inc")] } });
+  expect(rules(spin)).not.toContain("focus-reach");
 });
 
 test("a pad trap: a control the graph reaches but cannot leave back to the default focus", () => {

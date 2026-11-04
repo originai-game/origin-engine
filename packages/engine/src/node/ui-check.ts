@@ -168,8 +168,11 @@ const ruleOf = new Map(RULES.map((r) => [r.id, r]));
 
 /** A role a player operates (focus, press, drag). */
 const INTERACTIVE = new Set(["button", "link", "checkbox", "radio", "switch", "slider", "textbox", "combobox", "option", "tab", "spinbutton", "menuitem"]);
-/** Composite roles whose element takes the focus as one stop and moves its own cursor among what is inside. */
-const COMPOSITES = new Set(["listbox", "grid", "tree", "radiogroup"]);
+/**
+ * Composite roles whose element takes the focus as one stop and moves its own cursor among what is inside; a
+ * spinbutton's − and + are the pointer's shortcuts for the Left and Right it takes as one stop (the ARIA pattern).
+ */
+const COMPOSITES = new Set(["listbox", "grid", "tree", "radiogroup", "spinbutton"]);
 /** og-ui's widgets that draw their own hover and press (and sound them through the style). */
 const FEEDBACK_KINDS = new Set(["button", "action", "chip", "stepper", "toggle", "checkbox", "radio", "slider", "field", "textarea", "select", "option", "tab", "link", "joystick", "dpad"]);
 /** Touch controls: the player's thumbs on a HUD, not part of pad navigation. */
@@ -247,11 +250,11 @@ function owner(f: UiFrameSnapshot, line: { text: string; bounds: Rect4 }): numbe
   const want = stem(line.text);
   let best = -1, bestScore = Infinity;
   for (const [i, e] of f.elements.entries()) {
-    if (!e.text) continue;
     if (e.x > x + w + 0.5 || e.y > y + h + 0.5 || e.x + e.width < x - 0.5 || e.y + e.height < y - 0.5) continue;
-    const same = e.text === line.text || (want !== "" && e.text.includes(want));
-    // A matching text first, then the smallest box.
-    const score = (same ? 0 : 1e12) + e.width * e.height;
+    const same = !!e.text && (e.text === line.text || (want !== "" && e.text.includes(want)));
+    // A matching text first, then any text, then the smallest box: a line drawn inside a picture (a minimap's north
+    // letter) still has the element a scroll edge cuts.
+    const score = (same ? 0 : e.text ? 1e12 : 2e12) + e.width * e.height;
     if (score < bestScore) {
       best = i;
       bestScore = score;
