@@ -9,7 +9,7 @@
 
 import { og } from "@origingame/engine";
 import type { DialogueView, QuestView, Size, World } from "@origingame/engine";
-import { art, L } from "./patterns.ts";
+import { art, besideChrome, L } from "./patterns.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -332,9 +332,9 @@ export function questsScreen(world: World): void {
     og.ui.questTracker("Tracker", { quests, from: { x: 0, y: 0, z: 0 }, completeLabel: L("q.complete") });
     return;
   }
-  const galleryH = small ? (og.ui.bounds("Back")?.height ?? 44) + t.space.sm : 0;
   og.ui.anchor("Quests", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : t.space.xl } }, () => {
-    og.ui.column("Header", { width: grow, height: { kind: "fit", min: galleryH }, align: "center", padding: { left: 0, top: 0, right: small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0, bottom: 0 } }, () => {
+    const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
+    og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
       og.ui.label("Title", L("q.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
     });
     const r = og.ui.questLog("Log", {

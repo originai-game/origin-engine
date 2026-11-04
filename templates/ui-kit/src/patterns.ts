@@ -29,6 +29,21 @@ export function phone(): boolean {
 }
 
 /**
+ * A phone header's room beside the kit's Gallery chrome (the top end corner, as laid last tick), for a header `width`
+ * wide: the title stands beside the chrome while that leaves it at least a third of the header, else (and always at a large
+ * text size, where the chrome grows) on its own row under it: a title never ellipsizes to nothing. Zero off a phone.
+ */
+export function besideChrome(width: number): { right: number; top: number; min: number } {
+  if (!phone()) return { right: 0, top: 0, min: 0 };
+  const gap = og.ui.frameTheme().space.sm;
+  const back = og.ui.bounds("Back");
+  const w = (back?.width ?? 100) + gap;
+  const h = back?.height ?? 44;
+  const large = (og.ui.frameTheme().textScale ?? 1) >= 1.5;
+  return !large && width - w >= width * 0.35 ? { right: w, top: 0, min: h } : { right: 0, top: h + gap, min: 0 };
+}
+
+/**
  * A pattern screen: a header (its title and a line under it), the body,
  * and the action bar at the foot; a scrolling column on a phone. Leaves
  * the kit's Gallery button its corner (bottom start on a desktop, the top
@@ -43,14 +58,13 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   const big = !small && vp.height >= 1000;
   // On a phone the kit's Gallery button takes the top end corner: the header leaves it room.
   const top = small ? t.space.sm : t.space.lg;
-  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
   // The action hints sit on the bottom edge (actionHints anchors itself), and grow with the text size.
   // On a phone the body runs to the screen's foot, so its fade ends at the edge rather than over a band of scene.
   const bottom = small ? 0 : Math.round(72 * Math.max(1, t.textScale ?? 1));
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - (small ? 0 : sa.bottom)), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
     // At least the Gallery button's height on a phone, so the body starts under it (a pass's header ran up into it).
-    const galleryH = small ? og.ui.bounds("Back")?.height ?? 0 : 0;
-    og.ui.column("Header", { width: grow, height: { kind: "fit", min: galleryH }, gap: 2, align: "center", padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
+    og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, gap: 2, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
       og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
@@ -314,7 +328,7 @@ export function cardsScreen(world?: World): void {
     og.input.defineAction(world, { name: "endTurn", label: L("cards.endTurn"), bindings: [{ control: "KeyE" }, { control: "pad.y" }] });
   }
   // On a phone the kit's Gallery button takes the top end corner (the start one is the web shell's Back): the header leaves it room.
-  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
+  const head = besideChrome(vp.width - vp.safeArea.left - vp.safeArea.right - 2 * t.space.sm);
   // The table stops above the foot (its height of last tick): the enemies never stand behind the hand.
   const footH = og.ui.bounds("Foot")?.height ?? (small ? 260 : 320);
   const tablePath = landscape ? "Cards/Top" : "Cards/Table";
@@ -425,7 +439,7 @@ export function cardsScreen(world?: World): void {
     if (c.turn && (pressed || (world && og.input.actionPressed(world, "endTurn")))) c.turn = false;
   };
   og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(Hs), direction: "column", gap: small ? t.space.sm : 0, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
-    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center", padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
+    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center", padding: { left: 0, top: head.top, right: head.right, bottom: 0 } }, () => {
       og.ui.column("Heading", { gap: 0, width: portrait ? grow : null }, () => {
         og.ui.label("Title", L("cards.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
         og.ui.label("Turn", c.turn ? L("cards.yourTurn") : L("cards.enemyTurn"), { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
@@ -956,8 +970,8 @@ export function sagaScreen(): void {
     if (r.picked) s.picked = r.picked;
   });
   // The world's name over the map's top, on a scrim that keeps it legible on any art; clear of the Gallery's corner.
-  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
-  og.ui.anchor("SagaHead", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), direction: "column", padding: { left: sa.left + (small ? t.space.sm : t.space.xl), top: sa.top + (small ? t.space.sm : t.space.lg), right: sa.right + galleryW + t.space.sm, bottom: t.space.xl3 } }, () => {
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
+  og.ui.anchor("SagaHead", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), direction: "column", padding: { left: sa.left + (small ? t.space.sm : t.space.xl), top: sa.top + (small ? t.space.sm : t.space.lg) + chrome.top, right: sa.right + chrome.right + t.space.sm, bottom: t.space.xl3 } }, () => {
     og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0.82 } }, { offset: 1, color: { token: "shadow", alpha: 0 } }] }] } as never);
     og.ui.label("Title", L("saga.world"), { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
     og.ui.label("Sub", L("saga.sub", { stars: SAGA0.reduce((n, x) => n + x.stars, 0), max: 60 }), { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, nowrap: true });

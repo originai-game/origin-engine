@@ -7,7 +7,7 @@
 // other word is the game's, keyed in assets/strings.
 
 import { og } from "@origingame/engine";
-import { art, L, phone, type ArtName } from "./patterns.ts";
+import { art, besideChrome, L, phone, type ArtName } from "./patterns.ts";
 import type { DraftTeam, LobbyMember, RosterEntry, SelectCursor, Size, SongEntry, WorldMarker, WorldRegion } from "@origingame/engine";
 
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -32,15 +32,19 @@ export function frame(id: string, title: string, build: () => void, hints: Array
   const bottom = bleed ? 0 : small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), Math.round(hintsH));
   const top = bleed ? 0 : small ? t.space.sm : t.space.lg;
   const height = vp.height - sa.top - sa.bottom;
-  // The pattern's room is exact (the header's last height taken off): a screen-filling pattern sizes its parts from it.
-  // On a phone the header is at least the Gallery button's height (it stands beside it), which this tick already knows.
+  // The pattern's room is exact (the header's height taken off): a screen-filling pattern sizes its parts from it. The
+  // header is its one line of title at this tick's step (the ramp carries the text size), under the Gallery chrome or
+  // at least as tall as it beside it on a phone, so a change of text size or of the chrome's place never leaves the
+  // body a tick too tall.
   const laidHead = og.ui.bounds(`${id}/Header`);
-  const galleryH = small ? og.ui.bounds("Back")?.height ?? 0 : 0;
-  const headH = bleed ? 0 : Math.max(laidHead?.height ?? 0, galleryH) + t.space.md;
+  const step = small ? "xl2" : big ? "xl6" : "xl4";
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * pad);
+  const titleH = t.typeRamp[step]?.lineHeight ?? 0;
+  const headH = bleed ? 0 : Math.max(chrome.top + titleH, chrome.min, laidHead?.height ?? 0) + t.space.md;
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(height), direction: "column", gap: t.space.md, padding: { left: pad, top, right: pad, bottom } }, () => {
     if (!bleed) {
-      og.ui.column("Header", { width: grow, height: { kind: "fit", min: galleryH }, align: "center", padding: { left: 0, top: 0, right: small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0, bottom: 0 } }, () => {
-        og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+      og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
+        og.ui.label("Title", title, { step, heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       });
     }
     // Before the header has been laid out once (its height grows with the text size), the body takes what is left.

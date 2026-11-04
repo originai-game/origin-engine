@@ -733,8 +733,8 @@ function galleryButton(world: World, d: DemoState): void {
 
 /** The Gallery button and, on a showcase's page, its next page beside it. */
 function chromeButtons(world: World, d: DemoState): void {
-  // The medium size: its label at the body's 16 px at 1080p, never under it.
-  if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
+  // The same push button as the next page beside it (showcaseNext), so the two read as one pair: one size, one label.
+  if (og.ui.pushButton("Gallery", tr(world, "gallery.button"), { variant: "secondary", width: { kind: "fit" } }).clicked) d.screen = 0;
   showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!);
 }
 
