@@ -112,7 +112,10 @@ example scenes, frames on Metal, frame times against three.js on WebGPU.
 
 ## 3. Compatibility and real devices: last (owner, 2026-11-01)
 
-After R, as the plan's final stage:
+After every feature is done, not in parallel with optimisation (the
+owner, 2026-11-04): compatibility starts only once the feature work,
+R included, is complete.
+
 
 - **HDR output on a real display (owner, 2026-11-04).** R8's HDR output
   (feat/hdr-output) lands opt-in with its SDR frames unmoved; its
@@ -151,7 +154,7 @@ After R, as the plan's final stage:
 | [T-aa5a5083](https://ampcode.com/threads/T-aa5a5083-c49e-4586-9621-ca6f7e8dec57) | render: R3 dynamic GI (screen-space GI, run-time probes): complete 2026-11-03 (batch 1 SSGI 4dd044b5f; batches 2–3 og.RealtimeLightVolume and probe specular, main 6c0bd7490); functional milestone pending |
 | [T-d800cb02](https://ampcode.com/threads/T-d800cb02-5ecd-48bb-ba24-b72b7f152853) | UI: U8, the kit's genre showcases, every seed style on them, examples migrated, fixed templates removed (the owner, 2026-11-02) |
 
-**Paused (the owner, 2026-11-03, holding the cap at 8):** the introduction site, [T-01a1a06d](https://ampcode.com/threads/T-01a1a06d-d946-751e-9eb1-fb73ee1a3538), branch `site` at f9302d39a, pushed and not deployed; it deploys only once the features it shows are done. A fresh thread resumes it once these arrive: site-hero's scene build (then confirm `game.custom.hero.*` from a real publish build), studio-win's per-scene perf and the cold first load on the real host, site-motion in `public/live/motion`, U8's accepted UI showcases in place of the interim og-ui frames, final media for the 45 `check.ts --final` blockers, a stronger characters poster, and the UI grid controls' spacing under the nav.
+**Paused (the owner, 2026-11-03, holding the cap at 8):** the introduction site, [T-01a1a06d](https://ampcode.com/threads/T-01a1a06d-d946-751e-9eb1-fb73ee1a3538), branch `site` at f9302d39a, pushed and not deployed; it deploys only once the features it shows are done. The owner (2026-11-04): the site is to be re-planned before any recording or deploy, because some of what it would show still looks too rough; Skyreach Meadow's art-approved close shots (site-scenes c23a4a3be) are kept, but its cinematic footage is not recorded until that plan exists. A fresh thread resumes it once these arrive: site-hero's scene build (then confirm `game.custom.hero.*` from a real publish build), studio-win's per-scene perf and the cold first load on the real host, site-motion in `public/live/motion`, U8's accepted UI showcases in place of the interim og-ui frames, final media for the 45 `check.ts --final` blockers, a stronger characters poster, and the UI grid controls' spacing under the nav.
 
 Deferred: UI text scale at 200 % (the owner, 2026-11-04: the bar, the kit cells and the player setting stop at 150 % for now; 200 % returns as its own batch), the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
 The rows below are the previous threads, kept for their history.
