@@ -2332,6 +2332,27 @@ impl Renderer {
                     _ => (to_light, 0.0),
                 };
                 let atmosphere = &uniform.atmosphere;
+                // Clouds drawn over the procedural sky: the occlusion pass
+                // reads the disc through them (lens_flare.wgsl), so the sun
+                // is the one above them, as the sky draws its disc (its
+                // colour and intensity, through the air under the physical
+                // sky), undimmed by their mean cover (`Clouds::light`).
+                let clouded = scene.clouds.filter(|_| {
+                    matches!(scene.environment.background, Background::Procedural { .. })
+                });
+                let mut irradiance = light.color * light.intensity;
+                let mut disc = 0.0;
+                if let Some(c) = clouded {
+                    irradiance /= c.light().0;
+                    let [_, _, _, d, g] = look.gpu(true, Vec3::from_slice(&atmosphere.sky[4][1..]));
+                    let through = look.physical.map_or(Vec3::ONE, |p| {
+                        let up = direction.normalize_or(Vec3::Y).y;
+                        p.sun_transmittance(p.altitude + camera.position.y + scene.origin.y, up)
+                    });
+                    let glow = if look.physical.is_some() { 0.0 } else { d[3] };
+                    disc = (Vec3::new(g[1], g[2], g[3]) * through * (d[2] + glow))
+                        .dot(Vec3::new(0.2126, 0.7152, 0.0722));
+                }
                 post::flare_sources(
                     f,
                     &post::FlareCamera {
@@ -2343,16 +2364,14 @@ impl Renderer {
                         far: camera.far,
                     },
                     aspect,
-                    // Clouds are already in the light (`Clouds::light_scene`);
-                    // the fog's share of the sky towards the sun is not.
-                    // A cumulus passing over the disc (sky.wgsl
-                    // `clouds_march`) is not seen: its transmittance at the
-                    // sun is never stored (R4's follow-up).
+                    // The fog's share of the sky towards the sun is not in
+                    // the light; the clouds' is read off the drawn disc.
                     Some(post::FlareSun {
                         direction,
-                        irradiance: light.color * light.intensity,
+                        irradiance,
                         radius_degrees,
                         fog_clear: atmosphere.sky_fog_clear(camera.position, direction),
+                        disc,
                     }),
                     &scene.lights,
                     &|p| atmosphere.fog_clear(camera.position, p),

@@ -1121,6 +1121,11 @@ S6).
   instead of it past 60 km, so horizon cloud banks continue to the
   horizon under the same fog and air. The gradient sky keeps its 27 km
   fade (it has no air to integrate).
+- **Lens flare through clouds.** With clouds drawn over the procedural
+  sky the flare's sun is the one above them and its occlusion pass reads
+  the disc as the sky drew it against the disc's expected luminance
+  (`lens_flare.wgsl` `fs_flare_occlusion`), so a cumulus passing over the
+  sun dims the flare by its transmittance.
 - **Realtime light volumes (R3).** The lazy component
   `og.RealtimeLightVolume` (`updatesPerFrame`, `intensity`) beside an
   `og.LightVolume` relights that box's probes while the game runs

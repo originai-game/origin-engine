@@ -572,19 +572,19 @@ impl FrameGraph {
                 ],
             )
         };
+        // The occlusion pass writes the visibility the others read, from
+        // the lit frame (the sun's disc as the sky drew it, under clouds).
+        if has(FramePass::FlareOcclusion) {
+            let groups = [0, 1].map(|slot| flare_group(source(slot), black, slot));
+            flare.insert(FramePass::FlareOcclusion, groups);
+        }
         for (p, src) in [
-            (FramePass::FlareOcclusion, None),
-            (FramePass::Flare, Some("bloom.0")),
-            (FramePass::FlareBlurX, Some("flare.raw")),
-            (FramePass::FlareBlurY, Some("flare.x")),
+            (FramePass::Flare, "bloom.0"),
+            (FramePass::FlareBlurX, "flare.raw"),
+            (FramePass::FlareBlurY, "flare.x"),
         ] {
             if has(p) {
-                let src = src.map_or(black, |n| self.view(n));
-                // The occlusion pass writes the visibility the others read.
-                let vis = match p {
-                    FramePass::FlareOcclusion => black,
-                    _ => self.try_view("flare.vis").unwrap_or(black),
-                };
+                let (src, vis) = (self.view(src), self.try_view("flare.vis").unwrap_or(black));
                 flare.insert(p, [0, 1].map(|slot| flare_group(src, vis, slot)));
             }
         }

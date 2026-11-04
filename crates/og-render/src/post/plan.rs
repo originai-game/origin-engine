@@ -926,7 +926,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             }
             FramePass::BloomDown(i) => g.pass(name, &[&bloom_name(i)], &[&bloom_name(i + 1)]),
             FramePass::BloomUp(i) => g.pass(name, &[&bloom_name(i + 1)], &[&bloom_name(i)]),
-            FramePass::FlareOcclusion => g.pass(name, &["lindepth"], &["flare.vis"]),
+            FramePass::FlareOcclusion => g.pass(name, &[lit, "lindepth"], &["flare.vis"]),
             // Declared before the upsamples, so the last of them (onto
             // `bloom.0`) waits for it.
             FramePass::Flare => {

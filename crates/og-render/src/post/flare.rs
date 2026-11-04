@@ -71,6 +71,7 @@ pub(crate) struct FlareUniform {
     pub exposure: [f32; 4],
     pub meter: [f32; 4],
     pub mask: [f32; 4],
+    pub sun: [f32; 4],
     pub lights: [[f32; 4]; FLARE_LIGHTS],
     pub colors: [[f32; 4]; FLARE_LIGHTS],
 }
@@ -100,6 +101,12 @@ pub(crate) struct FlareSun {
     pub radius_degrees: f32,
     /// What the fog leaves of the sky at its direction.
     pub fog_clear: f32,
+    /// The drawn disc's luminance at its centre, unexposed (0: not
+    /// measured): under clouds the occlusion pass reads the disc as drawn
+    /// against it, so a cumulus passing over the sun dims the flare by its
+    /// transmittance (`fs_flare_occlusion`), and `irradiance` is the sun's
+    /// above them.
+    pub disc: f32,
 }
 
 /// The sources' rows of a frame (`FlareUniform`'s `lights` and `colors`
@@ -109,6 +116,8 @@ pub(crate) struct FlareSources {
     pub count: usize,
     pub lights: [[f32; 4]; FLARE_LIGHTS],
     pub colors: [[f32; 4]; FLARE_LIGHTS],
+    /// The drawn sun disc's luminance (FlareSun::disc; 0: not measured).
+    pub sun_disc: f32,
 }
 
 /// `p` on screen (uv, y down) and its clip w.
@@ -169,6 +178,7 @@ pub(crate) fn flare_sources(
                 .extend(flare.sun * horizon * SUN_GHOST_GAIN)
                 .to_array();
             out.count = 1;
+            out.sun_disc = s.disc * s.fog_clear;
         }
     }
     let mut picked: Vec<(usize, Vec2, f32, f32, f32)> = Vec::new();
@@ -255,6 +265,7 @@ pub(crate) fn flare_uniform(
             GHOST_APERTURE,
             GHOST_CLEARANCE,
         ],
+        sun: [sources.sun_disc.max(0.0), 0.0, 0.0, 0.0],
         lights: sources.lights,
         colors: sources.colors,
     }
@@ -367,6 +378,7 @@ mod tests {
             irradiance: Vec3::splat(3.0),
             radius_degrees: 1.8,
             fog_clear: 0.5,
+            disc: 0.0,
         };
         let s = flare_sources(&flare, &cam, 16.0 / 9.0, Some(sun), &[], &no_fog);
         assert_eq!(s.count, 1);

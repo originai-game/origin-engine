@@ -909,6 +909,79 @@ fn lens_flare_fades_as_the_sun_sinks_behind_a_wall() {
     assert!(gains[4].abs() < 0.5, "the hidden sun casts none: {gains:?}");
 }
 
+/// The edge scene's visible sun over the procedural sky under a layer of
+/// cloud of `coverage`, lit as every clouded scene is: so thin a layer
+/// that its mean cover (`Clouds::light`) dims the scene's sun by a tenth,
+/// while the sky draws it closing over the disc.
+fn clouded_sun_scene(coverage: f32) -> RenderScene {
+    let mut scene = fx::flare_edge_scene(0.36);
+    let sky = &scene.environment.sky;
+    scene.environment.background = Background::Procedural {
+        sun_direction: sky.sun_direction,
+        sun_color: sky.sun_color,
+    };
+    let clouds = og_render::Clouds {
+        coverage,
+        density: 0.004,
+        layer: 0.0,
+        detail: 0.0,
+        wind: Vec3::ZERO,
+        ..Default::default()
+    };
+    clouds.light_scene(&mut scene);
+    scene.clouds = Some(clouds);
+    scene
+}
+
+/// A sun behind cloud flares by what the cloud lets through as the sky
+/// draws it, not by the cover's mean dimming of the scene's light: under a
+/// layer the sky draws closed over the disc its ghost all but goes, though
+/// the light it dims is nine tenths of the clear one's; and with no cloud
+/// drawn over it (no cover) the ghost is the clear sky's.
+#[test]
+fn lens_flare_dims_through_the_clouds_over_the_sun() {
+    let desc = small();
+    let gain = |coverage: Option<f32>| {
+        let build = || match coverage {
+            Some(c) => clouded_sun_scene(c),
+            None => {
+                let mut s = clouded_sun_scene(0.0);
+                s.clouds = None;
+                s
+            }
+        };
+        let scene = build();
+        let (on, off) = flare_pair(&desc, build);
+        let sun =
+            scene.camera.position + Vec3::new(0.0, 0.36, -1.0).normalize() * scene.camera.far * 0.5;
+        ghost_gain(&on, &off, &scene.camera, sun)
+    };
+    let (clear, open, closed) = (gain(None), gain(Some(0.0)), gain(Some(1.0)));
+    let dim = og_render::Clouds {
+        coverage: 1.0,
+        density: 0.004,
+        ..Default::default()
+    }
+    .light()
+    .0;
+    println!(
+        "sun ghost gain: clear {clear}, no cover {open}, behind cloud {closed} (the light's dimming {dim})"
+    );
+    assert!(
+        dim > 0.85,
+        "the fixture's cover barely dims the light: {dim}"
+    );
+    assert!(clear > 6.0, "the clear sun flares: {clear}");
+    assert!(
+        (open - clear).abs() < 0.1 * clear,
+        "no cloud drawn over the sun leaves its flare: {open} against {clear}"
+    );
+    assert!(
+        closed < 0.1 * clear,
+        "the sun behind cloud all but stops flaring: {closed}"
+    );
+}
+
 /// A lamp at `x` behind a pillar whose right edge stands on x = 0 at
 /// z = -4, the light 14 m from the eye and the pillar 8 m.
 fn pillar_lamp_at(x: f32) -> Vec3 {

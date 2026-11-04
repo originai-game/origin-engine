@@ -41,6 +41,7 @@ struct Flare {
   exposure: vec4<f32>,  // as post.wgsl Post.exposure
   meter: vec4<f32>,     // x: exposure compensation, y: the lights (0 to FLARE_LIGHTS)
   mask: vec4<f32>,      // x, y: the bloom taps masked round the sun and round a light, in its disc's radii; z: the aperture's radius, a sun ghost's and a light's at most (height units); w: how far a ghost keeps off its own source's glare (height units)
+  sun: vec4<f32>,       // x: the drawn sun disc's luminance at its centre, unexposed (0: not measured)
   // Each light: xy its uv, z the view depth a sample must reach to see
   // it (below 0: the sky, for the sun), w its disc's radius (height units).
   lights: array<vec4<f32>, 8>,
@@ -50,7 +51,7 @@ struct Flare {
 };
 @group(0) @binding(0) var<uniform> flare: Flare;
 @group(0) @binding(1) var flare_linear: sampler;
-@group(0) @binding(2) var flare_source: texture_2d<f32>;      // bloom.0, or the flare being blurred
+@group(0) @binding(2) var flare_source: texture_2d<f32>;      // bloom.0, the flare being blurred, or (occlusion) the lit frame
 @group(0) @binding(3) var flare_depth: texture_2d<f32>;       // the prepass view depth
 @group(0) @binding(4) var flare_luminance: texture_2d<f32>;   // the metered or adapted exposure
 @group(0) @binding(5) var flare_visibility: texture_2d<f32>;  // flare.vis: each light's visible fraction
@@ -105,7 +106,19 @@ fn fs_flare_occlusion(in: VsOut) -> @location(0) vec4<f32> {
       if (any(p < vec2<f32>(0.0)) || any(p >= size)) { continue; }
       let d = textureLoad(flare_depth, vec2<i32>(p), 0).r;
       samples += 1.0;
-      visible += select(0.0, 1.0, flare_sees(d, light.z));
+      var seen = select(0.0, 1.0, flare_sees(d, light.z));
+      // The sun under clouds: the sky pass draws the disc through them,
+      // so what the frame shows of it over what the disc is drawn as is
+      // their transmittance (the cloud's own glow beside a disc thousands
+      // of times brighter adds next to nothing). Read inside half its
+      // radius, where the limb has not darkened it.
+      if (light.z < 0.0 && flare.sun.x > 0.0 && seen > 0.0) {
+        let q = center + o * min(r * 0.5, max(r - 1.0, 0.0));
+        let sp = vec2<i32>(q * vec2<f32>(textureDimensions(flare_source)) / size);
+        let c = textureLoad(flare_source, sp, 0).rgb;
+        seen *= clamp(dot(c, vec3<f32>(0.2126, 0.7152, 0.0722)) / flare.sun.x, 0.0, 1.0);
+      }
+      visible += seen;
     }
   }
   return vec4<f32>(visible / max(samples, 1.0), 0.0, 0.0, 1.0);
