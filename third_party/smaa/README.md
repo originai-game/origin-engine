@@ -15,3 +15,6 @@ retaining diagonal search, corner detection and the reference lookup layout.
 Engine entry points live in `crates/og-render/shaders/smaa_*.wgsl`.
 The engine uses the high preset, luma edges with linear samples re-encoded
 to sRGB, and zero subsample indices (1x). No temporal resolve or jitter.
+For HDR, edge samples are clamped to the SDR paper-white range before
+encoding; the blend pass still samples the original float image. This
+engine adaptation keeps highlights from inflating perceptual edge thresholds.

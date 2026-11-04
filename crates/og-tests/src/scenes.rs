@@ -97,6 +97,7 @@ pub const SCENES: &[&str] = &[
     "shadows-local-contact",
     "shadows-cascades-4",
     "fxaa",
+    "smaa",
     "taa-sharp",
     "taau",
     "taau-moving",

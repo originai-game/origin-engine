@@ -30,7 +30,10 @@ fn smaaEdgeDetectionOffsets(texCoord: vec2f, texelSize: vec2f) -> array<vec4f, 3
 }
 
 fn smaaSampleColor(tex: texture_2d<f32>, texSampler: sampler, texCoord: vec2f) -> vec3f {
-  let color = textureSampleLevel(tex, texSampler, texCoord, 0.0).rgb;
+  // Engine adaptation: HDR is display-linear in paper-white units. Detect
+  // edges in its SDR preview, not unbounded highlight values. Blend still
+  // reads the original float image, so this does not clip output highlights.
+  let color = clamp(textureSampleLevel(tex, texSampler, texCoord, 0.0).rgb, vec3f(0.0), vec3f(1.0));
   if (!SMAA_SRGB_INPUT) {
     return color;
   }
