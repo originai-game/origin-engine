@@ -679,14 +679,18 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
 // the lights' masks go to gba (1 lit, 0 hidden), which the lit shaders
 // multiply into their map shadows (lighting.wgsl `local_shadow`).
 //
-// What makes a hit (Bend's thickness test): the ray must first pass behind
-// the depth buffer by no more than a thickness, a share of the view depth
-// (a curved caster's silhouette, the ball's, is crossed some way behind
-// its visible surface) plus the ray's own change of view depth over the
-// step. A silhouette well in front of a far surface (a wall behind a
-// block) is not counted. Once in, the ray is inside the occluder: its
-// deeper samples behind the same surface count too, so a solid caster
-// hides the light fully rather than only where the ray grazed it. The steps grow quadratically from a one-pixel start along
+// What makes a hit, all in linear view depth: the ray crosses a surface,
+// in front of it at one sample and behind it at the next with the depth
+// buffer continuous between the two (it changed by no more than the
+// thickness and the ray's own depth change), or it lies behind it by less
+// than the thickness, a few centimetres scaled by the view depth. A
+// silhouette in front of a far surface is a jump in the depth buffer, and
+// the thin edge of a caster's silhouette (a box's top seen at a grazing
+// angle, with the floor behind it) is not crossed: neither counts. Once
+// in, the ray is inside the occluder while the depth buffer stays on that
+// surface, so a solid caster hides the light fully. A sample on the
+// receiver's own plane is never its occluder (a grazing wall's depth
+// changes by more than the thickness per pixel). The steps grow quadratically from a one-pixel start along
 // the ray, so the centimetres beside a caster are sampled densely, and a
 // hit darkens by how far behind it lies over a pixel's depth (a ramp, not
 // a step), so the per-pixel jitter leaves no speckle.
@@ -719,7 +723,8 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
     let len = min(max(params.x * d0, params.y), 0.9 * dist);
     var occluded = 0.0;
     var prev = start;
-    var prev_px = vec2<f32>(px) + 0.5;
+    var prev_surface = d0;
+    var prev_behind = -1.0;
     var inside = false;
     for (var k = 0; k < steps; k++) {
       let f = (f32(k) + jitter) / f32(steps);
@@ -733,21 +738,14 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
       let qd = -q.z;
       let surface = depth_tap(quv, size, size_f);
       let behind = qd - surface;
-      // The occluder's own depth slope there, per pixel along the ray's
-      // screen direction, over the pixels this step crossed: a curved
-      // caster (a sphere's underside) recedes fast near its silhouette.
-      // The smaller of the two sides, so a silhouette's jump to what lies
-      // behind it is not taken for a slope.
-      let qpx = quv * size_f;
-      let span = max(length(qpx - prev_px), 1.0);
-      let along = (qpx - prev_px) / span;
-      let ahead = depth_tap((qpx + along) / size_f, size, size_f);
-      let back = depth_tap((qpx - along) / size_f, size, size_f);
-      let slope = min(abs(ahead - surface), abs(surface - back));
-      let thickness = params.z * qd + 2.0 * abs(q.z - prev.z) + slope * span + pixel;
+      let thickness = params.z * qd + pixel;
+      let same = abs(surface - prev_surface) < thickness + abs(q.z - prev.z);
+      let own = abs(dot(view_pos(quv, surface) - p, n)) < 2.0 * pixel;
+      let crossed = behind < thickness || (prev_behind <= 0.0 && same);
+      inside = !own && behind > 0.0 && (crossed || (inside && same));
       prev = q;
-      prev_px = qpx;
-      inside = behind > 0.0 && (inside || behind < thickness);
+      prev_surface = surface;
+      prev_behind = behind;
       if (inside) {
         let ramp = smoothstep(0.0, 1.0 / pixels_per_unit(qd), behind);
         // Fades out over the ray's last part, so its reach has no edge.
@@ -761,9 +759,11 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 // The contact masks (tex_b's gba, `fs_contact`'s jittered march) resolved
-// over 5x5 pixels, each weighed by how near its view depth (4 % of the
-// pixel's) and how alike its normal is to the pixel's (a joint bilateral
-// filter, as the AO's blur, with the normal term of SVGF's): one frame's
+// over 5x5 pixels, each weighed by how far its view-space point lies off
+// the pixel's plane (1 % of the view depth and a pixel: a grazing wall's
+// neighbours lie on it whatever their depth slope, a box in front of it
+// does not) and how alike its normal is to the pixel's (a joint bilateral
+// filter with SVGF's plane and normal terms): one frame's
 // per-pixel samples become a continuous darkening that stops at depth and
 // crease edges, so it never spills from a caster onto the wall behind it
 // or across a block's corner. The AO in r is already blurred: it passes.
@@ -774,8 +774,10 @@ fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
   let d0 = depth_at(px);
   if (is_sky(d0)) { return center; }
   let n0 = world_normal(px);
+  let nv = normalize((fxp.view * vec4<f32>(n0, 0.0)).xyz);
+  let p0 = view_pos((vec2<f32>(px) + 0.5) * fxp.screen.zw, d0);
   let size = vec2<i32>(textureDimensions(tex_b));
-  let scale = max(d0 * 0.04, 1e-3);
+  let scale = max(d0 * 0.01 + 1.0 / pixels_per_unit(d0), 1e-3);
   var sum = vec3<f32>(0.0);
   var weight = 0.0;
   for (var y = -2; y <= 2; y++) {
@@ -783,7 +785,8 @@ fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
       let d = depth_at(q);
       if (is_sky(d)) { continue; }
-      let w = exp(-abs(d - d0) / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0);
+      let off = abs(dot(view_pos((vec2<f32>(q) + 0.5) * fxp.screen.zw, d) - p0, nv));
+      let w = exp(-off / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0);
       sum += textureLoad(tex_b, q, 0).gba * w;
       weight += w;
     }

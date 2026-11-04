@@ -4477,13 +4477,11 @@ fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
 /// 8 cm per metre of view depth and at least 25 cm long, so a floor pixel
 /// a few centimetres beside a block reaches it under a steep light (the
 /// local maps' bias leaves that gap: 10 cm left an 8 px lit strip beside
-/// baked-cornell's short block); a ray enters an occluder within 8 cm per
-/// metre of view depth behind the depth buffer, plus its own depth change
-/// over the step and the occluder's own depth slope over the pixels it
-/// crossed (the shader's thickness test: 1 cm per metre alone lost the
-/// ball's contact, crossed behind its curved silhouette, and 25 cm per
-/// metre let the block's silhouette shadow the wall behind it); 16 steps.
-const CONTACT_PARAMS: [f32; 4] = [0.08, 0.25, 0.04, 16.0];
+/// baked-cornell's short block); a thickness of 1 cm per metre of view
+/// depth (and a pixel) in linear view depth, past which only a continuous
+/// crossing counts (the shader's hit test; a quarter of the view depth
+/// let a block's silhouette shadow the wall behind it); 16 steps.
+const CONTACT_PARAMS: [f32; 4] = [0.08, 0.25, 0.01, 16.0];
 
 /// Whether an instance was drawn elsewhere in the previous frame
 /// ([`RenderScene::previous_transforms`]): TAA then needs the prepass's
