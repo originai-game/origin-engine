@@ -9,7 +9,7 @@ import {
   artSlot, btn, clamp, fill, frame, glow, grow, hex, kit, lastInteraction, line, mix, over, paint, pct, px, radial, role, shadow, solid, st, still,
   symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
-import { STAR_GOLD } from "./saga.ts";
+import { STAR_GOLD } from "./stars.ts";
 
 /** Ticks a held Buy waits before it repeats, then between repeats. */
 const HOLD_DELAY = 24;

@@ -7,7 +7,8 @@ import { ammoCounter, crosshair, damageDirection, killfeed, lowHealthVignette } 
 import { castBar, partyFrames, raidFrames, unitFrame } from "./frames.ts";
 import { orbMeter, radialMeter, statBar } from "./meters.ts";
 import { compass, minimapView, objectiveTracker } from "./nav.ts";
-import { comboCounter, hudTimer, judgement, resourceBar, scoreboard, scorebug, turnOrder } from "./scores.ts";
+import { comboCounter, judgement, resourceBar, scoreboard, scorebug, turnOrder } from "./scores.ts";
+import { hudTimer } from "./timer.ts";
 import { flightHud, speedometer } from "./vehicles.ts";
 import { lapTimer, raceBanner, rearView, standingsTower } from "./racing.ts";
 import { driftScore, itemSlot } from "./arcade.ts";

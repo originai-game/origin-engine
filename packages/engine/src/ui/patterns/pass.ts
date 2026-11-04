@@ -11,7 +11,7 @@ import {
   artSlot, btn, clamp, countdown, pct, fitStep, fill, frame, glow, grouped, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, rarityColor, role,
   scrimFill, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, isPhone, type Mut, type Rgba, type TimeWords,
 } from "./core.ts";
-import { STAR_GOLD } from "./saga.ts";
+import { STAR_GOLD } from "./stars.ts";
 
 /** A reward's claim state: past the level, ready, claimed, or premium while the track is locked. */
 type Claim = "ahead" | "ready" | "claimed" | "locked";

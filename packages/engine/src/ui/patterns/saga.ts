@@ -9,9 +9,7 @@ import {
   accent, artSlot, clamp, fill, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, role, rtl, shadow, solid, st, still, surface,
   symbol, text, token, u, vgrad, vstate, type Mut, type Rgba,
 } from "./core.ts";
-
-/** The star gold the stars are lit in on every style: a star is a reward, not a style's accent. */
-export const STAR_GOLD = hex("#ffc93c");
+import { STAR_GOLD } from "./stars.ts";
 
 /** A point on the path. */
 interface Pt { x: number; y: number }
