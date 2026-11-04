@@ -243,17 +243,19 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   lands the branch (reading only the ones that fail tolerance) and sends
   the moved frames of visual work to the art director, whose notes fold
   into the author's next round. Only macrunner runs `scripts/check.sh`,
-  wasm builds and references. **Superseded for render areas (the owner,
-  2026-11-04, to speed up):** an author thread may run on macrunner
-  itself, in its own lane, with the Metal GPU: it renders and reads its
-  own frames, judges them as the art director against commercial-game
-  quality, and when they pass rebases, runs `scripts/check.sh quick`
-  plus its area's scoped GPU tests under the machine lock, records only
-  its own area's references and pushes to main, with no round trip to
-  another thread. GPU suites always take `scripts/lock.sh`; nobody runs
-  the full gate, `--all`, wasm builds or web-reference beside others.
-  Long-running threads are retired and replaced by fresh ones before
-  their context fills. macrunner carries two landing sessions
+  wasm builds and references. **Superseded (the owner, 2026-11-04, to
+  speed up):** author threads run on macrunner in their own lanes with
+  the Metal GPU, run their own tests, scoped GPU suites and frames, record
+  their own references on their branch, and push the branch. One art
+  runner on macrunner reviews every stream's frames as the art director
+  (looks only, against commercial games) and, when it approves, rebases
+  and pushes to main without rerunning what the author ran (one quick
+  only when the rebase conflicted). Only breakage blocks on its own.
+  Authors without a GPU (orbs) name the sheets and the art runner renders
+  them. GPU suites always take `scripts/lock.sh`; nobody runs the full
+  gate, `--all`, wasm builds or web-reference beside others. Long-running
+  threads are retired and replaced by fresh ones before their context
+  fills. macrunner carries two landing sessions
   (the owner, 2026-11-04, to speed landing): one for the UI side
   (og-ui, kits, style packs) and one for the render side (rendering,
   terrain, motion frames), the second in a lane worktree. They share
