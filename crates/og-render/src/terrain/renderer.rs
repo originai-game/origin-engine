@@ -1163,7 +1163,6 @@ impl TerrainRenderer {
         scene: &crate::RenderScene,
         draws: &mut [TerrainDraw],
     ) {
-        use wgpu::util::DeviceExt;
         let mut slots: Vec<StampGpu> = Vec::new();
         let mut placed: Vec<(usize, StampDraw)> = Vec::new();
         for st in &scene.terrain_stamps {
@@ -1183,16 +1182,24 @@ impl TerrainRenderer {
                 if data.indices.is_empty() || data.vertices.is_empty() {
                     continue;
                 }
-                let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("terrain stamp vertices"),
-                    contents: bytemuck::cast_slice(&data.vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
-                let indices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("terrain stamp indices"),
-                    contents: bytemuck::cast_slice(&data.indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
+                let vertices = crate::buffer_init(
+                    device,
+                    queue,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("terrain stamp vertices"),
+                        contents: bytemuck::cast_slice(&data.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    },
+                );
+                let indices = crate::buffer_init(
+                    device,
+                    queue,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("terrain stamp indices"),
+                        contents: bytemuck::cast_slice(&data.indices),
+                        usage: wgpu::BufferUsages::INDEX,
+                    },
+                );
                 let bounds = data.bounds().unwrap_or((Vec3::ZERO, Vec3::ZERO));
                 self.stamp_meshes.insert(
                     index,
