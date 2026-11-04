@@ -1360,6 +1360,18 @@ impl Bundle {
         self.lightmap(id, &self.read(id)?)
     }
 
+    /// The asset bytes of a fracture blob (`og.Fracture`, a model's
+    /// `#fracture`), for `og_destruct::FractureAsset::from_bytes`.
+    pub fn fracture(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
+        let blob = self.blob::<format::Fracture>(id, bytes)?;
+        let meta = one::<format::FractureMeta>(&blob)?;
+        Ok(blob
+            .raw("asset")?
+            .get(..meta.asset_bytes as usize)
+            .ok_or_else(|| invalid(&blob, "the fracture asset is cut short"))?
+            .to_vec())
+    }
+
     /// Decodes a timeline blob (`og.TimelineAsset`): the canonical text
     /// the cook wrote, parsed by og-timeline.
     pub fn timeline(&self, id: &str, bytes: &[u8]) -> Result<og_timeline::Timeline, LoadError> {

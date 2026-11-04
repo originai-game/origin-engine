@@ -198,6 +198,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
             encoded: std::sync::OnceLock::new(),
             whole: Default::default(),
             conformed: None,
+            fracture: None,
         });
     }
     for s in sources.iter_mut() {

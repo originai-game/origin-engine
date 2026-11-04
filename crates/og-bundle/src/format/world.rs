@@ -431,6 +431,33 @@ impl BlobKind for Timeline {
     }
 }
 
+// ── destruction: prefractured models ─────────────────────────────────────
+
+row!(
+    /// The root of a fracture blob (`<model>#fracture`, a model with a
+    /// `fracture` block).
+    FractureMeta, "og.Fracture", 1 {
+        /// Its chunks, support chunks and their children together.
+        chunks: u32,
+        /// Its support chunks.
+        support: u32,
+        /// The bonds of its support graph.
+        bonds: u32,
+        /// Bytes of the asset in `asset` (`og_destruct::FractureAsset::to_bytes`).
+        asset_bytes: u32,
+    }
+);
+
+/// The fracture blob: `asset` holds the chunks, the hierarchy, the bonds
+/// and the anchors (`og_destruct::FractureAsset`), which og-runtime decodes.
+pub struct Fracture;
+impl BlobKind for Fracture {
+    const NAME: &'static str = "og.Fracture";
+    fn schemas() -> Vec<Schema> {
+        vec![FractureMeta::schema()]
+    }
+}
+
 // ── depth S7: baked lighting ─────────────────────────────────────────────
 
 row!(

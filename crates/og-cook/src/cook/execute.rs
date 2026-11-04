@@ -553,6 +553,7 @@ pub(super) fn run(
         }
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
+        Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
         Work::Lightmap(s) => lightmap::cook_lightmap(s, p.stamp),
         Work::Environment(s) => environment::cook_environment(s, p.stamp),

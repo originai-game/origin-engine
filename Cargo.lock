@@ -2429,6 +2429,7 @@ dependencies = [
  "og-blob",
  "og-bundle",
  "og-core",
+ "og-destruct",
  "og-ecs",
  "og-geom",
  "og-i18n",

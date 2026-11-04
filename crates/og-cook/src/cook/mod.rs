@@ -22,6 +22,7 @@ mod environment;
 mod fbx;
 mod flipbook;
 mod font;
+mod fracture;
 pub mod icons;
 pub mod ktx2_source;
 mod lightmap;
@@ -193,6 +194,9 @@ struct Source {
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
     conformed: Option<std::sync::Arc<Vec<u8>>>,
+    /// A model with a `fracture` block: its fracture asset
+    /// (`fracture.rs`), cooked as `<model>#fracture`.
+    fracture: Option<og_destruct::FractureAsset>,
 }
 
 impl Source {
@@ -310,6 +314,8 @@ enum Work<'a> {
     VideoPoster(PathBuf, u64, Box<video::VideoPlan>),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
+    /// A fractured model's `#fracture`.
+    Fracture(&'a Source),
 }
 
 struct Planned<'a> {
@@ -491,6 +497,25 @@ pub fn cook_project_with_texture_cache(
                     s.bytes = glb;
                     model_texts.insert(s.rel.clone(), text);
                 }
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
+        // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
+        if s.kind == Kind::Model {
+            let dir = s.path.parent().unwrap_or(Path::new("."));
+            let text = model_texts.get(&s.rel).map(String::as_str);
+            match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
+                f.map(|f| fracture::fracture_glb(&s.bytes, dir, &f))
+                    .transpose()
+            }) {
+                Ok(Some((glb, asset))) => {
+                    s.bytes = glb;
+                    s.fracture = Some(asset);
+                }
+                Ok(None) => {}
                 Err(e) => {
                     s.error = Some(e);
                     continue;
@@ -728,6 +753,11 @@ pub fn cook_project_with_texture_cache(
             let (Some(text), Some(g)) = (model_texts.get(&s.rel), &s.gltf) else {
                 continue;
             };
+            // A fractured model keeps its chunks; the decimation that
+            // follows holds it to the budget.
+            if s.fracture.is_some() {
+                continue;
+            }
             if !c.applies(g) {
                 continue;
             }
@@ -903,6 +933,14 @@ pub fn cook_project_with_texture_cache(
                     0,
                     (s.rel.clone(), format::Model::NAME, st, Work::Model(s, ids)),
                 );
+                if s.fracture.is_some() {
+                    outs.push((
+                        format!("{}#fracture", s.rel),
+                        format::Fracture::NAME,
+                        stamp(&[b"fracture", &hash]),
+                        Work::Fracture(s),
+                    ));
+                }
                 if group_of.contains_key(&s.rel) {
                     let st = with(
                         &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],

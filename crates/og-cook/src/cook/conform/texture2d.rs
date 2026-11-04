@@ -536,6 +536,7 @@ pub(in crate::cook) fn conform(
                 encoded: Default::default(),
                 whole: Default::default(),
                 conformed: None,
+                fracture: None,
             };
             src.hash = rehash(&src, &[]);
             extra.push(src);

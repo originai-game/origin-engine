@@ -916,7 +916,7 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
 // ── the model ───────────────────────────────────────────────────────────────
 
 /// A material as glTF writes it.
-fn material(name: &str, b: &Block) -> Result<serde_json::Value, String> {
+pub(super) fn material(name: &str, b: &Block) -> Result<serde_json::Value, String> {
     let f = Fields::new(
         b,
         "material",
@@ -1220,6 +1220,9 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     add_node(n, pivot, &mut nodes, &mut children, &mut roots);
                 }
             }
+            // A `fracture` block: the cook cuts the built model into chunks
+            // (`fracture.rs`).
+            "fracture" if e.block.is_some() => {}
             // `conform off`: the art contract leaves it as made;
             // `conform character`: it is held to ArtShape.characterFaces
             // (cook/conform).

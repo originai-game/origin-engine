@@ -17,6 +17,7 @@ mod environment;
 mod fbx;
 mod flipbook;
 mod foliage;
+mod fracture;
 mod fx;
 mod gltf_formats;
 mod impostor;

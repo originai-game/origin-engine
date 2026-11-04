@@ -32,6 +32,7 @@
 //! | custom post pass (`og.PostPass`, an `.ogt` of `type post`) | [`PostMeta`] | `text` (the canonical post file, code inlined) |
 //! | 2D rig (`og.Skeleton2D`, an `.ogt` of `type rig2d`) | [`Rig2DMeta`] | `text` (the canonical rig: a DragonBones export converted, the texture's id and size) |
 //! | flipbook sheet (`og.Flipbook`, an `.ogt` of `type flipbook`) | [`FlipbookMeta`] | `text` (the canonical sheet: frames resolved from the grid and an Aseprite or TexturePacker atlas, clips with frame indices and durations, the texture's size) |
+//! | fracture (`og.Fracture`, a model's `#fracture`: a model with a `fracture` block) | [`FractureMeta`] | `asset` (`og_destruct::FractureAsset::to_bytes`: the chunks, their hierarchy, the support graph's bonds and the anchors) |
 //! | animation (`og.Animation`, a glTF's `#anim`) | [`AnimMeta`] | `nodes` [`NodeRow`], `hidden` (u32 node indices hidden at rest, ascending), `skins` [`SkinRow`], `joints` (u32 node indices), `inverse_binds` (16 f32 per joint, column-major), `clips` [`ClipRow`], `channels` [`ChannelRow`], `samples` (f32), `packed` (u16: quantised keys, `crate::anim_codec`), `events` [`EventRow`], `skin_streams` [`SkinStreamRow`], `skin_data` (meshopt streams), `morphs` [`MorphRow`], `targets` [`TargetRow`], `morph_data` (meshopt streams of the moved vertices' deltas and indices), `strings` |
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
 //! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings`; optional `orientation` (u32 `og_tilemap::Orientation::code`, absent for orthogonal: G2-6) |
@@ -131,6 +132,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         NavMesh,
         Strings,
         Timeline,
+        Fracture,
         Lightmap,
         Terrain,
         EnvironmentMap,
