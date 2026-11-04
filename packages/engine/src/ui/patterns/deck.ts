@@ -246,40 +246,44 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
 
   // A scroll column of `n` rows that builds only those the view crosses: fillers keep the scroll range of
   // the rest, as og.ui.openList does, so a long collection or deck stays inside the element budget. The offset is this
-  // tick's (og.ui.scrollState); a row's height is one measured whole in view last tick, else `guess`. `head` builds
-  // first, `tail` once the last row is built.
+  // tick's (og.ui.scrollState). Each row keeps its own height, measured where it last stood whole in the view; a row
+  // not seen yet takes the mean of those seen, else `guess` (one row's height for all ran short when a long name
+  // wrapped, leaving the view's last row unbuilt behind a filler). `head` builds first, `tail` once the last row is built.
   const windowed = (key: string, sd: Record<string, unknown>, n: number, guess: number, gap: number, idOf: (i: number) => string, row: (i: number) => void, head?: () => void, tail?: () => void): void => {
     const path = `${kit.openPath()}/${key}`;
     const sv = kit.scrollState(path);
-    const seen = kit.memory(`~db.h.${key}`, 0);
-    const stride = (seen > 0 ? seen : guess) + gap;
+    const seen = Array.from({ length: n }, (_, i) => kit.memory(`~db.h.${key}.${idOf(i)}`, 0));
+    const known = seen.filter((h) => h > 0);
+    const mean = known.length > 0 ? known.reduce((a, h) => a + h, 0) / known.length : guess;
     const off = sv?.offsetY ?? 0;
     const view = sv?.viewHeight || frame().viewport.height;
-    // The offset is this tick's, so the rows the view crosses are enough: no spare row past either end.
-    const first = Math.min(n, Math.max(0, Math.floor(off / stride)));
-    const last = Math.min(n, Math.max(first + 1, Math.ceil((off + view) / stride)));
+    // Each row's top (`at[n]` the whole column's height, a gap after every row): the rows the view crosses are enough,
+    // no spare row past either end, as the offset is this tick's.
+    const at = [0];
+    for (let i = 0; i < n; i++) at.push(at[i]! + (seen[i]! || mean) + gap);
+    let first = 0;
+    while (first < n - 1 && at[first + 1]! - gap <= off) first++;
+    let last = Math.min(n, first + 1);
+    while (last < n && at[last]! < off + view) last++;
     const filler = (id: string, h: number): void => {
       kit.open(id, { height: px(Math.max(0, h)) });
       kit.close();
     };
     kit.openScroll(key, sd as never);
     head?.();
-    if (first > 0) filler("Lead", first * stride - gap);
+    if (first > 0) filler("Lead", at[first]! - gap);
     for (let i = first; i < last; i++) row(i);
-    if (last < n) filler("Rest", (n - last) * stride - gap);
+    if (last < n) filler("Rest", at[n]! - at[last]! - gap);
     else tail?.();
     kit.close();
     // A built row's height, read where it stood whole in the view (cut by an edge, its bounds are short).
     const gb = kit.bounds(path);
-    let h = seen;
     for (let i = first; i < last && gb; i++) {
       const b = kit.bounds(`${path}/${idOf(i)}`);
-      if (b && b.y > gb.y + 0.5 && b.y + b.height < gb.y + gb.height - 0.5) {
-        h = Math.round(b.height);
-        break;
-      }
+      // The first built row's top is whole when the offset is at or above it, even flush with the view's edge.
+      const top = b && (b.y > gb.y + 0.5 || (i === first && off <= at[first]! + 0.5));
+      if (b && top && b.y + b.height < gb.y + gb.height - 0.5) kit.remember(`~db.h.${key}.${idOf(i)}`, Math.round(b.height));
     }
-    kit.remember(`~db.h.${key}`, h);
   };
 
   // The collection's grid: whole rows that scroll, and the count of the cards owned.
