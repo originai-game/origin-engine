@@ -27,6 +27,26 @@ is one line here, written at the merge that changes
   queries handle negative bearings; sign correction precedes error correction.
   `og ui sheet <pack|kit>` is an on-demand baseline tool, never a gate step.
 
+- **Terrain displacement (terrain v2, T4).** Two new members:
+  `TerrainLayerDesc.displacement` (metres, 0: flat; the terrain file's
+  layer key `displacement`) and og.Terrain's `displacementDistance`
+  (metres, default 40, 0: none). A layer with a displacement raises and
+  lowers the drawn ground by its height map (its albedo's alpha, about
+  its middle) near the camera. The layers and weights are the ones the
+  lit pass shades with, the maps are read over each level's spacing, and
+  the relief fades out over the last 40% of the distance and on steep
+  ground. The silhouette and the shadows then carry the relief. A
+  displaced terrain whose `lodSpacing` is 0 draws its finest clipmap
+  levels finer than its samples: halved down to a 32nd of the finest
+  displacing layer's `tile`, and at most to a 32nd of a sample. Between samples every level now reads the field on its
+  cells' split triangles, as collision does, instead of bilinearly; this
+  also changes a `lodSpacing` finer than the samples. In the morph band
+  even corners now also move, to the coarser level's corner as that level
+  reads it, so displaced levels meet without cracks. Collision,
+  `og.terrain.sample` and picking keep the undisplaced field. The terrain
+  blob's layer row is v4, so terrains cook again. Off by default:
+  existing terrains draw as before.
+
 - **The clipmap morphs in height only, and tiles fade in over seconds
   (terrain v2, T2).** A clipmap cell is now four triangles fanned around
   its centre. Near a level's outer edge an odd corner sinks or rises in

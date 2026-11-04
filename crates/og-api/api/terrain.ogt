@@ -52,6 +52,13 @@ module terrain {
       min 0
       max 256
     }
+    field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement." {
+      default 40
+      min 0
+      max 1000
+      unit m
+      tunable true
+    }
   }
 
   component TerrainStamp {
@@ -562,6 +569,11 @@ module terrain {
       min 0
       max 1
       unit ratio
+    }
+    field displacement f32 "Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat." {
+      min 0
+      max 4
+      unit m
     }
     field normalStrength f32 "How strongly its normal map bends the surface." {
       default 1

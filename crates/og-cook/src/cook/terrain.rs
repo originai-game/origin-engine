@@ -47,6 +47,7 @@
 //!   antiTiling 1                  # hex-tiling: no visible repeat (0 to 1)
 //!   heightContrast 0.5            # the height blend's rim at its edges, sharper (0 to 1)
 //!   macroVariation 0.5            # brightness and hue drift, and a coarser repeat far off (0 to 1)
+//!   displacement 0.08             # metres the drawn ground moves by the albedo's alpha near the camera (0 to 4)
 //! }
 //! ```
 //!
@@ -389,7 +390,7 @@ const KEYS: [&str; 14] = [
     "layers",
     "layerNormals",
 ];
-const LAYER_KEYS: [&str; 17] = [
+const LAYER_KEYS: [&str; 18] = [
     "albedo",
     "normal",
     "albedoLayer",
@@ -407,6 +408,7 @@ const LAYER_KEYS: [&str; 17] = [
     "antiTiling",
     "heightContrast",
     "macroVariation",
+    "displacement",
 ];
 
 pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
@@ -558,6 +560,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             anti_tiling: unit(b, "antiTiling", 1.0)?,
             height_contrast: unit(b, "heightContrast", 1.0)?,
             macro_variation: unit(b, "macroVariation", 1.0)?,
+            displacement: unit(b, "displacement", 4.0)?,
         };
         layers.push((string_of(b, "albedo"), string_of(b, "normal"), layer));
     }
@@ -888,6 +891,7 @@ pub(super) fn cook_terrain(
                 anti_tiling: l.anti_tiling,
                 height_contrast: l.height_contrast,
                 macro_variation: l.macro_variation,
+                displacement: l.displacement,
             }
         })
         .collect();

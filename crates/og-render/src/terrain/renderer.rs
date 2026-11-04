@@ -64,9 +64,10 @@ impl TerrainRenderer {
             },
             count: None,
         };
+        // The vertex stage too: the displacement reads the layers' maps.
         let sampler = |binding| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
+            visibility: vf,
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         };
@@ -94,7 +95,7 @@ impl TerrainRenderer {
                 stamp: &self.stamp_layout,
             },
             self.samples,
-            terrain_lit_array_source(&self.lit_source),
+            terrain_array_source(&self.lit_source),
             terrain_shadow_array_source(),
             false,
         );
@@ -140,7 +141,7 @@ impl TerrainRenderer {
                 let (layout, _) = self.arrays.as_ref().expect("the variant is made first");
                 (
                     layout,
-                    terrain_lit_array_source(&self.lit_source),
+                    terrain_array_source(&self.lit_source),
                     terrain_shadow_array_source(),
                 )
             } else {
@@ -197,9 +198,10 @@ impl TerrainRenderer {
             },
             count: None,
         };
+        // The vertex stage too: the displacement reads the layers' maps.
         let sampler = |binding| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
+            visibility: vf,
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         };
@@ -902,7 +904,7 @@ impl TerrainRenderer {
                             l.altitude_fade.max(0.0),
                             at(normal),
                         ],
-                        offset: uv_offset(scene.origin, l.tile),
+                        offset: layer_offset(scene.origin, l),
                         ..layer_look(l, scene.origin)
                     };
                     continue;
@@ -936,7 +938,7 @@ impl TerrainRenderer {
                     ],
                     slope: [l.slope[0], l.slope[1], l.slope_fade.max(0.0), 0.0],
                     altitude: [l.altitude[0], l.altitude[1], l.altitude_fade.max(0.0), 0.0],
-                    offset: uv_offset(scene.origin, l.tile),
+                    offset: layer_offset(scene.origin, l),
                     ..layer_look(l, scene.origin)
                 };
             }
@@ -969,6 +971,16 @@ impl TerrainRenderer {
                     lay.levels as f32,
                     lay.pages.max(1) as f32,
                 ],
+                displace: {
+                    let across = horizontal_scale(model);
+                    let up = model.y_axis.truncate().length().max(1e-6);
+                    let reach = if t.displaces() {
+                        t.displacement_distance / across
+                    } else {
+                        0.0
+                    };
+                    [reach, up, up / across, 0.0]
+                },
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 pyramid,
@@ -986,6 +998,8 @@ impl TerrainRenderer {
             let cam = clipmap.camera;
             let n = clipmap.ring;
             let list = clipmap.levels;
+            // The camera's height in the terrain's space (the displacement's reach).
+            let eye_y = model.inverse().transform_point3(camera).y;
             let morph_width = clipmap.morph_width;
             let morph_start = clipmap.morph_start;
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
@@ -1006,7 +1020,7 @@ impl TerrainRenderer {
                         if l.morph { morph_width } else { 0.0 },
                         0.0,
                     ],
-                    camera: [cam.x, cam.y, unit, 0.0],
+                    camera: [cam.x, cam.y, unit, eye_y],
                 };
                 let at = k * LEVEL_STRIDE as usize;
                 level_bytes[at..at + std::mem::size_of::<LevelGpu>()]
@@ -1461,6 +1475,18 @@ pub(crate) fn draw_levels(
         b.reset(pass);
     }
     (calls, triangles)
+}
+
+/// A layer's `offset`: its uv at the scene's origin ([`uv_offset`]), w its
+/// displacement.
+fn layer_offset(origin: Vec3, l: &crate::TerrainLayer) -> [f32; 4] {
+    let mut o = uv_offset(origin, l.tile);
+    o[3] = if l.displacement.is_finite() {
+        l.displacement
+    } else {
+        0.0
+    };
+    o
 }
 
 /// A layer's uv at the scene's origin, in f64 and without the whole

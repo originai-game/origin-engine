@@ -675,6 +675,11 @@ layer {
   slope 28 90
 }
 layer {
+  albedo "textures/pebbles.png"  # its alpha is the pebbles' height
+  tile 2
+  displacement 0.08        # metres the drawn ground rises and falls by that height, near the camera
+}
+layer {
   albedo "textures/snow.png"
   altitude 90 1000
   altitudeFade 10
@@ -689,7 +694,21 @@ texture square instead of in vertical streaks; `triplanar true` samples
 three projections everywhere instead). `antiTiling` (0 to 1) breaks a
 layer's repeat by hex-tiling, `macroVariation` (0 to 1) keeps a large field
 of one layer from reading as one texture, and `heightContrast` (0 to 1)
-sharpens the `heightBlend` rim at that layer's edges.
+sharpens the `heightBlend` rim at that layer's edges. `displacement`
+(metres, 0 to 4) moves the drawn ground up and down by the layer's
+height (its albedo's alpha, about its middle) within og.Terrain's
+`displacementDistance` of the camera (40 m by default) where the ground
+is not steep, so pebbles and cobbles stand out at the silhouette and
+cast their own shadows. Near the camera the clipmap then draws finer
+than the samples (about 32 vertices across the layer's `tile`), so the
+relief shows within a few metres and smooths out with distance; a larger
+og.Terrain `lodRing` carries it further. It costs vertices, mostly in the
+depth prepass: on an M4 Pro, island-near with every layer displaced
+8 cm draws 83,210 vertices instead of 49,926, and its frame takes
+6.3 ms instead of 4.6 ms. The prepass goes from 0.9 to 2.8 ms, and the
+main pass is unchanged. So displace only the layers that need it, and
+lower `displacementDistance` before raising `lodRing`. Collision, `og.terrain.sample` and picking keep the
+undisplaced field, so keep it to centimetres where bodies walk.
 In the game, load it in `start` and place it:
 
 ```ts

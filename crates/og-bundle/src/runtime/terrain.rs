@@ -353,6 +353,7 @@ impl Bundle {
                     anti_tiling: l.anti_tiling,
                     height_contrast: l.height_contrast,
                     macro_variation: l.macro_variation,
+                    displacement: l.displacement,
                 },
             });
         }

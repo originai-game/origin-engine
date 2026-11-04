@@ -180,6 +180,7 @@ pub const SCENES: &[&str] = &[
     "terrain-tiling",
     "terrain-steep",
     "terrain-horizon",
+    "terrain-displaced",
     "terrain-cliff",
     "terrain-cliff-blend",
     "impostors",
@@ -1417,6 +1418,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // plain in front far past the cascades, drawn from the horizon map.
         "terrain-horizon" => |g, _| {
             g.scene = crate::terrain_scenes::horizon_scene(true);
+            Ok(())
+        },
+        // T4: a crest of cobbles 15 cm high (one layer's displacement)
+        // seen from knee height 16 m before it under a low side sun: the
+        // skyline and the ground near it carry the cobbles' relief and
+        // their shadows.
+        "terrain-displaced" => |g, _| {
+            g.scene =
+                crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
             Ok(())
         },
         // T3: a 300 m cliff the height field cannot make, drawn by a block

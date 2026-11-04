@@ -1024,3 +1024,99 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     scene.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
     scene
 }
+
+/// `displaced_scene`'s crest: where it runs along x (its z) and how fast
+/// the ground falls away from it (m per m², a parabola).
+pub const DISPLACED_CREST: f32 = -12.0;
+pub const DISPLACED_FALL: f32 = 0.04;
+/// The cobbles' displacement in `displaced_scene` (m).
+pub const DISPLACED_RELIEF: f32 = 0.15;
+
+/// The ground's height in `displaced_scene` at z.
+pub fn displaced_height(z: f32) -> f32 {
+    -DISPLACED_FALL * (z - DISPLACED_CREST) * (z - DISPLACED_CREST)
+}
+
+/// T4: a 128 m terrain sampled every 50 cm, a gentle crest running along
+/// x at z -12 (the ground falls away from it on both sides), one layer of
+/// rounded cobbles about 50 cm across whose albedo's alpha is their
+/// height, `displacement` metres of it; seen from 4 m before the crest,
+/// 30 cm over the ground (34 cm under the crest), under a low sun from the
+/// side: the crest is the skyline, and the cobbles throw shadows towards
+/// the camera's right.
+pub fn displaced_scene(displacement: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let (n, size) = (257u32, 128.0f32);
+    let cell = size / (n - 1) as f32;
+    let mut heights = Vec::with_capacity((n * n) as usize);
+    for r in 0..n {
+        let z = r as f32 * cell - size * 0.5;
+        for _ in 0..n {
+            heights.push(displaced_height(z));
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    // Four cobbles a side per 2 m tile on a jittered grid, each a dome:
+    // its height falls from its middle to the mortar between them.
+    let cells = 4i32;
+    let cobbles = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        let (x, y) = (u * cells as f32, v * cells as f32);
+        let (cx, cy) = (x.floor() as i32, y.floor() as i32);
+        let mut best = (f32::MAX, 0.0f32);
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let (gx, gy) = (cx + dx, cy + dy);
+                let (wx, wy) = (gx.rem_euclid(cells), gy.rem_euclid(cells));
+                let jitter = |s: u32| 0.25 + 0.5 * noise2(wx as f32 * 7.3, wy as f32 * 3.1, s);
+                let px = gx as f32 + jitter(71);
+                let py = gy as f32 + jitter(73);
+                let d = Vec2::new(x - px, y - py).length();
+                if d < best.0 {
+                    best = (d, noise2(wx as f32 * 5.7, wy as f32 * 9.3, 79));
+                }
+            }
+        }
+        let dome = (1.0 - (best.0 / 0.55).min(1.0)).powf(0.6);
+        let shade = 0.55 + 0.35 * best.1;
+        let g = (shade * (0.45 + 0.55 * dome) * 255.0) as u8;
+        [
+            g,
+            (g as f32 * 0.93) as u8,
+            (g as f32 * 0.84) as u8,
+            (dome * 255.0) as u8,
+        ]
+    }));
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(cobbles),
+            color: Vec3::ONE,
+            roughness: 0.85,
+            tile: 2.0,
+            displacement,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    plain_light(&mut scene);
+    let sun = Vec3::new(-0.9, 0.35, 0.25);
+    scene.light.direction_to_light = sun;
+    scene.light.max_shadow_distance = 60.0;
+    scene.environment.sky.sun_direction = sun;
+    let eye_z = DISPLACED_CREST + 4.0;
+    scene.camera = camera_at(
+        Vec3::new(0.0, displaced_height(eye_z) + 0.3, eye_z),
+        Vec3::new(
+            0.0,
+            displaced_height(DISPLACED_CREST) - 0.2,
+            DISPLACED_CREST,
+        ),
+    );
+    scene
+}

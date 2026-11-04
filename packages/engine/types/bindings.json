@@ -6854,6 +6854,12 @@
           "name": "lodRing",
           "column": "u32",
           "default": 0
+        },
+        {
+          "name": "displacementDistance",
+          "column": "f32",
+          "default": 40,
+          "tunable": true
         }
       ]
     },

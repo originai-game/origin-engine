@@ -24,7 +24,7 @@ struct TerrainLayerGpu {
   mapping: vec4<f32>,   // x: repeats per metre, y: 1 triplanar, z: normal strength, w: bits (1 albedo map, 2 normal map)
   slope: vec4<f32>,     // x: min (deg), y: max (deg), z: fade (deg), w: the albedo's layer (layer arrays)
   altitude: vec4<f32>,  // x: min (m), y: max (m), z: fade (m), w: the normal map's layer (layer arrays)
-  offset: vec4<f32>,    // xyz: the layer's uv at the frame's origin, whole repeats dropped (origin.rs)
+  offset: vec4<f32>,    // xyz: the layer's uv at the frame's origin, whole repeats dropped (origin.rs), w: displacement (world m)
   look: vec4<f32>,      // x: anti-tiling, y: height contrast, z: biplanar past this slope (deg, 0 none), w: macro variation
   // The hex-tiling lattice at the frame's origin, per projection plane
   // (xz, zy, xy): xy the origin's place in its skewed cell, zw the
@@ -43,6 +43,7 @@ struct TerrainUniform {
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
   params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes, w: 1 with horizon shadows
   tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels, w: control pages (four layers each)
+  displace: vec4<f32>,  // x: the displacement's reach (the terrain's horizontal metres, 0: none), y: world metres per unit of the terrain's y
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   pyramid: array<vec4<f32>, 16>,  // per level: x its first tile, y tiles along x, z along z

@@ -655,7 +655,9 @@ fn terrain_mesh(
     let clipmap = t.clipmap(layout, eye, far);
     let (cols, rows) = (layout.columns.max(1), layout.rows.max(1));
     let top = Vec2::new(cols as f32 - 1.0, rows as f32 - 1.0);
-    // The finest level's height at field coordinates `s`, bilinear.
+    // The field's height at field coordinates `s`: between samples on
+    // the triangle of the cell's split (terrain_vertex.wgsl field_height,
+    // og_core's heightfield_zigzag).
     let height = |s: Vec2| -> Option<f32> {
         let s = s.clamp(Vec2::ZERO, top);
         let i = s.floor();
@@ -664,9 +666,7 @@ fn terrain_mesh(
         let (c1, r1) = ((c0 + 1).min(cols - 1), (r0 + 1).min(rows - 1));
         let (h00, h10) = (raw(c0, r0)?, raw(c1, r0)?);
         let (h01, h11) = (raw(c0, r1)?, raw(c1, r1)?);
-        let a = h00 + (h10 - h00) * f.x;
-        let b = h01 + (h11 - h01) * f.x;
-        Some(a + (b - a) * f.y)
+        Some(crate::terrain::split_height([h00, h10, h01, h11], f))
     };
     let n = clipmap.ring;
     let (mut positions, mut locals, mut indices) = (Vec::new(), Vec::new(), Vec::new());
@@ -1121,6 +1121,45 @@ mod tests {
                 .object(5)
                 .is_none()
         );
+    }
+
+    /// Drawn finer than its samples (`lod.spacing` a quarter of a cell),
+    /// the ground near the eye lies on the field's split triangles, the
+    /// surface collision and og.terrain.sample answer, not on a bilinear
+    /// patch: on a checkerboard of 20 cm steps a cell's middle is 10 cm
+    /// off between the two.
+    #[test]
+    fn a_terrain_drawn_finer_than_its_samples_lies_on_its_triangles() {
+        let n = 129u32;
+        let mut data = crate::TerrainData::flat(Vec2::splat(64.0), n, n);
+        data.heights = (0..n * n)
+            .map(|k| 0.2 * ((k % n + k / n) % 2) as f32)
+            .collect::<Vec<_>>()
+            .into();
+        let eye = Vec3::new(0.3, 3.0, 2.2);
+        let (mut scene, ids) =
+            terrain_scene(data.clone(), Mat4::IDENTITY, eye, Vec3::new(0.3, 0.0, -1.0));
+        scene.terrains[0].lod.spacing = 0.125;
+        let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
+        let mut near = 0;
+        for y in 0..f.height {
+            for x in 0..f.width {
+                let Some((5, p)) = f.at(x as f32 + 0.5, y as f32 + 0.5) else {
+                    continue;
+                };
+                // Inside the finest level, short of its morph band.
+                if (p - eye).length() > 8.0 {
+                    continue;
+                }
+                let h = data.height(Vec2::new(p.x, p.z));
+                assert!(
+                    (p.y - h).abs() < 0.02,
+                    "pixel ({x}, {y}) sees {p}, the field's triangles {h}"
+                );
+                near += 1;
+            }
+        }
+        assert!(near > 160 * 90 / 4, "{near} pixels near the eye");
     }
 
     #[test]

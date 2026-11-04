@@ -81,7 +81,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 26963</sub>
+<sub>`api.ogt` line 26975</sub>
 
 <a id="fn-sample"></a>
 
@@ -111,7 +111,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 26970</sub>
+<sub>`api.ogt` line 26982</sub>
 
 <a id="fn-bounds"></a>
 
@@ -153,7 +153,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 26977</sub>
+<sub>`api.ogt` line 26989</sub>
 
 <a id="fn-edit"></a>
 
@@ -185,7 +185,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 26993</sub>
+<sub>`api.ogt` line 27005</sub>
 
 <a id="fn-stamp"></a>
 
@@ -215,7 +215,7 @@ fn stamp {
 }
 ```
 
-<sub>`api.ogt` line 27001</sub>
+<sub>`api.ogt` line 27013</sub>
 
 <a id="fn-unstamp"></a>
 
@@ -247,7 +247,7 @@ fn unstamp {
 }
 ```
 
-<sub>`api.ogt` line 27008</sub>
+<sub>`api.ogt` line 27020</sub>
 
 <a id="fn-layer"></a>
 
@@ -279,7 +279,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27016</sub>
+<sub>`api.ogt` line 27028</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -313,7 +313,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27024</sub>
+<sub>`api.ogt` line 27036</sub>
 
 ## Components, resources and events
 
@@ -333,6 +333,7 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 | `horizonShadows` | `boolean` | `true` | — | — | — | Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less. |
 | `lodSpacing` | `number` | `0` | 0 … 64 | `m` | tunable | The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing). |
 | `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). |
+| `displacementDistance` | `number` | `40` | 0 … 1000 | `m` | tunable | Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement. |
 
 ```ogt
 component Terrain {
@@ -356,6 +357,13 @@ component Terrain {
   field lodRing u32 "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4)." {
     min 0
     max 256
+  }
+  field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement." {
+    default 40
+    min 0
+    max 1000
+    unit m
+    tunable true
   }
 }
 ```
@@ -399,7 +407,7 @@ component TerrainStamp {
 }
 ```
 
-<sub>`api.ogt` line 26417</sub>
+<sub>`api.ogt` line 26424</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -527,7 +535,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 26436</sub>
+<sub>`api.ogt` line 26443</sub>
 
 <a id="record-Grass"></a>
 
@@ -732,7 +740,7 @@ component Grass {
 }
 ```
 
-<sub>`api.ogt` line 26528</sub>
+<sub>`api.ogt` line 26535</sub>
 
 <a id="record-GrassType"></a>
 
@@ -790,7 +798,7 @@ component GrassType {
 }
 ```
 
-<sub>`api.ogt` line 26687</sub>
+<sub>`api.ogt` line 26694</sub>
 
 <a id="record-GrassPusher"></a>
 
@@ -833,7 +841,7 @@ component GrassPusher {
 }
 ```
 
-<sub>`api.ogt` line 26724</sub>
+<sub>`api.ogt` line 26731</sub>
 
 ## Types
 
@@ -954,7 +962,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 26749</sub>
+<sub>`api.ogt` line 26756</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -994,7 +1002,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26773</sub>
+<sub>`api.ogt` line 26780</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -1025,7 +1033,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 26792</sub>
+<sub>`api.ogt` line 26799</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -1050,7 +1058,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 26805</sub>
+<sub>`api.ogt` line 26812</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -1108,7 +1116,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 26815</sub>
+<sub>`api.ogt` line 26822</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -1137,7 +1145,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 26849</sub>
+<sub>`api.ogt` line 26856</sub>
 
 <a id="type-TerrainStampDesc"></a>
 
@@ -1189,7 +1197,7 @@ struct TerrainStampDesc {
 }
 ```
 
-<sub>`api.ogt` line 26861</sub>
+<sub>`api.ogt` line 26868</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -1209,6 +1217,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `antiTiling` | `number` | `0` | 0 … 1 | `ratio` | — | How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat. |
 | `heightContrast` | `number` | `0` | 0 … 1 | `ratio` | — | How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim). |
 | `macroVariation` | `number` | `0` | 0 … 1 | `ratio` | — | A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none. |
+| `displacement` | `number` | `0` | 0 … 4 | `m` | — | Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat. |
 | `normalStrength` | `number` | `1` | 0 … 4 | — | — | How strongly its normal map bends the surface. |
 | `slopeMin` | `number` | `0` | 0 … 90 | `deg` | — | The flattest slope it shows on. |
 | `slopeMax` | `number` | `90` | 0 … 90 | `deg` | — | The steepest. |
@@ -1256,6 +1265,11 @@ struct TerrainLayerDesc {
     max 1
     unit ratio
   }
+  field displacement f32 "Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat." {
+    min 0
+    max 4
+    unit m
+  }
   field normalStrength f32 "How strongly its normal map bends the surface." {
     default 1
     min 0
@@ -1294,7 +1308,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 26888</sub>
+<sub>`api.ogt` line 26895</sub>
 
 ## Column kinds
 

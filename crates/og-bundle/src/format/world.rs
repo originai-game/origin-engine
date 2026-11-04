@@ -546,7 +546,8 @@ row!(
     /// One layer: its textures (ranges of `strings`; [`NONE`] for none),
     /// or with the terrain's arrays its layers of them, and og-render's
     /// `TerrainLayer` fields.
-    TerrainLayerRow, "og.Terrain.layer", 3 {
+    /// v4: `displacement`.
+    TerrainLayerRow, "og.Terrain.layer", 4 {
         albedo_at: u32,
         albedo_len: u32,
         normal_at: u32,
@@ -572,6 +573,9 @@ row!(
         anti_tiling: f32,
         height_contrast: f32,
         macro_variation: f32,
+        /// Metres the drawn ground moves by the layer's height (og-render's
+        /// `TerrainLayer::displacement`).
+        displacement: f32,
     }
 );
 

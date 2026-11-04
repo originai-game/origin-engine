@@ -45220,6 +45220,15 @@ export interface Terrain {
    * @range 0..256
    */
   lodRing: number;
+  /**
+   * Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 32nd of the finest displacing layer's `tile`, a 32nd of a sample at most; `lodSpacing` above 0 decides instead) to carry the relief, which costs vertices, mostly in the depth prepass (island-near with every layer displaced 8 cm: 0.9 to 2.8 ms of prepass on an M4 Pro). 0: no displacement.
+   *
+   * @default 40
+   * @range 0..1000
+   * @unit m (metres)
+   * @tunable
+   */
+  displacementDistance: number;
 }
 
 /**
@@ -46091,6 +46100,14 @@ export interface TerrainLayerDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly macroVariation?: number;
+  /**
+   * Metres the drawn ground rises and falls by the layer's height map (its albedo's alpha, about its middle) near the camera (og.Terrain's `displacementDistance`), where the layer shows and the ground is not steep: pebbles, cobbles and rock stand out of the ground at its silhouette and in its shadows. Only drawn: collision, og.terrain.sample and picking keep the height field. 0: flat.
+   *
+   * @default 0
+   * @range 0..4
+   * @unit m (metres)
+   */
+  readonly displacement?: number;
   /**
    * How strongly its normal map bends the surface.
    *
@@ -53196,7 +53213,7 @@ export declare namespace og {
   /**
    * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
-  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32">; readonly displacementDistance: FieldSpec<"f32"> }, Terrain>;
   /**
    * Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
    */

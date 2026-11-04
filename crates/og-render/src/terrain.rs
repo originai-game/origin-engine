@@ -407,6 +407,11 @@ pub struct TerrainLayer {
     /// Low-frequency brightness and hue drift over the ground, and the
     /// texture at a quarter of its frequency blended in with distance, 0 to 1.
     pub macro_variation: f32,
+    /// Metres the drawn ground moves up and down by the layer's height
+    /// (its albedo's alpha, about its middle) within
+    /// [`Terrain::displacement_distance`] of the camera (0: flat).
+    /// Only drawn: collision and og.terrain.sample keep the field.
+    pub displacement: f32,
 }
 
 /// Two texture arrays a terrain's layers take their maps from
@@ -447,6 +452,7 @@ impl Default for TerrainLayer {
             height_contrast: 0.0,
             project_slope: 0.0,
             macro_variation: 0.0,
+            displacement: 0.0,
         }
     }
 }
@@ -514,6 +520,10 @@ pub struct Terrain {
     /// Its horizon map shades it: the sun hidden behind its ridges past
     /// the shadow cascades, and the sky its valleys do not see.
     pub horizon_shadows: bool,
+    /// Metres from the camera within which layers with a
+    /// [`TerrainLayer::displacement`] displace the drawn ground, fading out
+    /// over its last 40% (0: none).
+    pub displacement_distance: f32,
 }
 
 impl Terrain {
@@ -529,7 +539,19 @@ impl Terrain {
             fade_in: true,
             visible: true,
             horizon_shadows: true,
+            displacement_distance: DEFAULT_DISPLACEMENT_DISTANCE,
         }
+    }
+
+    /// Whether its drawn ground is displaced: a reach, and a layer that
+    /// moves it.
+    pub fn displaces(&self) -> bool {
+        self.displacement_distance > 0.0
+            && self
+                .layers
+                .iter()
+                .take(MAX_TERRAIN_LAYERS)
+                .any(|l| l.displacement != 0.0)
     }
 
     /// The clipmap drawn for this camera, also read by frame diagnostics.
@@ -538,6 +560,15 @@ impl Terrain {
         let cell = layout.cell();
         let unit = if self.lod.spacing > 0.0 {
             self.lod.spacing
+        } else if self.displaces() {
+            let tile = self
+                .layers
+                .iter()
+                .take(MAX_TERRAIN_LAYERS)
+                .filter(|l| l.displacement != 0.0)
+                .map(|l| l.tile)
+                .fold(f32::MAX, f32::min);
+            displaced_unit(cell.x.min(cell.y), tile / horizontal_scale(self.transform))
         } else {
             cell.x.min(cell.y)
         };
@@ -587,6 +618,27 @@ pub struct TerrainStampDraw {
     pub cast_shadows: bool,
 }
 
+/// A displaced terrain's reach when it gives none ([`Terrain::new`]).
+pub const DEFAULT_DISPLACEMENT_DISTANCE: f32 = 40.0;
+
+/// The finest clipmap spacing of a displaced terrain whose lod gives none,
+/// for sample spacing `cell`: halved until it is at most a 32nd of the
+/// finest repeat (`tile`, the terrain's horizontal metres) of a layer that
+/// displaces, at most five times (a 32nd of a cell). The relief is then
+/// drawn with about 32 vertices across a repeat of its height map near
+/// the eye (a 2 m pebble texture: 6 cm), coarser with each level out, as
+/// a clipmap's triangles keep about the same size on screen.
+fn displaced_unit(cell: f32, tile: f32) -> f32 {
+    let mut unit = cell;
+    for _ in 0..5 {
+        if unit <= tile / 32.0 {
+            break;
+        }
+        unit *= 0.5;
+    }
+    unit
+}
+
 /// The same layout the renderer uploads, before frustum culling.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainClipmap {
@@ -609,7 +661,8 @@ struct LayerGpu {
     slope: [f32; 4],
     altitude: [f32; 4],
     /// xyz: the layer's uv at the scene's origin, whole repeats dropped
-    /// (`origin.rs`): the layers' patterns stay put when it moves.
+    /// (`origin.rs`): the layers' patterns stay put when it moves; w its
+    /// displacement in world metres.
     offset: [f32; 4],
     /// Anti-tiling, height contrast, the biplanar slope, macro variation.
     look: [f32; 4],
@@ -633,6 +686,10 @@ struct TerrainGpu {
     extent: [f32; 4],
     params: [f32; 4],
     tiles: [f32; 4],
+    /// x: the displacement's reach (the terrain's horizontal metres, 0:
+    /// none), y: world metres per unit of the terrain's y, z: the
+    /// terrain's y in its horizontal metres.
+    displace: [f32; 4],
     view_proj: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
     pyramid: [[f32; 4]; MAX_TERRAIN_PYRAMID as usize],
@@ -901,6 +958,23 @@ fn ring_indices(n: u32) -> (Vec<u32>, RingRanges) {
     (idx, ranges)
 }
 
+/// The height over a cell of corner heights `h` (-x -z, +x -z, -x +z,
+/// +x +z) at `f` (0 to 1 along x and z), on the triangle of its split
+/// (og_core's heightfield_zigzag; `terrain_vertex.wgsl` split_height).
+pub(crate) fn split_height(h: [f32; 4], f: Vec2) -> f32 {
+    if (h[0] - h[3]).abs() > (h[1] - h[2]).abs() {
+        if f.x + f.y <= 1.0 {
+            h[0] + f.x * (h[1] - h[0]) + f.y * (h[2] - h[0])
+        } else {
+            h[3] + (1.0 - f.x) * (h[2] - h[3]) + (1.0 - f.y) * (h[1] - h[3])
+        }
+    } else if f.x >= f.y {
+        h[0] + f.x * (h[1] - h[0]) + f.y * (h[3] - h[1])
+    } else {
+        h[0] + f.y * (h[2] - h[0]) + f.x * (h[3] - h[2])
+    }
+}
+
 /// One clipmap level's mesh as `terrain_vertex.wgsl` terrain_local_vertex makes
 /// it, on the CPU (the id pass draws what the frame drew): its (n + 1)²
 /// corners then its n² cells' centres, in the terrain's space. `height`
@@ -955,24 +1029,13 @@ pub(crate) fn level_vertices(
             (m - a) / span.max(Vec2::splat(1e-6)),
             Vec2::ZERO,
         );
-        if zigzag(h) {
-            if f.x + f.y <= 1.0 {
-                h[0] + f.x * (h[1] - h[0]) + f.y * (h[2] - h[0])
-            } else {
-                h[3] + (1.0 - f.x) * (h[2] - h[3]) + (1.0 - f.y) * (h[1] - h[3])
-            }
-        } else if f.x >= f.y {
-            h[0] + f.x * (h[1] - h[0]) + f.y * (h[3] - h[1])
-        } else {
-            h[0] + f.y * (h[2] - h[0]) + f.x * (h[3] - h[2])
-        }
+        split_height(h, f)
     };
     let corner = |g: UVec2| center + (g.as_vec2() - n as f32 * 0.5) * s;
-    let odd = |g: UVec2| g.x % 2 == 1 || g.y % 2 == 1;
-    let morphed = |g: UVec2, c: Vec2, m: Vec2, h: f32, k: Option<(Vec2, Vec2, [f32; 4])>| {
+    let morphed = |c: Vec2, m: Vec2, h: f32, k: Option<(Vec2, Vec2, [f32; 4])>| {
         let a = alpha(c);
         match k {
-            Some(k) if a > 0.0 && odd(g) => h + (coarse_height(k, m) - h) * a,
+            Some(k) if a > 0.0 => h + (coarse_height(k, m) - h) * a,
             _ => h,
         }
     };
@@ -987,8 +1050,8 @@ pub(crate) fn level_vertices(
             let c = corner(g);
             let m = clamp(c);
             let mut h = at(m)?;
-            if alpha(c) > 0.0 && odd(g) {
-                h = morphed(g, c, m, h, coarse_cell(c));
+            if alpha(c) > 0.0 {
+                h = morphed(c, m, h, coarse_cell(c));
             }
             out.push(local(m, h));
         }
@@ -1005,7 +1068,7 @@ pub(crate) fn level_vertices(
                 let c = corner(gs[i]);
                 let m = clamp(c);
                 own[i] = at(m)?;
-                mh[i] = morphed(gs[i], c, m, own[i], Some(k));
+                mh[i] = morphed(c, m, own[i], Some(k));
             }
             let main = (mh[0] + mh[3]) * 0.5;
             let cross = (mh[1] + mh[2]) * 0.5;
@@ -1525,8 +1588,11 @@ fn layer_look(l: &TerrainLayer, origin: Vec3) -> LayerGpu {
 }
 
 pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
-/// The clipmap's mesh (after [`TERRAIN_WGSL`]): the lit and shadow
-/// modules' `terrain_local_vertex`.
+/// The layers' sampling (after [`TERRAIN_WGSL`]): the lit pass's shading
+/// and the displacement's heights.
+const TERRAIN_LAYERS_WGSL: &str = wgsl3d!("terrain_layers.wgsl");
+/// The clipmap's mesh with its displacement (after [`TERRAIN_LAYERS_WGSL`]):
+/// the lit and shadow modules' `terrain_local_vertex`.
 const TERRAIN_VERTEX_WGSL: &str = wgsl3d!("terrain_vertex.wgsl");
 /// What terrain.wgsl's far grass needs declared (after wind_common.wgsl).
 pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
@@ -1534,7 +1600,7 @@ pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
-        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_VERTEX_WGSL}{}",
+        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
         crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
         crate::wind::WIND_COMMON_WGSL,
@@ -1567,20 +1633,21 @@ pub(crate) fn terrain_array_declarations(source: &str) -> String {
     source.replacen(LAYER_TEXTURES, LAYER_ARRAYS, 1)
 }
 
-/// The terrain lit module (`standard`, [`terrain_lit_source`]) as its
-/// layer-array variant: the arrays declared, and `layer_albedo` and
-/// `layer_normal_map` reading layer `i`'s array layer (slope.w and
-/// altitude.w) instead of its texture. The rest is the same text, so the
-/// shading is the standard path's.
-pub(crate) fn terrain_lit_array_source(standard: &str) -> String {
+/// A terrain module (`standard`: [`terrain_lit_source`] or
+/// [`terrain_shadow_source`]) as its layer-array variant: the arrays
+/// declared, and `layer_albedo` and `layer_normal_map` reading layer
+/// `i`'s array layer (slope.w and altitude.w) instead of its texture. The
+/// rest is the same text, so the shading and the displacement are the
+/// standard path's.
+pub(crate) fn terrain_array_source(standard: &str) -> String {
     let s = terrain_array_declarations(standard);
     let start = s
         .find("fn layer_albedo(")
-        .expect("terrain_lit.wgsl's layer_albedo");
+        .expect("terrain_layers.wgsl's layer_albedo");
     let end = s[start..]
         .find("fn band(")
         .map(|e| start + e)
-        .expect("terrain_lit.wgsl's layer_normal_map ends before band");
+        .expect("terrain_layers.wgsl's layer_normal_map ends before band");
     format!(
         "{}{}{}",
         &s[..start],
@@ -1605,13 +1672,13 @@ fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3
 /// The terrain's shadow module for the layer-array variant's layout (the
 /// same entry points; the layer arrays declared).
 pub(crate) fn terrain_shadow_array_source() -> String {
-    terrain_array_declarations(&terrain_shadow_source())
+    terrain_array_source(&terrain_shadow_source())
 }
 
 /// The terrain's shadow module.
 pub(crate) fn terrain_shadow_source() -> String {
     format!(
-        "{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
+        "{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
         crate::wind::WIND_COMMON_WGSL,
         crate::SHADOW_PASS_WGSL,
         wgsl3d!("terrain_shadow.wgsl")
@@ -1652,7 +1719,7 @@ mod tests {
     #[test]
     fn the_layer_array_variant_reads_two_arrays() {
         let standard = terrain_lit_source("", "", "");
-        let array = terrain_lit_array_source(&standard);
+        let array = terrain_array_source(&standard);
         for gone in [
             "albedo0",
             "albedo3",
@@ -1799,7 +1866,7 @@ mod tests {
         assert_eq!(span, size_of::<TerrainGpu>());
         assert_eq!(
             list,
-            fields!(TerrainGpu: model, normal, origin, extent, params, tiles, view_proj,
+            fields!(TerrainGpu: model, normal, origin, extent, params, tiles, displace, view_proj,
                 prev_view_proj, pyramid, layers, grass)
         );
     }

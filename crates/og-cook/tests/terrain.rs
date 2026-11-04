@@ -88,6 +88,7 @@ layer {
   antiTiling 0.75
   heightContrast 0.5
   macroVariation 0.25
+  displacement 0.125
 }
 "#;
 
@@ -276,11 +277,16 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
             r.project_slope,
             r.anti_tiling,
             r.height_contrast,
-            r.macro_variation
+            r.macro_variation,
+            r.displacement
         ),
-        (50.0, 0.75, 0.5, 0.25)
+        (50.0, 0.75, 0.5, 0.25, 0.125)
     );
-    assert_eq!((g.project_slope, g.anti_tiling), (0.0, 0.0), "absent: off");
+    assert_eq!(
+        (g.project_slope, g.anti_tiling, g.displacement),
+        (0.0, 0.0, 0.0),
+        "absent: off"
+    );
     assert_eq!(t.height_blend, 0.5);
     assert_eq!((t.lod.spacing, t.lod.ring), (1.5, 96));
     assert!(!t.cast_shadows && t.collision);

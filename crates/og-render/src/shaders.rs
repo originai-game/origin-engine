@@ -125,7 +125,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     );
     add(
         "terrain (layer arrays)",
-        crate::terrain::terrain_lit_array_source(&terrain),
+        crate::terrain::terrain_array_source(&terrain),
     );
     add(
         "terrain shadow (layer arrays)",

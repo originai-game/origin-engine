@@ -1051,6 +1051,7 @@ fn layer_json(l: &TerrainLayer) -> Value {
         "antiTiling": l.anti_tiling,
         "heightContrast": l.height_contrast,
         "macroVariation": l.macro_variation,
+        "displacement": l.displacement,
     })
 }
 
@@ -1097,6 +1098,7 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
             anti_tiling: f(&v, "antiTiling", 0.0).clamp(0.0, 1.0),
             height_contrast: f(&v, "heightContrast", 0.0).clamp(0.0, 1.0),
             macro_variation: f(&v, "macroVariation", 0.0).clamp(0.0, 1.0),
+            displacement: f(&v, "displacement", 0.0).clamp(0.0, 4.0),
         };
         Ok(())
     })() {
@@ -1223,6 +1225,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             fade_in: !settle,
             visible: on(&v, "visible", true),
             horizon_shadows: on(&v, "horizonShadows", true),
+            displacement_distance: f(&v, "displacementDistance", 40.0).max(0.0),
         });
         rs.ids.terrains.push(e);
         if !t.edited {
