@@ -481,7 +481,13 @@ impl WindFieldSim {
                 ],
                 step: [
                     1.0 / scene.tick_rate.max(1e-3),
-                    f32::from(u8::from(k == 0)),
+                    // A start with no frame drawn before it moves nothing
+                    // on screen: its last step is what it last drew.
+                    if restart && !keep && k + 1 == count {
+                        2.0
+                    } else {
+                        f32::from(u8::from(k == 0))
+                    },
                     motors.1 as f32,
                     N as f32,
                 ],
