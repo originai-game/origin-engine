@@ -2,63 +2,93 @@ type screen
 version 1
 ---
 # Results and post-match (docs/ui.md Appendix B: grades, XP cascades,
-# graphs). Victory or defeat, the grade, the stats, the XP and the level it
-# reached, the rewards, the match's graphs, and Continue, Replay and Play
-# again.
+# graphs). The outcome is the screen's hero, as Forza Horizon's and Hades'
+# are: the result's line, the grade or place in the display face as the
+# dominant element, the headline figure (a race time, a score) under it;
+# then what the match earned (the level and its XP, the rewards with their
+# art); the breakdown (the stats, the graphs, the scoreboard) second, on a
+# panel at the end side; one hero Continue. Over the match's key art under
+# the pack's backdrop wash, else on the pack's own ground. On a phone the
+# hero, the earnings and the breakdown stack in one scroll over the footer.
+#
+# Viewmodel: won, grade, title (the result's line), score and scoreLabel
+# (the headline figure and what it is), subtitle (the mode, the place),
+# stats, level, xp (0 to 1, after), gained, rewards, tab, keyArt. Events
+# to code: continue, again, replay, tab (the click wrote tab). Slots:
+# Graph takes the match's graphs (og.ui.chart: the gold or score over time;
+# RTS, MOBA, 4X); Scores takes the final scoreboard (og.ui.scoreboard, a
+# race's classification); Celebration takes the level-up or the grade's
+# flourish (og.ui.celebration, og.ui.numberCounter for the XP cascade).
 #
 # The kit's copy (og ui eject): a Kit slot in the top end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page).
-#
-# Viewmodel: won, grade, title (the result's line), stats, level, xp (0 to
-# 1, after), gained, rewards, tab. Events to code: continue, again,
-# replay, tab (the click wrote tab). Slots: Graph takes the match's graphs
-# (og.ui.chart: the gold or score over time; RTS, MOBA, 4X); Scores takes
-# the final scoreboard (og.ui.scoreboard); Celebration takes the level-up
-# or the grade's flourish (og.ui.celebration, og.ui.numberCounter for the
-# XP cascade); Icon, in each reward, takes the reward's art (the kit's
-# copy: a texture handle bound through a viewmodel number loses its index,
-# src/showcases.ts); Background takes the match's scene or key art, under
-# a 45 % scrim, so the panel never sits on a flat field. The grade is the
-# dominant element (docs/ui.md §15.5), and the panel starts below the Kit
-# slot's row so the kit's chrome never covers it.
+# the kit's own chrome (the Gallery and the showcase's next page); the
+# page starts below the chrome's row so it never covers the panel.
 name "results"
 layer menu
 under hide
 back none
-focus "Panel/Footer/Continue"
+focus "Layout/Footer/Continue"
 props {
   won bool "The player won."
-  grade string "The grade (S, A, B …; empty: none)."
-  title string "The result's line (Victory, Stage clear)."
+  grade string "The grade or the place, the screen's dominant mark (S, A, 3rd; empty: none)."
+  title string "The result's line (Victory, Stage clear, Podium)."
+  score string "The headline figure under the title, formatted (a race time, a score; empty: none)."
+  scoreLabel string "What the headline figure is (Race time, Score)."
+  subtitle string "The mode and the place, under the hero (empty: none)."
   stats list "The stats: { name, value, best (bool) }."
   level number "The level after the match."
   xp number "Progress to the next level after the match, 0 to 1."
   gained number "XP gained."
-  rewards list "The rewards: { name, amount, texture } (the kit draws each texture in its Icon slot)."
+  rewards list "The rewards: { name, amount, texture }."
   tab string "summary, graphs or board."
+  keyArt number "The match's key art or scene (og.load.texture; 0: the pack's own ground)."
 }
 actions {
   confirm "Continue"
 }
 timeline land {
-  track "Panel/Page/Head/Grade" scale {
-    key 0 2
-    key 260 0.92 out
+  track "Layout/Page/Body/Hero/Outcome/Mark/Grade" scale {
+    key 0 1.8
+    key 260 0.94 out
     key 420 1 out
+  }
+  track "Layout/Page/Body/Hero/Outcome" opacity {
+    key 0 0
+    key 200 1 out
+  }
+  track "Layout/Page/Body/Hero/Earned" opacity {
+    key 0 0
+    key 180 0
+    key 420 1 out
+  }
+  track "Layout/Page/Body/Hero/Earned" y {
+    key 0 16
+    key 180 16
+    key 460 0 out
+  }
+  track "Layout/Page/Body/Detail" opacity {
+    key 0 0
+    key 300 0
+    key 560 1 out
+  }
+  track "Layout/Page/Body/Detail" y {
+    key 0 24
+    key 300 24
+    key 600 0 out
   }
   event 0 "" sound reward
 }
-fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"stats\": [{\"name\": \"Score\", \"value\": 48210, \"best\": true}, {\"name\": \"Kills\", \"value\": 14, \"best\": false}, {\"name\": \"Accuracy\", \"value\": 0.62, \"best\": false}], \"level\": 18, \"xp\": 0.45, \"gained\": 1240, \"rewards\": [{\"name\": \"Gold\", \"amount\": 320, \"texture\": 0}, {\"name\": \"Crate\", \"amount\": 1, \"texture\": 0}], \"tab\": \"summary\"}"
-column Results {
+fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"score\": \"48,210\", \"scoreLabel\": \"Score\", \"subtitle\": \"Ranked · Harbour\", \"stats\": [{\"name\": \"Score\", \"value\": 48210, \"best\": true}, {\"name\": \"Kills\", \"value\": 14, \"best\": false}, {\"name\": \"Accuracy\", \"value\": 0.62, \"best\": false}], \"level\": 18, \"xp\": 0.45, \"gained\": 1240, \"rewards\": [{\"name\": \"Gold\", \"amount\": 320, \"texture\": 0}, {\"name\": \"Crate\", \"amount\": 1, \"texture\": 0}], \"tab\": \"summary\", \"keyArt\": 0}"
+fixture defeat "{\"won\": false, \"grade\": \"C\", \"title\": \"Defeat\", \"score\": \"21,904\", \"scoreLabel\": \"Score\", \"subtitle\": \"Ranked · Harbour\", \"stats\": [{\"name\": \"Score\", \"value\": 21904, \"best\": false}, {\"name\": \"Kills\", \"value\": 6, \"best\": false}, {\"name\": \"Accuracy\", \"value\": 0.41, \"best\": false}], \"level\": 18, \"xp\": 0.12, \"gained\": 380, \"rewards\": [], \"tab\": \"summary\", \"keyArt\": 0}"
+stack Results {
   width grow
   height grow
-  padding 32 64 32 32
-  align center
-  cross center
-  at phone {
-    padding 12 60 12 12
-  }
-  slot Background {
+  art Art {
+    kind keyArt
+    fit cover
+    focal 0.5 0.55
+    texture bind keyArt
+    visible bind "keyArt != 0"
     width grow
     height grow
     position absolute
@@ -67,7 +97,8 @@ column Results {
     end 0
     bottom 0
   }
-  column Scrim {
+  # The key art washed in the pack's backdrop: the hero's type reads on it in every scheme.
+  column Wash {
     width grow
     height grow
     position absolute
@@ -75,210 +106,301 @@ column Results {
     top 0
     end 0
     bottom 0
-    background "#000000"
-    opacity 0.45
+    background token backdrop
+    opacity 0.72
+    visible bind "keyArt != 0"
   }
-  column Panel {
-    width grow 0 960
-    height grow 0 900
-    padding 24
-    gap 16
-    frame panel
-    background token panel
+  column Layout {
+    width grow
+    height grow
     on appear play land
-    at phone {
-      padding 16
-      gap 12
-    }
     scroll Page {
       width grow
       height grow
-      gap 16
+      padding 56 72 56 16
+      align center
       at phone {
-        gap 12
+        padding 16 64 16 8
       }
-      row Head {
-        width grow
-        gap 16
-        cross center
-        column Text {
-          width grow
-          gap 4
-          label Title {
-            text bind title
-            step xl4
-            heading true
-            at phone {
-              step xl2
-            }
-            state outcome bind won {
-              lost {
-                ink token danger
-              }
-              won {
-                ink token gold
-              }
-            }
-          }
-          label Gained {
-            text "+{gained, grouped} XP"
-            color token xp
-          }
-        }
-        label Grade {
-          text bind grade
-          step displayXl2
-          font display
-          heading true
-          nowrap true
-          color token gold
-          visible bind "grade != \"\""
-          at phone {
-            step displayLg
-          }
-        }
-      }
-      row Level {
-        width grow
-        gap 12
-        cross center
-        label Value {
-          text "Level {level}"
-          step lg
-        }
-        progress Xp {
-          width grow
-          value bind xp
-        }
-      }
-      slot Celebration {
-        width grow
-      }
-      row Tabs {
-        gap 6
+      row Body {
+        width grow 0 1200
+        gap 40
         wrap true
-        button Summary {
-          key "screen.results.summary"
-          text "Summary"
-          variant ghost
-          size small
-          at phone {
-            size medium
-          }
-          on click set tab "\"summary\""
-          state selection bind "tab == \"summary\"" {
-            off {
-              opacity 0.85
-            }
-            on {
-              opacity 1
-            }
-          }
+        cross start
+        at phone {
+          gap 20
         }
-        button Graphs {
-          key "screen.results.graphs"
-          text "Graphs"
-          variant ghost
-          size small
+        column Hero {
+          width grow 300 540
+          gap 24
           at phone {
-            size medium
+            gap 16
           }
-          on click set tab "\"graphs\""
-          state selection bind "tab == \"graphs\"" {
-            off {
-              opacity 0.85
+          column Outcome {
+            width grow
+            gap 2
+            label Title {
+              text bind title
+              step xl
+              font display
+              heading true
+              state outcome bind won {
+                lost {
+                  ink token danger
+                }
+                won {
+                  ink token gold
+                }
+              }
             }
-            on {
-              opacity 1
+            row Mark {
+              gap 20
+              cross center
+              wrap true
+              label Grade {
+                text bind grade
+                step displayXl2
+                font display
+                nowrap true
+                pivot 0 0.5
+                visible bind "grade != \"\""
+              }
+              column Headline {
+                gap 0
+                visible bind "score != \"\""
+                label Score {
+                  text bind score
+                  step xl3
+                  font mono
+                  nowrap true
+                }
+                label What {
+                  text bind scoreLabel
+                  step caption
+                  color token inkMuted
+                }
+              }
+            }
+            label Subtitle {
+              text bind subtitle
+              color token inkMuted
+              visible bind "subtitle != \"\""
             }
           }
-        }
-        button Board {
-          key "screen.results.board"
-          text "Scoreboard"
-          variant ghost
-          size small
-          at phone {
-            size medium
-          }
-          on click set tab "\"board\""
-          state selection bind "tab == \"board\"" {
-            off {
-              opacity 0.85
-            }
-            on {
-              opacity 1
-            }
-          }
-        }
-      }
-      column Summary {
-        width grow
-        gap 12
-        visible bind "tab == \"summary\""
-        column Stats {
-          width grow
-          gap 6
-          for s in stats {
-            row Stat {
+          column Earned {
+            width grow
+            gap 16
+            column Progress {
               width grow
-              gap 8
-              cross center
-              label Name {
-                text bind s.name
-                color token inkMuted
-              }
-              badge Best {
-                key "screen.results.best"
-                text "Best"
-                tone accent
-                visible bind s.best
-              }
-              spacer
-              label Value {
-                text bind s.value grouped
-                step lg
-              }
-            }
-          }
-        }
-        row Rewards {
-          width grow
-          gap 8
-          wrap true
-          for r in rewards {
-            column Reward {
-              padding 8
-              gap 4
-              cross center
+              padding 16
+              gap 10
               frame card
               background token panelRaised
-              slot Icon {
-                width 56
-                height 56
+              row Level {
+                width grow
+                gap 12
+                cross center
+                label Value {
+                  key "screen.results.level"
+                  text "Level {level}"
+                  step lg
+                  font display
+                  nowrap true
+                }
+                spacer
+                label Gained {
+                  text "+{gained, grouped} XP"
+                  step base
+                  font display
+                  color token xp
+                  nowrap true
+                }
               }
-              label Amount {
-                text "{r.name} ×{r.amount, compact}"
+              progress Xp {
+                width grow
+                value bind xp
+              }
+            }
+            slot Celebration {
+              width grow
+            }
+            column Rewards {
+              width grow
+              gap 8
+              visible bind "rewards.length > 0"
+              label Heading {
+                key "screen.results.rewards"
+                text "Rewards"
                 step caption
+                color token inkMuted
+              }
+              row List {
+                width grow
+                gap 12
+                wrap true
+                for r in rewards {
+                  column Reward {
+                    width 104
+                    padding 10
+                    gap 6
+                    cross center
+                    frame card
+                    background token panelRaised
+                    art Icon {
+                      kind itemIcon
+                      width 72
+                      height 72
+                      texture bind r.texture
+                    }
+                    label Amount {
+                      text "×{r.amount, compact}"
+                      step lg
+                      font display
+                      nowrap true
+                    }
+                    label Name {
+                      text bind r.name
+                      step caption
+                      color token inkMuted
+                      textAlign center
+                      maxLines 2
+                    }
+                  }
+                }
               }
             }
           }
         }
-      }
-      slot Graph {
-        width grow
-        visible bind "tab == \"graphs\""
-      }
-      slot Scores {
-        width grow
-        visible bind "tab == \"board\""
+        column Detail {
+          width grow 320 640
+          padding 20
+          gap 16
+          frame panel
+          background token panel
+          at phone {
+            padding 16
+            gap 12
+          }
+          row Tabs {
+            width grow
+            gap 6
+            wrap true
+            button Summary {
+              key "screen.results.summary"
+              text "Summary"
+              variant ghost
+              size small
+              at phone {
+                size medium
+              }
+              on click set tab "\"summary\""
+              state selection bind "tab == \"summary\"" {
+                off {
+                  opacity 0.85
+                }
+                on {
+                  opacity 1
+                }
+              }
+            }
+            button Graphs {
+              key "screen.results.graphs"
+              text "Graphs"
+              variant ghost
+              size small
+              at phone {
+                size medium
+              }
+              on click set tab "\"graphs\""
+              state selection bind "tab == \"graphs\"" {
+                off {
+                  opacity 0.85
+                }
+                on {
+                  opacity 1
+                }
+              }
+            }
+            button Board {
+              key "screen.results.board"
+              text "Scoreboard"
+              variant ghost
+              size small
+              at phone {
+                size medium
+              }
+              on click set tab "\"board\""
+              state selection bind "tab == \"board\"" {
+                off {
+                  opacity 0.85
+                }
+                on {
+                  opacity 1
+                }
+              }
+            }
+          }
+          divider
+          row Summary {
+            width grow
+            gap 12
+            wrap true
+            visible bind "tab == \"summary\""
+            for s in stats {
+              column Stat {
+                width grow 132
+                padding 14
+                gap 4
+                frame card
+                background token panelRaised
+                label Value {
+                  text bind s.value grouped
+                  step xl3
+                  font display
+                  nowrap true
+                }
+                row Name {
+                  width grow
+                  gap 6
+                  cross center
+                  wrap true
+                  label Text {
+                    text bind s.name
+                    step caption
+                    color token inkMuted
+                  }
+                  badge Best {
+                    key "screen.results.best"
+                    text "Best"
+                    tone accent
+                    visible bind s.best
+                  }
+                }
+              }
+            }
+          }
+          slot Graph {
+            width grow
+            visible bind "tab == \"graphs\""
+          }
+          slot Scores {
+            width grow
+            visible bind "tab == \"board\""
+          }
+        }
       }
     }
     row Footer {
       width grow
-      gap 8
+      padding 56 16 56 32
+      gap 12
       align end
+      cross center
       wrap true
+      at phone {
+        padding 16 8 16 16
+        gap 8
+      }
       button Replay {
         key "screen.results.replay"
         text "Watch replay"
@@ -294,8 +416,13 @@ column Results {
         key "screen.results.continue"
         text "Continue"
         variant primary
+        size large
+        width fit 200
         on click emit continue
         on action confirm emit continue
+        at phone {
+          width grow
+        }
       }
     }
   }

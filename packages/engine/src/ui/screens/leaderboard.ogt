@@ -22,6 +22,7 @@ props {
   selected number "The row pressed last."
   me object "The player's row: { rank, name, score }."
   league object "The league: { name, promote (rank), demote (rank), ends (seconds) }."
+  keyArt number "The game's scene or key art behind the board, washed in the pack's backdrop (og.load.texture; 0: the pack's own ground)."
 }
 actions {
   confirm "Profile"
@@ -37,6 +38,32 @@ column Screen {
   gap 12
   at phone {
     padding 16
+  }
+  art Art {
+    kind keyArt
+    fit cover
+    focal 0.5 0.6
+    texture bind keyArt
+    visible bind "keyArt != 0"
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Wash {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background token backdrop
+    opacity 0.72
+    visible bind "keyArt != 0"
   }
   row Header {
     width grow

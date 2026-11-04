@@ -100,6 +100,23 @@ export function encodePng(img: Image): Uint8Array {
   return png;
 }
 
+/** Compose `files` (frames in the run's output) into the sheet `name` there, each box-filtered by the surface's factor, `surface.cols` a row. */
+export function composeSheet(files: readonly string[], name: string, surface: Surface): { sheet: Image; cells: Image[]; cw: number; ch: number } {
+  const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
+  const cw = cells[0]!.width;
+  const ch = cells[0]!.height;
+  const cols = surface.cols;
+  const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
+  sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
+  cells.forEach((c, i) => {
+    const x0 = (i % cols) * cw;
+    const y0 = Math.floor(i / cols) * ch;
+    for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
+  });
+  writeFileSync(join(outDir(), name), encodePng(sheet));
+  return { sheet, cells, cw, ch };
+}
+
 /**
  * Compose `files` (frames in the run's output) into the sheet `name`, each
  * box-filtered by the surface's factor, `surface.cols` a row, and compare each
@@ -109,18 +126,8 @@ export function encodePng(img: Image): Uint8Array {
 export function sheetCheck(run: PlaytestRun, t: PlaytestChecks, files: readonly string[], name: string, surface: Surface, label: string): void {
   // The sheet is built from frames: without a renderer each is reported unchecked.
   t.frame(files, () => {
-    const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));
-    const cw = cells[0]!.width;
-    const ch = cells[0]!.height;
+    const { sheet, cells, cw, ch } = composeSheet(files, name, surface);
     const cols = surface.cols;
-    const sheet: Image = { width: cols * cw, height: Math.ceil(cells.length / cols) * ch, rgba: new Uint8Array(0) };
-    sheet.rgba = new Uint8Array(sheet.width * sheet.height * 4);
-    cells.forEach((c, i) => {
-      const x0 = (i % cols) * cw;
-      const y0 = Math.floor(i / cols) * ch;
-      for (let y = 0; y < ch; y++) sheet.rgba.set(c.rgba.subarray(y * cw * 4, (y + 1) * cw * 4), ((y0 + y) * sheet.width + x0) * 4);
-    });
-    writeFileSync(join(outDir(), name), encodePng(sheet));
     const refs = referencesDir();
     const own = join(refs, run.tier);
     if (process.env.OG_UI_CAPTURE !== undefined) {

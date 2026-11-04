@@ -22,6 +22,7 @@ props {
   saveLine string "Under Continue: where the last save stands (chapter, time played)."
   version string "The build's version, shown small in the corner."
   news string "A line for the news card (empty: no card)."
+  keyArt number "The game's key art (og.load.texture; 0: the style's placeholder)."
 }
 actions {
   confirm "Select"
@@ -32,6 +33,7 @@ stack Menu {
   height grow
   art Art {
     kind keyArt
+    texture bind keyArt
     width grow
     height grow
     position absolute

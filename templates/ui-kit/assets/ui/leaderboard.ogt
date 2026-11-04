@@ -14,10 +14,8 @@ version 1
 # tab (the click wrote tab), period, row (the click wrote selected: code
 # shows the profile) (Back pops it). Slots: Board takes og.ui.table or og.ui.
 # dataList when the board is long (10,000 rows, built in view only) instead
-# of the rows below; Avatar, in each row, takes the player's portrait (the
-# kit's copy: a texture handle bound through a viewmodel number loses its index,
-# src/showcases.ts); Background takes the game's scene or key art, under a
-# 45 % scrim, never a flat field. Ranks are one no-wrap column, ends
+# of the rows below. The kit's copy: Art takes the game's scene or key
+# art, under a 45 % scrim, never a flat field. Ranks are one no-wrap column, ends
 # aligned; the player's own row is the dominant element (docs/ui.md
 # §15.5); the screen starts below the Kit slot's row.
 name "leaderboard"
@@ -26,10 +24,11 @@ focus "Body/List"
 props {
   tab string "global, friends or league."
   period string "The period, as text (This week)."
-  rows list "The top rows: { rank, name, score, you (bool), texture } (the kit draws each texture in its Avatar slot)."
+  rows list "The top rows: { rank, name, score, you (bool), texture } ."
   selected number "The row pressed last."
   me object "The player's row: { rank, name, score }."
   league object "The league: { name, promote (rank), demote (rank), ends (seconds) }."
+  keyArt number "The game's scene or key art behind the board, washed in the pack's backdrop (og.load.texture; 0: the pack's own ground)."
 }
 actions {
   confirm "Profile"
@@ -46,7 +45,11 @@ column Screen {
   at phone {
     padding 16 60 16 16
   }
-  slot Background {
+  art Art {
+    kind keyArt
+    fit cover
+    focal 0.5 0.6
+    texture bind keyArt
     width grow
     height grow
     position absolute
@@ -197,9 +200,11 @@ column Screen {
             nowrap true
             textAlign end
           }
-          slot Avatar {
+          art Avatar {
+            kind emblem
             width 36
             height 36
+            texture bind r.texture
           }
           label Name {
             text bind r.name

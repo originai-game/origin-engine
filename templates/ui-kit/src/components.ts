@@ -10,6 +10,7 @@
 
 import { og } from "@origingame/engine";
 import type { MenuEntry, Size, UiDevice, World } from "@origingame/engine";
+import { setGround } from "./ground.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -58,6 +59,7 @@ export function demoCommand(world: World, args: readonly string[]): void {
     s.radialAim = null;
   }
   else if (key === "data") s.data = value;
+  else if (key === "ground") setGround(value);
   else if (key === "aim") {
     const [x, y] = value.split(",").map(Number);
     s.radialAim = { x: x ?? 0, y: y ?? 0 };

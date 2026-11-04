@@ -13,10 +13,7 @@ version 1
 #
 # Viewmodel: place, tip, progress, ready, waits. Events to code: nextTip
 # (a press while loading), continue (a press once ready). Slots: Lore takes
-# a richer card (an item, a character: og.ui.card, og.ui.prose);
-# Background, under the scrim, takes the key art from code, over the Art
-# slot's placeholder (the kit's: a texture handle bound through a
-# viewmodel number loses its index, src/showcases.ts).
+# a richer card (an item, a character: og.ui.card, og.ui.prose).
 name "loading"
 layer modal
 under hide
@@ -28,6 +25,7 @@ props {
   progress number "0 to 1."
   ready bool "Loading is done."
   waits bool "The game waits for a press once ready."
+  keyArt number "The key art's texture (og.load.texture; 0: the style's placeholder)."
 }
 actions {
   confirm "Continue"
@@ -41,15 +39,8 @@ stack Loading {
   art Art {
     kind tutorial
     fit cover
-    width grow
-    height grow
-    position absolute
-    start 0
-    top 0
-    end 0
-    bottom 0
-  }
-  slot Background {
+    focal 0.45 0.55
+    texture bind keyArt
     width grow
     height grow
     position absolute

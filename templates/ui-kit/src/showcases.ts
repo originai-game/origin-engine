@@ -15,6 +15,7 @@
 import { og } from "@origingame/engine";
 import type { Anchor, Size, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
+import { sceneArt } from "./ground.ts";
 import { fightHud, horrorHud, mmoHud, mobaHud, openHud, rhythmHud, rogueHud, rpgHud, survivalHud, tdHud } from "./huds2.ts";
 import { raceClassification, raceCommand, raceHud, raceResultsViewmodel, resetRace } from "./race.ts";
 import { actionHud, hudArt, loadHudArt, manageHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
@@ -70,6 +71,9 @@ export const SHOWCASES: readonly Showcase[] = [
   { key: "openworld", pack: "storybook", pages: [page("openHud", "hud"), page("worldMap", "worldMap"), page("photo", "photo")] },
 ];
 
+/** The ejected documents shown on their own, on the pack's ground: no game, no key art under them. */
+export const STANDALONE_SCREENS = ["pauseMenu", "matchResults"] as const;
+
 /** The screens this file builds (HUDs and mounted documents), in the order SCREENS lists them. */
 export const SHOWCASE_SCREENS = [
   "actionTitle", "actionHud", "actionPause", "actionTutorial", "actionLoading", "actionResults",
@@ -113,12 +117,14 @@ function docsOf(screen: string): Doc[] {
     case "actionTitle":
       return ["main-menu"];
     case "actionPause":
+    case "pauseMenu":
       return ["pause"];
     case "actionTutorial":
       return ["tutorial"];
     case "actionLoading":
       return ["loading"];
     case "actionResults":
+    case "matchResults":
       return ["results"];
     case "shooterScore":
       return ["scoreboard"];
@@ -160,27 +166,6 @@ function doc(name: Doc, vm: Record<string, unknown>, on: (event: string) => void
   for (const e of r.events) if (e.kind === "emit") on(e.name);
 }
 
-/**
- * Draw a texture in a document's slot (a full path, or `<mount>/<slot>`).
- * The kit's documents take their art this way, never through a viewmodel
- * number: og-ui reads a bound number as an f32 (crates/og-ui/src/doc/build.rs,
- * `coerce`), which rounds a texture handle (1 << 32 | index) to index 0,
- * the first texture loaded, so a bound handle draws the wrong image.
- */
-function artIn(slot: string, texture: unknown, kind: string, focal = { x: 0.5, y: 0.5 }): void {
-  if (!texture || !og.ui.openSlot(slot)) return;
-  og.ui.artSlot("Art", { texture: texture as never, kind, fit: "cover", focal, width: grow, height: grow, label: "" });
-  og.ui.close();
-}
-
-/** Each reward's art in its Icon slot of the results document (the rewards of its viewmodel). */
-function rewardArt(vm: Record<string, unknown>): void {
-  // The rewards are on the summary tab: on the others their slots are not built.
-  if ((vm["tab"] ?? "summary") !== "summary") return;
-  const rewards = (vm["rewards"] ?? []) as ReadonlyArray<{ texture?: unknown }>;
-  rewards.forEach((r, i) => artIn(`results/Results/Panel/Page/Summary/Rewards/Reward#${i}/Icon`, r.texture, "itemIcon"));
-}
-
 /** The pages whose chrome a document's Kit slot takes (the menu and modal layers; the scoreboard is a HUD layer). */
 export function chromeInDocument(screen: string): boolean {
   return docsOf(screen).some((d) => d !== "scoreboard");
@@ -220,13 +205,12 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
   switch (screen) {
     case "actionTitle":
       // The title over the game's key art: the menu's events lead into the showcase.
-      doc("main-menu", { canContinue: true, saveLine: L("sc.action.save"), version: "1.0.0", news: L("sc.action.news") }, (e) => {
+      // The figure and the ruin on the end side, the dark sky and cliff on the start side under the menu (the copy's focal point).
+      doc("main-menu", { canContinue: true, saveLine: L("sc.action.save"), version: "1.0.0", news: L("sc.action.news"), keyArt: sceneArt(hudArt("scenes/title")) }, (e) => {
         if (e === "continue" || e === "newGame") go("actionLoading");
         if (e === "settings") go("settingsTree");
         if (e === "quit" || e === "credits" || e === "modes") go("gallery");
       });
-      // The figure and the ruin on the end side, the dark sky and cliff on the start side under the menu.
-      artIn("main-menu/Background", hudArt("scenes/title"), "keyArt", { x: 0.66, y: 0.45 });
       return true;
     case "actionHud":
       // A HUD is played with the game's actions, not by moving a focus (og.ui.setNavigation in actionHud); Back pauses.
@@ -242,6 +226,26 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
         if (e === "quit") go("gallery");
       });
       return true;
+    case "pauseMenu":
+      // The pause menu on its own, on the pack's ground (no game under it): the baseline sheets' piece.
+      doc("pause", { objective: L("sc.action.objective"), played: sc.played, canSave: true }, (e) => {
+        if (e === "settings" || e === "controls") go("settingsTree");
+        if (e === "resume" || e === "quit" || e === "quitToMenu") go("gallery");
+      });
+      return true;
+    case "matchResults": {
+      // The results on their own, on the pack's ground: the outcome, the earnings and the breakdown, no key art.
+      const vm = {
+        won: true, grade: "A", title: L("sc.action.clear"), score: "1:42", scoreLabel: L("sc.stat.time"), subtitle: L("sc.action.place"),
+        tab: sc.resultsTab, level: 12, xp: 0.64, gained: 1240, keyArt: 0,
+        stats: [{ name: L("sc.stat.score"), value: 48210, best: true }, { name: L("sc.stat.coins"), value: 86, best: false }, { name: L("sc.stat.time"), value: 102, best: false }],
+        rewards: [{ name: L("sc.reward.gold"), amount: 320, texture: hudArt("boons/gold") ?? 0 }, { name: L("sc.reward.crystal"), amount: 4, texture: hudArt("boons/crystal") ?? 0 }],
+      };
+      doc("results", vm, (e) => {
+        if (e === "continue" || e === "again" || e === "replay") go("gallery");
+      });
+      return true;
+    }
     case "actionTutorial":
       actionHud(world, true);
       // The step's callout points at the HUD part it teaches: the jump button on a touch screen, else the combo.
@@ -261,16 +265,16 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       const t = og.ui.tick();
       if (sc.loadingFrom === 0) sc.loadingFrom = t;
       const progress = Math.min(1, (t - sc.loadingFrom) / 240);
-      doc("loading", { place: L("sc.action.place"), tip: L("sc.action.tip"), progress, ready: progress >= 1, waits: true }, (e) => {
+      doc("loading", { place: L("sc.action.place"), tip: L("sc.action.tip"), progress, ready: progress >= 1, waits: true, keyArt: sceneArt(hudArt("scenes/genre-action")) }, (e) => {
         if (e === "continue") go("actionHud");
       });
-      artIn("loading/Background", hudArt("scenes/genre-action"), "keyArt", { x: 0.45, y: 0.55 });
       return true;
     }
     case "actionResults": {
       // Over the cleared stage's scene: the grade leads.
       const vm = {
-        won: true, grade: "A", title: L("sc.action.clear"), tab: sc.resultsTab, level: 12, xp: 0.64, gained: 1240,
+        won: true, grade: "A", title: L("sc.action.clear"), score: "1:42", scoreLabel: L("sc.stat.time"), subtitle: L("sc.action.place"),
+        tab: sc.resultsTab, level: 12, xp: 0.64, gained: 1240, keyArt: sceneArt(hudArt("scenes/genre-action")),
         stats: [{ name: L("sc.stat.score"), value: 48210, best: true }, { name: L("sc.stat.coins"), value: 86, best: false }, { name: L("sc.stat.time"), value: 102, best: false }],
         rewards: [{ name: L("sc.reward.gold"), amount: 320, texture: hudArt("boons/gold") }, { name: L("sc.reward.crystal"), amount: 4, texture: hudArt("boons/crystal") }],
       };
@@ -278,8 +282,6 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
         if (e === "continue") go("actionTitle");
         if (e === "again" || e === "replay") go("actionHud");
       });
-      artIn("results/Background", hudArt("scenes/genre-action"), "keyArt", { x: 0.45, y: 0.55 });
-      rewardArt(vm);
       return true;
     }
     case "shooterHud":
@@ -307,9 +309,7 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
         if (e === "continue") go("raceBoard");
         if (e === "again" || e === "replay") go("raceHud");
       });
-      artIn("results/Background", hudArt("scenes/genre-racing"), "keyArt", { x: 0.5, y: 0.6 });
-      rewardArt(vm);
-      if (og.ui.openSlot("results/Results/Panel/Page/Scores")) {
+      if (og.ui.openSlot("results/Results/Layout/Page/Body/Detail/Scores")) {
         raceClassification();
         og.ui.close();
       }
@@ -317,16 +317,14 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
     }
     case "raceBoard": {
       // Over the track's scene; each racer's portrait in the row's Avatar slot.
-      const rows = [["Nyx", 61_234], ["Ferro", 61_891], ["Lumen", 62_040], ["Quill", 62_455], ["Sable", 62_910], ["Orrin", 63_118]].map(([name, ms], i) => ({ rank: i + 1, name, score: ms, you: false }));
+      const rows = [["Nyx", 61_234], ["Ferro", 61_891], ["Lumen", 62_040], ["Quill", 62_455], ["Sable", 62_910], ["Orrin", 63_118]].map(([name, ms], i) => ({ rank: i + 1, name, score: ms, you: false, texture: hudArt(AVATARS[i % AVATARS.length]!) ?? 0 }));
       doc("leaderboard", {
         tab: sc.boardTab, period: L("sc.race.week"), selected: -1, rows,
         me: { rank: 1284, name: L("sc.you"), score: 66_002 },
-        league: { name: L("sc.race.league"), promote: 10, demote: 25, ends: 259200 },
+        league: { name: L("sc.race.league"), promote: 10, demote: 25, ends: 259200 }, keyArt: sceneArt(hudArt("scenes/genre-racing")),
       }, (e) => {
         if (e === "close") go("gallery");
       });
-      artIn("leaderboard/Background", hudArt("scenes/genre-racing"), "keyArt", { x: 0.5, y: 0.6 });
-      rows.forEach((_, i) => artIn(`leaderboard/Screen/Body/List/Row#${i}/Avatar`, hudArt(AVATARS[i % AVATARS.length]!), "emblem"));
       return true;
     }
     case "sportsHud":

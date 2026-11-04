@@ -15,7 +15,8 @@
 import { og } from "@origingame/engine";
 import type { LapTimerDesc, MapMarkerItem, Paint, RaceEvent, SectorState, StandingsEntry, Vector2, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
-import { frame, hudArt, type HudArt } from "./huds.ts";
+import { packGround, sceneArt } from "./ground.ts";
+import { frame, gameScene, hudArt, type HudArt } from "./huds.ts";
 import { pose, raceScene, rivalDistance, RIVALS, type RaceLight } from "./raceScene.ts";
 import { mapPoint, SAMPLES } from "./raceTrack.ts";
 
@@ -138,7 +139,6 @@ interface Lap {
  * tower and the map under it, the tach centred over the thumbs' pads.
  */
 export function raceHud(world: World): void {
-  void world;
   const { small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
   const style = og.ui.frameTheme().style;
@@ -163,7 +163,9 @@ export function raceHud(world: World): void {
   // Metres driven since the HUD showed, from a place before the banked sweeper (the speed's integral); on the grid at the start.
   const run = tick - shownAt;
   const distance = starting ? -10 : 100 + ((222 * run) / 60 - 46 * (156 / 60) * (Math.cos(tick / 156) - Math.cos(shownAt / 156))) / 3.6;
-  raceScene({ light: lightOf(style), distance, kmh: car.speed, portrait });
+  // On the pack's own ground the circuit is not drawn: the HUD stands on the pack's backdrop.
+  if (packGround()) gameScene(world, "scenes/genre-racing");
+  else raceScene({ light: lightOf(style), distance, kmh: car.speed, portrait });
   const pos = markers(distance);
 
   if (look === "arcade") arcade(small, portrait, touch, k, m, lap, car.speed);
@@ -313,10 +315,11 @@ function arcade(small: boolean, portrait: boolean, touch: boolean, k: number, m:
   }));
 }
 
-/** The results after the finish: the results document with the race's line and stats. */
+/** The results after the finish: the results document led by the place and the race time, the classification on its board. */
 export function raceResultsViewmodel(): Record<string, unknown> {
   return {
-    won: true, grade: "", title: L("sc.race.podium"), tab: "board", level: 14, xp: 0.38, gained: 860,
+    won: true, grade: L("sc.race.ord3"), title: L("sc.race.finish"), score: lapTime(3 * 60_000 + 41_287), scoreLabel: L("sc.stat.time"), subtitle: L("sc.race.circuit"),
+    tab: "board", level: 14, xp: 0.38, gained: 860, keyArt: sceneArt(hudArt("scenes/genre-racing")),
     stats: [{ name: L("sc.race.overtakes"), value: 5, best: false }, { name: L("sc.race.topSpeed"), value: 291, best: true }, { name: L("sc.race.clean"), value: 7, best: false }],
     rewards: [{ name: L("sc.race.credits"), amount: 1200, texture: hudArt("boons/gold") ?? 0 }],
   };

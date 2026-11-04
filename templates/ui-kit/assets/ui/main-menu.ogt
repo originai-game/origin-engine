@@ -8,9 +8,7 @@ version 1
 # The kit's copy (og ui eject): a Kit slot in the top end corner takes
 # the kit's own chrome (the Gallery and the showcase's next page); the
 # logo is the game's wordmark, its title in the pack's display face over
-# the key art's dark side; the kit draws its key art in Background, over
-# the Art slot's placeholder (a texture handle bound through a viewmodel
-# number loses its index: src/showcases.ts).
+# the key art's dark side.
 #
 # Viewmodel: canContinue, saveLine, version, news (see props). Events to
 # code: continue, newGame, modes, settings, credits, quit, news (the news
@@ -29,6 +27,7 @@ props {
   saveLine string "Under Continue: where the last save stands (chapter, time played)."
   version string "The build's version, shown small in the corner."
   news string "A line for the news card (empty: no card)."
+  keyArt number "The game's key art (og.load.texture; 0: the style's placeholder)."
 }
 actions {
   confirm "Select"
@@ -40,6 +39,8 @@ stack Menu {
   art Art {
     kind keyArt
     fit cover
+    focal 0.66 0.45
+    texture bind keyArt
     width grow
     height grow
     position absolute

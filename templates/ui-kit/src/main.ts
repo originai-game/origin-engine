@@ -27,8 +27,9 @@ import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, n
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shipStatusScreen, starshipCommand, turnOrderScreen } from "./starship.ts";
 import { buildRaceScene, RaceView } from "./raceScene.ts";
-import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
+import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, STANDALONE_SCREENS, syncDocs } from "./showcases.ts";
 import { defineHudActions } from "./huds.ts";
+import { packGround } from "./ground.ts";
 
 export const SCREENS = [
   "gallery", "widgets", "toasts",
@@ -41,6 +42,7 @@ export const SCREENS = [
   "lobby", "select", "versus", "draft", "worldMap", "songs",
   "garage", "ledger", "cityMap", "chat", "rts",
   "photo", "loadout", "deck", "cgGallery", "routes", "settingsTree",
+  ...STANDALONE_SCREENS,
   ...SHOWCASE_SCREENS,
 ] as const;
 export type Screen = (typeof SCREENS)[number];
@@ -114,6 +116,8 @@ const BLURBS: Record<Screen, string> = {
   actionTitle: "An action game's title: Continue, New game, the news, over its key art (the main-menu document)",
   actionHud: "A platformer's HUD: health in segments, coins, the stage timer, the combo, a door's prompt, hits' numbers, touch controls",
   actionPause: "The pause menu over the HUD (the pause document): the objective, time played, Resume, Settings, Quit",
+  pauseMenu: "The pause menu on its own: Resume first, the status, the secondary rows (the pause document)",
+  matchResults: "The results on their own: the outcome, the level and rewards, the breakdown (the results document)",
   actionTutorial: "A tutorial step's callout over the HUD (the tutorial document)",
   actionLoading: "Loading into a stage: its key art, a tip, real progress, Continue (the loading document)",
   actionResults: "A stage cleared: the grade, stats, XP and rewards (the results document)",
@@ -946,10 +950,12 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   }
   // The game behind every screen but the gallery and the widget sheet: the style's backdrop (STYLE_BACKDROPS), else a dusk landscape.
   // The genre patterns' screens paint their own scene (patterns.ts): a backdrop would clash with their art.
-  if (PATTERN_SCREENS.has(screen)) patternScene(screen);
+  // On the pack's own ground (demo:ground:pack, src/ground.ts) neither: every page stands on the pack's backdrop.
+  if (PATTERN_SCREENS.has(screen) && !packGround()) patternScene(screen);
   const backdrop = kitArt(STYLE_BACKDROPS[STYLES[d.style] ?? "default"] ?? "neutral") ?? kitArt("neutral");
   // The racing HUD draws over its own engine-rendered circuit (src/raceScene.ts).
-  if (screen !== "gallery" && screen !== "widgets" && screen !== "raceHud" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
+  const standalone = (STANDALONE_SCREENS as readonly string[]).includes(screen);
+  if (screen !== "gallery" && screen !== "widgets" && screen !== "raceHud" && !standalone && !PATTERN_SCREENS.has(screen) && !packGround() && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
   // So does a conversation's: its caption shade and its press layer span the screen, and the button stands over them.
