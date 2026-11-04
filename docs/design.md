@@ -1534,6 +1534,11 @@ later.
   includes GPU work and inter-frame scheduling; subtracting poll time does
   not isolate either one. Compile/upload are null on the web; unfinished
   phases are null. The 3 ms slicing is unchanged.
+  The flight operator's approved root-alignment experiment and the open
+  `motion.jump` vertical-arc ownership decision are recorded in
+  `tests/evidence/motionbricks/FLIGHT.md`. The controller must own ballistic
+  elevation; generated pelvis Y cannot silently add a second jump arc.
+  Resolve that presentation-height contract before adding the jump IDL.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its
