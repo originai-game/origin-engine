@@ -411,15 +411,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             sun_color: scene.environment.sky.sun_color,
         };
     }
-    if let Some(c) = scene.clouds {
-        if !matches!(scene.environment.background, Background::Procedural { .. }) {
-            let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
-            scene.environment.background = Background::Procedural {
-                sun_direction: dir,
-                sun_color: scene.environment.sky.sun_color,
-            };
-        }
-        c.light_scene(scene);
+    if scene.clouds.is_some()
+        && !matches!(scene.environment.background, Background::Procedural { .. })
+    {
+        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        scene.environment.background = Background::Procedural {
+            sun_direction: dir,
+            sun_color: scene.environment.sky.sun_color,
+        };
     }
 
     // Fog, declared or from the weather.
@@ -445,9 +444,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 fog.sun_color = sun;
             }
         }
-        if let Some(c) = &scene.clouds {
-            (fog.color, fog.sun_color) = c.fog_under(fog.color, fog.sun_color);
-        }
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
         // which replaces the plain fog where the renderer draws it.
         if on(&v, "volumetric", false) {
@@ -463,6 +459,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             });
         }
         scene.fog = Some(fog);
+    }
+    if let Some(c) = scene.clouds {
+        c.light_scene(scene);
     }
     if let Some(w) = resource(world, layouts.weather.as_ref()) {
         let kind = u(&w, "kind", 0);

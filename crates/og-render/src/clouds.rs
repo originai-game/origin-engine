@@ -166,11 +166,19 @@ impl Clouds {
     /// light by its second only where that light is not the live sky's
     /// capture ([`RenderScene::sky_captured`]), which holds the clouds
     /// already (dimmed twice, an overcast noon drew as night).
+    /// Tint existing fog under the same cover. Call once after constructing
+    /// the scene's light and fog, before adding weather's own atmosphere.
     pub fn light_scene(&self, scene: &mut crate::RenderScene) {
         let (sun, sky) = self.light();
         scene.light.cover(sun);
         if !scene.sky_captured() {
             scene.environment.intensity *= sky;
+        }
+        if let Some(fog) = &mut scene.fog {
+            (fog.color, fog.sun_color) = self.fog_under(fog.color, fog.sun_color);
+        }
+        if let Some(fog) = &mut scene.volumetric_fog {
+            fog.color = self.fog_under(fog.color, fog.color).0;
         }
     }
 
@@ -350,7 +358,20 @@ mod tests {
             density: 0.09,
             ..Clouds::default()
         };
-        let (c, s) = storm.fog_under(blue, sun);
+        let mut scene = crate::RenderScene::new();
+        scene.fog = Some(crate::Fog {
+            color: blue,
+            sun_color: sun,
+            ..Default::default()
+        });
+        scene.volumetric_fog = Some(crate::VolumetricFog {
+            color: blue,
+            ..Default::default()
+        });
+        storm.light_scene(&mut scene);
+        let fog = scene.fog.unwrap();
+        let (c, s) = (fog.color, fog.sun_color);
+        assert_eq!(scene.volumetric_fog.unwrap().color, c);
         assert!(
             c.max_element() - c.min_element() < 0.1 * c.max_element(),
             "grey: {c}"
