@@ -341,13 +341,22 @@ pub struct StressLimits {
     pub tension_fatal: f32,
     pub shear_elastic: f32,
     pub shear_fatal: f32,
+    /// Mohr–Coulomb friction: the shear a bond holds grows by this much
+    /// per pascal of compression across it (tan of the friction angle), so
+    /// a joint pressed by what stands on it holds where an unloaded one
+    /// slips (masonry's bed joints against its head joints). 0 is none,
+    /// Blast's limits as they are.
+    pub friction: f32,
 }
 
 impl StressLimits {
     /// og.Destructible.strength's limits: `strength` in tension and shear,
-    /// eight times it in compression, each fatal at twice its elastic
-    /// limit; 0 none (the solver breaks nothing).
-    pub fn from_strength(strength: f32) -> StressLimits {
+    /// thirty times it in compression (masonry's and concrete's ratio at a
+    /// game's low strengths: a pier that stands on its weight is not
+    /// crushed by it), each fatal at twice its elastic
+    /// limit, and `friction` (Mohr–Coulomb); strength 0 none (the solver
+    /// breaks nothing).
+    pub fn from_strength(strength: f32, friction: f32) -> StressLimits {
         if strength <= 0.0 {
             let inf = f32::INFINITY;
             return StressLimits {
@@ -357,15 +366,17 @@ impl StressLimits {
                 tension_fatal: inf,
                 shear_elastic: inf,
                 shear_fatal: inf,
+                friction: 0.0,
             };
         }
         StressLimits {
-            compression_elastic: strength * 8.0,
-            compression_fatal: strength * 16.0,
+            compression_elastic: strength * 30.0,
+            compression_fatal: strength * 60.0,
             tension_elastic: strength,
             tension_fatal: strength * 2.0,
             shear_elastic: strength,
             shear_fatal: strength * 2.0,
+            friction: friction.max(0.0),
         }
     }
 
@@ -395,7 +406,13 @@ impl StressLimits {
         } else if tension > self.tension_elastic {
             m += excess(tension, self.tension_elastic, self.tension_fatal);
         }
-        m + excess(stress_shear, self.shear_elastic, self.shear_fatal)
+        // Compression across the bond holds it against shear (Coulomb).
+        let held = self.friction * compression;
+        m + excess(
+            stress_shear,
+            self.shear_elastic + held,
+            self.shear_fatal + held,
+        )
     }
 }
 
@@ -479,9 +496,18 @@ mod tests {
             tension_fatal: 20.0,
             shear_elastic: 10.0,
             shear_fatal: 30.0,
+            friction: 0.0,
         };
         assert_eq!(l.damage(-50.0, 0.0), 0.0);
         assert_eq!(l.damage(-150.0, 0.0), 0.5);
         assert_eq!(l.damage(15.0, 20.0), 0.5 + 0.5);
+        // Friction: the same shear slips an unloaded joint and is held by
+        // one pressed at 40 Pa (0.5 × 40 = 20 more it holds).
+        let f = StressLimits { friction: 0.5, ..l };
+        assert_eq!(f.damage(0.0, 20.0), 0.5);
+        assert_eq!(f.damage(-40.0, 20.0), 0.0);
+        assert_eq!(f.damage(-40.0, 40.0), 0.5);
+        // Tension takes nothing from it.
+        assert_eq!(f.damage(5.0, 20.0), 0.5);
     }
 }

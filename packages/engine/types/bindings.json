@@ -7699,6 +7699,12 @@
           "tunable": true
         },
         {
+          "name": "friction",
+          "column": "f32",
+          "default": 0.7,
+          "tunable": true
+        },
+        {
           "name": "density",
           "column": "f32",
           "default": 1000,

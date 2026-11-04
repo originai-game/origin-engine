@@ -48209,7 +48209,7 @@ export interface Destructible {
    */
   toughness: number;
   /**
-   * The stress its bonds hold in tension and shear before they weaken (compression holds eight times as much, and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off.
+   * The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off.
    *
    * @default 30000
    * @range 0..
@@ -48217,6 +48217,14 @@ export interface Destructible {
    * @tunable
    */
   strength: number;
+  /**
+   * How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone.
+   *
+   * @default 0.7
+   * @range 0..4
+   * @tunable
+   */
+  friction: number;
   /**
    * The chunks' density: their mass as bodies and their weight in the stress solver.
    *
@@ -54347,7 +54355,7 @@ export declare namespace og {
    * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
    * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
    */
-  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
    * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
    */

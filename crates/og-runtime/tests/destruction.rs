@@ -14,8 +14,8 @@ use og_runtime::{
     Dispatch, Fetch, Hooks, og_destruction_capabilities, og_destruction_damage,
     og_destruction_info, og_engine_create, og_engine_frame, og_engine_probe_dump,
     og_engine_write_resource, og_game_game, og_host_begin_bundle, og_load_emitter, og_load_gltf,
-    og_world_events, og_world_get, og_world_insert, og_world_instantiate, og_world_restore,
-    og_world_snapshot, set_hooks,
+    og_world_events, og_world_get, og_world_has, og_world_insert, og_world_instantiate,
+    og_world_restore, og_world_snapshot, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -41,6 +41,28 @@ fracture {
   chunks 24
   seed 3
   children 4
+}
+"#;
+
+/// A brick wall tied in at both ends, as a wall between two others is.
+const BRICK: &str = r#"type model
+version 1
+---
+part "wall" {
+  position 0 1.2 0
+  boxGeometry {
+    width 4
+    height 2.4
+    depth 0.3
+  }
+}
+fracture {
+  style brick
+  brick 0.25 0.1
+  chunks 40
+  seed 11
+  children 32
+  anchor bottom ends
 }
 "#;
 
@@ -79,6 +101,7 @@ fn project() -> &'static std::path::Path {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("assets/props")).unwrap();
         std::fs::write(root.join("assets/props/wall.ogt"), WALL).unwrap();
+        std::fs::write(root.join("assets/props/brick.ogt"), BRICK).unwrap();
         std::fs::create_dir_all(root.join("assets/fx")).unwrap();
         std::fs::write(root.join("assets/fx/chips.ogt"), CHIPS).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
@@ -103,15 +126,22 @@ impl Hooks for Disk {
 
 /// An engine with the wall standing at the origin, as an og.Destructible.
 fn start() -> (u32, f64) {
+    // No friction: a Voronoi wall's joints run every way, and its middle
+    // comes down above a hole.
+    start_with(
+        "props/wall.ogt",
+        json!({ "toughness": 400, "strength": 4000, "friction": 0 }),
+    )
+}
+
+fn start_with(model: &str, destructible: Value) -> (u32, f64) {
     let root = project();
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    let asset = value(og_load_gltf(w, "props/wall.ogt".into(), None))
-        .as_f64()
-        .unwrap();
+    let asset = value(og_load_gltf(w, model.into(), None)).as_f64().unwrap();
     let wall = value(og_world_instantiate(w, asset, None))
         .as_f64()
         .unwrap();
@@ -119,7 +149,7 @@ fn start() -> (u32, f64) {
         w,
         wall,
         "og.Destructible".into(),
-        Some(json!({ "toughness": 400, "strength": 4000 }).to_string()),
+        Some(destructible.to_string()),
     ));
     (w, wall)
 }
@@ -336,4 +366,82 @@ fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
     let d = destructible(w, c);
     assert_eq!(d["fractured"], true, "a 4 m fall breaks it: {d}");
     assert!(impact, "broken by its impact");
+}
+
+#[test]
+fn a_wall_tied_in_at_its_ends_shot_at_its_foot_leaves_two_piers() {
+    let (w, wall) = start_with(
+        "props/brick.ogt",
+        json!({ "toughness": 800, "strength": 3000, "density": 1900 }),
+    );
+    // A floor for what falls.
+    let g = value(og_runtime::og_world_spawn(
+        w,
+        Some(json!({ "position": { "x": 0, "y": -0.25, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        g,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 1 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        g,
+        "og.Collider".into(),
+        Some(json!({ "shape": 0, "size": { "x": 20, "y": 0.5, "z": 20 } }).to_string()),
+    ));
+    frames(w, 10);
+    value(og_destruction_damage(
+        w,
+        wall,
+        Some(
+            json!({ "point": { "x": 0, "y": 0.2, "z": 0.15 }, "radius": 1.0, "innerRadius": 0.5, "amount": 6000 })
+                .to_string(),
+        ),
+    ));
+    frames(w, 240);
+    // What still stands: support chunks held to the world, never bodies.
+    let near = value(og_runtime::og_physics_overlap(
+        w,
+        Some(
+            json!({ "shape": { "shape": 0, "size": { "x": 8, "y": 6, "z": 3 } }, "position": { "x": 0, "y": 2.5, "z": 0 } })
+                .to_string(),
+        ),
+    ));
+    let standing: Vec<Value> = near
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_f64().unwrap())
+        .filter(|&e| {
+            og_world_has(w, e, "og.Chunk".into())
+                && !og_world_has(w, e, "og.RigidBody".into())
+                && !og_world_has(w, e, "og.Parent".into())
+        })
+        .map(|e| value(og_world_get(w, e, "og.Transform".into()))["position"].clone())
+        .collect();
+    let x = |p: &Value| p["x"].as_f64().unwrap();
+    let y = |p: &Value| p["y"].as_f64().unwrap();
+    let pier = |side: f64| -> f64 {
+        standing
+            .iter()
+            .filter(|p| x(p) * side > 0.9)
+            .map(y)
+            .fold(0.0, f64::max)
+    };
+    assert!(
+        pier(-1.0) > 0.8 && pier(1.0) > 0.8,
+        "a pier stands at each end, a chunk of it centred above 0.8 m: {} {} of {standing:?}",
+        pier(-1.0),
+        pier(1.0)
+    );
+    assert!(
+        !standing.iter().any(|p| x(p).abs() < 0.35 && y(p) < 0.6),
+        "the shot opened the middle of its foot: {standing:?}"
+    );
+    let info = value(og_destruction_info(w, wall));
+    assert!(info["islands"].as_u64().unwrap() > 1, "{info}");
 }

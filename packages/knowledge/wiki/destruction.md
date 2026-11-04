@@ -78,7 +78,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28620</sub>
+<sub>`api.ogt` line 28626</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +108,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28628</sub>
+<sub>`api.ogt` line 28634</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +138,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28635</sub>
+<sub>`api.ogt` line 28641</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +168,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28642</sub>
+<sub>`api.ogt` line 28648</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +196,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28649</sub>
+<sub>`api.ogt` line 28655</sub>
 
 ## Components, resources and events
 
@@ -213,7 +213,8 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `toughness` | `number` | `800` | ≥ 0 | `newtonSecondPerM2` | tunable | How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000. |
-| `strength` | `number` | `30000` | ≥ 0 | `pascal` | tunable | The stress its bonds hold in tension and shear before they weaken (compression holds eight times as much, and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off. |
+| `strength` | `number` | `30000` | ≥ 0 | `pascal` | tunable | The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off. |
+| `friction` | `number` | `0.7` | 0 … 4 | — | tunable | How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone. |
 | `density` | `number` | `1000` | ≥ 1 | `kgPerM3` | tunable | The chunks' density: their mass as bodies and their weight in the stress solver. |
 | `impactThreshold` | `number` | `30` | ≥ 0 | `newtonSecond` | tunable | A collision's impulse (og.CollisionStarted.impulse) that does no damage: what is above it is the damage of the hit. |
 | `impactRadius` | `number` | `0.4` | ≥ 0.01 | `m` | tunable | How far a hit's damage reaches round its point (all of it within a third of this, falling to nothing at it). |
@@ -235,10 +236,16 @@ component Destructible {
     unit newtonSecondPerM2
     tunable true
   }
-  field strength f32 "The stress its bonds hold in tension and shear before they weaken (compression holds eight times as much, and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off." {
+  field strength f32 "The stress its bonds hold in tension and shear before they weaken (compression holds thirty times as much, shear more for the compression across it (friction), and a bond breaks outright at twice the stress): low, an overhang falls and a wall shot out at its foot comes down; high, it holds whatever is left. 0 turns the stress solver off." {
     default 30000
     min 0
     unit pascal
+    tunable true
+  }
+  field friction f32 "How much more shear a bond holds for the compression across it, per pascal (Mohr–Coulomb, the tangent of the friction angle): a joint pressed by what stands on it holds where an unloaded one slips, so a wall shot out at its foot keeps its loaded piers and drops what hung over the hole, cracking in steps along its courses. 0 is shear at strength alone." {
+    default 0.7
+    min 0
+    max 4
     tunable true
   }
   field density f32 "The chunks' density: their mass as bodies and their weight in the stress solver." {
@@ -317,7 +324,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 28480</sub>
+<sub>`api.ogt` line 28486</sub>
 
 <a id="record-Fractured"></a>
 
@@ -357,7 +364,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 28500</sub>
+<sub>`api.ogt` line 28506</sub>
 
 <a id="record-Destruction"></a>
 
@@ -409,7 +416,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 28518</sub>
+<sub>`api.ogt` line 28524</sub>
 
 ## Types
 
@@ -453,7 +460,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 28550</sub>
+<sub>`api.ogt` line 28556</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -501,7 +508,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28573</sub>
+<sub>`api.ogt` line 28579</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -535,7 +542,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28601</sub>
+<sub>`api.ogt` line 28607</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -554,7 +561,7 @@ struct DestructionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 28615</sub>
+<sub>`api.ogt` line 28621</sub>
 
 ## Constants
 

@@ -52,6 +52,7 @@ fn material(strength: f32) -> Material {
             tension_fatal: strength * 2.0,
             shear_elastic: strength,
             shear_fatal: strength * 2.0,
+            friction: 0.0,
         },
     }
 }

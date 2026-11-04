@@ -359,7 +359,10 @@ impl Settings {
         Settings {
             mat: Material {
                 toughness: num(v, "toughness", 800.0).max(1e-3),
-                limits: StressLimits::from_strength(num(v, "strength", 30000.0)),
+                limits: StressLimits::from_strength(
+                    num(v, "strength", 30000.0),
+                    num(v, "friction", 0.7),
+                ),
                 density: num(v, "density", 1000.0).max(1.0),
             },
             threshold: num(v, "impactThreshold", 30.0).max(0.0),
