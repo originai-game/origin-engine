@@ -244,16 +244,20 @@ dress "Panel.frame" {
   tone 0.004 0.004 0.005 1
   stroke 1 line inside
 }
-dress "Tabs.tab[selected]" {
-  stroke 2 primary inside
-}
 dress "Button.base[primary]" {
   slice 146 145 157 44 22 14 22 14 authored
   tone 0.919 0.821 0.001 1
   fill linear 180 primary primaryActive primaryActive primaryActive
 }
+dress "Chip.base[selected]" {
+  stroke 1 primary inside
+}
+dress "Tabs.tab[selected]" {
+  fill primary
+  stroke none
+}
 dress "Slot.frame[selected]" {
-  stroke 2 "#2bf0ff" inside
+  stroke 1 primary inside
 }
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside
@@ -271,6 +275,10 @@ dress "Slot.frame[rarity=mythic]" {
   stroke 2 "#ef4444" inside
   effect outerGlow 12 "#ef444480"
   material hologram 0.5 2
+}
+dress "Button.base[danger]" {
+  fill "#9e0f14"
+  stroke none
 }
 dress "Card.frame" {
   slice 99 1 96 96 20 20 20 20 authored

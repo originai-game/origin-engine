@@ -267,15 +267,17 @@ dress "Tooltip.frame" {
 dress "Chip.base" {
   stroke 1.5 lineStrong inside dash 4 3
 }
-dress "Tabs.tab[selected]" {
-  fill "#a74b2d38"
-  stroke 1.5 lineStrong inside
-}
 dress "Button.base[primary]" {
   fill linear 180 primary primaryActive primaryActive primaryActive
 }
+dress "Chip.base[selected]" {
+  stroke 1.5 primary inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 1.5 primary inside
+}
 dress "Slot.frame[selected]" {
-  stroke 2 "#a74b2d" inside
+  stroke 1.5 primary inside
 }
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside

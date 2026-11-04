@@ -195,6 +195,10 @@ pub struct StyleChoices {
     pub danger: Option<Srgba>,
     /// The hue info takes (`None`: the scheme's blue): cyber's cyan.
     pub info: Option<Srgba>,
+    /// The seed's own dressings, a selector and its lines, each replacing
+    /// the generated block of its selector (or added after them): the art
+    /// review's notes on one pack (cyber's solid tab, its red Delete).
+    pub dressings: Vec<(String, Vec<String>)>,
 }
 
 /// A generated style: its `style.ogt` and the sound files it names.
@@ -1539,12 +1543,40 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
         }
     }
     dress("Button.base[primary]", vec![PRIMARY_FILL.into()]);
-    // Every style: a selected slot rings in its accent; the rarities glow
-    // in their colours and the top tiers shine.
-    dress(
-        "Slot.frame[selected]",
-        vec![format!("stroke 2 {} inside", lit(p.focus))],
-    );
+    // Every style: one selection grammar (docs/ui.md §15.5). A selected
+    // chip, slot or tab is the accent's rim at the part's own rim width
+    // (a hairline where the finish draws none), on the ground the widget
+    // lifts a step (`controlStrong`, no fill of the style's own), its words
+    // in the accent ink; never a tier hue.
+    let rim = |sel: &str| {
+        blocks
+            .iter()
+            .find(|(s, _)| s == sel)
+            .and_then(|(_, lines)| {
+                lines.iter().find_map(|l| {
+                    l.strip_prefix("stroke ")?
+                        .split(' ')
+                        .next()?
+                        .parse::<f32>()
+                        .ok()
+                })
+            })
+            .unwrap_or(1.0)
+    };
+    let (chip, slot) = (rim("Chip.base"), rim("Slot.frame"));
+    blocks.retain(|(s, _)| s != "Tabs.tab[selected]");
+    let mut dress = |sel: &str, body: Vec<String>| match blocks.iter_mut().find(|(s, _)| s == sel) {
+        Some((_, lines)) => lines.extend(body),
+        None => blocks.push((sel.to_string(), body)),
+    };
+    for (sel, w) in [
+        ("Chip.base[selected]", chip),
+        ("Tabs.tab[selected]", chip),
+        ("Slot.frame[selected]", slot),
+    ] {
+        dress(sel, vec![format!("stroke {} primary inside", num(w))]);
+    }
+    // The rarities glow in their colours and the top tiers shine.
     dress(
         "Slot.frame[rarity=rare]",
         vec!["stroke 2 \"#3d8bfd\" inside".into()],
@@ -1574,6 +1606,12 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
     );
     if rich {
         dress("Dialog.frame", vec!["ornament corner".into()]);
+    }
+    for (sel, lines) in &c.dressings {
+        match blocks.iter_mut().find(|(s, _)| s == sel) {
+            Some((_, l)) => l.clone_from(lines),
+            None => blocks.push((sel.clone(), lines.clone())),
+        }
     }
     let mut out = String::new();
     for (sel, lines) in blocks {
@@ -1837,6 +1875,19 @@ fn fonts(body: &str, display: &str, numeric: &str, cjk: &str, cjk_display: &str)
     ]
 }
 
+/// A seed's own dressings ([`StyleChoices::dressings`]).
+fn own(blocks: &[(&str, &[&str])]) -> Vec<(String, Vec<String>)> {
+    blocks
+        .iter()
+        .map(|(sel, lines)| {
+            (
+                sel.to_string(),
+                lines.iter().map(|l| l.to_string()).collect(),
+            )
+        })
+        .collect()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn seed(
     name: &str,
@@ -1875,6 +1926,7 @@ fn seed(
         glitch: 0.0,
         danger: None,
         info: None,
+        dressings: Vec::new(),
     }
 }
 
@@ -2037,6 +2089,12 @@ pub fn seeds() -> Vec<StyleChoices> {
             glitch: 0.8,
             danger: Some(rgb(0xff3b3b)),
             info: Some(rgb(0x2de2e6)),
+            // The art review (2026-11-04): the selected tab a solid yellow
+            // slab on its cut corners; Delete and Abort a deep red fill.
+            dressings: own(&[
+                ("Tabs.tab[selected]", &["fill primary", "stroke none"]),
+                ("Button.base[danger]", &["fill \"#9e0f14\"", "stroke none"]),
+            ]),
             ..seed(
                 "cyber",
                 "cyberpunk signal",

@@ -269,8 +269,14 @@ dress "Chip.base" {
 dress "Button.base[primary]" {
   fill linear 180 primary primaryActive primaryActive primaryActive
 }
+dress "Chip.base[selected]" {
+  stroke 2 primary inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 2 primary inside
+}
 dress "Slot.frame[selected]" {
-  stroke 2 "#ffd21a" inside
+  stroke 2 primary inside
 }
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside

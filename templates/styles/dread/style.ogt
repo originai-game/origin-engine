@@ -262,14 +262,17 @@ dress "Field.frame" {
 dress "Slot.frame" {
   stroke 1.5 "#f9f2f280" inside dash 18 4 offset 2 round
 }
-dress "Tabs.tab[selected]" {
-  stroke 2 primary inside
-}
 dress "Meter.fill" {
   effect innerShadow 0 0 6 0 "#00000033"
 }
+dress "Chip.base[selected]" {
+  stroke 1 primary inside
+}
+dress "Tabs.tab[selected]" {
+  stroke 1 primary inside
+}
 dress "Slot.frame[selected]" {
-  stroke 2 "#c9b28a" inside
+  stroke 1.5 primary inside
 }
 dress "Slot.frame[rarity=rare]" {
   stroke 2 "#3d8bfd" inside
