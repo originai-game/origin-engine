@@ -6797,6 +6797,11 @@
           "default": true
         },
         {
+          "name": "horizonShadows",
+          "column": "bool",
+          "default": true
+        },
+        {
           "name": "lodSpacing",
           "column": "f32",
           "default": 0,

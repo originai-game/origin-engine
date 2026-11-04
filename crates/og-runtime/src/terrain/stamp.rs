@@ -230,15 +230,38 @@ pub(crate) fn underside(
 
 /// The patch a stamp makes: the carve's heights `depth` under the
 /// underside, or the cells it covers.
+///
+/// A carve goes `depth` under the mesh only at the samples whose four
+/// neighbours the mesh covers too; a sample on the footprint's edge goes
+/// down to the underside itself, no further, so the ground beside the
+/// mesh meets it at the mesh's own foot (lowered by `depth` too, the edge
+/// tilted the first cell outside the mesh into a trench that showed as a
+/// dark line along its foot), and the step down to the carve lies under
+/// the mesh.
 pub(crate) fn patch(grid: Grid, triangles: &[[Vec3; 3]], hole: bool, depth: f32) -> Option<Patch> {
     let (rect, lowest) = underside(grid, triangles, hole)?;
+    let [_, _, w, h] = rect;
+    let covered = |c: i64, r: i64| {
+        c >= 0
+            && r >= 0
+            && c < w as i64
+            && r < h as i64
+            && lowest[(r * w as i64 + c) as usize].is_finite()
+    };
     let values = lowest
-        .into_iter()
-        .map(|y| match (y.is_finite(), hole) {
-            (false, true) => 0.0,
-            (false, false) => f32::NAN,
-            (true, true) => 1.0,
-            (true, false) => y - depth,
+        .iter()
+        .enumerate()
+        .map(|(k, y)| {
+            let (c, r) = ((k as u32 % w) as i64, (k as u32 / w) as i64);
+            let inner =
+                covered(c - 1, r) && covered(c + 1, r) && covered(c, r - 1) && covered(c, r + 1);
+            match (y.is_finite(), hole) {
+                (false, true) => 0.0,
+                (true, true) => 1.0,
+                (true, false) if inner => y - depth,
+                (true, false) => *y,
+                (false, false) => f32::NAN,
+            }
         })
         .collect();
     Some(Patch { hole, rect, values })
@@ -471,15 +494,19 @@ mod tests {
         );
         let touched = p.apply(&mut d).unwrap();
         assert_eq!(touched, 25 * 41);
-        let after = steepest(&d, -6.0, 6.0, -10.0, 10.0);
+        // Inside the edge's cells (hidden under the mesh) no wall is left.
+        let after = steepest(&d, -5.5, 5.5, -9.5, 9.5);
         assert!(
             after < 45.0,
             "the ground under the rock after the carve: {after}°"
         );
-        // Under the rock it is the rock's underside less the depth; beside
-        // it the cliff is untouched.
+        // Under the rock it is the rock's underside less the depth; on its
+        // edge the underside itself, so the valley beside the face is flat
+        // up to it; beside it the cliff is untouched.
         let at = |c: u32, r: u32| d.heights[(r * d.columns + c) as usize];
         assert_eq!(at(60, 64), -0.25);
+        assert_eq!(at(76, 64), 0.0, "the face's edge");
+        assert_eq!(at(77, 64), 0.0);
         assert_eq!(at(40, 64), 300.0);
         assert_eq!(at(64, 30), 0.0);
     }

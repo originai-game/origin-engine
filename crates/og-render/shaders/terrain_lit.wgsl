@@ -712,7 +712,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, look.normal, roughness, n_geo);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, look.normal, roughness, n_geo, n_geo);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -721,8 +721,12 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
 // and fog, with the frame's diagnostic views.
 // `local`: the point of the ground whose horizon it reads (the terrain's
 // space); `ground`: how much of the fragment is that ground (1 for the
-// terrain; a stamp's blend share, its own face not being one).
-fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>) -> vec4<f32> {
+// terrain; a stamp's blend share, its own face not being one); `n_geo`
+// the surface's normal for weathering, `n_shadow` the geometry's own for
+// the shadow lookup's offset (a stamp's blended foot takes the ground's
+// normal, but its wall still faces out: offset along the ground's, the
+// wall shadowed itself in a dark strip along its foot).
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
@@ -743,7 +747,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, a
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_shadow, n_dot_l); }
   // Past the cascades (and with none) the horizon map shades the ground:
   // the sun behind a ridge (soft over 1.5°: the sun's disc and the bake's
   // reads), and the sky its horizon hides.
@@ -907,7 +911,10 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
   let m = terrain_maps_at(s, dpdx(s), dpdy(s));
   let above = (local.y - terrain_height_at(0u, s)) * stamp.params.y;
   var o: StampGround;
-  o.ground = select(0.0, 1.0 - smoothstep(0.0, stamp.params.x, above), stamp.params.x > 0.0);
+  // Wholly the ground over the band's lowest third, so the mesh's foot is
+  // the ground it meets; then the mesh's own look takes over.
+  let band = stamp.params.x;
+  o.ground = select(0.0, 1.0 - smoothstep(band / 3.0, band, above), band > 0.0);
   o.normal = normalize(mix(n_mesh, normalize(terrain.normal * m.normal), o.ground));
   o.control = m.control;
   o.local = local;
@@ -923,7 +930,7 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
-  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal);
+  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal));
 }
 
 @fragment

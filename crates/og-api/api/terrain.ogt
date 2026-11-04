@@ -26,7 +26,7 @@ module terrain {
 
   enum TerrainStampMode {
     doc "What og.terrain.stamp does to the height field under a stamp's mesh."
-    variant carve "Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. Ground already lower is left as it is."
+    variant carve "Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. On the edge of what the mesh covers the ground goes down to the underside itself, so the ground beside the mesh meets its foot with no trench. Ground already lower is left as it is."
     variant hole "Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal)."
   }
 
@@ -58,7 +58,7 @@ module terrain {
     doc "Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field geometry Geometry "The mesh."
-    field blend f32 "Metres above the ground under it over which the mesh fades into the ground's look (0: a hard edge)." {
+    field blend f32 "Metres above the ground under it over which the mesh fades into the ground's look: wholly the ground over its lowest third, then fading to the mesh's own (0: a hard edge)." {
       default 1
       min 0
       max 64

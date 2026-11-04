@@ -950,9 +950,10 @@ pub const CLIFF_FOOT: Vec3 = Vec3::new(CLIFF_ROCK, 0.6, 0.0);
 /// rock 24 m across standing over the step as a terrain stamp, its foot
 /// at the valley floor and its top 2 m above the plateau. The ground
 /// under the block is carved as og.terrain.stamp carves it (to the
-/// block's underside less 0.25 m). Two layers: grass up to 40° of slope,
-/// rock past it, biplanar past 45°. The stamp is shaded by those layers
-/// by its own normal (rock on its face, grass on its top) and, within
+/// block's underside less 0.25 m, on its edge to the underside). Two
+/// layers: grass up to 40° of slope, rock past it, biplanar past 45°.
+/// The stamp is shaded by those layers by its own normal (rock on its
+/// face, grass on its top) and, within
 /// `blend` metres above the ground it meets, takes the ground's look.
 pub fn cliff_scene(blend: f32) -> RenderScene {
     let mut scene = RenderScene::new();
@@ -963,8 +964,15 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
         for c in 0..n {
             let (x, z) = (c as f32 * cell - size * 0.5, r as f32 * cell - size * 0.5);
             let ground = if x < 0.0 { CLIFF_HEIGHT } else { 0.0 };
-            let under = x.abs() <= CLIFF_ROCK && z.abs() <= CLIFF_LENGTH;
-            heights.push(if under { ground.min(-0.25) } else { ground });
+            // As og.terrain.stamp carves: 0.25 m under the block's
+            // underside inside it, the underside itself on its edge.
+            let on = x.abs() <= CLIFF_ROCK && z.abs() <= CLIFF_LENGTH;
+            let inside = x.abs() < CLIFF_ROCK && z.abs() < CLIFF_LENGTH;
+            heights.push(match (on, inside) {
+                (_, true) => ground.min(-0.25),
+                (true, false) => ground.min(0.0),
+                _ => ground,
+            });
         }
     }
     let handle = scene.add_terrain(TerrainData {

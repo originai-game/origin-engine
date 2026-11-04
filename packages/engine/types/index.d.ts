@@ -50008,7 +50008,7 @@ export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint
 
 /**
  * What og.terrain.stamp does to the height field under a stamp's mesh.
- * - `"carve"`: Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. Ground already lower is left as it is.
+ * - `"carve"`: Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. On the edge of what the mesh covers the ground goes down to the underside itself, so the ground beside the mesh meets its foot with no trench. Ground already lower is left as it is.
  * - `"hole"`: Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal).
  */
 export type TerrainStampMode = "carve" | "hole";
@@ -50033,6 +50033,12 @@ export interface Terrain {
    * @default true
    */
   castShadows: boolean;
+  /**
+   * Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less.
+   *
+   * @default true
+   */
+  horizonShadows: boolean;
   /**
    * The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing).
    *
@@ -50060,7 +50066,7 @@ export interface TerrainStamp {
   /** The mesh. */
   geometry: Geometry;
   /**
-   * Metres above the ground under it over which the mesh fades into the ground's look (0: a hard edge).
+   * Metres above the ground under it over which the mesh fades into the ground's look: wholly the ground over its lowest third, then fading to the mesh's own (0: a hard edge).
    *
    * @default 1
    * @range 0..64
@@ -58156,7 +58162,7 @@ export declare namespace og {
   /**
    * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
    */
-  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
+  const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
    * Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
    */
