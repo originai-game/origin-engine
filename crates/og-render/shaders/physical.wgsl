@@ -64,6 +64,7 @@ fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIn
 struct Lobes {
   sheen_color: vec3<f32>,     // 0: no sheen
   sheen_roughness: f32,
+  sheen_albedo: f32,          // E(n.v) of the sheen (sheen_albedo)
   iridescence: f32,
   iridescence_fresnel: vec3<f32>,
   anisotropy: f32,            // 0: isotropic
@@ -87,26 +88,20 @@ fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
   return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
 
-// Sheen: the Charlie distribution and Neubelt's visibility (as three.js).
-fn d_charlie(roughness: f32, n_dot_h: f32) -> f32 {
-  let inv = 1.0 / (roughness * roughness);
-  let sin2h = max(1.0 - n_dot_h * n_dot_h, 0.0078125);
-  return (2.0 + inv) * pow(sin2h, inv * 0.5) / (2.0 * PI);
+// The sheen's directional albedo E(cos, roughness) (sheen.wgsl), from the
+// BRDF table's blue channel (ibl.wgsl fs_brdf_lut).
+fn sheen_albedo(cos_theta: f32, roughness: f32) -> f32 {
+  return textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(max(cos_theta, 1e-3), roughness), 0.0).b;
 }
 
-fn v_neubelt(n_dot_v: f32, n_dot_l: f32) -> f32 {
-  return clamp(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)), 0.0, 1.0);
-}
-
-// The sheen's directional albedo under the image-based light (Estevez and
-// Kulla's fit), in this shader's irradiance units (irradiance / pi).
-fn sheen_ibl(n_dot_v: f32, r: f32) -> f32 {
-  let r2 = r * r;
-  let low = r < 0.25;
-  let a = select(-8.48 * r2 + 14.3 * r - 9.95, -339.2 * r2 + 161.4 * r - 25.9, low);
-  let b = select(1.97 * r2 - 3.27 * r + 0.72, 44.0 * r2 - 23.7 * r + 3.26, low);
-  let dg = exp(a * n_dot_v + b) + select(0.1 * (r - 0.25), 0.0, low);
-  return clamp(dg, 0.0, PI);
+// How much of the layers under the sheen one light reaches: what the
+// fibres reflect towards the eye or from the light is taken from them,
+// the lesser share kept (Imageworks' min{1 - E(o), 1 - E(i)}, glTF's
+// sheen albedo scaling), so a white sheen over white cloth never shines
+// brighter than white.
+fn sheen_scale(k: Lobes, n_dot_l: f32) -> f32 {
+  let c = max3(k.sheen_color);
+  return min(1.0 - c * k.sheen_albedo, 1.0 - c * sheen_albedo(n_dot_l, k.sheen_roughness));
 }
 
 // Anisotropic GGX (as three.js and Filament): alpha_t along t, alpha_b across.
@@ -212,9 +207,10 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
   o.specular = spec * n_dot_l;
   if (any(k.sheen_color > vec3<f32>(0.0))) {
     // The sheen layer takes its albedo from what it covers.
-    let scale = 1.0 - 0.157 * max3(k.sheen_color);
+    let scale = sheen_scale(k, n_dot_l);
+    let alpha = k.sheen_roughness * k.sheen_roughness;
     o.diffuse *= scale;
-    o.specular = o.specular * scale + k.sheen_color * d_charlie(k.sheen_roughness, n_dot_h) * v_neubelt(n_dot_v, n_dot_l) * n_dot_l;
+    o.specular = o.specular * scale + k.sheen_color * d_charlie(alpha, n_dot_h) * v_charlie(alpha, n_dot_v, n_dot_l) * n_dot_l;
   }
   if (s.coat > 0.0) {
     // The coat, as lighting.wgsl's brdf: what it reflects never reaches the base.
@@ -420,7 +416,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
   if (decal_normal.w > 0.0) { n = normalize(mix(n, decal_normal.xyz, decal_normal.w)); }
-  let weathered = weather_surface(s, n, normalize(n_vertex * face), in.world_pos);
+  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, 1.0);
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x * coat_maps.r;
@@ -437,6 +433,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var k: Lobes;
   k.sheen_color = physical.sheen.rgb * srgb_decode(sheen_maps.rgb);
   k.sheen_roughness = clamp(physical.sheen.w * sheen_maps.a, 0.07, 1.0);
+  k.sheen_albedo = sheen_albedo(n_dot_v, k.sheen_roughness);
   k.iridescence = physical.iridescence.x * film_maps.a;
   k.iridescence_fresnel = vec3<f32>(0.0);
   var f0_ibl = s.f0;
@@ -547,9 +544,13 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // The sheen over the base (the lights' share is in physical_brdf).
   var sheen_keep = 1.0;
   if (any(k.sheen_color > vec3<f32>(0.0))) {
-    sheen_keep = 1.0 - 0.157 * max3(k.sheen_color);
+    // The fibres scatter back and to the sides, never along the mirror
+    // direction, so they see the environment's irradiance (the specular
+    // reflection's prefiltered light drew a blurred sun on cotton), times
+    // their directional albedo E.
+    sheen_keep = 1.0 - max3(k.sheen_color) * k.sheen_albedo;
     ibl_diffuse *= sheen_keep;
-    ibl_specular = ibl_specular * sheen_keep + irradiance * k.sheen_color * sheen_ibl(n_dot_v, k.sheen_roughness);
+    ibl_specular = ibl_specular * sheen_keep + irradiance * k.sheen_color * k.sheen_albedo;
   }
   diffuse += ibl_diffuse * coat_keep;
   specular += (ibl_specular * coat_keep + coat_ibl) * ibl_scale;

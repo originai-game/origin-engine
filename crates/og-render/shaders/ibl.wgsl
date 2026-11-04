@@ -219,7 +219,23 @@ fn fs_brdf_lut(in: VsOut) -> @location(0) vec4<f32> {
       b += fc * g_vis;
     }
   }
-  return vec4<f32>(a / f32(count), b / f32(count), 0.0, 1.0);
+  // b: the sheen's directional albedo E(n.v, alpha) (sheen.wgsl), over
+  // the hemisphere sampled evenly in cos(theta) (pdf 1 / 2 pi): what the
+  // fibres reflect of light from everywhere, which the layers under the
+  // sheen give up and which lights it under the image-based light.
+  var e = 0.0;
+  let alpha = roughness * roughness;
+  let sheen_count = 1024u;
+  for (var i = 0u; i < sheen_count; i++) {
+    let xi = hammersley(i, sheen_count);
+    let cos_l = 1.0 - xi.y;
+    let sin_l = sqrt(max(1.0 - cos_l * cos_l, 0.0));
+    let phi = 2.0 * PI * xi.x;
+    let l = vec3<f32>(cos(phi) * sin_l, sin(phi) * sin_l, cos_l);
+    let h = normalize(v + l);
+    e += d_charlie(alpha, h.z) * v_charlie(alpha, n_dot_v, cos_l) * cos_l;
+  }
+  return vec4<f32>(a / f32(count), b / f32(count), e * 2.0 * PI / f32(sheen_count), 1.0);
 }
 
 // A reflection probe's radiance (probes.rs) from its capture, whose faces

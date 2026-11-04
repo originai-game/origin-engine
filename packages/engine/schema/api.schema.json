@@ -25728,7 +25728,7 @@
         },
         "sheen": {
           "type": "number",
-          "description": "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none.",
+          "description": "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a dark base, a bright sheenColor, sheenRoughness 0.3 to 0.5; cotton and wool: a pale sheenColor at sheenRoughness 0.8 to 1). Its strength, times sheenColor; 0 is none.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,
@@ -26072,6 +26072,14 @@
           "type": "number",
           "description": "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering).",
           "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "weathering": {
+          "type": "number",
+          "description": "How much og.WeatherState reaches this material: its wetness, rain streaks, puddles, snow and dust (1 all of it, 0 none). 0 for what the weather never touches: an indoor floor seen through a door, a screen, a hero kept clean, a surface a game wets itself; between for a coat that sheds some.",
+          "default": 1,
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio"
@@ -37457,7 +37465,7 @@
     "WeatherState": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.",
+      "description": "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it.",
       "type": "object",
       "properties": {
         "soakTime": {
@@ -37516,6 +37524,31 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "dustTime": {
+          "type": "number",
+          "description": "Seconds of a dust storm at intensity 1 to cover what faces up with dust and sand (dust 0 to 1). It stays when the storm ends; rain washes it off.",
+          "default": 600,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "washTime": {
+          "type": "number",
+          "description": "Seconds of rain at intensity 1 to wash full dust off.",
+          "default": 90,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "dustColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The colour of the settled dust and sand (linear): pale ochre by default; a red desert's or a grey quarry's.",
+          "default": {
+            "r": 0.62,
+            "g": 0.5,
+            "b": 0.36
+          }
+        },
         "lightning": {
           "type": "number",
           "description": "Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather.",
@@ -37562,6 +37595,13 @@
         "puddles": {
           "type": "number",
           "description": "How far standing water has spread, 0 none to 1 (written by og.weather).",
+          "default": 0,
+          "x-og-unit": "ratio",
+          "readOnly": true
+        },
+        "dust": {
+          "type": "number",
+          "description": "How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather).",
           "default": 0,
           "x-og-unit": "ratio",
           "readOnly": true

@@ -183,7 +183,7 @@ pub(crate) struct AtmosphereGpu {
     /// The aurora's block (`Aurora::gpu`; zero: none), `frame.aurora`.
     pub aurora: [[f32; 4]; crate::aurora::AURORA_VEC4S],
     /// Weather on the lit surfaces (`SurfaceWeather::gpu`; zero: dry).
-    pub weather: [[f32; 4]; 2],
+    pub weather: [[f32; 4]; 4],
     /// The weather occlusion map (`weather::shelter_view`): its view
     /// projection, then x: its layer of the cascade array plus one (0: no
     /// map; the layer is always the array's last, so cascades or cached

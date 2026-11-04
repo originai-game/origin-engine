@@ -325,6 +325,7 @@ const STANDARD_FIELDS: &[&str] = &[
     "transmissionMap",
     "transparent",
     "unlit",
+    "weathering",
     "wireframe",
     "wireframeAngle",
 ];

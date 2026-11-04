@@ -103,7 +103,7 @@ impl UvTransform {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 10)]
+#[reflect(name = "og.StandardMaterial", version = 11)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -331,6 +331,11 @@ pub struct StandardMaterial {
     /// outline, flat facets, shadow tint or outline distance from it).
     #[reflect(min = 0.0, max = 1.0, default = 1.0)]
     pub styled: u32,
+    /// How much the weather on surfaces ([`crate::SurfaceWeather`]: wetness,
+    /// streaks, puddles, snow, dust) reaches this material: 1 all of it,
+    /// 0 none.
+    #[reflect(min = 0.0, max = 1.0, default = 1.0, tunable)]
+    pub weathering: f32,
     /// 1: drawn as the edges of its triangles, one CSS pixel wide, in its
     /// colour plus its emissive light, depth tested and unlit (three.js
     /// `wireframe`, on every backend: lines, not a polygon mode). Its instances
@@ -471,6 +476,7 @@ impl Default for StandardMaterial {
             normalMapArray: 0,
             normalMapLayer: 0,
             styled: 1,
+            weathering: 1.0,
             wireframe: 0,
             wireframeAngle: 0.0,
             mapOffset: Vec2::ZERO,
@@ -944,7 +950,8 @@ pub(crate) struct MaterialUniform {
     /// order) as two rows: `[a, b, c, d]` (`u' = a u + b v`, `v' = c u +
     /// d v`) and `[tx, ty, 0, 0]`. Array materials use the base-map
     /// translation row's spare zw for their base/normal array layers;
-    /// `uv[3].z` (the metalness slot's spare) holds `paintDetail`.
+    /// `uv[3].z` (the metalness slot's spare) holds `paintDetail`, `uv[3].w`
+    /// `weathering`.
     pub uv: [[f32; 4]; 10],
     /// A material shader's parameters (`hooks.rs`).
     pub custom: [[f32; 4]; crate::MAX_SHADER_PARAMS],
@@ -1076,6 +1083,7 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
         uv: {
             let mut uv = uv_rows(&m.uv_transforms());
             uv[3][2] = m.paintDetail.clamp(0.0, 1.0);
+            uv[3][3] = m.weathering.clamp(0.0, 1.0);
             uv
         },
         custom: [[0.0; 4]; crate::MAX_SHADER_PARAMS],

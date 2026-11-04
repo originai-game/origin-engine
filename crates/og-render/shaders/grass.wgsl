@@ -156,6 +156,9 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   s.roughness = mix(0.95, clamp(grass.dry_color.w * (1.0 - 0.45 * sheen), 0.04, 1.0), resolved);
   let reflectance = (0.25 + 0.45 * sheen) * mix(0.5, 1.0, resolved);
   s.f0 = vec3<f32>(0.16 * reflectance * reflectance);
+  // Rain, snow and dust on the blades (weather_surface.wgsl): wet blades
+  // darken and gloss, snow lies on their upper sides, dust dulls them.
+  s = weather_grass(s, n0, p, in.shading.z).s;
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) {

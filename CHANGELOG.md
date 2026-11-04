@@ -24,6 +24,23 @@ is one line here, written at the merge that changes
   first instances: crowds then take the CPU path) and
   `RenderDesc::without_features`.
 
+- **Weather on surfaces and cloth sheen (Wave B).** New
+  `StandardMaterialDesc.weathering` (default 1; 0 opts a material out of the
+  weather). New `WeatherState.dust` (read-only), `dustTime`, `washTime` and
+  `dustColor`: a `WEATHER_DUST` storm settles dust and sand on what faces up,
+  and rain washes it off. Lit surfaces now dry in patches from their high
+  spots once the rain stops, run with rain streaks on walls, splash under
+  the rain, and take their relief from `aoMap`, whose crevices fill with
+  puddles, snow and dust first. The screen-space reflections read the wet
+  roughness and the puddles' flat, rippled normal from the prepass. Grass
+  darkens and glosses in the rain, and lying snow buries its roots and bows
+  its blades (every pass alike, the shadows and motion included). Sheen
+  is now Estevez and Kulla's Charlie with their shadowing and soft
+  terminator, lit under the image-based light through its directional
+  albedo (the BRDF table's blue channel) and energy-conserving. Velvet and
+  cotton draw differently from before; materials without sheen are unchanged.
+  `og.StandardMaterial` reflects at version 11.
+
 - **UI phase 0 grammar, typography and sheets (breaking; next minor).**
   `typography` drives every legacy ramp alias, including weight and tracking;
   `hero` adds the top step and `case upper` uses locale-aware Unicode casing.

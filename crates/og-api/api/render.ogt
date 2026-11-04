@@ -264,7 +264,7 @@ module render {
     field clearcoatNormalScale Vector2 "How strongly clearcoatNormalMap bends the coat's normal, per tangent axis." {
       default 1 1
     }
-    field sheen f32 "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none." {
+    field sheen f32 "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a dark base, a bright sheenColor, sheenRoughness 0.3 to 0.5; cotton and wool: a pale sheenColor at sheenRoughness 0.8 to 1). Its strength, times sheenColor; 0 is none." {
       min 0
       max 1
       unit ratio
@@ -367,6 +367,12 @@ module render {
       unit deg
     }
     field paintDetail f32 "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering)." {
+      min 0
+      max 1
+      unit ratio
+    }
+    field weathering f32 "How much og.WeatherState reaches this material: its wetness, rain streaks, puddles, snow and dust (1 all of it, 0 none). 0 for what the weather never touches: an indoor floor seen through a door, a screen, a hero kept clean, a surface a game wets itself; between for a coat that sheds some." {
+      default 1
       min 0
       max 1
       unit ratio

@@ -185,6 +185,76 @@ fn sheen_lights_the_rim_in_its_colour() {
     );
 }
 
+/// A white sphere in a white furnace: an even grey sky (no sun disc, no
+/// direct light), the same at every angle. Its pixels across the middle
+/// row, from the centre (facing) to the rim (grazing).
+fn furnace(m: StandardMaterial) -> Vec<f32> {
+    let mut scene = studio();
+    scene.light.intensity = 0.0;
+    let grey = Vec3::splat(0.5);
+    scene.environment = Environment {
+        intensity: 1.0,
+        background: Background::Color(grey),
+        sky: og_render::ProceduralSky {
+            look: Some(og_render::SkyLook {
+                zenith: grey,
+                horizon: grey,
+                ground: grey,
+                sun_size: 0.0,
+                sun_intensity: 0.0,
+                glow: 0.0,
+                stars: 0.0,
+                brightness: 1.0,
+                moon_size: 0.0,
+                ..og_render::SkyLook::DEFAULT
+            }),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    scene.post.tonemap = og_render::Tonemap::None;
+    let sphere = scene.add_mesh(shapes::sphere(64, 48));
+    let h = scene.add_standard_material(m);
+    scene.add_instance(sphere, h, Mat4::IDENTITY);
+    let img = frame(&scene);
+    // Facing (r 0 to 40 px), half way (60 to 70), grazing (88 to 94).
+    [(640, 680), (700, 710), (728, 734)]
+        .map(|(a, b)| mean(&img, area(a, b, 358, 362))[1])
+        .to_vec()
+}
+
+/// Cloth's sheen conserves energy (Estevez and Kulla's albedo table,
+/// ibl.wgsl fs_brdf_lut): a white sheen over white cloth in an even
+/// white furnace adds what it takes from the cloth under it, so the
+/// sphere is as bright facing the eye as at its rim and as bright as the
+/// bare cloth, at a velvet's roughness and a cotton's. (A fixed 16 % taken
+/// from the base and a fitted albedo added back drew the facing side 9 %
+/// darker and the rim 25 % brighter.)
+#[test]
+fn a_white_sheen_in_a_white_furnace_neither_gains_nor_loses_light() {
+    let cloth = StandardMaterial {
+        color: Vec3::ONE,
+        roughness: 1.0,
+        ..Default::default()
+    };
+    let bare = furnace(cloth);
+    for r in [0.35, 0.8] {
+        let sheen = furnace(StandardMaterial {
+            sheen: 1.0,
+            sheenColor: Vec3::ONE,
+            sheenRoughness: r,
+            ..cloth
+        });
+        println!("sheen roughness {r}: bare {bare:?}, sheen {sheen:?}");
+        for (b, s) in bare.iter().zip(&sheen) {
+            assert!(
+                *s > 0.97 * b && *s < 1.04 * b,
+                "roughness {r}: sheen {sheen:?} against bare {bare:?}"
+            );
+        }
+    }
+}
+
 fn solid(rgba: [u8; 4], color_space: og_render::ColorSpace) -> TextureData {
     TextureData {
         width: 4,

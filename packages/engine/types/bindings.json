@@ -10812,6 +10812,27 @@
           "tunable": true
         },
         {
+          "name": "dustTime",
+          "column": "f32",
+          "default": 600,
+          "tunable": true
+        },
+        {
+          "name": "washTime",
+          "column": "f32",
+          "default": 90,
+          "tunable": true
+        },
+        {
+          "name": "dustColor",
+          "column": "Color",
+          "default": {
+            "r": 0.62,
+            "g": 0.5,
+            "b": 0.36
+          }
+        },
+        {
           "name": "lightning",
           "column": "f32",
           "default": 0,
@@ -10846,6 +10867,12 @@
         },
         {
           "name": "puddles",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "dust",
           "column": "f32",
           "default": 0,
           "readonly": true

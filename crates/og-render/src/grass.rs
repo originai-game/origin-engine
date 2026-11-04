@@ -668,17 +668,32 @@ fn look_gpu(g: &Grass) -> [[f32; 4]; 4] {
     ]
 }
 
+/// How far lying snow weighs the blades down, 0..1 (`GrassUniform.limits.w`,
+/// grass_blade.wgsl): its cover, as weather_surface.wgsl lays it. A
+/// uniform for the whole field, so the lit, prepass and shadow passes and
+/// the motion vectors bend every blade alike (a roof's shelter is not in
+/// the shadow pass).
+fn snow_weight(scene: &crate::RenderScene) -> f32 {
+    let snow = scene
+        .surface_weather
+        .as_ref()
+        .map_or(0.0, |w| w.snow.clamp(0.0, 1.0));
+    let t = (snow / 0.6).min(1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
 /// The height range blade roots are stored over, either side of the camera (m).
 const HEIGHT_RANGE: f32 = 512.0;
 
 /// The grass lit module: the frame, the light tables, the lighting, the
-/// area lights, then the blades.
+/// weather on surfaces, the area lights, then the blades.
 pub(crate) fn lit_source() -> String {
     format!(
-        "{}{}{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}{}{}",
         crate::FRAME_WGSL,
         crate::clusters::wgsl(),
         crate::LIGHTING_WGSL,
+        crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
@@ -1374,7 +1389,7 @@ impl GrassRenderer {
                 eye: generator.eye,
                 forward: view.frame.forward.extend(per_pixel).to_array(),
                 origin,
-                limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, 0.0],
+                limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, snow_weight(scene)],
                 sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
                 shape: [
                     g.tallest(),

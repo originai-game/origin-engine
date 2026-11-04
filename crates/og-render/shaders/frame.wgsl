@@ -54,6 +54,8 @@ struct Frame {
   aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)
   weather: vec4<f32>,         // weather_surface.wgsl: x wetness, y puddles, z snow cover, w rain ripples
   weather_look: vec4<f32>,    // rgb: snow colour, w: puddle size (m)
+  weather_dust: vec4<f32>,    // rgb: dust colour, w: dust cover
+  weather_depth: vec4<f32>,   // x: lying snow (m)
   weather_view_proj: mat4x4<f32>,  // the weather occlusion map's view (weather.rs shelter_view)
   weather_shelter: vec4<f32>,  // x: its cascade_map layer + 1 (0: none), y: drip edge (texels), z: map side (texels), w: depth bias
   // Water (`water.rs`): caustics on what lies below the first surface that has them.

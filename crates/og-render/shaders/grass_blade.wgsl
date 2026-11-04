@@ -21,7 +21,7 @@ struct GrassUniform {
   eye: vec4<f32>,       // xyz: the camera (frame coordinates), w: 1 orthographic
   forward: vec4<f32>,   // xyz: its forward, w: metres a pixel covers per unit of clip w
   origin: vec4<f32>,    // xyz: where blade positions are stored from, w: their extent either side (m)
-  limits: vec4<f32>,    // x: the height range roots are stored over (m either side), y: the narrowest a blade draws (px), z: how far an edge-on blade turns to the eye, w: unused
+  limits: vec4<f32>,    // x: the height range roots are stored over (m either side), y: the narrowest a blade draws (px), z: how far an edge-on blade turns to the eye, w: the snow's weight on the blades (0..1)
   sun: vec4<f32>,       // xyz: towards the sun, w: 1 with one
   shape: vec4<f32>,     // x: the tallest blade (m), y: its root width (m), z: curve (droop), w: flutter
   base_color: vec4<f32>,  // rgb: the roots' colour (linear), w: translucency
@@ -101,8 +101,11 @@ fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
   face = normalize(mix(face, to_eye * select(-1.0, 1.0, facing_eye >= 0.0), edge_on * grass.limits.z));
   let across = vec3<f32>(face.y, 0.0, -face.x);
 
-  // Tall blades droop the most, each its own amount.
-  let droop = grass.kinds[b.kind * 2u].w * grass_random(b, 0x7c2u) * (0.5 + 0.5 * b.height);
+  // Tall blades droop the most, each its own amount. Lying snow bows
+  // them further, each its own way, tall and short alike (grass.rs
+  // snow_weight).
+  let own_droop = grass.kinds[b.kind * 2u].w * grass_random(b, 0x7c2u) * (0.5 + 0.5 * b.height);
+  let droop = mix(own_droop, max(own_droop, 0.55 + 0.45 * grass_random(b, 0x5a1u)), grass.limits.w);
   let bend = select(b.bend, b.previous_bend, eye.previous);
   let curve = grass_curve(height, bend, droop);
   var point = grass_curve_point(curve, t);

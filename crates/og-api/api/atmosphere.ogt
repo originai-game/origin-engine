@@ -392,7 +392,7 @@ module atmosphere {
   }
 
   resource WeatherState {
-    doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it."
+    doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it."
     field soakTime f32 "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1)." {
       default 60
       min 0.1
@@ -435,6 +435,21 @@ module atmosphere {
       unit m
       tunable true
     }
+    field dustTime f32 "Seconds of a dust storm at intensity 1 to cover what faces up with dust and sand (dust 0 to 1). It stays when the storm ends; rain washes it off." {
+      default 600
+      min 0.1
+      unit s
+      tunable true
+    }
+    field washTime f32 "Seconds of rain at intensity 1 to wash full dust off." {
+      default 90
+      min 0.1
+      unit s
+      tunable true
+    }
+    field dustColor Color "The colour of the settled dust and sand (linear): pale ochre by default; a red desert's or a grey quarry's." {
+      default 0.62 0.5 0.36
+    }
     field lightning f32 "Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather." {
       min 0
       max 600
@@ -462,6 +477,10 @@ module atmosphere {
       unit ratio
     }
     field puddles f32 "How far standing water has spread, 0 none to 1 (written by og.weather)." {
+      readonly true
+      unit ratio
+    }
+    field dust f32 "How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather)." {
       readonly true
       unit ratio
     }

@@ -51,7 +51,7 @@ const _: () = assert!(std::mem::size_of::<Params>() as u64 <= SLOT);
 /// The generator's module: its passes and the physical sky's functions.
 pub(crate) fn ibl_source() -> String {
     format!(
-        "{IBL_WGSL}{}",
+        "{IBL_WGSL}{SHEEN_WGSL}{}",
         crate::renderer::sky_scatter_wgsl("params.scatter")
     )
 }
@@ -1039,3 +1039,6 @@ impl IblGenerator {
 
 /// The IBL generator's module (`crate::shaders` validates it).
 pub(crate) const IBL_WGSL: &str = wgsl!("ibl.wgsl");
+/// The sheen lobe (Estevez and Kulla's Charlie), shared with the physical
+/// lit shader: the table's blue channel is its directional albedo.
+pub(crate) const SHEEN_WGSL: &str = wgsl!("sheen.wgsl");

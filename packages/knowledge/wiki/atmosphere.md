@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10432</sub>
+<sub>`api.ogt` line 10438</sub>
 
 ## Contents
 
@@ -33,7 +33,7 @@ module atmosphere {
 | [`og.PhysicalSky`](#record-PhysicalSky) | resource | A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world. |
 | [`og.Clouds`](#record-Clouds) | resource | Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (a broken sky hides the sun a share of the time; an overcast deck hides it from every surface, leaving the deck's flat grey light). Visual only: nothing in the simulation reads them. |
 | [`og.Aurora`](#record-Aurora) | resource | The aurora: curtains of light in the upper atmosphere, raymarched in the procedural sky (after Lawlor and Genetti, Interactive Volume Rendering Aurora on the GPU, 2011). Each curtain is a sheet of falling electrons along the auroral oval, folded by slow travelling waves and curled by a Kelvin-Helmholtz instability, extruded upward by how the electrons deposit their energy in the air: green oxygen light peaking near 114 km, a pink-violet nitrogen border below it where the electrons are hard, red oxygen light above 200 km where they are soft (the heights observed by Whiter et al., 2023). Emission only, under the clouds and dimmed by the air near the horizon; invisible against a daylight sky. The display follows the tick's clock, so it looks the same on every run and after a restore. Drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky). Visual only: nothing in the simulation reads it. |
-| [`og.WeatherState`](#record-WeatherState) | resource | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it. |
+| [`og.WeatherState`](#record-WeatherState) | resource | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it. |
 | [`og.LightningStrike`](#record-LightningStrike) | event | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
 | [`og.Wind`](#record-Wind) | resource | The wind the renderer sways vegetation with: og.TerrainScatter copies and their impostor cards, og.Grass blades, swaying trees, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Where the renderer can (RenderCapabilities.compute) it simulates the wind as one field around the camera that every one of them reads, so a gust front crosses grass, copies and trees together, eddies (`turbulence`), carries og.WindMotor pushes, and vegetation springs into a gust and settles after it; og.Model sway keeps the wind's own gusts. Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind). |
@@ -72,7 +72,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 11290</sub>
+<sub>`api.ogt` line 11315</sub>
 
 ## Components, resources and events
 
@@ -187,7 +187,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 10443</sub>
+<sub>`api.ogt` line 10449</sub>
 
 <a id="record-Sky"></a>
 
@@ -294,7 +294,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 10525</sub>
+<sub>`api.ogt` line 10531</sub>
 
 <a id="record-DayNight"></a>
 
@@ -376,7 +376,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 10600</sub>
+<sub>`api.ogt` line 10606</sub>
 
 <a id="record-PhysicalSky"></a>
 
@@ -433,7 +433,7 @@ resource PhysicalSky {
 }
 ```
 
-<sub>`api.ogt` line 10657</sub>
+<sub>`api.ogt` line 10663</sub>
 
 <a id="record-Clouds"></a>
 
@@ -530,7 +530,7 @@ resource Clouds {
 }
 ```
 
-<sub>`api.ogt` line 10692</sub>
+<sub>`api.ogt` line 10698</sub>
 
 <a id="record-Aurora"></a>
 
@@ -621,13 +621,13 @@ resource Aurora {
 }
 ```
 
-<sub>`api.ogt` line 10762</sub>
+<sub>`api.ogt` line 10768</sub>
 
 <a id="record-WeatherState"></a>
 
 ### `og.WeatherState` (resource)
 
-The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it.
 
 Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its value type is `WeatherState`.
 
@@ -640,12 +640,16 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 | `snowfall` | `number` | `0.01` | ≥ 0 | `m` | tunable | How much snow settles per minute of snowfall at intensity 1. |
 | `melt` | `number` | `0.004` | ≥ 0 | `m` | tunable | How much snow melts per minute when none falls (three times as fast in rain). |
 | `snowCover` | `number` | `0.08` | ≥ 0.001 | `m` | tunable | The snow depth at which it covers everything that can hold it (the renderer's full cover). |
+| `dustTime` | `number` | `600` | ≥ 0.1 | `s` | tunable | Seconds of a dust storm at intensity 1 to cover what faces up with dust and sand (dust 0 to 1). It stays when the storm ends; rain washes it off. |
+| `washTime` | `number` | `90` | ≥ 0.1 | `s` | tunable | Seconds of rain at intensity 1 to wash full dust off. |
+| `dustColor` | `Color` | `{ r: 0.62, g: 0.5, b: 0.36 }` | — | — | — | The colour of the settled dust and sand (linear): pale ochre by default; a red desert's or a grey quarry's. |
 | `lightning` | `number` | `0` | 0 … 600 | — | tunable | Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather. |
 | `lightningCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The centre of the area strikes land in (its y is the ground's height there). |
 | `lightningRadius` | `number` | `300` | ≥ 0 | `m` | tunable | The radius of that area: strikes land evenly over the disc. |
 | `shelterSize` | `number` | `64` | 0 … 1024 | `m` | tunable | The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line (the renderer's weather occlusion map, looking along the rain or snow as og.Weather's wind slants it); past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's, so a game that needs to know whether a place is sheltered casts a ray up against the colliders (og.physics). |
 | `wetness` | `number` | `0` | — | `ratio` | read only | How wet the ground is, 0 dry to 1 soaked (written by og.weather). |
 | `puddles` | `number` | `0` | — | `ratio` | read only | How far standing water has spread, 0 none to 1 (written by og.weather). |
+| `dust` | `number` | `0` | — | `ratio` | read only | How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather). |
 | `snowDepth` | `number` | `0` | — | `m` | read only | The depth of lying snow (written by og.weather). |
 | `strikes` | `number` | `0` | — | — | read only | Lightning strikes so far (written by og.weather). |
 | `lastStrike` | `number` | `0` | — | — | read only | The tick of the latest strike (0 before the first; written by og.weather). |
@@ -654,7 +658,7 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 
 ```ogt
 resource WeatherState {
-  doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it."
+  doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it."
   field soakTime f32 "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1)." {
     default 60
     min 0.1
@@ -697,6 +701,21 @@ resource WeatherState {
     unit m
     tunable true
   }
+  field dustTime f32 "Seconds of a dust storm at intensity 1 to cover what faces up with dust and sand (dust 0 to 1). It stays when the storm ends; rain washes it off." {
+    default 600
+    min 0.1
+    unit s
+    tunable true
+  }
+  field washTime f32 "Seconds of rain at intensity 1 to wash full dust off." {
+    default 90
+    min 0.1
+    unit s
+    tunable true
+  }
+  field dustColor Color "The colour of the settled dust and sand (linear): pale ochre by default; a red desert's or a grey quarry's." {
+    default 0.62 0.5 0.36
+  }
   field lightning f32 "Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather." {
     min 0
     max 600
@@ -727,6 +746,10 @@ resource WeatherState {
     readonly true
     unit ratio
   }
+  field dust f32 "How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather)." {
+    readonly true
+    unit ratio
+  }
   field snowDepth f32 "The depth of lying snow (written by og.weather)." {
     readonly true
     unit m
@@ -748,7 +771,7 @@ resource WeatherState {
 }
 ```
 
-<sub>`api.ogt` line 10825</sub>
+<sub>`api.ogt` line 10831</sub>
 
 <a id="record-LightningStrike"></a>
 
@@ -774,7 +797,7 @@ event LightningStrike {
 }
 ```
 
-<sub>`api.ogt` line 10919</sub>
+<sub>`api.ogt` line 10944</sub>
 
 <a id="record-Weather"></a>
 
@@ -836,7 +859,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10928</sub>
+<sub>`api.ogt` line 10953</sub>
 
 <a id="record-Wind"></a>
 
@@ -898,7 +921,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10968</sub>
+<sub>`api.ogt` line 10993</sub>
 
 <a id="record-WindMotor"></a>
 
@@ -935,7 +958,7 @@ component WindMotor {
 }
 ```
 
-<sub>`api.ogt` line 11023</sub>
+<sub>`api.ogt` line 11048</sub>
 
 <a id="record-Water"></a>
 
@@ -1210,7 +1233,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 11042</sub>
+<sub>`api.ogt` line 11067</sub>
 
 <a id="record-Water2D"></a>
 
@@ -1264,7 +1287,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 11258</sub>
+<sub>`api.ogt` line 11283</sub>
 
 ## Types
 
@@ -1291,7 +1314,7 @@ enum WindMotorKind {
 }
 ```
 
-<sub>`api.ogt` line 11009</sub>
+<sub>`api.ogt` line 11034</sub>
 
 ## Column kinds
 
@@ -1310,7 +1333,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>`api.ogt` line 11016</sub>
+<sub>`api.ogt` line 11041</sub>
 
 ## Constants
 
@@ -1326,28 +1349,28 @@ column WindMotorKind {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 10437</sub>
+<sub>`api.ogt` line 10443</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 10438</sub>
+<sub>`api.ogt` line 10444</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 10439</sub>
+<sub>`api.ogt` line 10445</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 10440</sub>
+<sub>`api.ogt` line 10446</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 10441</sub>
+<sub>`api.ogt` line 10447</sub>

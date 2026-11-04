@@ -59,8 +59,17 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
   let unlit = (u32(material.flags.w) & 2u) != 0u;
-  let metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, in.uv).b;
-  let roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, in.uv).g;
+  var metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, in.uv).b;
+  var roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, in.uv).g;
+  // Wet ground, streaks and puddles as the lit pass shades them
+  // (weather_surface.wgsl weather_gloss): reflections see the puddles as
+  // mirrors and their ripples, and the normal is the water's.
+  if (!unlit) {
+    let g = weather_gloss(clamp(roughness, 0.04, 1.0), metalness, n, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w);
+    roughness = g.s.roughness;
+    metalness = g.s.metallic;
+    o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);
+  }
   let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, unlit);
   // Above the reflectivity's 16 bits, the painterly filter's detail byte
   // (stylise.wgsl paint_detail): the material's paintDetail in 7 bits, bit 7

@@ -105,7 +105,14 @@ Every effect is off until the game turns it on, as data:
   `KHR_texture_transform`). A glTF with material variants
   (`KHR_materials_variants`) draws one per instance through
   `og.Model.variant`, an index into `GltfInfo.variants`. A non-uniform `scale` shades correctly. Set `sheenColor`
-  with `sheen` (black is no sheen); `thickness` is in the mesh's units and
+  with `sheen` (black is no sheen). Cloth: velvet is a dark base with a
+  bright, tight sheen (`sheenRoughness` 0.3 to 0.5, `sheenColor` well above
+  the base, `roughness` 1) that lights the folds' edges; cotton, wool and
+  canvas a base near their colour with a pale, rough sheen
+  (`sheenRoughness` 0.8 to 1, `sheenColor` a little lighter than the base)
+  for a soft fuzz with no highlight; silk and satin are `anisotropy`, not
+  sheen. The sheen conserves energy (what it reflects is taken from the
+  cloth under it), so a white sheen never makes cloth glow. `thickness` is in the mesh's units and
   `attenuationDistance` 0 absorbs nothing. A transmissive material refracts
   only what was drawn before it (not other glass or water), and unlit and
   toon materials ignore the physical fields:
@@ -627,6 +634,23 @@ together with a probe.
   WEATHER_DUST | WEATHER_MIST, intensity, wind, radius }`: particles around
   the camera, the preset's fog (an enabled `og.Fog` wins) and dimmed light.
   With an orthographic camera the particles are 2D sprites on `layer`.
+- **Weather on surfaces** — name `og.WeatherState` (add it as a resource)
+  and the weather changes what it falls on, simulated in the tick so it
+  replays and gameplay can read it (`wetness`, `puddles`, `snowDepth`,
+  `dust`): rain soaks porous ground darker and glosses sealed surfaces
+  (paint, metal, glass), runs down walls in streaks and fills puddles in
+  the low parts that ripple and splash; when it stops the ground dries in
+  patches from the high spots (`dryTime`, `drainTime`). Snow settles on
+  what faces up, reaching steeper faces as it deepens (`snowfall`,
+  `snowCover`), and melts (`melt`). A `WEATHER_DUST` storm leaves dust and
+  sand on what faces up (`dustTime`, `dustColor`) until rain washes it off
+  (`washTime`). Roofs and canopies keep what is under them dry
+  (`shelterSize`). Meshes, terrain and grass all take it; a material's
+  relief comes from its `aoMap` (water and dust fill its dark crevices
+  first). Set `weathering: 0` on a material the weather must not touch
+  (an interior seen through a door, a screen, a lamp's glass), or between
+  0 and 1 for one that sheds some. For a scene that starts wet, write the
+  state's fields once at setup rather than waiting for rain.
 - **Water** — `og.Water` on an entity draws a surface on its xz plane
   (`size`, `shallow`/`deep` colours over `depthFade`, `foamWidth` where it
   meets geometry, `waveStrength`, `reflectivity`); with an

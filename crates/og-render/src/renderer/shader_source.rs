@@ -19,6 +19,7 @@ const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
 const PBR_LEAN_WGSL: &str = wgsl!("pbr_lean.wgsl");
 const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
+use crate::ibl::SHEEN_WGSL;
 /// `instance_matrix`: an instance's transform from its columns in the
 /// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
 /// points it moves are projected.
@@ -123,7 +124,7 @@ pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
 /// with the physical material group and fragment shader.
 pub(crate) fn physical_source(hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{SHEEN_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),

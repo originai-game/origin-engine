@@ -218,6 +218,11 @@ pub const SCENES: &[&str] = &[
     "weather-shelter-snow",
     "weather-shelter-rain",
     "weather-shelter-meshlet",
+    "weather-street-wet",
+    "weather-puddles",
+    "weather-snow-buildup",
+    "weather-dust-desert",
+    "materials-cloth",
     "aurora-arcs",
     "aurora-breakup",
     "live-sky",
@@ -1234,6 +1239,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::ocean_scenes::ocean_scene(name);
             g.frames = crate::ocean_scenes::WAKE_FRAMES;
             g.update = Some(crate::ocean_scenes::wake_update);
+            Ok(())
+        },
+        // Wave B: weather on surfaces (a rain-wet street, puddles drying,
+        // snow built up, a dusty desert) and velvet and cotton.
+        "weather-street-wet"
+        | "weather-puddles"
+        | "weather-snow-buildup"
+        | "weather-dust-desert"
+        | "materials-cloth" => |g, name| {
+            g.scene = crate::weather_scenes::weather_scene(name);
             Ok(())
         },
         "weather-rain" | "weather-snow" => |g, name| {

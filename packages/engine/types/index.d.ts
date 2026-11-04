@@ -6129,7 +6129,7 @@ export interface StandardMaterialDesc {
    */
   readonly clearcoatNormalScale?: Vector2;
   /**
-   * A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen: its strength, times sheenColor; 0 is none.
+   * A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a dark base, a bright sheenColor, sheenRoughness 0.3 to 0.5; cotton and wool: a pale sheenColor at sheenRoughness 0.8 to 1). Its strength, times sheenColor; 0 is none.
    *
    * @default 0
    * @range 0..1
@@ -6403,6 +6403,14 @@ export interface StandardMaterialDesc {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly paintDetail?: number;
+  /**
+   * How much og.WeatherState reaches this material: its wetness, rain streaks, puddles, snow and dust (1 all of it, 0 none). 0 for what the weather never touches: an indoor floor seen through a door, a screen, a hero kept clean, a surface a game wets itself; between for a coat that sheds some.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly weathering?: number;
 }
 
 /**
@@ -16479,7 +16487,7 @@ export interface Aurora {
 }
 
 /**
- * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+ * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it.
  *
  * The `WeatherState` resource (token `og.WeatherState`).
  */
@@ -16548,6 +16556,30 @@ export interface WeatherState {
    */
   snowCover: number;
   /**
+   * Seconds of a dust storm at intensity 1 to cover what faces up with dust and sand (dust 0 to 1). It stays when the storm ends; rain washes it off.
+   *
+   * @default 600
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  dustTime: number;
+  /**
+   * Seconds of rain at intensity 1 to wash full dust off.
+   *
+   * @default 90
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  washTime: number;
+  /**
+   * The colour of the settled dust and sand (linear): pale ochre by default; a red desert's or a grey quarry's.
+   *
+   * @default { r: 0.62, g: 0.5, b: 0.36 }
+   */
+  dustColor: Color;
+  /**
    * Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather.
    *
    * @range 0..600
@@ -16593,6 +16625,13 @@ export interface WeatherState {
    * @readonly written by the engine
    */
   readonly puddles: number;
+  /**
+   * How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   * @readonly written by the engine
+   */
+  readonly dust: number;
   /**
    * The depth of lying snow (written by og.weather).
    *
@@ -49907,9 +49946,9 @@ export declare namespace og {
    */
   const Aurora: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly activity: FieldSpec<"f32">; readonly curtains: FieldSpec<"u32">; readonly direction: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly energy: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly greenColor: FieldSpec<"Color">; readonly redColor: FieldSpec<"Color">; readonly nitrogenColor: FieldSpec<"Color"> }, Aurora>;
   /**
-   * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+   * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (meshes, terrain and grass; StandardMaterialDesc.weathering opts a material out): porous surfaces darken when wet and seal-smooth ones gloss, drying in patches from the high spots once the rain stops; rain runs down walls in streaks; puddles fill the hollows of level ground (a terrain's layer heights first) and ripple and splash in the rain; snow settles on what faces up (deeper snow reaching steeper faces), lifts a terrain's surface by its depth and melts away; dust and sand settle on what faces up and in the low parts; and a strike flashes the scene with a bolt at strikePosition. Roofs, canopies and overhangs keep what is under them dry and free of snow (shelterSize). Rendering never writes it.
    */
-  const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly shelterSize: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
+  const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly dustTime: FieldSpec<"f32">; readonly washTime: FieldSpec<"f32">; readonly dustColor: FieldSpec<"Color">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly shelterSize: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly dust: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
   /**
    * Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.
    */

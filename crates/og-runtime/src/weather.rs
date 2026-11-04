@@ -23,6 +23,7 @@ pub(crate) const RECORDS: [&str; 2] = [STATE, STRIKE];
 /// The kinds og.Weather.kind names (og-render's WEATHER_*).
 const RAIN: u64 = 1;
 const SNOW: u64 = 2;
+const DUST: u64 = 3;
 
 /// The inputs a tick of the state reads (og.Weather and og.WeatherState's
 /// own fields), the numbers it writes back.
@@ -31,13 +32,16 @@ pub(crate) struct Step {
     pub wetness: f32,
     pub puddles: f32,
     pub snow_depth: f32,
+    pub dust: f32,
 }
 
 /// The rules: rain soaks the ground over soakTime and, once it is more than
 /// half soaked, fills the puddles over puddleTime; without rain both dry
 /// (dryTime, drainTime). Snow settles at snowfall per minute and melts at
 /// melt per minute when none falls, three times as fast in rain; snow
-/// keeps the ground under it from drying no faster than it would.
+/// keeps the ground under it from drying no faster than it would. A dust
+/// storm settles dust over dustTime; it stays until rain washes it off
+/// over washTime.
 pub(crate) fn step(s: Step, state: &Value, kind: u64, intensity: f32, dt: f32) -> Step {
     let num = |k: &str, or: f32| state[k].as_f64().map_or(or, |v| v as f32);
     let rain = if kind == RAIN {
@@ -65,6 +69,11 @@ pub(crate) fn step(s: Step, state: &Value, kind: u64, intensity: f32, dt: f32) -
     } else {
         o.snow_depth -= dt * num("melt", 0.004).max(0.0) / 60.0 * (1.0 + 2.0 * rain);
     }
+    if kind == DUST {
+        o.dust += dt * intensity.clamp(0.0, 2.0) / num("dustTime", 600.0).max(0.1);
+    }
+    o.dust -= dt * rain / num("washTime", 90.0).max(0.1);
+    o.dust = o.dust.clamp(0.0, 1.0);
     o.wetness = o.wetness.clamp(0.0, 1.0);
     o.puddles = o.puddles.clamp(0.0, 1.0);
     o.snow_depth = o.snow_depth.max(0.0);
@@ -140,6 +149,7 @@ fn run(
             wetness: f(&s, "wetness"),
             puddles: f(&s, "puddles"),
             snow_depth: f(&s, "snowDepth"),
+            dust: f(&s, "dust"),
         },
         &s,
         w["kind"].as_u64().unwrap_or(0),
@@ -149,6 +159,7 @@ fn run(
     s["wetness"] = json!(next.wetness);
     s["puddles"] = json!(next.puddles);
     s["snowDepth"] = json!(next.snow_depth);
+    s["dust"] = json!(next.dust);
     let rate = f(&s, "lightning").max(0.0);
     if rate > 0.0 {
         let mut rng = og_core::Rng::default();
@@ -217,6 +228,22 @@ mod tests {
         assert!((thawed.snow_depth - 0.012).abs() < 1e-4, "{thawed:?}");
         let rained = run_for(snow, RAIN, 1.0, 120);
         assert!(rained.snow_depth < 1e-4);
+    }
+
+    /// A dust storm covers the ground in ten minutes (five at intensity 2)
+    /// and the dust stays through dry weather and snow; a minute and a
+    /// half of rain washes it off, half of it in 45 s.
+    #[test]
+    fn a_dust_storm_settles_dust_that_stays_until_rain_washes_it() {
+        let half = run_for(Step::default(), DUST, 1.0, 300);
+        assert!((half.dust - 0.5).abs() < 0.01, "{half:?}");
+        let full = run_for(Step::default(), DUST, 2.0, 300);
+        assert!(full.dust > 0.999 && full.wetness == 0.0, "{full:?}");
+        let kept = run_for(run_for(full, 0, 1.0, 600), SNOW, 1.0, 60);
+        assert!(kept.dust > 0.999, "{kept:?}");
+        let washing = run_for(full, RAIN, 1.0, 45);
+        assert!((washing.dust - 0.5).abs() < 0.01, "{washing:?}");
+        assert!(run_for(full, RAIN, 1.0, 90).dust < 1e-3);
     }
 
     /// Strikes land evenly in the disc (each quadrant about a quarter, none

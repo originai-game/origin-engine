@@ -42,6 +42,14 @@ fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
   return textureSample(t, material_sampler, at);
 }
 
+// How high a point lies in the material's relief for the weather (0 a
+// hollow, 1 a crest): from its AO map, whose occluded texels are its
+// crevices; 0.5 (none known) without one.
+fn weather_cavity(uv: vec2<f32>) -> f32 {
+  if (material.flags.y < 0.0) { return 0.5; }
+  return 0.2 + 0.6 * material_sample(ao_tex, UV_AO, uv).r;
+}
+
 // A toon metal's reflection as bands: the environment along the reflected
 // ray at the roughness's level, its brightness k against the flat colour
 // (toon ambient's: the reflection straight up at the roughest level),
@@ -312,8 +320,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
     s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   }
-  // Rain, puddles and snow (weather_surface.wgsl): the frame's uniforms only.
-  let weathered = weather_surface(s, n, normalize(n_vertex * face), in.world_pos);
+  // Rain, streaks, puddles, snow and dust (weather_surface.wgsl): the
+  // frame's uniforms, the material's weathering (uv[3].w) and its relief
+  // from the AO map, whose crevices hold water and dust first.
+  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, weather_cavity(uv), material.uv[3].w, 1.0);
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x;

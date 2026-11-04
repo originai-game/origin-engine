@@ -39,3 +39,4 @@ mod terrain;
 mod ui;
 mod upload;
 mod wasm;
+mod weather_surfaces;

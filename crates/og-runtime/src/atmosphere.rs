@@ -989,6 +989,9 @@ fn lightning_and_surfaces(
         rain,
         fall: fall.normalize_or(Vec3::NEG_Y),
         shelter: f(&st, "shelterSize", 64.0),
+        dust: f(&st, "dust", 0.0),
+        dust_color: color(&st["dustColor"], Vec3::new(0.62, 0.5, 0.36)),
+        snow_depth: f(&st, "snowDepth", 0.0),
         ..Default::default()
     });
     let strikes = u(&st, "strikes", 0);

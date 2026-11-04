@@ -28,6 +28,7 @@ pub mod stylise_scenes;
 pub mod target_scenes;
 pub mod terrain_scenes;
 pub mod ui_scenes;
+pub mod weather_scenes;
 pub mod wind_scenes;
 // Posed by og-anim (native only).
 #[cfg(not(target_arch = "wasm32"))]
