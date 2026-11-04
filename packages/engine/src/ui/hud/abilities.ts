@@ -311,9 +311,12 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       // One neutral ink at full strength: quiet means small, not faint (it reads at 4.5:1 on a light scene with its shadow);
       // state lives on the slot (the tints, the glow), never on the key's label.
       const capInk = token("sceneInk");
-      // At most about a quarter of the slot's height, so the key stays a quiet label and the art leads, but never
-      // under the smallest text at the player's text size (§15.2): the slot's cap alone held 16 px at 150 %.
-      const keyPx = Math.min(stepSize(keyStep).size, Math.max(size * 0.26, minText() * textScale()));
+      // At most about a quarter of the slot's height as it is at 100 % text, grown with the player's text size
+      // (§15.2), so the key stays a quiet label and the art leads: the slot grows only half as fast as the text, so a
+      // share of the slot itself held the key at 18 px where its step is 19.5 at 150 %.
+      const k = textScale();
+      const size0 = size / (1 + (Math.min(2, k) - 1) / 2);
+      const keyPx = Math.min(stepSize(keyStep).size, Math.max(size0 * 0.26 * k, minText() * k));
       const fit = shrunk(keyStep, keyPx, stepSize(keyStep).line);
       box("Hotkey", { height: px(Math.ceil(keyPx * 1.05)), width: px(Math.ceil(Math.max(keyPx, keyText.length * keyPx * 0.72) + 4)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
         if (keyIcon) icon("Glyph", keyIcon, Math.round(keyPx * 1.1), capInk);

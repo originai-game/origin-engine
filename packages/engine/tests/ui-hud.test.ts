@@ -451,6 +451,31 @@ test("in a light style the HUD's text over the scene is drawn light and its text
   e.destroy();
 });
 
+test("an ability slot's hotkey grows with the player's text size", () => {
+  // Wrong: the key capped by a share of the slot, which grows only half as fast as the text (18 px for 19.5 at 150 %).
+  const sizeAt = (scale: number): number => {
+    let configured = false;
+    const sys = defineSystem("HotkeyScale", {}, (_q, _t, world: World) => {
+      if (!configured) {
+        const style = og.load.style(world, "@styles/fantasy/style.ogt");
+        if (!style.ok) throw new Error(style.reason);
+        og.ui.configure(world, { style: style.value, textScale: scale });
+        configured = true;
+      }
+      og.ui.abilityBar("Bar", { slots: [{ key: "a", icon: "bolt", hotkey: "Q" }] } as never);
+    });
+    const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, { root: kit });
+    if (!r.ok) throw new Error(r.reason);
+    const e = r.value;
+    og.ui.previewViewport(e.world, { ...DESKTOP_SAFE, safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+    e.advance(4);
+    const f = JSON.parse((native() as unknown as { og_node_ui_frame(id: number): string }).og_node_ui_frame(e.id)) as UiFrameSnapshot;
+    e.destroy();
+    return f.texts.find((x) => x.text === "Q")!.size;
+  };
+  expect(sizeAt(1.5) / sizeAt(1)).toBeGreaterThan(1.45);
+});
+
 test("shooter.killfeed, resourceBar and scoreboard: newest first within max and time, a cap that warns, rows in order", () => {
   const entries = Array.from({ length: 7 }, (_, i) => ({ key: `k${i}`, killer: `P${i}`, victim: `V${i}`, weaponText: "R-301", at: 0, killerTeam: 0, victimTeam: 1, local: i === 6 }));
   const e = engineFor("HudLists", () => {
