@@ -23603,7 +23603,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes; docs/ui.md §15.2 holds every screen to 2.
+   * The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §15.2 holds every screen to 1.5, 200 % deferred.
    *
    * @default 1
    * @range 1..2
@@ -23829,7 +23829,7 @@ export interface UiTheme {
    */
   readonly reducedMotion: boolean;
   /**
-   * The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this.
+   * The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this.
    */
   readonly textScale: number;
   /**

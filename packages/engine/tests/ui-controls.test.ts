@@ -670,12 +670,12 @@ test("right to left and the pseudo-locale: rows run from the right, slider fills
   expect(overlaps()).toEqual([]);
 });
 
-test("200 % text: every control grows with the text and cuts none of it, on a desktop and a phone", () => {
+test("150 % text: every control grows with the text and cuts none of it, on a desktop and a phone", () => {
   // Wrong: a row, a cap or a knob sized in fixed pixels around its text, so at the largest text size it clips.
   const ui = native() as unknown as { og_node_ui_frame(id: number): string };
   for (const [bp, w, h, coarse] of [["desktop", 1920, 2400, false], ["phonePortrait", 390, 2400, true]] as const) {
     const frames: UiFrameSnapshot[] = [];
-    for (const scale of [1, 2]) {
+    for (const scale of [1, 1.5]) {
       const engine = run((wd) => gallery((s) => s, wd), Math.min(640, w - 32), kit, defineJump);
       og.ui.previewViewport(engine.world, { width: w, height: h, dpr: 1, coarsePointer: coarse, breakpoint: bp } as never);
       const font = og.load.font(engine.world, "fonts/NotoSansSC-Regular-subset.ttf");
@@ -685,8 +685,8 @@ test("200 % text: every control grows with the text and cuts none of it, on a de
       frames.push(JSON.parse(ui.og_node_ui_frame(engine.id)) as UiFrameSnapshot);
       engine.destroy();
     }
-    const cell: UiCell = { screen: "controls", breakpoint: bp, locale: "", style: "", scale: 200, highContrast: false };
-    expect(frames[1]!.texts.find((x) => x.text === "Volume")!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === "Volume")!.size * 2, 1);
+    const cell: UiCell = { screen: "controls", breakpoint: bp, locale: "", style: "", scale: 150, highContrast: false };
+    expect(frames[1]!.texts.find((x) => x.text === "Volume")!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === "Volume")!.size * 1.5, 1);
     const found = [...checkFrame(frames[1]!, cell), ...checkScale(frames[0]!, frames[1]!, cell)].filter((f) => f.rule === "text-scale" && f.severity === "error");
     expect(found.map((f) => `${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
     const els = frames[1]!.elements;

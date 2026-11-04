@@ -802,7 +802,7 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   // Nested in a page, as games and the kit place it: its window is found by its full path.
   const engine = run(() => og.ui.column("Page", { width: { kind: "grow" } } as never, () => og.ui.nodeGraph("Skills", { nodes, links, height: { kind: "fixed", px: 340 } } as never)), 358);
   og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
-  og.ui.configure(engine.world, { textScale: 2 });
+  og.ui.configure(engine.world, { textScale: 1.5 });
   engine.advance(30);
   const view = find(engine, (e) => e.path.endsWith("Skills/Window/View"))!;
   const root = () => find(engine, (e) => e.path.endsWith("Canvas/Node#0"))!;
@@ -818,7 +818,7 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   {
     const e2 = run(() => og.ui.column("Page", { width: { kind: "grow" } } as never, () => og.ui.nodeGraph("Skills", { nodes, links, selected: "guard", height: { kind: "fixed", px: 340 } } as never)), 358);
     og.ui.previewViewport(e2.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
-    og.ui.configure(e2.world, { textScale: 2 });
+    og.ui.configure(e2.world, { textScale: 1.5 });
     e2.advance(30);
     const v2 = find(e2, (e) => e.path.endsWith("Skills/Window/View"))!;
     const sel = find(e2, (e) => e.path.endsWith("Canvas/Node#2"))!;
@@ -1024,7 +1024,7 @@ test("right to left: breadcrumbs, tabs and the calendar's arrows run from the ri
 
 // ── 200 % text ──────────────────────────────────────────────────────────
 
-test("200 % text: the containers, navigation and data components grow with the text and cut none of it, on a desktop and a phone", () => {
+test("150 % text: the containers, navigation and data components grow with the text and cut none of it, on a desktop and a phone", () => {
   // Wrong: a part sized in fixed pixels around its text (a row, a chip, a header), so at the
   // player's largest text size it clips, or a text drawn at a fixed size the scale never reaches.
   const ui = native() as unknown as { og_node_ui_frame(id: number): string };
@@ -1064,7 +1064,7 @@ test("200 % text: the containers, navigation and data components grow with the t
   // Tall surfaces: everything is laid out on screen, nothing scrolled away.
   for (const [bp, w, h, coarse, build, probe] of [["desktop", 1280, 2400, false, nav, "Equipment"], ["desktop", 1280, 3000, false, data, "Attack"], ["phonePortrait", 390, 2400, true, nav, "Equipment"], ["phonePortrait", 390, 3000, true, data, "Attack"]] as const) {
     const frames: UiFrameSnapshot[] = [];
-    for (const scale of [1, 2]) {
+    for (const scale of [1, 1.5]) {
       const engine = run(build, Math.min(640, w - 32), kit);
       og.ui.previewViewport(engine.world, { width: w, height: h, dpr: 1, coarsePointer: coarse, breakpoint: bp } as never);
       // A font, so text is measured as drawn (without one og-ui estimates and draws none).
@@ -1075,8 +1075,8 @@ test("200 % text: the containers, navigation and data components grow with the t
       frames.push(JSON.parse(ui.og_node_ui_frame(engine.id)) as UiFrameSnapshot);
       engine.destroy();
     }
-    const cell: UiCell = { screen: "components", breakpoint: bp, locale: "", style: "", scale: 200, highContrast: false };
-    expect(frames[1]!.texts.find((x) => x.text === probe)!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === probe)!.size * 2, 1);
+    const cell: UiCell = { screen: "components", breakpoint: bp, locale: "", style: "", scale: 150, highContrast: false };
+    expect(frames[1]!.texts.find((x) => x.text === probe)!.size).toBeCloseTo(frames[0]!.texts.find((x) => x.text === probe)!.size * 1.5, 1);
     const found = [...checkFrame(frames[1]!, cell), ...checkScale(frames[0]!, frames[1]!, cell)].filter((f) => f.rule === "text-scale" && f.severity === "error");
     expect(found.map((f) => `${f.paths.join(" × ")}: ${f.measured}`)).toEqual([]);
     // And no text spills out of the part that holds it (a fixed-height row its text outgrew,

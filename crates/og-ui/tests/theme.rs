@@ -249,10 +249,10 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
     );
     // The text scale multiplies over the unit.
     assert_eq!(
-        frame(hd, &|t| t.text_scale = 2.0, InputFrame::default())
+        frame(hd, &|t| t.text_scale = 1.5, InputFrame::default())
             .2
             .0,
-        body * 3.0
+        body * 2.25
     );
 }
 

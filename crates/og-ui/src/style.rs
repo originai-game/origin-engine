@@ -411,6 +411,11 @@ impl Breakpoint {
     }
 }
 
+/// The largest player text scale (docs/ui.md §15.2): 150 %, the bar every
+/// screen is held to, until 200 % returns as its own batch (the owner,
+/// 2026-11-04). A larger UiDesc.textScale lays out at this.
+pub const MAX_TEXT_SCALE: f32 = 1.5;
+
 /// Everything a widget reads its look from: a style's values and its art.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Theme {
@@ -626,13 +631,13 @@ impl Theme {
         t
     }
 
-    /// This theme with its type ramp at `text_scale` (clamped to 1 to 2):
-    /// every step's size and leadings scaled, whatever scale the ramp
-    /// carried before.
+    /// This theme with its type ramp at `text_scale` (clamped to 1 to
+    /// [`MAX_TEXT_SCALE`]): every step's size and leadings scaled, whatever
+    /// scale the ramp carried before.
     pub fn to_text_scale(self) -> Theme {
         let mut t = self;
         let s = if t.text_scale.is_finite() {
-            t.text_scale.clamp(1.0, 2.0)
+            t.text_scale.clamp(1.0, MAX_TEXT_SCALE)
         } else {
             1.0
         };

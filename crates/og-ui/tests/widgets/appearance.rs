@@ -372,20 +372,20 @@ fn text_scale_grows_every_text_and_the_layout_around_it() {
         (texts, l, b)
     };
     let (t1, l1, b1) = run(1.0);
-    let (t2, l2, b2) = run(2.0);
+    let (t2, l2, b2) = run(1.5);
     assert_eq!(t1.len(), 2);
     assert_eq!(t2.len(), 2);
     for (a, b) in t1.iter().zip(&t2) {
         assert!(
-            (b.0 - 2.0 * a.0).abs() < 0.01,
-            "every text twice its size: {} then {}",
+            (b.0 - 1.5 * a.0).abs() < 0.01,
+            "every text half again its size: {} then {}",
             a.0,
             b.0
         );
     }
     assert!(
-        l2.height >= 2.0 * l1.height - 0.5,
-        "the label's line box doubles: {} then {}",
+        l2.height >= 1.5 * l1.height - 0.5,
+        "the label's line box grows as much: {} then {}",
         l1.height,
         l2.height
     );
@@ -404,8 +404,8 @@ fn text_scale_grows_every_text_and_the_layout_around_it() {
         clip.height >= bounds.height - 0.5,
         "and not clipped: {bounds:?} under {clip:?}"
     );
-    // Out of range is clamped: 3 draws as 2.
-    let (t3, _, _) = run(3.0);
+    // Out of range is clamped to the bar (200 % deferred): 2 draws as 1.5.
+    let (t3, _, _) = run(2.0);
     assert!((t3[0].0 - t2[0].0).abs() < 0.01);
 }
 

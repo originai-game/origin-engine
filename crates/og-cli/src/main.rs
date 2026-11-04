@@ -162,7 +162,7 @@ commands:
                       the contract or no look, 3 off it
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
-      [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S]
+      [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]
       [--out DIR] [--json]
                       lay each screen (its commands, or show:<name>; without --screen every screen
                       project.ogt's ui { screen \"<name>\" \"<commands>\" } and screens blocks declare,

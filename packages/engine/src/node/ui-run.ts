@@ -11,7 +11,7 @@
 //       [--screen <name>[=<commands>]]... [--show <template, default show:{screen}>]
 //       [--styles a,b] [--style-cmd <template, default style:{style}>]
 //       [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,ja,ar]
-//       [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,t,...] [--json]
+//       [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,t,...] [--json]
 //
 // A screen's commands are `t:action[:args];...` from the cell's start (a
 // bare action is at 0); without a screen the game's first screen is the
@@ -114,7 +114,7 @@ async function main(): Promise<void> {
   // add no length) unless --scales asks for every cell; a preview draws
   // 100 % unless asked.
   const scalesGiven = opt("--scales") !== undefined;
-  const scales = list("--scales", mode === "check" ? "100,200" : "100").map(Number);
+  const scales = list("--scales", mode === "check" ? "100,150" : "100").map(Number);
   const settle = Number(opt("--settle") ?? 0.8);
   const highContrast = argv.includes("--high-contrast");
 

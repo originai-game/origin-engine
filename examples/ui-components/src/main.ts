@@ -8,7 +8,7 @@
 //   viewport:<desktop|ultrawide|tablet|phone|landscape>  (og.ui.previewViewport; render at the matching --size)
 //   lang:<en|ar|pseudo>     ar lays out right to left; pseudo is 40 % longer, accented and bracketed
 //   style:<prototype|scifi|fantasy|pixel|tactical|broadcast|storybook>
-//   text:<percent>          the player's text size, 100 to 200 (§15.2 holds every screen to 200)
+//   text:<percent>          the player's text size, 100 to 150 (§15.2 holds every screen to 150; 200 deferred)
 //   act:<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>
 //   reset   every act forgotten, the clock of the screen started again
 //
@@ -55,7 +55,7 @@ const state = {
    * with that frame's tick.
    */
   queue: [] as Array<() => void>,
-  /** The player's text size (UiDesc.textScale), 1 to 2. */
+  /** The player's text size (UiDesc.textScale), 1 to 1.5. */
   textScale: 1,
 };
 
@@ -918,7 +918,7 @@ export default og.game({
     viewport: { usage: "<desktop|ultrawide|tablet|phone|landscape>", doc: "Lay the UI out for that surface (og.ui.previewViewport)." },
     lang: { usage: "<en|ar|pseudo>", doc: "English, Arabic (right to left) or the pseudo-locale (40 % longer, accented, bracketed)." },
     style: { usage: `<${STYLES.join("|")}>`, doc: "Dress the components in a built-in style." },
-    text: { usage: "<percent>", doc: "The player's text size, 100 to 200 (og.ui.configure's textScale)." },
+    text: { usage: "<percent>", doc: "The player's text size, 100 to 150 (og.ui.configure's textScale; 200 deferred)." },
     act: { usage: "<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>", doc: "Something happens: a hit, a crit, a ping, a cooldown ending, a magazine running dry." },
     reset: { usage: "", doc: "Forget every act and start the screen's clock again." },
   },

@@ -263,8 +263,8 @@ test("a crowd of tags on a phone never overlaps, keeps inside the safe area, and
   const PHONE = { width: 390, height: 844, dpr: 1, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
   const infos: Record<string, { alpha: number }> = {};
   const e = engineFor("WorldCrowd", (w) => {
-    // At 200 % text the stack outgrows the room above it: it must not climb off the top.
-    og.ui.configure(w, { textScale: 2 });
+    // At 150 % text the stack outgrows the room above it: it must not climb off the top.
+    og.ui.configure(w, { textScale: 1.5 });
     for (let i = 0; i < 6; i++) infos[`P${i}`] = og.ui.nameplate(`P${i}`, { ...point(0.2 + i * 0.12, 0, -6 - i * 0.2), name: "Ember Imp", level: "12", health: 0.5, reaction: "hostile" });
     for (let i = 0; i < 4; i++) infos[`L${i}`] = og.ui.lootLabel(`L${i}`, { ...point(0.1 * i, 0, -5), name: "Linen Scraps", rarity: "uncommon", count: 3 }).info;
     infos.W = og.ui.waypoint("W", { ...point(2.4, 1.6, -6.2), kind: "objective", label: "Hold" });

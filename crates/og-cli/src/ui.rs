@@ -38,7 +38,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
-const USAGE: &str = "usage: og ui slots [project] [--json]\n       og ui eject <screen> [project] [--force]\n       og ui eject --list [project]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,200] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui slots [project] [--json]\n       og ui eject <screen> [project] [--force]\n       og ui eject --list [project]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
