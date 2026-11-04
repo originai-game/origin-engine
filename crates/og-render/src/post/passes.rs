@@ -136,7 +136,10 @@ impl PostPasses {
         // depth edges; placeholders without a prepass) and the object
         // pass's positions (object space; a zero texel without one) and
         // the outline target's object ids (the paint pass's object edges;
-        // black without a prepass).
+        // black without a prepass), then the conformed colours' hash table
+        // (stylise::conformed_table) and the scene before the stylise
+        // passes (the quantize pass's conformed test; the source again in
+        // the others).
         let stylise_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("stylise"),
             entries: &[
@@ -158,6 +161,15 @@ impl PostPasses {
                     },
                 ),
                 layout_entry(10, float_texture(false)),
+                layout_entry(
+                    11,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                ),
+                layout_entry(12, float_texture(false)),
             ],
         });
         let stylise_pl = pipeline_layout("stylise", &stylise_layout);

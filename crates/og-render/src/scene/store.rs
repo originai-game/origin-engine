@@ -55,6 +55,8 @@ impl RenderScene {
             luts: Vec::new(),
             lut_revisions: Vec::new(),
             palettes: Vec::new(),
+            conformed: Vec::new(),
+            conformed_revision: 0,
             palette_revisions: Vec::new(),
             environment_maps: Vec::new(),
             environment_map_revisions: Vec::new(),
@@ -942,6 +944,28 @@ impl RenderScene {
     pub fn palette(&self, handle: crate::PaletteHandle) -> Option<&crate::Palette> {
         self.contains_palette(handle)
             .then(|| &self.palettes[handle.index()])
+    }
+
+    /// Adds colours of art the cook already conformed to a look's palette
+    /// limits (a texture's own `<id>#palette`): the stylise quantiser
+    /// leaves a pixel of exactly one of them as drawn, neither posterised
+    /// nor dithered, and steps and dithers every other (lit, fogged or
+    /// unconformed materials), so the look's frame quantise stays the
+    /// fallback for what the cook did not conform.
+    pub fn add_conformed_colors(&mut self, colors: &[[u8; 3]]) {
+        let before = self.conformed.len();
+        self.conformed.extend_from_slice(colors);
+        self.conformed.sort_unstable();
+        self.conformed.dedup();
+        if self.conformed.len() != before {
+            self.conformed_revision += 1;
+        }
+    }
+
+    /// The conformed colours ([`Scene::add_conformed_colors`]) and the
+    /// set's revision.
+    pub fn conformed_colors(&self) -> (&[[u8; 3]], u64) {
+        (&self.conformed, self.conformed_revision)
     }
 
     /// Every slot's palette, by handle index (a removed slot holds no

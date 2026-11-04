@@ -996,7 +996,26 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         .insert(format!("texture:{id}"), i);
     link_index(eng, &id, handle);
     link_normal(eng, &id, handle);
+    link_conformed(eng, &id);
     Ok(i)
+}
+
+/// A conformed texture's own palette (the cook's `<id>#palette`, written
+/// where the art contract's maxColors or rampSteps cut it): its colours
+/// join the renderer's conformed set, so the look's frame quantise leaves
+/// this art as the cook made it and steps only what it did not conform.
+fn link_conformed(eng: &Engine, id: &str) {
+    let name = format!("{id}#palette");
+    let colors = {
+        let assets = eng.assets.borrow();
+        let Ok((bytes, bundle)) = assets.blob(&name) else {
+            return;
+        };
+        bundle.palette(&name, bytes.bytes())
+    };
+    if let Ok(colors) = colors {
+        eng.render.borrow_mut().scene.add_conformed_colors(&colors);
+    }
 }
 
 /// A 2D texture's normal map: the cook's `<id>#normal` beside it (a

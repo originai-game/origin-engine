@@ -2210,6 +2210,18 @@ built. `RenderCapabilities.stylise` names what this renderer draws
     (binding 6) and repeated per dither cell: every 8 × 8 block within 8.6
     levels of the middle (31 for the same values shuffled), no
     4-neighbours within 8 levels.
+    A pixel whose drawn colour (the scene before the stylise passes, the
+    chain's head, binding 12) lies within 6 sRGB levels a channel of a
+    colour of art the cook conformed (a texture's own `<id>#palette`,
+    which the runtime adds with `RenderScene::add_conformed_colors` as it
+    loads the texture; the reach covers block compression and filtering)
+    is left as drawn: posterise and dither step only what the cook did not
+    conform (lit and fogged tones, plain or runtime-loaded materials), so
+    a look stays the fallback on any material while conformed art keeps
+    its flat fields. The set is a spatial hash of sRGB bytes bucketed by
+    sixteens (`stylise::conformed_table`, an R32Uint square at binding
+    11), at most eight buckets probed per pixel; a 1 × 1 empty table
+    skips it.
 - **Surface space** (`StyliseSpace::Surface`: `Paint::canvas_space`,
   `Hatching::space`, `Halftone::space`; the IDL's `paintCanvasSpace`,
   `hatchingSpace`, `halftoneSpace`, capability `surfaceSpace`): the

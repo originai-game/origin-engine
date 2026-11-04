@@ -876,6 +876,19 @@ impl Renderer {
         );
         let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
+        let conformed = {
+            let (size, bytes) = crate::stylise::conformed_table(&[]);
+            (
+                0,
+                crate::post::texture_with_data(
+                    &device,
+                    &queue,
+                    size,
+                    wgpu::TextureFormat::R32Uint,
+                    &bytes,
+                ),
+            )
+        };
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
         let terrain = terrain::TerrainRenderer::new(
             &device,
@@ -1100,6 +1113,7 @@ impl Renderer {
             array_maps: None,
             transmission: None,
             environment: None,
+            conformed,
             default_white,
             default_normal,
             white_sprite_group,

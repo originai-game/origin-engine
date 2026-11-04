@@ -150,13 +150,18 @@ impl FrameGraph {
         post: &PostPasses,
         persistent: &Persistent,
         lut: (Option<(u64, usize)>, &wgpu::TextureView),
-        stylise: (&wgpu::TextureView, &wgpu::TextureView, u64),
+        stylise: (
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            u64,
+        ),
     ) -> Result<(), GraphError> {
         if self.plan.is_some()
             && passes == self.passes
             && self.cfg.as_ref() == Some(cfg)
             && self.lut_key == lut.0
-            && self.stylise_key == stylise.2
+            && self.stylise_key == stylise.3
         {
             return Ok(());
         }
@@ -206,13 +211,13 @@ impl FrameGraph {
             &passes,
             cfg,
             lut.1,
-            (stylise.0, stylise.1),
+            (stylise.0, stylise.1, stylise.2),
         ));
         self.generation += 1;
         self.passes = passes;
         self.cfg = Some(*cfg);
         self.lut_key = lut.0;
-        self.stylise_key = stylise.2;
+        self.stylise_key = stylise.3;
         self.plan = Some(plan);
         Ok(())
     }
@@ -226,7 +231,7 @@ impl FrameGraph {
         frame: &[FramePass],
         cfg: &GraphConfig,
         lut: &wgpu::TextureView,
-        stylise: (&wgpu::TextureView, &wgpu::TextureView),
+        stylise: (&wgpu::TextureView, &wgpu::TextureView, &wgpu::TextureView),
     ) -> Bindings {
         fn tex(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
             wgpu::BindingResource::TextureView(v)
@@ -336,8 +341,15 @@ impl FrameGraph {
                     .unwrap_or(&passes.black),
             )
         };
+        let head = super::plan::stylise_head(&chain_passes(frame)).map(ldr_name);
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
+            // The scene before the stylise passes, which the quantize pass
+            // tests for conformed colours (the others bind their source).
+            let scene = match (&head, p) {
+                (Some(h), FramePass::Quantize) => self.view(h),
+                _ => source,
+            };
             let (depth, normals, object, ids) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
                 group(
@@ -395,6 +407,8 @@ impl FrameGraph {
                         tex(normals),
                         tex(object),
                         tex(ids),
+                        tex(stylise.2),
+                        tex(scene),
                     ],
                 )
             };

@@ -64,6 +64,8 @@ struct Stylise {
 @group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
 @group(0) @binding(9) var pre_object: texture_2d<u32>;  // the object pass (stylise_object.wgsl): position bits, packed normal; 0 without
 @group(0) @binding(10) var pre_outline: texture_2d<f32>;  // the prepass's outline target (Rgba8Unorm): a the object id; 0 without
+@group(0) @binding(12) var scene_colour: texture_2d<f32>;  // the scene before the stylise passes (the quantize pass's conformed test; the source in the others)
+@group(0) @binding(11) var conformed_colors: texture_2d<u32>;  // the conformed colours' hash table (stylise.rs conformed_table); 1 x 1 without
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
   let lo = c * 12.92;
@@ -737,18 +739,21 @@ fn plate(p: vec2<f32>, surf: Surf, osurf: Surf, t: f32, angle: f32, shift: vec2<
 // display space), each printed as its own dot screen at the classic
 // angles (black at halftoneAngle, cyan 30 degrees before it, magenta 30
 // after, yellow 45 before: 15, 75, 0 and 45 at the default), the plates
-// offset by the misregistration, the inks multiplied on white paper.
-fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>) -> vec3<f32> {
+// offset by the misregistration, the inks multiplied on `paper` (white,
+// or the colour itself under Ben-Day dots), each plate's ink scaled by
+// `reach` (1, or ben_day_reach so its dots never touch).
+fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>, paper: vec3<f32>, reach: f32) -> vec3<f32> {
   let e = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
   let k = 1.0 - max(e.r, max(e.g, e.b));
   let cmy = select((vec3<f32>(1.0) - e - k) / max(1.0 - k, 1e-4), vec3<f32>(0.0), k > 0.9999);
   let a = st.halftone.z;
   let r = st.print.y;
-  let dc = plate(p, surf, osurf, 1.0 - cmy.x, a - 0.5235988, vec2<f32>(r, 0.0));
-  let dm = plate(p, surf, osurf, 1.0 - cmy.y, a + 0.5235988, vec2<f32>(0.0, r));
-  let dy = plate(p, surf, osurf, 1.0 - cmy.z, a - 0.7853982, vec2<f32>(-0.7071, -0.7071) * r);
-  let dk = plate(p, surf, osurf, 1.0 - k, a, vec2<f32>(0.0));
-  let printed = vec3<f32>(1.0 - dc, 1.0 - dm, 1.0 - dy) * (1.0 - dk);
+  let dc = plate(p, surf, osurf, 1.0 - cmy.x * reach, a - 0.5235988, vec2<f32>(r, 0.0));
+  let dm = plate(p, surf, osurf, 1.0 - cmy.y * reach, a + 0.5235988, vec2<f32>(0.0, r));
+  let dy = plate(p, surf, osurf, 1.0 - cmy.z * reach, a - 0.7853982, vec2<f32>(-0.7071, -0.7071) * r);
+  let dk = plate(p, surf, osurf, 1.0 - k * reach, a, vec2<f32>(0.0));
+  let ground = srgb_encode(clamp(paper, vec3<f32>(0.0), vec3<f32>(1.0)));
+  let printed = ground * vec3<f32>(1.0 - dc, 1.0 - dm, 1.0 - dy) * (1.0 - dk);
   return srgb_decode(clamp(printed, vec3<f32>(0.0), vec3<f32>(1.0)));
 }
 
@@ -757,6 +762,13 @@ fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>) -> vec3<f32> {
 // or only the highlights. The shade is the darkest third of the tones and
 // the highlights the lightest, each with a soft step: a mid-toned field
 // in the light (a lawn, a crate) is the paper's, not dotted over.
+// How much of its ink a plate prints as dots under a halftoneRegion
+// (Ben-Day): a dot's radius is (1 - tone) * 0.72 of the cell, so at 0.55
+// the darkest dot is 0.4 of the cell and never touches its neighbours.
+// The shade is the darkest tones, where full-tone dots would merge into
+// ink with a grid of paper holes between them: a checker, not dots.
+const BEN_DAY_REACH: f32 = 0.55;
+
 fn halftone_region(t: f32) -> f32 {
   if (st.print.z > 1.5) { return smoothstep(0.6, 0.75, t); }
   if (st.print.z > 0.5) { return 1.0 - smoothstep(0.25, 0.4, t); }
@@ -809,13 +821,21 @@ fn lines(in: VsOut) -> vec3<f32> {
     }
   }
   if (st.halftone.x > 0.0) {
+    // Over every tone the dots reproduce the tone on white paper, merging
+    // in the darks as print does. Under a region they are Ben-Day dots: a
+    // tint printed over the region's own colour (lightened a little, so
+    // the dots carry the shade), never touching, so a flat shade stays
+    // one colour with separate dots on it.
+    let region = st.print.z > 0.5;
+    let reach = select(1.0, BEN_DAY_REACH, region);
+    let ground = select(vec3<f32>(1.0), mix(c, vec3<f32>(1.0), 0.25), region);
     var printed: vec3<f32>;
     if (st.print.x > 0.5) {
-      printed = mix(c, cmyk(p, surf, osurf, c), st.halftone.x);
+      printed = mix(c, cmyk(p, surf, osurf, c, ground, reach), st.halftone.x);
     } else {
       // Dots on a rotated grid, larger where the image is darker.
-      let dot_cover = plate(p, surf, osurf, t, st.halftone.z, vec2<f32>(0.0));
-      let paper = mix(c, vec3<f32>(1.0), st.halftone.x);
+      let dot_cover = plate(p, surf, osurf, 1.0 - (1.0 - t) * reach, st.halftone.z, vec2<f32>(0.0));
+      let paper = mix(c, ground, st.halftone.x);
       printed = mix(paper, st.halftone_color.rgb, dot_cover * st.halftone.x);
     }
     c = mix(c, printed, halftone_region(t));
@@ -970,6 +990,42 @@ fn dither_at(pos: vec2<f32>) -> f32 {
   return threshold(vec2<u32>(pos / max(st.quantize.w, 1.0)));
 }
 
+// Whether `c` is a colour the cook put conformed art on (a texture's own
+// palette, Scene::add_conformed_colors), within CONFORMED_REACH sRGB
+// levels on every channel (block compression and filtering move a flat
+// conformed field by a few): the table of stylise.rs conformed_table,
+// colours bucketed by sixteens per channel, so the reach round `c` spans
+// at most two buckets a channel; each bucket's run of slots is walked
+// from its Fibonacci slot to an empty one. A lit or fogged tone, or a
+// plain material's gradient, lies farther and is quantised.
+const CONFORMED_REACH: i32 = 6;
+
+fn conformed(c: vec3<f32>) -> bool {
+  let size = textureDimensions(conformed_colors).x;
+  if (size < 2u) { return false; }
+  let e = vec3<i32>(round(srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0))) * 255.0));
+  let lo = max(e - CONFORMED_REACH, vec3<i32>(0)) >> vec3<u32>(4u);
+  let hi = min(e + CONFORMED_REACH, vec3<i32>(255)) >> vec3<u32>(4u);
+  let slots = size * size;
+  let bits = countTrailingZeros(slots);
+  for (var r = lo.x; r <= hi.x; r++) {
+    for (var g = lo.y; g <= hi.y; g++) {
+      for (var b = lo.z; b <= hi.z; b++) {
+        let bucket = u32((r << 8u) | (g << 4u) | b);
+        var i = ((bucket + 1u) * 0x9E3779B1u) >> (32u - bits);
+        for (var n = 0u; n < slots; n++) {
+          let k = textureLoad(conformed_colors, vec2<i32>(i32(i % size), i32(i / size)), 0).r;
+          if (k == 0u) { break; }
+          let kc = vec3<i32>(i32((k >> 16u) & 255u), i32((k >> 8u) & 255u), i32(k & 255u));
+          if (all(abs(kc - e) <= vec3<i32>(CONFORMED_REACH))) { return true; }
+          i = (i + 1u) & (slots - 1u);
+        }
+      }
+    }
+  }
+  return false;
+}
+
 // Oklab, for the nearest palette colour by perceived difference.
 fn oklab(c: vec3<f32>) -> vec3<f32> {
   let l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
@@ -1010,6 +1066,18 @@ fn quantize(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   var c = load(px);
   let count = i32(st.offset.w);
+  // Conformed art as the cook made it (unlit, its own palette's colour,
+  // told by the scene's colour before ink, hatching or paint changed it):
+  // never posterised or dithered, only moved onto the frame's palette
+  // when the look has one. Everything else (lit tones, plain or
+  // unconformed materials) takes the look's posterise and dither below,
+  // the fallback that makes a look look like itself on any material.
+  let ssize = vec2<i32>(textureDimensions(scene_colour));
+  let drawn = textureLoad(scene_colour, clamp(px, vec2<i32>(0), ssize - 1), 0).rgb;
+  if (conformed(clamp(drawn, vec3<f32>(0.0), vec3<f32>(1.0)))) {
+    if (count > 0) { return nearest_palette(c, count).rgb; }
+    return c;
+  }
   // A pixel already on a palette colour (art the cook put on the palette,
   // unlit) is that colour: neither posterised nor dithered, so a flat
   // field of a palette colour stays flat. Only the tones light, fog or

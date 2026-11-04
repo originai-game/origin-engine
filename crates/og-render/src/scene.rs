@@ -76,6 +76,12 @@ pub struct RenderScene {
     /// Per LUT slot, bumped when it is filled again or emptied.
     lut_revisions: Vec<u64>,
     palettes: Vec<crate::Palette>,
+    /// The colours the cook put the drawn conformed art on (every
+    /// texture's own palette, `<id>#palette`), sorted and unique, and how
+    /// many times the set grew: the frame quantiser keeps a pixel of one
+    /// as drawn (`Scene::add_conformed_colors`).
+    conformed: Vec<[u8; 3]>,
+    conformed_revision: u64,
     /// Per palette, environment map and texture array: how many times its
     /// slot was refilled or emptied (the renderer uploads or frees it again).
     palette_revisions: Vec<u64>,

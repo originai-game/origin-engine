@@ -1,9 +1,9 @@
 type look
 version 1
 ---
-# Thin ink on every edge and light hatching in the shadows that keeps their
-# colour, over the cook's eight colours (ArtPalette): no frame posterise, whose
-# steps per channel turned the art's pale sky and tints grey.
+# Thin ink on every edge, light hatching in the shadows that keeps their
+# colour, and six tones: art the cook conformed (eight colours, ArtPalette)
+# keeps its own colours, so its pale sky and tints stay as drawn.
 name "Fine-line doodle worlds"
 ui "storybook"
 Stylise {
@@ -14,6 +14,7 @@ Stylise {
   hatchingLevels 2
   hatchingScale 5
   hatchingKeepColor true
+  posterize 6
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 4 to 8 light colours (or one ink); the preset's 1 px ink line.

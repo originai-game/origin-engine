@@ -2918,6 +2918,20 @@ impl Renderer {
             .and_then(|p| p.canvas)
             .and_then(|t| self.cache.textures.get(t.index()))
             .map_or(&self.default_white, |g| &g.view);
+        let (colors, revision) = scene.conformed_colors();
+        if revision != self.conformed.0 {
+            let (size, bytes) = crate::stylise::conformed_table(colors);
+            self.conformed = (
+                revision,
+                crate::post::texture_with_data(
+                    &self.device,
+                    &self.queue,
+                    size,
+                    wgpu::TextureFormat::R32Uint,
+                    &bytes,
+                ),
+            );
+        }
         let stylise_key = {
             // The slot's revision too: a palette added in a freed slot is
             // another texture under the same index.
@@ -2929,7 +2943,7 @@ impl Renderer {
                 .paint
                 .and_then(|p| p.canvas)
                 .map_or(u64::MAX, |t| t.index() as u64);
-            scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40)
+            scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40) ^ self.conformed.0.rotate_left(56)
         };
         self.write_frame_stylise_uniform(
             st,
@@ -3051,7 +3065,7 @@ impl Renderer {
                 &self.post,
                 &self.persistent,
                 (lut_key, lut_view),
-                (palette_view, canvas_view, stylise_key),
+                (palette_view, canvas_view, &self.conformed.1, stylise_key),
             )
             .map_err(|e| RenderError::Graph(e.to_string()))?;
         // FSR 3.1 in TAA's place (post/fsr.rs), where the quality asks for

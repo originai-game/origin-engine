@@ -67,6 +67,46 @@ pub struct Palette {
 /// The most colours a [`Palette`] holds.
 pub const MAX_PALETTE_COLORS: usize = 256;
 
+/// A colour's bucket in the conformed table: its sRGB bytes by sixteens,
+/// so a pixel within stylise.wgsl's `CONFORMED_REACH` (6 levels a
+/// channel: block compression and filtering move a flat conformed field
+/// by a few) of a colour lies in at most two buckets per channel.
+fn conformed_bucket(c: [u8; 3]) -> u32 {
+    (u32::from(c[0] >> 4) << 8) | (u32::from(c[1] >> 4) << 4) | u32::from(c[2] >> 4)
+}
+
+/// A bucket's first slot (Fibonacci hashing) in a table of `2^bits` slots.
+fn conformed_slot(bucket: u32, bits: u32) -> usize {
+    ((bucket + 1).wrapping_mul(0x9E37_79B1) >> (32 - bits)) as usize
+}
+
+/// The conformed colours ([`crate::Scene::add_conformed_colors`]) as the
+/// spatial hash stylise.wgsl's `conformed` probes: a square R32Uint
+/// texture of side `size` (a power of two, 1 for none), its slots in
+/// rows, each colour (its sRGB bytes with bit 24 set, so 0 is an empty
+/// slot) at its bucket's slot or the next empty one, at most half the
+/// slots full. Returns `(size, bytes)`.
+pub(crate) fn conformed_table(colors: &[[u8; 3]]) -> (u32, Vec<u8>) {
+    let mut size = 1u32;
+    while colors.len() as u64 * 2 > u64::from(size) * u64::from(size) {
+        size *= 2;
+    }
+    let slots = (size * size) as usize;
+    let mut table = vec![0u32; slots];
+    if !colors.is_empty() {
+        let bits = slots.trailing_zeros();
+        for &c in colors {
+            let mut i = conformed_slot(conformed_bucket(c), bits);
+            while table[i] != 0 {
+                i = (i + 1) & (slots - 1);
+            }
+            table[i] =
+                0x0100_0000 | (u32::from(c[0]) << 16) | (u32::from(c[1]) << 8) | u32::from(c[2]);
+        }
+    }
+    (size, table.iter().flat_map(|k| k.to_le_bytes()).collect())
+}
+
 /// A low-resolution render target scaled up by whole numbers with nearest
 /// filtering ([`PixelScale::fit`] places it in the output).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

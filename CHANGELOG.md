@@ -378,6 +378,17 @@ is one line here, written at the merge that changes
   `all`, `shade`, `highlight`) and `hatchingKeepColor`; all off at their
   zero value. `RenderCapabilities.stylise` adds `ditherSpace`,
   `halftoneCmyk` and `hatchingColor`.
+- **Conformed art skips the frame quantise; the quantise stays the
+  fallback.** Loading a texture adds the cook's `<id>#palette` to the
+  renderer's conformed colours (`RenderScene::add_conformed_colors`), and
+  Stylise's posterise and dither leave a pixel whose drawn colour lies
+  within 6 sRGB levels of one as drawn:
+  conformed pixel art keeps its flat fields, while plain, generated or
+  runtime-loaded materials still take the look's steps and dither. Under
+  `halftoneRegion` shade or highlight the dots are Ben-Day dots, a tint
+  over the region's colour at most 0.4 of a cell wide, so a deep shade no
+  longer merges into ink with a checker of paper holes. Behaviour change:
+  shade and highlight halftones, and the pixel and doodle looks, move.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

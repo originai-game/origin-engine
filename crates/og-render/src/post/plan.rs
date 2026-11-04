@@ -162,6 +162,19 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
     .collect()
 }
 
+/// The chain index of the first stylise pass (paint, lines, lens or
+/// quantize): the LDR target it reads holds the scene as drawn, before
+/// any stylisation, which the quantize pass reads beside its source to
+/// tell conformed art (`Scene::add_conformed_colors`) by its own colour.
+pub(crate) fn stylise_head(chain: &[FramePass]) -> Option<usize> {
+    chain.iter().position(|p| {
+        matches!(
+            p,
+            FramePass::Paint | FramePass::Lines | FramePass::Lens | FramePass::Quantize
+        )
+    })
+}
+
 /// The LDR target chain pass `i` reads (the tonemap writes `ldr.0`).
 pub(super) fn ldr_name(i: usize) -> String {
     format!("ldr.{i}")
@@ -1090,6 +1103,15 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 // The paint and lines passes bind the prepass
                 // (`Bindings::chain`).
                 let mut reads = vec![read.as_str()];
+                // The quantize pass also reads the scene before the
+                // stylise passes (conformed art keeps its colour).
+                let head = stylise_head(&chain).map(ldr_name);
+                if p == FramePass::Quantize
+                    && let Some(head) = head.as_deref()
+                    && head != read
+                {
+                    reads.push(head);
+                }
                 if p == FramePass::SmaaBlend {
                     reads.push("smaa.weights");
                 }

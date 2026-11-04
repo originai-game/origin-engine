@@ -8414,7 +8414,7 @@ export interface Stylise {
    */
   halftoneMisregistration: number;
   /**
-   * Which tones the halftone prints on: all, the shade only (the darkest third of the tones: Ben-Day dots in the shadows) or the highlights only (the lightest third).
+   * Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it.
    */
   halftoneRegion: HalftoneRegion;
   /**

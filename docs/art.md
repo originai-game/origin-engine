@@ -242,8 +242,15 @@ until its licence is read.
 
 ### 2.4 Run: what belongs to the frame, and a sprite's own
 
-The look's frame part stays as it is. New runtime pieces, all off at
-their zero value:
+The look's frame part stays as it is, and it is the fallback: a preset
+keeps its `posterize` and dither, so a game drawing the look over plain,
+generated or runtime-loaded materials still gets pixel steps, bands and
+tones. What the cook conformed is not stepped again: loading a texture
+adds its own palette (`<id>#palette`) to the renderer's conformed
+colours, and the quantise leaves a pixel whose drawn colour lies within
+6 sRGB levels of one as drawn (unlit conformed art keeps its flat fields
+through compression and filtering; a lit or fogged tone is quantised).
+New runtime pieces, all off at their zero value:
 
 - **Sprite outline** (`Sprite.outline`, `outlineColor`, from `ArtLine`
   when unset and the look sets one): a pixel outline drawn by the sprite

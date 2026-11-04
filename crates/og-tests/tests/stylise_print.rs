@@ -5,6 +5,16 @@
 //!   and a dither (the quantise keeps conformed art), while an off-palette
 //!   field still dithers. Old code posterised first: the field became a
 //!   checker of two cube corners, each on the palette.
+//! - Art the cook conformed (its colours given to the scene as conformed)
+//!   stays its colour under the look's posterize and dither with no frame
+//!   palette, also a few levels off as compression leaves it, while every
+//!   other tone (an unconformed material, light)
+//!   still steps and dithers: the frame quantise stays the fallback.
+//!   Old code posterised the art into a checker.
+//! - Shade-only halftone prints Ben-Day dots that never touch: the ground
+//!   between them is one connected field. Old code reproduced the
+//!   shade's full tone, so its dots merged into ink round a grid of
+//!   isolated paper holes, a checker.
 //! - The dither in surface space moves with the surface: an orthographic
 //!   camera panned by three logical pixels sees the same pattern three
 //!   pixels over; in screen space the pattern stays on the screen.
@@ -136,6 +146,149 @@ fn a_field_on_a_palette_colour_stays_flat_under_posterize_and_dither() {
                 .iter()
                 .any(|p| p.iter().zip(c).all(|(a, b)| a.abs_diff(*b) <= 2)),
             "{c:?} is a palette colour"
+        );
+    }
+}
+
+fn posterized(rgb: [u8; 3]) -> RenderScene {
+    let mut scene = field(rgb);
+    scene.stylise.quantize = Some(Quantize {
+        posterize: 4,
+        palette: None,
+        dither: DitherPattern::Bayer2,
+        dither_strength: 1.0,
+        dither_scale: 1,
+        space: StyliseSpace::Screen,
+    });
+    scene
+}
+
+#[test]
+fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    // Without the conformed set the look's quantise steps the art: the
+    // fallback a plain material gets.
+    let plain = colours(&frame(&mut renderer, &posterized(ART)));
+    println!("unconformed: {plain:?}");
+    assert!(
+        plain.len() >= 2,
+        "the art's tone is posterised and dithered: {plain:?}"
+    );
+    let mut scene = posterized(ART);
+    scene.add_conformed_colors(&[ART, [12, 40, 200]]);
+    let kept = colours(&frame(&mut renderer, &scene));
+    println!("conformed: {kept:?}");
+    assert_eq!(kept.len(), 1, "one colour, the art's: {kept:?}");
+    assert!(
+        kept[0].iter().zip(&ART).all(|(a, b)| a.abs_diff(*b) <= 2),
+        "the art's own colour {ART:?}: {kept:?}"
+    );
+    // A few levels off (block compression, filtering) is still the art:
+    // kept as drawn.
+    let mut near = posterized([113, 147, 104]);
+    near.add_conformed_colors(&[ART]);
+    let close = colours(&frame(&mut renderer, &near));
+    println!("near: {close:?}");
+    assert_eq!(
+        close.len(),
+        1,
+        "a compressed texel of the art is kept: {close:?}"
+    );
+    // A lit tone farther off is not conformed: stepped and dithered.
+    let mut lit = posterized([128, 160, 110]);
+    lit.add_conformed_colors(&[ART]);
+    let stepped = colours(&frame(&mut renderer, &lit));
+    println!("lit: {stepped:?}");
+    assert!(
+        stepped.len() >= 2,
+        "a lit tone of the art quantises: {stepped:?}"
+    );
+}
+
+/// The 4-connected components of the pixels where `inside` holds, and how
+/// many of them lie wholly inside the frame (touching none of its edges).
+fn components(px: &[u8], inside: impl Fn(&[u8]) -> bool) -> (usize, usize) {
+    let mut seen = vec![false; W * H];
+    let mut count = 0;
+    let mut enclosed = 0;
+    for start in 0..W * H {
+        if seen[start] || !inside(&px[start * 4..start * 4 + 4]) {
+            continue;
+        }
+        count += 1;
+        let mut edge = false;
+        let mut stack = vec![start];
+        seen[start] = true;
+        while let Some(i) = stack.pop() {
+            let (x, y) = (i % W, i / W);
+            edge |= x == 0 || y == 0 || x + 1 == W || y + 1 == H;
+            let mut near = Vec::new();
+            if x > 0 {
+                near.push(i - 1);
+            }
+            if x + 1 < W {
+                near.push(i + 1);
+            }
+            if y > 0 {
+                near.push(i - W);
+            }
+            if y + 1 < H {
+                near.push(i + W);
+            }
+            for j in near {
+                if !seen[j] && inside(&px[j * 4..j * 4 + 4]) {
+                    seen[j] = true;
+                    stack.push(j);
+                }
+            }
+        }
+        if !edge {
+            enclosed += 1;
+        }
+    }
+    (count, enclosed)
+}
+
+#[test]
+fn shade_halftone_prints_dots_that_never_touch() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    for mode in [HalftoneMode::Ink, HalftoneMode::Cmyk] {
+        // A deep shade, well inside the shade region's tones.
+        let mut scene = field([46, 40, 70]);
+        scene.stylise.halftone = Some(Halftone {
+            strength: 1.0,
+            size: 6.0,
+            angle_degrees: 45.0,
+            color: [0.0; 3],
+            space: StyliseSpace::Screen,
+            mode,
+            misregistration: 0.0,
+            region: HalftoneRegion::Shade,
+        });
+        let px = frame(&mut renderer, &scene);
+        let luma = |p: &[u8]| u32::from(p[0]) * 3 + u32::from(p[1]) * 6 + u32::from(p[2]);
+        let lo = px.chunks(4).map(luma).min().unwrap();
+        let hi = px.chunks(4).map(luma).max().unwrap();
+        let mid = (lo + hi) / 2;
+        // A hole enclosed by touching dots is a ground field inside the
+        // frame; a sliver the frame's edge cuts off between dots is not.
+        let (ground, enclosed) = components(&px, |p| luma(p) > mid);
+        let (dots, _) = components(&px, |p| luma(p) <= mid);
+        println!(
+            "{mode:?}: luma {lo}..{hi}, {ground} ground fields ({enclosed} enclosed), {dots} dots"
+        );
+        assert!(dots > 100, "{mode:?}: separate dots ({dots})");
+        // One plate's dots never touch. In CMYK two plates' dots at their
+        // different angles may overlap round a speck of ground, as a
+        // rosette does; old code's merged dots enclosed a hole per dot.
+        let most = if mode == HalftoneMode::Ink {
+            0
+        } else {
+            dots / 100
+        };
+        assert!(
+            enclosed <= most,
+            "{mode:?}: the dots never touch, so they enclose no ground ({enclosed} enclosed, at most {most})"
         );
     }
 }

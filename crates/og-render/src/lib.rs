@@ -709,6 +709,9 @@ pub struct Renderer {
         Vec<wgpu::BindGroup>,
     )>,
     default_white: wgpu::TextureView,
+    /// The conformed colours' hash table the stylise quantiser reads
+    /// (`stylise::conformed_table`) and the scene revision it was made at.
+    conformed: (u64, wgpu::TextureView),
     default_normal: wgpu::TextureView,
     white_sprite_group: wgpu::BindGroup,
     instance_buffer: wgpu::Buffer,
