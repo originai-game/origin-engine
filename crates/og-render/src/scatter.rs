@@ -575,6 +575,8 @@ struct ScatterGpu {
     impostor: [f32; 4],
     impostor_grid: [f32; 4],
     impostor_light: [f32; 4],
+    /// The trample map (`trample.rs` `Trample::grid`).
+    trample: [f32; 4],
 }
 
 impl ScatterGpu {
@@ -689,6 +691,8 @@ pub(crate) struct ScatterPipelines<'a> {
     pub blue_noise: wgpu::TextureView,
     /// The wind field's lean (`wind_field.rs`) the copies and cards sway by.
     pub wind_field: wgpu::TextureView,
+    /// The trample map (`trample.rs`) they part by.
+    pub trample: wgpu::TextureView,
 }
 
 /// Draws [`ScatterDraw`]s from cached chunks.
@@ -718,8 +722,9 @@ pub(crate) struct ScatterRenderer {
     last_tick: Option<u64>,
     /// The frame's og.Wind (`WindField`, group 2 binding 2).
     wind_uniform: wgpu::Buffer,
-    /// The wind field's lean (`wind_field.rs`).
+    /// The wind field's lean (`wind_field.rs`) and the trample map.
     wind_field: wgpu::TextureView,
+    trample: wgpu::TextureView,
     /// The frame's model impostors' transforms, and how many it holds.
     impostor_instances: Option<(wgpu::Buffer, u64)>,
 }
@@ -782,6 +787,16 @@ impl ScatterRenderer {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
@@ -826,7 +841,7 @@ impl ScatterRenderer {
         let (uniform, group) = Self::slots(
             device,
             &uniform_layout,
-            [&p.blue_noise, &p.wind_field],
+            [&p.blue_noise, &p.wind_field, &p.trample],
             &wind_uniform,
             4,
         );
@@ -851,6 +866,7 @@ impl ScatterRenderer {
             last_tick: None,
             wind_uniform,
             wind_field: p.wind_field,
+            trample: p.trample,
             impostor_instances: None,
         }
     }
@@ -858,7 +874,7 @@ impl ScatterRenderer {
     fn slots(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-        [blue_noise, wind_field]: [&wgpu::TextureView; 2],
+        [blue_noise, wind_field, trample]: [&wgpu::TextureView; 3],
         wind: &wgpu::Buffer,
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
@@ -891,6 +907,10 @@ impl ScatterRenderer {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::TextureView(wind_field),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(trample),
                 },
             ],
         });
@@ -1195,7 +1215,7 @@ impl ScatterRenderer {
         view_proj: Mat4,
         prev_view_proj: Mat4,
         frame_index: u64,
-        (wind_grid, lean_cap): (crate::wind_field::WindGrid, f32),
+        (wind_grid, lean_cap, trample): (crate::wind_field::WindGrid, f32, [f32; 4]),
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
@@ -1221,6 +1241,12 @@ impl ScatterRenderer {
                 wind_grid,
             )),
         );
+        // How long trampled copies take to stand again: the scene's first
+        // grass field's (`trample.rs`), else its default.
+        let recovery = scene
+            .grass
+            .first()
+            .map_or(crate::Grass::default().recovery, |g| g.grass.recovery);
         // `lean_cap`: the most a copy leans this frame (wind_field.rs; its
         // chunks' bounds widen by its tip's reach).
         // The model impostors by atlas, in the order each first appears.
@@ -1237,7 +1263,7 @@ impl ScatterRenderer {
             let (u, g) = Self::slots(
                 device,
                 &self.uniform_layout,
-                [&self.blue_noise, &self.wind_field],
+                [&self.blue_noise, &self.wind_field, &self.trample],
                 &self.wind_uniform,
                 self.slots,
             );
@@ -1256,6 +1282,7 @@ impl ScatterRenderer {
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
+            trample: [0.0; 4],
         };
         let impostors =
             self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
@@ -1472,11 +1499,15 @@ impl ScatterRenderer {
             }
             // The wind: its lean on this scatter, and the furthest a copy
             // moves (the tip of the tallest at the top of a gust).
-            let (wind_row, sway) = if s.sway > 0.0 && mesh_top > 0.0 && lean_cap > 0.0 {
+            // A trample map parts the copies by up to 1.2 of their height
+            // (scatter_common.wgsl scatter_sway), wind or not.
+            let parting = if trample[3] > 0.0 { 1.2 } else { 0.0 };
+            let moves = lean_cap > 0.0 || parting > 0.0;
+            let (wind_row, sway) = if s.sway > 0.0 && mesh_top > 0.0 && moves {
                 let d = wind.map_or(Vec3::X, |w| w.direction);
                 let dir = Vec2::new(d.x, d.z).normalize_or(Vec2::X);
-                let tip = lean_cap * s.sway * mesh_top * s.scale[1].max(s.scale[0]);
-                ([dir.x, dir.y, s.sway, 0.0], tip)
+                let tip = (lean_cap * s.sway + parting) * mesh_top * s.scale[1].max(s.scale[0]);
+                ([dir.x, dir.y, s.sway, recovery], tip)
             } else {
                 ([0.0; 4], 0.0)
             };
@@ -1490,6 +1521,7 @@ impl ScatterRenderer {
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
+                trample,
             };
             let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
             if let Some(i) = &impostor {

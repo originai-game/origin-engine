@@ -50579,6 +50579,50 @@ export interface Grass {
    * @default 1
    */
   seed: number;
+  /**
+   * How long blades pressed by an og.GrassPusher take to stand again after it leaves.
+   *
+   * @default 4
+   * @range 0..120
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  recovery: number;
+}
+
+/**
+ * Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
+ *
+ * The value of the `GrassPusher` component (token `og.GrassPusher`).
+ */
+export interface GrassPusher {
+  /**
+   * How far it reaches on the ground.
+   *
+   * @default 0.5
+   * @range 0..20
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * How tall it is: its bottom is the entity's position.
+   *
+   * @default 1.8
+   * @range 0..50
+   * @unit m (metres)
+   * @tunable
+   */
+  height: number;
+  /**
+   * How hard it presses: 1 flattens the blades, 0.3 parts them.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  strength: number;
 }
 
 /** A loaded terrain. */
@@ -58361,7 +58405,11 @@ export declare namespace og {
   /**
    * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
    */
-  const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32"> }, Grass>;
+  const Grass: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly farTint: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly heightVariation: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly curve: FieldSpec<"f32">; readonly lean: FieldSpec<"f32">; readonly clumpSize: FieldSpec<"f32">; readonly clumpLean: FieldSpec<"f32">; readonly tufts: FieldSpec<"f32">; readonly baseColor: FieldSpec<"Color">; readonly tipColor: FieldSpec<"Color">; readonly dryColor: FieldSpec<"Color">; readonly colorVariation: FieldSpec<"f32">; readonly dryness: FieldSpec<"f32">; readonly translucency: FieldSpec<"f32">; readonly sheen: FieldSpec<"f32">; readonly roughness: FieldSpec<"f32">; readonly sway: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly flutter: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly seed: FieldSpec<"u32">; readonly recovery: FieldSpec<"f32"> }, Grass>;
+  /**
+   * Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. Blades under it bend away from it and flatten, and stay pressed after it passes, standing again over the field's `recovery` (a trail behind a walker or a horse); swaying copies part the same way. Blades shorter than the gap under a pusher floating above them are not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it. The 32 nearest the camera press.
+   */
+  const GrassPusher: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, GrassPusher>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to sixteen layered materials with slope and altitude rules (each pixel blends its four strongest), their maps separate textures (the first four layers) or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight and the only way past four layers, the control map one image per four layers, and an optional `holes` map whose black or transparent cells are cut out of the surface: a cave mouth, a pit, a tunnel through a hill) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry.
    * Load it with og.terrain.load, then place it: an og.Terrain on an entity draws it placed by the entity's world transform (centred on its position, turned and scaled with it), and an og.Collider of shape SHAPE_HEIGHTFIELD naming the TerrainInfo's geometry makes it solid. og.TerrainScatter grows grass, flowers or stones over a layer near the camera. og.terrain.sample answers the surface's height and normal anywhere (pass it the entity's position, quaternion and scale); og.terrain.edit raises, lowers, flattens, smooths or paints it at runtime, and og.terrain.setLayer retunes a layer. Terrain is 3D: the 2D profile's publish and lanes modules leave it out (RenderCapabilities.world3d is false), where every call here answers a refusal naming that field. Edits are world state: a snapshot keeps them, the world hash covers them, and a restore brings the ground back as it was (rebuilt from the cook with the restored edits replayed, for the renderer, physics and sample alike).

@@ -300,6 +300,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.TerrainStamp",
         enable: |_, _| Ok(()),
     },
+    // Area 4 (G2, G3): the wind's motors and the grass's pushers, read by
+    // extraction alone: a world without them keeps its type table and hash.
+    Lazy {
+        name: "og.WindMotor",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.GrassPusher",
+        enable: |_, _| Ok(()),
+    },
     // R4: the weather's simulated state and its strikes; og.weather writes
     // and sends them. Naming either registers both.
     Lazy {

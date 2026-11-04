@@ -41,8 +41,9 @@ struct GrassGen {
   shape: vec4<f32>,     // x: the tallest blade (m), y: height variation, z: lean, w: clump lean
   clump: vec4<f32>,     // x: clump size (the terrain's space), y: tufts, z: the height range blade roots are stored over (m either side), w: the root width (m)
   shadow: vec4<f32>,    // xyz: where a blade's shadow lands per metre of its height, w: 1 when it casts
-  motion: vec4<f32>,    // x: sway, y: stiffness, z: the plan's share of the table's blades
+  motion: vec4<f32>,    // x: sway, y: stiffness, z: the plan's share of the table's blades, w: the trample's recovery (s)
   counts: vec4<u32>,    // x: slices, y: blades the instance buffer holds, z: rows of LOD 0, w: LOD 1's and 2's (8 bits each)
+  trample: vec4<f32>,   // the trample map (trample.rs): its min corner (x, z from the frame's origin), cell (m), cells a side (0: none)
   wind: WindField,
 };
 
@@ -61,6 +62,8 @@ struct GrassGen {
 @group(0) @binding(6) var<storage, read_write> draws: array<u32, 15>;
 // The simulated wind field's lean (wind_field.rs; wind_common.wgsl wind_lean).
 @group(0) @binding(7) var wind_tex: texture_2d<f32>;
+// The trample map (trample.rs; wind_lean.wgsl vegetation_trample).
+@group(0) @binding(8) var trample_tex: texture_2d<f32>;
 
 fn grass_visible(center: vec3<f32>, radius: f32) -> bool {
   for (var i = 0; i < 6; i++) {
@@ -204,8 +207,14 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let rest = face * gen.shape.z * (0.3 + 0.7 * wind_unit(wind_hash(seed ^ 0x6cu))) + away * gen.shape.w;
   // The wind field's lean at the root, now and as last drawn (wind_field.rs).
   let lean = wind_lean(wind_tex, gen.wind, root.xz);
-  b.bend = clamp(rest + grass_bend(gen.wind, lean.xy, b.seed, gen.motion.y, gen.motion.x, false), vec2<f32>(-1.0), vec2<f32>(1.0));
-  b.previous_bend = clamp(rest + grass_bend(gen.wind, lean.zw, b.seed, gen.motion.y, gen.motion.x, true), vec2<f32>(-1.0), vec2<f32>(1.0));
+  // Trampled (G3): pressed away from the pusher and down, swaying less,
+  // recovering over the field's `recovery`.
+  let tr = vegetation_trample(trample_tex, gen.trample, root, tall, gen.motion.w);
+  let crushed = clamp(tr.z, 0.0, 1.0);
+  b.height = tall * (1.0 - 0.65 * crushed) / max(gen.shape.x, 1e-3);
+  let free = 1.0 - crushed;
+  b.bend = clamp((rest + grass_bend(gen.wind, lean.xy, b.seed, gen.motion.y, gen.motion.x, false)) * free + tr.xy, vec2<f32>(-1.0), vec2<f32>(1.0));
+  b.previous_bend = clamp((rest + grass_bend(gen.wind, lean.zw, b.seed, gen.motion.y, gen.motion.x, true)) * free + tr.xy, vec2<f32>(-1.0), vec2<f32>(1.0));
   return grass_pack(b, gen.origin, gen.clump.z);
 }
 

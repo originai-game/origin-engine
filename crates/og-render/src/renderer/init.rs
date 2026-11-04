@@ -625,14 +625,14 @@ impl Renderer {
                 .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
         );
         // The vegetation's wind field (G2), simulated where compute runs.
-        let wind_field = crate::wind_field::WindFieldSim::new(
-            &device,
-            WORLD_3D
-                && adapter
-                    .get_downlevel_capabilities()
-                    .flags
-                    .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
-        );
+        let vegetation_compute = WORLD_3D
+            && adapter
+                .get_downlevel_capabilities()
+                .flags
+                .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
+        let wind_field = crate::wind_field::WindFieldSim::new(&device, vegetation_compute);
+        // The grass trample map (G3), pressed where compute runs.
+        let trample = crate::trample::Trample::new(&device, vegetation_compute);
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let fluid3d =
@@ -889,6 +889,7 @@ impl Renderer {
                     crate::blue_noise::BLUE_NOISE,
                 ),
                 wind_field: wind_field.lean_view.clone(),
+                trample: trample.view.clone(),
             },
         );
         let grass = grass::GrassRenderer::new(
@@ -899,6 +900,7 @@ impl Renderer {
                 fx_layout: &fx_layout,
                 samples,
                 wind_field: wind_field.lean_view.clone(),
+                trample: trample.view.clone(),
             },
         );
         let vertex_buffer = |label: &str, size: u64| {
@@ -1103,6 +1105,7 @@ impl Renderer {
             taa_history: None,
             taa_history_frames: 0,
             wind_field,
+            trample,
             gi_history: None,
             drawn_origin: Vec3::ZERO,
             stylise_chain: None,

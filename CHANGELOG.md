@@ -174,6 +174,13 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **Grass trample (G3).** Where compute runs, a camera-centred 64 m
+  trample map (0.25 m cells) records where `og.GrassPusher` capsules
+  stand; grass blades under them are pressed down and away, and
+  TerrainScatter copies part, both standing again over `Grass.recovery`
+  seconds (default 4). New members, compatible: `Grass.recovery`,
+  `component GrassPusher { radius, height, strength }`. Visual only: the
+  map never reads back to the simulation.
 - **One wind field for all vegetation (G2).** Where compute runs, the
   renderer simulates og.Wind as a camera-centred stable-fluids field that
   grass, TerrainScatter copies, impostor cards and meshlet trees all lean

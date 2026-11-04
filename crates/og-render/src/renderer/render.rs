@@ -80,6 +80,7 @@ impl Renderer {
         // its grid is what every vegetation pass below reads it by, its
         // lean cap what their culling bounds widen by.
         self.wind_field.prepare(&self.device, &self.queue, scene);
+        self.trample.prepare(&self.device, &self.queue, scene);
         self.refresh_foliage_bounds(scene);
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
@@ -1336,7 +1337,11 @@ impl Renderer {
                 cam.view_proj,
                 prev_view_proj,
                 self.frame_index,
-                (self.wind_field.grid(), self.wind_field.lean_cap()),
+                (
+                    self.wind_field.grid(),
+                    self.wind_field.lean_cap(),
+                    self.trample.grid(),
+                ),
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
                     meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
@@ -1364,6 +1369,7 @@ impl Renderer {
                     prev_view_proj,
                     height: self.height,
                     wind_grid: self.wind_field.grid(),
+                    trample: self.trample.grid(),
                 },
                 &view_frustum,
             )
@@ -3659,8 +3665,9 @@ impl Renderer {
                 }),
             gpu_set,
         );
-        // The wind field steps before any pass reads it.
+        // The wind field and the trample map step before any pass reads them.
         self.wind_field.encode(&mut encoder);
+        self.trample.encode(&mut encoder);
         if let Some(pipelines) = &self.surfaces {
             for mesh in &self.cache.meshes {
                 if let Some(surface) = &mesh.surface {

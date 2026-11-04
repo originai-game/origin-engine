@@ -64,6 +64,8 @@ pub use renderer::*;
 
 pub mod wind_field;
 pub use wind_field::{WindMotor, WindMotorKind};
+pub mod trample;
+pub use trample::GrassPusher;
 
 mod area;
 mod atmosphere;
@@ -583,6 +585,8 @@ pub struct Renderer {
     taa_history_frames: u64,
     /// The vegetation's simulated wind field (`wind_field.rs`).
     wind_field: wind_field::WindFieldSim,
+    /// The grass trample map (`trample.rs`).
+    trample: trample::Trample,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,
