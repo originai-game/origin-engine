@@ -25,12 +25,12 @@ import { must, v3 } from "./mesh.ts";
 import { buildSky } from "./sky.ts";
 
 /**
- * The hour and the sun's azimuth that stand it 9° up, behind the traveller's
+ * The hour and the sun's azimuth that stand it 7° up, behind the traveller's
  * right shoulder (og.DayNight: elevation = asin(sin(a) cos(tilt)), a the
- * hour's angle from 6 h). At 12° its disc touched the top edge of the hero
- * (whose top is 14° up) and the wide shot.
+ * hour's angle from 6 h): its disc (about 2.2° in radius) a disc's width
+ * under the hero's top edge, 14° up. At 12° it touched that edge.
  */
-const HOUR = 17.3375;
+const HOUR = 17.4846;
 const AZIMUTH = -122;
 
 export const View = defineResource("View", {
@@ -72,7 +72,8 @@ function start(world: World): void {
   const sun = must(world.spawn({ name: "sun" }));
   must(world.insert(sun, og.DirectionalLight, { intensity: 3, castShadow: true, shadowDistance: 120, shadowSoftness: 0.03 }));
   Object.assign(must(world.resource(og.DayNight)), { enabled: true, start: HOUR, speed: 0, tilt: 25, azimuth: AZIMUTH, lightIntensity: 1.1, tintFog: false, step: 6 });
-  Object.assign(must(world.resource(og.PhysicalSky)), { enabled: true, haze: 0.8 });
+  // A hazy afternoon over the cloud sea: the haze widens the glow round the low sun.
+  Object.assign(must(world.resource(og.PhysicalSky)), { enabled: true, haze: 2 });
   // The cloud sea: its tops some 300 m under the meadow, broken enough for gaps.
   Object.assign(must(world.resource(og.Clouds)), {
     enabled: true,
