@@ -66,6 +66,26 @@ pub(crate) struct RichContent {
     pub spans: Vec<RichSpan>,
     pub align: TextAlign,
     pub wrap: bool,
+    /// A typewriter: from its start tick, how many characters show each tick.
+    pub reveal: Option<(u64, f32)>,
+    /// The tick the paragraph first showed (since it was last gone): where a
+    /// `[reveal]` span's glyphs start rising in.
+    pub since: u64,
+}
+
+/// A `[reveal]` span's glyphs: one more starts every this many ticks, each
+/// rising in over `REVEAL_TICKS`.
+const REVEAL_STAGGER: f32 = 2.0;
+const REVEAL_TICKS: f32 = 10.0;
+
+/// How many characters a typewriter from `start` at `per_tick` shows at `tick`.
+pub(crate) fn revealed_chars(reveal: Option<(u64, f32)>, tick: u64) -> usize {
+    match reveal {
+        None => usize::MAX,
+        Some((_, per)) if per <= 0.0 => usize::MAX,
+        Some((start, per)) if tick >= start => ((tick - start) as f32 * per + 1e-4).floor() as usize,
+        Some(_) => 0,
+    }
 }
 
 /// A piece of one span on one line, `x` from the line's start.
@@ -98,6 +118,18 @@ pub struct RichTextDesc {
     pub nowrap: bool,
     pub width: Size,
     pub font: FontRole,
+    /// A typewriter: its characters show one by one from this start.
+    pub reveal: Option<TextReveal>,
+}
+
+/// A typewriter over a text (`TextReveal` in the IDL): its characters show
+/// one by one from `start` (a tick, `og.ui.tick()`), `cps` a second (0: all
+/// at once), each new one with the style's `typewriter` feedback. By the
+/// tick, so a replay types the same.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TextReveal {
+    pub start: u64,
+    pub cps: f32,
 }
 
 /// What a paragraph's links did this tick.
@@ -109,6 +141,8 @@ pub struct RichTextResponse {
     pub link: Option<String>,
     /// The link under the pointer.
     pub hovered: Option<String>,
+    /// Its typewriter has shown every character (true without one).
+    pub revealed: bool,
 }
 
 /// A unit lines break between: a span's word, space or CJK character.
@@ -623,6 +657,50 @@ impl Ui {
         );
         let key = self.nodes[i].key;
         let mut out = RichTextResponse::default();
+        // When it first showed (since it was last gone): a widget memory read every tick.
+        let tick = self.state.tick;
+        let since_key = child_key(key, "~since");
+        let since = if self.has_anim(since_key) {
+            self.anim(since_key).h
+        } else {
+            self.set_anim(
+                since_key,
+                crate::ui::Anim {
+                    h: tick,
+                    ..Default::default()
+                },
+            );
+            tick
+        };
+        // The typewriter: what it shows this tick and the last; a new
+        // character that is not a space plays the style's typewriter tick.
+        let reveal = desc
+            .reveal
+            .map(|r| (r.start, r.cps / self.ticks_per_second.max(1) as f32));
+        let chars: Vec<char> = spans
+            .iter()
+            .flat_map(|s| {
+                if s.atom.is_some() {
+                    vec!['\u{FFFC}']
+                } else {
+                    s.text.chars().collect()
+                }
+            })
+            .collect();
+        let (now, before) = (
+            revealed_chars(reveal, tick),
+            revealed_chars(reveal, tick.saturating_sub(1)),
+        );
+        out.revealed = now >= chars.len();
+        if reveal.is_some()
+            && tick > 0
+            && now > before
+            && chars[before.min(chars.len())..now.min(chars.len())]
+                .iter()
+                .any(|c| !c.is_whitespace())
+        {
+            self.feedback(crate::tokens::SoundEvent::Typewriter);
+        }
         let mut links: Vec<String> = Vec::new();
         for s in &spans {
             if let Some(l) = &s.link
@@ -650,6 +728,8 @@ impl Ui {
             spans,
             align: desc.align,
             wrap: !desc.nowrap,
+            reveal,
+            since,
         });
         n.links = links;
         out
@@ -771,9 +851,38 @@ impl Ui {
                 }
             }
         }
+        // A typewriter's characters so far (every one under reduced motion
+        // or without one), counted through the pieces in reading order.
+        let shown = if still {
+            usize::MAX
+        } else {
+            revealed_chars(rc.reveal, self.state.tick)
+        };
+        let mut at = 0usize;
         for piece in self.rich_pieces(i) {
-            let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
+            let (k, mut text, mut r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
+            let len = if s.atom.is_some() { 1 } else { text.chars().count() };
+            let first_char = at;
+            at += len;
+            let visible = shown.saturating_sub(first_char).min(len);
+            if visible == 0 {
+                continue;
+            }
+            let mut piece_glyphs = piece.glyphs;
+            if visible < len {
+                // Part of a piece: its first characters, unless it is shaped,
+                // mixed or right to left (cut, its joins would break): then
+                // whole once its last character is reached.
+                if piece_glyphs.is_some() {
+                    continue;
+                }
+                let cut: String = text.chars().take(visible).collect();
+                let m = &self.fonts.for_styled(s.font, s.weight, s.italic, &cut).0.metrics;
+                r.width = m.measure_tracked(&cut, s.step.size * n.scale, span_tracking(s, &cut));
+                text = cut;
+                piece_glyphs = None;
+            }
             let size = s.step.size * n.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.state.hot == lk);

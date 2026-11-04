@@ -5,6 +5,7 @@
 //! Press [b]Jump[/b] to clear the [color=danger]gap[/color], then
 //! [size=lg]run[/size]! Costs [icon=coin] [font=mono]250[/font].
 //! [link=shop]Open the shop[/link] · [wave]wavy[/wave] [shake]angry[/shake] [pulse]alive[/pulse]
+//! [bounce]hop[/bounce] [reveal]Level up![/reveal]
 //! [i]whispered[/i], [u]marked[/u], [s]struck[/s], [outline=2,shadow]loud[/outline],
 //! [img=portrait] and Press [action=jump] to jump.
 //! ```
@@ -22,7 +23,8 @@
 //! | `[font=body\|display\|mono]` | the font role |
 //! | `[icon=<name>]` | an icon of the icon atlas, one em, inline (self-closing) |
 //! | `[link=<id>]…[/link]` | a link: accent ink, underlined, focusable; its id is a child element and the answer of a click |
-//! | `[wave]`, `[shake]`, `[pulse]` | per-glyph motion by the tick (still under reduced motion) |
+//! | `[wave]`, `[shake]`, `[pulse]`, `[bounce]` | per-glyph motion by the tick (still under reduced motion) |
+//! | `[reveal]` | its glyphs rise and fade in one after another from when the paragraph first showed (all at once under reduced motion) |
 //!
 //! A closing tag closes the innermost open tag of its name; `[[` is a
 //! literal `[`. An unknown tag, a bad value or an unclosed tag is kept as
@@ -36,6 +38,10 @@ pub enum SpanFx {
     Wave,
     Shake,
     Pulse,
+    /// Each glyph hops off the baseline in turn, a wave of hops.
+    Bounce,
+    /// Each glyph rises and fades in, one after another, once.
+    Reveal,
 }
 
 /// One run of text (or an icon) in one style.
@@ -92,6 +98,8 @@ impl Tag {
             Tag::Link(_) => "link",
             Tag::Fx(SpanFx::Wave) => "wave",
             Tag::Fx(SpanFx::Shake) => "shake",
+            Tag::Fx(SpanFx::Bounce) => "bounce",
+            Tag::Fx(SpanFx::Reveal) => "reveal",
             Tag::Fx(_) => "pulse",
         }
     }
@@ -179,6 +187,8 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
             ("wave", None) => Some(Tag::Fx(SpanFx::Wave)),
             ("shake", None) => Some(Tag::Fx(SpanFx::Shake)),
             ("pulse", None) => Some(Tag::Fx(SpanFx::Pulse)),
+            ("bounce", None) => Some(Tag::Fx(SpanFx::Bounce)),
+            ("reveal", None) => Some(Tag::Fx(SpanFx::Reveal)),
             (kind @ ("icon" | "img" | "action"), Some(v)) if !v.is_empty() => {
                 flush(&mut spans, &mut text, &stack);
                 let mut s = style(&stack);
@@ -200,7 +210,7 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
             }
             None => {
                 warnings.push(format!(
-                    "rich text: [{raw}] is not a tag (b, i, u, s, outline=, color=, size=, font=, icon=, img=, action=, link=, wave, shake, pulse) in \"{markup}\""
+                    "rich text: [{raw}] is not a tag (b, i, u, s, outline=, color=, size=, font=, icon=, img=, action=, link=, wave, shake, pulse, bounce, reveal) in \"{markup}\""
                 ));
                 text.push_str(&format!("[{raw}]"));
             }
