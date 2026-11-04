@@ -575,7 +575,8 @@ export function horrorHud(world: World): void {
   const tick = og.ui.tick();
   og.ui.lowHealthVignette("Vignette", { health: 0.3, threshold: 0.4, hitAt: null });
   og.ui.interactionPrompt(world, "Hide", { target: { point: at(0.3, 0.52) }, action: "interact", verb: L("sc.horror.hide"), name: L("sc.horror.wardrobe") });
-  og.ui.anchor("Objective", { anchor: "topLeft", margin: m, direction: "column", gap: 2 }, () => {
+  // On the HUD's plate, so a pack whose ink is meant for light panels still reads over the dark world.
+  og.ui.anchor("Objective", { anchor: "topLeft", margin: m, direction: "column", gap: 2, padding: { left: t.space.sm, top: t.space.xs, right: t.space.sm, bottom: t.space.xs }, background: { token: "hud" }, radius: t.radius["panel"] ?? 8, frame: "hud" }, () => {
     og.ui.label("Caption", L("sc.horror.objective"), { step: "sm", font: "display", color: { token: "inkMuted" }, nowrap: true });
     og.ui.label("Text", L("sc.horror.find"), { step: small ? "base" : "lg", nowrap: true });
   });

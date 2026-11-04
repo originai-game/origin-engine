@@ -234,12 +234,16 @@ function scene(name: ArtName, focal = { x: 0.5, y: 0.5 }): void {
       fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal }] : [{ kind: "solid", color: { token: "backdrop" } }],
       effects: tex ? [{ kind: "layerBlur", radius: 10 }] : [],
     } as never);
+    // The shade is chosen against the pack's ink: a dark wash under a dark scheme's light ink, the pack's light backdrop
+    // washed in under a light scheme's dark ink, so the screen's text reads over any scene in every pack.
+    const light = og.ui.frameTheme().scheme === "light";
+    const wash = light ? "backdrop" : "shadow";
     og.ui.column("Shade", { width: grow, height: grow }, () => {});
     og.ui.setDraw({
       shape: { kind: "rect" },
       fills: [
-        { kind: "solid", color: { token: "shadow", alpha: 0.55 } },
-        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.45 }, to: { x: 0.85, y: 0.85 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0 } }, { offset: 1, color: { token: "shadow", alpha: 0.75 } }] },
+        { kind: "solid", color: { token: wash, alpha: light ? 0.8 : 0.55 } },
+        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.45 }, to: { x: 0.85, y: 0.85 }, stops: [{ offset: 0, color: { token: wash, alpha: 0 } }, { offset: 1, color: { token: wash, alpha: light ? 0.9 : 0.75 } }] },
       ],
     } as never);
     og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);

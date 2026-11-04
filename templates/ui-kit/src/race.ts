@@ -345,7 +345,11 @@ export function raceClassification(): void {
         // A narrow panel (a phone) puts the times under the name, so the name keeps its room.
         const times = (): void => {
           og.ui.label("Total", lapTime(total), { step: "base", font: "mono", color: ink, nowrap: true });
-          og.ui.label("Best", lapTime(best), { step: "sm", font: "mono", color: best === fastest ? FASTEST : muted, nowrap: true });
+          // The fastest lap is marked by a star beside it, not by its hue alone; on the player's selected row both take
+          // the row's on-fill ink (a fixed purple on the primary fill read at 1.3:1).
+          const pb = best === fastest;
+          if (pb) og.ui.icon("Fastest", "star", { size: Math.round(14 * Math.min(1.5, t.textScale)), tint: you ? ink! : FASTEST, label: L("sc.race.fastest") } as never);
+          og.ui.label("Best", lapTime(best), { step: "sm", font: "mono", color: pb && !you ? FASTEST : muted, nowrap: true });
         };
         const name_ = (): void => og.ui.label("Name", you ? L("sc.you") : name, { step: "base", font: you ? "display" : "body", color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" } });
         if (narrow) {
