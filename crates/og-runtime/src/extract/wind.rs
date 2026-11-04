@@ -130,6 +130,7 @@ mod tests {
             direction: Vec3::new(0.0, 0.0, 2.0),
             speed: 4.0,
             gust: 0.5,
+            ..Wind::default()
         };
         let params = |scene: &RenderScene| scene.material_shader(copy).unwrap().1;
         w.present(&mut scene, Some(wind), 120, 60.0);

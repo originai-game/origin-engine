@@ -1352,6 +1352,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 direction: Vec3::new(1.0, 0.0, 0.4),
                 speed: 3.0,
                 gust: 0.7,
+                ..og_render::Wind::default()
             });
             g.scene.tick = 90;
             Ok(())

@@ -484,12 +484,15 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         seed_bits(g.seed),
     ];
     gpu.dry = g.dry_color.extend(0.0).to_array();
+    // The far tint brightens in og.Wind's analytic gusts (the terrain
+    // does not read the simulated field).
     gpu.wind = crate::wind::field_gpu(
         scene.wind,
         scene.tick,
         scene.tick,
         scene.tick_rate,
         scene.origin,
+        crate::wind_field::NO_GRID,
     );
     gpu
 }
@@ -588,8 +591,9 @@ pub(crate) fn shadow_source() -> String {
 /// layer-array variant's).
 pub(crate) fn generate_source(arrayed: bool) -> String {
     let s = format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}",
         crate::wind::WIND_COMMON_WGSL,
+        crate::wind::WIND_LEAN_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
         crate::terrain::TERRAIN_WGSL,
         wgsl3d!("grass_generate.wgsl"),
@@ -665,6 +669,8 @@ pub(crate) struct GrassPipelines<'a> {
     pub shadow_layout: &'a wgpu::BindGroupLayout,
     pub fx_layout: &'a wgpu::BindGroupLayout,
     pub samples: u32,
+    /// The simulated wind field's lean (`wind_field.rs`), read by the generation.
+    pub wind_field: wgpu::TextureView,
 }
 
 /// What a frame's grass is prepared for: the main camera.
@@ -673,12 +679,16 @@ pub(crate) struct GrassView<'a> {
     pub frame: &'a crate::frame::CameraFrame,
     pub prev_view_proj: Mat4,
     pub height: u32,
+    /// The simulated wind field's grid this frame (`wind_field.rs`).
+    pub wind_grid: crate::wind_field::WindGrid,
 }
 
 /// Generates and draws [`GrassDraw`]s.
 pub(crate) struct GrassRenderer {
     gen_layout: wgpu::BindGroupLayout,
     draw_layout: wgpu::BindGroupLayout,
+    /// The simulated wind field's lean (`wind_field.rs`).
+    wind_field: wgpu::TextureView,
     lit_layout: wgpu::PipelineLayout,
     prepass_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
@@ -725,6 +735,15 @@ impl GrassRenderer {
                 entry(4, cs, buffer(rw)),
                 entry(5, cs, buffer(rw)),
                 entry(6, cs, buffer(rw)),
+                entry(
+                    7,
+                    cs,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                ),
             ],
         });
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -757,6 +776,7 @@ impl GrassRenderer {
             shadow_layout: pl("grass shadow", &[p.shadow_layout, &draw_layout]),
             gen_layout,
             draw_layout,
+            wind_field: p.wind_field,
             samples: p.samples,
             pipelines: None,
             generate: [None, None],
@@ -960,19 +980,31 @@ impl GrassRenderer {
                 entries: &entries,
             })
         };
-        let gen_group = group(
-            "grass generate",
-            &self.gen_layout,
-            &[
-                &generator,
-                &self.tile,
-                &slices_buf,
-                &scratch,
-                &counts,
-                &instances,
-                &draws,
-            ],
-        );
+        let mut gen_entries: Vec<_> = [
+            &generator,
+            &self.tile,
+            &slices_buf,
+            &scratch,
+            &counts,
+            &instances,
+            &draws,
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, b)| wgpu::BindGroupEntry {
+            binding: i as u32,
+            resource: b.as_entire_binding(),
+        })
+        .collect();
+        gen_entries.push(wgpu::BindGroupEntry {
+            binding: 7,
+            resource: wgpu::BindingResource::TextureView(&self.wind_field),
+        });
+        let gen_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("grass generate"),
+            layout: &self.gen_layout,
+            entries: &gen_entries,
+        });
         let draw_group = group("grass", &self.draw_layout, &[&draw, &instances]);
         let f = FieldGpu {
             generator,
@@ -1013,6 +1045,7 @@ impl GrassRenderer {
             previous,
             scene.tick_rate,
             scene.origin,
+            view.wind_grid,
         );
         let l = scene.light.direction_to_light.normalize_or(Vec3::Y);
         let sun_on = scene.light.intensity > 0.0;
@@ -1443,7 +1476,7 @@ mod tests {
         check(
             &lit_source(),
             "WindField",
-            fields!(WindFieldGpu: dir, phase, offset, time),
+            fields!(WindFieldGpu: dir, phase, offset, time, grid, grid_outer),
             size_of::<WindFieldGpu>(),
         );
         check(

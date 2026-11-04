@@ -48,8 +48,9 @@ pub(crate) const MESHLET_SWAY_WGSL: &str = wgsl!("meshlet_sway.wgsl");
 /// grass_common.wgsl and meshlet_foliage.wgsl, then meshlet_sway.wgsl).
 fn sway_source() -> String {
     format!(
-        "{}{}{MESHLET_SWAY_WGSL}",
+        "{}{}{}{MESHLET_SWAY_WGSL}",
         crate::foliage::WIND_WGSL,
+        crate::foliage::WIND_LEAN_WGSL,
         crate::foliage::WGSL
     )
 }
@@ -489,6 +490,8 @@ pub(crate) struct MeshletGpu {
     /// The visibility buffer: the camera's small clusters rasterised in
     /// compute and resolved per batch ([`vis`]).
     vis_buffer: vis::VisBuffer,
+    /// The wind field's lean the foliage sways by (`wind_field.rs`).
+    wind_field: wgpu::TextureView,
     cull_layout: wgpu::BindGroupLayout,
     cull: wgpu::ComputePipeline,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
@@ -604,7 +607,11 @@ fn grow(
 }
 
 impl MeshletGpu {
-    pub fn new(device: &wgpu::Device, max_binding: u64) -> MeshletGpu {
+    pub fn new(
+        device: &wgpu::Device,
+        max_binding: u64,
+        wind_field: wgpu::TextureView,
+    ) -> MeshletGpu {
         let c = wgpu::ShaderStages::COMPUTE;
         let cull_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("meshlet cull"),
@@ -661,6 +668,17 @@ impl MeshletGpu {
                 storage(14, true, v),
                 // The vertex pool's foliage regions (meshlet_sway.wgsl).
                 storage(17, true, v),
+                // The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+                wgpu::BindGroupLayoutEntry {
+                    binding: 18,
+                    visibility: v,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -764,7 +782,8 @@ impl MeshletGpu {
             items_bytes: 0,
             frame: Vec::new(),
             max_binding,
-            vis_buffer: vis::VisBuffer::new(device),
+            vis_buffer: vis::VisBuffer::new(device, wind_field.clone()),
+            wind_field,
         }
     }
 
@@ -1073,7 +1092,7 @@ impl MeshletGpu {
         (width, height): (u32, u32),
         previous: &wgpu::Buffer,
         levels: &[u8],
-        winds: ([crate::Wind; 2], [crate::foliage::FoliageWind; 2]),
+        winds: ([crate::Wind; 2], [crate::foliage::FoliageWind; 2], f32),
         vertices: impl Fn(usize) -> &'a wgpu::Buffer,
         occluder: impl Fn(&Batch) -> bool,
     ) -> Option<wgpu::CommandBuffer> {
@@ -1210,9 +1229,15 @@ impl MeshletGpu {
         // the last drawn frame's (an instance's motion vector spans both),
         // into its mesh row (`meshlet_cull.wgsl` widens its spheres by it).
         for (slot, bounds, written) in &mut pools.foliage {
+            // og.Wind's lean, or the wind field's this frame (`winds.2`,
+            // driven or settling) where it leans further.
+            let lean = |w: crate::Wind| {
+                crate::wind_field::lean_cap(Some(w).filter(|w| w.strength > 0.0), false)
+                    .max(winds.2)
+            };
             let margin = bounds
-                .deform_margin(winds.0[0])
-                .max(bounds.deform_margin(winds.0[1]));
+                .deform_margin(lean(winds.0[0]))
+                .max(bounds.deform_margin(lean(winds.0[1])));
             if margin != *written {
                 *written = margin;
                 let at = (*slot as usize * MESH_ROWS + 1) * 16 + 8;
@@ -1473,6 +1498,10 @@ impl MeshletGpu {
                     entry(13, v),
                     entry(14, previous),
                     entry(17, &pools.vertices),
+                    wgpu::BindGroupEntry {
+                        binding: 18,
+                        resource: wgpu::BindingResource::TextureView(&self.wind_field),
+                    },
                 ],
             });
             self.mesh_groups.insert(mesh, (bound, group));

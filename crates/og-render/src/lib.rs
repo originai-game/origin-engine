@@ -62,6 +62,9 @@ pub const WORLD_3D: bool = cfg!(not(feature = "profile2d"));
 mod renderer;
 pub use renderer::*;
 
+pub mod wind_field;
+pub use wind_field::{WindMotor, WindMotorKind};
+
 mod area;
 mod atmosphere;
 mod aurora;
@@ -577,6 +580,8 @@ pub struct Renderer {
     /// Frames TAA has accumulated into its history since it was last
     /// reset, this one included (0 without TAA): [`Renderer::history`].
     taa_history_frames: u64,
+    /// The vegetation's simulated wind field (`wind_field.rs`).
+    wind_field: wind_field::WindFieldSim,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,

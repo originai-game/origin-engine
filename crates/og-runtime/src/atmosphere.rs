@@ -38,6 +38,7 @@ pub(crate) struct AtmoLayouts {
     weather: Option<Layout>,
     weather_state: Option<Layout>,
     wind: Option<Layout>,
+    wind_motor: Option<Layout>,
     water: Option<Layout>,
     water_2d: Option<Layout>,
     water_line: Option<Layout>,
@@ -65,6 +66,7 @@ impl AtmoLayouts {
             weather: get("og.Weather"),
             weather_state: get("og.WeatherState"),
             wind: get("og.Wind"),
+            wind_motor: get("og.WindMotor"),
             water: get("og.Water"),
             water_2d: get("og.Water2D"),
             water_line: get("og.WaterLine"),
@@ -259,8 +261,28 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             direction: super::fx::vec3(&w["direction"]),
             speed: f(&w, "speed", 3.0),
             gust: f(&w, "gust", 0.6),
+            turbulence: f(&w, "turbulence", 0.3),
+            gust_size: f(&w, "gustSize", 14.0),
         })
     });
+    // og.WindMotor: local pushes on the simulated wind field, placed by
+    // their entities (wind_field.rs keeps the nearest).
+    scene.wind_motors.clear();
+    for (e, v) in rows(world, layouts.wind_motor.as_ref()) {
+        let m = h.world_of(e);
+        let kind = match v["kind"].as_str() {
+            Some("directional") => og_render::WindMotorKind::Directional,
+            Some("vortex") => og_render::WindMotorKind::Vortex,
+            _ => og_render::WindMotorKind::Omni,
+        };
+        scene.wind_motors.push(og_render::WindMotor {
+            position: m.transform_point3(Vec3::ZERO),
+            direction: m.transform_vector3(Vec3::NEG_Z),
+            radius: f(&v, "radius", 6.0),
+            strength: f(&v, "strength", 10.0),
+            kind,
+        });
+    }
     scene.water.clear();
     scene.water_2d.clear();
     scene.metaballs.clear();

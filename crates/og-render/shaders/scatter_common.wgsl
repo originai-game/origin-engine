@@ -9,9 +9,8 @@ struct ScatterUniform {
   fade: vec4<f32>,            // x: where the fade starts (m), y: this render frame's turn of the crossfade noise (scatter.rs crossfade_noise_offset)
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
-  wind: vec4<f32>,            // xy: the wind's horizontal direction (x, z), z: the mean lean (0: still), w: the gust
-  wind_phase: vec4<f32>,      // xy: the gust wave's two time phases this frame, zw: the previous frame's
-  wind_shape: vec4<f32>,      // x: the wave's wavenumber (rad/m), y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
+  wind: vec4<f32>,            // xy: og.Wind's horizontal direction (x, z), z: the scatter's sway (0: still), w: unused
+  wind_shape: vec4<f32>,      // x: unused, y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
   impostor: vec4<f32>,        // the impostor's sphere in the model's space (impostor.rs): xyz its centre, w its radius
   impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never)
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it)
@@ -19,6 +18,10 @@ struct ScatterUniform {
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 // The blue-noise tile (blue_noise.rs): 64 x 64 thresholds, R8.
 @group(2) @binding(1) var scatter_blue_noise: texture_2d<f32>;
+// The frame's wind (wind.rs WindField) and the simulated field's lean
+// every vegetation tier reads (wind_field.rs; wind_common.wgsl wind_lean).
+@group(2) @binding(2) var<uniform> scatter_wind: WindField;
+@group(2) @binding(3) var scatter_wind_tex: texture_2d<f32>;
 
 struct ScatterVertex {
   @location(0) position: vec3<f32>,
@@ -106,24 +109,26 @@ fn scatter_shrunk(model: mat4x4<f32>, s: f32) -> mat4x4<f32> {
 }
 
 // How the wind moves a vertex at `local` (mesh space) of the copy standing
-// at `base` with uniform scale `scale`, at the time phases `phase`
-// (scatter.rs, the module's Wind): downwind by the lean times its height
-// times its height over the mesh's top, lowered to keep its distance from
-// the root. The lean varies with a wave of two octaves travelling
-// downwind, offset a little per copy by its position's bits.
-fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, phase: vec2<f32>) -> vec3<f32> {
-  let lean = scatter.wind.z;
+// at `base` with uniform scale `scale`, now or as last drawn (`previous`):
+// by the lean of the wind field at the copy's root (wind_common.wgsl
+// wind_lean: the field every tier shares, or og.Wind's analytic lean
+// without it) times the scatter's sway times its height times its height
+// over the mesh's top, lowered to keep its distance from the root. Each
+// copy reads the field a little upwind or downwind of its root (by its
+// place's hash, up to a wavelength's sixth), so neighbours do not sway in
+// step.
+fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, previous: bool) -> vec3<f32> {
+  let sway = scatter.wind.z;
   let top = scatter.wind_shape.y;
-  if (lean <= 0.0 || top <= 0.0 || local.y <= 0.0) {
+  if (sway <= 0.0 || top <= 0.0 || local.y <= 0.0) {
     return vec3<f32>(0.0);
   }
-  let dir = scatter.wind.xy;
-  let at = base.xz + scatter.wind_shape.zw;
-  let jitter = scatter_copy_unit(base);
-  let x = scatter.wind_shape.x * dot(at, dir) + jitter;
-  let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
+  let jitter = scatter_copy_unit(base) * WIND_WAVELENGTH / WIND_TAU;
+  let lean4 = wind_lean(scatter_wind_tex, scatter_wind, base.xz - scatter.wind.xy * jitter);
+  let lean = select(lean4.xy, lean4.zw, previous) * sway;
   let h = local.y * scale;
-  let d = lean * (1.0 + scatter.wind.w * wave) * h * min(local.y / top, 1.0);
-  let drop = h - sqrt(max(h * h - d * d, 0.0));
-  return vec3<f32>(dir.x * d, -drop, dir.y * d);
+  let d = lean * h * min(local.y / top, 1.0);
+  let dl = min(length(d), h);
+  let drop = h - sqrt(max(h * h - dl * dl, 0.0));
+  return vec3<f32>(d.x, -drop, d.y);
 }

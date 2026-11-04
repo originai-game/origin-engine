@@ -31,6 +31,9 @@ struct ImpostorOut {
   @location(11) @interpolate(flat) extent: f32,
   // The model's sphere's centre in the world.
   @location(12) @interpolate(flat) centre: vec3<f32>,
+  // The card's point before the wind moved it (imp_sway): what the frames'
+  // depths are measured from.
+  @location(13) rest: vec3<f32>,
 };
 
 @vertex
@@ -39,16 +42,19 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
   // Kept invertible when gone (the card is culled then).
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));
   let card = imp_card(model, vertex, frame.view_pos.xyz, false);
+  let world = card.world + vec4<f32>(imp_sway(card, i, size, false), 0.0);
+  let previous = card.world + vec4<f32>(imp_sway(card, i, size, true), 0.0);
   var o: ImpostorOut;
   o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, card.world), size > 0.0 && o.fade.y > o.fade.x);
-  o.world = card.world.xyz;
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && o.fade.y > o.fade.x);
+  o.world = world.xyz;
+  o.rest = card.world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;
   o.frames = card.frames;
   o.weights = card.weights;
-  o.cur_clip = mul_point(scatter.view_proj, card.world);
-  o.prev_clip = mul_point(scatter.prev_view_proj, card.world);
+  o.cur_clip = mul_point(scatter.view_proj, world);
+  o.prev_clip = mul_point(scatter.prev_view_proj, previous);
   o.m0 = normalize(i.m0);
   o.m1 = normalize(i.m1);
   o.m2 = normalize(i.m2);
@@ -84,7 +90,7 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   // degrees, which tilted every sample's normal towards the rim.
   let toward = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   let ray = transpose(m3) * toward;
-  let dd = imp_depths(transpose(m3) * (in.world - in.centre) / in.extent, ray, in.frames);
+  let dd = imp_depths(transpose(m3) * (in.rest - in.centre) / in.extent, ray, in.frames);
   let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
   let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd.pd);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);

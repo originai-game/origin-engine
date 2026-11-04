@@ -8,6 +8,8 @@
 
 // meshlet_sway.wgsl's `MeshletDraw`.
 @group(3) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
+// The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+@group(3) @binding(18) var meshlet_wind_tex: texture_2d<f32>;
 // The culled instances' transforms (instances.rs `GpuTransform`, 4 x vec4).
 @group(3) @binding(9) var<storage, read> meshlet_instances: array<vec4<f32>>;
 // The batch's work items (bound at its first): instance, cluster.
@@ -85,7 +87,7 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
   r.rest = r.v.position;
   if (c.w != 0u) {
     let f = meshlet_rows(c.w, index);
-    r.v.position += meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x));
+    r.v.position += meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
   }
   if (meshlet_draw.flags.x != 0u) {
     r.look.y = 0.8;
@@ -130,7 +132,7 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
   var before = p.rest;
   if (p.region != 0u) {
     let f = meshlet_rows(p.region, p.index);
-    before += meshlet_sway(p.rest, f[0], f[1], f[2], prev, meshlet_draw.wind[1], foliage_sway(meshlet_previous[q + 3u].x));
+    before += meshlet_sway(p.rest, f[0], f[1], f[2], prev, meshlet_draw.wind[1], foliage_sway(meshlet_previous[q + 3u].x), true);
   }
   return prepass_vertex_from(p.model, prev, p.v, before);
 }

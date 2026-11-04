@@ -263,6 +263,9 @@ pub struct RenderScene {
     /// The wind that sways the scattered copies (`None` or strength 0:
     /// still).
     pub wind: Option<crate::Wind>,
+    /// Local pushes on the simulated wind field (og.WindMotor,
+    /// `wind_field.rs`): the nearest [`crate::wind_field::MAX_MOTORS`] drive it.
+    pub wind_motors: Vec<crate::WindMotor>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first

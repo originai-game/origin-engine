@@ -412,9 +412,10 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
 }
 
 /// og.Wind sways scattered copies downwind, seen from above: in a steady
-/// wind (gust 0) the plate each copy holds 2 m up moves by strength × 2 m
-/// along the wind's horizontal direction, whatever the tick; in gusts each
-/// moves downwind by between 0 and twice that, differently from tick to
+/// wind (gust 0, turbulence 0) the plate each copy holds 2 m up moves by
+/// strength × 2 m along the wind's horizontal direction, whatever the
+/// tick; in gusts each moves downwind by about 0 to twice that (the wind
+/// field's spring and pressure add a little), differently from tick to
 /// tick and from copy to copy. Strength 0 and sway 0 draw what no wind
 /// draws.
 #[test]
@@ -521,11 +522,15 @@ fn wind_sways_scattered_copies_downwind() {
     for o in offsets(&still, Vec2::ZERO) {
         assert!(o.length() < 0.06, "a plate off its root without wind: {o}");
     }
+    // Steady: no gusts and no turbulence, so the wind field (G2) holds
+    // og.Wind's lean exactly.
     let steady = Wind {
         strength: 0.5,
         direction: Vec3::new(3.0, 5.0, 4.0),
         speed: 3.0,
         gust: 0.0,
+        turbulence: 0.0,
+        ..Wind::default()
     };
     let dir = Vec2::new(0.6, 0.8);
     for tick in [0, 37] {
@@ -565,10 +570,14 @@ fn wind_sways_scattered_copies_downwind() {
         offsets(&draw(&mut scene, 0), Vec2::X),
         offsets(&draw(&mut scene, 20), Vec2::X),
     );
+    // The wind field (G2) carries the gusts as air: its pressure solve
+    // turns a little of a gust front sideways and its spring overshoots by
+    // under a fifth, so a plate moves downwind by 0 to 2.4 m with a small
+    // crosswind part.
     for o in a.iter().chain(&b) {
         assert!(
-            o.y.abs() < 0.06 && o.x > -0.06 && o.x < 2.06,
-            "a gust moved a plate {o}: not downwind by 0 to 2 m"
+            o.y.abs() < 0.25 && o.x > -0.1 && o.x < 2.46,
+            "a gust moved a plate {o}: not downwind by 0 to 2.4 m"
         );
     }
     let changed = a
@@ -620,5 +629,187 @@ fn wind_sways_scattered_copies_downwind() {
     assert!(
         blurred > 400,
         "the sway left the motion vectors still ({blurred} pixels)"
+    );
+}
+
+/// G2's plate field: 0.6 m red plates held 2 m above their copies' roots
+/// over a flat 256 m terrain, seen from straight above at 12 px a metre
+/// (+x right, +z down), and the roots with no other within 5 m.
+fn plate_field() -> (RenderScene, Vec<Vec2>) {
+    let n = 129u32;
+    let data = TerrainData::flat(Vec2::splat(256.0), n, n);
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(data.clone());
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.05),
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    let mut plate = shapes::plane(0.6, 1.0);
+    for v in &mut plate.vertices {
+        v.position[1] = 2.0;
+    }
+    let plate = scene.add_mesh(plate);
+    let red = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [8.0, 0.0, 0.0],
+        ..Default::default()
+    });
+    let s = TerrainScatter {
+        density: 0.04,
+        distance: 200.0,
+        fade: 0.0,
+        scale: [1.0, 1.0],
+        seed: 7,
+        ..TerrainScatter::default()
+    };
+    scene.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: plate,
+        material: red,
+        scatter: s,
+        cast_shadows: false,
+        impostor: None,
+        impostor_distance: 0.0,
+    });
+    scene.fog = None;
+    scene.post.tonemap = Tonemap::None;
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.light.cast_shadows = false;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 60.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let placed: Vec<Vec2> = scene.terrains[0]
+        .scatter(&data, &s, scene.camera.position)
+        .iter()
+        .map(|(_, m)| Vec2::new(m.w_axis.x, m.w_axis.z))
+        .collect();
+    let roots = placed
+        .iter()
+        .copied()
+        .filter(|r| r.x.abs() < 46.0 && r.y.abs() < 23.0)
+        .filter(|r| placed.iter().all(|o| o == r || o.distance(*r) > 5.0))
+        .collect();
+    (scene, roots)
+}
+
+/// Each plate's offset from its root (m): the red centroid within 2 m of it.
+fn plate_offsets(img: &RgbaImage, roots: &[Vec2]) -> Vec<Vec2> {
+    let px_of = |p: Vec2| Vec2::new(640.0 + p.x * 12.0, 360.0 + p.y * 12.0);
+    roots
+        .iter()
+        .map(|&r| {
+            let c = px_of(r);
+            let (mut sum, mut w) = (Vec2::ZERO, 0.0);
+            for y in (c.y as i32 - 24).max(0)..(c.y as i32 + 24).min(720) {
+                for x in (c.x as i32 - 24).max(0)..(c.x as i32 + 24).min(1280) {
+                    let p = px(img, x as u32, y as u32);
+                    let at = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                    if p[0] > 100.0 && p[1] < 60.0 && at.distance(c) < 24.0 {
+                        sum += at * p[0];
+                        w += p[0];
+                    }
+                }
+            }
+            if w > 0.0 {
+                (sum / w - c) / 12.0
+            } else {
+                Vec2::ZERO
+            }
+        })
+        .collect()
+}
+
+/// G2: an omni og.WindMotor in still air pushes the copies around it
+/// outward: within its radius the plates' offsets point away from it
+/// (their mean direction's correlation with the outward vector above
+/// 0.8), and copies past its reach stay put. Before G2 nothing read a
+/// motor: every plate stood over its root.
+#[test]
+fn a_wind_motor_pushes_copies_away_from_it() {
+    let (mut scene, roots) = plate_field();
+    scene.wind = None;
+    scene.wind_motors = vec![og_render::WindMotor {
+        position: Vec3::ZERO,
+        radius: 18.0,
+        strength: 12.0,
+        ..Default::default()
+    }];
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    // A few ticks so the push spreads through the field.
+    for tick in 0..20 {
+        scene.tick = tick;
+        r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    }
+    let img = r.read_offscreen().expect("capture");
+    keep("grass-motor-plates", &img);
+    let offsets = plate_offsets(&img, &roots);
+    let (mut dot, mut n, mut far) = (0.0, 0, 0.0f32);
+    for (root, o) in roots.iter().zip(&offsets) {
+        let d = root.length();
+        if d > 3.0 && d < 14.0 && o.length() > 0.02 {
+            dot += o.normalize().dot(root.normalize());
+            n += 1;
+        } else if d > 22.0 {
+            far = far.max(o.length());
+        }
+    }
+    assert!(n >= 4, "{n} plates inside the motor's reach moved");
+    let corr = dot / n as f32;
+    println!("motor: {n} plates, outward correlation {corr:.2}, farthest moved {far:.3} m outside");
+    assert!(corr > 0.8, "the push is not outward: {corr:.2}");
+    assert!(far < 0.1, "a plate past the motor's reach moved {far:.3} m");
+}
+
+/// G2: vegetation springs into the wind and settles after it: when the
+/// wind stops, the next tick still draws the plates leaning (the spring
+/// has not returned) and they come back over ticks rather than in one.
+/// Before G2 the lean followed og.Wind each frame: the first tick without
+/// wind drew every plate over its root.
+#[test]
+fn copies_settle_over_ticks_when_the_wind_stops() {
+    let (mut scene, roots) = plate_field();
+    let blowing = Wind {
+        strength: 0.5,
+        direction: Vec3::X,
+        gust: 0.0,
+        turbulence: 0.0,
+        ..Wind::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut lean_at = |scene: &mut RenderScene, tick: u64, wind: Option<Wind>| {
+        scene.tick = tick;
+        scene.wind = wind;
+        r.render(scene, &RenderTarget::Offscreen).expect("render");
+        let o = plate_offsets(&r.read_offscreen().expect("capture"), &roots);
+        o.iter().map(|o| o.x).sum::<f32>() / o.len().max(1) as f32
+    };
+    for tick in 0..30 {
+        lean_at(&mut scene, tick, Some(blowing));
+    }
+    let blown = lean_at(&mut scene, 30, Some(blowing));
+    let first = lean_at(&mut scene, 31, None);
+    let later = lean_at(&mut scene, 45, None);
+    println!("lean: blown {blown:.3} m, 1 tick after {first:.3} m, 15 ticks after {later:.3} m");
+    assert!(
+        blown > 0.8,
+        "the wind leaned the plates {blown:.3} m, not about 1 m"
+    );
+    assert!(
+        first > 0.5 * blown,
+        "the plates snapped back in one tick: {first:.3}"
+    );
+    assert!(
+        later < first,
+        "the plates did not start to settle: {first:.3} then {later:.3}"
     );
 }

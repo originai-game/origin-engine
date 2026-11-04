@@ -16,6 +16,8 @@ struct DepthView {
 // meshlet_sway.wgsl's `MeshletDraw`, and the vertex pool for its foliage
 // regions.
 @group(1) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
+// The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+@group(1) @binding(18) var meshlet_wind_tex: texture_2d<f32>;
 @group(1) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
 
 @vertex
@@ -33,7 +35,7 @@ fn vs_depth(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   if (c.w != 0u) {
     let at = meshlet_sway_row(c.w, index);
     let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
-    position += meshlet_sway(position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], model, meshlet_draw.wind[0], sway);
+    position += meshlet_sway(position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], model, meshlet_draw.wind[0], sway, false);
   }
   let world = model * vec4<f32>(position, 1.0);
   return mul_point(depth_view.view_proj, world);

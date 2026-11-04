@@ -138,6 +138,13 @@ is one line here, written at the merge that changes
   terrain file takes the same keys per layer. All default to 0: a terrain
   that does not set them draws as before. The terrain prepass now reads only
   the layers' weights and heights for its roughness, never their normal maps.
+- **One wind field for all vegetation (G2).** Where compute runs, the
+  renderer simulates og.Wind as a camera-centred stable-fluids field that
+  grass, TerrainScatter copies, impostor cards and meshlet trees all lean
+  by, with a damped spring so gusts arrive and settle. New members (off by
+  default in effect, compatible): `Wind.turbulence`, `Wind.gustSize`,
+  `enum WindMotorKind`, `component WindMotor { kind, radius, strength }`.
+  Impostor cards now sway with their meshes. Wind frames move.
 - **Scatter fades without grain.** TerrainScatter's `fade` now shrinks and
   thins copies out (each copy shrinks over its own part of the fade) instead
   of dithering their pixels, and the mesh-to-impostor crossfade thresholds by

@@ -14,8 +14,8 @@ struct FoliageWind {
 
 // Frame and ShadowPass keep this as vec4s so non-foliage shaders need no
 // wind includes. The layout is checked against FoliageWind on the CPU.
-fn foliage_wind_unpack(v: array<vec4f, 7>) -> FoliageWind {
-  return FoliageWind(v[0], v[1], v[2], WindField(v[3], v[4], v[5], v[6]));
+fn foliage_wind_unpack(v: array<vec4f, 9>) -> FoliageWind {
+  return FoliageWind(v[0], v[1], v[2], WindField(v[3], v[4], v[5], v[6], v[7], v[8]));
 }
 
 // SeedThree's canopy dome, blended before the inverse-transpose and normal
@@ -37,35 +37,28 @@ fn foliage_rotate(p: vec3f, axis: vec3f, angle: f32) -> vec3f {
   return p * c + cross(axis, p) * sin(angle) + axis * dot(axis, p) * (1.0 - c);
 }
 
-// The same travelling-wave/gust-patch mix as grass_bend. This field is
-// built independently for each drawn state, so sample its current half.
-fn foliage_wave(at: vec3f, wind: FoliageWind) -> f32 {
-  let world = at + wind.origin.xyz;
-  let x = wind.origin.w * dot(world, wind.dir_strength.xyz);
-  let wave = (sin(x - wind.gust_top.z) + 0.5 * sin(2.3 * x + 1.7 - wind.gust_top.w)) / 1.5;
-  let gust = wind_gust(wind.field, world.xz, false);
-  return clamp(0.5 * wave + 1.4 * (gust - 0.5), -1.0, 1.0);
-}
-
 // World-space offset, added to model * p (not transformed a second time).
 // f0 = branch pivot/stiffness; f1 = leaf anchor/flutter. Bark has flutter 0.
-fn foliage_offset(p: vec3f, f0: vec4f, f1: vec4f, model: mat4x4f, wind: FoliageWind) -> vec3f {
-  if (wind.dir_strength.w <= 0.0 || wind.gust_top.y <= 0.0) { return vec3f(0.0); }
+// `lean` is the tree's lean at its root (world x, z, its sway included):
+// wind_common.wgsl wind_lean, the wind field every vegetation tier reads,
+// so the trunk bends where and as far as the field blows, gusts and
+// motors included; branches and leaves add og.Wind's travelling wave.
+fn foliage_offset(p: vec3f, f0: vec4f, f1: vec4f, model: mat4x4f, wind: FoliageWind, lean_xz: vec2f) -> vec3f {
+  let lean = length(lean_xz);
+  if (lean <= 1e-6 || wind.gust_top.y <= 0.0) { return vec3f(0.0); }
   // Bring the wind into model space before bending: rotated and scaled
   // instances still lean with the world wind, not with their own +x.
   let a = model[0].xyz;
   let b = model[1].xyz;
   let c = model[2].xyz;
-  let d = wind.dir_strength.xyz;
+  let d = vec3f(lean_xz.x, 0.0, lean_xz.y) / lean;
   let inverse_d = vec3f(dot(cross(b, c), d), dot(cross(c, a), d), dot(cross(a, b), d)) / dot(a, cross(b, c));
   let horizontal = vec3f(inverse_d.x, 0.0, inverse_d.z);
   if (dot(horizontal, horizontal) <= 1e-12) { return vec3f(0.0); }
   let direction = normalize(horizontal);
   let axis = cross(vec3f(0.0, 1.0, 0.0), direction);
-  let root = model[3].xyz;
-  let lean = wind.dir_strength.w * (1.0 + wind.gust_top.x * foliage_wave(root, wind));
   let branch_world = (model * vec4f(f0.xyz, 1.0)).xyz;
-  let branch_phase = wind.origin.w * dot(branch_world + wind.origin.xyz, wind.dir_strength.xyz);
+  let branch_phase = wind.origin.w * dot(branch_world + wind.origin.xyz, d);
   let branch_wave = (sin(branch_phase - wind.gust_top.z) + 0.5 * sin(2.3 * branch_phase + 1.7 - wind.gust_top.w)) / 1.5;
   let leaf_phase = dot(f1.xyz, vec3f(1.7, 2.3, 1.1)) + branch_phase;
   // Integer harmonics of the reduced phases are continuous at phase wrap.

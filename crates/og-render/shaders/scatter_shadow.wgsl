@@ -16,7 +16,7 @@ struct ScatterShadowOut {
 fn vs_shadow(v: ScatterVertex, i: ScatterInstance) -> ScatterShadowOut {
   let size = scatter_scale(i.m3);
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), size);
-  let sway = scatter_sway(v.position, i.m3, length(i.m1) * size, scatter.wind_phase.xy);
+  let sway = scatter_sway(v.position, i.m3, length(i.m1) * size, false);
   let world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
   var o: ScatterShadowOut;
   o.fade = scatter_near(i.m3);

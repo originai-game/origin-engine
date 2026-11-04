@@ -33,8 +33,9 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   let centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   var o: ImpostorShadowOut;
   o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, shadow_project(card.world, mul_point(shadow_pass.view_proj, card.world)), size > 0.0 && o.fade.y > o.fade.x);
-  o.world = card.world.xyz;
+  let world = card.world + vec4<f32>(imp_sway(card, i, size, false), 0.0);
+  o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), size > 0.0 && o.fade.y > o.fade.x);
+  o.world = world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;
   o.par01 = card.par01;

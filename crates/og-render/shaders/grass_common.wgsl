@@ -24,36 +24,29 @@ const GRASS_TAU: f32 = 6.283185307;
 const GRASS_WIDTH_RANGE: f32 = 4.0;
 // Vertex indices between one level of detail and the next (grass.rs LOD_STRIDE).
 const GRASS_LOD_STRIDE: u32 = 64u;
-// og.Wind's wave (scatter.rs WIND_WAVELENGTH).
-const GRASS_WAVELENGTH: f32 = 10.0;
 // Steps of last frame's bend per unit of bend.
 const GRASS_BEND_STEPS: f32 = 128.0;
 // How much a gust brightens the blades it presses down (grass.rs GUST_SHEEN).
 const GRASS_GUST_SHEEN: f32 = 1.5;
 
-// How far og.Wind bends a blade standing at world point `at`: its tip's
-// offset as a share of its height, in world x and z. The lean is og.Wind's
-// (strength times 1 plus gust times its wave), the wave of the scattered
-// copies' sway mixed with the gust patches, so a gust rolls across the
-// field as a band and in patches; each blade also sways on its own (by
-// its seed, in [0, 1)). Softer stems (`stiffness` towards 0) bend further.
-fn grass_bend(w: WindField, at: vec2<f32>, seed: f32, stiffness: f32, sway: f32, previous: bool) -> vec2<f32> {
-  let strength = w.dir.z * sway;
-  if (strength <= 0.0) { return vec2<f32>(0.0); }
-  let dir = w.dir.xy;
-  let phase = select(w.phase.xy, w.phase.zw, previous);
-  let x = GRASS_TAU / GRASS_WAVELENGTH * dot(at, dir);
-  let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
-  let gust = wind_gust(w, at, previous);
-  let g = clamp(0.5 * wave + 1.4 * (gust - 0.5), -1.0, 1.0);
+// How far the wind bends a blade whose spot leans by `lean` (world x, z:
+// wind_common.wgsl wind_lean, the simulated field shared with every other
+// tier, or og.Wind's analytic lean without it): its tip's offset as a
+// share of its height. Each blade also sways on its own (by its seed, in
+// [0, 1)) across and along the lean. Softer stems (`stiffness` towards 0)
+// bend further.
+fn grass_bend(w: WindField, lean: vec2<f32>, seed: f32, stiffness: f32, sway: f32, previous: bool) -> vec2<f32> {
+  let l = lean * sway;
+  let strength = length(l);
+  if (strength <= 1e-6) { return vec2<f32>(0.0); }
+  let dir = l / strength;
   let flex = mix(1.6, 0.4, clamp(stiffness, 0.0, 1.0));
-  let push = strength * (1.0 + w.dir.w * g) * flex;
   let time = select(w.time.x, w.time.y, previous);
   let frequency = wind_periodic(mix(1.1, 2.4, stiffness) * (0.85 + 0.3 * seed));
   let s = sin(time * frequency + seed * GRASS_TAU);
   let across = vec2<f32>(-dir.y, dir.x);
   let wobble = (dir * 0.5 + across * 0.5) * s * (0.03 + 0.3 * strength) * flex;
-  return clamp(dir * push + wobble, vec2<f32>(-1.0), vec2<f32>(1.0));
+  return clamp(l * flex + wobble, vec2<f32>(-1.0), vec2<f32>(1.0));
 }
 
 // The shiver of a full-detail blade's tip, in metres sideways: `t` 0 at

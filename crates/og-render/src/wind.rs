@@ -14,6 +14,8 @@ use glam::{Vec2, Vec3};
 
 /// wind_common.wgsl.
 pub(crate) const WIND_COMMON_WGSL: &str = wgsl3d!("wind_common.wgsl");
+/// wind_lean.wgsl: the simulated field's lean (after [`WIND_COMMON_WGSL`]).
+pub(crate) const WIND_LEAN_WGSL: &str = wgsl3d!("wind_lean.wgsl");
 
 /// Seconds after which the wind's clock starts again (wind_common.wgsl).
 const TIME_PERIOD: f64 = 3600.0;
@@ -29,6 +31,9 @@ pub(crate) struct WindFieldGpu {
     pub(crate) phase: [f32; 4],
     pub(crate) offset: [f32; 4],
     pub(crate) time: [f32; 4],
+    /// The simulated field's grid (`wind_field.rs` [`crate::wind_field::WindGrid`]).
+    pub(crate) grid: [f32; 4],
+    pub(crate) grid_outer: [f32; 4],
 }
 
 /// og.Wind at `tick`: its wave's phases, how far the gust patches have
@@ -46,16 +51,20 @@ fn wind_at(w: &crate::Wind, tick: u64, rate: f32) -> ([f32; 2], [f32; 2], f32) {
     )
 }
 
-/// og.Wind's field at `tick`, and as it was at `previous`.
+/// og.Wind's field at `tick`, and as it was at `previous`, read with the
+/// simulated field of grid `grid` (`wind_field.rs`).
 pub(crate) fn field_gpu(
     wind: Option<crate::Wind>,
     tick: u64,
     previous: u64,
     rate: f32,
     origin: Vec3,
+    grid: crate::wind_field::WindGrid,
 ) -> WindFieldGpu {
     let mut gpu = WindFieldGpu {
         time: [0.0, 0.0, origin.x, origin.z],
+        grid: grid[0],
+        grid_outer: grid[1],
         ..Default::default()
     };
     if let Some(w) = wind.filter(|w| w.strength > 0.0) {
@@ -81,8 +90,22 @@ mod tests {
         let w = crate::Wind::default();
         // A day and ten seconds in.
         let tick = 5_184_600;
-        let a = field_gpu(Some(w), tick, tick - 1, 60.0, Vec3::ZERO);
-        let b = field_gpu(Some(w), tick, tick - 1, 60.0, Vec3::ZERO);
+        let a = field_gpu(
+            Some(w),
+            tick,
+            tick - 1,
+            60.0,
+            Vec3::ZERO,
+            crate::wind_field::NO_GRID,
+        );
+        let b = field_gpu(
+            Some(w),
+            tick,
+            tick - 1,
+            60.0,
+            Vec3::ZERO,
+            crate::wind_field::NO_GRID,
+        );
         assert_eq!(a, b);
         // A day in, the clock is within its period and one tick moved it by 1/60 s.
         assert!((a.time[0] - 10.0).abs() < 1e-4, "{}", a.time[0]);
@@ -95,7 +118,7 @@ mod tests {
             a.offset[0]
         );
         assert_eq!(a.offset[1], 0.0);
-        let still = field_gpu(None, 90, 89, 60.0, Vec3::ZERO);
+        let still = field_gpu(None, 90, 89, 60.0, Vec3::ZERO, crate::wind_field::NO_GRID);
         assert_eq!(still.dir[2], 0.0);
     }
 }

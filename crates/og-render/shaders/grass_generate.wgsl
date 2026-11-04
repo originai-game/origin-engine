@@ -59,6 +59,8 @@ struct GrassGen {
 @group(0) @binding(5) var<storage, read_write> instances: array<vec4<u32>>;
 // Three indexed indirect draws, one per level (index count, instances, first index, base vertex, first instance).
 @group(0) @binding(6) var<storage, read_write> draws: array<u32, 15>;
+// The simulated wind field's lean (wind_field.rs; wind_common.wgsl wind_lean).
+@group(0) @binding(7) var wind_tex: texture_2d<f32>;
 
 fn grass_visible(center: vec3<f32>, radius: f32) -> bool {
   for (var i = 0; i < 6; i++) {
@@ -200,9 +202,10 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let out_len = length(out);
   let away = select(vec2<f32>(0.0), out / max(out_len, 1e-6) * min(out_len, 1.0), out_len > 1e-4);
   let rest = face * gen.shape.z * (0.3 + 0.7 * wind_unit(wind_hash(seed ^ 0x6cu))) + away * gen.shape.w;
-  let at = root.xz + gen.wind.time.zw;
-  b.bend = clamp(rest + grass_bend(gen.wind, at, b.seed, gen.motion.y, gen.motion.x, false), vec2<f32>(-1.0), vec2<f32>(1.0));
-  b.previous_bend = clamp(rest + grass_bend(gen.wind, at, b.seed, gen.motion.y, gen.motion.x, true), vec2<f32>(-1.0), vec2<f32>(1.0));
+  // The wind field's lean at the root, now and as last drawn (wind_field.rs).
+  let lean = wind_lean(wind_tex, gen.wind, root.xz);
+  b.bend = clamp(rest + grass_bend(gen.wind, lean.xy, b.seed, gen.motion.y, gen.motion.x, false), vec2<f32>(-1.0), vec2<f32>(1.0));
+  b.previous_bend = clamp(rest + grass_bend(gen.wind, lean.zw, b.seed, gen.motion.y, gen.motion.x, true), vec2<f32>(-1.0), vec2<f32>(1.0));
   return grass_pack(b, gen.origin, gen.clump.z);
 }
 

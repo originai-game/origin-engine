@@ -76,6 +76,10 @@ impl Renderer {
             self.offscreen_submissions.pop_front();
         }
         self.sync(scene)?;
+        // The wind field's steps since the last tick drawn (wind_field.rs):
+        // its grid is what every vegetation pass below reads it by, its
+        // lean cap what their culling bounds widen by.
+        self.wind_field.prepare(&self.device, &self.queue, scene);
         self.refresh_foliage_bounds(scene);
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
@@ -97,7 +101,13 @@ impl Renderer {
                 .max_storage_buffer_binding_size
                 .min(limits.max_buffer_size);
             self.meshlet
-                .get_or_insert_with(|| meshlet_gpu::MeshletGpu::new(&self.device, max))
+                .get_or_insert_with(|| {
+                    meshlet_gpu::MeshletGpu::new(
+                        &self.device,
+                        max,
+                        self.wind_field.lean_view.clone(),
+                    )
+                })
                 .sync(&self.device, &self.queue, scene);
         }
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
@@ -1321,6 +1331,7 @@ impl Renderer {
                 cam.view_proj,
                 prev_view_proj,
                 self.frame_index,
+                (self.wind_field.grid(), self.wind_field.lean_cap()),
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
                     meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
@@ -1347,6 +1358,7 @@ impl Renderer {
                     frame: &cam,
                     prev_view_proj,
                     height: self.height,
+                    wind_grid: self.wind_field.grid(),
                 },
                 &view_frustum,
             )
@@ -1905,7 +1917,14 @@ impl Renderer {
                     (self.width, self.height),
                     previous,
                     &levels,
-                    crate::foliage::foliage_winds(scene, self.previous_wind),
+                    {
+                        let (w, f) = crate::foliage::foliage_winds(
+                            scene,
+                            self.previous_wind,
+                            self.wind_field.grid(),
+                        );
+                        (w, f, self.wind_field.lean_cap())
+                    },
                     |mesh| &meshes[mesh].vertices,
                     |b| materials[b.material].occluder,
                 ));
@@ -2206,7 +2225,12 @@ impl Renderer {
             material_surface: scene.stylise.material.surface_uniform(),
             origin: scene.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.environment.ground),
-            foliage_wind: crate::foliage::foliage_winds(scene, self.previous_wind).1,
+            foliage_wind: crate::foliage::foliage_winds(
+                scene,
+                self.previous_wind,
+                self.wind_field.grid(),
+            )
+            .1,
         };
         uniform.atmosphere.time[3] = self.previous_time.unwrap_or(uniform.atmosphere.time[0]);
         // The shadow passes' clock, and the scene's origin for the hooks
@@ -2223,7 +2247,6 @@ impl Renderer {
                 time: shadow_time,
                 paraboloid: [0.0; 4],
                 foliage_wind: uniform.foliage_wind[0],
-                pad: [0.0; 8],
             };
         }
         for ls in &local_shadows {
@@ -2236,7 +2259,6 @@ impl Renderer {
                     time: shadow_time,
                     paraboloid: local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
                     foliage_wind: uniform.foliage_wind[0],
-                    pad: [0.0; 8],
                 };
             }
         }
@@ -2265,7 +2287,6 @@ impl Renderer {
                 time: shadow_time,
                 paraboloid: [0.0; 4],
                 foliage_wind: uniform.foliage_wind[0],
-                pad: [0.0; 8],
             };
         }
         self.queue
@@ -3613,6 +3634,8 @@ impl Renderer {
                 }),
             gpu_set,
         );
+        // The wind field steps before any pass reads it.
+        self.wind_field.encode(&mut encoder);
         if let Some(pipelines) = &self.surfaces {
             for mesh in &self.cache.meshes {
                 if let Some(surface) = &mesh.surface {

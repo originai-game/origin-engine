@@ -44,6 +44,8 @@ struct RasterParams {
 @group(0) @binding(7) var<storage, read_write> attrs: array<u32>;
 // The instances' previous transforms, at the same slots.
 @group(0) @binding(8) var<storage, read> previous: array<vec4<f32>>;
+// The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+@group(0) @binding(9) var meshlet_wind_tex: texture_2d<f32>;
 
 const WG: u32 = 64u;
 const WORKGROUPS_PER_ROW: u32 = 65535u;
@@ -83,7 +85,7 @@ fn raster_position(base: u32, local: u32, region: u32, inst: u32, model: mat4x4<
     layer = previous[inst * 4u + 3u].x;
     wind = raster.wind[1];
   }
-  return p + meshlet_sway(p, vertices[region - 1u], vertices[at], vertices[at + 1u], model, wind, foliage_sway(layer));
+  return p + meshlet_sway(p, vertices[region - 1u], vertices[at], vertices[at + 1u], model, wind, foliage_sway(layer), from_previous);
 }
 
 fn transform_at(buf_index: u32, from_previous: bool) -> mat4x4<f32> {

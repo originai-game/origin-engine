@@ -296,6 +296,7 @@ fn windy(scene: &mut RenderScene) {
         direction: Vec3::X,
         speed: 3.0,
         gust: 0.3,
+        ..og_render::Wind::default()
     });
     scene.tick = 90;
     scene.tick_rate = 60.0;

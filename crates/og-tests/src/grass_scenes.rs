@@ -26,6 +26,7 @@ pub fn wind() -> Wind {
         direction: Vec3::new(1.0, 0.0, 0.3),
         speed: 4.0,
         gust: 0.7,
+        ..Wind::default()
     }
 }
 

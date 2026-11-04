@@ -624,6 +624,15 @@ impl Renderer {
                 .flags
                 .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
         );
+        // The vegetation's wind field (G2), simulated where compute runs.
+        let wind_field = crate::wind_field::WindFieldSim::new(
+            &device,
+            WORLD_3D
+                && adapter
+                    .get_downlevel_capabilities()
+                    .flags
+                    .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
+        );
         let metaballs =
             metaballs::MetaballRenderer::new(&device, &frame_layout, FRAME_WGSL, samples);
         let fluid3d =
@@ -879,6 +888,7 @@ impl Renderer {
                     wgpu::TextureFormat::R8Unorm,
                     crate::blue_noise::BLUE_NOISE,
                 ),
+                wind_field: wind_field.lean_view.clone(),
             },
         );
         let grass = grass::GrassRenderer::new(
@@ -888,6 +898,7 @@ impl Renderer {
                 shadow_layout: &shadow_bind_layout,
                 fx_layout: &fx_layout,
                 samples,
+                wind_field: wind_field.lean_view.clone(),
             },
         );
         let vertex_buffer = |label: &str, size: u64| {
@@ -1091,6 +1102,7 @@ impl Renderer {
             culling_counts: false,
             taa_history: None,
             taa_history_frames: 0,
+            wind_field,
             gi_history: None,
             drawn_origin: Vec3::ZERO,
             stylise_chain: None,
