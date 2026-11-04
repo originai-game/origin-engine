@@ -1445,6 +1445,51 @@ fn emit_text(cmd: &DrawCmd, layer: i32, clips: &mut Clips, overlay: &mut Overlay
     true
 }
 
+/// The lines of text a frame shows, each a [`DrawCmd::Text`] (a styled
+/// one's text unwrapped), without the style's drops under them
+/// (`textShadow`): a drop is its line pushed before it with the same
+/// words, size, height and clip, a step off (at most 6 % of the size, or
+/// a pixel font's pixel, and half its blur) in the shadow's colour. What
+/// reads a line's ink (`og ui check`) reads the line, never its drop: a
+/// blue "Lv. 125" over its black drop measured 1:1.
+pub fn drawn_lines<'a>(cmds: impl IntoIterator<Item = &'a DrawCmd>) -> Vec<&'a DrawCmd> {
+    let lines: Vec<(&DrawCmd, &String, f32, Rect, Rect)> = cmds
+        .into_iter()
+        .map(|c| match c {
+            DrawCmd::StyledText { text, .. } => &**text,
+            c => c,
+        })
+        .filter_map(|c| match c {
+            DrawCmd::Text {
+                text,
+                size,
+                bounds,
+                clip,
+                ..
+            } => Some((c, text, *size, *bounds, *clip)),
+            _ => None,
+        })
+        .collect();
+    lines
+        .iter()
+        .enumerate()
+        .filter(|&(i, &(_, text, size, b, clip))| {
+            let reach = (size * 0.2).max(2.0);
+            !lines[i + 1..].iter().any(|&(_, t, s, o, c)| {
+                let (dx, dy) = (b.x - o.x, b.y - o.y);
+                t == text
+                    && s == size
+                    && c == clip
+                    && o.height == b.height
+                    && (dx != 0.0 || dy != 0.0)
+                    && dx.abs() <= reach
+                    && dy.abs() <= reach
+            })
+        })
+        .map(|(_, l)| l.0)
+        .collect()
+}
+
 #[cfg(test)]
 mod levels {
     use super::*;

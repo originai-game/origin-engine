@@ -67,7 +67,7 @@ pub use a11y::{A11yNode, A11yTree, ROLES, Semantics};
 pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
 pub use doc::UiDocument;
 pub use doc::build::{DocEvent, DocResponse};
-pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS};
+pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
 pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
     Affine, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup,

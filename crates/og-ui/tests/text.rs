@@ -640,3 +640,59 @@ fn a_label_holds_its_style_drop_inside_its_box() {
         assert!(b.x + b.width <= right + 0.01, "{b:?} inside {right}");
     }
 }
+
+/// A line's ink is the line's, never the style's drop under it: the drop
+/// (and the half-strength copy a blurred drop adds) are pushed first, a
+/// step off, in the shadow's colour, and a check that read the first run
+/// measured a blue "Lv. 125" over its black drop at 1:1 (foundry's
+/// generators). The same words a row below are a line of their own.
+#[test]
+fn drawn_lines_are_the_lines_not_their_drops() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut theme = *ui.theme();
+    theme.art.text_shadows[0] = Some(og_ui::style_file::Shadow {
+        dx: 0.0,
+        dy: 1.0,
+        blur: 1.0,
+        spread: 0.0,
+        color: Srgba::BLACK,
+    });
+    ui.set_theme(theme);
+    let blue = Srgba::rgb(76, 140, 230);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.column("List", Element::column(), |ui| {
+            for id in ["A", "B"] {
+                ui.label(
+                    id,
+                    "Lv. 125",
+                    LabelDesc {
+                        color: Some(blue),
+                        ..LabelDesc::default()
+                    },
+                );
+            }
+        });
+        ui.end();
+    }
+    let items = &ui.frame().items;
+    let all = items
+        .iter()
+        .filter(|i| matches!(i.cmd, DrawCmd::Text { .. }))
+        .count();
+    assert_eq!(all, 6, "two lines, each with its drop and the blur's copy");
+    let lines = og_ui::drawn_lines(items.iter().map(|i| &i.cmd));
+    let inks: Vec<[f32; 4]> = lines
+        .iter()
+        .map(|c| match c {
+            DrawCmd::Text { color, .. } => *color,
+            _ => unreachable!(),
+        })
+        .collect();
+    assert_eq!(
+        inks,
+        [blue.linear(), blue.linear()],
+        "the two lines in their own ink"
+    );
+}

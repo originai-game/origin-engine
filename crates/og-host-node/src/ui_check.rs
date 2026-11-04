@@ -43,7 +43,6 @@ fn frame(engine: u32) -> Value {
         })
         .collect();
     let p = &theme.palette;
-    let mut texts = Vec::new();
     let mut fills = Vec::new();
     // What text can sit on: every filled rectangle, UI-pass shape and glass
     // of at least 8×8 (a solid under half opacity is a tint, not a ground).
@@ -78,17 +77,6 @@ fn frame(engine: u32) -> Value {
             grounds.push(rect(&r));
         }
         match &item.cmd {
-            DrawCmd::Text {
-                text,
-                size,
-                bounds,
-                clip,
-                color,
-                ..
-            } => texts.push(json!({
-                "text": text, "size": size, "bounds": rect(bounds), "clip": rect(clip),
-                "color": color,
-            })),
             DrawCmd::Quad { rect: r, color, .. } | DrawCmd::Image { rect: r, color, .. }
                 if r.width >= 8.0 && r.height >= 8.0 =>
             {
@@ -97,6 +85,25 @@ fn frame(engine: u32) -> Value {
             _ => {}
         }
     }
+    // The lines as drawn, a styled one's included (an outlined HUD label
+    // had no run and read as hidden, never measured), without their drops.
+    let texts: Vec<Value> = og_ui::drawn_lines(f.items.iter().map(|i| &i.cmd))
+        .into_iter()
+        .filter_map(|c| match c {
+            DrawCmd::Text {
+                text,
+                size,
+                bounds,
+                clip,
+                color,
+                ..
+            } => Some(json!({
+                "text": text, "size": size, "bounds": rect(bounds), "clip": rect(clip),
+                "color": color,
+            })),
+            _ => None,
+        })
+        .collect();
     let elements: Vec<Value> = f
         .elements
         .iter()
