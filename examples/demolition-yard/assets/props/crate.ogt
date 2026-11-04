@@ -21,7 +21,7 @@ part "box" {
 fracture {
   style wood
   grain x
-  chunks 12
+  chunks 16
   seed 2
   children 0
   anchor none

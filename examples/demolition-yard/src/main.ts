@@ -31,6 +31,7 @@ function build(world: World): void {
   const dust = must(og.load.emitter(world, "fx/dust.ogt"));
   const sparks = must(og.load.emitter(world, "fx/sparks.ogt"));
   const chips = must(og.load.emitter(world, "fx/chips.ogt"));
+  const grit = must(og.load.emitter(world, "fx/grit.ogt"));
 
   // The yard: a concrete slab the chunks land on.
   const box = must(og.render.boxGeometry(world, {}));
@@ -49,7 +50,7 @@ function build(world: World): void {
   // pressed (the default friction): a hole at its foot drops what hung over
   // it and leaves the loaded piers standing; fine pieces are GPU debris.
   prop(world, "props/wall.ogt", "wall", WALL, { toughness: 800, strength: 3000, density: 1900, dust, sparks, debris: chips });
-  prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, dust, sparks, debris: chips });
+  prop(world, "props/pillar.ogt", "pillar", PILLAR, { toughness: 2000, strength: 20000, density: 2400, dust, sparks, debris: grit });
   // Wood: a dynamic crate, broken by its own landing.
   const crate = prop(world, "props/crate.ogt", "crate", CRATE, { toughness: 120, density: 600, impactThreshold: 40, impactRadius: 0.9, anchored: false, dust });
   world.insert(crate, og.RigidBody, { kind: BODY_DYNAMIC, gravityScale: 0 });

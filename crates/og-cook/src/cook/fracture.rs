@@ -1,9 +1,11 @@
 //! Prefracture: a model with a `fracture { }` block (at the top of a
 //! `type model`, or in a glTF's import settings) is cut into chunks here,
 //! after it became a glTF binary and before the rest of the cook sees it.
-//! The model the cook then cooks has one node per chunk (the support
-//! chunks drawn at rest, so the intact model looks as authored; their
-//! children hidden, `KHR_node_visibility`), each at its centre of mass and
+//! The model the cook then cooks has one node per chunk, hidden
+//! (`KHR_node_visibility`), and last an `intact` node, the model as
+//! authored, which is what draws at rest (the cut faces between intact
+//! chunks never show, even through glass); a fractured prop draws its
+//! chunks' nodes instead. Each chunk's node is at its centre of mass and
 //! drawn with its outer faces' materials and the cut faces' own interior
 //! material; beside it, `<model>#fracture` (`og.Fracture`) holds the
 //! chunks, their hierarchy, the bonds of the support graph and the anchors
@@ -42,7 +44,7 @@
 //!   bricks cut where a block ends, as masonry breaks), their children the
 //!   bricks within, so rubble is bricks and clusters of them.
 //! - `wood`: cells stretched along `grain x|y|z` (default the longest axis)
-//!   by six: long splinters along the grain.
+//!   by three: long splinters along the grain.
 //! - `glass`: radial cracks from `impact` (default the centre) crossed by
 //!   `rings` concentric ones (1 to 8, default 2), a slab across the thinnest
 //!   axis: the shards of a struck pane.
@@ -975,14 +977,14 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
                 Style::Concrete => (DVec3::ONE, 2),
                 Style::Wood => {
                     // Long cells along the grain: distance across it counts
-                    // six times as much.
+                    // three times as much.
                     let along = s.grain.unwrap_or_else(|| {
                         (0..3)
                             .max_by(|&a, &b| ext[a].total_cmp(&ext[b]))
                             .expect("three axes")
                     });
                     let mut m = DVec3::ONE;
-                    m[along] = 1.0 / 6.0;
+                    m[along] = 1.0 / 3.0;
                     (m, 0)
                 }
                 _ => (DVec3::ONE, 0),
@@ -1086,7 +1088,7 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
         let node = place(
             p,
             format!("chunk{i}"),
-            false,
+            true,
             &mut nodes,
             &mut meshes,
             &mut bin,
@@ -1129,6 +1131,20 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
             });
         }
     }
+    // The model whole, as it draws at rest.
+    let whole = Piece {
+        mesh: mesh.clone(),
+        material: material.iter().map(|&m| Some(m)).collect(),
+        ..Piece::default()
+    };
+    place(
+        &whole,
+        "intact".into(),
+        false,
+        &mut nodes,
+        &mut meshes,
+        &mut bin,
+    );
     let bonds: Vec<Bond> = level1
         .bonds
         .iter()
@@ -1154,7 +1170,7 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
         .as_array()
         .cloned()
         .unwrap_or_default();
-    if children.iter().any(|c| !c.is_empty()) && !used.iter().any(|e| e == "KHR_node_visibility") {
+    if !used.iter().any(|e| e == "KHR_node_visibility") {
         used.push("KHR_node_visibility".into());
     }
     let mut out = serde_json::json!({

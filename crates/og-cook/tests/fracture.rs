@@ -115,17 +115,21 @@ fn a_wall_cooks_into_chunks_that_tile_it_with_bonds_anchors_and_hidden_children(
     for c in &anchored {
         assert!(c.anchor_centroid.y.abs() < 1e-4);
     }
-    // The model: a node a chunk at its centroid, children hidden at rest,
-    // and the interior material after the brick.
+    // The model: a node a chunk at its centroid, hidden at rest, and the
+    // intact model the one node drawn (no cut face shows through a crack
+    // that is not there yet); the interior material after the brick.
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let model = bundle.load_model("props/wall.ogt").unwrap();
-    assert_eq!(model.nodes.len(), a.chunks.len());
+    assert_eq!(model.nodes.len(), a.chunks.len() + 1);
     for c in &a.chunks {
         let n = &model.nodes[c.node as usize];
         let t = n.translation;
         assert!((t - c.centroid).length() < 1e-5, "{t} {}", c.centroid);
-        assert_eq!(n.visible, c.parent == og_destruct::NONE);
+        assert!(!n.visible);
     }
+    let shown: Vec<_> = model.nodes.iter().filter(|n| n.visible).collect();
+    assert_eq!(shown.len(), 1);
+    assert_eq!(shown[0].name, "intact");
     assert_eq!(model.materials[a.interior as usize].name, "interior");
 }
 

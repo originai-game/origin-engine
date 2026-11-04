@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Concrete grit, visuals only (og.Destructible.debris): grey chips on the
+# GPU that bounce off the depth buffer and never touch the simulation.
+maxParticles 512
+shape sphere 0.15
+spread 180
+rate 0
+burst 0 60
+duration 0.3
+looping false
+lifetime 2.5 4
+speed 1.2 3.5
+size 0.03 0.08
+colorOverLife {
+  key 0 0.2 0.2 0.19 1
+  key 0.85 0.2 0.2 0.19 1
+  key 1 0.2 0.2 0.19 0
+}
+rotation 0 360
+angularVelocity -400 400
+gravity 0 -9.8 0
+drag 0.1
+render mesh tetrahedron
+lit true
+collision 0.25 0.7
