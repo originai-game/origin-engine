@@ -25,7 +25,12 @@ exist.
   not fix-forward items. UI lands on quick plus the art director's
   aesthetic review against commercial games (material, hierarchy, real
   art, the pack's identity, selection, typography, the scene behind the
-  HUD), tracked in its ranked gap list.
+  HUD), tracked in its ranked gap list. The engine owns the baseline:
+  components, patterns, screen documents, each pack's design and the
+  typography, judged as sheets on the pack's own ground. Fitting UI to a
+  particular game's scene is the game agent's work while it builds that
+  game; showcase and in-scene frames are demos that hold a landing only
+  when something breaks, never on looks (the owner, 2026-11-04).
 - **Threads.** At most eight sub-threads at once, `external-agent:claude-code`
   on Opus 5.5 medium (AGENTS.md); file-splitting threads in Amp `high`.
   Each stream is one thread on one branch from `origin/main`, owns the
