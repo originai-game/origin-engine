@@ -197,8 +197,9 @@ struct Shown {
     next: Option<Frame>,
     /// Where between `prev` and `next` the frame is, 0 to 1.
     phase: f32,
-    /// The last goal serial seen (a change clears the model's queued goal).
+    /// The last simulation intent examined by presentation.
     serial: u32,
+    requested: Option<Goal>,
     planter: Planter,
     skeleton: u64,
     rig: u64,
@@ -237,6 +238,34 @@ struct Issued {
 }
 
 impl Shown {
+    fn reconcile_request(&self, motion: &mut Motion, goal: &Goal) {
+        // The context remains owned by Motion until this generation lands.
+        // A simulation transition alone does not change its conditioning.
+        // Heading passes through Transform's quaternion between predictions;
+        // allow its f32 roundoff (10 micrometres for target positions).
+        let same = self.requested.as_ref().is_some_and(|old| {
+            old.token_counts == goal.token_counts
+                && old.targets.len() == goal.targets.len()
+                && old.targets.iter().zip(&goal.targets).all(|(a, b)| {
+                    a.positions
+                        .iter()
+                        .flatten()
+                        .zip(b.positions.iter().flatten())
+                        .chain(
+                            a.rotations
+                                .iter()
+                                .flatten()
+                                .flatten()
+                                .zip(b.rotations.iter().flatten().flatten()),
+                        )
+                        .all(|(a, b)| (a - b).abs() <= 1e-5)
+                })
+        });
+        if !same {
+            motion.clear_goals(self.character);
+        }
+    }
+
     fn issued(&self, f: &Frame) -> Option<&Issued> {
         self.issued.iter().find(|g| g.id == f.tag)
     }
@@ -976,6 +1005,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 next: None,
                 phase: 0.0,
                 serial: u32::MAX,
+                requested: None,
                 planter: Planter::new(Vec::new()),
                 skeleton: 0,
                 rig: u64::MAX,
@@ -1026,27 +1056,34 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         }
         s.last_position = a.position;
         let serial = goals.agents.get(&a.entity).map_or(0, |g| g.serial);
-        if serial != s.serial {
-            s.serial = serial;
-            r.motion.clear_goals(s.character);
-        }
         // At least the agent's lookahead, and enough to cover two batches'
         // latency (sliced across frames, 0.5 to 0.6 s for 16 agents): one
         // batch runs at a time, so a goal asked for while another is on its
         // way waits for it, then for its own.
         let ahead = a.settings.lookahead.max(2.0 * r.latency as f32 / 1000.0);
         let lookahead = (ahead * RATE) as usize;
-        if r.motion.goals(s.character) == 0 && r.motion.queued(s.character) < lookahead.max(1) {
+        if serial != s.serial
+            || (r.motion.goals(s.character) == 0 && r.motion.queued(s.character) < lookahead.max(1))
+        {
             let queued = r.motion.queued(s.character) as f32 / RATE;
             let (at, h, pose, seconds) = predict(&goals, a, s, queued);
             let mut goal = Goal::placed(r.library.frames(pose), [at.x, at.z], h);
-            goal.tag = s.next_id;
             // A walk or run keeps time by its distance; forced short, the
             // model crawled into a run. A pose (jump, crouch, wave) has no
             // distance to keep time by: its length is the segment's.
             if pose != gait(RUN_SPEED) && pose != gait(0.0) {
                 goal.token_counts = token_counts(seconds);
             }
+            if serial != s.serial {
+                s.serial = serial;
+                s.reconcile_request(&mut r.motion, &goal);
+            }
+            if r.motion.goals(s.character) != 0 || r.motion.queued(s.character) >= lookahead.max(1)
+            {
+                continue;
+            }
+            s.requested = Some(goal.clone());
+            goal.tag = s.next_id;
             s.issued.push_back(Issued {
                 id: s.next_id,
                 pose,
@@ -1251,6 +1288,7 @@ mod tests {
             next: None,
             phase: 0.0,
             serial: 0,
+            requested: None,
             planter: Planter::new(Vec::new()),
             skeleton: 1,
             rig: 42,
@@ -1296,6 +1334,100 @@ mod tests {
             super::super::dump(world)["agents"][0]["presentation"],
             expected
         );
+    }
+
+    #[test]
+    fn initial_face_to_idle_keeps_the_first_generated_window() {
+        let a = Seen {
+            entity: 1,
+            settings: Settings::of(&json!({"drive":true})),
+            position: Vec3::new(2.0, 0.0, -3.0),
+            rotation: glam::Quat::IDENTITY,
+            scale: 1.0,
+            skeleton: 1,
+            skin: 0,
+        };
+        let face = super::super::Goal {
+            kind: Kind::Face,
+            pose: 0,
+            duration: 0.1,
+            target: Vec3::ZERO,
+            heading: std::f32::consts::PI + 0.25,
+            speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
+        };
+        let mut goals = Goals::default();
+        let mut agent = super::super::Agent::default();
+        agent.queue.push_back(face);
+        agent.queue.push_back(super::super::Goal {
+            kind: Kind::Pose,
+            duration: 600.0,
+            ..face
+        });
+        goals.agents.insert(a.entity, agent);
+        let mut s = shown();
+        let mut pose = Pose {
+            positions: [[0.0; 3]; og_motion::contract::JOINTS],
+            rotations: [[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+                og_motion::contract::JOINTS],
+        };
+        pose.positions[LEFT_LEG][0] = -0.1;
+        pose.positions[RIGHT_LEG][0] = 0.1;
+        let request = |goals: &Goals, a: &Seen, s: &Shown| {
+            let (at, h, index, seconds) = predict(goals, a, s, 0.0);
+            assert_eq!(index, 0);
+            let mut goal = Goal::placed(&[pose], [at.x, at.z], h);
+            goal.token_counts = token_counts(seconds);
+            goal
+        };
+        let first = request(&goals, &a, &s);
+        let mut motion = Motion::default();
+        s.character = motion.add([pose; 4]);
+        s.requested = Some(first.clone());
+        motion.push(s.character, first.clone());
+        let batch = motion.batch(1).unwrap();
+        let mut a = a;
+        let mut h = 0.0;
+        let agent = goals.agents.get_mut(&a.entity).unwrap();
+        for _ in 0..60 {
+            advance(agent, &a.settings, &mut a.position, &mut h, 1.0 / 60.0);
+        }
+        assert_ne!(agent.serial, s.serial);
+        a.rotation = rotation_of(h);
+        let next = request(&goals, &a, &s);
+        s.reconcile_request(&mut motion, &next);
+        let output = vec![0.0; FRAMES * MOTION_FEATURES];
+        motion.accept_character(&batch, 0, 12, &output);
+        assert!(
+            motion.pop(s.character).is_some(),
+            "initial window was discarded"
+        );
+
+        let mut changed_pose = first.clone();
+        changed_pose.targets[0].positions[5][1] += 0.01;
+        for changed in [
+            Goal {
+                targets: Goal::placed(&[pose], [2.001, -3.0], h).targets,
+                ..first.clone()
+            },
+            changed_pose,
+            Goal {
+                token_counts: vec![6],
+                ..first.clone()
+            },
+        ] {
+            let mut motion = Motion::default();
+            s.character = motion.add([pose; 4]);
+            motion.push(s.character, first.clone());
+            let batch = motion.batch(1).unwrap();
+            s.reconcile_request(&mut motion, &changed);
+            motion.accept_character(&batch, 0, 12, &output);
+            assert!(
+                motion.pop(s.character).is_none(),
+                "changed request survived"
+            );
+        }
     }
 
     #[test]
