@@ -48,3 +48,17 @@ Stack the ready heads, regenerate once, and run quick once for the stack.
 Run the targeted Metal checks together; return only a failing head to its
 author. Heads arriving during the gate join the next stack. Record approved
 references in the next stack instead of putting them behind more code heads.
+
+## 2026-11-04 — Capture controls identify effective state
+
+Extract diagnostic scenes from the named revision instead of reusing a
+previously patched copy. Record effective AA, rendered-frame history and
+selection state beside the screenshot; equal simulation ticks do not prove
+equal temporal history. The site384 copy retained `antialias off`, making
+its grain comparison against a TAA reference inconclusive.
+
+Treat a checker finding's element attribution as a claim to verify when
+the pixels disagree. Repeated `Text` IDs and identical strings can belong
+to different elements; preserve the element index or full path. Compare
+the drawn ink colour with the sampled ground before trusting a pixel vote
+that can mistake a light background for dark text.
