@@ -96,6 +96,11 @@ column Results {
       padding 16
       gap 12
     }
+    at phoneLandscape {
+      direction row
+      padding 12
+      gap 12
+    }
     scroll Page {
       width grow
       height grow
@@ -103,6 +108,9 @@ column Results {
       fade 40
       at phone {
         gap 12
+      }
+      at phoneLandscape {
+        gap 8
       }
       row Head {
         width grow
@@ -131,6 +139,19 @@ column Results {
             text "+{gained, grouped} XP"
             color token xp
           }
+          row Level {
+            width grow
+            gap 12
+            cross center
+            label Value {
+              text "Level {level}"
+              step lg
+            }
+            progress Xp {
+              width grow
+              value bind xp
+            }
+          }
         }
         label Grade {
           text bind grade
@@ -145,79 +166,16 @@ column Results {
           }
         }
       }
-      row Level {
-        width grow
-        gap 12
-        cross center
-        label Value {
-          text "Level {level}"
-          step lg
-        }
-        progress Xp {
-          width grow
-          value bind xp
-        }
-      }
       slot Celebration {
         width grow
       }
-      row Tabs {
-        gap 6
-        wrap true
-        button Summary {
-          key "screen.results.summary"
-          text "Summary"
-          variant ghost
-          size small
-          at phone {
-            size medium
-          }
-          on click set tab "\"summary\""
-          state selection bind "tab == \"summary\"" {
-            off {
-              opacity 0.85
-            }
-            on {
-              opacity 1
-            }
-          }
-        }
-        button Graphs {
-          key "screen.results.graphs"
-          text "Graphs"
-          variant ghost
-          size small
-          at phone {
-            size medium
-          }
-          on click set tab "\"graphs\""
-          state selection bind "tab == \"graphs\"" {
-            off {
-              opacity 0.85
-            }
-            on {
-              opacity 1
-            }
-          }
-        }
-        button Board {
-          key "screen.results.board"
-          text "Scoreboard"
-          variant ghost
-          size small
-          at phone {
-            size medium
-          }
-          on click set tab "\"board\""
-          state selection bind "tab == \"board\"" {
-            off {
-              opacity 0.85
-            }
-            on {
-              opacity 1
-            }
-          }
-        }
+      tabs Tabs {
+        items Summary Graphs Scoreboard
+        keys screen.results.summary screen.results.graphs screen.results.board
+        values summary graphs board
+        current bind tab
+        width grow
+        fill true
       }
       column Summary {
         width grow
@@ -286,6 +244,13 @@ column Results {
       gap 8
       align end
       wrap true
+      at phoneLandscape {
+        direction column
+        width fit
+        height grow
+        cross stretch
+        wrap false
+      }
       button Replay {
         key "screen.results.replay"
         text "Watch replay"

@@ -405,6 +405,7 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `align` | start \| center \| end \| spaceBetween | all | Where children sit along the main axis. |
 | `cross` | start \| center \| end \| stretch \| baseline | all | Where children sit across it. |
 | `wrap` | bool | all | A row breaks its children into lines. |
+| `direction` | row \| column | row, column | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `background` | paint | all | Its fill. |
 | `radius` | number | all | Its corner radius, CSS px. |
 | `frame` | panel \| card \| button \| buttonHover \| buttonPressed \| buttonDisabled \| field \| slot \| tooltip \| hud \| track \| fill | all | The style frame its background takes. |
@@ -497,6 +498,9 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `stepBy` | number | slider | Snap to multiples of this (0: continuous). |
 | `checked` | bool | toggle | Whether it is on (written back). Two-way. |
 | `items` | names | tabs | The tab labels, literal names or a bound list of strings. |
+| `keys` | names | tabs | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
+| `values` | names | tabs | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
+| `current` | name | tabs | The selected tab's name from `values`; it takes over from `selected` when `values` is set. Two-way. |
 | `selected` | number | tabs | The selected tab's zero-based index. Two-way. |
 | `fill` | bool | tabs | Equal tabs filling the available width. |
 | `input` | text | field | The field's text (written back). Two-way. |

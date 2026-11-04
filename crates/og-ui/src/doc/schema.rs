@@ -277,6 +277,12 @@ pub const PROPS: &[PropSpec] = &[
         "Where children sit across it."
     ),
     p!("wrap", Ty::Bool, "A row breaks its children into lines."),
+    p!(
+        "direction",
+        Ty::Word(&["row", "column"]),
+        ["row", "column"],
+        "Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content)."
+    ),
     p!("background", Ty::Paint, "Its fill."),
     p!("radius", Ty::Num, "Its corner radius, CSS px."),
     p!(
@@ -604,6 +610,25 @@ pub const PROPS: &[PropSpec] = &[
         Ty::Names,
         ["tabs"],
         "The tab labels, literal names or a bound list of strings."
+    ),
+    p!(
+        "keys",
+        Ty::Names,
+        ["tabs"],
+        "A string table key (og.i18n) per tab its label comes from; its item is the fallback."
+    ),
+    p!(
+        "values",
+        Ty::Names,
+        ["tabs"],
+        "A name per tab (a screen's mode) that `current` holds instead of `selected`'s index."
+    ),
+    p!(
+        "current",
+        Ty::Name,
+        ["tabs"],
+        two_way,
+        "The selected tab's name from `values`; it takes over from `selected` when `values` is set."
     ),
     p!(
         "selected",

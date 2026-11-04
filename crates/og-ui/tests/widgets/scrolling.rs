@@ -903,3 +903,71 @@ fn an_overflowing_scrollers_content_ends_before_its_bar() {
         "the figure ends at {value}, under the bar from {bar_left}"
     );
 }
+
+/// Equal tabs whose labels need more room than their track (a phone at the
+/// player's 150 % text) keep every label whole and scroll sideways, and
+/// focus brings the last one into view: no tab is narrowed under its label
+/// (the old track squeezed them, cutting "Scoreboard" at its clip).
+#[test]
+fn tabs_too_wide_for_their_track_scroll_and_keep_each_label_whole() {
+    let items = ["Summary", "Graphs", "Scoreboard"];
+    let tabs = |width: Option<Size>, fill: bool| {
+        move |ui: &mut Ui, sel: &mut usize| {
+            ui.tabs(
+                "Tabs",
+                &items,
+                sel,
+                TabsDesc {
+                    width,
+                    fill,
+                    ..TabsDesc::default()
+                },
+            );
+        }
+    };
+    let width_of = |ui: &Ui, path: &str| ui.frame().element(path).expect(path).width;
+    let mut wide = Rig::new(0usize);
+    wide.idle(2, &mut tabs(None, false));
+    let whole: Vec<f32> = (0..3)
+        .map(|k| width_of(&wide.ui, &format!("Tabs/Tab#{k}")))
+        .collect();
+
+    let mut rig = Rig::new(0usize);
+    let mut b = tabs(Some(Size::Fixed(180.0)), true);
+    rig.idle(2, &mut b);
+    // The probe's box is the part in view: the first two show whole.
+    for (k, w) in whole.iter().enumerate().take(2) {
+        let got = width_of(&rig.ui, &format!("Tabs/Tab#{k}"));
+        assert!(
+            got >= w - 0.5,
+            "Tab#{k} is {got} wide, under its label's {w}"
+        );
+    }
+    let s = rig.ui.scroll_state("Tabs").expect("the track scrolls");
+    assert!(
+        s.content_width >= whole.iter().sum::<f32>() && s.content_width > s.view_width + 1.0,
+        "the tabs run past the track at their labels' widths: {s:?} for {whole:?}"
+    );
+    // Focus walks to the last tab; the track scrolls it whole into view.
+    for _ in 0..3 {
+        rig.key(UiKey::Tab, &mut b);
+    }
+    rig.idle(2, &mut b);
+    let track = rig.ui.frame().element("Tabs").expect("track").clone();
+    let last = rig
+        .ui
+        .frame()
+        .element("Tabs/Tab#2")
+        .expect("last tab")
+        .clone();
+    assert!(
+        last.states.iter().any(|s| s == "focused"),
+        "the last tab has focus: {:?}",
+        last.states
+    );
+    assert!(
+        last.width >= whole[2] - 0.5 && last.x + last.width <= track.x + track.width + 0.5,
+        "the focused tab shows whole ({}): {last:?} in {track:?}",
+        whole[2]
+    );
+}

@@ -345,6 +345,65 @@ tabs Categories {
     );
 }
 
+/// Tabs with `values` keep the selected tab's name in `current` (a screen's
+/// mode, which its `when`s compare), and `keys` label them from the string
+/// table, falling back to the item where the table has no message.
+#[test]
+fn document_tabs_write_their_value_and_translate_their_keys() {
+    struct Host;
+    impl og_ui::bind::Env for Host {
+        fn translate(&self, key: &str) -> Option<String> {
+            (key == "screen.results.graphs").then(|| "Graphen".to_string())
+        }
+    }
+    const MODES: &str = r#"type component
+version 1
+---
+name "modes"
+props {
+  tab string "The mode shown."
+}
+tabs Modes {
+  items Summary Graphs Board
+  keys screen.results.summary screen.results.graphs screen.results.board
+  values summary graphs board
+  current bind tab
+  width 400
+}
+"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/modes.ogt", MODES).expect("modes parses"));
+    let mut vm = json!({ "tab": "board" });
+    let frame = |ui: &mut Ui, vm: &mut serde_json::Value, input: InputFrame| {
+        ui.begin(input, viewport());
+        ui.component("Modes", "modes", vm, &Host);
+        ui.end();
+    };
+    frame(&mut ui, &mut vm, InputFrame::default());
+    assert_eq!(el(&ui, "Modes/Tab#1").text, "Graphen");
+    assert_eq!(el(&ui, "Modes/Tab#0").text, "Summary");
+    assert!(
+        el(&ui, "Modes/Tab#2")
+            .states
+            .iter()
+            .any(|s| s == "selected"),
+        "the bound name selects its tab"
+    );
+    let (x, y) = el(&ui, "Modes/Tab#1").center();
+    let at = |pressed: bool, down: bool, released: bool| InputFrame {
+        pointer: og_core::glam::Vec2::new(x, y),
+        pointer_inside: true,
+        pressed,
+        down,
+        released,
+        ..InputFrame::default()
+    };
+    frame(&mut ui, &mut vm, at(false, false, false));
+    frame(&mut ui, &mut vm, at(true, true, false));
+    frame(&mut ui, &mut vm, at(false, false, true));
+    assert_eq!(vm["tab"], json!("graphs"), "the click wrote the tab's name");
+}
+
 #[test]
 fn a_menu_over_the_hud_takes_input_back_and_focus() {
     let mut ui = ui();
@@ -706,4 +765,60 @@ column List {
     };
     assert_eq!(fades("few"), 0, "rows that fit draw no fade");
     assert_eq!(fades("many"), 1, "one fade over the bottom edge");
+}
+
+/// `direction` turns a row into a column (and back) from an `at` block: a
+/// phone in landscape stacks the actions beside the content instead of
+/// under it, where a row of them took the height the content needed.
+#[test]
+fn an_at_block_turns_a_row_into_a_column() {
+    const BAR: &str = r#"type screen
+version 1
+---
+name "bar"
+layer menu
+row Actions {
+  gap 8
+  at phoneLandscape {
+    direction column
+  }
+  button A {
+    text "Again"
+  }
+  button B {
+    text "Continue"
+  }
+}
+"#;
+    let laid = |vp: Viewport| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.define_document(UiDocument::parse("ui/bar.ogt", BAR).expect("bar parses"));
+        ui.push_screen("bar", json!({})).unwrap();
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), vp);
+            ui.end();
+        }
+        let (a, b) = (
+            el(&ui, "bar/Actions/A").clone(),
+            el(&ui, "bar/Actions/B").clone(),
+        );
+        (b.x > a.x + a.width - 0.5, b.y > a.y + a.height - 0.5)
+    };
+    assert_eq!(
+        laid(Viewport::new(1280.0, 720.0)),
+        (true, false),
+        "a row on the desktop"
+    );
+    let landscape = Viewport {
+        width: 844.0,
+        height: 390.0,
+        dpr: 3.0,
+        coarse_pointer: true,
+        ..Viewport::default()
+    };
+    assert_eq!(
+        laid(landscape),
+        (false, true),
+        "a column on a phone in landscape"
+    );
 }

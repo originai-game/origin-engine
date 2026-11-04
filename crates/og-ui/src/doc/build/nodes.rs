@@ -191,10 +191,9 @@ impl Ui {
                     let el = Ui::box_of(
                         &r,
                         Element {
-                            direction: if kind == "row" {
-                                Direction::Row
-                            } else {
-                                Direction::Column
+                            direction: match r.str("direction").unwrap_or(kind) {
+                                "row" => Direction::Row,
+                                _ => Direction::Column,
                             },
                             ..Element::default()
                         },
@@ -363,11 +362,26 @@ impl Ui {
                 }
             }
             "tabs" => {
-                let items: Vec<&str> = match r.get("items") {
-                    Some(V::Strs(items)) => items.iter().map(String::as_str).collect(),
+                let strs = |name: &str| match r.get(name) {
+                    Some(V::Strs(s)) => s.clone(),
                     _ => Vec::new(),
                 };
-                let mut selected = r.num("selected").unwrap_or(0.0) as usize;
+                // A tab's label: its string table key's text where it has one, else its item.
+                let keys = strs("keys");
+                let items: Vec<String> = strs("items")
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, item)| keys.get(i).and_then(|k| b.env.translate(k)).unwrap_or(item))
+                    .collect();
+                let items: Vec<&str> = items.iter().map(String::as_str).collect();
+                // With values, `current` holds the selected tab's name (a screen's mode) instead of `selected`'s index.
+                let values = strs("values");
+                let mut selected = if values.is_empty() {
+                    r.num("selected").unwrap_or(0.0) as usize
+                } else {
+                    let now = r.str("current").unwrap_or_default();
+                    values.iter().position(|v| v == now).unwrap_or(0)
+                };
                 resp = self.tabs(
                     id.as_str(),
                     &items,
@@ -379,7 +393,10 @@ impl Ui {
                     },
                 );
                 if resp.changed {
-                    self.write_back(b, n, "selected", json!(selected));
+                    match values.get(selected) {
+                        Some(v) => self.write_back(b, n, "current", json!(v)),
+                        None => self.write_back(b, n, "selected", json!(selected)),
+                    }
                 }
             }
             "field" => {
