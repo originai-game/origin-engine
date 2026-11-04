@@ -151,6 +151,8 @@ pub struct Conform {
     pub palette: Vec<[u8; 3]>,
     pub strict: bool,
     pub max_colors: u32,
+    /// `ArtPalette.rampSteps`: shades per hue family on colour textures.
+    pub ramp_steps: u32,
     pub line: Option<Line>,
     pub motion: Option<Motion>,
     /// The look's `Stylise` paint fields read as texel space, applied to
@@ -172,6 +174,10 @@ pub const DEFAULT_MESH_TEXTURE: &str = "conformed as a mesh texture (no model cl
 
 /// Moves painted mesh textures' stamps when the paint steps change.
 const PAINT_VERSION: u32 = 1;
+
+/// Moves flattened mesh textures' stamps when the palette limit's steps
+/// change (`flatten`).
+const FLAT_VERSION: u32 = 1;
 
 /// What an output the contract leaves as it was reports.
 pub const UNCHANGED: &str = "meets the contract as it is";
@@ -274,6 +280,7 @@ impl Conform {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
             max_colors: num(pal, "maxColors") as u32,
+            ramp_steps: num(pal, "rampSteps") as u32,
             line,
             motion: (step_fps > 0.0 || max_frames > 0).then_some(Motion {
                 step_fps,
@@ -303,6 +310,8 @@ impl Conform {
             || self.filter != Filter::Any
             || self.mips != Mips::Any
             || (self.strict && !self.palette.is_empty())
+            || self.max_colors > 0
+            || self.ramp_steps > 0
             || self.paint.is_some()
     }
 
@@ -388,12 +397,14 @@ impl Conform {
             )
         });
         format!(
-            "conform-texture-v3 density {} maxSize {} filter {:?} mips {:?} maxColors {} strict {} {}{paint}",
+            "conform-texture-v3 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
             self.density,
             self.max_size,
             self.filter,
             self.mips,
             self.max_colors,
+            self.ramp_steps,
+            FLAT_VERSION,
             self.strict,
             if self.strict {
                 self.palette_desc()
@@ -1037,6 +1048,17 @@ pub(in crate::cook) fn texture(
             ));
         }
     }
+    // Every other colour texture (linear, mipped: a photographic ground, a
+    // crate) holds to the palette limits too, so a flat look's meshes are
+    // not photographs under its bands (docs/art.md §2.3).
+    if color
+        && !lossless
+        && (c.max_colors > 0 || c.ramp_steps > 0)
+        && !(c.strict && !c.palette.is_empty())
+        && let Some(line) = flatten(&mut img, c.max_colors, c.ramp_steps)
+    {
+        what.push(line);
+    }
     let (mut k, mut mips) = (k, mips);
     if c.filter == Filter::Nearest && k == kind::COLOR {
         k = kind::PIXEL;
@@ -1054,6 +1076,91 @@ pub(in crate::cook) fn texture(
         format!("conform: {}", what.join("; "))
     });
     (img, k, mips, note)
+}
+
+/// A linear colour texture held to `max` colours and `ramp` shades per hue
+/// family (0: no limit): the asset's own palette (the 2D conform's Oklab
+/// median cut and ramp merge, `texture2d::palette::adaptive`), every
+/// opaque texel on its nearest colour, then one pass of a 3x3 majority
+/// filter on the colours (wrapping, as the texture tiles): a texel that at
+/// least five of its eight neighbours outvote takes their colour, so the
+/// lone texels a photograph leaves after the cut (speckle) join their
+/// field while straight edges between fields stay. Alpha is untouched.
+/// The report's line, or `None` when the texture already holds.
+fn flatten(img: &mut Image, max: u32, ramp: u32) -> Option<String> {
+    use super::texture2d::palette;
+    let px: Vec<[u8; 4]> = img
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| if p[3] == 0 { [0; 4] } else { *p })
+        .collect();
+    let before = px
+        .iter()
+        .filter(|p| p[3] > 0)
+        .map(|p| [p[0], p[1], p[2]])
+        .collect::<BTreeSet<_>>()
+        .len();
+    let pal = palette::adaptive(&px, max, ramp);
+    if pal.rgb.is_empty() {
+        return None;
+    }
+    let all: Vec<usize> = (0..pal.rgb.len()).collect();
+    let mut ix = palette::map(
+        &px,
+        img.width,
+        &|_, _| (0, 0),
+        &pal,
+        &all,
+        palette::Dither::None,
+    );
+    let (w, h) = (img.width as i64, img.height as i64);
+    let at =
+        |ix: &[Option<usize>], x: i64, y: i64| ix[(y.rem_euclid(h) * w + x.rem_euclid(w)) as usize];
+    let mut out = ix.clone();
+    for y in 0..h {
+        for x in 0..w {
+            let Some(own) = at(&ix, x, y) else { continue };
+            let mut votes: BTreeMap<usize, u32> = BTreeMap::new();
+            for (dx, dy) in [
+                (-1, -1),
+                (0, -1),
+                (1, -1),
+                (-1, 0),
+                (1, 0),
+                (-1, 1),
+                (0, 1),
+                (1, 1),
+            ] {
+                if let Some(n) = at(&ix, x + dx, y + dy) {
+                    *votes.entry(n).or_default() += 1;
+                }
+            }
+            if let Some((&best, &n)) = votes.iter().max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0)))
+                && best != own
+                && n >= 5
+            {
+                out[(y * w + x) as usize] = Some(best);
+            }
+        }
+    }
+    ix = out;
+    let mut changed = false;
+    for (p, i) in img.rgba.as_chunks_mut::<4>().0.iter_mut().zip(&ix) {
+        if let Some(i) = i {
+            changed |= p[..3] != pal.rgb[*i];
+            p[..3].copy_from_slice(&pal.rgb[*i]);
+        }
+    }
+    let after = ix.iter().flatten().collect::<BTreeSet<_>>().len();
+    let limits = [(max, "maxColors"), (ramp, "rampSteps")]
+        .iter()
+        .filter(|(v, _)| *v > 0)
+        .map(|(v, n)| format!("ArtPalette.{n} {v}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    changed.then(|| format!("{before} → {after} colours, speckle merged ({limits})"))
 }
 
 #[cfg(test)]
@@ -1107,16 +1214,124 @@ mod tests {
         assert_eq!(img.rgba, speckled().rgba, "a normal map is data");
     }
 
+    /// A 64 x 64 linear colour texture: the left half every shade of one
+    /// red, the right half every shade of one blue, a different shade on
+    /// every texel row and column.
+    fn two_ramps() -> Image {
+        let mut rgba = Vec::new();
+        for y in 0..64u32 {
+            for x in 0..64u32 {
+                let v = (40 + (y * 64 + x) % 32 * 6 + y / 8) as u8;
+                rgba.extend_from_slice(&if x < 32 {
+                    [v, v / 6, v / 7, 255]
+                } else {
+                    [v / 7, v / 5, v, 255]
+                });
+            }
+        }
+        Image {
+            width: 64,
+            height: 64,
+            rgba,
+        }
+    }
+
+    fn distinct(img: &Image) -> BTreeSet<[u8; 3]> {
+        img.rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| [p[0], p[1], p[2]])
+            .collect()
+    }
+
+    /// The flat looks' palette limits (anime-cel's `maxColors 48 rampSteps
+    /// 2`) hold a linear, mipped mesh texture: two ramps of hundreds of
+    /// shades become at most two shades of each hue, each still red or
+    /// blue. Old code applied the limits only to nearest-filtered textures,
+    /// so a photographic texture kept every colour.
+    #[test]
+    fn the_palette_limits_flatten_a_linear_mesh_texture() {
+        let src = two_ramps();
+        assert!(distinct(&src).len() > 300);
+        let c = of("ArtPalette {\n  maxColors 48\n  rampSteps 2\n}\n").unwrap();
+        let (img, k, mips, note) = texture(&c, None, two_ramps(), kind::COLOR, true);
+        assert_eq!(
+            (k, mips),
+            (kind::COLOR, true),
+            "still a linear, mipped colour texture"
+        );
+        let colours = distinct(&img);
+        let reds = colours.iter().filter(|c| c[0] > c[2]).count();
+        let blues = colours.iter().filter(|c| c[2] > c[0]).count();
+        assert!(
+            reds <= 2 && blues <= 2 && reds + blues == colours.len(),
+            "{colours:?}"
+        );
+        assert!(reds >= 1 && blues >= 1, "both hues survive: {colours:?}");
+        // Every texel keeps its own hue.
+        for (i, p) in img.rgba.as_chunks::<4>().0.iter().enumerate() {
+            assert_eq!(p[0] > p[2], i % 64 < 32, "texel {i}: {p:?}");
+            assert_eq!(p[3], 255);
+        }
+        assert!(note.unwrap().contains("ArtPalette.rampSteps 2"));
+        // A normal map is data: untouched.
+        let (n, _, _, _) = texture(&c, None, two_ramps(), kind::NORMAL, true);
+        assert_eq!(n.rgba, src.rgba);
+    }
+
+    /// A field with lone off-colour texels (the speckle a photographic
+    /// texture leaves after its colours are cut) cooks to the field alone,
+    /// even where the speckle fits the colour budget; a straight edge
+    /// between two fields stays where it was.
+    #[test]
+    fn the_palette_limits_merge_speckle_and_keep_edges() {
+        let (w, h) = (32u32, 32u32);
+        let green = [60u8, 140, 60];
+        let brown = [120u8, 80, 40];
+        let mut rgba = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                // A field edge at x = 20; a lone texel every 6 along a
+                // diagonal, none on or beside the edge.
+                let lone = x % 6 == 2 && y % 6 == 2 && x < 18;
+                let c = if lone {
+                    [200, (x * 7) as u8, (y * 5) as u8]
+                } else if x < 20 {
+                    green
+                } else {
+                    brown
+                };
+                rgba.extend_from_slice(&[c[0], c[1], c[2], 255]);
+            }
+        }
+        let img = Image {
+            width: w,
+            height: h,
+            rgba,
+        };
+        let c = of("ArtPalette {\n  maxColors 48\n}\n").unwrap();
+        let (out, _, _, _) = texture(&c, None, img, kind::COLOR, true);
+        for (i, p) in out.rgba.as_chunks::<4>().0.iter().enumerate() {
+            let x = i as u32 % w;
+            let want = if x < 20 { green } else { brown };
+            assert_eq!(p[..3], want, "texel ({x}, {})", i as u32 / w);
+        }
+    }
+
     #[test]
     fn a_contract_without_3d_fields_conforms_nothing() {
         assert_eq!(of(""), None);
         // Zero is no constraint; 2D-only and camera fields are not this module's.
         assert_eq!(
             of(
-                "ArtShape {\n  propFaces 0\n  voxel 0\n}\nArtPixels {\n  unit 16\n}\nArtCamera {\n  projection orthographic\n}\nArtPalette {\n  maxColors 16\n}\n"
+                "ArtShape {\n  propFaces 0\n  voxel 0\n}\nArtPixels {\n  unit 16\n}\nArtCamera {\n  projection orthographic\n}\n"
             ),
             None
         );
+        // The palette limits hold every colour texture, not the models.
+        let c = of("ArtPalette {\n  maxColors 16\n}\n").unwrap();
+        assert!(!c.texture_desc().is_empty() && c.model_desc().is_empty());
         let c = of("ArtShape {\n  normals angle\n}\n").unwrap();
         assert_eq!(c.normals, Normals::Angle(30.0));
         assert!(c.texture_desc().is_empty() && !c.model_desc().is_empty());
