@@ -154,7 +154,7 @@ function questDetail(q: Api.QuestView, desc: QuestLogDesc, out: Mut<QuestLogResu
         kit.row("Stamp", { gap: u(6), cross: "center", padding: xy(u(10), u(4)), part: `QuestLog.stamp${flags(q.status)}`, partClass: "badge" }, () => {
           kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(c, 0.18) }] });
           symbol("Sym", q.status === "completed" ? "check" : "cross", u(13), c);
-          text("Text", (q.status === "completed" ? desc.completedLabel ?? "Completed" : desc.failedLabel ?? "Failed").toLocaleUpperCase(), { step: st(13), font: "display", color: mix(c, role("ink"), 0.35), nowrap: true });
+          text("Text", (q.status === "completed" ? desc.completedLabel ?? "Completed" : desc.failedLabel ?? "Failed"), { uppercase: true, step: st(13), font: "display", color: mix(c, role("ink"), 0.35), nowrap: true });
         });
       }
     });

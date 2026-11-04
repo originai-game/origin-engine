@@ -258,7 +258,7 @@ export function conversation(id: string, desc: ConversationDesc): ConversationRe
     kit.row("Head", { gap: u(10), cross: "center", align: "center", width: grow() }, () => {
       // On its plate the name takes the body step in the accent: at 13 px a pixel face's name read as a speck.
       const nameInk = plated ? accent() : mix(ink, role("inkMuted"), 0.35);
-      text("Name", v.speaker.name.toLocaleUpperCase(), { step: plated ? "base" : st(phone ? 13 : 16), font: "display", color: nameInk, nowrap: true });
+      text("Name", v.speaker.name, { uppercase: true, step: plated ? "base" : st(phone ? 13 : 16), font: "display", color: nameInk, nowrap: true });
       if (voicing) voiceCue("Voice", mix(ink, role("inkMuted"), 0.35));
     });
   }
@@ -457,7 +457,7 @@ export function conversation(id: string, desc: ConversationDesc): ConversationRe
         kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.78) }], effects: [shadow(u(4), u(16), 0.5)] });
         die("Die", lc.roll, rInk, u(phone ? 40 : 48));
         kit.column("Words", { gap: 0 }, () => {
-          text("Stat", statName(desc.statNames, lc.stat).toLocaleUpperCase(), { step: st(12), font: "display", color: "inkMuted", nowrap: true });
+          text("Stat", statName(desc.statNames, lc.stat), { uppercase: true, step: st(12), font: "display", color: "inkMuted", nowrap: true });
           text("Result", lc.passed ? desc.passedLabel ?? "Success" : desc.failedLabel ?? "Failure", { step: st(phone ? 18 : 22), font: "display", color: mix(rInk, hex("#ffffff"), 0.2), nowrap: true });
         });
       });

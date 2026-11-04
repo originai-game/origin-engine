@@ -1883,7 +1883,7 @@ test("overlayBar: a press shows an overlay and its legend; a press on the shown 
   tapOn(engine, byPath(engine, "Row/power")!);
   engine.advance(4);
   expect(st.selected).toBe("power");
-  expect(elements(engine).find((e) => e.path.endsWith("Legend/Name"))?.text).toBe("POWER");
+  expect(elements(engine).find((e) => e.path.endsWith("Legend/Name"))?.text).toBe("Power");
   tapOn(engine, byPath(engine, "Row/power")!);
   engine.advance(4);
   expect(st.selected).toBe("");

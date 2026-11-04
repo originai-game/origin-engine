@@ -32,7 +32,7 @@ function accuracyRing(id: string, f: number, size: number, caption: string): voi
   kit.close();
   over({ insets: { start: 0, top: 0 }, inert: true });
   text("Value", `${(clamp(f, 0, 1) * 100).toFixed(1)}%`, { step: st(Math.round(size * 0.2)), font: "mono", nowrap: true });
-  text("Caption", caption.toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+  text("Caption", caption, { uppercase: true, step: "caption", font: "display", color: "inkMuted", nowrap: true });
   kit.close();
   kit.semantics({ role: "status", name: `${caption} ${(clamp(f, 0, 1) * 100).toFixed(1)}%` });
 }
@@ -177,7 +177,7 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
           strokes: on ? [line(u(2), token("focus"))] : ix.hovered || ix.focused ? [line(u(1.5), token("ink", 0.4))] : [line(1, token("ink", 0.12))],
           effects: on ? [glow(u(7), token("focus", 0.4), 0), shadow(u(3), u(10), 0.4)] : [],
         });
-        text("Name", (c.name ?? c.key ?? "").toLocaleUpperCase(), { step: st(phone ? 11 : 13), font: "display", nowrap: true, ellipsis: true, color: on ? "ink" : "inkMuted" });
+        text("Name", (c.name ?? c.key ?? ""), { uppercase: true, step: st(phone ? 11 : 13), font: "display", nowrap: true, ellipsis: true, color: on ? "ink" : "inkMuted" });
         kit.row("Level", { gap: u(4), cross: "center" }, () => {
           if (c.locked) symbol("Lock", "lock", u(14), role("inkFaint"), { icon: "lock" });
           text("Value", String(c.level ?? 0), { step: st(phone ? 20 : 28), font: "mono", nowrap: true, color: c.locked ? "inkFaint" : "ink" });
@@ -214,7 +214,7 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
       if (song?.fullCombo) {
         kit.row("Combo", { padding: xy(u(12), u(5)), part: "Songs.combo", partClass: "badge" }, () => {
           kit.setDraw({ shape: { kind: "rect", radii: [u(4), u(4), u(4), u(4)] }, strokes: [line(u(1.5), token("gold"))], fills: [{ kind: "solid", color: token("gold", 0.12) }], effects: [glow(u(6), token("gold", 0.35), 0)] });
-          text("Text", (desc.fullComboLabel ?? "Full combo").toLocaleUpperCase(), { step: st(13), font: "display", color: "gold", nowrap: true });
+          text("Text", (desc.fullComboLabel ?? "Full combo"), { uppercase: true, step: st(13), font: "display", color: "gold", nowrap: true });
         });
       }
     });

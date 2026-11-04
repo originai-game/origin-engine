@@ -187,7 +187,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
       radius: Math.max(4, t.small),
       semantics: { role: "columnheader", name: `${label}${on ? (down ? ", sorted high to low" : ", sorted low to high") : ""}`, selected: on },
     }, () => {
-      text("Text", label.toLocaleUpperCase(), { step: "caption", font: "display", nowrap: true, ellipsis: !portrait, color: on ? "ink" : "inkMuted" });
+      text("Text", label, { uppercase: true, step: "caption", font: "display", nowrap: true, ellipsis: !portrait, color: on ? "ink" : "inkMuted" });
       if (on) chevron("Sort", down ? "down" : "up", u(10), role("ink"), 0, 2);
     });
     if (r.clicked) {
@@ -270,7 +270,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     const ch = prev > 0 ? (tot - prev) / prev : null;
     kit.row(s.key ?? "", { width: grow(), gap: u(12), cross: "center", padding: xy(u(8), u(phone ? 6 : 8)), part: "Ledger.section", partClass: "listItem" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("ink", 0.05) }] });
-      text("Name", (s.name ?? s.key ?? "").toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", heading: true, width: grow() });
+      text("Name", (s.name ?? s.key ?? ""), { uppercase: true, step: st(phone ? 13 : 15), font: "display", heading: true, width: grow() });
       figuresOf(() => amount("Total", `${s.expense ? "\u2212" : ""}${money(tot)}`, s.expense ? "danger" : "success"), () => {
         if (ch !== null && Math.abs(ch) >= 0.0005) delta("Delta", signedPct(ch), ch > 0, (ch > 0) !== !!s.expense, phone ? 12 : 13);
       });
@@ -302,7 +302,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     const good = net >= 0;
     kit.row("Net", { width: grow(), gap: u(12), cross: "center", padding: xy(u(16), u(phone ? 10 : 12)), part: `Ledger.net${flags(good ? "good" : "bad")}`, partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token(good ? "success" : "danger", 0.12) }], strokes: [line(1, token(good ? "success" : "danger", 0.45))] });
-      text("Caption", (desc.netLabel ?? "Net").toLocaleUpperCase(), { step: st(phone ? 14 : 16), font: "display", heading: true, nowrap: true, width: grow() });
+      text("Caption", (desc.netLabel ?? "Net"), { uppercase: true, step: st(phone ? 14 : 16), font: "display", heading: true, nowrap: true, width: grow() });
       text("Value", `${good ? "+" : ""}${money(net)}`, { step: st(phone ? 18 : 22), font: "mono", nowrap: true, color: good ? "success" : "danger" });
     });
     kit.semantics({ role: "status", name: `${desc.netLabel ?? "Net"} ${good ? "+" : ""}${money(net)}` });
@@ -490,7 +490,7 @@ export function overlayBar(id: string, desc: Api.OverlayBarDesc): Api.OverlayBar
     const ramp = (shown.ramp ?? []).map((c) => paint(hex(c)));
     kit.column("Legend", { gap: u(6), padding: xy(u(14), u(10)), cross: "stretch", part: "Overlay.legend", partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.92) }], strokes: [line(1, token("ink", 0.12))], effects: [shadow(u(4), u(16), 0.45)] });
-      text("Name", (shown.name ?? shown.key ?? "").toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", heading: true, nowrap: true });
+      text("Name", (shown.name ?? shown.key ?? ""), { uppercase: true, step: st(phone ? 13 : 15), font: "display", heading: true, nowrap: true });
       kit.open("Ramp", { width: px(u(phone ? 220 : 280)), height: px(u(10)), part: "Overlay.ramp", partClass: "badge" });
       if (ramp.length > 0) {
         const n = Math.max(1, ramp.length - 1);

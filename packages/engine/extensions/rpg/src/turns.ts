@@ -40,7 +40,7 @@ export function turnOrder(id: string, desc: TurnOrderDesc = {}): void {
             if (un.portrait) {
               kit.image("Art", { texture: un.portrait, width: px(s), height: px(s), label: "" });
               apply(absolute({ start: 0, top: 0 }));
-            } else text("Initials", (un.name ?? "?").slice(0, 2).toUpperCase(), { step: tsFit(cur ? 20 : 15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
+            } else text("Initials", (un.name ?? "?").slice(0, 2), { uppercase: true, step: tsFit(cur ? 20 : 15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true, outline: 1 });
             if (un.dead) {
               leaf("Cross", { width: px(s), height: px(s) }, {
                 shape: { kind: "path", points: [{ x: s * 0.2, y: s * 0.2 }, { x: s * 0.8, y: s * 0.8 }], width: 3, cap: "round" },
@@ -114,7 +114,7 @@ function turnList(id: string, desc: TurnOrderDesc, units: readonly TurnUnit[]): 
             strokes: [stroke(1, token("line"))],
             clip: "shape",
           }, () => {
-            if (!un.portrait) text("Initials", (un.name ?? "?").slice(0, 2).toUpperCase(), { step: tsFit(15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true });
+            if (!un.portrait) text("Initials", (un.name ?? "?").slice(0, 2), { uppercase: true, step: tsFit(15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true });
             if (un.dead) {
               leaf("Cross", { width: px(pw), height: px(s) }, {
                 shape: { kind: "path", points: [{ x: pw * 0.3, y: s * 0.2 }, { x: pw * 0.7, y: s * 0.8 }], width: 3, cap: "round" },

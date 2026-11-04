@@ -172,7 +172,7 @@ export function photoMode(id: string, desc: Api.PhotoModeDesc = {}): Api.PhotoMo
       radius: portrait ? 999 : Math.max(4, t.small),
       semantics: { role: "tab", name: x.label ?? k, selected: on },
     } as never, () => {
-      text("Label", (x.label ?? k).toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", nowrap: true, color: on ? "ink" : "inkMuted" });
+      text("Label", (x.label ?? k), { uppercase: true, step: st(phone ? 13 : 15), font: "display", nowrap: true, color: on ? "ink" : "inkMuted" });
       if (!portrait) {
         kit.open("Line", { width: grow(), height: px(Math.max(2, u(3))) });
         kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: on ? token("primary") : token("ink", 0) }], ...(on ? { effects: [glow(u(6), token("primary", 0.5), 0)] } : {}) });

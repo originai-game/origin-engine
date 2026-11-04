@@ -278,7 +278,7 @@ export function lapTimer(id: string, desc: LapTimerDesc = {}): void {
     }, boxless ? undefined : racePanel(), () => {
       if (headed) {
         // The final lap's words on their own line over the head, clear of the lap's numeral.
-        if (final && lap > 0) text("Final", (desc.finalLabel ?? "Final lap").toUpperCase(), { step: ts(12, true), font: "display", color: lit(role("gold")), nowrap: true, outline: ol });
+        if (final && lap > 0) text("Final", (desc.finalLabel ?? "Final lap"), { uppercase: true, step: ts(12, true), font: "display", color: lit(role("gold")), nowrap: true, outline: ol });
         kit.row("Head", { gap: tk.md, cross: "end", width: pct(1) }, () => {
           if ((desc.position ?? 0) > 0) big("Position", desc.positionLabel ?? "Position", desc.position ?? 0, desc.positionTotal ?? 0, false);
           if ((desc.position ?? 0) > 0 && lap > 0 && !boxless) leaf("Divider", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
@@ -473,7 +473,7 @@ export function raceBanner(id: string, desc: RaceBannerDesc = {}): void {
       box("Band", { width: px(W), height: px(stepSize(step).line + u(14)), align: "center", cross: "center", part: sel("RaceBanner", "band", "final") }, {
         fills: [vgrad([[0, lit(gold, 0)], [0.14, lit(gold, 0.95)], [0.86, lit(gold, 0.95)], [1, lit(gold, 0)]], 90)],
       }, () => {
-        text("Label", label.toUpperCase(), { step, font: "display", color: lit(readableOn(gold)), nowrap: true });
+        text("Label", label, { uppercase: true, step, font: "display", color: lit(readableOn(gold)), nowrap: true });
       }, { opacity: life(BANNER_MS.finalLap), transform: { x } });
     });
     apply({ ...g, a11y: a11y("status", label), inert: true });
@@ -533,7 +533,7 @@ export function raceBanner(id: string, desc: RaceBannerDesc = {}): void {
           fills: [solid(lit(ink))],
         }, absolute({ start: 0, top: 0 }));
       });
-      text("Label", label.toUpperCase(), { step: ts(32, true), font: "display", color: lit(ink), nowrap: true });
+      text("Label", label, { uppercase: true, step: ts(32, true), font: "display", color: lit(ink), nowrap: true });
     }, { opacity: beat });
   });
   apply({ ...g, a11y: a11y("status", label), inert: true });

@@ -64,7 +64,7 @@ function frame() {
 
 /** A section's label: small caps in the display face, inkMuted. */
 function eyebrow(id: string, text: string): void {
-  og.ui.label(id, text.toLocaleUpperCase(), { step: "caption", font: "display", color: { token: "inkMuted" }, nowrap: true, ellipsis: true, width: grow });
+  og.ui.label(id, text, { uppercase: true, step: "caption", font: "display", color: { token: "inkMuted" }, nowrap: true, ellipsis: true, width: grow });
 }
 
 /** The screens' state (a gallery's, never saved). */
@@ -186,7 +186,7 @@ function abilityCard(i: number, cw: number, keys: boolean): void {
       // one line a step smaller rather than breaking a word (攻|撃).
       const name = L(`ab.${a.key}`);
       const cjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name);
-      og.ui.label("Name", name.toLocaleUpperCase(), cjk ? { step: "meta", font: "display", nowrap: true, ellipsis: true, width: grow } : { step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
+      og.ui.label("Name", name, cjk ? { uppercase: true, step: "meta", font: "display", nowrap: true, ellipsis: true, width: grow } : { uppercase: true, step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
       // The effect at the caption step, whole: the body grows to hold it (three lines at most on a narrow card).
       og.ui.label("Effect", L(`ab.${a.key}.text`), { step: "caption", color: { token: "inkMuted" }, maxLines: 3, ellipsis: true, width: grow });
     });

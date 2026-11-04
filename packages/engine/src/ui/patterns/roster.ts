@@ -131,7 +131,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
       kit.row("Search", { gap: u(10), cross: "center", wrap: phone, width: phone ? grow() : null, padding: xy(u(14), u(8)), part: "Lobby.search", partClass: "chip" }, () => {
         kit.setDraw({ shape: { kind: "rect", radii: [u(20), u(20), u(20), u(20)] }, fills: [{ kind: "solid", color: token("shadow", 0.6) }, vgrad([[0, token("sheen", 0.08)], [1, token("sheen", 0)]])], effects: [shadow(u(2), u(8), 0.4)] });
         liveDot("Live", role("success"));
-        text("Label", (desc.searchingLabel ?? "Searching").toLocaleUpperCase(), { step: st(13), font: "display", color: "inkMuted", nowrap: true });
+        text("Label", (desc.searchingLabel ?? "Searching"), { uppercase: true, step: st(13), font: "display", color: "inkMuted", nowrap: true });
         text("Time", clock(desc.searchSeconds ?? 0), { step: st(18), font: "mono", nowrap: true });
         if ((desc.estimateSeconds ?? 0) > 0) text("Estimate", fill(desc.estimateLabel ?? "Est. {time}", { time: clock(desc.estimateSeconds ?? 0) }), { step: st(13), color: "inkMuted", nowrap: true });
       });
@@ -207,7 +207,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
         // The ready foot: a tick in success and the word, or the muted word (a status in its place).
         kit.row("Foot", { width: grow(), gap: u(6), cross: "center", padding: { left: 0, right: 0, top: u(6), bottom: 0 }, part: `Lobby.foot${flags(m.ready && "ready")}`, partClass: "badge" }, () => {
           if (m.ready && !m.status) symbol("Tick", "check", u(14), role("success"));
-          text("Word", readyWord.toLocaleUpperCase(), { step: st(13), font: "display", width: grow(), color: m.ready && !m.status ? mix(role("success"), role("ink"), 0.25) : "inkMuted" });
+          text("Word", readyWord, { uppercase: true, step: st(13), font: "display", width: grow(), color: m.ready && !m.status ? mix(role("success"), role("ink"), 0.25) : "inkMuted" });
         });
         if (popped && !still()) kit.props({ enter: { values: [{ prop: "scale", value: 1.25 }], transition: spring("emphasis") } });
       });
@@ -259,7 +259,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
       symbol("Mark", "plus", u(20), role("ink"), { weight: Math.max(2, u(2.4)) });
       kit.close();
       // Narrower than its word at a large text size, the seat cuts the word rather than laying it over the next card.
-      text("Label", (desc.inviteLabel ?? "Invite").toLocaleUpperCase(), { step: st(14), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: "center" });
+      text("Label", (desc.inviteLabel ?? "Invite"), { uppercase: true, step: st(14), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: "center" });
     });
     if (r.clicked) {
       out.invite = s;
@@ -289,7 +289,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
     const tw = u(phone ? 96 : 128);
     artSlot("Art", "Lobby.modeArt", { texture: mode.image ?? null, kind: "thumbnail", width: px(tw), height: px(Math.round(tw * 0.5625)), radius: Math.max(4, t.small) });
     kit.column("Words", { gap: u(2), width: portrait ? grow() : null }, () => {
-      text("Eyebrow", (desc.modeLabel ?? "Mode").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+      text("Eyebrow", (desc.modeLabel ?? "Mode"), { uppercase: true, step: "caption", font: "display", color: "inkMuted", nowrap: true });
       text("Name", mode.name ?? "", { step: st(phone ? 18 : 22), font: "display", heading: true, nowrap: true, ellipsis: true });
       // Across a phone's width it wraps; beside the action the card takes its words' width.
       if (mode.detail) text("Detail", mode.detail, { step: st(14), color: "inkMuted", ...(portrait ? { width: grow() } : { nowrap: true }) });
@@ -569,7 +569,7 @@ function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor,
       kit.row("Locked", { gap: u(4), cross: "center", padding: xy(u(8), u(3)), part: "Select.lockedIn", partClass: "badge" }, () => {
         kit.setDraw({ shape: { kind: "rect", radii: [u(4), u(4), u(4), u(4)] }, fills: [{ kind: "solid", color: token("shadow", 0.7) }] });
         symbol("Tick", "check", u(13), role("success"));
-        text("Text", (desc.lockedInLabel ?? "Locked in").toLocaleUpperCase(), { step: st(12), font: "display", nowrap: true, color: mix(role("success"), role("ink"), 0.3) });
+        text("Text", (desc.lockedInLabel ?? "Locked in"), { uppercase: true, step: st(12), font: "display", nowrap: true, color: mix(role("success"), role("ink"), 0.3) });
       });
     }
   });
@@ -652,7 +652,7 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
         if (k === "Random" && desc.randomLabel) {
           const r = surface("Random", { part: "Select.tile[random]", cls: "slot", fill: { ...role("shadow"), a: 0.5 }, direction: "column", width: px(tw), height: px(th), align: "center", cross: "center", gap: u(6), radius: Math.max(4, t.small), semantics: { role: "button", name: desc.randomLabel } }, () => {
             symbol("Mark", "rotate", u(28), role("inkMuted"));
-            text("Label", desc.randomLabel!.toLocaleUpperCase(), { step: st(12), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: "center" });
+            text("Label", desc.randomLabel!, { uppercase: true, step: st(12), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: "center" });
           });
           if (r.clicked && !me?.confirmed) {
             out.random = true;
@@ -770,7 +770,7 @@ export function versus(id: string, desc: Api.VersusDesc): Api.VersusResult {
     kit.close();
     over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
     kit.open("Words", { direction: "column", width: grow(), gap: u(2), padding: { left: u(phone ? 18 : 40), right: u(phone ? 18 : 40), top: 0, bottom: u(phone ? 18 : 48) }, cross: end ? "end" : "start" });
-    text("Character", (s.character ?? "").toLocaleUpperCase(), { step: phone ? "xl5" : "displayLg", font: "display", heading: true, maxLines: 2, width: grow(), align: end ? "end" : "start" });
+    text("Character", (s.character ?? ""), { uppercase: true, step: phone ? "xl5" : "displayLg", font: "display", heading: true, maxLines: 2, width: grow(), align: end ? "end" : "start" });
     kit.row("Player", { gap: u(8), cross: "center", align: end ? "end" : "start", width: grow() }, () => {
       kit.open("Bar", { width: px(u(4)), height: px(u(22)), radius: 2, background: paint(team) });
       kit.close();
@@ -875,7 +875,7 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
     const banRow = (): void => {
       if (bans.length === 0) return;
       kit.row("Bans", { gap: u(6), cross: "center", align: end && !portrait ? "end" : "start", width: portrait ? null : grow(), part: "Draft.bans", partClass: "badge" }, () => {
-        if (!portrait) text("Label", (desc.bansLabel ?? "Bans").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+        if (!portrait) text("Label", (desc.bansLabel ?? "Bans"), { uppercase: true, step: "caption", font: "display", color: "inkMuted", nowrap: true });
         const bw = u(phone ? 34 : 40);
         bans.forEach((b, i) => {
           const e = b ? byKey.get(b) : undefined;

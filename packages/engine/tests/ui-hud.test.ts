@@ -657,7 +657,7 @@ test("racing.standingsTower, lapTimer, rearView and a minimap's track: order, si
   expect(at(els, "RelHud/Rel/c2/Gap")?.text).toBe("—");
   expect(at(els, "RelHud/Rel/c3/Gap")?.text).toBe("+0.40");
   // The final lap's words on their own line over the head; the lap keeps its caption.
-  expect(at(els, "LapHud/Lap/Final")?.text).toBe("FINAL LAP");
+  expect(at(els, "LapHud/Lap/Final")?.text).toBe("Final lap");
   expect(at(els, "LapHud/Lap/Head/Lap/Caption")?.text).toBe("Lap");
   expect(at(els, "LapHud/Lap/Head/Position/Num/Value")?.text).toBe("2");
   expect(at(els, "LapHud/Lap/Current/Time")?.text).toBe("1:12.384");
@@ -1202,7 +1202,7 @@ test("racing.raceBanner: the countdown's numerals and lights by the second, GO, 
   expect([textOf("/Split/Label"), textOf("/Split/Delta")]).toEqual(["Checkpoint 2", "\u22120.68"]);
   desc = { event: "checkpoint", index: 2, deltaMs: -680, wrongWay: true };
   e.advance(2);
-  expect([textOf("/Split/Delta"), textOf("/WrongWay/Label")]).toEqual([undefined, "WRONG WAY"]);
+  expect([textOf("/Split/Delta"), textOf("/WrongWay/Label")]).toEqual([undefined, "Wrong way"]);
   desc = { event: "checkpoint", index: 2, deltaMs: -680 };
   e.advance(70);
   expect(textOf("/Split/Delta")).toBe(undefined);

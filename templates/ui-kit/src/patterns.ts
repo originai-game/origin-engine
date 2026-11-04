@@ -1086,9 +1086,9 @@ export function boardScreen(): void {
   const cell = Math.floor(boardPx / 8);
   const panel = (): void => {
     og.ui.column("Panel", { gap: t.space.md, cross: "center", padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, radius: t.radius.panel, width: portrait ? grow : px(big ? 360 : 280), background: { token: "shadow", alpha: 0.62 } as never }, () => {
-      og.ui.label("LevelCap", L("board.level").toLocaleUpperCase(), { step: big ? "lg" : "sm", color: { token: "inkMuted" }, font: "display", nowrap: true });
+      og.ui.label("LevelCap", L("board.level"), { uppercase: true, step: big ? "lg" : "sm", color: { token: "inkMuted" }, font: "display", nowrap: true });
       og.ui.label("Level", "47", { step: big ? "xl6" : "xl4", font: "display", nowrap: true });
-      og.ui.label("MovesCap", L("board.moves").toLocaleUpperCase(), { step: big ? "lg" : "sm", color: { token: "info" }, font: "display", nowrap: true });
+      og.ui.label("MovesCap", L("board.moves"), { uppercase: true, step: big ? "lg" : "sm", color: { token: "info" }, font: "display", nowrap: true });
       og.ui.label("Moves", `${b.moves}`, { step: big ? "xl6" : "xl4", font: "display", nowrap: true, color: { token: b.moves <= 5 ? "danger" : "ink" } });
       og.ui.starBar("Stars", { value: b.score, thresholds: [8000, 16000, 26000], label: L("board.score"), valueText: og.ui.formatNumber(b.score, { notation: "grouped" } as never), starsLabel: L("saga.stars") });
     });
@@ -1156,14 +1156,14 @@ export function generatorsScreen(): void {
   screen("Gens", L("idle.title"), L("idle.sub"), () => {
     // The energy, the screen's number, counting as it changes.
     og.ui.column("Energy", { width: grow, cross: "center", gap: 0, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "shadow", alpha: 0.55 } as never }, () => {
-      og.ui.label("Cap", L("idle.energy").toLocaleUpperCase(), { step: small ? "sm" : "base", color: { token: "inkMuted" }, font: "display", nowrap: true });
+      og.ui.label("Cap", L("idle.energy"), { uppercase: true, step: small ? "sm" : "base", color: { token: "inkMuted" }, font: "display", nowrap: true });
       og.ui.numberCounter("Value", ig.energy, { format: { notation: "letters" }, step: small ? "xl4" : "xl6", font: "display", delta: false } as never);
       og.ui.label("Rate", L("idle.rate", { rate: fmtIdle(ig.gens.reduce((s0, g0) => s0 + g0.rate, 0)) }), { step: small ? "base" : "lg", color: { token: "info" }, font: "display", nowrap: true });
     });
     const list = (): void => {
       og.ui.column("Generators", { width: grow, gap: t.space.sm }, () => {
         og.ui.row("Head", { width: grow, cross: "center", gap: t.space.sm }, () => {
-          og.ui.label("Title", L("idle.generators").toLocaleUpperCase(), { step: small ? "base" : "lg", font: "display", heading: true, nowrap: true, width: grow });
+          og.ui.label("Title", L("idle.generators"), { uppercase: true, step: small ? "base" : "lg", font: "display", heading: true, nowrap: true, width: grow });
           const m = og.ui.segmented("Mult", { items: [{ label: "×1" }, { label: "×10" }, { label: "×100" }], selected: ig.mult, size: "small", label: L("idle.buyAmount") } as never);
           if (m.changed) ig.mult = m.selected;
         });

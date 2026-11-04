@@ -201,7 +201,7 @@ export function cgGallery(id: string, desc: Api.CgGalleryDesc): Api.CgGalleryRes
               if (e.fresh && !locked) {
                 kit.row("New", { padding: xy(u(8), u(2)), part: "CgGallery.new", partClass: "badge" }, () => {
                   kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("primary") }], effects: [glow(u(6), token("primary", 0.5), 0)] });
-                  text("Text", (desc.newLabel ?? "New").toLocaleUpperCase(), { step: st(11), font: "display", nowrap: true, color: "onPrimary" });
+                  text("Text", (desc.newLabel ?? "New"), { uppercase: true, step: st(11), font: "display", nowrap: true, color: "onPrimary" });
                 });
                 over({ insets: { end: u(6), top: u(6) }, inert: true });
               }
@@ -282,7 +282,7 @@ export function routeChart(id: string, desc: Api.RouteChartDesc): Api.RouteChart
     // The chapters' headings over their columns.
     chapters.forEach((c, i) => {
       kit.row(`${c.key ?? i}~Heading`, { width: px(cw), height: px(headH), align: "center", cross: "center", part: "RouteChart.heading", partClass: "badge" }, () => {
-        text("Text", (c.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", nowrap: true, ellipsis: true, color: "inkMuted" });
+        text("Text", (c.label ?? ""), { uppercase: true, step: st(12), font: "display", nowrap: true, ellipsis: true, color: "inkMuted" });
       });
       over({ insets: { start: pad + i * (cw + colGap), top: pad - u(6) }, inert: true });
     });
@@ -363,7 +363,7 @@ export function routeChart(id: string, desc: Api.RouteChartDesc): Api.RouteChart
           if (s.current) {
             kit.row("Now", { padding: xy(u(7), u(2)), part: "RouteChart.now", partClass: "badge" }, () => {
               kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("focus") }] });
-              text("Text", (desc.currentLabel ?? "Now").toLocaleUpperCase(), { step: st(11), font: "display", nowrap: true, color: "onPrimary" });
+              text("Text", (desc.currentLabel ?? "Now"), { uppercase: true, step: st(11), font: "display", nowrap: true, color: "onPrimary" });
             });
             over({ insets: { start: u(5), top: u(5) }, inert: true });
           }
@@ -415,7 +415,7 @@ export function routeChart(id: string, desc: Api.RouteChartDesc): Api.RouteChart
       } else {
         artSlot("Thumb", "RouteChart.detailThumb", { texture: sel.image ?? null, kind: "cg", width: grow(), aspect: 16 / 9, radius: Math.max(4, t.small), label: "" });
         text("Title", sel.title ?? "", { step: st(20), font: "display", heading: true, maxLines: 2, width: grow() });
-        if (sel.ending) text("Ending", sel.ending.toLocaleUpperCase(), { step: st(14), font: "display", nowrap: true, color: sel.good ? "success" : "danger" });
+        if (sel.ending) text("Ending", sel.ending, { uppercase: true, step: st(14), font: "display", nowrap: true, color: sel.good ? "success" : "danger" });
       }
       if (sel.seen && btn("Jump", desc.jumpLabel ?? "Jump here", { variant: "primary", size: "lg", width: grow(), raised: true }).clicked) {
         out.jump = sel.key ?? null;

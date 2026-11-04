@@ -18,7 +18,7 @@ function statRow(s: LoadoutStat, compact: boolean, labelW: number): void {
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
   kit.row(s.key ?? "", { width: grow(), gap: u(compact ? 8 : 12), cross: "center", part: "Loadout.stat", partClass: "badge" }, () => {
     // The label wraps between its words in the figures' shared label column (a fit box grows past it to a long word).
-    text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(compact ? 12 : 13), font: "display", color: "inkMuted", width: fit(labelW, labelW) });
+    text("Label", (s.label ?? ""), { uppercase: true, step: st(compact ? 12 : 13), font: "display", color: "inkMuted", width: fit(labelW, labelW) });
     const h = Math.max(4, u(compact ? 6 : 8));
     kit.open("Bar", { direction: "row", width: grow(), height: px(h) });
     kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: token("ink", 0.12) }], clip: "shape" } as Api.DrawDesc);
@@ -89,7 +89,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
       radius: portrait ? 999 : Math.max(4, t.small),
       semantics: { role: "tab", name, selected: on },
     }, () => {
-      text("Label", name.toLocaleUpperCase(), { step: st(portrait ? 13 : 15), font: "display", nowrap: true, color: on ? "ink" : "inkMuted" });
+      text("Label", name, { uppercase: true, step: st(portrait ? 13 : 15), font: "display", nowrap: true, color: on ? "ink" : "inkMuted" });
       if (!portrait) {
         kit.open("Line", { width: grow(), height: px(Math.max(2, u(3))) });
         kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: on ? token("primary") : token("ink", 0) }], ...(on ? { effects: [glow(u(6), token("primary", 0.5), 0)] } : {}) });
@@ -120,7 +120,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
 
   // The head: the title, the tabs, the purse at the end (on a phone the tabs under them).
   kit.row("Head", { width: grow(), gap: u(phone ? 10 : 32), cross: "center" }, () => {
-    if (desc.title) text("Title", desc.title.toLocaleUpperCase(), { step: phone ? "xl3" : "xl5", heading: true, font: "display", nowrap: true, ellipsis: phone });
+    if (desc.title) text("Title", desc.title, { uppercase: true, step: phone ? "xl3" : "xl5", heading: true, font: "display", nowrap: true, ellipsis: phone });
     if (!portrait) tabs();
     kit.spacer("Gap", grow());
     purse();
@@ -165,9 +165,9 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
       if (tile) art();
       kit.column("Words", { width: grow(), gap: u(2) }, () => {
         // The words wrap: a slot grows a line rather than cutting its item's name.
-        text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", width: grow(), color: on ? "primary" : "inkMuted" });
-        text("Name", empty ? desc.emptyLabel ?? "Empty" : (s.name ?? "").toLocaleUpperCase(), { step: st(tile ? 14 : 17), font: "display", width: grow(), color: empty || s.locked ? "inkMuted" : "ink" });
-        if (s.detail && !tile) text("Detail", s.detail.toLocaleUpperCase(), { step: st(11), font: "mono", color: "inkMuted", width: grow() });
+        text("Label", (s.label ?? ""), { uppercase: true, step: st(12), font: "display", width: grow(), color: on ? "primary" : "inkMuted" });
+        text("Name", empty ? desc.emptyLabel ?? "Empty" : (s.name ?? ""), { uppercase: true, step: st(tile ? 14 : 17), font: "display", width: grow(), color: empty || s.locked ? "inkMuted" : "ink" });
+        if (s.detail && !tile) text("Detail", s.detail, { uppercase: true, step: st(11), font: "mono", color: "inkMuted", width: grow() });
       });
       if (!tile) art();
     });
@@ -187,7 +187,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
   // stepped down to 22 and so failed to grow with it.
   const info = (compact: boolean): void => {
     kit.column("Info", { width: grow(), gap: u(compact ? 4 : 8) }, () => {
-      text("Name", (desc.name ?? "").toLocaleUpperCase(), { step: st(phone ? 22 : 34), font: "display", heading: true, maxLines: 2, ellipsis: true, width: grow() });
+      text("Name", (desc.name ?? ""), { uppercase: true, step: st(phone ? 22 : 34), font: "display", heading: true, maxLines: 2, ellipsis: true, width: grow() });
       const words = desc.subtitle ?? [];
       if (words.length > 0) kit.row("Subtitle", { gap: u(10), cross: "center", wrap: true, width: grow() } as never, () => {
         const tier = rarityColor(desc.rarity);
@@ -198,7 +198,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
             kit.close();
           }
           const isTier = i === (desc.rarityWord ?? -1) && tier;
-          text(kit.idi("Word", i), w.toLocaleUpperCase(), { step: st(phone ? 12 : 14), font: "display", nowrap: true, color: isTier ? mix(tier!, role("ink"), 0.2) : "inkMuted" });
+          text(kit.idi("Word", i), w, { uppercase: true, step: st(phone ? 12 : 14), font: "display", nowrap: true, color: isTier ? mix(tier!, role("ink"), 0.2) : "inkMuted" });
         });
       });
       if (desc.description && !compact) text("Description", desc.description, { step: st(15), color: "inkMuted", width: grow(), maxLines: 2 });
@@ -304,7 +304,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
               kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("shadow", 0.72) }], strokes: [line(on ? u(2) : 1, on ? token("focus") : ix.hovered || ix.focused ? token("ink", 0.45) : rimC ? { ...rimC, a: 0.55 } as never : token("primary", 0.45))], effects: on ? [glow(u(8), token("focus", 0.4), 0)] : [] });
               if (tile) artSlot("Art", "Loadout.calloutArt", { texture: a.image ?? null, kind: "item", rarity: a.rarity, width: px(u(48)), height: px(u(48)), radius: Math.max(3, t.small - 2), label: "" });
               kit.column("Words", { width: grow(), gap: u(2) }, () => {
-                text("Label", (a.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", width: grow() });
+                text("Label", (a.label ?? ""), { uppercase: true, step: st(12), font: "display", width: grow() });
                 text("Name", a.name || desc.emptyLabel || "Empty", { step: st(12), color: "inkMuted", width: grow() });
               });
               tallest = Math.max(tallest, (kit.bounds(`${kit.openPath()}/Words`)?.height ?? 0) + 2 * u(6));
@@ -382,7 +382,7 @@ export function loadout(id: string, desc: LoadoutDesc): LoadoutResult {
         text("Name", a.name ?? "", { step: st(15), width: grow() });
         if (a.rarityLabel) kit.row("Band", { gap: 0, padding: xy(u(8), u(2)), width: grow() }, () => {
           kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [vgrad([[0, { ...tier, a: 0.55 } as never], [1, { ...tier, a: 0 } as never]], 90)] });
-          text("Tier", a.rarityLabel!.toLocaleUpperCase(), { step: st(11), font: "display", nowrap: true, color: mix(tier, role("ink"), 0.35) });
+          text("Tier", a.rarityLabel!, { uppercase: true, step: st(11), font: "display", nowrap: true, color: mix(tier, role("ink"), 0.35) });
         });
       });
       const d = Math.max(44, u(36));

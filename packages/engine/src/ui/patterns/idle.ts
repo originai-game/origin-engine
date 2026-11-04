@@ -155,7 +155,7 @@ export function prestigePanel(id: string, desc: Api.PrestigeDesc): Api.PrestigeR
     effects: [shadow(u(4), u(14), 0.55)],
   } as Api.DrawDesc);
   kit.props({ states: [{ name: "availability", states: [vstate("ready"), vstate("waiting")], transitions: [] }], state: [{ group: "availability", state: ready ? "ready" : "waiting" }] });
-  text("Title", (desc.title ?? "Prestige").toLocaleUpperCase(), { step: st(14), font: "display", color: "inkMuted", nowrap: true, heading: true });
+  text("Title", (desc.title ?? "Prestige"), { uppercase: true, step: st(14), font: "display", color: "inkMuted", nowrap: true, heading: true });
   kit.row("Body", { width: grow(), gap: u(16), cross: "center" }, () => {
     // The emblem, glowing in gold while a reset gives something.
     const glowK = ready ? (moving ? 0.55 + 0.25 * Math.sin(tick * 0.06) : 0.65) : 0;

@@ -54,7 +54,7 @@ export function backlog(id: string, desc: Api.BacklogDesc): Api.BacklogResult {
     kit.open(`L${l.seq}`, { direction: "row", width: grow(), gap: u(14), cross: "start", part: `Backlog.entry${flags(narrator && "narrator", l.seen && "seen")}`, partClass: "card" });
     kit.props({ states: [{ name: "voice", states: [vstate("silent"), vstate("voiced")], transitions: [] }], state: [{ group: "voice", state: voiced ? "voiced" : "silent" }] });
     kit.column("Words", { width: grow(), gap: u(4) }, () => {
-      if (!narrator) text("Name", l.speaker.name.toLocaleUpperCase(), { step: st(13), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+      if (!narrator) text("Name", l.speaker.name, { uppercase: true, step: st(13), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
       text("Text", l.text, { step: st(phone ? 16 : 18), color: narrator ? "inkMuted" : "ink", width: grow() });
       if (l.chosen) {
         // The player's reply: set in from the start under a short rule, in the muted ink.

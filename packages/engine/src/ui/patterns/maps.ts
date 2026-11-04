@@ -110,7 +110,7 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       placed.push(box);
       kit.open(`Region${r.key}`, { direction: "column", cross: "center", width: px(u(320)), part: "WorldMap.region[discovered]", partClass: "badge" });
       // Names on the painting take the HUD's name treatment (an outline and a soft drop), so they read on any ground.
-      text("Name", (r.name ?? "").toLocaleUpperCase(), { step: st(phone ? 15 : 22), font: "display", nowrap: true, color: "ink" });
+      text("Name", (r.name ?? ""), { uppercase: true, step: st(phone ? 15 : 22), font: "display", nowrap: true, color: "ink" });
       kit.setDraw({ text: nameText(u(phone ? 15 : 22)) });
       const nb = kit.bounds(kit.lastPath());
       kit.close();

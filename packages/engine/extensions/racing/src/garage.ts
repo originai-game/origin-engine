@@ -39,7 +39,7 @@ function statRow(s: GarageStat, compact: boolean, words: { label: string }): voi
   const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
   kit.column(s.key ?? "", { width: grow(), gap: u(compact ? 3 : 6), part: "Garage.stat", partClass: "badge" }, () => {
     kit.row("Head", { width: grow(), gap: u(8), cross: "center" }, () => {
-      text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(compact ? 12 : 14), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+      text("Label", (s.label ?? ""), { uppercase: true, step: st(compact ? 12 : 14), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
       text("Value", fmt(s.value ?? 0), { step: st(compact ? 14 : 17), font: "mono", nowrap: true });
       if (d !== 0) text("Delta", `${d > 0 ? "+" : "\u2212"}${fmt(Math.abs(d))}`, { step: st(compact ? 13 : 15), font: "mono", nowrap: true, color: d > 0 ? "success" : "danger" });
     });
@@ -138,7 +138,7 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
         }
         const z = u(portrait ? 28 : 44);
         artSlot("Art", "Garage.categoryArt", { texture: c.image ?? null, kind: "item", width: px(z), height: px(z), radius: Math.max(3, t.small - 2) });
-        text("Name", (c.name ?? k).toLocaleUpperCase(), { step: st(portrait ? 13 : 15), font: "display", nowrap: true, ellipsis: !portrait, ...(portrait ? {} : { width: grow() }), color: on ? "ink" : "inkMuted" });
+        text("Name", (c.name ?? k), { uppercase: true, step: st(portrait ? 13 : 15), font: "display", nowrap: true, ellipsis: !portrait, ...(portrait ? {} : { width: grow() }), color: on ? "ink" : "inkMuted" });
       });
       if (r.clicked && !on) {
         out.category = k;
@@ -208,7 +208,7 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
             text("Hint", p.lockedHint || (desc.lockedLabel ?? "Locked"), { step: st(13), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
           } else if (p.equipped) {
             symbol("Tick", "check", u(14), role("success"));
-            text("Word", (desc.equippedLabel ?? "Equipped").toLocaleUpperCase(), { step: st(13), font: "display", color: "success", nowrap: true });
+            text("Word", (desc.equippedLabel ?? "Equipped"), { uppercase: true, step: st(13), font: "display", color: "success", nowrap: true });
           } else if (!p.owned) priceTag("Tag", { amount: p.price ?? 0, currency: "coins", image: desc.currencyImage ?? null, affordable: !short, free: desc.freeLabel ?? "Free", size: "sm", shortLabel: desc.shortLabel ?? "not enough" });
         });
       });
@@ -270,7 +270,7 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
   const list = (w: Api.Size, h: Api.Size): void => {
     kit.column(livery ? "Layers" : "Parts", { width: w, height: h, gap: u(8), part: "Garage.parts", partClass: "panel" }, () => {
       kit.row("Head", { width: grow(), gap: u(8), cross: "center", padding: xy(u(4), 0) }, () => {
-        text("Title", (livery ? desc.layersLabel ?? "Layers" : cat?.name ?? "").toLocaleUpperCase(), { step: st(16), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
+        text("Title", (livery ? desc.layersLabel ?? "Layers" : cat?.name ?? ""), { uppercase: true, step: st(16), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
         if (!livery && cat?.count) text("Count", cat.count, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
       });
       kit.openScroll("List", { width: grow(), height: grow(), gap: u(6), padding: xy(0, 0), fade: 32, fadeInto: "shadow" } as never);
@@ -333,7 +333,7 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
               text("Now", String(desc.rating ?? 0), { step: st(compact ? 22 : 34), font: "mono", nowrap: true });
               if (d !== 0) text("Delta", `${d > 0 ? "+" : "\u2212"}${Math.abs(d)}`, { step: st(compact ? 13 : 16), font: "mono", nowrap: true, color: d > 0 ? "success" : "danger" });
             });
-            if (!compact) text("Caption", (desc.classLabel ?? "Class").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+            if (!compact) text("Caption", (desc.classLabel ?? "Class"), { uppercase: true, step: "caption", font: "display", color: "inkMuted", nowrap: true });
           });
           kit.semantics({ role: "status", name: `${desc.classLabel ?? "Class"} ${desc.ratingClass} ${desc.rating ?? 0}${(desc.ratingPreview ?? 0) > 0 ? ` → ${desc.ratingPreview}` : ""}` });
         }
@@ -345,7 +345,7 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
         const key = (k: string, c: Api.Paint, w: string): void => void kit.row(k, { gap: u(6), cross: "center" }, () => {
           kit.open("Chip", { width: px(u(14)), height: px(u(6)), radius: 2, background: c });
           kit.close();
-          text("Word", w.toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+          text("Word", w, { uppercase: true, step: "caption", font: "display", color: "inkMuted", nowrap: true });
         });
         key("Current", token("primary"), desc.currentLabel ?? "Current");
         key("Preview", token("success"), desc.previewLabel ?? "Preview");
@@ -378,8 +378,8 @@ export function garage(id: string, desc: GarageDesc): GarageResult {
     const tier = rarityColor(part.rarity);
     kit.column("Detail", { width: grow(), gap: u(compact ? 6 : 10), padding: xy(u(16), u(compact ? 10 : 16)), part: "Garage.detail", partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.92) }], strokes: [line(1, token("ink", 0.1))], effects: [shadow(u(6), u(20), 0.45)] });
-      text("Name", (part.name ?? "").toLocaleUpperCase(), { step: st(compact ? 18 : 24), font: "display", heading: true, maxLines: 2, width: grow() });
-      if (part.rarityLabel) text("Tier", part.rarityLabel.toLocaleUpperCase(), { step: st(13), font: "display", nowrap: true, color: tier ? mix(tier, role("ink"), 0.25) : "inkMuted" });
+      text("Name", (part.name ?? ""), { uppercase: true, step: st(compact ? 18 : 24), font: "display", heading: true, maxLines: 2, width: grow() });
+      if (part.rarityLabel) text("Tier", part.rarityLabel, { uppercase: true, step: st(13), font: "display", nowrap: true, color: tier ? mix(tier, role("ink"), 0.25) : "inkMuted" });
       if (!compact && part.description) text("Description", part.description, { step: st(15), color: "inkMuted", width: grow(), maxLines: 4 });
       if (!part.owned && !part.locked) priceTag("Price", { amount: part.price ?? 0, currency: "coins", image: desc.currencyImage ?? null, affordable: (part.price ?? 0) <= balance, free: desc.freeLabel ?? "Free", size: "md", shortLabel: desc.shortLabel ?? "not enough" });
     });
