@@ -377,7 +377,7 @@ export function chromeAnchor(screen: string): Anchor | null {
  * button (its name), so a reader steps through the family as a player
  * goes from screen to screen. Built inside the Gallery button's anchor.
  */
-export function showcaseNext(go: (screen: string) => void, screen: string): void {
+export function showcaseNext(go: (screen: string) => void, screen: string, compact = false): void {
   const at = showcaseOf(screen);
   if (!at) return;
   const pages = at.showcase.pages;
@@ -396,6 +396,10 @@ export function showcaseNext(go: (screen: string) => void, screen: string): void
       if (og.ui.iconButton("Next", "play", { variant: "secondary", label: L(next.name) }).clicked) go(next.screen);
       return;
     }
+  }
+  if (compact) {
+    if (og.ui.iconButton("Next", "play", { variant: "secondary", label: L(next.name) }).clicked) go(next.screen);
+    return;
   }
   if (og.ui.pushButton("Next", L(next.name), { variant: "secondary", iconEnd: "play", width: { kind: "fit" } }).clicked) go(next.screen);
 }

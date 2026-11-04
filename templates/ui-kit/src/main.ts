@@ -733,9 +733,38 @@ function galleryButton(world: World, d: DemoState): void {
 
 /** The Gallery button and, on a showcase's page, its next page beside it. */
 function chromeButtons(world: World, d: DemoState): void {
-  // The same push button as the next page beside it (showcaseNext), so the two read as one pair: one size, one label.
-  if (og.ui.pushButton("Gallery", tr(world, "gallery.button"), { variant: "secondary", width: { kind: "fit" } }).clicked) d.screen = 0;
-  showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!);
+  const label = tr(world, "gallery.button");
+  const compact = compactChrome(label, SCREENS[d.screen]!);
+  if (compact) {
+    // Icon buttons at the touch size, their words their accessible names: a label is never cut.
+    const icon = ["view-grid", "grid", "menu", "home"].find((n) => og.ui.hasIcon(n)) ?? "view-grid";
+    if (og.ui.iconButton("Gallery", icon, { variant: "secondary", label }).clicked) d.screen = 0;
+  } else if (og.ui.pushButton("Gallery", label, { variant: "secondary", width: { kind: "fit" } }).clicked) d.screen = 0;
+  // The same button as the next page beside it (showcaseNext), so the two read as one pair: one size, one label.
+  showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!, compact);
+}
+
+/** The phone chrome's form for each look (compactChrome). */
+let chromeLook = { look: "", compact: false };
+
+/**
+ * Whether the phone chrome (the Back anchor) stands as icon buttons: measured from its row as last laid. Its words
+ * squeeze to fit only once the row spans the whole room between the safe margins, so a row that reached both margins
+ * had its labels cut, and the chrome turns to icons for that look (screen, text size, words, width, button step).
+ * Words, never ellipsized, on any other look.
+ */
+function compactChrome(label: string, screen: string): boolean {
+  const vp = og.ui.frameViewport();
+  if (vp.breakpoint !== "phonePortrait" && vp.breakpoint !== "phoneLandscape") return false;
+  const t = og.ui.frameTheme();
+  const look = `${screen}|${label}|${t.textScale ?? 1}|${Math.round(vp.width)}|${t.typeRamp["button"]?.size ?? 0}`;
+  if (chromeLook.look !== look) chromeLook = { look, compact: false };
+  else if (!chromeLook.compact) {
+    const row = og.ui.bounds("Back");
+    // Both its ends at an anchor's margin (the row is laid inside the margins, which are no wider than xl).
+    if (row && Math.max(row.x, vp.width - row.x - row.width) <= og.ui.frameTheme().space.xl) chromeLook.compact = true;
+  }
+  return chromeLook.compact;
 }
 
 /** The raw widget set on one scrolling panel. */

@@ -7,7 +7,7 @@
 // other word is the game's, keyed in assets/strings.
 
 import { og } from "@origingame/engine";
-import { art, besideChrome, L, phone, type ArtName } from "./patterns.ts";
+import { art, besideChrome, L, phone, titleLine, type ArtName } from "./patterns.ts";
 import type { DraftTeam, LobbyMember, RosterEntry, SelectCursor, Size, SongEntry, WorldMarker, WorldRegion } from "@origingame/engine";
 
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -38,17 +38,18 @@ export function frame(id: string, title: string, build: () => void, hints: Array
   // body a tick too tall.
   const laidHead = og.ui.bounds(`${id}/Header`);
   const step = small ? "xl2" : big ? "xl6" : "xl4";
-  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * pad);
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * pad, `${id}/Header/Title`, title, "xl2");
   const titleH = t.typeRamp[step]?.lineHeight ?? 0;
   const headH = bleed ? 0 : Math.max(chrome.top + titleH, chrome.min, laidHead?.height ?? 0) + t.space.md;
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(height), direction: "column", gap: t.space.md, padding: { left: pad, top, right: pad, bottom } }, () => {
     if (!bleed) {
       og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
-        og.ui.label("Title", title, { step, heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+        og.ui.label("Title", title, { step, heading: true, font: "display", ...titleLine(chrome) });
       });
     }
-    // Before the header has been laid out once (its height grows with the text size), the body takes what is left.
-    og.ui.column("Body", { width: grow, height: bleed || laidHead ? px(Math.max(1, height - top - bottom - headH)) : grow }, build);
+    // Before the header has been laid out once (its height grows with the text size), and on the tick its title moves
+    // (wrapped on its own row, its lines are known once laid), the body takes what is left.
+    og.ui.column("Body", { width: grow, height: bleed || (laidHead && chrome.settled) ? px(Math.max(1, height - top - bottom - headH)) : grow }, build);
     if (hints.length > 0 && !small && !bleed) og.ui.actionHints("Hints", { hints });
   });
 }

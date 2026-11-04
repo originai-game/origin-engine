@@ -9,7 +9,7 @@
 
 import { og } from "@origingame/engine";
 import type { DialogueView, QuestView, Size, World } from "@origingame/engine";
-import { art, besideChrome, L } from "./patterns.ts";
+import { art, besideChrome, L, titleLine } from "./patterns.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -261,9 +261,12 @@ function talk(world: World, id: string, dialogue: string, layout: "cinematic" | 
   const sa = vp.safeArea;
   const small = phone();
   // On a phone the kit's Gallery button takes the top end corner: the conversation's tools stand under it.
-  const top = small ? (og.ui.bounds("Back")?.height ?? 44) + 8 : 0;
-  // On a desktop the Gallery button takes the bottom start corner: the text box stands above it.
-  const foot = !small && layout === "box" ? (og.ui.bounds("Back")?.height ?? 40) + 12 : 0;
+  // Under its bottom edge as laid (its margin included), measured from the safe area the anchor stands in.
+  const back = og.ui.bounds("Back");
+  const top = small ? (back ? back.y + back.height - sa.top : 60) + 8 : 0;
+  // On a desktop the Gallery button takes the bottom start corner: the text box (or the cinematic caption, as wide as
+  // the screen's middle) stands above it.
+  const foot = !small ? (back?.height ?? 40) + 12 : 0;
   const v = view(world, dialogue);
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetY: top, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom - top - foot), direction: "column" }, () => {
     // Each speaker stands their own figure: the texture loaded for the line's portrait path.
@@ -333,9 +336,9 @@ export function questsScreen(world: World): void {
     return;
   }
   og.ui.anchor("Quests", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : t.space.xl } }, () => {
-    const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
+    const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm, "Quests/Header/Title", L("q.title"), "xl2");
     og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
-      og.ui.label("Title", L("q.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+      og.ui.label("Title", L("q.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", ...titleLine(chrome) });
     });
     const r = og.ui.questLog("Log", {
       quests,

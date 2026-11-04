@@ -1,7 +1,7 @@
 type icons
 version 1
 ---
-# 72 game-UI glyphs of iconoir 7.12.1 (MIT, iconoir/LICENSE), cooked into
+# 73 game-UI glyphs of iconoir 7.12.1 (MIT, iconoir/LICENSE), cooked into
 # a distance-field atlas like a font (og-cook cook::icons) for UiDesc.icons.font,
 # and the kit's own icon names after them (the 32 of the old PNG grid).
 source "iconoir"
@@ -17,6 +17,7 @@ icon "pause"
 icon "refresh"
 icon "undo"
 icon "menu"
+icon "view-grid"
 icon "search"
 icon "xmark"
 icon "check"

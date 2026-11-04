@@ -28,19 +28,42 @@ export function phone(): boolean {
   return b === "phonePortrait" || b === "phoneLandscape";
 }
 
+/** Each phone header title's place, on its own row or beside the chrome, for the look it was measured in (besideChrome). */
+const titles = new Map<string, { own: boolean; look: string }>();
+
 /**
  * A phone header's room beside the kit's Gallery chrome (the top end corner, as laid last tick), for a header `width`
- * wide: the title stands beside the chrome while that leaves it at least a third of the header, else (and always at a large
- * text size, where the chrome grows) on its own row under it: a title never ellipsizes to nothing. Zero off a phone.
+ * wide whose title is laid at `titlePath` at type `step` (its width fits its text): the title stands beside the chrome
+ * when its whole width fits there on one line, else on its own row under it, wrapped (titleLine). It is measured from
+ * the title as last laid on its own row. No fraction of the room decides it, and a title never ellipsizes. Zero off a
+ * phone.
  */
-export function besideChrome(width: number): { right: number; top: number; min: number } {
-  if (!phone()) return { right: 0, top: 0, min: 0 };
-  const gap = og.ui.frameTheme().space.sm;
+export function besideChrome(width: number, titlePath: string, title: string, step: string): { right: number; top: number; min: number; wrap: boolean; settled: boolean } {
+  if (!phone()) return { right: 0, top: 0, min: 0, wrap: false, settled: true };
+  const t = og.ui.frameTheme();
+  const gap = t.space.sm;
   const back = og.ui.bounds("Back");
   const w = (back?.width ?? 100) + gap;
   const h = back?.height ?? 44;
-  const large = (og.ui.frameTheme().textScale ?? 1) >= 1.5;
-  return !large && width - w >= width * 0.35 ? { right: w, top: 0, min: h } : { right: 0, top: h + gap, min: 0 };
+  const room = width - w;
+  const look = `${title}|${Math.round(width)}|${t.textScale ?? 1}|${Math.round(w)}|${t.typeRamp["xl2"]?.size ?? 0}`;
+  const was = titles.get(titlePath);
+  const laid = og.ui.bounds(titlePath);
+  // Each look (title, text size, chrome, width) starts on its own row and is measured there: one line no wider than
+  // the room beside the chrome moves beside it. Only that move changes the body's room, and it grows it, so a pattern
+  // sized from last tick's room never runs a tick past the screen.
+  let own = was?.look === look ? was.own : true;
+  const line = t.typeRamp[step]?.lineHeight ?? 0;
+  if (own && was?.look === look && laid && laid.width > 0 && laid.width <= room && laid.height <= line * 1.5) own = false;
+  titles.set(titlePath, { own, look });
+  // Settled: the title stands where it stood last tick, so the header as laid then is its height now.
+  const settled = was?.look === look && was.own === own;
+  return own ? { right: 0, top: h + gap, min: 0, wrap: true, settled } : { right: w, top: 0, min: h, wrap: false, settled };
+}
+
+/** A phone header title's label options: on one line beside the chrome (cut there, it is measured and moves), wrapped on its own row. */
+export function titleLine(chrome: { wrap: boolean }): { nowrap: boolean; ellipsis: boolean } {
+  return chrome.wrap ? { nowrap: false, ellipsis: false } : { nowrap: true, ellipsis: true };
 }
 
 /**
@@ -58,14 +81,14 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   const big = !small && vp.height >= 1000;
   // On a phone the kit's Gallery button takes the top end corner: the header leaves it room.
   const top = small ? t.space.sm : t.space.lg;
-  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm, `${id}/Header/Title`, title, "xl2");
   // The action hints sit on the bottom edge (actionHints anchors itself), and grow with the text size.
   // On a phone the body runs to the screen's foot, so its fade ends at the edge rather than over a band of scene.
   const bottom = small ? 0 : Math.round(72 * Math.max(1, t.textScale ?? 1));
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - (small ? 0 : sa.bottom)), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
     // At least the Gallery button's height on a phone, so the body starts under it (a pass's header ran up into it).
     og.ui.column("Header", { width: grow, height: { kind: "fit", min: chrome.min }, gap: 2, align: "center", padding: { left: 0, top: chrome.top, right: chrome.right, bottom: 0 } }, () => {
-      og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+      og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", ...titleLine(chrome) });
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
     // The body fades out at the foot where more lies below, so a row cut by the screen's edge reads as more to scroll.
@@ -328,7 +351,7 @@ export function cardsScreen(world?: World): void {
     og.input.defineAction(world, { name: "endTurn", label: L("cards.endTurn"), bindings: [{ control: "KeyE" }, { control: "pad.y" }] });
   }
   // On a phone the kit's Gallery button takes the top end corner (the start one is the web shell's Back): the header leaves it room.
-  const head = besideChrome(vp.width - vp.safeArea.left - vp.safeArea.right - 2 * t.space.sm);
+  const head = besideChrome(vp.width - vp.safeArea.left - vp.safeArea.right - 2 * t.space.sm, "Cards/Top/Heading/Title", L("cards.title"), "xl2");
   // The table stops above the foot (its height of last tick): the enemies never stand behind the hand.
   const footH = og.ui.bounds("Foot")?.height ?? (small ? 260 : 320);
   const tablePath = landscape ? "Cards/Top" : "Cards/Table";
@@ -970,10 +993,10 @@ export function sagaScreen(): void {
     if (r.picked) s.picked = r.picked;
   });
   // The world's name over the map's top, on a scrim that keeps it legible on any art; clear of the Gallery's corner.
-  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm);
+  const chrome = besideChrome(vp.width - sa.left - sa.right - 2 * t.space.sm, "SagaHead/Title", L("saga.world"), "xl2");
   og.ui.anchor("SagaHead", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), direction: "column", padding: { left: sa.left + (small ? t.space.sm : t.space.xl), top: sa.top + (small ? t.space.sm : t.space.lg) + chrome.top, right: sa.right + chrome.right + t.space.sm, bottom: t.space.xl3 } }, () => {
     og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0.82 } }, { offset: 1, color: { token: "shadow", alpha: 0 } }] }] } as never);
-    og.ui.label("Title", L("saga.world"), { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+    og.ui.label("Title", L("saga.world"), { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", ...titleLine(chrome) });
     og.ui.label("Sub", L("saga.sub", { stars: SAGA0.reduce((n, x) => n + x.stars, 0), max: 60 }), { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, nowrap: true });
     og.ui.props({ inert: true } as never);
   });
