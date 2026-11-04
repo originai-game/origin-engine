@@ -834,11 +834,15 @@ fn a_swaying_caster_is_never_cached() {
     };
     for wind in [true, false] {
         let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        // One scene whose clock advances: a new scene (a new `id`) would
+        // reset the renderer's caches, the shadow cache among them.
+        let mut s = scene(wind, 0);
         let mut stats = Vec::new();
         for tick in 0..14 {
+            s.tick = tick;
             stats.push(
                 renderer
-                    .render(&scene(wind, tick), &RenderTarget::Offscreen)
+                    .render(&s, &RenderTarget::Offscreen)
                     .expect("render"),
             );
         }
