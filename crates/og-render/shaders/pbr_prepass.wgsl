@@ -75,7 +75,10 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let unstyled = (u32(material.flags.w) & 8u) != 0u;
   if (frame.outline_style.x > 0.0 && frame.view_pos.w < 0.5 && width > 0.0 && !unstyled) {
     let depth = max(dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
-    width = clamp(width * frame.outline_style.x / depth, 0.5, min(31.0, width * 4.0));
+    // Never under a pixel: a thinner line is drawn at its coverage
+    // (fxpost.wgsl fs_outline, fs_outline_wide) and read as a faint grey
+    // where a far silhouette wants ink (inked-comic-3d's hills).
+    width = clamp(width * frame.outline_style.x / depth, 1.0, max(min(31.0, width * 4.0), 1.0));
   }
   o.outline = outline_bytes(material.outline.rgb, width, in.object & 255u);
   return o;

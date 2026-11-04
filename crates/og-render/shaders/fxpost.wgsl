@@ -553,7 +553,10 @@ fn fs_outline_seed(in: VsOut) -> @location(0) vec4<f32> {
     let o = select(select(vec2<i32>(0, -1), vec2<i32>(0, 1), i == 2), select(vec2<i32>(-1, 0), vec2<i32>(1, 0), i == 0), i < 2);
     let q = clamp(px + o, vec2<i32>(0), vec2<i32>(fxp.screen.xy) - 1);
     let d = depth_at(q);
-    if (is_sky(d) || d > d0 * (1.0 + fxp.outline.y)) { silhouette = true; }
+    // Farther past the threshold, or another object behind at all (a near
+    // hill over a far one, whose depths differ by less than the threshold
+    // along much of the overlap: the line came out dashed).
+    if (is_sky(d) || d > d0 * (1.0 + fxp.outline.y) || (d > d0 && outline_texel(q).w != id.w)) { silhouette = true; }
   }
   if (!silhouette) { return none; }
   let line = f32(packed) + 65536.0 * round(clamp(width, 0.0, 31.875) * 8.0);
@@ -610,7 +613,10 @@ fn fs_outline_wide(in: VsOut) -> @location(0) vec4<f32> {
   if (r.x < 0.0) { return c; }
   let o = jfa_unpack(r.x);
   if (o.x == 0 && o.y == 0) { return c; }
-  if (!(is_sky(r.w) || r.w > r.z * (1.0 + fxp.outline.y))) { return c; }
+  // Behind the seed: the sky, farther past the threshold, or another object
+  // (as fs_outline_seed: the seed lies at px + o).
+  let other = r.w > r.z && outline_texel(px + o).w != outline_texel(px).w;
+  if (!(is_sky(r.w) || r.w > r.z * (1.0 + fxp.outline.y) || other)) { return c; }
   let line = u32(r.y);
   var width = f32(line >> 16u) / 8.0;
   if (u32(fxp.outline.w + 0.5) == 2u) { width *= 0.5; }
