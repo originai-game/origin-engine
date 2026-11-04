@@ -1274,6 +1274,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 align: f(&v, "align", 0.0),
                 seed: u(&v, "seed", 1),
                 sway: f(&v, "sway", 1.0),
+                noise_scale: f(&v, "noiseScale", 8.0),
+                noise_threshold: f(&v, "noiseThreshold", 0.0),
+                footprint: f(&v, "footprint", 0.0),
+                priority: u(&v, "priority", 0),
+                avoid_water: f(&v, "avoidWater", 0.0),
+                density_map: super::fx::handle_index(&v["densityMap"])
+                    .and_then(|i| rs.textures.get(i).copied()),
             },
             cast_shadows: on(&v, "castShadows", true),
             impostor,

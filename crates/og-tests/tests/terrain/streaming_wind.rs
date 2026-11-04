@@ -813,3 +813,141 @@ fn copies_settle_over_ticks_when_the_wind_stops() {
         "the plates did not start to settle: {first:.3} then {later:.3}"
     );
 }
+
+/// G4: the rules the CPU places by are the ones drawn. Over the red
+/// plates (priority 1, a 6 m footprint) a second scatter of green plates
+/// keeps clear of them; every green copy `Terrain::scatter_among` places
+/// in view is drawn at its root, and every copy the footprint removed is
+/// not. Before G4 there were no footprints: the removed copies drew.
+#[test]
+fn scatter_rules_draw_the_cpu_placement() {
+    let (mut scene, _) = plate_field();
+    scene.wind = None;
+    let data = TerrainData::flat(Vec2::splat(256.0), 129, 129);
+    scene.scatters[0].scatter.footprint = 6.0;
+    scene.scatters[0].scatter.priority = 1;
+    let green = scene.add_material(Material {
+        base_color: [0.0, 0.0, 0.0, 1.0],
+        emissive: [0.0, 8.0, 0.0],
+        ..Default::default()
+    });
+    let flowers = TerrainScatter {
+        density: 0.12,
+        seed: 11,
+        ..scene.scatters[0].scatter
+    };
+    let flowers = TerrainScatter {
+        footprint: 0.0,
+        priority: 0,
+        ..flowers
+    };
+    scene.scatters.push(og_render::ScatterDraw {
+        material: green,
+        scatter: flowers,
+        ..scene.scatters[0]
+    });
+    let all: Vec<(usize, TerrainScatter)> = scene
+        .scatters
+        .iter()
+        .map(|d| (d.terrain, d.scatter))
+        .collect();
+    let ctx = og_render::ScatterContext::of(&all, 1, 1, []);
+    let t = &scene.terrains[0];
+    let eye = scene.camera.position;
+    let roots = |copies: Vec<(u32, glam::Mat4)>| -> Vec<Vec2> {
+        copies
+            .iter()
+            .map(|(_, m)| Vec2::new(m.w_axis.x, m.w_axis.z))
+            .collect()
+    };
+    let rocks = roots(t.scatter(&data, &scene.scatters[0].scatter, eye));
+    let placed = roots(t.scatter_among(&data, &flowers, &ctx, eye));
+    let free = roots(t.scatter(&data, &flowers, eye));
+    let (img, _) = render(&scene);
+    keep("scatter-rules", &img);
+    let px_of = |p: Vec2| (640.0 + p.x * 12.0, 360.0 + p.y * 12.0);
+    let green_at = |p: Vec2| {
+        let (cx, cy) = px_of(p);
+        (-3..=3).any(|dy| {
+            (-3..=3).any(|dx| {
+                let c = px(&img, (cx as i32 + dx) as u32, (cy as i32 + dy) as u32);
+                c[1] > 100.0 && c[0] < 60.0
+            })
+        })
+    };
+    // Copies well inside the frame, clear of every other plate (so a
+    // neighbour's pixels are not taken for theirs).
+    let others: Vec<Vec2> = rocks.iter().chain(&free).copied().collect();
+    let alone = |r: &&Vec2| {
+        r.x.abs() < 50.0
+            && r.y.abs() < 26.0
+            && others.iter().all(|o| o == *r || o.distance(**r) > 1.5)
+    };
+    let drawn: Vec<&Vec2> = placed.iter().filter(alone).collect();
+    let removed: Vec<&Vec2> = free
+        .iter()
+        .filter(|r| !placed.contains(r))
+        .filter(alone)
+        .collect();
+    println!(
+        "{} placed copies checked, {} removed",
+        drawn.len(),
+        removed.len()
+    );
+    assert!(drawn.len() >= 20 && removed.len() >= 3);
+    let missing = drawn.iter().filter(|r| !green_at(***r)).count();
+    let extra = removed.iter().filter(|r| green_at(***r)).count();
+    assert_eq!(missing, 0, "placed copies not drawn");
+    assert_eq!(extra, 0, "copies the footprints removed were drawn");
+}
+
+/// G4: a TerrainScatter's densityMap, black over one half of the terrain,
+/// leaves that half without copies once the GPU cull reads it, and the
+/// other half as full as without it. Before G4 there was no densityMap.
+#[test]
+fn a_scatter_density_map_thins_its_copies() {
+    let (mut scene, _) = plate_field();
+    scene.wind = None;
+    scene.scatters[0].scatter.density = 0.3;
+    let (before, _) = render(&scene);
+    let rgba = (0..4)
+        .flat_map(|_| (0..64).flat_map(|x| if x < 32 { [0u8, 0, 0, 255] } else { [255; 4] }))
+        .collect();
+    let map = scene.add_texture(og_render::TextureData {
+        width: 64,
+        height: 4,
+        rgba,
+        color_space: og_render::ColorSpace::Linear,
+        mips: og_render::Mips::None,
+    });
+    scene.scatters[0].scatter.density_map = Some(map);
+    let (img, _) = render(&scene);
+    keep("scatter-density-map", &img);
+    // Red pixels left and right of the frame's centre (x = 0 at 640 px),
+    // leaving out a band either side for the map's filtered edge.
+    let halves = |img: &RgbaImage| {
+        let (mut l, mut r) = (0usize, 0usize);
+        for y in 0..img.height {
+            for x in 0..img.width {
+                let c = px(img, x, y);
+                if c[0] > 100.0 && c[1] < 60.0 {
+                    if x < 620 {
+                        l += 1
+                    } else if x > 660 {
+                        r += 1
+                    }
+                }
+            }
+        }
+        (l, r)
+    };
+    let (l0, r0) = halves(&before);
+    let (l, r) = halves(&img);
+    println!("red pixels: without the map {l0} | {r0}, with it {l} | {r}");
+    assert!(l0 > 5000 && r0 > 5000);
+    assert!(l * 100 < l0, "the black half keeps {l} of {l0}");
+    assert!(
+        r as f32 > 0.95 * r0 as f32,
+        "the white half keeps {r} of {r0}"
+    );
+}

@@ -281,6 +281,7 @@ impl Renderer {
                     scattered,
                     None,
                     Some(fx_group),
+                    false,
                 );
                 if n > 0 {
                     pass.set_bind_group(2, fx_group, &[]);

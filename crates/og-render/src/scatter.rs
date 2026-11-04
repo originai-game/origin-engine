@@ -77,6 +77,82 @@ pub struct TerrainScatter {
     /// How much the [`crate::RenderScene::wind`] sways them: 1 as it
     /// blows, 0 still (stones). Not part of the placement.
     pub sway: f32,
+    /// Clusters (G4): copies grow only where a smooth noise of patches
+    /// `noise_scale` metres across rises past `noise_threshold` (0..1; 0
+    /// everywhere), their edges dithered over a short band.
+    pub noise_scale: f32,
+    pub noise_threshold: f32,
+    /// How far (m, along x and z) this scatter's copies and those of the
+    /// scatters placed before it on the same terrain keep apart: the larger
+    /// of the two footprints. 0: none.
+    pub footprint: f32,
+    /// Placed before every scatter of lower priority on the same terrain
+    /// (equal: the scene's order), whose copies keep clear of its footprints.
+    pub priority: u32,
+    /// How far above the scene's water ([`crate::RenderScene::water`])
+    /// the ground must stand for a copy to grow (m); 0: anywhere.
+    pub avoid_water: f32,
+    /// Thins the copies where its red channel is below 1, over the
+    /// terrain's extent as its control map. Drawn only (the GPU cull,
+    /// `scatter_cull.rs`; no effect without compute); not part of the
+    /// placement.
+    pub density_map: Option<crate::TextureHandle>,
+}
+
+/// What places a scatter's copies besides its own rules
+/// ([`Terrain::scatter_among`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ScatterContext {
+    /// The scatters over the same terrain placed before it (a higher
+    /// priority, or the same and earlier in the scene), first placed
+    /// first: its copies keep clear of their footprints.
+    pub before: Vec<TerrainScatter>,
+    /// The water surfaces `avoid_water` keeps clear of: each one's frame
+    /// from the world (its surface local y = 0) and its half extent along
+    /// local x and z (infinite for an endless sea).
+    pub water: Vec<(Mat4, Vec2)>,
+}
+
+impl ScatterContext {
+    /// The context of scatter `index` of `all` (each with its terrain's
+    /// data index): the usable scatters over the same data placed before
+    /// it, and `water` (world surfaces: their transform, size and whether
+    /// endless).
+    pub fn of(
+        all: &[(usize, TerrainScatter)],
+        index: usize,
+        layers: usize,
+        water: impl IntoIterator<Item = (Mat4, Vec2, bool)>,
+    ) -> ScatterContext {
+        let (data, me) = all[index];
+        let mut before: Vec<(u32, usize, TerrainScatter)> = all
+            .iter()
+            .enumerate()
+            .filter(|&(i, &(d, o))| {
+                d == data
+                    && i != index
+                    && o.usable(layers)
+                    && (o.priority > me.priority || (o.priority == me.priority && i < index))
+            })
+            .map(|(i, &(_, o))| (o.priority, i, o))
+            .collect();
+        og_core::sort::sort_by(&mut before, |a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        ScatterContext {
+            before: before.into_iter().map(|b| b.2).collect(),
+            water: water
+                .into_iter()
+                .map(|(m, size, endless)| {
+                    let half = if endless { Vec2::INFINITY } else { size * 0.5 };
+                    (m.inverse(), half)
+                })
+                .collect(),
+        }
+    }
+
+    /// Whether any rule of `s` or the scatters before it reads the water.
+    fn reads_water(&self, s: &TerrainScatter) -> bool {
+        s.avoid_water > 0.0 || self.before.iter().any(|b| b.avoid_water > 0.0)
+    }
 }
 
 impl Default for TerrainScatter {
@@ -90,6 +166,12 @@ impl Default for TerrainScatter {
             align: 0.0,
             seed: 1,
             sway: 1.0,
+            noise_scale: 8.0,
+            noise_threshold: 0.0,
+            footprint: 0.0,
+            priority: 0,
+            avoid_water: 0.0,
+            density_map: None,
         }
     }
 }
@@ -193,6 +275,24 @@ fn vertex_offset(h: Hook, p: Params) -> vec3<f32> {
 "#;
 
 impl TerrainScatter {
+    /// What places its copies, as bits (a chunk's key).
+    fn placement_bits(&self) -> [u32; 11] {
+        [
+            self.density,
+            self.scale[0],
+            self.scale[1],
+            self.align,
+            self.layer as f32,
+            self.seed as f32,
+            self.noise_scale,
+            self.noise_threshold,
+            self.footprint,
+            self.priority as f32,
+            self.avoid_water,
+        ]
+        .map(f32::to_bits)
+    }
+
     fn usable(&self, layers: usize) -> bool {
         (self.layer as usize) < layers.min(MAX_TERRAIN_LAYERS)
             && self.density > 0.0
@@ -232,6 +332,35 @@ pub struct ScatterDraw {
     /// How far from the camera (along x and z) copies draw as their mesh;
     /// 0 (or no impostor): always. Useful below the scatter's `distance`.
     pub impostor_distance: f32,
+}
+
+/// Value noise over the lattice of `seed`, three octaves turned off the
+/// axes, normalised to 0..1 (the clusters of `TerrainScatter::noise_threshold`).
+fn cluster_noise(p: Vec2, seed: u32) -> f32 {
+    let lattice = |q: Vec2, salt: u32| {
+        let i = q.floor();
+        let f = q - i;
+        let u = f * f * (Vec2::splat(3.0) - 2.0 * f);
+        let at = |dx: i32, dz: i32| {
+            let x = (i.x as i32).wrapping_add(dx) as u32;
+            let z = (i.y as i32).wrapping_add(dz) as u32;
+            unit(hash(
+                hash(x ^ salt).wrapping_add(z.wrapping_mul(0x9e37_79b9)) ^ seed,
+            ))
+        };
+        let a = at(0, 0) + (at(1, 0) - at(0, 0)) * u.x;
+        let b = at(0, 1) + (at(1, 1) - at(0, 1)) * u.x;
+        a + (b - a) * u.y
+    };
+    let turn = Mat3::from_rotation_z(0.6);
+    let (mut q, mut amp, mut sum, mut total) = (p, 1.0, 0.0, 0.0);
+    for octave in 0..3u32 {
+        sum += amp * lattice(q, octave.wrapping_mul(0x632b_e5ab));
+        total += amp;
+        q = turn.transform_vector2(q) * 2.03;
+        amp *= 0.5;
+    }
+    sum / total
 }
 
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
@@ -449,8 +578,60 @@ impl Terrain {
         Some(w.map(|x| x / sum))
     }
 
-    /// The copy of cell (`x`, `z`) of `s`'s grid: `Some(None)` where none
-    /// grows, `None` where the ground is not resident yet.
+    /// The copy of cell (`x`, `z`) of `s`'s grid under every rule: its
+    /// own ([`Self::copy_at`]), then clear of the water by `avoid_water`
+    /// and of the copies of the scatters placed `before` it by the larger
+    /// footprint. `Some(None)` where none grows, `None` where the ground is
+    /// not resident yet.
+    fn copy_ruled(
+        &self,
+        g: &dyn Ground,
+        s: &TerrainScatter,
+        before: &[TerrainScatter],
+        water: &[(Mat4, Vec2)],
+        x: u32,
+        z: u32,
+    ) -> Option<Option<(u32, Mat4, Vec2)>> {
+        let Some(copy) = self.copy_at(g, s, x, z)? else {
+            return Some(None);
+        };
+        if s.avoid_water > 0.0 {
+            let at = copy.1.w_axis.truncate();
+            for (to_local, half) in water {
+                let l = to_local.transform_point3(at);
+                if l.x.abs() <= half.x && l.z.abs() <= half.y && l.y < s.avoid_water {
+                    return Some(None);
+                }
+            }
+        }
+        let along = horizontal_scale(self.transform).max(1e-6);
+        let p = copy.2;
+        let size = g.size();
+        for (i, b) in before.iter().enumerate() {
+            let reach = s.footprint.max(b.footprint) / along;
+            if reach <= 0.0 {
+                continue;
+            }
+            let cell = b.cell();
+            let cells = (size / cell).ceil();
+            let lo = ((p - reach + size * 0.5) / cell).floor().max(Vec2::ZERO);
+            let hi = ((p + reach + size * 0.5) / cell).floor().min(cells - 1.0);
+            for bz in lo.y as u32..=hi.y.max(0.0) as u32 {
+                for bx in lo.x as u32..=hi.x.max(0.0) as u32 {
+                    if let Some((_, _, q)) = self.copy_ruled(g, b, &before[..i], water, bx, bz)?
+                        && (q - p).length() < reach
+                    {
+                        return Some(None);
+                    }
+                }
+            }
+        }
+        Some(Some(copy))
+    }
+
+    /// The copy of cell (`x`, `z`) of `s`'s grid by its own rules (layer,
+    /// slope, altitude, holes, clusters): `Some(None)` where none grows,
+    /// `None` where the ground is not resident yet.
     fn copy_at(
         &self,
         g: &dyn Ground,
@@ -473,6 +654,16 @@ impl Terrain {
         let weight = self.weights_on(g, p)?[s.layer as usize];
         if unit(h3) >= weight || g.hole(p)? {
             return Some(None);
+        }
+        if s.noise_threshold > 0.0 {
+            // Patches in the world's metres; a short band dithered by the
+            // copy's own value, so a cluster's edge thins out.
+            let along = horizontal_scale(self.transform);
+            let n = cluster_noise(p * along / s.noise_scale.max(1e-3), seed);
+            let edge = smoothstep(s.noise_threshold - 0.04, s.noise_threshold + 0.04, n);
+            if unit(hash(h0 ^ 5)) >= edge {
+                return Some(None);
+            }
         }
         let model = self.transform;
         let n3 = Mat3::from_mat4(model).inverse().transpose();
@@ -501,6 +692,18 @@ impl Terrain {
         &self,
         data: &TerrainData,
         s: &TerrainScatter,
+        camera: Vec3,
+    ) -> Vec<(u32, Mat4)> {
+        self.scatter_among(data, s, &ScatterContext::default(), camera)
+    }
+
+    /// [`Self::scatter`] with the scatters placed before `s` and the
+    /// water (`ctx`): the copies the renderer draws for it in that scene.
+    pub fn scatter_among(
+        &self,
+        data: &TerrainData,
+        s: &TerrainScatter,
+        ctx: &ScatterContext,
         camera: Vec3,
     ) -> Vec<(u32, Mat4)> {
         let mut out = Vec::new();
@@ -537,7 +740,8 @@ impl Terrain {
             .map(|z| z as u32)
         {
             for x in x0..x1 {
-                if let Some(Some((key, m, p))) = self.copy_at(data, s, x, z)
+                if let Some(Some((key, m, p))) =
+                    self.copy_ruled(data, s, &ctx.before, &ctx.water, x, z)
                     && (p - eye).length() <= reach
                 {
                     out.push((key, m));
@@ -610,7 +814,9 @@ struct ChunkKey {
     data: usize,
     /// The data's revision, and for a streamed terrain the tiles under the chunk.
     source: (u64, Vec<usize>),
-    params: [u32; 8],
+    /// The placement's parameters: the scatter's, the scatters' placed
+    /// before it and, when a rule reads it, the water's (as bits).
+    params: Vec<u32>,
     transform: [u32; 16],
     /// The scene's origin the chunk's transforms are relative to
     /// (`origin.rs`): `transform` is its terrain's placement in the world.
@@ -622,6 +828,8 @@ struct ChunkKey {
 
 struct Chunk {
     buffer: Option<wgpu::Buffer>,
+    /// Its copies as the GPU cull reads them (`scatter_cull.rs`).
+    cull_group: Option<wgpu::BindGroup>,
     count: u32,
     center: Vec3,
     radius: f32,
@@ -639,6 +847,9 @@ pub(crate) struct ScatterBatch {
     pub side: Side,
     offset: u32,
     chunks: Vec<ChunkKey>,
+    /// Per chunk, where the GPU cull put its copies for the main camera
+    /// (`None`: drawn whole).
+    culled: Vec<Option<crate::scatter_cull::Culled>>,
     /// How far the wind moves a copy at most: the chunks' bounds grow by it.
     sway: f32,
     /// The impostor's material: the chunks' copies past the impostor
@@ -693,6 +904,8 @@ pub(crate) struct ScatterPipelines<'a> {
     pub wind_field: wgpu::TextureView,
     /// The trample map (`trample.rs`) they part by.
     pub trample: wgpu::TextureView,
+    /// Whether compute runs: the main camera's copies are culled on the GPU.
+    pub compute: bool,
 }
 
 /// Draws [`ScatterDraw`]s from cached chunks.
@@ -727,6 +940,9 @@ pub(crate) struct ScatterRenderer {
     trample: wgpu::TextureView,
     /// The frame's model impostors' transforms, and how many it holds.
     impostor_instances: Option<(wgpu::Buffer, u64)>,
+    /// The GPU cull (with compute) and this frame's culled chunks, in order.
+    cull: Option<crate::scatter_cull::ScatterCull>,
+    culled_chunks: Vec<ChunkKey>,
 }
 
 impl ScatterRenderer {
@@ -739,7 +955,11 @@ impl ScatterRenderer {
         }
     }
 
-    pub(crate) fn new(device: &wgpu::Device, p: ScatterPipelines) -> ScatterRenderer {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        p: ScatterPipelines,
+    ) -> ScatterRenderer {
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scatter"),
             entries: &[
@@ -868,6 +1088,10 @@ impl ScatterRenderer {
             wind_field: p.wind_field,
             trample: p.trample,
             impostor_instances: None,
+            cull: p
+                .compute
+                .then(|| crate::scatter_cull::ScatterCull::new(device, queue)),
+            culled_chunks: Vec::new(),
         }
     }
 
@@ -1203,8 +1427,8 @@ impl ScatterRenderer {
 
     /// Builds the chunks this frame needs and answers what to draw.
     /// `side_of` answers a material's side (`None`: not of this scene);
-    /// `mesh_bounds` a mesh's radius about its origin and its top above it
-    /// (`None`: no geometry).
+    /// `mesh_bounds` a mesh's radius about its origin, its top above it
+    /// and its index count (`None`: no geometry).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
@@ -1217,7 +1441,7 @@ impl ScatterRenderer {
         frame_index: u64,
         (wind_grid, lean_cap, trample): (crate::wind_field::WindGrid, f32, [f32; 4]),
         side_of: impl Fn(usize) -> Option<Side>,
-        mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
+        mesh_bounds: impl Fn(usize) -> Option<(f32, f32, u32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
     ) -> ScatterBatches {
@@ -1287,7 +1511,15 @@ impl ScatterRenderer {
         let impostors =
             self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
         let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        self.culled_chunks.clear();
+        let mut cull_items = Vec::new();
+        // Per batch, per chunk, its item among `cull_items`.
+        let mut planned: Vec<Vec<Option<usize>>> = Vec::new();
+        let view = crate::frame::Frustum::from_view_proj(view_proj);
         if scene.scatters.is_empty() {
+            if let Some(cull) = &mut self.cull {
+                cull.prepare(device, queue, &[]);
+            }
             self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
             return ScatterBatches {
                 scatters: batches,
@@ -1296,12 +1528,18 @@ impl ScatterRenderer {
         }
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
+        // Each scatter's terrain draw and parameters: what places before it.
+        let placing: Vec<(usize, TerrainScatter)> = scene
+            .scatters
+            .iter()
+            .map(|d| (d.terrain, d.scatter))
+            .collect();
         for (si, d) in scene.scatters.iter().enumerate() {
             let Some(t) = scene.terrains.get(d.terrain) else {
                 continue;
             };
             let di = t.terrain.index();
-            let (Some(source), Some(side), Some((mesh_r, mesh_top))) = (
+            let (Some(source), Some(side), Some((mesh_r, mesh_top, index_count))) = (
                 sources.get(di),
                 side_of(d.material.index()),
                 mesh_bounds(d.mesh.index()),
@@ -1336,19 +1574,25 @@ impl ScatterRenderer {
                 (hi.x.max(0.0) as u32).min(nx),
                 (hi.y.max(0.0) as u32).min(nz),
             );
-            let mut params = [0u32; 8];
-            for (k, v) in [
-                s.density,
-                s.scale[0],
-                s.scale[1],
-                s.align,
-                s.layer as f32,
-                s.seed as f32,
-            ]
-            .iter()
-            .enumerate()
-            {
-                params[k] = v.to_bits();
+            let ctx = ScatterContext::of(
+                &placing,
+                si,
+                t.layers.len(),
+                scene.water.iter().map(|w| {
+                    let mut m = w.transform;
+                    m.w_axis += scene.origin.extend(0.0);
+                    (m, w.size, w.endless)
+                }),
+            );
+            let mut params: Vec<u32> = std::iter::once(&s)
+                .chain(&ctx.before)
+                .flat_map(|o| o.placement_bits())
+                .collect();
+            if ctx.reads_water(&s) {
+                for (m, half) in &ctx.water {
+                    params.extend(m.to_cols_array().map(f32::to_bits));
+                    params.extend(half.to_array().map(f32::to_bits));
+                }
             }
             // The copies are placed in the world (the terrain's placement
             // plus the scene's origin: exact, as the origin is on a coarse
@@ -1417,7 +1661,7 @@ impl ScatterRenderer {
                 let key = ChunkKey {
                     data: di,
                     source: (revisions[di], under),
-                    params,
+                    params: params.clone(),
                     transform,
                     origin,
                     layers: layers.clone(),
@@ -1444,7 +1688,7 @@ impl ScatterRenderer {
                 };
                 'cells: for z in cz * CHUNK_CELLS..((cz + 1) * CHUNK_CELLS).min(cells.y as u32) {
                     for x in cx * CHUNK_CELLS..((cx + 1) * CHUNK_CELLS).min(cells.x as u32) {
-                        match placed_on.copy_at(ground, &s, x, z) {
+                        match placed_on.copy_ruled(ground, &s, &ctx.before, &ctx.water, x, z) {
                             None => {
                                 complete = false;
                                 break 'cells;
@@ -1482,13 +1726,19 @@ impl ScatterRenderer {
                     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("scatter chunk"),
                         contents: bytemuck::cast_slice(&transforms),
-                        usage: wgpu::BufferUsages::VERTEX,
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
                     })
                 });
+                let cull_group = self
+                    .cull
+                    .as_ref()
+                    .zip(buffer.as_ref())
+                    .map(|(cull, b)| cull.chunk_group(device, b));
                 self.chunks.insert(
                     key.clone(),
                     Chunk {
                         buffer,
+                        cull_group,
                         count: transforms.len() as u32,
                         center,
                         radius,
@@ -1544,7 +1794,32 @@ impl ScatterRenderer {
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
                 self.pipeline(device, shader, side, pass, false);
             }
+            // The chunks the camera may see, culled copy by copy on the GPU.
+            let culled = keys
+                .iter()
+                .map(|k| {
+                    let c = self.chunks.get(k)?;
+                    c.cull_group.as_ref()?;
+                    if !view.intersects_sphere(c.center, c.radius + sway) {
+                        return None;
+                    }
+                    self.culled_chunks.push(k.clone());
+                    cull_items.push(crate::scatter_cull::CullItem {
+                        to_terrain: t.transform.inverse(),
+                        extent: layout.size,
+                        copies: c.count,
+                        index_count,
+                        radius: mesh_r,
+                        moves: sway,
+                        distance: s.distance,
+                        density_map: s.density_map,
+                    });
+                    Some(cull_items.len() - 1)
+                })
+                .collect::<Vec<_>>();
+            planned.push(culled);
             batches.push(ScatterBatch {
+                culled: Vec::new(),
                 mesh: d.mesh.index(),
                 material: d.material.index(),
                 shader,
@@ -1557,16 +1832,44 @@ impl ScatterRenderer {
             });
         }
         self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+        // Where each culled chunk draws from, in the order planned.
+        if let Some(cull) = &mut self.cull {
+            let places = cull.prepare(device, queue, &cull_items);
+            for (b, items) in batches.iter_mut().zip(planned) {
+                b.culled = items.into_iter().map(|i| i.map(|i| places[i])).collect();
+            }
+        }
         ScatterBatches {
             scatters: batches,
             impostors,
         }
     }
 
+    /// Culls this frame's chunks for the main camera on the GPU (before
+    /// its prepass and lit pass; nothing without compute).
+    pub(crate) fn encode<'t>(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut crate::Encoder,
+        view: &crate::scatter_cull::CullView,
+        textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
+    ) {
+        let Some(cull) = &self.cull else { return };
+        let groups: Vec<&wgpu::BindGroup> = self
+            .culled_chunks
+            .iter()
+            .filter_map(|k| self.chunks.get(k)?.cull_group.as_ref())
+            .collect();
+        debug_assert_eq!(groups.len(), self.culled_chunks.len());
+        cull.encode(device, queue, encoder, view, &groups, textures);
+    }
+
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
     /// frame bound by the caller): the chunks whose bounds `visible` keeps,
-    /// with their copies' impostors, then the model impostors. Answers the
-    /// draws and the copies drawn.
+    /// with their copies' impostors, then the model impostors; `camera`:
+    /// the main camera's pass, which draws what the GPU cull kept. Answers
+    /// the draws and the copies in the chunks drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
@@ -1578,7 +1881,13 @@ impl ScatterRenderer {
         visible: impl Fn(Vec3, f32) -> bool,
         mut probes: Option<&mut crate::probe_select::Binder>,
         fx_group: Option<&wgpu::BindGroup>,
+        camera: bool,
     ) -> (u32, u32) {
+        // The main camera's prepass and lit pass draw the GPU cull's copies.
+        let list = self
+            .cull
+            .as_ref()
+            .filter(|_| camera && kind != ScatterPass::Shadow);
         let (mut draws, mut copies) = (0, 0);
         let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
             pass.set_bind_group(1, group, &[]);
@@ -1605,7 +1914,7 @@ impl ScatterRenderer {
                 continue;
             };
             let mut bound = false;
-            for k in &b.chunks {
+            for (n, k) in b.chunks.iter().enumerate() {
                 let Some(c) = self.chunks.get(k) else {
                     continue;
                 };
@@ -1613,6 +1922,7 @@ impl ScatterRenderer {
                 if !visible(c.center, c.radius + b.sway) {
                     continue;
                 }
+                let culled = list.zip(b.culled.get(n).copied().flatten());
                 if !bound {
                     pass.set_pipeline(p);
                     bind_rest(pass, group, b.offset);
@@ -1624,8 +1934,16 @@ impl ScatterRenderer {
                 if let Some(b) = probes.as_deref_mut() {
                     b.at(pass, c.center, c.radius);
                 }
-                pass.set_vertex_buffer(1, buffer.slice(..));
-                pass.draw_indexed(0..count, 0, 0..c.count);
+                match culled {
+                    Some((cull, at)) => {
+                        pass.set_vertex_buffer(1, cull.list.slice(at.list_offset()..));
+                        pass.draw_indexed_indirect(&cull.draws, at.mesh_draw());
+                    }
+                    None => {
+                        pass.set_vertex_buffer(1, buffer.slice(..));
+                        pass.draw_indexed(0..count, 0, 0..c.count);
+                    }
+                }
                 draws += 1;
                 copies += c.count;
             }
@@ -1638,7 +1956,7 @@ impl ScatterRenderer {
                 continue;
             };
             let mut bound = false;
-            for k in &b.chunks {
+            for (n, k) in b.chunks.iter().enumerate() {
                 let Some(c) = self.chunks.get(k) else {
                     continue;
                 };
@@ -1646,6 +1964,7 @@ impl ScatterRenderer {
                 if !visible(c.center, c.radius) {
                     continue;
                 }
+                let culled = list.zip(b.culled.get(n).copied().flatten());
                 if !bound {
                     pass.set_pipeline(ip);
                     bind_rest(pass, group, b.offset);
@@ -1654,8 +1973,16 @@ impl ScatterRenderer {
                 if let Some(b) = probes.as_deref_mut() {
                     b.at(pass, c.center, c.radius);
                 }
-                pass.set_vertex_buffer(0, buffer.slice(..));
-                pass.draw(0..6, 0..c.count);
+                match culled {
+                    Some((cull, at)) => {
+                        pass.set_vertex_buffer(0, cull.list.slice(at.list_offset()..));
+                        pass.draw_indirect(&cull.draws, at.card_draw());
+                    }
+                    None => {
+                        pass.set_vertex_buffer(0, buffer.slice(..));
+                        pass.draw(0..6, 0..c.count);
+                    }
+                }
                 draws += 1;
             }
         }
@@ -1706,4 +2033,179 @@ fn level0_under(layout: &TerrainLayout, a: Vec2, b: Vec2) -> Vec<u32> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    /// A 40 m terrain of 81 × 81 samples whose height rises along x from
+    /// -10 m to +10 m.
+    fn ramp() -> (Terrain, TerrainData) {
+        let mut data = TerrainData::flat(Vec2::splat(40.0), 81, 81);
+        data.heights = Arc::from(
+            (0..81 * 81)
+                .map(|i| (i % 81) as f32 / 80.0 * 20.0 - 10.0)
+                .collect::<Vec<_>>(),
+        );
+        let mut scene = crate::RenderScene::new();
+        let h = scene.add_terrain(data.clone());
+        (Terrain::new(h), data)
+    }
+
+    fn horizontal(m: &Mat4) -> Vec2 {
+        Vec2::new(m.w_axis.x, m.w_axis.z)
+    }
+
+    /// A scatter placed after another keeps every copy at least the larger
+    /// footprint away from the other's copies (Horizon's placement order);
+    /// without footprints copies of the two come closer than that.
+    #[test]
+    fn footprints_keep_the_later_scatter_clear_of_the_earlier() {
+        let (t, data) = ramp();
+        let rocks = TerrainScatter {
+            density: 0.05,
+            distance: 30.0,
+            footprint: 1.5,
+            priority: 1,
+            seed: 3,
+            ..Default::default()
+        };
+        let flowers = TerrainScatter {
+            density: 4.0,
+            distance: 30.0,
+            footprint: 0.25,
+            seed: 9,
+            ..Default::default()
+        };
+        let all = [(0, flowers), (0, rocks)];
+        let ctx = ScatterContext::of(&all, 0, 1, []);
+        assert_eq!(ctx.before, vec![rocks], "the higher priority places first");
+        let placed_rocks = t.scatter_among(
+            &data,
+            &rocks,
+            &ScatterContext::of(&all, 1, 1, []),
+            Vec3::ZERO,
+        );
+        let placed = t.scatter_among(&data, &flowers, &ctx, Vec3::ZERO);
+        let free = t.scatter(&data, &flowers, Vec3::ZERO);
+        let closest = |copies: &[(u32, Mat4)]| {
+            copies
+                .iter()
+                .flat_map(|f| {
+                    placed_rocks
+                        .iter()
+                        .map(move |r| (horizontal(&f.1) - horizontal(&r.1)).length())
+                })
+                .fold(f32::MAX, f32::min)
+        };
+        assert!(placed_rocks.len() > 40, "{} rocks", placed_rocks.len());
+        assert!(placed.len() > 1000, "{} flowers", placed.len());
+        assert!(
+            closest(&free) < 0.5,
+            "without footprints a flower stands {} from a rock",
+            closest(&free)
+        );
+        assert!(
+            closest(&placed) >= 1.5,
+            "a flower stands {} from a rock",
+            closest(&placed)
+        );
+        // Only the flowers near rocks go: most of the field stays.
+        assert!(
+            placed.len() * 2 > free.len(),
+            "{} of {} flowers",
+            placed.len(),
+            free.len()
+        );
+    }
+
+    /// `avoid_water 2` grows nothing whose ground stands less than 2 m
+    /// above a water surface over it, and everything above that; a copy
+    /// beside the water's rectangle is not affected.
+    #[test]
+    fn avoid_water_keeps_copies_above_the_water() {
+        let (t, data) = ramp();
+        let s = TerrainScatter {
+            density: 2.0,
+            distance: 30.0,
+            avoid_water: 2.0,
+            ..Default::default()
+        };
+        // A pool at height 0 over the -z half (z from -20 to 0).
+        let pool = Mat4::from_translation(Vec3::new(0.0, 0.0, -10.0));
+        let ctx = ScatterContext::of(&[(0, s)], 0, 1, [(pool, Vec2::new(40.0, 20.0), false)]);
+        let placed = t.scatter_among(&data, &s, &ctx, Vec3::ZERO);
+        let free = t.scatter(&data, &s, Vec3::ZERO);
+        let low = |c: &&(u32, Mat4)| c.1.w_axis.y < 2.0 && c.1.w_axis.z < 0.0;
+        assert!(
+            free.iter().filter(low).count() > 100,
+            "the low ground grows copies without the rule"
+        );
+        assert_eq!(
+            placed.iter().filter(low).count(),
+            0,
+            "copies within 2 m of the pool"
+        );
+        let kept = |copies: &[(u32, Mat4)], f: &dyn Fn(&Mat4) -> bool| {
+            copies.iter().filter(|c| f(&c.1)).count()
+        };
+        let above = |m: &Mat4| m.w_axis.y >= 2.0 || m.w_axis.z >= 0.0;
+        assert_eq!(
+            kept(&placed, &above),
+            kept(&free, &above),
+            "copies away from the pool"
+        );
+        // An endless sea at height 0 clears both halves' low ground.
+        let sea = ScatterContext::of(&[(0, s)], 0, 1, [(Mat4::IDENTITY, Vec2::ONE, true)]);
+        let placed = t.scatter_among(&data, &s, &sea, Vec3::ZERO);
+        assert!(placed.iter().all(|c| c.1.w_axis.y >= 2.0));
+    }
+
+    /// A noise threshold gathers the copies into patches: at 0.5 it keeps
+    /// part of the field, the same part every time, and a copy's
+    /// neighbours are kept far more often than the field's average.
+    #[test]
+    fn a_noise_threshold_gathers_copies_into_patches() {
+        let (t, data) = ramp();
+        let s = TerrainScatter {
+            density: 4.0,
+            distance: 30.0,
+            noise_scale: 6.0,
+            noise_threshold: 0.5,
+            ..Default::default()
+        };
+        let free = t.scatter(
+            &data,
+            &TerrainScatter {
+                noise_threshold: 0.0,
+                ..s
+            },
+            Vec3::ZERO,
+        );
+        let placed = t.scatter(&data, &s, Vec3::ZERO);
+        assert_eq!(placed, t.scatter(&data, &s, Vec3::ZERO));
+        let share = placed.len() as f32 / free.len() as f32;
+        assert!((0.15..0.85).contains(&share), "keeps {share} of the field");
+        // Kept copies within 1 m of a kept copy, against the share.
+        let near = placed
+            .iter()
+            .map(|a| {
+                let around = |c: &[(u32, Mat4)]| {
+                    c.iter()
+                        .filter(|b| {
+                            b.0 != a.0 && (horizontal(&a.1) - horizontal(&b.1)).length() < 1.0
+                        })
+                        .count() as f32
+                };
+                around(&placed) / around(&free).max(1.0)
+            })
+            .sum::<f32>()
+            / placed.len() as f32;
+        assert!(
+            near > share + 0.25,
+            "a kept copy's neighbours are kept {near} of the time, the field {share}"
+        );
+    }
 }

@@ -1340,8 +1340,10 @@ impl Renderer {
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
                     meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
-                        g.bounds
-                            .map_or((1.0, 1.0), |(c, e)| (c.length() + e.length(), c.y + e.y))
+                        let (r, top) = g
+                            .bounds
+                            .map_or((1.0, 1.0), |(c, e)| (c.length() + e.length(), c.y + e.y));
+                        (r, top, g.index_count)
                     })
                 },
                 |m| materials.get(m).and_then(|g| g.shader),
@@ -3670,6 +3672,28 @@ impl Renderer {
         // The grass's blades, generated before every pass that draws them.
         self.grass
             .encode(&mut encoder, &grass_frame, &terrain_draws);
+        // The scattered copies the main camera sees, culled on the GPU
+        // against its view and the depth pyramid the culling drew.
+        {
+            let textures = &self.cache.textures;
+            self.scatter.encode(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                &scatter_cull::CullView {
+                    view_proj: cam.jittered_view_proj,
+                    planes: view_frustum.planes(),
+                    camera: camera.position,
+                    size: (self.width, self.height),
+                    pyramid: self
+                        .gpu_cull
+                        .as_ref()
+                        .filter(|_| gpu_cull)
+                        .and_then(|gc| gc.pyramid()),
+                },
+                &|h| textures.get(h.index()).map(|t| &t.view),
+            );
+        }
         let palette_group = self.palette.bind_group.as_ref();
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
@@ -4065,6 +4089,7 @@ impl Renderer {
                         keep,
                         None,
                         None,
+                        false,
                     )
                     .0;
             }
@@ -4152,6 +4177,7 @@ impl Renderer {
                     |c, r| frustum.intersects_sphere(c, r),
                     None,
                     None,
+                    false,
                 );
                 stats.draw_calls += n; // Grass casts into the first cascade only (grass.rs).
                 if slot == 0 {

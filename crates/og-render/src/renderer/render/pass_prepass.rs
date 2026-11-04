@@ -204,6 +204,7 @@ impl Renderer {
             |c, r| view_frustum.intersects_sphere(c, r),
             None,
             None,
+            true,
         );
         stats.prepass_draws += n;
         stats.prepass_draws +=

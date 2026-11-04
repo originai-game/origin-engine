@@ -873,6 +873,7 @@ impl Renderer {
         );
         let scatter = scatter::ScatterRenderer::new(
             &device,
+            &queue,
             scatter::ScatterPipelines {
                 frame_layout: &frame_layout,
                 material_layout: &material_layout,
@@ -890,6 +891,7 @@ impl Renderer {
                 ),
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
+                compute: vegetation_compute,
             },
         );
         let grass = grass::GrassRenderer::new(

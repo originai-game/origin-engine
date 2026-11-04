@@ -6936,6 +6936,40 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "noiseScale",
+          "column": "f32",
+          "default": 8,
+          "tunable": true
+        },
+        {
+          "name": "noiseThreshold",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "footprint",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "priority",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "avoidWater",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "densityMap",
+          "column": "Texture",
+          "default": 0
         }
       ]
     },

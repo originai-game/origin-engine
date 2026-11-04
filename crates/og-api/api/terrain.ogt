@@ -136,6 +136,33 @@ module terrain {
       unit m
       tunable true
     }
+    field noiseScale f32 "The size of the patches noiseThreshold gathers copies into." {
+      default 8
+      min 0.1
+      max 1000
+      unit m
+      tunable true
+    }
+    field noiseThreshold f32 "Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere." {
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field footprint f32 "How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none." {
+      min 0
+      max 100
+      unit m
+      tunable true
+    }
+    field priority u32 "Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order."
+    field avoidWater f32 "Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere." {
+      min 0
+      max 100
+      unit m
+      tunable true
+    }
+    field densityMap Texture "Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none."
   }
 
   component Grass {
