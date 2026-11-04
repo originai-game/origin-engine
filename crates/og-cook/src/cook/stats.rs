@@ -1082,19 +1082,27 @@ pub fn cook_report_json(report: &Report, cooked: &Path, budgets: &Budgets) -> Va
             .notes
             .iter()
             .filter(|n| {
-                n.starts_with("skin diagnostics:")
-                    || n.starts_with("warning: skin stretch:")
-                    || n.starts_with("skin diagnostics unavailable:")
+                n.starts_with("skin diagnostics:") || n.starts_with("warning: skin stretch:")
             })
             .collect();
         if !skin.is_empty() {
             entry["skinDiagnostics"] = json!(skin);
             warnings.extend(
                 skin.iter()
-                    .filter(|n| !n.starts_with("skin diagnostics:"))
-                    .map(|n| json!({"kind": if n.starts_with("warning:") { "skinStretch" } else { "skinDiagnosticsUnavailable" }, "message": n})),
+                    .filter(|n| n.starts_with("warning:"))
+                    .map(|n| json!({"kind": "skinStretch", "message": n})),
             );
         }
+        warnings.extend(a.notes.iter().filter_map(|n| {
+            let kind = if n.starts_with("warning: emissive texture:") {
+                "emissiveTexture"
+            } else if n.starts_with("model diagnostics unavailable:") {
+                "modelDiagnosticsUnavailable"
+            } else {
+                return None;
+            };
+            Some(json!({"kind": kind, "message": n}))
+        }));
         entry["warnings"] = Value::Array(warnings);
         assets.push(entry);
     }

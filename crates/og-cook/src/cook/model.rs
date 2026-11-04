@@ -58,6 +58,52 @@ pub struct GltfSource {
 }
 
 impl GltfSource {
+    /// A neutral, full-strength emissive map may contain accidental albedo.
+    /// glTF emissive RGB is sRGB; luminance is measured in linear light.
+    pub(super) fn emissive_warnings(&self) -> Result<Vec<String>, String> {
+        let mut means = std::collections::BTreeMap::new();
+        let mut notes = Vec::new();
+        for material in self.doc.materials() {
+            if material.emissive_factor() != [1.0; 3] {
+                continue;
+            }
+            let Some(texture) = material.emissive_texture() else {
+                continue;
+            };
+            let index = texture.texture().source().index();
+            let mean = match means.entry(index) {
+                std::collections::btree_map::Entry::Occupied(e) => *e.get(),
+                std::collections::btree_map::Entry::Vacant(e) => {
+                    let image = super::texture::decode(&self.images[index])?;
+                    let linear: [f64; 256] = std::array::from_fn(|v| {
+                        let s = v as f64 / 255.0;
+                        if s <= 0.04045 {
+                            s / 12.92
+                        } else {
+                            ((s + 0.055) / 1.055).powf(2.4)
+                        }
+                    });
+                    let sum: f64 = image
+                        .rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|p| {
+                            0.2126 * linear[p[0] as usize]
+                                + 0.7152 * linear[p[1] as usize]
+                                + 0.0722 * linear[p[2] as usize]
+                        })
+                        .sum();
+                    *e.insert(sum / (f64::from(image.width) * f64::from(image.height)))
+                }
+            };
+            if mean > 0.01 {
+                notes.push(format!("warning: emissive texture: material {} '{}': emissive factor [1, 1, 1], image {index} mean linear luminance {mean:.5} >0.01; check for albedo baked into emission (no automatic change)", material.index().unwrap(), material.name().unwrap_or("")));
+            }
+        }
+        Ok(notes)
+    }
+
     /// The model's impostor baked as `b` asks (once for both atlases).
     pub fn impostor(&self, b: ImpostorBake) -> Result<&Baked, String> {
         self.impostor

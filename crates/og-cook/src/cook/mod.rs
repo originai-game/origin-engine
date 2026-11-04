@@ -1819,7 +1819,7 @@ pub fn cook_project_with_texture_cache(
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     let mut warnings = motion_warnings;
-    // Diagnostics describe the source skin, never change its weights or blobs.
+    // Diagnostics describe source assets, never change their cooked blobs.
     // Run on cached cooks as well so a warning does not disappear on rerun.
     for (source, report) in sources.iter().zip(&mut reports) {
         if report.error.is_some() {
@@ -1827,19 +1827,22 @@ pub fn cook_project_with_texture_cache(
         }
         if let Some(gltf) = &source.gltf {
             let notes = anim_settings(source).and_then(|settings| {
-                model::skin_report::report(gltf, &assets_dir, settings.rig.as_deref())
+                let mut notes =
+                    model::skin_report::report(gltf, &assets_dir, settings.rig.as_deref())?;
+                notes.extend(gltf.emissive_warnings()?);
+                Ok(notes)
             });
             match notes {
                 Ok(notes) => {
                     for note in notes {
-                        if note.starts_with("warning: skin stretch:") {
+                        if note.starts_with("warning:") {
                             warnings.push(format!("assets/{}: {note}", source.rel));
                         }
                         report.notes.push(note);
                     }
                 }
                 Err(error) => {
-                    let note = format!("skin diagnostics unavailable: {error}");
+                    let note = format!("model diagnostics unavailable: {error}");
                     warnings.push(format!("assets/{}: {note}", source.rel));
                     report.notes.push(note);
                 }

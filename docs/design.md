@@ -2163,6 +2163,12 @@ reading pixels:
   named by `og cook --report` and `og doctor --project`, with
   `model { raycast false }` as the fix (the 30 % read from the
   repository's models, tests/evidence/debt2/size/NOTES.md).
+  Source material warnings also name full-strength `[1, 1, 1]` emissive
+  factors with an emissive texture whose mean linear Rec.709 luminance is
+  >0.01 (sRGB RGB decoded to linear light; alpha ignored, as glTF emission
+  ignores it). `emissiveTexture` warnings name the asset, material and mean
+  so an author can check for albedo accidentally baked into emission. They
+  persist on cached cooks and never modify the texture or material.
 
 ### 3.5 Hot reload **(D)**
 

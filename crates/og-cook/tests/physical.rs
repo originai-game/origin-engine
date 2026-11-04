@@ -273,3 +273,79 @@ fn physical_extensions_are_cooked_and_loaded() {
     expect_standard(scene.standard_material(glass).unwrap());
     assert!(scene.material(plain).is_some());
 }
+
+#[test]
+fn full_strength_emissive_texture_warns_on_mean_linear_luminance_only() {
+    use serde_json::json;
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-emissive-warning");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    for (name, gray, factor, texture) in [
+        ("black", 0, 1.0, true),
+        ("below", 25, 1.0, true),
+        ("above", 26, 1.0, true),
+        ("white", 255, 1.0, true),
+        ("dim-factor", 255, 0.5, true),
+        ("no-texture", 255, 1.0, false),
+        ("one-bright-pixel", 0, 1.0, true),
+    ] {
+        let mut image = image::RgbaImage::from_pixel(128, 1, image::Rgba([gray, gray, gray, 255]));
+        if name == "one-bright-pixel" {
+            image.put_pixel(0, 0, image::Rgba([255; 4]));
+        }
+        let mut png = std::io::Cursor::new(Vec::new());
+        image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let glb = physical_glb(png.get_ref());
+        let glb = gltf::binary::Glb::from_slice(&glb).unwrap();
+        let mut doc: serde_json::Value = serde_json::from_slice(&glb.json).unwrap();
+        doc["extensionsUsed"] = json!([]);
+        doc["materials"] = json!([
+            {"name":"petals", "emissiveFactor":[factor,factor,factor]},
+            {"name":"plain"}
+        ]);
+        if texture {
+            doc["materials"][0]["emissiveTexture"] = json!({"index":0});
+        }
+        doc["buffers"][0]["uri"] = json!(format!("{name}.bin"));
+        std::fs::write(root.join(format!("assets/{name}.gltf")), doc.to_string()).unwrap();
+        std::fs::write(root.join(format!("assets/{name}.bin")), glb.bin.unwrap()).unwrap();
+    }
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    assert_eq!(report.warnings.len(), 2, "{:?}", report.warnings);
+    for name in ["above", "white"] {
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains(&format!("assets/{name}.gltf:"))
+                    && w.contains("material 0 'petals'")),
+            "{:?}",
+            report.warnings
+        );
+    }
+    assert!(report.warnings.iter().any(|w| w.contains("0.01033")));
+    let cached = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(cached.cooked_outputs().is_empty());
+    assert_eq!(report.warnings, cached.warnings);
+    let stats =
+        og_cook::cook::stats::cook_report_json(&cached, &root.join("cooked"), &Default::default());
+    assert_eq!(
+        stats["assets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|a| a["warnings"].as_array().unwrap())
+            .filter(|w| w["kind"] == "emissiveTexture")
+            .count(),
+        2
+    );
+    let model = Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_model("white.gltf")
+        .unwrap();
+    assert_eq!(
+        model.materials[0].emissive, [1.0; 3],
+        "warning never changes emission"
+    );
+}
