@@ -1,3 +1,8 @@
 # Not a simulation crate: the renderer draws the world and never feeds the tick.
 # The root clippy.toml's ban on host libm does not apply here.
-disallowed-methods = []
+# wgpu's create_buffer_init maps the buffer at creation, which on the web was
+# most of a large boot's long GPU-process tasks in Chrome (fork s71): every
+# buffer with initial contents is made by crate::buffer_init.
+disallowed-methods = [
+  { path = "wgpu::util::DeviceExt::create_buffer_init", reason = "mapped at creation on the web: crate::buffer_init" },
+]

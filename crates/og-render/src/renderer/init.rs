@@ -481,7 +481,7 @@ impl Renderer {
             mapped_at_creation: false,
         });
         let light_buffers = clusters::buffers(&device);
-        let ltc = area::ltc_buffer(&device);
+        let ltc = area::ltc_buffer(&device, &queue);
         let volumetric = volumetric::Volumetric::new(&device, info.volumetric);
         // One set per planar reflection the renderer draws (none without
         // the 3D world).
@@ -842,7 +842,9 @@ impl Renderer {
         let hdr = surface
             .as_ref()
             .filter(|(_, c)| c.color_space.is_hdr())
-            .map(|(_, c)| hdr::Output::new(&device, desc, c.color_space, adapter_info.backend));
+            .map(|(_, c)| {
+                hdr::Output::new(&device, &queue, desc, c.color_space, adapter_info.backend)
+            });
         let post = post::PostPasses::new(
             &device,
             &queue,
@@ -915,6 +917,7 @@ impl Renderer {
         let particle_sprite_buffer = buffers::particle_sprite_buffer(&device, SPRITE_STRIDE * 64);
         let white_sprite_group = sprite_bind_group(
             &device,
+            &queue,
             &sprite_layout,
             &default_white,
             &sprite_sampler,
@@ -940,7 +943,7 @@ impl Renderer {
             &sprite_layout,
         );
         let ui = ui::pass::UiRenderer::new(&device, &queue, &overlay, &sprite_layout);
-        let glass = glass::GlassPasses::new(&device, output_format);
+        let glass = glass::GlassPasses::new(&device, &queue, output_format);
         let lines = lines::LineRenderer::new(
             &device,
             samples,

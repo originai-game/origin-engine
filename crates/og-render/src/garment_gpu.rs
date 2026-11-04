@@ -3,7 +3,6 @@
 
 use crate::{Deferred, GarmentDeformation, GarmentTopology};
 use std::{collections::HashMap, sync::Arc};
-use wgpu::util::DeviceExt;
 
 pub(crate) const WGSL: &str = include_str!("../shaders/garment.wgsl");
 
@@ -131,10 +130,10 @@ impl Pipelines {
             let bytes = bytemuck::cast_slice(&rows);
             let mesh = cache
                 .entry(g.key)
-                .or_insert_with(|| self.mesh(device, g, bytes));
+                .or_insert_with(|| self.mesh(device, queue, g, bytes));
             if !Arc::ptr_eq(&mesh.topology, &g.topology) || mesh.input.size() != bytes.len() as u64
             {
-                *mesh = self.mesh(device, g, bytes);
+                *mesh = self.mesh(device, queue, g, bytes);
             }
             let mut rows = rows;
             rows[1][3] = f32::from(!mesh.initialized || scene.camera_cut);
@@ -169,13 +168,23 @@ impl Pipelines {
         }
     }
 
-    fn mesh(&self, device: &wgpu::Device, g: &GarmentDeformation, input: &[u8]) -> Mesh {
+    fn mesh(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        g: &GarmentDeformation,
+        input: &[u8],
+    ) -> Mesh {
         let buffer = |label, data: &[u8]| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: data,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            })
+            crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents: data,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                },
+            )
         };
         Mesh {
             topology: g.topology.clone(),

@@ -98,7 +98,11 @@ impl GlassPasses {
         crate::deferred::warm_one(&[&self.down, &self.blit])
     }
 
-    pub fn new(device: &wgpu::Device, output_format: wgpu::TextureFormat) -> GlassPasses {
+    pub fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        output_format: wgpu::TextureFormat,
+    ) -> GlassPasses {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("glass"),
             entries: &[
@@ -175,8 +179,9 @@ impl GlassPasses {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let pyramid_params = wgpu::util::DeviceExt::create_buffer_init(
+        let pyramid_params = crate::buffer_init(
             device,
+            queue,
             &wgpu::util::BufferInitDescriptor {
                 label: Some("glass pyramid params"),
                 contents: bytemuck::bytes_of(&[0.0f32, 0.0, 0.0, LEVELS as f32]),
@@ -196,9 +201,11 @@ impl GlassPasses {
 
     /// The textures for an output of `width`×`height` in `format` (with a
     /// `linear` view format: the sRGB one the overlay blends through).
+    #[allow(clippy::too_many_arguments)]
     pub fn targets(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
         linear: Option<wgpu::TextureFormat>,
         width: u32,
@@ -321,8 +328,9 @@ impl GlassPasses {
         // size of the level it reads.
         let mut down_groups = vec![group(&source_view, &self.uniform)];
         for k in 1..LEVELS as usize {
-            let params = wgpu::util::DeviceExt::create_buffer_init(
+            let params = crate::buffer_init(
                 device,
+                queue,
                 &wgpu::util::BufferInitDescriptor {
                     label: Some("glass level params"),
                     contents: bytemuck::bytes_of(&[

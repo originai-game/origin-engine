@@ -45,11 +45,11 @@ pub(crate) struct Output {
 impl Output {
     pub fn new(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         desc: &RenderDesc,
         space: wgpu::SurfaceColorSpace,
         backend: wgpu::Backend,
     ) -> Self {
-        use wgpu::util::DeviceExt;
         let curve = curve(desc);
         // DXGI/Vulkan scRGB fixes 1 at 80 nits. Apple EDR and web use the OS's
         // SDR reference white, whose absolute luminance they do not expose.
@@ -58,16 +58,20 @@ impl Output {
         } else {
             1.0
         };
-        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("hdr output"),
-            contents: bytemuck::bytes_of(&[
-                scale,
-                f32::from(space == wgpu::SurfaceColorSpace::ExtendedSrgb),
-                curve[0],
-                0.0,
-            ]),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let uniform = crate::buffer_init(
+            device,
+            queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("hdr output"),
+                contents: bytemuck::bytes_of(&[
+                    scale,
+                    f32::from(space == wgpu::SurfaceColorSpace::ExtendedSrgb),
+                    curve[0],
+                    0.0,
+                ]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            },
+        );
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("hdr output"),
             entries: &[

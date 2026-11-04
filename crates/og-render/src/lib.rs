@@ -349,6 +349,52 @@ use sprites::{FontLayout, RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
+/// A buffer holding `desc.contents`, as `create_buffer_init` makes it.
+///
+/// On the web (fork s71) it is created unmapped and written with
+/// `queue.writeBuffer` straight from wasm memory: `mappedAtCreation` copies
+/// the bytes into a JS ArrayBuffer first, and Chrome's mapped-at-creation
+/// path was most of the long GPU-process tasks of a large boot. The write
+/// lands before the next submission, so every use of the buffer sees it.
+/// A buffer that maps again (`MAP_READ` or `MAP_WRITE`) and natively, it is
+/// `create_buffer_init`. Every buffer with initial contents in og-render is
+/// made here (clippy.toml refuses `create_buffer_init`).
+pub(crate) fn buffer_init(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    desc: &wgpu::util::BufferInitDescriptor,
+) -> wgpu::Buffer {
+    #[cfg(target_arch = "wasm32")]
+    if !desc.contents.is_empty()
+        && !desc
+            .usage
+            .intersects(wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::MAP_WRITE)
+    {
+        // The size create_buffer_init gives it: the contents rounded up to
+        // COPY_BUFFER_ALIGNMENT, the padding zero.
+        let align = wgpu::COPY_BUFFER_ALIGNMENT as usize;
+        let whole = desc.contents.len() / align * align;
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: desc.label,
+            size: desc.contents.len().div_ceil(align) as u64 * wgpu::COPY_BUFFER_ALIGNMENT,
+            usage: desc.usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        if whole > 0 {
+            queue.write_buffer(&buffer, 0, &desc.contents[..whole]);
+        }
+        if whole < desc.contents.len() {
+            let mut tail = [0u8; wgpu::COPY_BUFFER_ALIGNMENT as usize];
+            tail[..desc.contents.len() - whole].copy_from_slice(&desc.contents[whole..]);
+            queue.write_buffer(&buffer, whole as u64, &tail);
+        }
+        return buffer;
+    }
+    let _ = queue;
+    #[allow(clippy::disallowed_methods)]
+    device.create_buffer_init(desc)
+}
+
 /// The renderer. Create it once per output, call [`Renderer::render`] per frame.
 pub struct Renderer {
     device: wgpu::Device,

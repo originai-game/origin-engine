@@ -267,14 +267,15 @@ impl Renderer {
                     if bytes.is_empty() {
                         bytes = vec![0u8; 24];
                     }
-                    Some(
-                        self.device
-                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("skin"),
-                                contents: &bytes,
-                                usage: wgpu::BufferUsages::VERTEX,
-                            }),
-                    )
+                    Some(crate::buffer_init(
+                        &self.device,
+                        &self.queue,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("skin"),
+                            contents: &bytes,
+                            usage: wgpu::BufferUsages::VERTEX,
+                        },
+                    ))
                 }
             };
             self.cache.skins.push(skin);
@@ -635,6 +636,7 @@ impl Renderer {
             let atlas_size = Vec2::new(w as f32, h as f32);
             let bind_group = sprite_bind_group(
                 &self.device,
+                &self.queue,
                 &self.sprite_layout,
                 &gpu.view,
                 &self.trilinear_sampler,

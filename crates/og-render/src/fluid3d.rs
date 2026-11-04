@@ -524,24 +524,29 @@ impl Fluid3dRenderer {
     /// face: probes.rs), into `views` of `screen` pixels, after
     /// [`Fluid3dRenderer::prepare`] uploaded the particles for `main`:
     /// uniforms of its own over the same instances.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn camera_frame(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         fluids: &[Fluid3d],
         main: &Fluid3dFrame,
         camera: &Fluid3dCamera,
         screen: (u32, u32),
         views: &Fluid3dViews,
     ) -> Option<Fluid3dFrame> {
-        use wgpu::util::DeviceExt;
         let first = fluids.iter().find(|f| !f.particles.is_empty())?;
         let (gpu, blur) = camera_uniforms(first, camera, screen);
         let buffer = |label, contents: &[u8]| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents,
-                usage: wgpu::BufferUsages::UNIFORM,
-            })
+            crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents,
+                    usage: wgpu::BufferUsages::UNIFORM,
+                },
+            )
         };
         let uniform = buffer("fluid 3d (camera)", bytemuck::bytes_of(&gpu));
         let [x, y] = blur.map(|b| buffer("fluid 3d blur (camera)", bytemuck::bytes_of(&b)));

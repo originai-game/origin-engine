@@ -36,7 +36,7 @@ impl Renderer {
                         self.overlay.linear_format,
                     );
             }
-            self.ui.prepare(&self.device, scene, of);
+            self.ui.prepare(&self.device, &self.queue, scene, of);
             // A blurred layer's levels (ui/pass.rs).
             if !of.layers.is_empty() {
                 self.mips
@@ -57,6 +57,7 @@ impl Renderer {
         {
             self.glass_targets = Some(self.glass.targets(
                 &self.device,
+                &self.queue,
                 self.output_format,
                 self.offscreen_linear,
                 self.out_width,

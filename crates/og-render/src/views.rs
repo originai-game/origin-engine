@@ -784,7 +784,13 @@ impl Views {
                     let levels = crate::post::bloom_levels(p.size.0, p.size.1);
                     let g = match slot.glow.take() {
                         Some(g) if g.size == size && g.levels.len() == levels as usize => g,
-                        _ => view_glow(device, add.as_ref().expect("made above"), size, levels),
+                        _ => view_glow(
+                            device,
+                            queue,
+                            add.as_ref().expect("made above"),
+                            size,
+                            levels,
+                        ),
                     };
                     // The upsample's radius, one texel, as the frame's.
                     let u = [intensity.max(0.0), 1.0];
@@ -1149,7 +1155,13 @@ fn glow_add(device: &wgpu::Device) -> GlowAdd {
     }
 }
 
-fn view_glow(device: &wgpu::Device, add: &GlowAdd, (w, h): (u32, u32), levels: u32) -> ViewGlow {
+fn view_glow(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    add: &GlowAdd,
+    (w, h): (u32, u32),
+    levels: u32,
+) -> ViewGlow {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("view glow"),
         size: wgpu::Extent3d {
@@ -1176,8 +1188,9 @@ fn view_glow(device: &wgpu::Device, add: &GlowAdd, (w, h): (u32, u32), levels: u
         .collect();
     let uniforms: Vec<wgpu::Buffer> = (0..levels.len() as u32)
         .map(|level| {
-            wgpu::util::DeviceExt::create_buffer_init(
+            crate::buffer_init(
                 device,
+                queue,
                 &wgpu::util::BufferInitDescriptor {
                     label: Some("view glow"),
                     contents: bytemuck::bytes_of(&[

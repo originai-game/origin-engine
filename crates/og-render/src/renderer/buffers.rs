@@ -51,16 +51,21 @@ pub(crate) fn bind_group(
 
 pub(crate) fn sprite_bind_group(
     device: &wgpu::Device,
+    queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
     view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
     params: [f32; 4],
 ) -> wgpu::BindGroup {
-    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sprite params"),
-        contents: bytemuck::bytes_of(&params),
-        usage: wgpu::BufferUsages::UNIFORM,
-    });
+    let buffer = crate::buffer_init(
+        device,
+        queue,
+        &wgpu::util::BufferInitDescriptor {
+            label: Some("sprite params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        },
+    );
     bind_group(
         device,
         "sprite",

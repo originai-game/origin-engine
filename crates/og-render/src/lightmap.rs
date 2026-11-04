@@ -628,8 +628,9 @@ impl Lightmaps {
             if self.uvs.contains_key(&mesh) {
                 continue;
             }
-            let buffer = wgpu::util::DeviceExt::create_buffer_init(
+            let buffer = crate::buffer_init(
                 device,
+                queue,
                 &wgpu::util::BufferInitDescriptor {
                     label: Some("lightmap uvs"),
                     contents: bytemuck::cast_slice(if b.uvs.uvs.is_empty() {

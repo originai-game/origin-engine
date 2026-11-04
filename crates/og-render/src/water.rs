@@ -1332,6 +1332,7 @@ impl WaterRenderer {
     pub(crate) fn face_draws<'a>(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         waters: &[Water],
         size: u32,
         below: &wgpu::TextureView,
@@ -1339,7 +1340,6 @@ impl WaterRenderer {
         white: &wgpu::TextureView,
         textures: &dyn Fn(crate::scene::TextureHandle) -> Option<&'a wgpu::TextureView>,
     ) -> Vec<WaterDraw> {
-        use wgpu::util::DeviceExt;
         let n = size as f32;
         waters
             .iter()
@@ -1354,11 +1354,15 @@ impl WaterRenderer {
                 };
                 let mut face = slot.face;
                 face.screen = [n, n, 1.0 / n, 1.0 / n];
-                let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("water (probe face)"),
-                    contents: bytemuck::bytes_of(&face),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                });
+                let uniform = crate::buffer_init(
+                    device,
+                    queue,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("water (probe face)"),
+                        contents: bytemuck::bytes_of(&face),
+                        usage: wgpu::BufferUsages::UNIFORM,
+                    },
+                );
                 let tex = wgpu::BindingResource::TextureView;
                 // No planar reflection nor screen AO in a face: its own
                 // copy and white in their slots.
@@ -1494,7 +1498,6 @@ impl WaterRenderer {
         points: &[Vec2],
     ) -> Option<wgpu::Buffer> {
         use crate::deferred::AsModule;
-        use wgpu::util::DeviceExt;
         let group = self.last_sea.as_ref()?;
         let storage = |binding, read_only| wgpu::BindGroupLayoutEntry {
             binding,
@@ -1528,11 +1531,15 @@ impl WaterRenderer {
             cache: None,
         });
         let input: Vec<[f32; 2]> = points.iter().map(|p| p.to_array()).collect();
-        let input = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("water probe in"),
-            contents: bytemuck::cast_slice(&input),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let input = crate::buffer_init(
+            device,
+            queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("water probe in"),
+                contents: bytemuck::cast_slice(&input),
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        );
         let size = (points.len().max(1) * 16) as u64;
         let output = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("water probe out"),

@@ -795,13 +795,16 @@ impl TerrainRenderer {
             .max()
             .unwrap_or(64);
         if self.indices.as_ref().is_none_or(|(n, ..)| *n != ring) {
-            use wgpu::util::DeviceExt;
             let (idx, ranges) = ring_indices(ring);
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("terrain indices"),
-                contents: bytemuck::cast_slice(&idx),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+            let buffer = crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("terrain indices"),
+                    contents: bytemuck::cast_slice(&idx),
+                    usage: wgpu::BufferUsages::INDEX,
+                },
+            );
             self.indices = Some((ring, buffer, ranges));
         }
         let ranges = self.indices.as_ref().expect("made above").2.clone();

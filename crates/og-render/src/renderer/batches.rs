@@ -269,13 +269,15 @@ impl Renderer {
             return;
         }
         let params = [0.0, 0.0, 0.0, key.4 as u32 as f32];
-        let buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let buffer = crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("sprite params (normal map)"),
                 contents: bytemuck::bytes_of(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            });
+            },
+        );
         let group = bind_group(
             &self.device,
             "sprite (normal map)",
@@ -320,6 +322,7 @@ impl Renderer {
         if slot.is_none() {
             *slot = Some(sprite_bind_group(
                 &self.device,
+                &self.queue,
                 &self.sprite_layout,
                 &self.cache.textures[t.index()].view,
                 if filter.is_nearest() {
@@ -1005,6 +1008,7 @@ impl Renderer {
         if self.cache.ribbon_groups[t.index()].is_none() {
             self.cache.ribbon_groups[t.index()] = Some(sprite_bind_group(
                 &self.device,
+                &self.queue,
                 &self.sprite_layout,
                 &self.cache.textures[t.index()].view,
                 &self.ribbon_sampler,

@@ -3452,6 +3452,7 @@ impl Renderer {
                     let t = self.probes.targets_of(slot);
                     self.water.face_draws(
                         &self.device,
+                        &self.queue,
                         scene_water,
                         t.size,
                         t.copy.as_ref().expect("made with the water"),
@@ -3506,6 +3507,7 @@ impl Renderer {
                     );
                     self.fluid3d.camera_frame(
                         &self.device,
+                        &self.queue,
                         &scene.fluids_3d,
                         main,
                         &fluid3d::Fluid3dCamera {
@@ -3647,12 +3649,15 @@ impl Renderer {
                 let (particles, lines) =
                     views::camera_gpu(f, position, (size, size), scene.css_height);
                 let buffer = |label, contents: &[u8]| {
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    crate::buffer_init(
+                        &self.device,
+                        &self.queue,
+                        &wgpu::util::BufferInitDescriptor {
                             label: Some(label),
                             contents,
                             usage: wgpu::BufferUsages::UNIFORM,
-                        })
+                        },
+                    )
                 };
                 let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
                 let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));

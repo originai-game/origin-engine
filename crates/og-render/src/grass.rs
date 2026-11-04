@@ -967,16 +967,24 @@ impl GrassRenderer {
             samples: p.samples,
             pipelines: None,
             generate: [None, None],
-            tile: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("grass tile"),
-                contents: bytemuck::cast_slice(&tile),
-                usage: wgpu::BufferUsages::UNIFORM,
-            }),
-            indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("grass indices"),
-                contents: bytemuck::cast_slice(&lod_indices()),
-                usage: wgpu::BufferUsages::INDEX,
-            }),
+            tile: crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("grass tile"),
+                    contents: bytemuck::cast_slice(&tile),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                },
+            ),
+            indices: crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("grass indices"),
+                    contents: bytemuck::cast_slice(&lod_indices()),
+                    usage: wgpu::BufferUsages::INDEX,
+                },
+            ),
             fields: Vec::new(),
             last_tick: None,
         }

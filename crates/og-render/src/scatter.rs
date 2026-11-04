@@ -1078,14 +1078,15 @@ impl ScatterRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let blue_noise = {
-            use wgpu::util::DeviceExt;
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let blue_noise = crate::buffer_init(
+            device,
+            queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("scatter blue noise"),
                 contents: crate::blue_noise::BLUE_NOISE,
                 usage: wgpu::BufferUsages::UNIFORM,
-            })
-        };
+            },
+        );
         let (uniform, group) = Self::slots(
             device,
             &uniform_layout,
@@ -1473,7 +1474,6 @@ impl ScatterRenderer {
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
     ) -> ScatterBatches {
-        use wgpu::util::DeviceExt;
         self.frame += 1;
         self.built = 0;
         let noise = crossfade_noise_offset(frame_index);
@@ -1751,11 +1751,15 @@ impl ScatterRenderer {
                 let transforms: Vec<crate::instances::GpuTransform> =
                     placed.iter().map(crate::instances::gpu_transform).collect();
                 let buffer = (!transforms.is_empty()).then(|| {
-                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("scatter chunk"),
-                        contents: bytemuck::cast_slice(&transforms),
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
-                    })
+                    crate::buffer_init(
+                        device,
+                        queue,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("scatter chunk"),
+                            contents: bytemuck::cast_slice(&transforms),
+                            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
+                        },
+                    )
                 });
                 let cull_group = self
                     .cull

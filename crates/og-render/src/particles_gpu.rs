@@ -876,8 +876,9 @@ impl ParticleRenderer {
                             | wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,
                     }),
-                    points: wgpu::util::DeviceExt::create_buffer_init(
+                    points: crate::buffer_init(
                         device,
+                        queue,
                         &wgpu::util::BufferInitDescriptor {
                             label: Some("emitter mesh points"),
                             contents: bytemuck::cast_slice(points),

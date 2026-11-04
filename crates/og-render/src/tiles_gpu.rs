@@ -4,7 +4,6 @@
 use crate::{RenderScene, TileChunk};
 use glam::Vec2;
 use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 pub(crate) fn source() -> String {
     format!(
@@ -183,11 +182,15 @@ impl Tiles {
                         .map(|chunk| {
                             let (q, f) = pack(chunk);
                             let buffer = |label, bytes: &[u8]| {
-                                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                    label: Some(label),
-                                    contents: if bytes.is_empty() { &[0; 48] } else { bytes },
-                                    usage: wgpu::BufferUsages::STORAGE,
-                                })
+                                crate::buffer_init(
+                                    device,
+                                    queue,
+                                    &wgpu::util::BufferInitDescriptor {
+                                        label: Some(label),
+                                        contents: if bytes.is_empty() { &[0; 48] } else { bytes },
+                                        usage: wgpu::BufferUsages::STORAGE,
+                                    },
+                                )
                             };
                             Chunk {
                                 quads: buffer("tile quads", bytemuck::cast_slice(&q)),

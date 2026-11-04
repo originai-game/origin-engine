@@ -56,9 +56,10 @@ pub const MAX_COOKIE_LAYERS: usize = 24;
 const LTC: &[u8; 16384] = include_bytes!("../../../third_party/ltc/ltc32.bin");
 
 /// The LTC table's uniform buffer (frame binding 11).
-pub(crate) fn ltc_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    wgpu::util::DeviceExt::create_buffer_init(
+pub(crate) fn ltc_buffer(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Buffer {
+    crate::buffer_init(
         device,
+        queue,
         &wgpu::util::BufferInitDescriptor {
             label: Some("ltc table"),
             contents: LTC,
@@ -313,8 +314,9 @@ impl Cookies {
                 let Some(target) = layers.get((first + face) as usize) else {
                     continue;
                 };
-                let face_uniform = wgpu::util::DeviceExt::create_buffer_init(
+                let face_uniform = crate::buffer_init(
                     device,
+                    queue,
                     &wgpu::util::BufferInitDescriptor {
                         label: Some("cookie face"),
                         contents: bytemuck::cast_slice(&[face as f32, faces as f32, 0.0, 0.0]),

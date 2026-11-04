@@ -16,54 +16,21 @@ impl Renderer {
             mesh
         };
         let bytes: &[u8] = bytemuck::cast_slice(&mesh.vertices);
-        self.mesh_buffer(
-            "vertices",
-            if bytes.is_empty() { &[0u8; 16] } else { bytes },
-            // STORAGE: the meshlet path pulls them (meshlet.wgsl).
-            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        // Fork s74: on the web written with writeBuffer straight from wasm
+        // memory (buffer_init): no 1.8 GB of short-lived ArrayBuffers in a
+        // 1072-cell boot.
+        crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("vertices"),
+                contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
+                // STORAGE: the meshlet path pulls them (meshlet.wgsl).
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST,
+            },
         )
-    }
-
-    /// Fork s74: a mesh buffer holding `contents`. On the web it is created
-    /// unmapped and written with `queue.writeBuffer` straight from wasm
-    /// memory, instead of `create_buffer_init`'s mapping (a JS ArrayBuffer
-    /// the bytes are copied into, then the staged write): one copy and no
-    /// 1.8 GB of short-lived ArrayBuffers in a 1072-cell web boot. Natively
-    /// it is `create_buffer_init`.
-    fn mesh_buffer(
-        &self,
-        label: &'static str,
-        contents: &[u8],
-        usage: wgpu::BufferUsages,
-    ) -> wgpu::Buffer {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let size = (contents.len() as u64).div_ceil(wgpu::COPY_BUFFER_ALIGNMENT)
-                * wgpu::COPY_BUFFER_ALIGNMENT;
-            let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: size.max(wgpu::COPY_BUFFER_ALIGNMENT),
-                usage: usage | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-            let whole = contents.len() / 4 * 4;
-            if whole > 0 {
-                self.queue.write_buffer(&buffer, 0, &contents[..whole]);
-            }
-            if whole < contents.len() {
-                let mut tail = [0u8; 4];
-                tail[..contents.len() - whole].copy_from_slice(&contents[whole..]);
-                self.queue.write_buffer(&buffer, whole as u64, &tail);
-            }
-            buffer
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        self.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents,
-                usage,
-            })
     }
 
     /// `mesh` on the GPU; `compact`: as [`VertexEncoding::Compact`], whose
@@ -74,10 +41,14 @@ impl Renderer {
             .then(|| compact::encode(mesh))
             .flatten()
             .map(|(v, dq)| {
-                let buffer = self.mesh_buffer(
-                    "compact vertices",
-                    bytemuck::cast_slice(&v),
-                    wgpu::BufferUsages::VERTEX,
+                let buffer = crate::buffer_init(
+                    &self.device,
+                    &self.queue,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("compact vertices"),
+                        contents: bytemuck::cast_slice(&v),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    },
                 );
                 (buffer, dq)
             });
@@ -87,14 +58,18 @@ impl Renderer {
         } else {
             self.upload_vertices(&MeshData::default())
         };
-        let indices = self.mesh_buffer(
-            "indices",
-            if mesh.indices.is_empty() {
-                &[0u8; 16]
-            } else {
-                bytemuck::cast_slice(&mesh.indices)
+        let indices = crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("indices"),
+                contents: if mesh.indices.is_empty() {
+                    &[0u8; 16]
+                } else {
+                    bytemuck::cast_slice(&mesh.indices)
+                },
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             },
-            wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
         );
         let bounds = mesh
             .bounds()
@@ -140,14 +115,16 @@ impl Renderer {
             mapped_at_creation: false,
         });
         let indices: Vec<u32> = (0..count as u32).collect();
-        let indices = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let indices = crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("simulation surface indices"),
                 contents: bytemuck::cast_slice(&indices),
                 usage: wgpu::BufferUsages::INDEX,
-            });
-        let surface = pipelines.mesh(&self.device, mesh, &vertices, level);
+            },
+        );
+        let surface = pipelines.mesh(&self.device, &self.queue, mesh, &vertices, level);
         GpuMesh {
             vertices,
             indices,
@@ -624,13 +601,15 @@ impl Renderer {
             }
             _ => None,
         };
-        let factors = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let factors = crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("material"),
                 contents: bytemuck::bytes_of(&uniform),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+            },
+        );
         let entries = [
             factors.as_entire_binding(),
             wgpu::BindingResource::TextureView(&base),
@@ -711,6 +690,7 @@ impl Renderer {
                 ));
                 let view = physical.pack(
                     &self.device,
+                    &self.queue,
                     &mut encoder,
                     &sources,
                     size,
@@ -732,13 +712,15 @@ impl Renderer {
         let normal = view(m.normalMap, &self.default_normal)?;
         let emissive = view(m.emissiveMap, &self.default_white)?;
         let gradient = view(m.gradientMap, &self.default_white)?;
-        let uniform = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniform = crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("physical material"),
                 contents: bytemuck::bytes_of(&physical::uniform(m, layers_of)),
                 usage: wgpu::BufferUsages::UNIFORM,
-            });
+            },
+        );
         Ok(bind_group(
             &self.device,
             "physical material",

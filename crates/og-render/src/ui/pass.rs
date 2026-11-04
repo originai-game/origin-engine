@@ -561,7 +561,13 @@ impl UiRenderer {
 
     /// Compiles the custom materials the frame's layers use (inside an
     /// error scope) and uploads the vectors it draws that are new.
-    pub fn prepare(&mut self, device: &wgpu::Device, scene: &RenderScene, frame: &OverlayFrame) {
+    pub fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        scene: &RenderScene,
+        frame: &OverlayFrame,
+    ) {
         let Some(overlay) = &scene.overlay else {
             return;
         };
@@ -605,8 +611,9 @@ impl UiRenderer {
                     continue;
                 };
                 let init = |label, contents: &[u8], usage| {
-                    wgpu::util::DeviceExt::create_buffer_init(
+                    crate::buffer_init(
                         device,
+                        queue,
                         &wgpu::util::BufferInitDescriptor {
                             label: Some(label),
                             contents,

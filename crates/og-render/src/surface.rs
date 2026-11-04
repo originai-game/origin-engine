@@ -4,7 +4,6 @@
 
 use crate::{Deferred, MeshData};
 use glam::Vec3;
-use wgpu::util::DeviceExt;
 
 pub(crate) const WGSL: &str = include_str!("../shaders/surface.wgsl");
 
@@ -192,21 +191,30 @@ impl SurfacePipelines {
     pub(crate) fn mesh(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         mesh: &MeshData,
         output: &wgpu::Buffer,
         level: u32,
     ) -> SurfaceMesh {
         let storage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
-        let source = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("surface coarse vertices"),
-            contents: bytemuck::cast_slice(&mesh.vertices),
-            usage: storage,
-        });
-        let topology = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("surface topology"),
-            contents: bytemuck::cast_slice(&topology(mesh, level)),
-            usage: storage,
-        });
+        let source = crate::buffer_init(
+            device,
+            queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("surface coarse vertices"),
+                contents: bytemuck::cast_slice(&mesh.vertices),
+                usage: storage,
+            },
+        );
+        let topology = crate::buffer_init(
+            device,
+            queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("surface topology"),
+                contents: bytemuck::cast_slice(&topology(mesh, level)),
+                usage: storage,
+            },
+        );
         let normals = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("surface normals"),
             size: mesh.vertices.len() as u64 * 16,

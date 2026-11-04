@@ -23,6 +23,40 @@ use crate::glue::{
 };
 use crate::{Generation, Inputs};
 
+/// A buffer holding `desc.contents`, as `create_buffer_init` makes it; on
+/// the web (fork s71, as og-render's `buffer_init`) created unmapped and
+/// written with `queue.writeBuffer` straight from wasm memory, since
+/// Chrome's mapped-at-creation path held its GPU process in long tasks.
+fn buffer_init(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    desc: &wgpu::util::BufferInitDescriptor,
+) -> wgpu::Buffer {
+    #[cfg(target_arch = "wasm32")]
+    if !desc.contents.is_empty() {
+        let align = wgpu::COPY_BUFFER_ALIGNMENT as usize;
+        let whole = desc.contents.len() / align * align;
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: desc.label,
+            size: desc.contents.len().div_ceil(align) as u64 * wgpu::COPY_BUFFER_ALIGNMENT,
+            usage: desc.usage | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        if whole > 0 {
+            queue.write_buffer(&buffer, 0, &desc.contents[..whole]);
+        }
+        if whole < desc.contents.len() {
+            let mut tail = [0u8; wgpu::COPY_BUFFER_ALIGNMENT as usize];
+            tail[..desc.contents.len() - whole].copy_from_slice(&desc.contents[whole..]);
+            queue.write_buffer(&buffer, whole as u64, &tail);
+        }
+        return buffer;
+    }
+    let _ = queue;
+    #[allow(clippy::disallowed_methods)]
+    device.create_buffer_init(desc)
+}
+
 #[derive(Clone, Copy)]
 enum Kernel {
     Linear,
@@ -205,13 +239,15 @@ impl Recorder<'_> {
         workgroups: (u32, u32),
     ) {
         let gpu = self.gpu;
-        let uniform = gpu
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniform = buffer_init(
+            &gpu.device,
+            &gpu.queue,
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("og-motion params"),
                 contents: bytemuck::cast_slice(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
-            });
+            },
+        );
         let pipeline = &gpu.pipelines[kernel as usize];
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
@@ -582,11 +618,15 @@ impl Gpu {
                 let cls = bundle.get("student.cls", &[width])?;
                 data.iter_mut().zip(cls).for_each(|(a, c)| *a += c);
             }
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&name),
-                contents: bytemuck::cast_slice(&data),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
+            let buffer = buffer_init(
+                &device,
+                &queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some(&name),
+                    contents: bytemuck::cast_slice(&data),
+                    usage: wgpu::BufferUsages::STORAGE,
+                },
+            );
             lengths.insert(name.clone(), data.len());
             shapes.insert(name.clone(), shape);
             weights.insert(name, buffer);
@@ -600,11 +640,15 @@ impl Gpu {
             .map(|(r, c)| full[r * SEQUENCE + c])
             .collect();
         let mask = |data: &[u32], label| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: bytemuck::cast_slice(data),
-                usage: wgpu::BufferUsages::STORAGE,
-            })
+            buffer_init(
+                &device,
+                &queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some(label),
+                    contents: bytemuck::cast_slice(data),
+                    usage: wgpu::BufferUsages::STORAGE,
+                },
+            )
         };
         let (mask_count, mask_full) = (mask(&count, "mask count"), mask(&full, "mask full"));
         #[cfg(not(target_arch = "wasm32"))]

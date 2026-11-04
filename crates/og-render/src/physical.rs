@@ -395,12 +395,12 @@ impl PhysicalPipelines {
     pub fn pack(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         encoder: &mut crate::Encoder,
         layers: &[(PackUniform, [wgpu::TextureView; 4])],
         (width, height): (u32, u32),
         sampler: &wgpu::Sampler,
     ) -> wgpu::TextureView {
-        use wgpu::util::DeviceExt;
         let levels = crate::mips::mip_count(width, height);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("material pack"),
@@ -417,11 +417,15 @@ impl PhysicalPipelines {
             view_formats: &[],
         });
         for (layer, (uniform, views)) in layers.iter().enumerate() {
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("pack"),
-                contents: bytemuck::bytes_of(uniform),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+            let buffer = crate::buffer_init(
+                device,
+                queue,
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("pack"),
+                    contents: bytemuck::bytes_of(uniform),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                },
+            );
             let group = crate::bind_group(
                 device,
                 "pack",
