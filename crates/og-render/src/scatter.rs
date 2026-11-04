@@ -1240,7 +1240,7 @@ impl ScatterRenderer {
             let streamed = matches!(source, TerrainSource::Stream { .. });
             let tiles = match source {
                 TerrainSource::Stream { tiles, .. } => Some(tiles),
-                TerrainSource::Data(_) => None,
+                TerrainSource::Data(..) => None,
             };
             let mut keys = Vec::new();
             // Nearest chunks first, so a budgeted frame builds those.
@@ -1292,7 +1292,7 @@ impl ScatterRenderer {
                 let mut complete = true;
                 let tile_ground;
                 let ground: &dyn Ground = match source {
-                    TerrainSource::Data(d) => d,
+                    TerrainSource::Data(d, _) => d,
                     TerrainSource::Stream { tiles, .. } => {
                         tile_ground = TileGround { layout, tiles };
                         &tile_ground

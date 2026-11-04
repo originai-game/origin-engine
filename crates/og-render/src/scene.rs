@@ -31,6 +31,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);
 
+/// The in-place terrain edits a scene remembers per terrain
+/// ([`RenderScene::edit_terrain`]); a renderer that missed more builds every
+/// tile again.
+pub const TERRAIN_EDIT_LOG: usize = 64;
+
 /// Everything one frame draws. See the module documentation.
 #[derive(Debug)]
 pub struct RenderScene {
@@ -88,6 +93,10 @@ pub struct RenderScene {
     terrain_data: Vec<crate::terrain::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
     terrain_revisions: Vec<u64>,
+    /// Per terrain: the regions [`RenderScene::edit_terrain`] changed in
+    /// place since it was last replaced whole, each with the revision it
+    /// made (the latest [`TERRAIN_EDIT_LOG`]).
+    terrain_edits: Vec<Vec<(u64, glam::Vec2, glam::Vec2)>>,
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
     pub camera: Camera,

@@ -523,68 +523,130 @@ impl ControlPyramid {
         if layout.control == 0 {
             return None;
         }
+        let c = layout.control;
         let pages = (0..map.pages())
-            .map(|p| Self::page_levels(layout, &map.page(p)))
+            .map(|p| {
+                let map = map.page(p);
+                let (tx, tz) = layout.tiles(0);
+                let (w, h) = (c * tx, c * tz);
+                let mut base = vec![0u8; (w * h * 4) as usize];
+                for j in 0..h {
+                    for i in 0..w {
+                        let at = ((j * w + i) * 4) as usize;
+                        base[at..at + 4].copy_from_slice(&Self::base(layout, &map, i, j));
+                    }
+                }
+                let mut levels = vec![(w, h, base)];
+                for k in 1..layout.levels {
+                    let (pw, ph, prev) = levels.last().expect("level 0");
+                    let (tx, tz) = layout.tiles(k);
+                    let (w, h) = (c * tx, c * tz);
+                    let mut next = vec![0u8; (w * h * 4) as usize];
+                    for j in 0..h {
+                        for i in 0..w {
+                            let at = ((j * w + i) * 4) as usize;
+                            next[at..at + 4].copy_from_slice(&Self::mean(*pw, *ph, prev, i, j));
+                        }
+                    }
+                    levels.push((w, h, next));
+                }
+                levels
+            })
             .collect();
         Some(ControlPyramid { pages })
     }
 
-    /// One page's levels.
-    fn page_levels(layout: &TerrainLayout, map: &TerrainControl) -> Vec<(u32, u32, Vec<u8>)> {
+    /// Level 0's texel (`i`, `j`) of one page's map: bilinear between the
+    /// map's texel centres.
+    fn base(layout: &TerrainLayout, map: &TerrainControl, i: u32, j: u32) -> [u8; 4] {
         let c = layout.control;
-        let (tx, tz) = layout.tiles(0);
-        let (w, h) = (c * tx, c * tz);
         let quads = Vec2::new((layout.columns - 1) as f32, (layout.rows - 1) as f32);
         let texel = |x: i64, y: i64, k: usize| {
             let x = x.clamp(0, map.width as i64 - 1) as usize;
             let y = y.clamp(0, map.height as i64 - 1) as usize;
             map.rgba[(y * map.width as usize + x) * 4 + k] as f32
         };
-        let mut base = vec![0u8; (w * h * 4) as usize];
-        for j in 0..h {
-            for i in 0..w {
-                // The texel's centre as a fraction of the terrain, then in the map's texels.
-                let uv = Vec2::new(
-                    (i as f32 + 0.5) * layout.tile as f32 / c as f32,
-                    (j as f32 + 0.5) * layout.tile as f32 / c as f32,
-                ) / quads;
-                let t = uv.clamp(Vec2::ZERO, Vec2::ONE)
-                    * Vec2::new(map.width as f32, map.height as f32)
-                    - 0.5;
-                let f0 = t.floor();
-                let f = t - f0;
-                let (x0, y0) = (f0.x as i64, f0.y as i64);
-                for k in 0..4 {
-                    let a = texel(x0, y0, k) + (texel(x0 + 1, y0, k) - texel(x0, y0, k)) * f.x;
-                    let b = texel(x0, y0 + 1, k)
-                        + (texel(x0 + 1, y0 + 1, k) - texel(x0, y0 + 1, k)) * f.x;
-                    base[((j * w + i) * 4) as usize + k] =
-                        (a + (b - a) * f.y).round().clamp(0.0, 255.0) as u8;
+        // The texel's centre as a fraction of the terrain, then in the map's texels.
+        let uv = Vec2::new(
+            (i as f32 + 0.5) * layout.tile as f32 / c as f32,
+            (j as f32 + 0.5) * layout.tile as f32 / c as f32,
+        ) / quads;
+        let t =
+            uv.clamp(Vec2::ZERO, Vec2::ONE) * Vec2::new(map.width as f32, map.height as f32) - 0.5;
+        let f0 = t.floor();
+        let f = t - f0;
+        let (x0, y0) = (f0.x as i64, f0.y as i64);
+        std::array::from_fn(|k| {
+            let a = texel(x0, y0, k) + (texel(x0 + 1, y0, k) - texel(x0, y0, k)) * f.x;
+            let b = texel(x0, y0 + 1, k) + (texel(x0 + 1, y0 + 1, k) - texel(x0, y0 + 1, k)) * f.x;
+            (a + (b - a) * f.y).round().clamp(0.0, 255.0) as u8
+        })
+    }
+
+    /// A coarser level's texel (`i`, `j`): the mean of the 2 × 2 finer ones
+    /// under it (`prev`, `pw` × `ph`), clamped, rounded.
+    fn mean(pw: u32, ph: u32, prev: &[u8], i: u32, j: u32) -> [u8; 4] {
+        std::array::from_fn(|ch| {
+            let mut sum = 0u32;
+            for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                let x = (2 * i + ox).min(pw - 1);
+                let y = (2 * j + oy).min(ph - 1);
+                sum += prev[((y * pw + x) * 4 + ch as u32) as usize] as u32;
+            }
+            ((sum + 2) / 4) as u8
+        })
+    }
+
+    /// Resamples what an edit of `map` (the edited map) inside `lo`..`hi`
+    /// (the terrain's space) reaches on every level: the pyramid is then
+    /// [`ControlPyramid::new`]'s of the edited map.
+    pub fn update(&mut self, layout: &TerrainLayout, map: &TerrainControl, lo: Vec2, hi: Vec2) {
+        // The edit in cells, widened by the two map texels a bilinear read
+        // spans, then in level 0's texels (each `tile / control` cells).
+        let quads = Vec2::new((layout.columns - 1) as f32, (layout.rows - 1) as f32);
+        let texel = quads / Vec2::new(map.width as f32, map.height as f32);
+        let to = |p: Vec2| (p + layout.size * 0.5) / layout.cell();
+        let per = layout.tile as f32 / layout.control as f32;
+        let a = ((to(lo) - 2.0 * texel) / per - 0.5).floor() - 1.0;
+        let b = ((to(hi) + 2.0 * texel) / per - 0.5).ceil() + 1.0;
+        for (p, levels) in self.pages.iter_mut().enumerate() {
+            let map = map.page(p as u32);
+            let (w, h, base) = &mut levels[0];
+            let clamp = |v: f32, n: u32| (v.max(0.0) as u32).min(n - 1);
+            let (mut x0, mut x1) = (clamp(a.x, *w), clamp(b.x, *w));
+            let (mut y0, mut y1) = (clamp(a.y, *h), clamp(b.y, *h));
+            for j in y0..=y1 {
+                for i in x0..=x1 {
+                    let at = ((j * *w + i) * 4) as usize;
+                    base[at..at + 4].copy_from_slice(&Self::base(layout, &map, i, j));
                 }
             }
-        }
-        let mut levels = vec![(w, h, base)];
-        for k in 1..layout.levels {
-            let (pw, ph, prev) = levels.last().expect("level 0");
-            let (tx, tz) = layout.tiles(k);
-            let (w, h) = (c * tx, c * tz);
-            let mut next = vec![0u8; (w * h * 4) as usize];
-            for j in 0..h {
-                for i in 0..w {
-                    for ch in 0..4 {
-                        let mut sum = 0u32;
-                        for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                            let x = (2 * i + ox).min(pw - 1);
-                            let y = (2 * j + oy).min(ph - 1);
-                            sum += prev[((y * pw + x) * 4 + ch) as usize] as u32;
-                        }
-                        next[((j * w + i) * 4 + ch) as usize] = ((sum + 2) / 4) as u8;
+            for k in 1..levels.len() {
+                let (done, rest) = levels.split_at_mut(k);
+                let (pw, ph, prev) = &done[k - 1];
+                let (w, h, next) = &mut rest[0];
+                // The texels past the finer level's last read its last.
+                let up = |a: u32, n: u32, pn: u32| {
+                    if a + 1 >= pn {
+                        n - 1
+                    } else {
+                        (a / 2).min(n - 1)
+                    }
+                };
+                (x0, x1, y0, y1) = (
+                    (x0 / 2).min(*w - 1),
+                    up(x1, *w, *pw),
+                    (y0 / 2).min(*h - 1),
+                    up(y1, *h, *ph),
+                );
+                for j in y0..=y1 {
+                    for i in x0..=x1 {
+                        let at = ((j * *w + i) * 4) as usize;
+                        next[at..at + 4].copy_from_slice(&Self::mean(*pw, *ph, prev, i, j));
                     }
                 }
             }
-            levels.push((w, h, next));
         }
-        levels
     }
 
     /// The `(control + 2)²` texels of a tile (its texels and a border of
@@ -683,42 +745,90 @@ pub struct HeightPyramid {
 impl HeightPyramid {
     /// The pyramid of a field read as `field(column, row)`, for `layout`.
     pub fn new(layout: &TerrainLayout, field: impl Fn(u32, u32) -> f32) -> HeightPyramid {
-        let (cols, rows) = (layout.columns, layout.rows);
-        let base: Vec<f32> = (0..rows)
-            .flat_map(|r| (0..cols).map(move |c| (r, c)))
-            .map(|(r, c)| field(c, r))
-            .collect();
         let mut levels: Vec<(u32, u32, Vec<f32>)> = Vec::new();
-        let mut finer = (cols, rows, base);
+        let (mut fx, mut fz) = (layout.columns as i64, layout.rows as i64);
         for k in 1..layout.levels {
-            let (fx, fz, ref h) = finer;
             let (sx, sz) = layout.samples(k);
-            let at = |i: i64, j: i64| {
-                let i = i.clamp(0, fx as i64 - 1) as u32;
-                let j = j.clamp(0, fz as i64 - 1) as u32;
-                h[(j * fx + i) as usize]
+            let out = {
+                let at = Self::reader(&field, levels.last(), fx, fz);
+                (0..sz as i64)
+                    .flat_map(|z| (0..sx as i64).map(move |x| (x, z)))
+                    .map(|(x, z)| Self::tent(&at, fx, fz, x, z))
+                    .collect()
             };
-            const W: [f32; 3] = [0.25, 0.5, 0.25];
-            let mut out = Vec::with_capacity((sx * sz) as usize);
-            for z in 0..sz as i64 {
-                for x in 0..sx as i64 {
-                    // The finer sample under this one: every second, and
-                    // the last at the last.
-                    let ci = (2 * x).min(fx as i64 - 1);
-                    let cj = (2 * z).min(fz as i64 - 1);
-                    let mut v = 0.0;
-                    for (b, wz) in W.iter().enumerate() {
-                        for (a, wx) in W.iter().enumerate() {
-                            v += wx * wz * at(ci + a as i64 - 1, cj + b as i64 - 1);
-                        }
-                    }
-                    out.push(v);
-                }
-            }
             levels.push((sx, sz, out));
-            finer = levels.last().expect("pushed").clone();
+            (fx, fz) = (sx as i64, sz as i64);
         }
         HeightPyramid { levels }
+    }
+
+    /// A finer level's heights (`fx` × `fz`; the field's when `finer` is
+    /// `None`), clamped at its edges.
+    fn reader<'a>(
+        field: &'a impl Fn(u32, u32) -> f32,
+        finer: Option<&'a (u32, u32, Vec<f32>)>,
+        fx: i64,
+        fz: i64,
+    ) -> impl Fn(i64, i64) -> f32 + 'a {
+        move |i: i64, j: i64| {
+            let (i, j) = (i.clamp(0, fx - 1), j.clamp(0, fz - 1));
+            match finer {
+                None => field(i as u32, j as u32),
+                Some((w, _, h)) => h[(j * *w as i64 + i) as usize],
+            }
+        }
+    }
+
+    /// A coarser sample (`x`, `z`): the finer level's (`at`, `fx` × `fz`)
+    /// under it (every second, and the last at the last) under a centred
+    /// tent.
+    fn tent(at: &impl Fn(i64, i64) -> f32, fx: i64, fz: i64, x: i64, z: i64) -> f32 {
+        const W: [f32; 3] = [0.25, 0.5, 0.25];
+        let ci = (2 * x).min(fx - 1);
+        let cj = (2 * z).min(fz - 1);
+        let mut v = 0.0;
+        for (b, wz) in W.iter().enumerate() {
+            for (a, wx) in W.iter().enumerate() {
+                v += wx * wz * at(ci + a as i64 - 1, cj + b as i64 - 1);
+            }
+        }
+        v
+    }
+
+    /// Filters again what field samples `lo`..=`hi` (column, row) reach on
+    /// every level after an edit inside them (`field`: the edited one):
+    /// the pyramid is then [`HeightPyramid::new`]'s of the edited field.
+    pub fn update(
+        &mut self,
+        layout: &TerrainLayout,
+        field: impl Fn(u32, u32) -> f32,
+        lo: (u32, u32),
+        hi: (u32, u32),
+    ) {
+        let (mut lo, mut hi) = ((lo.0 as i64, lo.1 as i64), (hi.0 as i64, hi.1 as i64));
+        let (mut fx, mut fz) = (layout.columns as i64, layout.rows as i64);
+        for k in 1..layout.levels as usize {
+            let (done, rest) = self.levels.split_at_mut(k - 1);
+            let (sx, sz, out) = &mut rest[0];
+            let (sx, sz) = (*sx as i64, *sz as i64);
+            let at = Self::reader(&field, done.last(), fx, fz);
+            // The samples whose tent (2x - 1 to 2x + 1 of the finer level,
+            // the last one's clamped) reads a changed finer one.
+            let reach = |a: i64, b: i64, n: i64| {
+                (
+                    (a - 1).div_euclid(2).clamp(0, n - 1),
+                    ((b + 2) / 2).clamp(0, n - 1),
+                )
+            };
+            let (x0, x1) = reach(lo.0, hi.0, sx);
+            let (z0, z1) = reach(lo.1, hi.1, sz);
+            for z in z0..=z1 {
+                for x in x0..=x1 {
+                    out[(z * sx + x) as usize] = Self::tent(&at, fx, fz, x, z);
+                }
+            }
+            (lo, hi, fx, fz) = ((x0, z0), (x1, z1), sx, sz);
+        }
     }
 
     /// Level `k`'s height at its sample (`x`, `z`), clamped; level 0 is
@@ -941,6 +1051,41 @@ pub fn terrain_tiles_wanted(
     out
 }
 
+/// Calls `f` with every tile an edit of the field inside `lo`..`hi` (the
+/// terrain's space) changes: on every level, those whose samples, border,
+/// height filter or control texels reach into it.
+pub fn edited_tiles(layout: &TerrainLayout, lo: Vec2, hi: Vec2, mut f: impl FnMut(u32)) {
+    // A level-k sample's tent reads 2^k - 1 field cells out, a tile's
+    // heights one sample (2^k cells) before it and two after; its control
+    // texels (each 2^k texels of `tile / control` cells at level 0) a
+    // border of one, and level 0's a bilinear read of about one map texel
+    // (as wide as a level-0 texel) out.
+    let per = if layout.control == 0 {
+        0.0
+    } else {
+        layout.tile as f32 / layout.control as f32
+    };
+    for k in 0..layout.levels {
+        let step = layout.step(k) as f32;
+        let margin = layout.cell() * (3.0 * step).max(step * per + 2.0 * per + 1.0);
+        cover(layout, k, lo - margin, hi + margin, &mut f);
+    }
+}
+
+impl TerrainLayout {
+    /// The field samples (column, row) inside `lo`..`hi` (the terrain's
+    /// space), rounded outwards and clamped to the field.
+    pub fn samples_in(&self, lo: Vec2, hi: Vec2) -> ((u32, u32), (u32, u32)) {
+        let to = |p: Vec2| (p + self.size * 0.5) / self.cell();
+        let (a, b) = (to(lo).floor(), to(hi).ceil());
+        let c = |v: f32, n: u32| (v.max(0.0) as u32).min(n - 1);
+        (
+            (c(a.x, self.columns), c(a.y, self.rows)),
+            (c(b.x, self.columns), c(b.y, self.rows)),
+        )
+    }
+}
+
 /// Calls `f` with every tile of `level` overlapping the rectangle `a`..`b`
 /// (the terrain's space, metres from its centre).
 fn cover(layout: &TerrainLayout, level: u32, a: Vec2, b: Vec2, mut f: impl FnMut(u32)) {
@@ -1070,5 +1215,117 @@ mod tests {
         let flat = TerrainTile::build(&l, 0, p.tile_heights(&l, 0, plane), None);
         let (d, len) = unpack_normal(*flat.normals.last().unwrap());
         assert!(len > 0.998 && d.angle_between(Vec3::new(-0.3, 1.0, -0.1).normalize()) < 0.01);
+    }
+
+    /// An edit's pyramids, updated where it reaches, are the edited field's
+    /// own; every tile the edit changes is one [`edited_tiles`] names, and
+    /// those are a few per level, not the terrain. Edits inside the field,
+    /// on a tile edge and at its far corner (where the levels' last
+    /// samples clamp).
+    #[test]
+    fn an_edit_builds_again_only_the_tiles_it_reaches() {
+        let (cols, rows) = (301, 237);
+        let size = Vec2::new(300.0, 236.0);
+        let control = |seed: u32| TerrainControl {
+            width: 75,
+            height: 59,
+            rgba: (0..75 * 59 * 4)
+                .map(|i| ((i as u32 * 37 + seed) % 251) as u8)
+                .collect(),
+        };
+        let field = |c: u32, r: u32| ((c * 7 + r * 13) % 11) as f32 + 0.01 * c as f32;
+        let before = TerrainData {
+            size,
+            columns: cols,
+            rows,
+            heights: (0..rows)
+                .flat_map(|r| (0..cols).map(move |c| field(c, r)))
+                .collect(),
+            control: Some(control(0)),
+            holes: Some(vec![0u8; ((cols - 1) * (rows - 1)) as usize].into()),
+        };
+        let l = before.layout(16).expect("layout");
+        assert!(l.levels >= 5 && l.control > 0);
+        let all = |d: &TerrainData| {
+            let (h, c, o) = (
+                d.height_pyramid(&l),
+                ControlPyramid::new(&l, d.control.as_ref().unwrap()),
+                d.hole_counts(),
+            );
+            (0..l.tile_count())
+                .map(|t| d.tile(&l, t, &h, c.as_ref(), o.as_ref()))
+                .collect::<Vec<_>>()
+        };
+        let old = all(&before);
+        let mut heights = before.height_pyramid(&l);
+        let mut pyramid = ControlPyramid::new(&l, before.control.as_ref().unwrap()).unwrap();
+        let mut data = before.clone();
+        // A 3 m brush in the field, one on a level-0 tile edge (x 32 m)
+        // and one at the far corner.
+        for centre in [Vec2::new(-41.3, 17.8), Vec2::new(-118.0, -60.0), size * 0.5] {
+            let (lo, hi) = (centre - 3.0, centre + 3.0);
+            let ((c0, r0), (c1, r1)) = l.samples_in(lo, hi);
+            let mut h = data.heights.to_vec();
+            let mut holes = data.holes.as_ref().unwrap().to_vec();
+            for r in r0..=r1 {
+                for c in c0..=c1 {
+                    h[(r * cols + c) as usize] += 5.0;
+                    if c < cols - 1 && r < rows - 1 {
+                        holes[(r * (cols - 1) + c) as usize] = 1;
+                    }
+                }
+            }
+            let mut map = data.control.clone().unwrap();
+            let mut px = map.rgba.to_vec();
+            let to = |p: Vec2| ((p + size * 0.5) / size * Vec2::new(75.0, 59.0)).floor();
+            let (a, b) = (to(lo).max(Vec2::ZERO), to(hi).min(Vec2::new(74.0, 58.0)));
+            for y in a.y as usize..=b.y as usize {
+                for x in a.x as usize..=b.x as usize {
+                    px[(y * 75 + x) * 4] = 255;
+                }
+            }
+            map.rgba = px.into();
+            data.heights = h.into();
+            data.holes = Some(holes.into());
+            data.control = Some(map);
+            heights.update(
+                &l,
+                |c, r| data.heights[(r * cols + c) as usize],
+                (c0, r0),
+                (c1, r1),
+            );
+            pyramid.update(&l, data.control.as_ref().unwrap(), lo, hi);
+            assert_eq!(heights, data.height_pyramid(&l), "the heights at {centre}");
+            assert_eq!(
+                pyramid,
+                ControlPyramid::new(&l, data.control.as_ref().unwrap()).unwrap(),
+                "the control map at {centre}"
+            );
+        }
+        let new = all(&data);
+        let mut named = std::collections::HashSet::new();
+        for centre in [Vec2::new(-41.3, 17.8), Vec2::new(-118.0, -60.0), size * 0.5] {
+            edited_tiles(&l, centre - 3.0, centre + 3.0, |t| {
+                named.insert(t);
+            });
+        }
+        let changed: Vec<u32> = (0..l.tile_count())
+            .filter(|&t| old[t as usize] != new[t as usize])
+            .collect();
+        assert!(!changed.is_empty());
+        for t in &changed {
+            assert!(
+                named.contains(t),
+                "tile {t} ({:?}) changed unnamed",
+                l.locate(*t)
+            );
+        }
+        assert!(
+            named.len() <= 3 * 4 * l.levels as usize && named.len() * 4 < l.tile_count() as usize,
+            "{} of {} tiles ({} changed)",
+            named.len(),
+            l.tile_count(),
+            changed.len()
+        );
     }
 }

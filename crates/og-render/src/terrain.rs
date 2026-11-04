@@ -883,7 +883,8 @@ pub(crate) fn level_blocks(
 /// made when drawn), or tiles handed over one by one (streaming).
 #[derive(Clone, Debug)]
 pub(crate) enum TerrainSource {
-    Data(TerrainData),
+    /// The field and its height range (measured once, when it was set).
+    Data(TerrainData, (f32, f32)),
     Stream {
         layout: TerrainLayout,
         range: (f32, f32),
@@ -892,12 +893,18 @@ pub(crate) enum TerrainSource {
 }
 
 impl TerrainSource {
+    /// A field in memory, its range measured.
+    pub(crate) fn data(d: TerrainData) -> TerrainSource {
+        let range = d.range();
+        TerrainSource::Data(d, range)
+    }
+
     /// The tile size a field in memory is drawn with: [`TERRAIN_TILE`], or
     /// larger for a field too big for the tile table.
     pub(crate) fn layout(&self) -> Result<TerrainLayout, String> {
         match self {
             TerrainSource::Stream { layout, .. } => Ok(*layout),
-            TerrainSource::Data(d) => {
+            TerrainSource::Data(d, _) => {
                 d.check()?;
                 let mut tile = TERRAIN_TILE;
                 loop {
@@ -914,7 +921,7 @@ impl TerrainSource {
     pub(crate) fn range(&self) -> (f32, f32) {
         match self {
             TerrainSource::Stream { range, .. } => *range,
-            TerrainSource::Data(d) => d.range(),
+            TerrainSource::Data(_, range) => *range,
         }
     }
 }
@@ -950,6 +957,9 @@ struct GpuData {
     pyramid: Option<ControlPyramid>,
     /// A field in memory's hole counts (its tiles' hole flags).
     holes: Option<crate::terrain_tiles::HoleCounts>,
+    /// The hole map `holes` counts (an in-place edit counts again only a
+    /// changed one).
+    holes_of: Option<Arc<[u8]>>,
     /// A field in memory's coarser levels (its tiles past level 0).
     height_pyramid: Option<crate::terrain_tiles::HeightPyramid>,
     range: (f32, f32),

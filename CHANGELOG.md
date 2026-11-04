@@ -66,6 +66,14 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrain edits cost what they touch (T6).** An `og.terrain.edit` or a
+  stamp's carve now builds again only the tiles its brush reaches (a few
+  per level, where every resident tile was rebuilt and uploaded), and
+  updates the height and control pyramids only there. A brush visits only
+  the cells and control texels under it, a field is copied once per edit
+  instead of twice, and a terrain's height range is measured when its data
+  is set instead of every frame. Collision still rebuilds the whole height
+  field per edit (parry's height field takes no partial update).
 - **Terrain far field (T2).** A terrain's coarser tile levels hold the
   mean of the ground under each sample (a centred tent over the finer
   level) instead of one decimated sample, so far silhouettes no longer

@@ -413,6 +413,7 @@ impl TerrainRenderer {
             pyramid: None,
             holes: None,
             height_pyramid: None,
+            holes_of: None,
             range,
             streamed,
             drawn: false,
@@ -553,15 +554,49 @@ impl TerrainRenderer {
                     g.streamed = streamed;
                     g
                 }
+                Some(mut g)
+                    if let TerrainSource::Data(d, _) = source
+                        && let Some(edits) = scene.terrain_edits_since(i, g.revision) =>
+                {
+                    // Edited in place: only the tiles the edits reach are
+                    // stale, and the pyramids only there.
+                    g.revision = revisions[i];
+                    let field = |c: u32, r: u32| d.heights[(r * d.columns + c) as usize];
+                    for (lo, hi) in edits {
+                        if let Some(p) = &mut g.height_pyramid {
+                            let (a, b) = layout.samples_in(lo, hi);
+                            p.update(&layout, field, a, b);
+                        }
+                        if let (Some(p), Some(c)) = (&mut g.pyramid, &d.control) {
+                            p.update(&layout, c, lo, hi);
+                        }
+                        crate::terrain_tiles::edited_tiles(&layout, lo, hi, |t| {
+                            if let Some(s) = g.by_tile.remove(&t) {
+                                g.slots[s] = None;
+                            }
+                        });
+                    }
+                    let same_holes = match (&g.holes_of, &d.holes) {
+                        (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+                        (None, None) => true,
+                        _ => false,
+                    };
+                    if !same_holes {
+                        g.holes = None;
+                        g.holes_of = None;
+                    }
+                    g.streamed = streamed;
+                    g
+                }
                 Some(mut g) => {
-                    // Edited or replaced: every slot is stale.
+                    // Replaced: every slot is stale.
                     g.revision = revisions[i];
                     g.slots.iter_mut().for_each(|s| *s = None);
                     g.by_tile.clear();
                     g.pyramid = None;
                     g.holes = None;
+                    g.holes_of = None;
                     g.height_pyramid = None;
-                    g.range = source.range();
                     g.streamed = streamed;
                     g
                 }
@@ -589,7 +624,7 @@ impl TerrainRenderer {
                         Some(t) => t.clone(),
                         None => continue,
                     },
-                    TerrainSource::Data(d) => match gpu.by_tile.get(&tile) {
+                    TerrainSource::Data(d, _) => match gpu.by_tile.get(&tile) {
                         Some(&s) => gpu.slots[s].as_ref().expect("held").data.clone(),
                         None => {
                             if gpu.pyramid.is_none()
@@ -599,6 +634,7 @@ impl TerrainRenderer {
                             }
                             if gpu.holes.is_none() {
                                 gpu.holes = d.hole_counts();
+                                gpu.holes_of = d.holes.clone();
                             }
                             let heights = gpu
                                 .height_pyramid

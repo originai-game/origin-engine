@@ -135,16 +135,22 @@ impl Patch {
             }
             d.holes = holes.contains(&1).then(|| holes.into());
         } else {
-            let mut heights = d.heights.to_vec();
+            let heights = Arc::make_mut(&mut d.heights);
             for (i, v) in self.values.iter().enumerate() {
                 if !v.is_nan() {
                     let k = at(i);
                     heights[k] = heights[k].min(*v);
                 }
             }
-            d.heights = Arc::from(heights);
         }
         Ok(self.covered())
+    }
+
+    /// The rectangle of a terrain's space (`d`'s) it changes.
+    fn region(&self, d: &TerrainData) -> (Vec2, Vec2) {
+        let [c0, r0, w, h] = self.rect;
+        let at = |c: u32, r: u32| Vec2::new(c as f32, r as f32) * d.cell() - d.size * 0.5;
+        (at(c0, r0), at(c0 + w, r0 + h))
     }
 }
 
@@ -252,12 +258,18 @@ pub(crate) fn removed(v: &Value) -> bool {
     v["removed"].as_bool() == Some(true)
 }
 
-/// Applies a logged stamp to a terrain's field (a removed one: nothing).
-pub(crate) fn apply(d: &mut TerrainData, entry: &Value) -> Result<u32, String> {
+/// Applies a logged stamp to a terrain's field (a removed one: nothing);
+/// answers the points it changed and the rectangle of the terrain's space
+/// they are in.
+pub(crate) fn apply(
+    d: &mut TerrainData,
+    entry: &Value,
+) -> Result<(u32, Option<(Vec2, Vec2)>), String> {
     if removed(entry) {
-        return Ok(0);
+        return Ok((0, None));
     }
-    Patch::from_json(entry)?.apply(d)
+    let p = Patch::from_json(entry)?;
+    Ok((p.apply(d)?, Some(p.region(d))))
 }
 
 /// `og.terrain.stamp`'s mesh in the terrain's own space: its triangles,

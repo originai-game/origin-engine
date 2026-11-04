@@ -396,8 +396,10 @@ fn layers_follow_slope_altitude_and_the_control_map() {
     assert_eq!(dominant(at(Vec3::new(0.0, 52.0, 8.0))), "white");
 }
 
-/// Raising a mound in the data (a runtime edit) changes the next frame of
-/// the same renderer where it stands and nowhere far from it; the CPU's
+/// Raising a mound in the data (a runtime edit in place) changes the next
+/// frame of the same renderer where it stands and nowhere far from it,
+/// builds again only the few tiles under it (not every resident one), and
+/// draws what a renderer handed the edited field whole draws; the CPU's
 /// height answers the edit.
 #[test]
 fn an_edit_changes_the_drawn_surface() {
@@ -405,12 +407,13 @@ fn an_edit_changes_the_drawn_surface() {
     scene.fog = None;
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut frame = |scene: &RenderScene| {
-        renderer
+        let s = renderer
             .render(scene, &RenderTarget::Offscreen)
             .expect("render");
-        renderer.read_offscreen().expect("capture")
+        (renderer.read_offscreen().expect("capture"), s)
     };
-    let before = frame(&scene);
+    let (_, first) = frame(&scene);
+    let (before, _) = frame(&scene);
     let handle = scene.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("data").clone();
     let mut heights = data.heights.to_vec();
@@ -428,8 +431,32 @@ fn an_edit_changes_the_drawn_surface() {
     let ground = data.height(centre);
     data.heights = Arc::from(heights);
     assert!((data.height(centre) - (ground + 15.0)).abs() < 0.2);
-    assert!(scene.set_terrain(handle, data));
-    let after = frame(&scene);
+    assert!(scene.edit_terrain(handle, data.clone(), centre - 20.0, centre + 20.0));
+    let (after, edited) = frame(&scene);
+    let layout = scene.terrain_layout(handle).expect("layout");
+    assert!(
+        edited.terrain_uploads > 0 && edited.terrain_uploads * 4 <= first.terrain_uploads,
+        "{} tiles built again of the {} resident ({} levels)",
+        edited.terrain_uploads,
+        first.terrain_uploads,
+        layout.levels
+    );
+    let mut whole = ts::island_view("near");
+    whole.fog = None;
+    assert!(whole.set_terrain(whole.terrains[0].terrain, data));
+    let mut fresh = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    fresh
+        .render(&whole, &RenderTarget::Offscreen)
+        .expect("render");
+    fresh
+        .render(&whole, &RenderTarget::Offscreen)
+        .expect("render");
+    let reference = fresh.read_offscreen().expect("capture");
+    assert!(
+        rmse(&after, &reference) < 0.002,
+        "the edit in place draws the edited field: {}",
+        rmse(&after, &reference)
+    );
     let (mx, my) = project(&scene.camera, Vec3::new(centre.x, ground + 8.0, centre.y));
     let changed = |x0: u32, y0: u32, x1: u32, y1: u32| {
         (mean(&before, x0, y0, x1, y1) - mean(&after, x0, y0, x1, y1)).abs()

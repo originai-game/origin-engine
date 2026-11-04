@@ -718,8 +718,9 @@ fn weight(d: f32, radius: f32, falloff: f32) -> f32 {
     s * s * (3.0 - 2.0 * s)
 }
 
-/// Applies a brush to a terrain's data; answers the samples it touched.
-pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String> {
+/// Applies a brush to a terrain's data; answers the samples it touched
+/// and the rectangle of the terrain's space it can have changed.
+pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, Vec2), String> {
     let mode = match &brush["mode"] {
         Value::String(s) => MODES
             .iter()
@@ -753,6 +754,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
     let d = t.field.as_mut().expect("decoded above");
     let c = Vec2::new(center.x, center.z);
     let half = d.size * 0.5;
+    let (lo, hi) = (c - Vec2::splat(radius), c + Vec2::splat(radius));
     if c.x + radius < -half.x
         || c.x - radius > half.x
         || c.y + radius < -half.y
@@ -773,7 +775,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
                 t.layers.len()
             ));
         }
-        return Ok(paint(
+        let n = paint(
             d,
             c,
             radius,
@@ -781,10 +783,15 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
             strength.min(1.0),
             layer as usize,
             t.layers.len().div_ceil(4).max(1),
-        ));
+        );
+        return Ok((n, lo, hi));
     }
     if mode >= 5 {
-        return Ok(cut(d, c, radius, falloff, strength.min(1.0), mode == 5));
+        return Ok((
+            cut(d, c, radius, falloff, strength.min(1.0), mode == 5),
+            lo,
+            hi,
+        ));
     }
     let cell = d.cell();
     let (cols, rows) = (d.columns as i64, d.rows as i64);
@@ -799,8 +806,10 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
         (gz0.floor() as i64).max(0),
         (gz1.ceil() as i64).min(rows - 1),
     );
-    let old: Vec<f32> = d.heights.to_vec();
-    let mut heights = old.clone();
+    // One copy of the field (the scene holds the other), read from the
+    // unedited one.
+    let old = d.heights.clone();
+    let heights = Arc::make_mut(&mut d.heights);
     let mut touched = 0;
     let target = center.y;
     for r in r0..=r1 {
@@ -828,8 +837,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
             touched += 1;
         }
     }
-    d.heights = Arc::from(heights);
-    Ok(touched)
+    Ok((touched, lo, hi))
 }
 
 /// Cuts holes (`hole`) or fills them in under the brush: every cell whose
@@ -844,8 +852,10 @@ fn cut(d: &mut TerrainData, c: Vec2, radius: f32, falloff: f32, strength: f32, h
     let cell = d.cell();
     let half = d.size * 0.5;
     let mut touched = 0;
-    for r in 0..cz {
-        for col in 0..cx {
+    let (c0, c1) = under(c.x - radius, c.x + radius, half.x, cell.x, cx);
+    let (r0, r1) = under(c.y - radius, c.y + radius, half.y, cell.y, cz);
+    for r in r0..r1 {
+        for col in c0..c1 {
             let p = (Vec2::new(col as f32, r as f32) + 0.5) * cell - half;
             if weight((p - c).length(), radius, falloff) * strength < 0.5 {
                 continue;
@@ -890,8 +900,10 @@ fn paint(
     let px = d.size / Vec2::new(control.width as f32, control.height as f32);
     let half = d.size * 0.5;
     let mut touched = 0;
-    for y in 0..control.height {
-        for x in 0..control.width {
+    let (x0, x1) = under(c.x - radius, c.x + radius, half.x, px.x, control.width);
+    let (y0, y1) = under(c.y - radius, c.y + radius, half.y, px.y, control.height);
+    for y in y0..y1 {
+        for x in x0..x1 {
             let p = (Vec2::new(x as f32, y as f32) + 0.5) * px - half;
             let w = weight((p - c).length(), radius, falloff) * strength;
             if w <= 0.0 {
@@ -911,6 +923,13 @@ fn paint(
     touched
 }
 
+/// The cells (of `size` from `-half`, `n` of them) whose centres can lie
+/// in `a`..`b`: a range to visit instead of every cell.
+fn under(a: f32, b: f32, half: f32, size: f32, n: u32) -> (u32, u32) {
+    let at = |v: f32| (((v + half) / size).max(0.0) as u32).min(n);
+    (at(a).saturating_sub(1), (at(b) + 2).min(n))
+}
+
 /// Loaded terrain `i`'s asset id, as the edit log names it.
 fn terrain_id(t: &TerrainState, i: usize) -> String {
     t.by_id
@@ -927,16 +946,17 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
         let (touched, snapshot, collision) = {
             let mut rs = eng.render.borrow_mut();
             let t = &mut rs.terrain.loaded[i];
-            let n = if b.get("stamp").is_some() {
+            let (n, region) = if b.get("stamp").is_some() {
                 if t.field.is_none() {
                     t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
                 }
                 t.edited = true;
                 stamp::apply(t.field.as_mut().expect("decoded above"), b)?
             } else {
-                apply(t, b)?
+                let (n, lo, hi) = apply(t, b)?;
+                (n, Some((lo, hi)))
             };
-            let snapshot = (t.render, t.field.clone().expect("edited"));
+            let snapshot = (t.render, t.field.clone().expect("edited"), region);
             (n, snapshot, t.collision)
         };
         if log {
@@ -947,10 +967,15 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
                 .edits
                 .push((id, b.to_string()));
         }
-        let (render, data) = snapshot;
+        let (render, data, region) = snapshot;
         {
             let mut rs = eng.render.borrow_mut();
-            rs.scene.set_terrain(render, data.clone());
+            // In place: the renderer builds again only the tiles the edit
+            // reaches.
+            match region {
+                Some((lo, hi)) => rs.scene.edit_terrain(render, data.clone(), lo, hi),
+                None => rs.scene.set_terrain(render, data.clone()),
+            };
             rs.terrain.streamer.forget(i);
         }
         if collision {
