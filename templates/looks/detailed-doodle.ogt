@@ -2,8 +2,9 @@ type look
 version 1
 ---
 # Thin ink on every edge, light hatching in the shadows that keeps their
-# colour, and six tones: art the cook conformed (eight colours, ArtPalette)
-# keeps its own colours, so its pale sky and tints stay as drawn.
+# colour, and six tones, with no tone curve (a flat illustration, as
+# rubber-hose): art the cook conformed (eight colours, ArtPalette) reaches
+# the frame as drawn and keeps its colours, so its pale sky and tints stay.
 name "Fine-line doodle worlds"
 ui "storybook"
 Stylise {
@@ -15,6 +16,9 @@ Stylise {
   hatchingScale 5
   hatchingKeepColor true
   posterize 6
+}
+RenderSettings {
+  toneMapping none
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 4 to 8 light colours (or one ink); the preset's 1 px ink line.
