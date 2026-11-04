@@ -40,6 +40,11 @@ pub const TERRAIN_TILE: u32 = 128;
 pub const MAX_TERRAIN_TILES: u32 = 4096;
 /// The most pyramid levels.
 pub const MAX_TERRAIN_PYRAMID: u32 = 16;
+/// The azimuths a tile's horizon is kept in (every 45° from +x towards +z
+/// in the terrain's space; [`HeightPyramid::horizon`]).
+pub const HORIZON_AZIMUTHS: usize = 8;
+/// A tile's level samples between two of its horizon texels.
+pub const HORIZON_SPACING: u32 = 8;
 
 /// How a terrain is cut into tiles: shared by the cook (which stores them),
 /// the runtime (which streams them) and the renderer (which draws them).
@@ -207,6 +212,23 @@ impl TerrainLayout {
         self.tile + 3
     }
 
+    /// Horizon texels per tile side: every [`HORIZON_SPACING`]-th of its
+    /// samples and the last.
+    pub fn horizon_side(&self) -> u32 {
+        self.tile.div_ceil(HORIZON_SPACING) + 1
+    }
+
+    /// A tile's horizon words: two per texel ([`HeightPyramid::horizon`]).
+    pub fn horizon_words(&self) -> u32 {
+        self.horizon_side() * self.horizon_side() * 2
+    }
+
+    /// Rows of a tile's height texture: its `heights_side()` rows of
+    /// heights, then its horizon words (as f32 bits) row after row.
+    pub fn heights_rows(&self) -> u32 {
+        self.heights_side() + self.horizon_words().div_ceil(self.heights_side())
+    }
+
     /// Normal-map texels per tile side (its samples).
     pub fn normals_side(&self) -> u32 {
         self.tile + 1
@@ -230,17 +252,18 @@ impl TerrainLayout {
         }
     }
 
-    /// The GPU bytes one resident tile takes (heights, normals and control
-    /// with their mips).
+    /// The GPU bytes one resident tile takes (heights and horizon, normals
+    /// and control with their mips).
     pub fn slot_bytes(&self) -> u64 {
         let h = self.heights_side() as u64;
+        let rows = self.heights_rows() as u64;
         let n = mip_texels(self.normals_side());
         let c = if self.control == 0 {
             0
         } else {
             mip_texels(self.control_side()) * self.pages.max(1) as u64
         };
-        h * h * 4 + n * 4 + c * 4
+        h * rows * 4 + n * 4 + c * 4
     }
 }
 
@@ -358,6 +381,8 @@ pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainTile {
     pub heights: Arc<[f32]>,
+    /// Its horizon ([`HeightPyramid::horizon`]): `horizon_words()`.
+    pub horizon: Arc<[u32]>,
     pub normals: Arc<[u32]>,
     pub control: Option<Arc<[u8]>>,
     pub range: (f32, f32),
@@ -390,18 +415,21 @@ impl TerrainTile {
             _ => true,
         };
         self.heights.len() as u64 == h * h
+            && self.horizon.len() == layout.horizon_words() as usize
             && self.normals.len() as u64 == mip_texels(layout.normals_side())
             && control_ok
     }
 
     /// A tile from its heights (`(tile + 3)²` at its level, the border
-    /// clamped at the terrain's edge) and control texels: builds the normal
-    /// map (central differences, one-sided at the terrain's edge, as the
-    /// collider's surface) and the mips.
+    /// clamped at the terrain's edge), horizon ([`HeightPyramid::horizon`])
+    /// and control texels: builds the normal map (central differences,
+    /// one-sided at the terrain's edge, as the collider's surface) and the
+    /// mips.
     pub fn build(
         layout: &TerrainLayout,
         index: u32,
         heights: Vec<f32>,
+        horizon: Vec<u32>,
         control: Option<Vec<u8>>,
     ) -> TerrainTile {
         let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
@@ -500,6 +528,7 @@ impl TerrainTile {
         });
         TerrainTile {
             heights: Arc::from(heights),
+            horizon: Arc::from(horizon),
             normals: Arc::from(normals),
             control,
             range: (lo, hi),
@@ -729,8 +758,17 @@ impl TerrainData {
             layout,
             index,
             heights,
+            self.horizon(layout, index, pyramid),
             control.map(|p| p.tile(layout, index)),
         )
+    }
+
+    /// A tile's horizon over this field ([`HeightPyramid::horizon`];
+    /// `pyramid`: its height pyramid).
+    pub fn horizon(&self, layout: &TerrainLayout, index: u32, pyramid: &HeightPyramid) -> Vec<u32> {
+        pyramid.horizon(layout, index, |c, r| {
+            self.heights[(r * self.columns + c) as usize]
+        })
     }
 }
 
@@ -849,6 +887,102 @@ impl HeightPyramid {
         let (sx, sz, h) = &self.levels[k as usize - 1];
         let (x, z) = (x.clamp(0, *sx as i64 - 1), z.clamp(0, *sz as i64 - 1));
         h[(z * *sx as i64 + x) as usize]
+    }
+
+    /// Level `k`'s height under field coordinates `s` (in field cells from
+    /// the -x, -z corner): bilinear between its samples (every 2^k-th and
+    /// the last, whose cell may be shorter: `terrain.wgsl` `level_coord`).
+    fn height_at(
+        &self,
+        field: &impl Fn(u32, u32) -> f32,
+        layout: &TerrainLayout,
+        k: u32,
+        s: Vec2,
+    ) -> f32 {
+        let step = layout.step(k) as f32;
+        let quads = Vec2::new((layout.columns - 1) as f32, (layout.rows - 1) as f32);
+        let (sx, sz) = layout.samples(k);
+        let n = Vec2::new(sx as f32, sz as f32);
+        let last = (n - 2.0) * step;
+        let span = (quads - last).max(Vec2::splat(1e-6));
+        let u = Vec2::select(s.cmpgt(last), n - 2.0 + (s - last) / span, s / step)
+            .clamp(Vec2::ZERO, n - 1.0);
+        let i = u.floor();
+        let f = u - i;
+        let (x, z) = (i.x as i64, i.y as i64);
+        let h = |x: i64, z: i64| self.at(field, layout, k, x, z);
+        let a = h(x, z) + (h(x + 1, z) - h(x, z)) * f.x;
+        let b = h(x, z + 1) + (h(x + 1, z + 1) - h(x, z + 1)) * f.x;
+        a + (b - a) * f.y
+    }
+
+    /// A tile's horizon: at each of its `horizon_side()²` texels (every
+    /// [`HORIZON_SPACING`]-th sample of its level and the last), the
+    /// highest elevation of the ground seen from that point in each of
+    /// [`HORIZON_AZIMUTHS`] directions (k · 45° from +x towards +z), out to
+    /// the terrain's edge: a horizon map (Max, "Horizon mapping", 1988),
+    /// marched at distances growing by a quarter per step, each read on the
+    /// pyramid level whose spacing is an eighth of the distance (the
+    /// far-field reads of Timonen and Westerholm, "Scalable Height Field
+    /// Self-Shadowing", 2010, without their sweep's shared hull). Each
+    /// angle is a byte over -90° to 90° (0 a horizon straight down, 255
+    /// straight up), four to a word, azimuths 0 to 3 then 4 to 7, texel by
+    /// texel row-major. Seen in the terrain's own space (its metres, before
+    /// its transform).
+    pub fn horizon(
+        &self,
+        layout: &TerrainLayout,
+        index: u32,
+        field: impl Fn(u32, u32) -> f32,
+    ) -> Vec<u32> {
+        let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
+        let side = layout.horizon_side();
+        let t = layout.tile as f32;
+        let step = layout.step(k) as f32;
+        let cell = layout.cell();
+        let quads = Vec2::new((layout.columns - 1) as f32, (layout.rows - 1) as f32);
+        let reach = quads.length();
+        let dirs: [Vec2; HORIZON_AZIMUTHS] = std::array::from_fn(|a| {
+            let angle = a as f32 * std::f32::consts::TAU / HORIZON_AZIMUTHS as f32;
+            Vec2::new(angle.cos(), angle.sin())
+        });
+        let quantise = |tan: f32| {
+            let angle = tan.atan() / std::f32::consts::FRAC_PI_2;
+            ((angle * 0.5 + 0.5) * 255.0).round().clamp(0.0, 255.0) as u32
+        };
+        let mut out = Vec::with_capacity(layout.horizon_words() as usize);
+        for j in 0..side {
+            for i in 0..side {
+                // The texel's place on its level, then in field cells.
+                let g = Vec2::new(
+                    tx as f32 * t + i as f32 * t / (side - 1) as f32,
+                    tz as f32 * t + j as f32 * t / (side - 1) as f32,
+                );
+                let s = (g * step).min(quads);
+                let h0 = self.height_at(&field, layout, k, s);
+                let mut bytes = [0u32; HORIZON_AZIMUTHS];
+                for (a, dir) in dirs.iter().enumerate() {
+                    let metres = (*dir * cell).length();
+                    let mut best = f32::NEG_INFINITY;
+                    let mut d = step;
+                    while d <= reach {
+                        let q = s + *dir * d;
+                        if q.x < 0.0 || q.y < 0.0 || q.x > quads.x || q.y > quads.y {
+                            break;
+                        }
+                        let lv =
+                            ((d / 8.0).log2().floor().max(0.0) as u32).clamp(k, layout.levels - 1);
+                        let h = self.height_at(&field, layout, lv, q);
+                        best = best.max((h - h0) / (d * metres));
+                        d = (d * 1.25).max(d + step);
+                    }
+                    bytes[a] = quantise(best);
+                }
+                out.push(bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24);
+                out.push(bytes[4] | bytes[5] << 8 | bytes[6] << 16 | bytes[7] << 24);
+            }
+        }
+        out
     }
 
     /// A tile's `(tile + 3)²` heights: its level's samples (the field's at

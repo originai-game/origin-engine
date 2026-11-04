@@ -342,12 +342,12 @@ impl TerrainRenderer {
     ) -> GpuData {
         // `capacity` slots.
         let layers = capacity;
-        let array = |label, side: u32, mips: u32, format, pages: u32| {
+        let array = |label, (width, height): (u32, u32), mips: u32, format, pages: u32| {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
                 size: wgpu::Extent3d {
-                    width: side,
-                    height: side,
+                    width,
+                    height,
                     depth_or_array_layers: layers * pages,
                 },
                 mip_level_count: mips,
@@ -363,9 +363,10 @@ impl TerrainRenderer {
             });
             (t, v)
         };
+        // Each slot's heights, then its horizon words.
         let (heights, heights_view) = array(
             "terrain heights",
-            layout.heights_side(),
+            (layout.heights_side(), layout.heights_rows()),
             1,
             wgpu::TextureFormat::R32Float,
             1,
@@ -373,7 +374,7 @@ impl TerrainRenderer {
         let ns = layout.normals_side();
         let (normals, normals_view) = array(
             "terrain normals",
-            ns,
+            (ns, ns),
             crate::mips::mip_count(ns, ns),
             NORMALS_FORMAT,
             1,
@@ -383,7 +384,7 @@ impl TerrainRenderer {
             let cs = layout.control_side();
             array(
                 "terrain control",
-                cs,
+                (cs, cs),
                 crate::mips::mip_count(cs, cs),
                 wgpu::TextureFormat::Rgba8Unorm,
                 layout.pages.max(1),
@@ -450,6 +451,28 @@ impl TerrainRenderer {
             bytemuck::cast_slice(&tile.heights),
             row(hs, 4),
             size(hs),
+        );
+        // The horizon words in the rows under the heights, the last row
+        // padded.
+        let rows = gpu.layout.heights_rows() - hs;
+        let mut words = vec![0u32; (rows * hs) as usize];
+        words[..tile.horizon.len()].copy_from_slice(&tile.horizon);
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: hs,
+                    z: slot,
+                },
+                ..layer(&gpu.heights, 0, slot)
+            },
+            bytemuck::cast_slice(&words),
+            row(hs, 4),
+            wgpu::Extent3d {
+                width: hs,
+                height: rows,
+                depth_or_array_layers: 1,
+            },
         );
         let mut at = 0usize;
         for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.normals_side())
