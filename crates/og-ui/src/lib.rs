@@ -96,8 +96,8 @@ pub use probe::{SharedUi, UiProbe};
 pub use rich::{RichTextDesc, RichTextResponse};
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
-    Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE, Radius, Roles,
-    Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
+    BUTTON_READABLE, Breakpoint, Contrast, Density, DensityMode, Durations, Palette, READABLE,
+    Radius, Roles, Scheme, Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{
     Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, parse_style,

@@ -28,8 +28,8 @@ import { artBrief, presetLook, type ArtKind } from "../../../packages/knowledge/
 const ROOT = resolve(import.meta.dir, "../../..");
 const API = process.env.OG_IMAGE_API ?? "https://api.origingame.ai/v1/images/edits";
 const MODEL = process.env.OG_IMAGE_MODEL ?? "gpt-image-2.5-sunburst";
-/** Retries of a slot the image API refuses for an empty upstream key (429 insufficient_quota). */
-const RETRIES = 3;
+/** Retries of a slot the image API refuses with a 429: an empty upstream key (insufficient_quota) or a burst over its rate (rate_limited). */
+const RETRIES = 6;
 
 interface Slot {
   name: string;
@@ -191,17 +191,19 @@ async function paint(s: Slot): Promise<void> {
   concepts.forEach((c, i) => form.append("image[]", new Blob([conceptData[i]!], { type: conceptType(c) }), conceptName(c)));
   const started = Date.now();
   // The platform spreads requests over several upstream keys, one of which
-  // may be out of credit (2026-11-02): a 429 insufficient_quota is tried
-  // again, up to RETRIES times with a growing pause, and logged.
+  // may be out of credit (2026-11-02), and refuses a burst of parallel slots
+  // over its rate (rate_limited, 2026-11-04): a 429 of either is tried
+  // again, up to RETRIES times with a growing pause (at least the
+  // retry_after it names), and logged.
   let res: Response;
   let body: any;
   for (let attempt = 0; ; attempt++) {
     res = await fetch(API, { method: "POST", headers: { Authorization: `Bearer ${process.env.OG_PLATFORM_DEVELOPMENT_KEY}` }, body: form });
     body = await res.json().catch(() => null);
-    const quota = res.status === 429 && body?.error?.type === "insufficient_quota";
-    if (!quota || attempt === RETRIES) break;
-    const wait = 2000 * 2 ** attempt;
-    console.log(`${s.name}: 429 ${body.error.code ?? "insufficient_quota"}; retry ${attempt + 1} of ${RETRIES} in ${wait / 1000} s`);
+    const refused = res.status === 429 && (body?.error?.type === "insufficient_quota" || body?.error?.code === "rate_limited");
+    if (!refused || attempt === RETRIES) break;
+    const wait = Math.max(2000 * 2 ** attempt, 1000 * Number(body.error.retry_after ?? 0)) + Math.round(Math.random() * 1000);
+    console.log(`${s.name}: 429 ${body.error.code ?? body.error.type}; retry ${attempt + 1} of ${RETRIES} in ${(wait / 1000).toFixed(1)} s`);
     await new Promise((r) => setTimeout(r, wait));
   }
   const b64 = body?.data?.[0]?.b64_json;

@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Style art: a meter fill slot, and button labels that keep their bar.**
+  `og style art` packs a listed `<style>/bar` (a meter fill painted in
+  white and greys) as `Meter.fill`'s tint slice, so every meter kind keeps
+  its hue (docs/art.md §2.7). A button painted as one cell derives its
+  hover and pressed states only as far as keeps its label at 7:1 and
+  4.5:1. On authored button art whose label reaches 7:1 in no ink, the
+  label keeps the best of the variant's ink and the scheme's two,
+  deepened as little as it takes: a pressed primary in cartoon reads
+  5.54:1 (was 4.62:1).
 - **Model skin diagnostics.** Missing model skin data and incompatible
   palette counts, joint order or inverse bind matrices warn in the log and
   appear as `render.skinIssue` in entity probes and dumps. Equivalent rigs

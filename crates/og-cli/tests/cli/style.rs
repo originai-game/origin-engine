@@ -678,3 +678,70 @@ fn style_art_packs_painted_slots_at_three_densities() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A meter's painted fill (`<style>/bar`) is asked for only by a pack that
+/// lists it, and packs as `Meter.fill`'s `tint` slice, so each meter kind
+/// still draws in its own hue over the painted stroke.
+///
+/// Ways it could fail: every pack asked for a bar it never meant to paint
+/// (its requests rewritten), or the fill packed `authored`, so health, mana
+/// and xp all drew the art's own grey.
+#[test]
+fn style_art_packs_a_listed_meter_fill_as_a_tinted_slice() {
+    let dir = look_project("styles/brush/style.ogt", false);
+    let out = og()
+        .args(["style", "new", "brush", "--project"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let pack = dir.join("assets/styles/brush");
+    let art = || og().args(["style", "art"]).arg(&pack).output().unwrap();
+    let requests = || -> serde_json::Value {
+        serde_json::from_str(&std::fs::read_to_string(pack.join("art-requests.json")).unwrap())
+            .unwrap()
+    };
+    let bar = || {
+        requests()["slots"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["name"] == "brush/bar")
+            .cloned()
+    };
+    let out = art();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    assert!(bar().is_none(), "a bar no pack listed: {}", requests());
+    let mut r = requests();
+    r["slots"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({ "name": "brush/bar", "kind": "styleFrame" }));
+    std::fs::write(pack.join("art-requests.json"), r.to_string()).unwrap();
+    let out = art();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let slot = bar().expect("the listed bar is completed");
+    assert_eq!(slot["dress"], serde_json::json!(["Meter.fill"]), "{slot}");
+    let art_dir = pack.join("art");
+    std::fs::create_dir_all(&art_dir).unwrap();
+    image::RgbaImage::from_pixel(192, 48, image::Rgba([235, 235, 235, 255]))
+        .save(art_dir.join("bar.png"))
+        .unwrap();
+    let provenance = serde_json::json!({
+        "brush/bar": { "model": "hand", "prompt": "a test stroke", "request": slot["hash"] },
+    });
+    std::fs::write(art_dir.join("provenance.json"), provenance.to_string()).unwrap();
+    let out = art();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let style = std::fs::read_to_string(pack.join("style.ogt")).unwrap();
+    let at = style
+        .find("dress \"Meter.fill\" {")
+        .unwrap_or_else(|| panic!("no Meter.fill in\n{style}"));
+    let slice = style[at..]
+        .lines()
+        .find(|l| l.trim().starts_with("slice"))
+        .unwrap();
+    assert!(slice.trim().ends_with(" tint"), "{slice}");
+    og_ui::parse_style(&style).unwrap_or_else(|e| panic!("{e}\n{style}"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

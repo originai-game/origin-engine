@@ -316,7 +316,10 @@ generates art.
    the states), `dress` (the dressing each cell goes to, such as
    `Button.base[primary][hover]`) and `hash` (over the rest). A value
    already in the file wins, so a pack retunes a slot by editing it, and
-   the hash moves with it.
+   the hash moves with it. A pack may also list `<style>/bar`, a meter's
+   fill painted in white and greys (jade's brush stroke): it packs as
+   `Meter.fill`'s `tint` slice, so every meter kind keeps its own hue;
+   no pack is asked for one it does not list.
 2. **Fulfilment.** The fulfiller turns each slot into a prompt through
    `styleArtBriefs` (§2.2) and paints it, with the pack's concept sheets
    as references where it has them. It drops `art/<part>.png` on a

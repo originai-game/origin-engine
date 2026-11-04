@@ -79,9 +79,13 @@ enum Target {
     /// switch's knob): painted on a clear ground like an ornament, packed
     /// as its dressing's slice with one-px corners, so it scales as one.
     Piece(&'static str),
+    /// A nine-slice painted in white and greys that the widget tints with
+    /// its own colour (a meter's fill, each kind in its hue): packed as its
+    /// dressing's `tint` slice. Requested only where a pack asks for it.
+    Tinted(&'static str),
 }
 
-const DEFAULTS: [Default; 16] = [
+const DEFAULTS: [Default; 17] = [
     Default {
         part: "panel",
         target: Target::Frame("Panel.frame"),
@@ -182,6 +186,13 @@ const DEFAULTS: [Default; 16] = [
         target: Target::Piece("Toggle.knob[off]"),
         size: [24, 24],
         insets: [1, 1, 1, 1],
+    },
+    // A meter's fill (a brush stroke, a glossy tube), tinted by its kind.
+    Default {
+        part: "bar",
+        target: Target::Tinted("Meter.fill"),
+        size: [64, 16],
+        insets: [12, 4, 12, 4],
     },
 ];
 
@@ -370,7 +381,15 @@ pub fn run(args: &[&str]) -> Result<(), String> {
                 [v[0], v[1], v[2], v[3]]
             })
             .unwrap_or(s.insets);
-        let (cells, derived, size) = convert(s, img, pixel)?;
+        // The label a button's derived states keep readable: the style's
+        // ink for it (the primary's own, the body ink on the others).
+        let pal = &file.theme.palette;
+        let label = match s.target {
+            Target::Button(sel) if sel.contains("[primary]") => Some(pal.on_primary),
+            Target::Button(_) => Some(pal.ink),
+            _ => None,
+        };
+        let (cells, derived, size) = convert(s, img, pixel, label, insets)?;
         // The insets are the requested cell's (corners keep their CSS px
         // when the art's middle is longer or shorter).
         let px = |f: f64, len: u32| (f * f64::from(len)).round() as u32;
@@ -558,15 +577,15 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
     // draws one (a line of that key) or already asks for it.
     for d in &DEFAULTS {
         let named = format!("{name}/{}", d.part);
+        let listed = list.iter().any(|s| s["name"] == named.as_str());
         let wanted = match d.target {
-            Target::Ornament(key) => {
-                doc.body.get(key).is_some() || list.iter().any(|s| s["name"] == named.as_str())
-            }
+            Target::Ornament(key) => doc.body.get(key).is_some() || listed,
+            Target::Tinted(_) => listed,
             _ => true,
         };
         if wanted && !list.iter().any(|s| s["name"] == named.as_str()) {
             let kind = match d.target {
-                Target::Frame(_) => "styleFrame",
+                Target::Frame(_) | Target::Tinted(_) => "styleFrame",
                 Target::Button(_) => "styleButton",
                 Target::Ornament(_) | Target::Piece(_) => "ornament",
             };
@@ -634,7 +653,9 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
                 .filter(|(_, v)| !v.is_empty())
                 .collect(),
             None => match d.target {
-                Target::Frame(sel) | Target::Piece(sel) => vec![(0, sel.to_string())],
+                Target::Frame(sel) | Target::Piece(sel) | Target::Tinted(sel) => {
+                    vec![(0, sel.to_string())]
+                }
                 Target::Button(sel) => BUTTON_STATES
                     .iter()
                     .enumerate()
@@ -651,7 +672,10 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
         o.insert("file".into(), json!(file));
         o.insert("size".into(), json!(size));
         // A piece is painted whole: its brief carries no nine-slice.
-        if matches!(d.target, Target::Frame(_) | Target::Button(_)) {
+        if matches!(
+            d.target,
+            Target::Frame(_) | Target::Button(_) | Target::Tinted(_)
+        ) {
             o.insert("insets".into(), json!(insets));
         }
         o.insert("states".into(), json!(states));
@@ -702,6 +726,8 @@ fn convert(
     s: &Slot,
     img: &RgbaImage,
     pixel: bool,
+    label: Option<og_ui::Srgba>,
+    insets: [f64; 4],
 ) -> Result<(Vec<(usize, [RgbaImage; 3])>, Vec<&'static str>, [u32; 2]), String> {
     let states = match s.target {
         Target::Button(_) => BUTTON_STATES.len() as u32,
@@ -761,8 +787,32 @@ fn convert(
     let mut derived = Vec::new();
     if states > 1 && n == 1 {
         let base = out[0].1.clone();
+        // Hover and press move the cell no further than keeps its label at
+        // its bar, or at what the normal cell already reads: 7:1 hovered
+        // (a still frame shows it, og-ui's bar for a button's label), 4.5:1
+        // pressed (pack_contrast's bars).
+        let px = |f: f64, len: u32| (f * f64::from(len)).round() as u32;
+        let ins = [
+            px(insets[0], size[0]),
+            px(insets[1], size[1]),
+            px(insets[2], size[0]),
+            px(insets[3], size[1]),
+        ];
+        let reads = |img: &RgbaImage| label.map(|ink| contrast_on(ink, tone(img, ins)));
+        let normal = reads(&base[0]);
         for (i, (state, _)) in BUTTON_STATES.iter().enumerate().skip(1) {
-            let f = |img: &RgbaImage| derive(img, state);
+            let bar = match *state {
+                "hover" => og_ui::BUTTON_READABLE,
+                _ => og_ui::READABLE,
+            };
+            let k = match (*state, normal.map(|r| r.min(bar))) {
+                ("hover" | "pressed", Some(want)) => [1.0, 0.8, 0.6, 0.4, 0.2, 0.0]
+                    .into_iter()
+                    .find(|&k| reads(&derive(&base[0], state, k)).is_some_and(|r| r >= want))
+                    .unwrap_or(0.0),
+                _ => 1.0,
+            };
+            let f = |img: &RgbaImage| derive(img, state, k);
             out.push((i, [f(&base[0]), f(&base[1]), f(&base[2])]));
             derived.push(*state);
         }
@@ -885,18 +935,22 @@ fn scale_up(img: &RgbaImage, k: u32, pixel: bool) -> RgbaImage {
 }
 
 /// A button state from its normal cell: hover lighter, pressed darker,
-/// disabled muted, focused as it is (the ring is the style's).
-fn derive(img: &RgbaImage, state: &str) -> RgbaImage {
+/// disabled muted, focused as it is (the ring is the style's); `k` (0 to
+/// 1) is how much of hover's and press's step it takes.
+fn derive(img: &RgbaImage, state: &str, k: f32) -> RgbaImage {
     let mut out = img.clone();
     for p in out.pixels_mut() {
         let [r, g, b, a] = p.0.map(f32::from);
         let (r, g, b) = match state {
             "hover" => (
-                r + (255.0 - r) * 0.14,
-                g + (255.0 - g) * 0.14,
-                b + (255.0 - b) * 0.14,
+                r + (255.0 - r) * 0.14 * k,
+                g + (255.0 - g) * 0.14 * k,
+                b + (255.0 - b) * 0.14 * k,
             ),
-            "pressed" => (r * 0.8, g * 0.8, b * 0.8),
+            "pressed" => {
+                let d = 1.0 - 0.2 * k;
+                (r * d, g * d, b * d)
+            }
             "disabled" => {
                 let l = 0.299 * r + 0.587 * g + 0.114 * b;
                 let m = |v: f32| (v + (l - v) * 0.75) * 0.85;
@@ -996,6 +1050,13 @@ fn tone(img: &RgbaImage, insets: [u32; 4]) -> [f32; 4] {
     [c[0], c[1], c[2], (alpha / n.max(1.0)) as f32]
 }
 
+/// How `ink` reads on a [`tone`] (its linear RGB, taken as opaque).
+fn contrast_on(ink: og_ui::Srgba, tone: [f32; 4]) -> f32 {
+    let l = 0.2126 * tone[0] + 0.7152 * tone[1] + 0.0722 * tone[2];
+    let i = ink.luminance();
+    (l.max(i) + 0.05) / (l.min(i) + 0.05)
+}
+
 fn num(v: f64) -> Value {
     Value::Number(Number::from_f64(v).expect("finite"))
 }
@@ -1056,7 +1117,7 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                     }
                 }
             }
-            Target::Frame(_) | Target::Button(_) | Target::Piece(_) => {
+            Target::Frame(_) | Target::Button(_) | Target::Piece(_) | Target::Tinted(_) => {
                 let i = match body.entries.iter().position(|e| {
                     e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(&p.to)
                 }) {
@@ -1074,8 +1135,14 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                 let mut slice = Entry::new("slice");
                 slice.values = region(p).to_vec();
                 slice.values.extend(p.insets.map(|v| num(f64::from(v))));
-                slice.values.push(Value::Word("authored".into()));
-                // Its fill words (stretch, repeat, round) stay; painted art is authored.
+                // Its fill words (stretch, repeat, round) stay; painted art is
+                // authored, unless the widget tints it.
+                let ink = if matches!(slots[p.slot].target, Target::Tinted(_)) {
+                    "tint"
+                } else {
+                    "authored"
+                };
+                slice.values.push(Value::Word(ink.into()));
                 if let Some(old) = block.entries.iter().find(|e| e.key == "slice") {
                     slice.values.extend(
                         old.values

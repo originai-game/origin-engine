@@ -214,21 +214,36 @@ impl Ui {
                     Some(ink) => (Some(fill), ink),
                     None => {
                         let ground = drawn(fill);
-                        let ink = if p.ink.contrast(ground) >= p.ink_inverse.contrast(ground) {
-                            p.ink
+                        // The best reading of the variant's own ink and the
+                        // scheme's two (the variant's first on a tie): a
+                        // painted state darker than its rest (a pressed
+                        // primary) keeps its dark label where neither the
+                        // body ink nor its inverse reads as well.
+                        let ink = [p.ink, p.ink_inverse].into_iter().fold(fg, |best, c| {
+                            if c.contrast(ground) > best.contrast(ground) {
+                                c
+                            } else {
+                                best
+                            }
+                        });
+                        // Authored art draws its own colours whatever the
+                        // fill: only the ink can move, as little as it takes
+                        // (a game's white label over a light painted green
+                        // takes the scheme's dark ink, deepened to read).
+                        if !s.tint {
+                            (Some(fill), ink.readable_on(ground, bar).unwrap_or(ink))
                         } else {
-                            p.ink_inverse
-                        };
-                        let away = if ink.luminance() > ground.luminance() {
-                            Srgba::BLACK
-                        } else {
-                            Srgba::WHITE
-                        };
-                        let moved = (1..=20)
-                            .map(|n| fill.mix(away, n as f32 * 0.05))
-                            .find(|c| ink.contrast(drawn(*c)) >= bar)
-                            .unwrap_or(away);
-                        (Some(moved), ink)
+                            let away = if ink.luminance() > ground.luminance() {
+                                Srgba::BLACK
+                            } else {
+                                Srgba::WHITE
+                            };
+                            let moved = (1..=20)
+                                .map(|n| fill.mix(away, n as f32 * 0.05))
+                                .find(|c| ink.contrast(drawn(*c)) >= bar)
+                                .unwrap_or(away);
+                            (Some(moved), ink)
+                        }
                     }
                 }
             }
