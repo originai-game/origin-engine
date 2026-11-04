@@ -989,6 +989,15 @@ stays painted, and the showcase frames wear the seed styles with the
 default as one column beside them. The concepts' README lists every
 approved image and the genre sheets that extend the set.
 
+**One selection grammar in the packs (art review, 2026-11-04).** In every
+style but the default and a version 1 style, a selected chip, slot or tab
+is one mark: the accent's hairline (`primary`, at the part's rim width
+where the style dresses a rim), a ground one step up (`controlStrong`) and
+its words in the accent's ink at 4.5:1 there (`dress::pack_grammar`). A
+selection or focus colour is never a tier hue. An unchecked checkbox or
+radio is a well whose rim reads 3:1 on the well and on the panel
+(`dress::well_rim`).
+
 **Every pack a seed (owner, 2026-11-02).** Each style pack under
 `templates/styles` is a seed with an approved sheet of three screens (its
 genre's HUD, a menu or shop, settings) in the showcase archive

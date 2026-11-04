@@ -93,22 +93,31 @@ impl Ui {
                     .flag_if(r.focused, "focused");
             part.hover = amounts.0;
             part.press = amounts.1;
-            // The selected tab's label sits on `knob`, or on what the style
-            // paints the selected tab with (the default style's raised
-            // neutral chip): it takes whichever ink reads 4.5:1 there.
+            // The selected tab's label sits on `controlStrong` (a version 1
+            // style's on `knob`), or on what the style paints the selected
+            // tab with, in the accent ink that reads 4.5:1 there.
             let resolved = self.dress.resolve(&part);
+            let grammar = crate::dress::pack_grammar(&t);
             let ink = if on {
                 let ground = if resolved.draw.fills.is_empty() {
-                    p.knob.fade(1.0)
+                    if grammar {
+                        p.control_strong.over_linear(track)
+                    } else {
+                        p.knob.fade(1.0)
+                    }
                 } else {
                     let d = resolved.element_draw(&part, &t, None);
                     crate::dress::ground_of(&d, &t, track)
                 };
-                [p.ink, p.ink_inverse, p.on_primary]
-                    .into_iter()
-                    .find(|c| c.contrast(ground) >= 4.5)
-                    .or_else(|| p.ink.readable_on(ground, 4.5))
-                    .unwrap_or(p.ink_inverse)
+                if grammar {
+                    crate::dress::accent_ink(&t, ground)
+                } else {
+                    [p.ink, p.ink_inverse, p.on_primary]
+                        .into_iter()
+                        .find(|c| c.contrast(ground) >= 4.5)
+                        .or_else(|| p.ink.readable_on(ground, 4.5))
+                        .unwrap_or(p.ink_inverse)
+                }
             } else {
                 muted
             };
@@ -125,9 +134,11 @@ impl Ui {
                 if on { 1.0 } else { 0.0 },
             );
             let clear = p.control.fade(0.0);
+            // One selection grammar: the thumb is a step up from the track.
+            let thumb = if grammar { p.control_strong } else { p.knob };
             let bg = mix_srgba(
                 Ui::state_color(clear, p.control, p.control, amounts),
-                p.knob,
+                thumb,
                 sel,
             );
             let n = &mut self.nodes[i];

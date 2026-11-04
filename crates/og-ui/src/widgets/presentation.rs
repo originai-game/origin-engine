@@ -1,7 +1,9 @@
 use super::*;
 
 impl Ui {
-    /// A chip: a capsule on `control`; selected inverts to `ink` ink-on-light.
+    /// A chip: a capsule on `control`; selected, it inverts to `ink` (in a
+    /// style pack, a step up on `controlStrong` with an accent hairline and
+    /// the accent ink, [`crate::dress::pack_grammar`]).
     pub fn chip(&mut self, id: impl Into<Id>, text: &str, desc: ChipDesc) -> Response {
         let t = self.theme;
         let p = t.palette;
@@ -38,6 +40,11 @@ impl Ui {
         }
         let (bg, fg) = if desc.disabled {
             (p.control, p.ink_faint)
+        } else if desc.selected && crate::dress::pack_grammar(&t) {
+            // The one selection grammar: a ground one step up, the accent
+            // ink on it (its hairline is the part's, dress::token_strokes).
+            let ground = p.control_strong.over(self.behind(i));
+            (p.control_strong, crate::dress::accent_ink(&t, ground))
         } else if desc.selected {
             (p.ink, p.ink_inverse)
         } else {

@@ -982,3 +982,90 @@ fn a_pixel_face_on_a_filled_shape_takes_no_drop() {
     );
     assert_eq!(texts_in("Coin/Value"), 1, "on the coin: the glyph alone");
 }
+
+#[test]
+fn a_packs_selected_chip_slot_and_tab_share_one_grammar_and_its_wells_read_3_to_1() {
+    // Wrong: a pack's selected chip inverting (the default's grammar), a
+    // selected slot keeping its thin rim and recess, a tab no hairline; or
+    // an unchecked box's rim the 1.3:1 `line`, lost on its panel.
+    use og_ui::dress::{token_effects, token_strokes, well_rim};
+    use og_ui::paint::{ColorRef, Paint};
+    let accent = |s: &[og_ui::paint::Stroke]| {
+        s.len() == 1
+            && matches!(&s[0].paint, Paint::Solid(ColorRef::Token { name, .. }) if name == "primary")
+    };
+    let ui = dressed("");
+    let pack = ui.theme();
+    let hair = pack.tokens.stroke(og_ui::tokens::StrokeWidth::Hairline);
+    for (component, part, class) in [
+        ("Chip", "base", ElementClass::Chip),
+        ("Slot", "frame", ElementClass::Slot),
+        ("Tabs", "tab", ElementClass::Tab),
+    ] {
+        let p = PartRef::new(component, part, class).flag("selected");
+        let s = token_strokes(&p, pack);
+        assert!(
+            accent(&s) && s[0].width == hair,
+            "{component}: an accent hairline"
+        );
+        assert!(
+            token_effects(&p, pack).is_empty(),
+            "{component}: flat, no recess or shadow"
+        );
+        let def = token_strokes(&p, &Theme::default());
+        let thin = Theme::default()
+            .tokens
+            .stroke(og_ui::tokens::StrokeWidth::Thin);
+        match component {
+            "Slot" => assert!(
+                accent(&def) && def[0].width == thin,
+                "the default's slot rim"
+            ),
+            _ => assert!(def.is_empty(), "{component}: the default's, no rim"),
+        }
+    }
+    // The chip's ground is one step up and its words the accent's ink.
+    let mut ui = dressed("");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.chip(
+        "On",
+        "All",
+        ChipDesc {
+            selected: true,
+            ..ChipDesc::default()
+        },
+    );
+    ui.end();
+    let e = ui.frame().element("On").unwrap().clone();
+    let fills = fills_in(&ui, Rect::new(e.x, e.y, e.width, e.height));
+    assert!(
+        fills.iter().any(|f| near(*f, pack.palette.control_strong)),
+        "on controlStrong: {fills:?}"
+    );
+    assert!(
+        !fills.iter().any(|f| near(*f, pack.palette.ink)),
+        "not inverted"
+    );
+    // Every pack's unchecked well is found at 3:1 on its well and panel.
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    for e in std::fs::read_dir(dir).unwrap() {
+        let f = e.unwrap().path().join("style.ogt");
+        let Ok(text) = std::fs::read_to_string(&f) else {
+            continue;
+        };
+        let t = parse_style(&text).unwrap().theme(None, [0; 6]);
+        let rim = well_rim(&t);
+        for ground in [t.palette.panel, t.palette.panel_raised] {
+            assert!(
+                rim.contrast(ground.fade(1.0)) >= 3.0,
+                "{}: {}",
+                f.display(),
+                rim.contrast(ground)
+            );
+        }
+        let p = PartRef::new("Checkbox", "box", ElementClass::Field);
+        assert!(
+            matches!(&token_strokes(&p, &t)[..], [s] if matches!(s.paint, Paint::Solid(ColorRef::Literal(c)) if c == rim))
+        );
+    }
+}

@@ -746,8 +746,18 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
         C::Button if part.has("primary") => Vec::new(),
         C::Button if part.has("ghost") => vec![stroke(thin, tok("lineStrong", 1.0))],
         C::Button => vec![stroke(hair, tok("line", 1.0))],
+        // An unchecked box or radio is a well that must be found at 3:1.
+        C::Field | C::Avatar if well_mark(part) => {
+            vec![stroke(hair, ColorRef::Literal(well_rim(theme)))]
+        }
         C::Field if part.has("invalid") => vec![stroke(thin, tok("danger", 1.0))],
         C::Field => vec![stroke(thin, tok("line", 1.0))],
+        // One selection grammar (docs/ui.md §15.5): a pack's selected chip,
+        // slot or tab is an accent hairline on a ground one step up, its
+        // words in the accent ink ([`pack_grammar`]).
+        C::Slot | C::Chip | C::Tab if selected_grammar(part, theme) => {
+            vec![stroke(hair, tok("primary", 1.0))]
+        }
         C::Slot if part.has("selected") => vec![stroke(thin, tok("primary", 1.0))],
         C::Slot => vec![stroke(hair, tok("line", 1.0))],
         C::Chip if part.has("selected") => Vec::new(),
@@ -755,6 +765,51 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
         C::Avatar => vec![stroke(thin, tok("lineStrong", 1.0))],
         C::Badge | C::Tab | C::Bar => Vec::new(),
     }
+}
+
+/// Whether a selected chip, slot or tab takes the one selection grammar.
+fn selected_grammar(part: &PartRef, theme: &Theme) -> bool {
+    part.has("selected") && part.part != "track" && pack_grammar(theme)
+}
+
+/// Whether a theme's selected chips, slots and tabs follow the style
+/// packs' one selection grammar (an accent hairline, a ground one step
+/// up, the accent ink): every style's but the default's, whose grammar is
+/// the design language's, all neutral (a selected chip inverts), and a
+/// version 1 style's, which keeps the grammar its game shipped with.
+pub fn pack_grammar(theme: &Theme) -> bool {
+    !theme.art.legacy && theme.art != crate::style_file::Art::default()
+}
+
+/// The accent's ink on a selected tile's `ground`: `primary`, moved as
+/// little as it takes to read 4.5:1 there, else the ink that does.
+pub fn accent_ink(theme: &Theme, ground: Srgba) -> Srgba {
+    let p = &theme.palette;
+    p.primary
+        .fade(1.0)
+        .readable_on(ground, 4.5)
+        .or_else(|| p.ink.readable_on(ground, 4.5))
+        .unwrap_or(p.ink_inverse)
+}
+
+/// Whether a part is a checkbox's or radio's box, unchecked.
+fn well_mark(part: &PartRef) -> bool {
+    matches!(part.component, "Checkbox" | "Radio") && part.part == "box" && !part.has("on")
+}
+
+/// The rim of an unchecked box or radio: `lineStrong`, moved as little as
+/// it takes to read 3:1 on both the well (`panelRaised`) and the panel it
+/// sits on (non-text contrast, WCAG 1.4.11).
+pub fn well_rim(theme: &Theme) -> Srgba {
+    let p = &theme.palette;
+    let mut c = p.line_strong.fade(1.0);
+    for ground in [p.panel_raised, p.panel] {
+        let ground = ground.fade(1.0);
+        if c.contrast(ground) < 3.0 {
+            c = c.readable_on(ground, 3.0).unwrap_or(p.ink.fade(1.0));
+        }
+    }
+    c
 }
 
 /// An undressed part's effects: its level's shadows (elevation), a lit
@@ -780,6 +835,8 @@ pub fn token_effects(part: &PartRef, theme: &Theme) -> Vec<Effect> {
         C::Button if part.has("disabled") || part.has("quiet") || part.has("ghost") => {}
         C::Button if part.has("pressed") => out.push(inner(1.0, 3.0, tok("shadow", 0.45))),
         C::Button => out.push(inner(1.0, 0.0, tok("sheen", 0.6))),
+        // A selected tile is lifted a step, not recessed.
+        C::Slot | C::Chip | C::Tab if selected_grammar(part, theme) => {}
         C::Field | C::Slot => out.push(inner(1.0, 3.0, tok("shadow", 0.3))),
         C::Bar if part.part == "fill" => out.push(inner(1.0, 0.0, tok("sheen", 0.5))),
         C::Bar => out.push(inner(1.0, 2.0, tok("shadow", 0.35))),

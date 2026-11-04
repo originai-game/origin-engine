@@ -356,8 +356,9 @@ impl Ui {
     }
 
     /// Opens cell `index` of the open grid (`Cell#index`): a slot on `control`
-    /// (a step above `controlStrong` and the style's rim when selected: one
-    /// mark, no second underline), focusable; its
+    /// (a step above `controlStrong` and the style's rim when selected, a
+    /// pack's `controlStrong` and its accent hairline: one mark, no second
+    /// underline), focusable; its
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.theme;
@@ -391,7 +392,9 @@ impl Ui {
         let amounts = self.state_amounts(i, &r);
         let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
         // A selected tile is lifted a step above a raised one: told apart
-        // by tone and lift, not only by its rim (docs/ui.md §15.5).
+        // by tone and lift, not only by its rim (docs/ui.md §15.5); a
+        // pack's is one step up, on `controlStrong`, with the accent
+        // hairline (dress::pack_grammar, the grammar of chips and tabs).
         let lifted = |k: f32| crate::ui::mix_srgba(p.control_strong, p.ink, k);
         if t.art.legacy {
             // A version 1 style's grammar, as its game shipped: the selected
@@ -420,11 +423,16 @@ impl Ui {
                 });
             }
         } else {
+            let step = if crate::dress::pack_grammar(&t) {
+                0.0
+            } else {
+                0.12
+            };
             self.option_states(
                 i,
                 selected,
-                [p.control, lifted(0.12)],
-                [hover, lifted(0.18)],
+                [p.control, lifted(step)],
+                [hover, lifted(step + 0.06)],
                 [p.control_strong, p.control_strong],
             );
         }
