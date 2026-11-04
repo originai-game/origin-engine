@@ -111,13 +111,14 @@ fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
 }
 
 // Filament's starburst (colorGrading.mat `starburst`, google/filament
-// 5ce4cbf19, Apache-2.0, third_party/lens-flare/filament/): the flare
-// modulated by two copies of a random 256-texel row, read by the angle
-// round the centre and turned in opposite directions with the camera, and
-// left whole near the centre. Procedural here, no texture or asset:
-// Filament fills its R8 row with 0.5 + 0.5 x uniform random values once
-// and samples it linearly, repeating; `starburst_row` is that row's
-// linear read, its values the engine's own hash (`grain_hash`).
+// 5ce4cbf19, Apache-2.0, third_party/lens-flare/filament/): the flare's
+// halo (Filament: the whole flare) modulated by two copies of a random
+// 256-texel row, read by the angle round the centre and turned in
+// opposite directions with the camera, and left whole near the centre.
+// Procedural here, no texture or asset: Filament fills its R8 row with
+// 0.5 + 0.5 x uniform random values once and samples it linearly,
+// repeating; `starburst_row` is that row's linear read, its values the
+// engine's own hash (`grain_hash`).
 fn starburst_row(u: f32) -> f32 {
   let x = u * 256.0 - 0.5;
   let i = floor(x);
@@ -164,7 +165,11 @@ fn curve(uv: vec2<f32>) -> vec3<f32> {
   }
   // Exposed already, as bloom is (lens_flare.wgsl).
   if (post.flare.x > 0.0) {
-    c += textureSampleLevel(flare_tex, linear_sampler, uv, 0.0).rgb * (post.flare.x * starburst(uv));
+    // The starburst on the halo's share (its luma in the alpha) alone:
+    // its rays from the centre would draw lines across the ghosts.
+    let f = textureSampleLevel(flare_tex, linear_sampler, uv, 0.0);
+    let halo = clamp(f.a / max(dot(f.rgb, LUMA), 1e-6), 0.0, 1.0);
+    c += f.rgb * (post.flare.x * mix(1.0, starburst(uv), halo));
   }
   if (post.extra.x > 0.5) {
     c += textureSampleLevel(god_rays, linear_sampler, uv, 0.0).rgb * exposure();

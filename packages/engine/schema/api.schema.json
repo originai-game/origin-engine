@@ -28226,7 +28226,7 @@
     "LensFlare": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also cast ghosts of their own, soft aperture-shaped blobs at least 2.5 % of the frame's height across holding 2 % of the source's exposed radiance (so a dim lamp's are faint), each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not.\nOff by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.",
+      "description": "Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration, are blurred, and are added before the tone curve, the halo under a starburst. The sun and up to seven point and spot lights (the ones with the most light at the camera) also cast ghosts of their own, smooth aperture-shaped discs of radius at least 2.5 % of the frame's height and six of the quarter frame's texels (larger, and fainter, the more a ghost is magnified) holding 2 % of the source's exposed radiance, their peak rolled off towards 1 (so a dim lamp's are faint and the sun's never a white disc), each weighted by how much of it the depth shows, so a sun behind a roof or a lamp behind a pillar fades out. Runs after bloom, after TAA, at a quarter of the frame, in exposed light, so the exposure and an HDR display apply to it as they do to bloom. With RenderSettings.bloom on, the flare's thresholds apply above bloomThreshold; with bloom off, the bloom chain's first level runs for the flare alone with no threshold of its own, and only the flare is added. In 3D it turns on the depth-normal prepass. Clouds dim the sun's flare through the light they leave the sun, and fog through what it leaves of the sky towards the sun; a single cloud crossing the sun's disc does not.\nOff by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -28260,7 +28260,7 @@
         },
         "ghostThreshold": {
           "type": "number",
-          "description": "The exposed brightness above which a spot casts ghosts (each ghost clamps at 1, display white).",
+          "description": "The exposed brightness above which a spot casts ghosts (each screen-space tap clamps at 1, display white; a source's own ghost rolls off towards 1).",
           "default": 10,
           "minimum": 0,
           "x-og-tunable": true
@@ -28296,7 +28296,7 @@
         },
         "starburst": {
           "type": "boolean",
-          "description": "Filament's starburst: the flare streaked by an angular pattern round the centre of the frame that turns as the camera turns.",
+          "description": "Filament's starburst: the halo streaked by an angular pattern round the centre of the frame that turns as the camera turns (Filament streaks the whole flare; here the ghosts stay smooth discs).",
           "default": true
         },
         "sun": {

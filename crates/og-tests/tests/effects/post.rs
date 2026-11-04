@@ -909,53 +909,59 @@ fn lens_flare_fades_as_the_sun_sinks_behind_a_wall() {
     assert!(gains[4].abs() < 0.5, "the hidden sun casts none: {gains:?}");
 }
 
+/// A lamp at `x` behind a pillar whose right edge stands on x = 0 at
+/// z = -4, the light 14 m from the eye and the pillar 8 m.
+fn pillar_lamp_at(x: f32) -> Vec3 {
+    Vec3::new(x, 2.4, -10.0)
+}
+
+fn pillar_lamp_scene(x: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    fx::terrain(&mut scene, 60.0);
+    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 6.0, 0.4)));
+    let stone = scene.add_material(Material {
+        base_color: [0.5, 0.48, 0.45, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    // Its right edge on x = 0 at z = -4.
+    scene.add_instance(
+        pillar,
+        stone,
+        Mat4::from_translation(Vec3::new(-0.5, 3.0, -4.0)),
+    );
+    scene.lights.push(og_render::Light {
+        position: pillar_lamp_at(x),
+        intensity: 30.0,
+        range: 30.0,
+        ..Default::default()
+    });
+    scene.light.intensity = 0.05;
+    scene.environment.intensity = 0.05;
+    scene.environment.background = Background::Color(Vec3::splat(0.005));
+    scene.post.bloom = Some(og_render::Bloom::default());
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 1.6, 4.0),
+        target: Vec3::new(-1.5, 1.4, -10.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
 /// A lamp moving out from behind a pillar: its flare grows monotonically
 /// from nothing as more of its disc clears the pillar's edge (the visible
 /// share from the depth, the light 14 m away and the pillar 8 m).
 #[test]
 fn lens_flare_grows_as_a_lamp_clears_a_pillar() {
     let desc = small();
-    let lamp_at = |x: f32| Vec3::new(x, 2.4, -10.0);
-    let scene_with = |x: f32| {
-        let mut scene = RenderScene::new();
-        fx::terrain(&mut scene, 60.0);
-        let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 6.0, 0.4)));
-        let stone = scene.add_material(Material {
-            base_color: [0.5, 0.48, 0.45, 1.0],
-            roughness: 0.9,
-            ..Default::default()
-        });
-        // Its right edge on x = 0 at z = -4.
-        scene.add_instance(
-            pillar,
-            stone,
-            Mat4::from_translation(Vec3::new(-0.5, 3.0, -4.0)),
-        );
-        scene.lights.push(og_render::Light {
-            position: lamp_at(x),
-            intensity: 30.0,
-            range: 30.0,
-            ..Default::default()
-        });
-        scene.light.intensity = 0.05;
-        scene.environment.intensity = 0.05;
-        scene.environment.background = Background::Color(Vec3::splat(0.005));
-        scene.post.bloom = Some(og_render::Bloom::default());
-        scene.camera = Camera {
-            position: Vec3::new(0.0, 1.6, 4.0),
-            target: Vec3::new(-1.5, 1.4, -10.0),
-            exposure: Exposure::linear(1.0),
-            ..Default::default()
-        };
-        scene
-    };
     // Its disc (0.2 m) clears the pillar's edge fully past x = 0.2.
     let gains: Vec<f32> = [-0.6f32, -0.15, 0.0, 0.15, 0.6]
         .into_iter()
         .map(|x| {
-            let scene = scene_with(x);
-            let (on, off) = flare_pair(&desc, || scene_with(x));
-            ghost_gain(&on, &off, &scene.camera, lamp_at(x))
+            let scene = pillar_lamp_scene(x);
+            let (on, off) = flare_pair(&desc, || pillar_lamp_scene(x));
+            ghost_gain(&on, &off, &scene.camera, pillar_lamp_at(x))
         })
         .collect();
     println!("lamp ghost gain, clearing the pillar: {gains:?}");
@@ -974,6 +980,55 @@ fn lens_flare_grows_as_a_lamp_clears_a_pillar() {
         gains[2] > gains[0] + 1.0 && gains[2] < 0.8 * gains[4],
         "half the disc, part of the flare: {gains:?}"
     );
+}
+
+/// A source's ghost is a smooth disc, the lens's defocused aperture: down
+/// a line across the clear lamp's first ghost, along the circle round the
+/// frame's centre (where the starburst's rays from the centre cross it),
+/// the light it adds falls from the middle to the rim with no dark line
+/// inside. With the starburst on the whole flare, its rays striped every
+/// ghost; and drawn at the size of a few quarter-frame texels, the
+/// texels' rows showed.
+#[test]
+fn lens_flare_ghosts_are_smooth_discs() {
+    let desc = small();
+    let mut on = pillar_lamp_scene(0.6);
+    on.post.lens_flare = Some(LensFlare {
+        intensity: 1.0,
+        ..Default::default()
+    });
+    let mut off = pillar_lamp_scene(0.6);
+    off.post.lens_flare = None;
+    let (on, off) = (frame(&desc, &on).0, frame(&desc, &off).0);
+    let (w, h) = (on.width, on.height);
+    let (x, y) = project(&pillar_lamp_scene(0.6).camera, w, h, pillar_lamp_at(0.6));
+    let (mx, my) = (w - 1 - x.min(w - 1), h - 1 - y.min(h - 1));
+    // The line through the ghost's middle, perpendicular to the way to the
+    // frame's centre; three pixels wide.
+    let (dx, dy) = (mx as f32 - w as f32 * 0.5, my as f32 - h as f32 * 0.5);
+    let len = (dx * dx + dy * dy).sqrt().max(1.0);
+    let (tx, ty) = (-dy / len, dx / len);
+    let added = |t: f32| {
+        let (cx, cy) = (mx as f32 + tx * t, my as f32 + ty * t);
+        let (cx, cy) = (cx.round() as u32, cy.round() as u32);
+        let r = (cx - 1, cy - 1, cx + 2, cy + 2);
+        region(&on, r) - region(&off, r)
+    };
+    // The ghost is at least 6 of the quarter frame's texels (24 pixels)
+    // in radius; its profile is sampled out to 16 pixels each way.
+    let middle = added(0.0);
+    println!("clear lamp's ghost, added at its middle: {middle}");
+    assert!(middle > 6.0, "the clear lamp's ghost shows: {middle}");
+    for side in [1.0f32, -1.0] {
+        let profile: Vec<f32> = (0..=8).map(|i| added(side * i as f32 * 2.0)).collect();
+        println!("ghost profile towards {side}: {profile:?}");
+        for pair in profile.windows(2) {
+            assert!(
+                pair[1] <= pair[0] + 1.5,
+                "no dark line inside the ghost: {profile:?}"
+            );
+        }
+    }
 }
 
 /// Under TAA a camera turning onto the sun draws its ghost where a camera

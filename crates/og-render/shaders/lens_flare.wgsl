@@ -10,12 +10,13 @@
 // is a ring of them warped outwards, both with chromatic aberration. It
 // is drawn at a quarter of the frame and blurred by Filament's 9-tap
 // separable Gaussian (PostProcessManager.cpp gaussianBlurPass, kernel
-// width 9, sigma 10/6). The tone curve then adds it under Filament's
-// starburst mask (post.wgsl `starburst`).
+// width 9, sigma 10/6). The tone curve then adds it, Filament's starburst
+// mask (post.wgsl `starburst`) on its halo only.
 //
 // The sun and the brightest lights also flare as sources of their own:
-// each is a disc of its radiance, fed to the same ghost and halo taps
-// and scaled by how much of it the depth shows. That fraction comes from
+// each casts ghosts where the taps would mirror it, sprites of a smooth
+// aperture holding a share of its disc's radiance, and feeds the halo's
+// taps, all scaled by how much of it the depth shows. That fraction comes from
 // a grid of view-depth samples around the light's position on screen, on
 // the GPU with no readback (`fs_flare_occlusion`), as Wicked Engine's
 // lens flare finds it (turanszkij/WickedEngine e8be9c773,
@@ -144,36 +145,99 @@ fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
     flare_screen(uv + offset).r,
     flare_screen(uv).g,
     flare_screen(uv - offset).b);
-  return clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0)) + flare_sources(uv, threshold);
+  return clamp(screen - threshold, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
-// The sources' ghosts at `uv`: each a smooth aperture, (1 - t²)², at least
-// `mask.z` across (a ghost is the lens's defocused aperture, not a sharp
-// copy of the source), holding the source's disc's exposed radiance over
-// the threshold times `mask.w`, spread over the aperture with its energy
-// kept, times its visible share and gain. Not clamped and not split into
-// red, green and blue: a clamp turned each source's ghost into a flat,
-// display-white copy of it whatever its brightness (every lamp's ghosts as
-// bright as the sun's) with hard contours, and the per-channel offsets
-// copied that disc three times in rainbow colours across the frame.
-fn flare_sources(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
+// A source ghost's least radius in this pass's texels: smaller, a ghost of
+// a far source was under two texels, and where its quarter-frame texels
+// fell moved its brightness frame to frame by more than its occlusion did.
+const FLARE_APERTURE_TEXELS: f32 = 6.0;
+// The aperture's flat top, as a fraction of its radius; its rim rolls off
+// smoothly over the rest. `FLARE_APERTURE_AREA` is its integral over the
+// unit disc, as a fraction of the disc (0.36 + 0.288).
+const FLARE_APERTURE_EDGE: f32 = 0.6;
+const FLARE_APERTURE_AREA: f32 = 0.648;
+// The brightness a source ghost's peak rolls off above, and twice it the
+// most it reaches (exposed units, before the intensity), as Filament
+// clamps each tap at 1.
+const FLARE_CORE_KNEE: f32 = 0.5;
+
+// A defocused aperture: an even disc with a soft rim, never a line or a
+// ring inside it.
+fn flare_aperture(t: f32) -> f32 {
+  return 1.0 - smoothstep(FLARE_APERTURE_EDGE, 1.0, t);
+}
+
+// A source ghost's least radius (height units).
+fn flare_aperture_radius() -> f32 {
+  return max(flare.mask.z, FLARE_APERTURE_TEXELS / flare.size.y);
+}
+
+// The light of source `i`'s disc, exposed, over `threshold`, times the
+// gain `mask.w` and spread over an aperture of radius `ra` with its
+// energy kept, its peak rolled off past FLARE_CORE_KNEE (so a sun's ghost
+// is veiling glare, never a white disc), then times the share of it the
+// depth shows and its gain. The roll-off comes before the visible share,
+// so the ghost stays in proportion to how much of its source is seen.
+fn flare_source_light(i: u32, threshold: f32, ra: f32, exposure: f32) -> vec3<f32> {
+  let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
+  if (seen <= 0.0) { return vec3<f32>(0.0); }
+  let r = flare_radius(i);
+  let spread = (r / ra) * (r / ra) / FLARE_APERTURE_AREA;
+  let l = max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0)) * (flare.mask.w * spread);
+  let peak = max(l.r, max(l.g, l.b));
+  let over = max(peak - FLARE_CORE_KNEE, 0.0);
+  let rolled = FLARE_CORE_KNEE + over / (1.0 + over / FLARE_CORE_KNEE);
+  return l * (min(rolled, peak) / max(peak, 1e-6) * seen);
+}
+
+// The sources' share of the halo tap at `uv` (the halo warps the frame,
+// so its arcs of a source are taken where its taps land on the source's
+// aperture).
+fn flare_sources_at(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
   let n = min(u32(flare.meter.y), FLARE_LIGHTS);
   if (n == 0u) { return vec3<f32>(0.0); }
   let exposure = flare_exposure();
   var c = vec3<f32>(0.0);
   for (var i = 0u; i < n; i++) {
-    let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
-    if (seen <= 0.0) { continue; }
-    let r = flare_radius(i);
-    let ra = max(r, flare.mask.z);
+    let ra = max(flare_radius(i), flare_aperture_radius());
     let t = flare_distance(uv, flare.lights[i].xy) / ra;
     if (t >= 1.0) { continue; }
-    let a = (1.0 - t * t) * (1.0 - t * t);
-    // (1 - t²)² integrates to a third of its disc: 3 (r / ra)² keeps the
-    // source disc's energy.
-    let spread = 3.0 * (r / ra) * (r / ra);
-    let l = max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0));
-    c += l * (flare.mask.w * spread * a * seen);
+    c += flare_source_light(i, threshold, ra, exposure) * flare_aperture(t);
+  }
+  return c;
+}
+
+// The sources' ghosts at `q` (this pass's uv), drawn where the ghost taps
+// would mirror them, as sprites of the lens's defocused aperture: ghost
+// `k` of a source at `p` stands where `fract(1 - q + (q - 0.5) s k)`
+// reaches `p` (`flare_ghosts`), at `1 - (p - s k / 2) / (1 - s k)`, and
+// is the source's aperture magnified by `1 / |1 - s k|` (at most 3 times)
+// with its light spread over it, so a large ghost is a faint one. Taken in
+// the taps' own space instead, the magnified ghosts had their sources'
+// brightness over up to 25 times the area, and every row of the
+// quarter-frame texels they stretched showed. Not split into red, green
+// and blue (the offsets copied the disc three times in rainbow colours),
+// and one coating tint per ghost.
+fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
+  let n = min(u32(flare.meter.y), FLARE_LIGHTS);
+  if (n == 0u) { return vec3<f32>(0.0); }
+  let exposure = flare_exposure();
+  let s = flare.ghosts.y;
+  var c = vec3<f32>(0.0);
+  for (var i = 0u; i < n; i++) {
+    let ra0 = max(flare_radius(i), flare_aperture_radius());
+    let p = flare.lights[i].xy;
+    for (var k = 0.0; k < flare.ghosts.x; k += 1.0) {
+      let m = 1.0 - s * k;
+      if (abs(m) < 0.05) { continue; }
+      let center = 1.0 - (p - 0.5 * s * k) / m;
+      let ra = ra0 * clamp(1.0 / abs(m), 1.0, 3.0);
+      let t = flare_distance(q, center) / ra;
+      if (t >= 1.0) { continue; }
+      c += flare_source_light(i, flare.ghosts.z, ra, exposure) * flare_aperture(t)
+        * flare_ghost_tint(k);
+    }
   }
   return c;
 }
@@ -215,36 +279,39 @@ fn flare_halo(uv: vec2<f32>) -> vec3<f32> {
   v.x *= aspect.x;
   v = normalize(v);
   v.x *= aspect.y;
-  let s = flare_tap(uv + v * flare.halo.x, flare.halo.z);
+  let tap = uv + v * flare.halo.x;
+  let s = flare_tap(tap, flare.halo.z) + flare_sources_at(tap, flare.halo.z);
   let uv_weight = (uv - vec2<f32>(0.5, 0.0)) * vec2<f32>(aspect.x, 1.0) + vec2<f32>(0.5, 0.0);
   let d = distance(uv_weight, vec2<f32>(0.5));
   return s * flare_ring(d, flare.halo.x, flare.halo.y);
 }
 
-// flare.mat `postProcess`: the ghosts and the halo at a quarter of the frame.
+// flare.mat `postProcess`: the ghosts and the halo at a quarter of the
+// frame, the sources' ghosts as aperture sprites beside the screen's. The
+// alpha holds the halo's luma alone, which the blur keeps and the tone
+// curve reads to put the starburst on the halo only (post.wgsl): over a
+// ghost, its rays from the centre of the frame drew lines across the disc.
 @fragment
 fn fs_flare(in: VsOut) -> @location(0) vec4<f32> {
   var color = vec3<f32>(0.0);
   if (flare.ghosts.x > 0.0) {
-    color += flare_ghosts(in.uv);
+    color += flare_ghosts(in.uv) + flare_source_ghosts(in.uv);
   }
+  var halo = vec3<f32>(0.0);
   if (flare.halo.y > 0.0) {
-    color += flare_halo(in.uv);
+    halo = flare_halo(in.uv);
   }
-  // A hot core rolled off (Reinhard on its largest channel past 4 exposed
-  // units), so a ghost reads as veiling glare, never a white disc.
-  let peak = max(color.r, max(color.g, color.b));
-  color *= 1.0 / (1.0 + max(peak - 4.0, 0.0) / 4.0);
-  return vec4<f32>(color, 1.0);
+  return vec4<f32>(color + halo, dot(halo, LUMA));
 }
 
 // separableGaussianBlur.fs with gaussianBlurPass's coefficients for
 // kernel width 9, sigma 10/6: the centre tap and two bilinear pairs each
 // side, each pair two texels' Gaussian weights at their weighted offset.
-fn flare_blur(uv: vec2<f32>, axis: vec2<f32>) -> vec3<f32> {
+// The alpha (the halo's luma) is blurred with the colour.
+fn flare_blur(uv: vec2<f32>, axis: vec2<f32>) -> vec4<f32> {
   let sigma = 10.0 / 6.0;
   let alpha = 1.0 / (2.0 * sigma * sigma);
-  var sum = textureSampleLevel(flare_source, flare_linear, uv, 0.0).rgb;
+  var sum = textureSampleLevel(flare_source, flare_linear, uv, 0.0);
   var total = 1.0;
   for (var i = 1; i < 3; i++) {
     let x0 = f32(i * 2 - 1);
@@ -253,8 +320,8 @@ fn flare_blur(uv: vec2<f32>, axis: vec2<f32>) -> vec3<f32> {
     let k1 = exp(-alpha * x1 * x1);
     let k = k0 + k1;
     let o = axis * (x0 + k1 / k);
-    sum += (textureSampleLevel(flare_source, flare_linear, uv + o, 0.0).rgb
-      + textureSampleLevel(flare_source, flare_linear, uv - o, 0.0).rgb) * k;
+    sum += (textureSampleLevel(flare_source, flare_linear, uv + o, 0.0)
+      + textureSampleLevel(flare_source, flare_linear, uv - o, 0.0)) * k;
     total += 2.0 * k;
   }
   return sum / total;
@@ -263,11 +330,11 @@ fn flare_blur(uv: vec2<f32>, axis: vec2<f32>) -> vec3<f32> {
 @fragment
 fn fs_flare_blur_x(in: VsOut) -> @location(0) vec4<f32> {
   let texel = 1.0 / vec2<f32>(textureDimensions(flare_source));
-  return vec4<f32>(flare_blur(in.uv, vec2<f32>(texel.x, 0.0)), 1.0);
+  return flare_blur(in.uv, vec2<f32>(texel.x, 0.0));
 }
 
 @fragment
 fn fs_flare_blur_y(in: VsOut) -> @location(0) vec4<f32> {
   let texel = 1.0 / vec2<f32>(textureDimensions(flare_source));
-  return vec4<f32>(flare_blur(in.uv, vec2<f32>(0.0, texel.y)), 1.0);
+  return flare_blur(in.uv, vec2<f32>(0.0, texel.y));
 }

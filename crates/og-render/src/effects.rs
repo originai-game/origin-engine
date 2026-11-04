@@ -197,11 +197,11 @@ impl Default for GodRays {
 /// Lens flare (`post/flare.rs`, `lens_flare.wgsl`): Filament's screen-space
 /// flare (after John Chapman), whose ghosts and halo mirror the bright
 /// parts of the bloom chain's first level through the centre of the frame
-/// with chromatic aberration, blurred and added before the tone curve under
-/// a starburst. The sun and the most important point and spot lights at the
-/// camera flare as disc sources of their own radiance too, each weighted by
-/// how much of it the prepass depth shows (Wicked Engine's occlusion grid,
-/// on the GPU). Runs after bloom, at a quarter of the frame after TAA, in
+/// with chromatic aberration, blurred and added before the tone curve, the
+/// halo under a starburst. The sun and the most important point and spot
+/// lights at the camera flare as disc sources of their own radiance too,
+/// casting smooth aperture ghosts, each weighted by how much of it the
+/// prepass depth shows (Wicked Engine's occlusion grid, on the GPU). Runs after bloom, at a quarter of the frame after TAA, in
 /// exposed light, so the exposure and an HDR output apply to it as to bloom.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LensFlare {
@@ -223,8 +223,9 @@ pub struct LensFlare {
     pub halo_threshold: f32,
     /// How far red and blue split along the line to the centre (uv).
     pub chromatic_aberration: f32,
-    /// Filament's starburst: the flare modulated by an angular pattern
-    /// round the centre that turns with the camera.
+    /// Filament's starburst: the halo modulated by an angular pattern
+    /// round the centre that turns with the camera (Filament modulates the
+    /// whole flare; its rays drew lines across the ghosts).
     pub starburst: bool,
     /// The sun's own flare (0: none); 1 lets its ghosts reach full strength.
     pub sun: f32,
