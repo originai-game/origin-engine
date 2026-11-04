@@ -70,7 +70,8 @@ function workerSession(browser: Browser, page: Page): Promise<string> {
     const off = browser.on((method, params, session) => {
       if (session !== page.session || method !== "Target.attachedToTarget") return;
       const info = params["targetInfo"] as { type: string; url: string };
-      if (info.type === "worker" && /\/game\.js/.test(info.url)) {
+      // A publish build serves it content-hashed, game.<hash>.js (docs/web-export.md §Content-hashed names).
+      if (info.type === "worker" && /\/game(\.[0-9a-f]+)?\.js/.test(info.url)) {
         clearTimeout(timer);
         off();
         resolve(params["sessionId"] as string);
