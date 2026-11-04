@@ -25059,6 +25059,47 @@ export interface UiPointer {
 
 
 
+/** A scroll container as the last frame laid it out (og.ui.scrollState). */
+export interface ScrollState {
+  /**
+   * How far its content is scrolled right.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetX: number;
+  /**
+   * How far its content is scrolled down.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly offsetY: number;
+  /**
+   * Its view's width, inside its padding.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly viewWidth: number;
+  /**
+   * Its view's height, inside its padding.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly viewHeight: number;
+  /**
+   * Its whole content's width, unclipped (the view's on an axis it does not scroll).
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly contentWidth: number;
+  /**
+   * Its whole content's height, unclipped.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly contentHeight: number;
+}
+
+
 
 
 
@@ -55643,6 +55684,12 @@ export declare namespace og {
      * @param path The id or path.
      */
     function bounds(path: string): UiRect | null;
+    /**
+     * A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container.
+     *
+     * @param path Its full path.
+     */
+    function scrollState(path: string): ScrollState | null;
     /**
      * Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList().
      *

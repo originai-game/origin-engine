@@ -79,6 +79,10 @@ test("a row a scroll container cuts at its bottom edge is scrolling, not cut tex
   // A line cut across (a right-to-left line past its box's start) in a clipped element is still reported.
   const across = frame({ elements: [el("Blurb", "", "label", "text", [40, 219, 298, 18], { text: "Every widget", clipped: true })], texts: [{ ...line, text: "Every widget", bounds: [-83, 219, 421, 18] }] });
   expect(checkFrame(across, cell).find((x) => x.rule === "text-cut")?.severity).toBe("warning");
+  // The same cut across inside a sideways scroller (a row of tabs) scrolls into view: no finding.
+  const tabs = frame({ sideways: ["Tabs"], elements: [el("Tabs", "", "scroll", "", [18, 121, 354, 52]), el("Trade", "Tabs", "label", "text", [358, 131, 14, 32], { text: "Trade", clipped: true })], texts: [{ ...line, text: "Trade", bounds: [358, 131, 60, 32] }] });
+  expect(rules(tabs)).not.toContain("text-cut");
+  expect(rules({ ...tabs, sideways: [] })).toContain("text-cut");
 });
 
 test("text drawn wider than its own box (sized to English) is a finding", () => {

@@ -897,6 +897,8 @@ export interface HostAbi<A, V> {
   og_ui_spotlight(id: string, hole: string, desc: string | undefined): string;
   /** `og.ui.bounds` */
   og_ui_bounds(path: string): string;
+  /** `og.ui.scrollState` */
+  og_ui_scroll_state(path: string): string;
   /** `og.ui.openList` */
   og_ui_open_list(id: string, desc: string | undefined): string;
   /** `og.ui.openGrid` */
@@ -1709,6 +1711,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_close_modal",
   "og_ui_spotlight",
   "og_ui_bounds",
+  "og_ui_scroll_state",
   "og_ui_open_list",
   "og_ui_open_grid",
   "og_ui_list_item",

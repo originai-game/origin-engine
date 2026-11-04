@@ -44,6 +44,9 @@
 //! - ← and → stopping at a bidi run's edge, stepping back and forth across
 //!   it, or forgetting which of its two places the caret took →
 //!   `arrows_move_visually_across_a_bidi_edge`
+//! - a field held as wide as its placeholder (a chat input pushing Send off
+//!   a phone at large text), or its placeholder cut with no ellipsis →
+//!   `a_field_shrinks_in_its_row_and_cuts_its_placeholder_with_an_ellipsis`
 
 use crate::support;
 
@@ -871,4 +874,56 @@ fn arrows_move_visually_across_a_bidi_edge() {
         seen.push(rig.selection());
     }
     assert_eq!(seen, ["א", "אב", "אב ", "אב c", "אב ", "אב "]);
+}
+
+#[test]
+fn a_field_shrinks_in_its_row_and_cuts_its_placeholder_with_an_ellipsis() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut value = String::new();
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.row(
+            "Input",
+            Element {
+                direction: Direction::Row,
+                width: Size::Fixed(200.0),
+                ..Element::default()
+            },
+            |ui| {
+                ui.spacer("Chip", Some(Size::Fixed(60.0)));
+                ui.text_field(
+                    "Field",
+                    &mut value,
+                    &FieldDesc {
+                        placeholder: "Say something to the whole guild".into(),
+                        ..FieldDesc::default()
+                    },
+                );
+            },
+        );
+        ui.end();
+    }
+    let f = ui.frame().element("Field").expect("the field");
+    assert!(
+        f.x + f.width <= 200.5,
+        "inside its row: {} + {}",
+        f.x,
+        f.width
+    );
+    let drawn: Vec<&str> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        drawn
+            .iter()
+            .any(|t| t.starts_with("Say") && (t.ends_with('…') || t.ends_with("..."))),
+        "{drawn:?}"
+    );
 }

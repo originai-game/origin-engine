@@ -1309,6 +1309,9 @@ impl UiApi for NodeHost {
     fn og_ui_bounds(&self, path: String) -> String {
         rt::og_ui_bounds(path)
     }
+    fn og_ui_scroll_state(&self, path: String) -> String {
+        rt::og_ui_scroll_state(path)
+    }
     fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String {
         rt::og_ui_open_list(id, desc)
     }

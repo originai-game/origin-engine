@@ -199,8 +199,14 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
         _ => (pref, min),
     };
     let pad = n.el.padding.horizontal();
-    // A horizontal scroller never shrinks its content: it overflows and scrolls.
-    let min = if n.el.scroll_x { 0.0 } else { min };
+    // A horizontal scroller never shrinks its content: it overflows and
+    // scrolls. A field scrolls its own text too: its placeholder or its value
+    // never holds it wider than its row.
+    let min = if n.el.scroll_x || matches!(n.widget, Widget::Field(_)) {
+        0.0
+    } else {
+        min
+    };
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
     nodes[i].pref_w = p;
     nodes[i].min_w = m;

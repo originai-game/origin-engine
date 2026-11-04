@@ -61,6 +61,23 @@ pub(crate) struct ScrollInfo {
     pub bar: Vec2,
 }
 
+/// A scroll container as the last frame laid it out ([`Ui::scroll_state`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ScrollState {
+    /// How far its content is scrolled right.
+    pub offset_x: f32,
+    /// How far its content is scrolled down.
+    pub offset_y: f32,
+    /// Its view's width, inside its padding.
+    pub view_width: f32,
+    /// Its view's height, inside its padding.
+    pub view_height: f32,
+    /// Its whole content's width (the view's on an axis it does not scroll).
+    pub content_width: f32,
+    /// Its whole content's height.
+    pub content_height: f32,
+}
+
 /// A grabbed scrollbar: its container, the axis (0 x, 1 y) and where on
 /// the bar the press landed.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -257,6 +274,40 @@ impl Ui {
             }
         }
         true
+    }
+
+    /// Scroll container `path` (a full path, as the probe and
+    /// [`Ui::last_path`] name it) in the last frame: where its content stood
+    /// (this tick's offset, clamped to last frame's range), its view and its
+    /// whole content, unclipped. What a component virtualises its rows by
+    /// (a row scrolled out of view has no bounds to place them from).
+    /// `None` for a path that was no scroll container.
+    pub fn scroll_state(&self, path: &str) -> Option<ScrollState> {
+        let key = crate::id::key_of_path(path);
+        let n = self
+            .kept
+            .prev
+            .iter()
+            .find(|n| n.key == key && n.scrolls())?;
+        let view_width = (n.w - n.el.padding.horizontal()).max(0.0);
+        let view_height = (n.h - n.el.padding.vertical()).max(0.0);
+        let at = self.offset(key);
+        Some(ScrollState {
+            offset_x: at.x.clamp(0.0, n.max_scroll_x()),
+            offset_y: at.y.clamp(0.0, n.max_scroll()),
+            view_width,
+            view_height,
+            content_width: if n.el.scroll_x {
+                n.content_w
+            } else {
+                view_width
+            },
+            content_height: if n.el.scroll {
+                n.content_h
+            } else {
+                view_height
+            },
+        })
     }
 
     /// The offset of scroll container `key` (x, y).

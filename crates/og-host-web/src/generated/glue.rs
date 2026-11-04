@@ -2234,6 +2234,11 @@ pub fn og_ui_bounds(path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_scroll_state(path: String) -> String {
+    <Host as UiApi>::og_ui_scroll_state(&Host, path)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_open_list(id: String, desc: Option<String>) -> String {
     <Host as UiApi>::og_ui_open_list(&Host, id, desc)
 }

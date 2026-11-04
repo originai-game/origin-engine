@@ -74,6 +74,8 @@ impl Ui {
         };
         let mut content = self.text_content(&shown, step, color);
         content.wrap = false;
+        // A placeholder longer than the field ends in an ellipsis; a value scrolls.
+        content.ellipsis = placeholder;
         let edit = self.edit_view(key, focused, value, composition, false);
         self.field_part(i, focused, desc.invalid, desc.bare);
         let n = &mut self.nodes[i];

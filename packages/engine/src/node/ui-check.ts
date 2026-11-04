@@ -76,6 +76,8 @@ export interface UiFrameSnapshot {
   overlaps: Array<{ path: string; other: string; rect: Rect4; inFlow: boolean }>;
   /** Paths of the elements whose props say dense (a dense HUD's readouts, §15.2), each covering its subtree. */
   dense?: string[];
+  /** Paths of the scroll containers that scroll sideways: a line their edge cuts across scrolls into view. */
+  sideways?: string[];
   stats: { elements: number; rebuilt: number; laidOut: number; keptCommands: number };
   draws: number;
   /** Every drawn line of text: the string as drawn, its size and line box, and its clip. */
@@ -405,6 +407,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   const denseSize = denseTextSize(v, cell.scale);
   const dense = f.dense ?? [];
   const isDense = (path: string) => dense.some((d) => path === d || path.startsWith(`${d}/`));
+  const sideways = f.sideways ?? [];
+  const inSideways = (path: string) => sideways.some((d) => path.startsWith(`${d}/`));
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
     const [, , w, h] = t.bounds;
@@ -416,10 +420,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     const cutY = h - Math.max(0, shown[3]);
     // A scroll container's edge (the probe marks the element clipped) cuts a
     // row at its top or bottom: the rest scrolls into view. A cut across the
-    // line is not scrolling in a list (a right-to-left line past its box's
-    // start, the kit's gallery in Arabic), so it stays, as a warning: the
-    // frame does not say whether that scroller runs sideways.
-    if (e?.clipped && cutX <= 1) continue;
+    // line scrolls into view too inside a sideways scroller (a row of tabs or
+    // chips); elsewhere (a right-to-left line past its box's start, the kit's
+    // gallery in Arabic) it stays, as a warning.
+    if (e?.clipped && (cutX <= 1 || inSideways(path))) continue;
     // What the cut took, along the axis it cut: never "0 px" for a line cut top or bottom.
     const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
     const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());

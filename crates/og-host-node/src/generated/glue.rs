@@ -2679,6 +2679,12 @@ pub fn og_ui_bounds(env: Env, path: String) -> String {
     <Host as UiApi>::og_ui_bounds(&Host, path)
 }
 
+#[napi(js_name = "og_ui_scroll_state")]
+pub fn og_ui_scroll_state(env: Env, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_scroll_state(&Host, path)
+}
+
 #[napi(js_name = "og_ui_open_list")]
 pub fn og_ui_open_list(env: Env, id: String, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

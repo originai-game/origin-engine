@@ -73,6 +73,7 @@ export const widgets = {
   spotlight: (id: string, hole: Api.UiRect | null, desc?: Api.SpotlightDesc): Api.Response =>
     parse(abi().og_ui_spotlight(id, JSON.stringify(hole ?? null), json(desc))),
   bounds: (path: string): Api.UiRect | null => parse(abi().og_ui_bounds(path)),
+  scrollState: (path: string): Api.ScrollState | null => parse(abi().og_ui_scroll_state(path)),
   openList: (id: string, desc?: Api.ListDesc): Api.ListRange => parse(abi().og_ui_open_list(id, json(desc))),
   openGrid: (id: string, desc?: Api.GridDesc): Api.ListRange => parse(abi().og_ui_open_grid(id, json(desc))),
   listItem: (index: number, selected: boolean): Api.Response => parse(abi().og_ui_list_item(index, selected)),

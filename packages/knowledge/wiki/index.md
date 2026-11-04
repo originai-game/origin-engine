@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2383 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2385 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1664,6 +1664,7 @@ Field units the docs and Tune use.
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.scrollArea`](ui.md#fn-scrollArea) | function | ui | — |
 | [`og.ui.scrollIntoView`](ui.md#fn-scrollIntoView) | function | ui | `og_ui_scroll_into_view` |
+| [`og.ui.scrollState`](ui.md#fn-scrollState) | function | ui | `og_ui_scroll_state` |
 | [`og.ui.searchBox`](ui.md#fn-searchBox) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
@@ -2115,6 +2116,7 @@ Field units the docs and Tune use.
 | [`ScrollAreaDesc`](ui.md#type-ScrollAreaDesc) | desc struct | ui | — |
 | [`ScrollAxes`](ui.md#type-ScrollAxes) | enum | ui | — |
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
+| [`ScrollState`](ui.md#type-ScrollState) | struct | ui | — |
 | [`SearchBoxDesc`](ui.md#type-SearchBoxDesc) | desc struct | ui | — |
 | [`SearchResult`](ui.md#type-SearchResult) | struct | ui | — |
 | [`SectorState`](ui.md#type-SectorState) | enum | ui | — |

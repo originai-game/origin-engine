@@ -679,6 +679,9 @@ pub struct UiFrame {
     /// readouts, docs/ui.md §15.2), each covering its subtree, for `og ui
     /// check`.
     pub dense: Vec<String>,
+    /// The paths of the scroll containers that scroll sideways, for `og ui
+    /// check`: a line their edge cuts across scrolls into view.
+    pub sideways: Vec<String>,
     /// What motion did this frame: timeline events (sounds, haptics,
     /// callbacks), plays that ended, swipes, snaps and drops.
     pub events: Vec<UiEvent>,

@@ -332,6 +332,11 @@ impl Ui {
             .filter(|&&i| self.nodes[i].props.dense)
             .map(|&i| self.path_of(i))
             .collect();
+        let sideways: Vec<String> = order
+            .iter()
+            .filter(|&&i| self.nodes[i].el.scroll_x)
+            .map(|&i| self.path_of(i))
+            .collect();
         self.apply_shakes(&order);
         self.apply_stagger(&order);
         self.run_motion(&order);
@@ -920,6 +925,7 @@ impl Ui {
             text_input: self.text_target.take(),
             overlaps,
             dense,
+            sideways,
             events: std::mem::take(&mut self.events),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,

@@ -114,6 +114,18 @@ pub fn og_ui_bounds(path: String) -> String {
     b.map_or(Value::Null, |r| rect_json(&r)).to_string()
 }
 
+pub fn og_ui_scroll_state(path: String) -> String {
+    let s = with_ui("og.ui.scrollState", |ui| ui.scroll_state(&path)).flatten();
+    s.map_or(Value::Null, |s| {
+        json!({
+            "offsetX": s.offset_x, "offsetY": s.offset_y,
+            "viewWidth": s.view_width, "viewHeight": s.view_height,
+            "contentWidth": s.content_width, "contentHeight": s.content_height,
+        })
+    })
+    .to_string()
+}
+
 fn range_json(r: ListRange) -> String {
     json!({ "first": r.first, "last": r.last }).to_string()
 }

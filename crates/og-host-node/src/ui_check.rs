@@ -126,6 +126,7 @@ fn frame(engine: u32) -> Value {
             "path": o.path, "other": o.other, "rect": ur(&o.rect), "inFlow": o.in_flow,
         })).collect::<Vec<_>>(),
         "dense": f.dense,
+        "sideways": f.sideways,
         "stats": {
             "elements": f.stats.elements, "rebuilt": f.stats.rebuilt,
             "laidOut": f.stats.laid_out, "keptCommands": f.stats.kept_commands,

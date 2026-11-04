@@ -1387,6 +1387,34 @@ module ui {
     returns Option.UiRect
   }
 
+  struct ScrollState {
+    doc "A scroll container as the last frame laid it out (og.ui.scrollState)."
+    field offsetX f32 "How far its content is scrolled right." {
+      unit cssPx
+    }
+    field offsetY f32 "How far its content is scrolled down." {
+      unit cssPx
+    }
+    field viewWidth f32 "Its view's width, inside its padding." {
+      unit cssPx
+    }
+    field viewHeight f32 "Its view's height, inside its padding." {
+      unit cssPx
+    }
+    field contentWidth f32 "Its whole content's width, unclipped (the view's on an axis it does not scroll)." {
+      unit cssPx
+    }
+    field contentHeight f32 "Its whole content's height, unclipped." {
+      unit cssPx
+    }
+  }
+
+  fn scrollState {
+    doc "A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container."
+    param path String "Its full path."
+    returns Option.ScrollState
+  }
+
   fn openList {
     doc "Open a virtualised list (a scroll column) and learn which rows to build: listItem(i) and close() for each, then closeList()."
     param id String "Its id."

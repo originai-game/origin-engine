@@ -1011,6 +1011,8 @@ pub trait UiApi: Wire {
     fn og_ui_spotlight(&self, id: String, hole: String, desc: Option<String>) -> String;
     /// `og.ui.bounds`
     fn og_ui_bounds(&self, path: String) -> String;
+    /// `og.ui.scrollState`
+    fn og_ui_scroll_state(&self, path: String) -> String;
     /// `og.ui.openList`
     fn og_ui_open_list(&self, id: String, desc: Option<String>) -> String;
     /// `og.ui.openGrid`
@@ -1868,6 +1870,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_close_modal",
     "og_ui_spotlight",
     "og_ui_bounds",
+    "og_ui_scroll_state",
     "og_ui_open_list",
     "og_ui_open_grid",
     "og_ui_list_item",

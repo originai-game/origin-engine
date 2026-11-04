@@ -11382,6 +11382,7 @@
         "ActionButtonDesc",
         "SkeletonDesc",
         "UiPointer",
+        "ScrollState",
         "VirtualCursorDesc",
         "VirtualCursor",
         "HudPlacement",
@@ -12780,6 +12781,20 @@
             }
           ],
           "returns": "Option<UiRect>",
+          "publish": true
+        },
+        {
+          "name": "scrollState",
+          "doc": "A scroll container's offset, view and whole content, by its full path (og.ui.lastPath after closing it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container.",
+          "params": [
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "Its full path."
+            }
+          ],
+          "returns": "Option<ScrollState>",
           "publish": true
         },
         {
@@ -49802,6 +49817,53 @@
         "shift",
         "ctrl",
         "alt"
+      ],
+      "additionalProperties": false
+    },
+    "ScrollState": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A scroll container as the last frame laid it out (og.ui.scrollState).",
+      "type": "object",
+      "properties": {
+        "offsetX": {
+          "type": "number",
+          "description": "How far its content is scrolled right.",
+          "x-og-unit": "cssPx"
+        },
+        "offsetY": {
+          "type": "number",
+          "description": "How far its content is scrolled down.",
+          "x-og-unit": "cssPx"
+        },
+        "viewWidth": {
+          "type": "number",
+          "description": "Its view's width, inside its padding.",
+          "x-og-unit": "cssPx"
+        },
+        "viewHeight": {
+          "type": "number",
+          "description": "Its view's height, inside its padding.",
+          "x-og-unit": "cssPx"
+        },
+        "contentWidth": {
+          "type": "number",
+          "description": "Its whole content's width, unclipped (the view's on an axis it does not scroll).",
+          "x-og-unit": "cssPx"
+        },
+        "contentHeight": {
+          "type": "number",
+          "description": "Its whole content's height, unclipped.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "offsetX",
+        "offsetY",
+        "viewWidth",
+        "viewHeight",
+        "contentWidth",
+        "contentHeight"
       ],
       "additionalProperties": false
     },

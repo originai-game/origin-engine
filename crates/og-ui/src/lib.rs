@@ -46,6 +46,7 @@ mod probe;
 mod recognize;
 mod rich;
 mod scroll;
+pub use scroll::ScrollState;
 pub mod shape;
 pub mod slot;
 mod style;
