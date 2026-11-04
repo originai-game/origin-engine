@@ -620,10 +620,56 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         720,
         Vec3::new(-2.0 + 0.8 * 2.0, 1.0, 2.0 - 2.6 * 2.0),
     );
-    let r = (focus.0 - 30, focus.1 - 30, focus.0 + 30, focus.1 + 30);
-    let (f_on, f_off) = (sharpness(&blurred, r), sharpness(&sharp, r));
-    println!("focused figure sharpness: dof {f_on}, off {f_off}");
-    assert!(f_on > 0.7 * f_off);
+    // The bright collar's right edge against the dark torso, wholly on
+    // the focused figure. The old 60x60 gradient-energy ROI also included
+    // out-of-focus floor that anisotropic filtering legitimately sharpens.
+    // Metal isolation: main off/on edge widths 1.598/1.585 px, anisotropy
+    // 1.598/1.586 px, despite the ROI energy ratio falling from .706 to .686.
+    let profile = |img: &RgbaImage| -> [f32; 6] {
+        std::array::from_fn(|i| luma(px(img, focus.0 + 1 + i as u32, focus.1 + 6)))
+    };
+    let reference = profile(&sharp);
+    let dark = reference.iter().copied().fold(f32::INFINITY, f32::min);
+    let light = reference.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+    assert!(
+        light - dark > 80.0,
+        "the collar edge must have measurable contrast"
+    );
+    // Use the sharp frame's levels for every image: renormalizing a blurred
+    // profile would hide contrast loss. Missing crossings mean lost detail.
+    let width = |img: &RgbaImage| {
+        let p = profile(img);
+        let crossing = |fraction: f32| {
+            let level = dark + fraction * (light - dark);
+            p.windows(2).enumerate().find_map(|(i, v)| {
+                (v[0] >= level && v[1] < level).then(|| i as f32 + (v[0] - level) / (v[0] - v[1]))
+            })
+        };
+        crossing(0.9)
+            .zip(crossing(0.1))
+            .map_or(f32::INFINITY, |(a, b)| b - a)
+    };
+    let (w_on, w_off) = (width(&blurred), width(&sharp));
+    println!("focused collar 10–90% edge width: dof {w_on}, off {w_off}");
+    assert!(w_off > 0.0 && w_off.is_finite());
+    let retains_focus = |w: f32| w > 0.0 && w_off / w > 0.7;
+    assert!(retains_focus(w_on), "DOF broadened the focused edge");
+    // A deliberately misplaced focus plane must fail the same retention
+    // requirement, rather than merely producing a different image.
+    let mut defocused = low;
+    defocused
+        .post
+        .depth_of_field
+        .as_mut()
+        .unwrap()
+        .focus_distance = 3.0;
+    let (defocused, _) = frame(&desc, &defocused);
+    let w_wrong = width(&defocused);
+    println!("deliberately defocused collar edge width: {w_wrong}");
+    assert!(
+        !retains_focus(w_wrong),
+        "the focus check accepted a blurred figure"
+    );
     assert!(
         differing(&blurred, &high, 3.0) > 1_000,
         "the quality levels draw the same"
