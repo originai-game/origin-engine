@@ -486,11 +486,12 @@ fn terrain_triangles(
     };
     let size = field.size;
     let cell = (size[0] / (cols - 1) as f32, size[1] / (rows - 1) as f32);
+    let height = |c: usize, r: usize| heights[r.min(rows - 1) * cols + c.min(cols - 1)];
     let at = |c: usize, r: usize| {
         let (c, r) = (c.min(cols - 1), r.min(rows - 1));
         Vec3::new(
             position.x - size[0] * 0.5 + c as f32 * cell.0,
-            position.y + heights[r * cols + c],
+            position.y + height(c, r),
             position.z - size[1] * 0.5 + r as f32 * cell.1,
         )
     };
@@ -505,9 +506,17 @@ fn terrain_triangles(
                 p11.x >= lo.x && p00.x <= hi.x && p11.z >= lo.z && p00.z <= hi.z
             });
             if inside && !cut(c, r) {
-                // Counter-clockwise seen from above: (c, r), (c, r+1), (c+1, r+1); (c, r), (c+1, r+1), (c+1, r).
-                out.push([p00, p01, p11]);
-                out.push([p00, p11, p10]);
+                // Keep the nav bake on the rendered and collided surface.
+                if og_core::math::heightfield_zigzag(
+                    height(c, r),
+                    height(c + step, r),
+                    height(c, r + step),
+                    height(c + step, r + step),
+                ) {
+                    out.extend([[p00, p01, p11], [p00, p11, p10]]);
+                } else {
+                    out.extend([[p00, p01, p10], [p01, p11, p10]]);
+                }
             }
             c += step;
         }

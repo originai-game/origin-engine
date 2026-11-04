@@ -185,11 +185,9 @@ fn terrain_height_at(base: u32, s: vec2<f32>) -> f32 {
   return h;
 }
 
-// The clipmap vertex `vi` of this level in the terrain's space (after the
-// morph and clamped to the terrain).
-fn terrain_local_vertex(vi: u32) -> vec3<f32> {
+// A grid corner after morphing and clamping to the terrain.
+fn terrain_grid_vertex(g: vec2<f32>) -> vec3<f32> {
   let n = u32(level.grid.x);
-  let g = vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u)));
   let s = level.center.z;
   var c = level.center.xy + (g - f32(n) * 0.5) * s;
   if (level.grid.z > 0.0) {
@@ -205,6 +203,24 @@ fn terrain_local_vertex(vi: u32) -> vec3<f32> {
   let xz = terrain_min() + c * unit;
   let samples = c * unit / terrain_cell();
   return vec3<f32>(xz.x, terrain_height_at(0u, samples), xz.y);
+}
+
+// Each cell owns six indices so both triangles choose the same diagonal.
+// Match heightfield_zigzag on the CPU, including ties. Comparing morphed
+// corners also makes a collapsed cell use its coarser neighbour's split.
+fn terrain_local_vertex(vi: u32) -> vec3<f32> {
+  let n = u32(level.grid.x);
+  let cell = vi / 6u;
+  let g = vec2f(f32(cell % n), f32(cell / n));
+  let p00 = terrain_grid_vertex(g);
+  let p10 = terrain_grid_vertex(g + vec2f(1.0, 0.0));
+  let p01 = terrain_grid_vertex(g + vec2f(0.0, 1.0));
+  let p11 = terrain_grid_vertex(g + vec2f(1.0, 1.0));
+  var corners = array<vec3f, 6>(p00, p01, p11, p00, p11, p10);
+  if (abs(p00.y - p11.y) > abs(p10.y - p01.y)) {
+    corners = array<vec3f, 6>(p00, p01, p10, p01, p11, p10);
+  }
+  return corners[vi % 6u];
 }
 
 // A point of the terrain's space in the world.

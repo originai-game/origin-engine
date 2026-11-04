@@ -38,6 +38,12 @@
 
 pub use glam::*;
 
+/// Split a height-field cell along h00--h11 when that diagonal's height
+/// difference is no greater than h10--h01's. Ties keep the original split.
+pub fn heightfield_zigzag(h00: f32, h10: f32, h01: f32, h11: f32) -> bool {
+    (h00 - h11).abs() <= (h10 - h01).abs()
+}
+
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6, PI};
 
 // π/2 split for Cody–Waite reduction: A and B have 28 significant bits, so

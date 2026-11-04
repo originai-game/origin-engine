@@ -38,7 +38,7 @@ module terrain {
 | [`TerrainEdit`](#type-TerrainEdit) | struct | What an edit changed. |
 | [`TerrainLayerDesc`](#type-TerrainLayerDesc) | desc struct | One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised. |
 | [`og.terrain.load`](#fn-load) | function | Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. |
-| [`og.terrain.sample`](#fn-sample) | function | The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world). |
+| [`og.terrain.sample`](#fn-sample) | function | The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world). |
 | [`og.terrain.bounds`](#fn-bounds) | function | A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners. |
 | [`og.terrain.edit`](#fn-edit) | function | Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none). |
 | [`og.terrain.layer`](#fn-layer) | function | A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it). |
@@ -80,7 +80,7 @@ fn load {
 
 ### `og.terrain.sample`
 
-The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).
+The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world).
 
 ```ts
 og.terrain.sample(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>
@@ -97,7 +97,7 @@ Binding symbol `og_terrain_sample` · publish builds: kept
 
 ```ogt
 fn sample {
-  doc "The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world)."
+  doc "The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world)."
   param world World "The world."
   param desc TerrainSampleDesc "The terrain, where it stands and the point."
   returns Result.TerrainSample "Refused for an unknown terrain."

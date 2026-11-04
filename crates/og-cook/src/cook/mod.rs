@@ -1424,7 +1424,8 @@ pub fn cook_project_with_texture_cache(
             }
             Kind::NavMesh => {
                 let deps = e6::navmesh_dependencies(s);
-                let st = stamp(&[b"navmesh", &hash, deps.as_bytes()]);
+                // Re-bake cached terrain surfaces with adaptive diagonals.
+                let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
             }
             Kind::Font => match font_settings(s, &options.font) {

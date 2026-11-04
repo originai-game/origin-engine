@@ -430,7 +430,7 @@ module terrain {
   }
 
   fn sample {
-    doc "The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world)."
+    doc "The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world)."
     param world World "The world."
     param desc TerrainSampleDesc "The terrain, where it stands and the point."
     returns Result.TerrainSample "Refused for an unknown terrain."

@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.terrain.sample",
+        "change": "Terrain rendering, sampling, navigation baking and native height-field collision choose each cell's diagonal by the smaller corner height difference. Ties retain the (-x, -z) to (+x, +z) split. Terrain contacts can change simulation hashes.",
+        "fix": "Check terrain contacts and re-record affected simulation traces and frames.",
+        "find": ["og.terrain", "SHAPE_HEIGHTFIELD"]
+      },
+      {
         "member": "og.Garment",
         "change": "Rest lengths and pinTop use the skeleton's skinned rest shape, including nonidentity bind transforms. Garment simulation hashes change. Older saved garments rebuild on the skin at their next posed tick instead of retaining incorrect authoring-space constraints; topology and garmentPoints ordering are unchanged.",
         "fix": "Re-record affected garment simulation traces and frames after checking the corrected shape. Existing saves remain readable; an older garment resettles once after restore.",

@@ -223,8 +223,8 @@ impl TerrainData {
 
     /// The height at `local` (x and z relative to the terrain's centre) on
     /// the triangles the renderer draws at its finest level and physics
-    /// collides with: each cell split along its (-x, -z) to (+x, +z)
-    /// diagonal; clamped to the edge.
+    /// collides with: each cell uses the diagonal with the smaller corner
+    /// height difference, ties keeping (-x, -z) to (+x, +z); clamped to the edge.
     pub fn height(&self, local: Vec2) -> f32 {
         TerrainSampler::of(self).height(local)
     }
@@ -313,7 +313,13 @@ impl<F: Fn(u32, u32) -> f32> TerrainSampler<F> {
         let h10 = self.at(c + 1, r);
         let h01 = self.at(c, r + 1);
         let h11 = self.at(c + 1, r + 1);
-        if f.y >= f.x {
+        if !og_core::math::heightfield_zigzag(h00, h10, h01, h11) {
+            if f.x + f.y <= 1.0 {
+                h00 + (h10 - h00) * f.x + (h01 - h00) * f.y
+            } else {
+                h11 + (h01 - h11) * (1.0 - f.x) + (h10 - h11) * (1.0 - f.y)
+            }
+        } else if f.y >= f.x {
             h00 + (h11 - h01) * f.x + (h01 - h00) * f.y
         } else {
             h00 + (h10 - h00) * f.x + (h11 - h10) * f.y
@@ -665,14 +671,13 @@ pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<Ter
 /// the hole at each of its four offsets. Returns the indices and the
 /// ranges.
 fn ring_indices(n: u32) -> (Vec<u32>, [std::ops::Range<u32>; 5]) {
-    let row = n + 1;
     let mut idx = Vec::new();
     let mut ranges: Vec<std::ops::Range<u32>> = Vec::new();
     let quad = |idx: &mut Vec<u32>, x: u32, z: u32| {
-        let a = z * row + x;
-        let b = (z + 1) * row + x;
-        // Counter-clockwise seen from above (+y): (x, z), (x, z + 1), (x + 1, z + 1).
-        idx.extend([a, b, b + 1, a, b + 1, a + 1]);
+        // Six corners per cell: the shader chooses their diagonal from
+        // the heights. Shared grid vertices cannot encode both splits.
+        let first = (z * n + x) * 6;
+        idx.extend(first..first + 6);
     };
     let start = idx.len() as u32;
     for z in 0..n {
@@ -1103,6 +1108,30 @@ pub(crate) fn terrain_shadow_source() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_diagonal_ridge_keeps_its_height_between_samples() {
+        let mut field = TerrainData {
+            size: Vec2::ONE,
+            columns: 2,
+            rows: 2,
+            heights: [0.0, 300.0, 300.0, 100.0].into(),
+            control: None,
+            holes: None,
+        };
+        for (p, expected) in [
+            (Vec2::ZERO, 300.0),
+            (Vec2::splat(-0.25), 150.0),
+            (Vec2::splat(0.25), 200.0),
+        ] {
+            assert_eq!(field.height(p), expected, "{p}");
+        }
+        field.heights = [300.0, 0.0, 100.0, 300.0].into();
+        assert_eq!(field.height(Vec2::ZERO), 300.0);
+        // Equal differences retain h00--h11, not the other diagonal's 250.
+        field.heights = [0.0, 200.0, 300.0, 100.0].into();
+        assert_eq!(field.height(Vec2::ZERO), 50.0);
+    }
 
     /// The layer-array variant is the standard lit module with two arrays
     /// declared in place of the eight layer textures, and its two layer

@@ -88,8 +88,7 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
 }
 
 /// A height field's shape, scaled: parry's heights by row (z) and column
-/// (x), each cell split along the (-x, -z) to (+x, +z) diagonal (its zig-zag
-/// subdivision), the triangles og-render draws; a hole's cell removed.
+/// (x), using the same adaptive diagonal as og-render; a hole's cell removed.
 pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp::SharedShape> {
     use rapier3d::parry::shape::{HeightField, HeightFieldCellStatus};
     use rapier3d::parry::utils::Array2;
@@ -108,7 +107,16 @@ pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp
     for r in 0..rows - 1 {
         for c in 0..cols - 1 {
             let hole = f.holes.as_ref().is_some_and(|h| h[r * (cols - 1) + c] != 0);
-            let mut status = HeightFieldCellStatus::ZIGZAG_SUBDIVISION;
+            let h = &f.heights;
+            let mut status = HeightFieldCellStatus::empty();
+            if og_core::math::heightfield_zigzag(
+                h[r * cols + c],
+                h[r * cols + c + 1],
+                h[(r + 1) * cols + c],
+                h[(r + 1) * cols + c + 1],
+            ) {
+                status |= HeightFieldCellStatus::ZIGZAG_SUBDIVISION;
+            }
             if hole {
                 status |= HeightFieldCellStatus::CELL_REMOVED;
             }

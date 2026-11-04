@@ -58,9 +58,8 @@ fn down(p: &PhysicsSystem, w: &World, x: f32, z: f32) -> Option<RaycastHit> {
 }
 
 /// One raised corner: the cell (0, 0) to (1, 1) has heights 0 except 4 at
-/// its +x, +z corner. Split along that diagonal, the point a quarter
-/// along z and three quarters along x stands 1 m high (the triangle
-/// (0,0), (1,0), (1,1)); the other diagonal would give 0.
+/// its +x, +z corner. The equal-height diagonal leaves the other triangle
+/// flat, rather than pulling a sawtooth lip up towards the raised corner.
 #[test]
 fn heights_are_rows_along_z_split_along_the_renderers_diagonal() {
     let (mut w, p) = world(Physics::default(), 1);
@@ -77,15 +76,45 @@ fn heights_are_rows_along_z_split_along_the_renderers_diagonal() {
     spawn_static(&mut w, at(10.0, 0.0, -5.0), terrain_collider(7));
     run(&mut w, 1);
     let hit = down(&p, &w, 9.75, -5.75).expect("the field");
-    assert!((hit.point.y - 1.0).abs() < 1e-3, "{hit:?}");
-    // Mirrored across the diagonal: (x 1/4, z 3/4) of the cell also 1 m.
+    assert!(hit.point.y.abs() < 1e-3, "{hit:?}");
+    // Mirrored across the diagonal: also on its zero-height edge.
     let hit = down(&p, &w, 9.25, -5.25).expect("the field");
-    assert!((hit.point.y - 1.0).abs() < 1e-3, "{hit:?}");
+    assert!(hit.point.y.abs() < 1e-3, "{hit:?}");
+    assert!((down(&p, &w, 9.75, -5.25).unwrap().point.y - 2.0).abs() < 1e-3);
     // The raised corner itself, and a sample of 0 three cells away.
     assert!((down(&p, &w, 10.0, -5.0).unwrap().point.y - 4.0).abs() < 1e-3);
     assert!(down(&p, &w, 9.0, -6.0).unwrap().point.y.abs() < 1e-3);
     // Outside the field: nothing.
     assert!(down(&p, &w, 12.5, -5.0).is_none());
+}
+
+#[test]
+fn diagonal_ridges_and_ties_match_the_height_sampler() {
+    let (mut w, p) = world(Physics::default(), 1);
+    spawn_static(&mut w, at(0.0, 0.0, 0.0), terrain_collider(7));
+    for (heights, expected) in [
+        ([0.0, 30.0, 30.0, 10.0], 30.0),
+        ([30.0, 0.0, 10.0, 30.0], 30.0),
+        ([0.0, 20.0, 30.0, 10.0], 5.0),
+    ] {
+        p.set_heightfield(
+            7,
+            HeightfieldDesc {
+                columns: 2,
+                rows: 2,
+                size: Vec2::ONE,
+                heights: heights.into(),
+                holes: None,
+            },
+        )
+        .unwrap();
+        run(&mut w, 1);
+        let hit = down(&p, &w, 0.0, 0.0).unwrap();
+        assert!(
+            (hit.point.y - expected).abs() < 1e-3,
+            "{heights:?}: {hit:?}"
+        );
+    }
 }
 
 /// A sloped field rising along +x (0.25 m per m) and falling along +z:

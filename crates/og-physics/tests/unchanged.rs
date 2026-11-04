@@ -3,7 +3,8 @@
 //! world uses it. This pins that: the beyond scenario (`support/beyond.rs`:
 //! bodies, statics, a character, joints, a car, ropes, cloths, water, a
 //! ragdoll and fluids, in 3D and 2D) ends at the portable hash it had
-//! before G2-3 (recorded at cb1d65bf's types and fields).
+//! before G2-3 (recorded at cb1d65bf's types and fields), except for the
+//! intentional adaptive terrain-contact change documented at PINNED.
 //!
 //! The portable hash is the one `og replay compare` checks the golden
 //! replays with (og-net's `Snapshot::portable_hash`): every type and field
@@ -26,9 +27,11 @@ use crate::support;
 use std::collections::BTreeMap;
 use support::beyond::*;
 
-/// The portable hash after TICKS ticks of `build(7, profile)`, as cb1d65bf
-/// left it.
-const PINNED: [(u32, u64); 2] = [(3, 0xaae516abb826b9be), (2, 0xd2b61993ef980a1c)];
+/// The portable hash after TICKS ticks of `build(7, profile)`. The 3D bowl
+/// uses adaptive terrain diagonals: the first fluid contact difference is
+/// at tick 26; moving the bowl out of contact leaves both splits identical.
+/// The 2D pin remains the one cb1d65bf left.
+const PINNED: [(u32, u64); 2] = [(3, 0xc534fc05b7536866), (2, 0xd2b61993ef980a1c)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.

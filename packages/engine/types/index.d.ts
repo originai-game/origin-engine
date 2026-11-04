@@ -57838,7 +57838,7 @@ export declare namespace og {
      */
     function load(world: World, path: string): Result<TerrainInfo>;
     /**
-     * The surface under a world point: its height, normal and slope. Callable inside systems (it reads the terrain, not the world).
+     * The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world).
      *
      * @param world The world.
      * @param desc The terrain, where it stands and the point.

@@ -116,7 +116,8 @@ pub const GENERATED_MESH: u64 = 1 << 52;
 /// handle the colliders name ([`Collider::mesh`]): `columns` × `rows`
 /// heights over a `size` rectangle centred on the collider, row-major from
 /// -z to +z and -x to +x (og-render's `TerrainData`). Each cell is split
-/// along its (-x, -z) to (+x, +z) diagonal, as the renderer draws it.
+/// along the diagonal with the smaller corner height difference; ties keep
+/// (-x, -z) to (+x, +z), as the renderer draws it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HeightfieldDesc {
     pub columns: u32,

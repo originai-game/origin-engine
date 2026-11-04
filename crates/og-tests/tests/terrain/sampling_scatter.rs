@@ -1,5 +1,62 @@
 use super::*;
 
+/// A marker between the two possible centre heights distinguishes the
+/// drawn diagonal from the CPU sampler, without relying on lighting.
+#[test]
+fn diagonal_ridges_occlude_a_marker_below_the_sampled_surface() {
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    for (name, heights, height) in [
+        ("adaptive-ridge", [0.0, 300.0, 300.0, 100.0], 300.0),
+        ("original-ridge", [300.0, 0.0, 100.0, 300.0], 300.0),
+        ("diagonal-tie", [0.0, 200.0, 300.0, 100.0], 50.0),
+    ] {
+        let mut scene = RenderScene::new();
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 400.0, 0.0),
+            target: Vec3::ZERO,
+            up: -Vec3::Z,
+            near: 1.0,
+            far: 500.0,
+            projection: Projection::Orthographic { height: 0.6 },
+            exposure: Exposure::linear(1.0),
+        };
+        scene.light.cast_shadows = false;
+        scene.post.tonemap = Tonemap::None;
+        let data = TerrainData {
+            size: Vec2::splat(0.5),
+            columns: 2,
+            rows: 2,
+            heights: heights.into(),
+            control: None,
+            holes: None,
+        };
+        assert_eq!(data.height(Vec2::ZERO), height);
+        let handle = scene.add_terrain(data);
+        scene.terrains.push(Terrain {
+            layers: vec![TerrainLayer {
+                color: Vec3::Y,
+                ..Default::default()
+            }],
+            ..Terrain::new(handle)
+        });
+        let marker = scene.add_mesh(shapes::plane(0.05, 1.0));
+        let red = scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: [1.0, 0.0, 0.0],
+            ..Default::default()
+        });
+        scene.add_instance(marker, red, Mat4::from_translation(Vec3::Y * 200.0));
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        let image = renderer.read_offscreen().expect("capture");
+        keep(name, &image);
+        let centre = color_at(&image, (640, 360));
+        let marker_visible = centre[0] > centre[1] + 50.0;
+        assert_eq!(marker_visible, height < 200.0, "{name}: {centre:?}");
+    }
+}
+
 /// The CPU's height and normal (what physics and `og.terrain.sample`
 /// answer) agree with the field on a plane of known slope, between
 /// samples and clamped at the edge.

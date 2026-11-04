@@ -23,6 +23,12 @@ is one line here, written at the merge that changes
   clipmap cells and morph seams), `terrainLayers` (strongest raw layer)
   and `terrainMip` (normal-map mip footprint estimate). `dump_entity`
   reports terrain clipmap regions, triangle spacing, seams and layer rules.
+- **Adaptive terrain diagonals (simulation change).** Terrain cells split along
+  the diagonal whose corner heights differ less; ties retain the original
+  (-x, -z) to (+x, +z) split. Rendering, `og.terrain.sample`, navigation baking
+  and the native height-field collider agree. This removes fixed-diagonal
+  lips at steep contours. Terrain contacts and affected simulation replays
+  can change; re-record them after checking the new surface.
 - **Garment draw compute.** Per-frame skinning, simulated offsets and welded
   normals run in compute, including `og.motion`'s generated palette. Previous
   drawn positions stay on the GPU for TAA and motion blur; devices without
