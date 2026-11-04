@@ -4398,6 +4398,10 @@
         "OutlinePlace",
         "StyliseSpace",
         "StyliseSpace",
+        "HalftoneMode",
+        "HalftoneMode",
+        "HalftoneRegion",
+        "HalftoneRegion",
         "Stylise",
         "MaterialStyle",
         "LookInfo",
@@ -27944,6 +27948,36 @@
         "object": "On the surfaces as surface, but in each mesh instance's own space (three planes of the instance blended by its normal, in metres along its axes): a moving, turning or skinned object carries its strokes, dots and grain instead of sliding through them, and keeps them however it is scaled. Terrain, scattered copies and the vertices a material shader moves keep the world pattern, the sky the screen pattern. The frame runs the prepass and an object pass that draws the opaque instances again."
       }
     },
+    "HalftoneMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "How Stylise.halftone inks the frame.",
+      "type": "string",
+      "enum": [
+        "ink",
+        "cmyk"
+      ],
+      "x-og-variants": {
+        "ink": "One ink (halftoneColor) on paper: dots larger where the image is darker.",
+        "cmyk": "Four-colour process print: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle (black at halftoneAngle, cyan 30 degrees before it, magenta 30 after, yellow 45 before: 15, 75, 0 and 45 at the default angle), the inks multiplied on white paper, as comics were printed."
+      }
+    },
+    "HalftoneRegion": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "Which tones Stylise.halftone prints on.",
+      "type": "string",
+      "enum": [
+        "all",
+        "shade",
+        "highlight"
+      ],
+      "x-og-variants": {
+        "all": "Every tone.",
+        "shade": "The shade only: Ben-Day dots in the shadows while lit tones keep their colour (Hi-Fi Rush, Spider-Verse).",
+        "highlight": "The highlights only."
+      }
+    },
     "Stylise": {
       "x-og-kind": "resource",
       "x-og-module": "render",
@@ -28309,6 +28343,34 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        },
+        "ditherSpace": {
+          "$ref": "#/$defs/StyliseSpace",
+          "description": "Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces about ditherScale pixels across by whole octaves, so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass.",
+          "default": "screen"
+        },
+        "halftoneMode": {
+          "$ref": "#/$defs/HalftoneMode",
+          "description": "How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk).",
+          "default": "ink"
+        },
+        "halftoneMisregistration": {
+          "type": "number",
+          "description": "With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 8,
+          "x-og-tunable": true
+        },
+        "halftoneRegion": {
+          "$ref": "#/$defs/HalftoneRegion",
+          "description": "Which tones the halftone prints on: all, the shade only (the darkest third of the tones: Ben-Day dots in the shadows) or the highlights only (the lightest third).",
+          "default": "all"
+        },
+        "hatchingKeepColor": {
+          "type": "boolean",
+          "description": "Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground.",
+          "default": false
         }
       },
       "additionalProperties": false

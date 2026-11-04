@@ -184,3 +184,87 @@ fn gamedesc_and_project_naming_different_looks_is_refused() {
     value(og_engine_frame(e, 1000.0 / 60.0));
     assert_eq!(look_name(e), json!("A"));
 }
+
+/// Records the frame's quantise palette (its colours, sRGB).
+struct PaletteRecorder(Rc<RefCell<Option<Vec<[u8; 3]>>>>);
+
+impl og_runtime::RenderBackend for PaletteRecorder {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
+        *self.0.borrow_mut() = scene
+            .stylise
+            .quantize
+            .and_then(|q| q.palette)
+            .and_then(|h| scene.palette(h))
+            .map(|p| p.colors.clone());
+        Ok(())
+    }
+    fn capture(
+        &mut self,
+        _: &og_render::RenderScene,
+        _: u32,
+        _: u32,
+    ) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// A look that quantises (posterize and a dither) without naming a frame
+/// palette takes the contract's ArtPalette.colors, so the frame keeps the
+/// colours the cook put the art on. Old code quantised to the RGB cube
+/// alone, with no palette.
+#[test]
+fn a_quantising_frame_takes_the_contracts_palette() {
+    let project =
+        "type project\nversion 1\n---\nname \"Art\"\nentry \"src/main.ts\"\nlook \"looks/c.ogt\"\n";
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-art-palette-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let write = |path: &str, text: &str| {
+        let p = root.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    };
+    write("project.ogt", project);
+    write(
+        "assets/looks/c.ogt",
+        "type look\nversion 1\n---\nname \"C\"\nStylise {\n  posterize 4\n  dither bayer2\n}\nArtPalette {\n  colors \"@palettes/dusk16\"\n  strict true\n}\n",
+    );
+    let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    // The palette as its file lists it, read here, not through the engine.
+    let dusk: Vec<[u8; 3]> = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/looks/assets/palettes/dusk16.hex"),
+    )
+    .unwrap()
+    .lines()
+    .map(str::trim)
+    .filter(|l| !l.is_empty() && !l.starts_with(';'))
+    .map(|l| [0, 2, 4].map(|i| u8::from_str_radix(&l[i..i + 2], 16).unwrap()))
+    .collect();
+    assert_eq!(dusk.len(), 16);
+    set_hooks(Rc::new(Host(Rc::new(Apply::default()))));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 1 }).to_string()));
+    let options = json!({ "root": root.to_str().unwrap(), "project": project }).to_string();
+    let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let seen = Rc::new(RefCell::new(None));
+    og_runtime::set_render_backend(e, Some(Box::new(PaletteRecorder(seen.clone())))).unwrap();
+    for _ in 0..10 {
+        value(og_engine_frame(e, 1000.0 / 60.0));
+        if seen.borrow().is_some() {
+            break;
+        }
+    }
+    assert_eq!(
+        seen.borrow().as_deref(),
+        Some(&dusk[..]),
+        "the contract's palette"
+    );
+}

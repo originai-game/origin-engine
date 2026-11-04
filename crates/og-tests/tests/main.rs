@@ -31,6 +31,7 @@ mod render_origin;
 mod shadows;
 mod sprites2d;
 mod stylise_line_toon_paint;
+mod stylise_print;
 mod stylise_space;
 mod taa_look;
 mod taau;

@@ -15,8 +15,11 @@
 /// `dither`, `halftone`, `hatching`, `paint`, `paintDetail` (the painterly
 /// filter's object edges and detail), `ink`, `inkDepth`,
 /// `depthBands`, `retro3d`, `surfaceSpace` (the canvas, hatching and
-/// halftone laid on surfaces, [`StyliseSpace::Surface`]) and `objectSpace`
-/// (laid in each instance's own space, [`StyliseSpace::Object`])
+/// halftone laid on surfaces, [`StyliseSpace::Surface`]), `objectSpace`
+/// (laid in each instance's own space, [`StyliseSpace::Object`]),
+/// `ditherSpace` (the dither's cells on the surfaces, [`Quantize::space`]),
+/// `halftoneCmyk` ([`HalftoneMode::Cmyk`], misregistration and
+/// [`HalftoneRegion`]) and `hatchingColor` ([`Hatching::keep_color`])
 /// ([`Stylise`]);
 /// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance`,
 /// `flatShading`, `surface`, `toonAmbient` (with the anti-aliased bands and
@@ -37,6 +40,9 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "retro3d",
     "surfaceSpace",
     "objectSpace",
+    "ditherSpace",
+    "halftoneCmyk",
+    "hatchingColor",
     "toon",
     "shadowTint",
     "shadowDarkness",
@@ -142,6 +148,13 @@ pub struct Quantize {
     pub dither_strength: f32,
     /// One dither cell in logical pixels.
     pub dither_scale: u32,
+    /// Where the dither's cells lie: over the frame, or on the surfaces
+    /// (world or each instance's space, about `dither_scale` pixels by
+    /// whole octaves), so a pattern stays on what it shades as the camera
+    /// moves instead of crawling over the screen; the sky's cells lie on a
+    /// cube round the camera (Lucas Pope's Obra Dinn). On surfaces the
+    /// frame runs the prepass.
+    pub space: StyliseSpace,
 }
 
 /// Where a pattern (the canvas, the hatching, the halftone) is laid.
@@ -186,6 +199,31 @@ impl StyliseSpace {
     }
 }
 
+/// How the halftone inks the frame.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum HalftoneMode {
+    /// One ink ([`Halftone::color`]) on paper, larger dots where darker.
+    #[default]
+    Ink,
+    /// Four-colour process print: the colour split into cyan, magenta,
+    /// yellow and black screens at their classic angles (black at the
+    /// grid's angle, cyan 30° before it, magenta 30° after, yellow 45°
+    /// before), multiplied on white paper.
+    Cmyk,
+}
+
+/// Which tones the halftone prints on.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum HalftoneRegion {
+    #[default]
+    All,
+    /// The shade only (Ben-Day dots in the shadows); light tones keep
+    /// their colour.
+    Shade,
+    /// The highlights only.
+    Highlight,
+}
+
 /// Halftone dots on a rotated grid.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Halftone {
@@ -194,9 +232,14 @@ pub struct Halftone {
     /// pixels where the dots lie, by whole octaves).
     pub size: f32,
     pub angle_degrees: f32,
-    /// The dots' linear colour.
+    /// The dots' linear colour ([`HalftoneMode::Ink`]).
     pub color: [f32; 3],
     pub space: StyliseSpace,
+    pub mode: HalftoneMode,
+    /// With [`HalftoneMode::Cmyk`]: how far the cyan, magenta and yellow
+    /// plates sit off the black one, in logical pixels (0: in register).
+    pub misregistration: f32,
+    pub region: HalftoneRegion,
 }
 
 /// Cross-hatching from a tonal art map.
@@ -219,6 +262,10 @@ pub struct Hatching {
     /// within one stroke spacing. 0 is the tone alone; above 0 the frame
     /// runs the prepass.
     pub depth: f32,
+    /// Colour hatching: the ground keeps its colour and each stroke is
+    /// that colour darkened towards [`Hatching::color`], instead of
+    /// strokes of one ink over a paper-light ground.
+    pub keep_color: bool,
 }
 
 /// Painterly smoothing, pigment pooling and a canvas (stylise.wgsl
@@ -603,10 +650,13 @@ impl Stylise {
         self.surface_spaces().contains(&Some(StyliseSpace::Object))
     }
 
-    /// The space of the canvas, the hatching and the halftone where each
+    /// The space of the dither, the canvas, the hatching and the halftone where each
     /// is drawn (`None` where it is not).
-    fn surface_spaces(&self) -> [Option<StyliseSpace>; 3] {
+    fn surface_spaces(&self) -> [Option<StyliseSpace>; 4] {
         [
+            self.quantize
+                .filter(|q| q.dither != DitherPattern::None)
+                .map(|q| q.space),
             self.paint
                 .filter(|p| p.canvas.is_some() && p.canvas_strength > 0.0)
                 .map(|p| p.canvas_space),
@@ -733,6 +783,7 @@ mod tests {
             dither: DitherPattern::Bayer4,
             dither_strength: 1.0,
             dither_scale: 1,
+            space: StyliseSpace::Screen,
         };
         let six = Stylise {
             quantize: Some(q),
@@ -777,6 +828,7 @@ mod tests {
             color: [0.0; 3],
             space: StyliseSpace::Screen,
             depth: 0.0,
+            keep_color: false,
         });
         assert!(!s.on_surfaces(), "screen hatching");
         assert!(!s.depth_edges(), "hatching on the tone alone");
@@ -807,6 +859,41 @@ mod tests {
             .chain_bits(),
             "the space is a setting, not a pass"
         );
+    }
+
+    /// Obra Dinn's anchored dither: dither cells on the surfaces ask for the
+    /// prepass (and the object pass in object space), but only while a
+    /// dither draws; a quantise without one, or a screen dither, does not.
+    #[test]
+    fn a_surface_dither_asks_for_the_prepass() {
+        let q = Quantize {
+            posterize: 2,
+            palette: None,
+            dither: DitherPattern::Bayer8,
+            dither_strength: 1.0,
+            dither_scale: 1,
+            space: StyliseSpace::Surface,
+        };
+        let mut s = Stylise {
+            quantize: Some(q),
+            ..Stylise::default()
+        };
+        assert!(s.on_surfaces() && !s.in_object_space());
+        s.quantize = Some(Quantize {
+            space: StyliseSpace::Object,
+            ..q
+        });
+        assert!(s.on_surfaces() && s.in_object_space());
+        s.quantize = Some(Quantize {
+            dither: DitherPattern::None,
+            ..q
+        });
+        assert!(!s.on_surfaces(), "no dither, no cells to lay");
+        s.quantize = Some(Quantize {
+            space: StyliseSpace::Screen,
+            ..q
+        });
+        assert!(!s.on_surfaces(), "a screen dither reads no prepass");
     }
 
     #[test]

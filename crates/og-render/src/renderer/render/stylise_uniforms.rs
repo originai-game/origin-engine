@@ -183,6 +183,17 @@ impl Renderer {
                         0.0,
                     ]
                 }),
+                dither_space: [q.map_or(0.0, |q| q.space.code()), 0.0, 0.0, 0.0],
+                print: [
+                    ht.map_or(0.0, |h| f32::from(h.mode == stylise::HalftoneMode::Cmyk)),
+                    ht.map_or(0.0, |h| h.misregistration.clamp(0.0, 8.0)),
+                    ht.map_or(0.0, |h| match h.region {
+                        stylise::HalftoneRegion::All => 0.0,
+                        stylise::HalftoneRegion::Shade => 1.0,
+                        stylise::HalftoneRegion::Highlight => 2.0,
+                    }),
+                    hc.map_or(0.0, |h| f32::from(h.keep_color)),
+                ],
             };
             self.post.write_stylise(&self.queue, &u);
         }

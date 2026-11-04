@@ -551,6 +551,14 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     }
     // The art contract's line round meshes (ArtLine, art.rs).
     super::art::mesh_line(&art.frame, &mut scene.stylise.material);
+    // Under the art contract a frame that quantises without a palette of
+    // its own takes the contract's (ArtPalette.colors): the colours the
+    // cook put the art on are the ones the frame keeps.
+    if let Some(q) = scene.stylise.quantize.as_mut()
+        && q.palette.is_none()
+    {
+        q.palette = art.frame.palette;
+    }
     if let Some(g) = resource(world, layouts.global_illumination.as_ref())
         && on(&g, "enabled", false)
         && gi_allowed(Some(&g), fx.gi_preset)
@@ -682,6 +690,11 @@ fn stylise(
             5 => og_render::DitherPattern::InterleavedGradient,
             _ => og_render::DitherPattern::None,
         };
+        let space = |v: &Value| match variant(v, &["screen", "surface", "object"]) {
+            1 => og_render::StyliseSpace::Surface,
+            2 => og_render::StyliseSpace::Object,
+            _ => og_render::StyliseSpace::Screen,
+        };
         if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {
             out.quantize = Some(og_render::Quantize {
                 posterize,
@@ -689,13 +702,9 @@ fn stylise(
                 dither,
                 dither_strength: f(&s, "ditherStrength", 1.0),
                 dither_scale: u(&s, "ditherScale", 1).max(1),
+                space: space(&s["ditherSpace"]),
             });
         }
-        let space = |v: &Value| match variant(v, &["screen", "surface", "object"]) {
-            1 => og_render::StyliseSpace::Surface,
-            2 => og_render::StyliseSpace::Object,
-            _ => og_render::StyliseSpace::Screen,
-        };
         let halftone = f(&s, "halftone", 0.0);
         if halftone > 0.0 {
             out.halftone = Some(og_render::Halftone {
@@ -704,6 +713,16 @@ fn stylise(
                 angle_degrees: f(&s, "halftoneAngle", 45.0),
                 color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
                 space: space(&s["halftoneSpace"]),
+                mode: match variant(&s["halftoneMode"], &["ink", "cmyk"]) {
+                    1 => og_render::HalftoneMode::Cmyk,
+                    _ => og_render::HalftoneMode::Ink,
+                },
+                misregistration: f(&s, "halftoneMisregistration", 0.0),
+                region: match variant(&s["halftoneRegion"], &["all", "shade", "highlight"]) {
+                    1 => og_render::HalftoneRegion::Shade,
+                    2 => og_render::HalftoneRegion::Highlight,
+                    _ => og_render::HalftoneRegion::All,
+                },
             });
         }
         let hatching = f(&s, "hatching", 0.0);
@@ -716,6 +735,7 @@ fn stylise(
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
                 space: space(&s["hatchingSpace"]),
                 depth: f(&s, "hatchingDepth", 0.0),
+                keep_color: on(&s, "hatchingKeepColor", false),
             });
         }
         let paint = og_render::Paint {

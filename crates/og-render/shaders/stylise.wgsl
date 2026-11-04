@@ -18,7 +18,10 @@
 //             passes that read the depth, so their lines bend with it);
 //   quantize  posterised channels and/or the nearest palette colour, mixed
 //             by an ordered (Bayer), blue-noise or interleaved-gradient
-//             dither;
+//             dither whose cells lie over the frame or, in surface or object
+//             space, on the surfaces (Obra Dinn's world-anchored dither); a
+//             pixel already on a palette colour (art the cook conformed) is
+//             kept as it is;
 //   upscale   the logical frame scaled up by a whole number with nearest
 //             filtering, centred in the output with the background round it;
 //             or the render scale's frame (Renderer::set_render_scale)
@@ -47,6 +50,8 @@ struct Stylise {
   canvas_origin: vec4<f32>,   // the canvas uv at the surface origin: x along x, y along y, z along z as u, w along z as v
   lens: vec4<f32>,            // x: lens distortion (above 0 barrel), y: the scale keeping a barrel's farthest corner on the image, zw: the centre (uv)
   paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound (object ids, detail), w: 0
+  dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code)
+  print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -671,9 +676,9 @@ fn hatch_surface(s: Surf, t: f32) -> f32 {
   return ink;
 }
 
-// Halftone dots over the frame, larger where the tone is darker.
-fn dots_screen(p: vec2<f32>, t: f32) -> f32 {
-  let a = st.halftone.z;
+// Halftone dots over the frame, larger where the tone is darker, on a grid
+// turned by `a` (radians).
+fn dots_screen(p: vec2<f32>, t: f32, a: f32) -> f32 {
   let r = vec2<f32>(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a)) / st.halftone.y;
   let cell = fract(r) - 0.5;
   let radius = (1.0 - t) * 0.72;
@@ -684,8 +689,7 @@ fn dots_screen(p: vec2<f32>, t: f32) -> f32 {
 // `pitch`, so a coarser octave's dots are among a finer one's. The edge
 // is a screen pixel wide along the radius (`j`: the plane's steps per
 // pixel, plane_steps).
-fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, j: vec4<f32>) -> f32 {
-  let a = st.halftone.z;
+fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, j: vec4<f32>, a: f32) -> f32 {
   let r = vec2<f32>(q.x * cos(a) - q.y * sin(a), q.x * sin(a) + q.y * cos(a)) / pitch;
   let cell = fract(r + 0.5) - 0.5;
   let radius = (1.0 - t) * 0.72;
@@ -696,18 +700,67 @@ fn dots_plane(q: vec2<f32>, t: f32, pitch: f32, j: vec4<f32>) -> f32 {
   return 1.0 - smoothstep(radius - edge, radius + edge, length(cell));
 }
 
-// The halftone on the surfaces, as hatch_surface lays the strokes.
-fn dots_surface(s: Surf, t: f32) -> f32 {
+// The halftone on the surfaces, as hatch_surface lays the strokes: a grid
+// turned by `angle`, moved by `shift` logical pixels (a plate's
+// misregistration, measured in the footprint's metres).
+fn dots_surface(s: Surf, t: f32, angle: f32, shift: vec2<f32>) -> f32 {
   let o = octave(st.halftone.y, s.pixel);
   let w = tri_weights(s.n);
   var cover = 0.0;
   for (var a = 0; a < 3; a++) {
     if (w[a] < 0.002) { continue; }
-    let q = plane_uv(s.p, a);
+    let q = plane_uv(s.p, a) + shift * s.pixel;
     let j = plane_steps(s, a);
-    cover += w[a] * mix(dots_plane(q, t, o.x, j), dots_plane(q, t, o.x * 2.0, j), o.y);
+    cover += w[a] * mix(dots_plane(q, t, o.x, j, angle), dots_plane(q, t, o.x * 2.0, j, angle), o.y);
   }
   return cover;
+}
+
+// One plate's dots at `t` (the tone the plate prints as: 1 - its ink),
+// where the halftone lies, its grid turned by `angle` and moved by
+// `shift` logical pixels.
+fn plate(p: vec2<f32>, surf: Surf, osurf: Surf, t: f32, angle: f32, shift: vec2<f32>) -> f32 {
+  // No ink, no dots (a dot of radius 0 still softens to half cover at
+  // the cell's centre).
+  if (t >= 0.998) { return 0.0; }
+  if (st.surface.w > 1.5 && osurf.ok) {
+    return dots_surface(osurf, t, angle, shift);
+  }
+  if (st.surface.w > 0.5 && surf.ok) {
+    return dots_surface(surf, t, angle, shift);
+  }
+  return dots_screen(p + shift, t, angle);
+}
+
+// Four-colour process print (Stylise.halftoneMode cmyk): the colour split
+// into cyan, magenta, yellow and black (grey component replacement in
+// display space), each printed as its own dot screen at the classic
+// angles (black at halftoneAngle, cyan 30 degrees before it, magenta 30
+// after, yellow 45 before: 15, 75, 0 and 45 at the default), the plates
+// offset by the misregistration, the inks multiplied on white paper.
+fn cmyk(p: vec2<f32>, surf: Surf, osurf: Surf, c: vec3<f32>) -> vec3<f32> {
+  let e = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
+  let k = 1.0 - max(e.r, max(e.g, e.b));
+  let cmy = select((vec3<f32>(1.0) - e - k) / max(1.0 - k, 1e-4), vec3<f32>(0.0), k > 0.9999);
+  let a = st.halftone.z;
+  let r = st.print.y;
+  let dc = plate(p, surf, osurf, 1.0 - cmy.x, a - 0.5235988, vec2<f32>(r, 0.0));
+  let dm = plate(p, surf, osurf, 1.0 - cmy.y, a + 0.5235988, vec2<f32>(0.0, r));
+  let dy = plate(p, surf, osurf, 1.0 - cmy.z, a - 0.7853982, vec2<f32>(-0.7071, -0.7071) * r);
+  let dk = plate(p, surf, osurf, 1.0 - k, a, vec2<f32>(0.0));
+  let printed = vec3<f32>(1.0 - dc, 1.0 - dm, 1.0 - dy) * (1.0 - dk);
+  return srgb_decode(clamp(printed, vec3<f32>(0.0), vec3<f32>(1.0)));
+}
+
+// Where the halftone prints by the tone (Stylise.halftoneRegion): 1 on
+// every tone, or only the shade (Ben-Day dots in the shadows, Hi-Fi Rush)
+// or only the highlights. The shade is the darkest third of the tones and
+// the highlights the lightest, each with a soft step: a mid-toned field
+// in the light (a lawn, a crate) is the paper's, not dotted over.
+fn halftone_region(t: f32) -> f32 {
+  if (st.print.z > 1.5) { return smoothstep(0.6, 0.75, t); }
+  if (st.print.z > 0.5) { return 1.0 - smoothstep(0.25, 0.4, t); }
+  return 1.0;
 }
 
 fn lines(in: VsOut) -> vec3<f32> {
@@ -742,21 +795,30 @@ fn lines(in: VsOut) -> vec3<f32> {
     } else {
       ink = hatch_screen(p, th);
     }
-    let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.85);
-    c = mix(ground, st.hatching_color.rgb, ink * st.hatching.x);
+    if (st.print.w > 0.5) {
+      // Colour hatching (Stylise.hatchingKeepColor): the ground keeps its
+      // colour, lightened a little towards the paper, and each stroke is
+      // the same colour darkened towards the hatching colour, so the hue
+      // and chroma stay under the strokes instead of turning grey.
+      let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.15);
+      let stroke = c * 0.3 + st.hatching_color.rgb * 0.5;
+      c = mix(ground, stroke, ink * st.hatching.x);
+    } else {
+      let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.85);
+      c = mix(ground, st.hatching_color.rgb, ink * st.hatching.x);
+    }
   }
   if (st.halftone.x > 0.0) {
-    // Dots on a rotated grid, larger where the image is darker.
-    var dot_cover = 0.0;
-    if (st.surface.w > 1.5 && osurf.ok) {
-      dot_cover = dots_surface(osurf, t);
-    } else if (st.surface.w > 0.5 && surf.ok) {
-      dot_cover = dots_surface(surf, t);
+    var printed: vec3<f32>;
+    if (st.print.x > 0.5) {
+      printed = mix(c, cmyk(p, surf, osurf, c), st.halftone.x);
     } else {
-      dot_cover = dots_screen(p, t);
+      // Dots on a rotated grid, larger where the image is darker.
+      let dot_cover = plate(p, surf, osurf, t, st.halftone.z, vec2<f32>(0.0));
+      let paper = mix(c, vec3<f32>(1.0), st.halftone.x);
+      printed = mix(paper, st.halftone_color.rgb, dot_cover * st.halftone.x);
     }
-    let paper = mix(c, vec3<f32>(1.0), st.halftone.x);
-    c = mix(paper, st.halftone_color.rgb, dot_cover * st.halftone.x);
+    c = mix(c, printed, halftone_region(t));
   }
   if (st.ink.x > 0.5) {
     // Luminance edges, widened by the max over the line's width.
@@ -821,12 +883,87 @@ fn blue(cell: vec2<u32>) -> f32 {
   return (round(v * 255.0) + 0.5) / 256.0;
 }
 
-fn dither_at(pos: vec2<f32>) -> f32 {
-  let cell = vec2<u32>(pos / max(st.quantize.w, 1.0));
+// The pattern's threshold at a cell (its coordinates wrap: every
+// pattern's period, 2 to 64, divides 2^32).
+fn threshold(cell: vec2<u32>) -> f32 {
   if (st.quantize.y < -1.5) { return blue(cell); }
-  if (st.quantize.y < 0.0) { return ign(vec2<f32>(cell)); }
+  if (st.quantize.y < 0.0) { return ign(vec2<f32>(cell & vec2<u32>(0xffffu))); }
   if (st.quantize.y >= 2.0) { return bayer(cell, u32(st.quantize.y)); }
   return 0.5;
+}
+
+// A cell's own number in 0..1 (a 2D integer hash), which picks the octave
+// a cell takes while two fade.
+fn cell_hash(c: vec2<i32>) -> f32 {
+  var h = bitcast<u32>(c.x) * 0x27d4eb2du ^ bitcast<u32>(c.y) * 0x165667b1u;
+  h = (h ^ (h >> 15u)) * 0x85ebca6bu;
+  h = (h ^ (h >> 13u)) * 0xc2b2ae35u;
+  return f32((h ^ (h >> 16u)) & 0xffffffu) / 16777216.0;
+}
+
+// The threshold of the cells on coordinates `q` (metres on a surface plane,
+// or a direction's plane on the camera's sphere) whose pixel is `pixel`
+// wide there: cells about ditherScale pixels across, by whole octaves
+// (powers of two of the units), so a cell stays on the surface as the
+// camera moves and keeps its screen size as it nears or recedes. Between
+// two octaves each coarse cell switches on its own (cell_hash against the
+// fade), so the pattern never jumps as a whole.
+fn dither_cells(q: vec2<f32>, pixel: f32) -> f32 {
+  let o = octave(max(st.quantize.w, 1.0), pixel);
+  let coarse = vec2<i32>(floor(q / (o.x * 2.0)));
+  if (cell_hash(coarse) < o.y) {
+    return threshold(bitcast<vec2<u32>>(coarse));
+  }
+  return threshold(bitcast<vec2<u32>>(vec2<i32>(floor(q / o.x))));
+}
+
+// The world direction through logical pixel position `p`.
+fn view_dir(p: vec2<f32>) -> vec3<f32> {
+  let uv = p * st.screen.zw;
+  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let a = st.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
+  let b = st.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  return normalize((st.view_rotation * vec4<f32>(b.xyz / b.w - a.xyz / a.w, 0.0)).xyz);
+}
+
+// The dither on the sky and where no surface lies, with the dither on the
+// surfaces: cells on a cube round the camera (Lucas Pope's Obra Dinn maps
+// its dither on a sphere round the camera), so turning the camera carries
+// the pattern with the sky instead of sliding it under the screen.
+fn dither_sky(p: vec2<f32>) -> f32 {
+  let d = view_dir(p);
+  let ad = abs(d);
+  var a = 2;
+  if (ad.x >= ad.y && ad.x >= ad.z) { a = 0; } else if (ad.y >= ad.z) { a = 1; }
+  let face = d / max(ad[a], 1e-6);
+  // One pixel's angle on the face: the next pixel's direction there.
+  let n = view_dir(p + vec2<f32>(1.0, 0.0));
+  let pixel = max(length(plane_uv(n / max(abs(n[a]), 1e-6) - face, a)), 1e-6);
+  // The face's sign keeps opposite faces from sharing cells.
+  return dither_cells(plane_uv(face, a) + select(0.0, 8.0, d[a] < 0.0), pixel);
+}
+
+// The dither on a surface: cells on the plane its normal faces most (a
+// threshold cannot blend between planes: the most-facing one takes it).
+fn dither_surface(s: Surf) -> f32 {
+  let w = tri_weights(s.n);
+  var a = 2;
+  if (w.x >= w.y && w.x >= w.z) { a = 0; } else if (w.y >= w.z) { a = 1; }
+  return dither_cells(plane_uv(s.p, a), s.pixel);
+}
+
+fn dither_at(pos: vec2<f32>) -> f32 {
+  if (st.dither_space.x > 0.5) {
+    var s = surface_at(pos);
+    if (st.dither_space.x > 1.5) {
+      s = object_at(pos, s);
+    }
+    if (s.ok) {
+      return dither_surface(s);
+    }
+    return dither_sky(pos);
+  }
+  return threshold(vec2<u32>(pos / max(st.quantize.w, 1.0)));
 }
 
 // Oklab, for the nearest palette colour by perceived difference.
@@ -843,9 +980,42 @@ fn oklab(c: vec3<f32>) -> vec3<f32> {
     0.0259040371 * l3 + 0.7827717662 * m3 - 0.8086757660 * s3);
 }
 
+// How near (Oklab distance) a pixel must lie to a palette colour to be
+// that colour as it is: about one just-noticeable difference, wider than
+// the 8-bit rounding of a conformed texel through the frame's targets.
+const PALETTE_KEEP: f32 = 0.02;
+
+// The nearest palette colour to `c` and its squared Oklab distance.
+fn nearest_palette(c: vec3<f32>, count: i32) -> vec4<f32> {
+  let want = oklab(c);
+  var best = c;
+  var best_d = 1e9;
+  for (var i = 0; i < count; i++) {
+    let p = textureLoad(palette, vec2<i32>(i, 0), 0).rgb;
+    let delta = oklab(p) - want;
+    let dist = dot(delta, delta);
+    if (dist < best_d) {
+      best_d = dist;
+      best = p;
+    }
+  }
+  return vec4<f32>(best, best_d);
+}
+
 fn quantize(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   var c = load(px);
+  let count = i32(st.offset.w);
+  // A pixel already on a palette colour (art the cook put on the palette,
+  // unlit) is that colour: neither posterised nor dithered, so a flat
+  // field of a palette colour stays flat. Only the tones light, fog or
+  // bloom made between the palette's colours are stepped and dithered.
+  if (count > 0) {
+    let kept = nearest_palette(c, count);
+    if (kept.w <= PALETTE_KEEP * PALETTE_KEEP) {
+      return kept.rgb;
+    }
+  }
   let d = (dither_at(in.pos.xy) - 0.5) * st.quantize.z;
   if (st.quantize.x >= 2.0) {
     // Steps in display space, the dither spread across one step.
@@ -853,24 +1023,11 @@ fn quantize(in: VsOut) -> vec3<f32> {
     let e = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
     c = srgb_decode(clamp(floor(e * n + 0.5 + d) / n, vec3<f32>(0.0), vec3<f32>(1.0)));
   }
-  let count = i32(st.offset.w);
   if (count > 0) {
     // The nearest palette colour of the dithered colour (the dither moves
     // it by a share of a palette step, so neighbours alternate).
     let shifted = clamp(c + vec3<f32>(d * 0.12), vec3<f32>(0.0), vec3<f32>(1.0));
-    let want = oklab(shifted);
-    var best = c;
-    var best_d = 1e9;
-    for (var i = 0; i < count; i++) {
-      let p = textureLoad(palette, vec2<i32>(i, 0), 0).rgb;
-      let delta = oklab(p) - want;
-      let dist = dot(delta, delta);
-      if (dist < best_d) {
-        best_d = dist;
-        best = p;
-      }
-    }
-    c = best;
+    c = nearest_palette(shifted, count).rgb;
   }
   return c;
 }

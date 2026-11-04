@@ -209,6 +209,7 @@ fn environment_maps_texture_arrays_and_palettes_leave_the_frame_and_its_bytes() 
         dither: DitherPattern::None,
         dither_strength: 0.0,
         dither_scale: 1,
+        space: og_render::StyliseSpace::Screen,
     });
     scene.add_sprite(Sprite {
         position: Vec3::new(0.0, 1.0, 0.0),

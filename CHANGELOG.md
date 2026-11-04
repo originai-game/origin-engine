@@ -367,6 +367,17 @@ is one line here, written at the merge that changes
   alpha), so waves move at the display's rate in step with floaters; a
   frame at the tick, a capture and `og test` draw the tick as before. The
   foam history holds through a step back of under a tick.
+- **Stylise: palette-true quantise, anchored dither, process print.** The
+  frame's quantise keeps a pixel already on a `Stylise.palette` colour as
+  it is (art the cook put on the palette no longer turns into a dither
+  checker); `Stylise.palette` defaults to `ArtPalette.colors` under the
+  art contract. New `Stylise.ditherSpace` (`StyliseSpace`: the dither's
+  cells on the surfaces, the sky's on a cube round the camera),
+  `halftoneMode` (new enum `HalftoneMode`: `ink`, `cmyk`),
+  `halftoneMisregistration`, `halftoneRegion` (new enum `HalftoneRegion`:
+  `all`, `shade`, `highlight`) and `hatchingKeepColor`; all off at their
+  zero value. `RenderCapabilities.stylise` adds `ditherSpace`,
+  `halftoneCmyk` and `hatchingColor`.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

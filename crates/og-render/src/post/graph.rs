@@ -315,11 +315,11 @@ impl FrameGraph {
             })
         });
         let mut chain = HashMap::new();
-        // The paint and lines passes read the prepass (a canvas, hatching
-        // or halftone on surfaces, ink on depth edges) when the frame has
-        // one; the other passes bind placeholders.
+        // The paint, lines and quantise passes read the prepass (a canvas,
+        // hatching, halftone or dither on surfaces, ink on depth edges)
+        // when the frame has one; the other passes bind placeholders.
         let prepass_of = |p: FramePass| {
-            let lines = matches!(p, FramePass::Paint | FramePass::Lines);
+            let lines = matches!(p, FramePass::Paint | FramePass::Lines | FramePass::Quantize);
             (
                 self.try_view("lindepth")
                     .filter(|_| lines)

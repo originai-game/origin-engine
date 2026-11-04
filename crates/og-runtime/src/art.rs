@@ -17,6 +17,9 @@
 //! - `ArtPalette.colors` with `strict`: the UI's icons tinted to the
 //!   nearest palette colour (an icon atlas is a distance field, which the
 //!   cook does not conform).
+//! - `ArtPalette.colors`: the default of `Stylise.palette` for a frame that
+//!   quantises (posterize or a dither) without naming one, so the frame
+//!   keeps the colours the cook conformed the art to.
 //! - `ArtCamera`: the camera's projection, angle and field of view written
 //!   when a look is applied ([`apply_camera`]); `pixelPerfect` snaps a 2D
 //!   camera by whole logical pixels (`fx::snap_to_grid`).
@@ -52,6 +55,8 @@ pub(crate) struct ArtFrame {
     pub pixel_perfect: bool,
     /// `ArtPalette.colors` when `strict` (sRGB).
     pub strict: Vec<[u8; 3]>,
+    /// `ArtPalette.colors`: the palette `Stylise.palette` defaults to.
+    pub palette: Option<og_render::PaletteHandle>,
 }
 
 /// `ArtLine` as the meshes' outline takes it.
@@ -157,9 +162,9 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
     let palette = resource(world, l.art_palette.as_ref()).unwrap_or_default();
     let unit = f(&pixels, "unit", 0.0).max(0.0);
     let width = f(&line, "width", 0.0).max(0.0);
+    let colors = handle_index(&palette["colors"]).and_then(|i| rs.fx.look.palettes.get(i)?.1);
     let strict = if on(&palette, "strict", false) {
-        handle_index(&palette["colors"])
-            .and_then(|i| rs.fx.look.palettes.get(i)?.1)
+        colors
             .and_then(|h| rs.scene.palette(h))
             .map(|p| p.colors.clone())
             .unwrap_or_default()
@@ -188,6 +193,7 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
         ) == 2,
         pixel_perfect: on(&camera, "pixelPerfect", false),
         strict,
+        palette: colors,
     }
 }
 

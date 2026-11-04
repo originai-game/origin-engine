@@ -83,6 +83,7 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
         color: [0.05, 0.045, 0.04],
         space,
         depth: 0.0,
+        keep_color: false,
     });
     scene
 }

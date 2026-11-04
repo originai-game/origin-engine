@@ -1436,6 +1436,33 @@ module render {
     value StyliseSpace
   }
 
+  enum HalftoneMode {
+    doc "How Stylise.halftone inks the frame."
+    variant ink "One ink (halftoneColor) on paper: dots larger where the image is darker."
+    variant cmyk "Four-colour process print: the colour split into cyan, magenta, yellow and black (grey component replacement), each a dot screen at its classic angle (black at halftoneAngle, cyan 30 degrees before it, magenta 30 after, yellow 45 before: 15, 75, 0 and 45 at the default angle), the inks multiplied on white paper, as comics were printed."
+  }
+
+  column HalftoneMode {
+    doc "A HalftoneMode field: the variant's index."
+    array Uint32Array
+    stride 1
+    value HalftoneMode
+  }
+
+  enum HalftoneRegion {
+    doc "Which tones Stylise.halftone prints on."
+    variant all "Every tone."
+    variant shade "The shade only: Ben-Day dots in the shadows while lit tones keep their colour (Hi-Fi Rush, Spider-Verse)."
+    variant highlight "The highlights only."
+  }
+
+  column HalftoneRegion {
+    doc "A HalftoneRegion field: the variant's index."
+    array Uint32Array
+    stride 1
+    value HalftoneRegion
+  }
+
   resource Stylise {
     doc "Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation."
     doc "Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised."
@@ -1641,6 +1668,15 @@ module render {
       unit ratio
       tunable true
     }
+    field ditherSpace StyliseSpace "Where the dither's cells lie: screen, a grid over the frame (a moving camera slides the scene under it, so the pattern crawls); surface, cells on the surfaces about ditherScale pixels across by whole octaves, so the pattern stays on what it shades as the camera moves (Lucas Pope's Obra Dinn), and the sky's on a cube round the camera so turning carries them; object, in each mesh instance's own space, so a moving object carries its pattern. Off screen the frame runs the prepass."
+    field halftoneMode HalftoneMode "How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk)."
+    field halftoneMisregistration f32 "With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register." {
+      min 0
+      max 8
+      tunable true
+    }
+    field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all, the shade only (the darkest third of the tones: Ben-Day dots in the shadows) or the highlights only (the lightest third)."
+    field hatchingKeepColor bool "Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
   }
 
   resource MaterialStyle {
