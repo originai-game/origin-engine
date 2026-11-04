@@ -31,6 +31,15 @@ exist.
   particular game's scene is the game agent's work while it builds that
   game; showcase and in-scene frames are demos that hold a landing only
   when something breaks, never on looks (the owner, 2026-11-04).
+- **UI is a core plus extensions (the owner, 2026-11-04).** The core holds
+  the element model, layout, motion, render, the document and style
+  formats and the common components; genre kits and style packs are
+  extensions (a directory and a manifest, shipped with the engine)
+  installed into a game, built for agents to find, change and create.
+  First wave: RPG, shooter, puzzle/casual, gacha, strategy/TD and racing
+  kits; fantasy, scifi, cartoon and pixel packs; the other packs frozen.
+  The UI runner on macrunner is also the UI art director and merges what
+  it approves. Plan: artifact 3d9c6d8e-33f4-4cf3-8e61-54239077cd13.
 - **Threads.** At most eight sub-threads at once, `external-agent:claude-code`
   on Opus 5.5 medium (AGENTS.md); file-splitting threads in Amp `high`.
   Each stream is one thread on one branch from `origin/main`, owns the
