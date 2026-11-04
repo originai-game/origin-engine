@@ -1,6 +1,6 @@
 ---
 name: og-destruction
-description: Props that break on Origin Engine with og.destruction — walls, crates, pillars, glass panes and small structures prefractured by the cook (`fracture { }`: Voronoi chunks, shards through a pane, pieces each chunk shatters into, an interior material for the cut faces), made breakable with og.Destructible (toughness, strength, density, impact threshold), broken by hits, og.destruction.damage, explode and fracture, brought down by NVIDIA Blast's stress solver when their support is shot away, with og.Fractured for sound and camera shake, dust, sparks and GPU debris through particle emitters, and budgets for loose chunks. Use when anything in a game should shatter, splinter, crumble or collapse.
+description: Props that break on Origin Engine with og.destruction — walls, crates, pillars, glass panes and small structures prefractured by the cook (`fracture { }`: a fracture profile per material — brick along its mortar, chunky concrete, wood splintering along its grain, glass cracking radially from a blow, plain Voronoi — pieces each chunk shatters into, an interior material with its own maps for the cut faces), made breakable with og.Destructible (toughness, strength, friction, density, impact threshold), broken by hits, og.destruction.damage, explode and fracture, brought down by NVIDIA Blast's stress solver when their support is shot away, with og.Fractured for sound and camera shake, dust, sparks and GPU debris through particle emitters, and budgets for loose chunks. Use when anything in a game should shatter, splinter, crumble or collapse.
 ---
 
 A breakable prop on Origin Engine is a model the cook has already cut
@@ -21,17 +21,19 @@ are og-render's particles.
 
 Add a `fracture` block at the top level of a `type model` (og-model §9),
 or in a glTF's import settings (`models/barrel.glb.ogt`). `og cook` then
-cuts the model into Voronoi chunks bonded where they touch, writes the
-model with one node per chunk and writes `<model>#fracture`, which the
-engine loads with the model.
+cuts the model into chunks bonded where they touch, by the `style` of
+its material, writes the model with one node per chunk and writes
+`<model>#fracture`, which the engine loads with the model.
 
 ```
 type model
 version 1
 ---
 material "brick" {
-  color 0.55 0.24 0.16
-  roughness 0.92
+  color 1 1 1
+  roughness 0.9
+  map "../textures/brick.png"       # courses and mortar, a tile a metre
+  normalMap "../textures/brick_n.png"
 }
 part "wall" {
   material "brick"
@@ -40,33 +42,54 @@ part "wall" {
     width 4
     height 2.4
     depth 0.3
+    uvRepeat 4 2.4       # the texture once a metre, so its mortar meets the cracks
   }
 }
 fracture {
-  chunks 28            # support chunks, 2 to 256: what breaks loose and bears load
+  style brick          # voronoi | concrete | brick | wood | glass (below)
+  brick 0.25 0.1       # brick: a brick's length and height, as the texture draws them
+  chunks 40            # support chunks, 2 to 256: what breaks loose and bears load
   seed 11              # the same seed always makes the same chunks
-  children 5           # pieces each chunk shatters into when hit hard (0 to 32)
-  pattern volume       # volume (cells in 3D) | slab (shards through the thinnest axis) | auto
-  impact 0 0.6 0 0.35  # optional: half the seeds within 0.35 m of a point (finer there)
-  anchor bottom        # bottom (chunks on its lowest plane rest on the world) | none
+  children 32          # pieces each chunk shatters into when hit hard (0 to 32)
+  anchor bottom ends   # bottom (rests on the world) and/or ends (tied in at both
+                       # ends of its long axis, as a wall between two others) | none
   interiorScale 2      # the cut faces' uv repeats a metre
-  interior {           # the cut faces' material, with the material keys of og-model §9
-    color 0.62 0.42 0.34
-    roughness 0.98
+  interior {           # the cut faces' material: og-model §9's keys, maps included
+    color 1 1 1
+    roughness 1
+    map "../textures/brick_cut.png"
   }
 }
 ```
 
+Pick the style by what it is made of; each breaks as that material does:
+
+| style | breaks into | keys | use for |
+|---|---|---|---|
+| `brick` | blocks of brickwork cut along the mortar grid, each falling apart into its bricks | `brick w h` (0.25 0.1) | brick and block walls, stone courses, tiles |
+| `concrete` | chunky, rounded lumps (cells relaxed twice), crumbling into smaller lumps | | concrete, rock, plaster, a statue |
+| `wood` | long splinters along the grain | `grain x\|y\|z` (the longest axis) | crates, planks, beams, furniture |
+| `glass` | wedge shards radiating from the blow, crossed by `rings` concentric cracks | `rings` 1 to 8 (2), `impact` the blow | panes, windows, mirrors, ice sheets |
+| `voronoi` | even Voronoi cells | `pattern`, `impact` | anything else |
+
 - Chunk counts by prop: a crate 8 to 12, a pillar 12 to 16, a wall 20 to
-  40, a pane 16 to 24 with `pattern slab` and an `impact` point at its
-  centre (radial shards). More chunks cost more bodies when it falls.
-- `children` gives large chunks something to crumble into: a wall or a
-  pillar 4 to 6, a crate or a pane 0 (they are already small).
+  40, a pane 20 to 30. More chunks cost more bodies when it falls.
+- `children` gives large chunks something to crumble into: a pillar 4 to
+  6, a brick wall any count (its blocks' bricks, up to 32), a crate or a
+  pane 0 (they are already small).
+- `impact x y z r`: where it will be hit most (model space). The glass
+  cracks radiate from it; other styles cut finer within `r` of it.
 - `anchor none` for anything that moves (a crate, a barrel): nothing
-  holds it to the world.
-- Give the interior its own colour: the cut faces of brick are paler and
-  rougher than its face, wood is lighter inside, glass edges are greener.
-  Without `interior` it is the main material, darker and rough. In a
+  holds it to the world. `anchor bottom ends` for a wall between two
+  others: shot out at its foot, its ends stay as piers.
+- Make the outside read as its material (a brick, plank or concrete map
+  and normal map) and give the cut faces their own: brick paler, dustier
+  and rougher inside; concrete grey with its gravel showing (an
+  aggregate map); wood lighter, with the grain across it; glass edges
+  greener and catching the light (a faint `emissive`). Without
+  `interior` it is the main material, darker and rough. Clear glass is
+  `transmission 1` with `ior 1.5` and `roughness` near 0, not a low
+  `opacity`: it refracts what lies behind it and reflects the sky. In a
   stylised look (og-taste) the interior takes the look's treatment like
   every other material: keep it within the look's palette.
 - Scale the entity uniformly; a stretched prop's chunks collide as the
@@ -76,7 +99,7 @@ fracture {
 
 ```ts
 const wall = must(world.instantiate(must(og.load.gltf(world, "props/wall.ogt")), { position: { x: -3, y: 0, z: 0 } }));
-must(world.insert(wall, og.Destructible, { toughness: 800, strength: 6000, density: 1900, dust, sparks, debris: chips }));
+must(world.insert(wall, og.Destructible, { toughness: 800, strength: 3000, density: 1900, dust, sparks, debris: chips }));
 ```
 
 A standing prop (no og.RigidBody, or a static one) is its chunks from the
@@ -88,17 +111,23 @@ break, then as its chunks.
 
 | material | toughness (N·s/m²) | strength (Pa) | density (kg/m³) | impactThreshold (N·s) |
 |---|---|---|---|---|
-| glass | 30 to 60 | 0 (no stress) | 2500 | 2 |
-| wood | 200 to 400 | 0 to 3000 | 600 | 30 to 50 |
-| brick | 600 to 1000 | 4000 to 8000 | 1900 | 30 |
+| glass | 25 to 60 | 0 (no stress) | 2500 | 2 |
+| wood | 120 to 400 | 0 to 3000 | 600 | 30 to 50 |
+| brick | 600 to 1000 | 2000 to 5000 | 1900 | 30 |
 | concrete | 1500 to 2500 | 15000 to 30000 | 2400 | 60 |
 
 - `toughness`: how much a square metre of bond takes. A blow's `amount`
   (N·s) over a bond's area times toughness is the share of its health it
   loses.
-- `strength`: what the stress solver lets a bond carry. Low, a wall shot
-  out at its foot comes down; high, it hangs on whatever is left. 0 turns
-  the solver off (glass, a free crate).
+- `strength`: what the stress solver lets a bond carry in tension and
+  shear (thirty times it in compression). Low, what hangs over a hole
+  comes down; high, it hangs on whatever is left. 0 turns the solver off
+  (glass, a free crate).
+- `friction` (default 0.7): shear a bond gains from the compression
+  across it. Joints pressed by what stands on them hold and unloaded
+  ones slip, so a brick wall shot at its foot drops what hung over the
+  hole in steps along its courses and keeps its loaded piers. 0 makes
+  every joint as weak as the next (a Voronoi prop of no grain).
 - `impactThreshold`: the collision impulse (og.CollisionStarted.impulse)
   that does nothing; what is above it is the hit's damage, spread over
   `impactRadius`. A bullet body, a thrown rock and a falling crate all

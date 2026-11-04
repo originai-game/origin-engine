@@ -1,10 +1,13 @@
 type model
 version 1
 ---
-# A wooden crate, 0.8 m: a dynamic body that splinters where it lands hard.
+# A wooden crate, 0.8 m, of boards: a dynamic body that splinters along its
+# grain where it lands hard.
 material "wood" {
-  color 0.52 0.34 0.18
-  roughness 0.8
+  color 1 1 1
+  roughness 0.75
+  map "../textures/planks.png"
+  normalMap "../textures/planks_n.png"
 }
 part "box" {
   material "wood"
@@ -16,12 +19,17 @@ part "box" {
   }
 }
 fracture {
-  chunks 10
+  style wood
+  grain x
+  chunks 12
   seed 2
   children 0
   anchor none
+  interiorScale 1.5
   interior {
-    color 0.78 0.62 0.4
+    color 1 1 1
     roughness 0.9
+    map "../textures/wood_cut.png"
+    normalMap "../textures/wood_cut_n.png"
   }
 }

@@ -1,11 +1,14 @@
 type model
 version 1
 ---
-# A brick wall, 4 × 2.4 × 0.3 m, standing on its foot: 28 support chunks
-# anchored where they touch the ground, each with 5 pieces it shatters into.
+# A brick wall, 4 × 2.4 × 0.3 m, standing on its foot and tied in at both
+# ends: a running bond of 0.25 × 0.1 m bricks, broken along its mortar into
+# blocks of brickwork, each falling apart into its bricks.
 material "brick" {
-  color 0.55 0.24 0.16
-  roughness 0.92
+  color 1 1 1
+  roughness 0.9
+  map "../textures/brick.png"
+  normalMap "../textures/brick_n.png"
 }
 part "wall" {
   material "brick"
@@ -18,12 +21,17 @@ part "wall" {
   }
 }
 fracture {
-  chunks 28
+  style brick
+  brick 0.25 0.1
+  chunks 40
   seed 11
-  children 5
-  pattern volume
+  children 32          # a block's bricks (brick style: up to 32)
+  anchor bottom ends
+  interiorScale 2
   interior {
-    color 0.46 0.24 0.17
-    roughness 0.98
+    color 1 1 1
+    roughness 1
+    map "../textures/brick_cut.png"
+    normalMap "../textures/brick_cut_n.png"
   }
 }

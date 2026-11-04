@@ -2,10 +2,13 @@ type model
 version 1
 ---
 # A concrete pillar, 0.5 m across and 3 m tall: a blow at its middle takes
-# it away and what stood on it comes down.
+# it away in chunky lumps that show their gravel, and what stood on it
+# comes down.
 material "concrete" {
-  color 0.58 0.57 0.54
+  color 1 1 1
   roughness 0.85
+  map "../textures/concrete.png"
+  normalMap "../textures/concrete_n.png"
 }
 part "shaft" {
   material "concrete"
@@ -15,15 +18,19 @@ part "shaft" {
     radiusBottom 0.25
     height 3
     radialSegments 20
+    uvRepeat 1.6 3
   }
 }
 fracture {
-  chunks 14
+  style concrete
+  chunks 16
   seed 5
-  children 4
-  pattern volume
+  children 5
+  interiorScale 2.5
   interior {
-    color 0.66 0.65 0.62
-    roughness 1
+    color 1 1 1
+    roughness 0.95
+    map "../textures/concrete_cut.png"
+    normalMap "../textures/concrete_cut_n.png"
   }
 }

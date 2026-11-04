@@ -689,7 +689,13 @@ part "dice" {
   baked into a mesh of its own.
 - Materials: `color`, `opacity`, `metalness` (default 0), `roughness`
   (default 1), `emissive`, `emissiveIntensity`, `doubleSided`,
-  `alphaTest`. A part without one draws glTF's grey default.
+  `alphaTest`; maps `map "textures/brick.png"` (sRGB albedo, times
+  `color`) and `normalMap "textures/brick_n.png"` with `normalScale`,
+  files beside the model that repeat with the part's `uvRepeat`; and the
+  physical lobes `transmission` (0 to 1: clear glass refracting what is
+  behind it) with `ior` and `thickness`, and `clearcoat` with
+  `clearcoatRoughness` (varnish, lacquer). A part without one draws
+  glTF's grey default.
 - `og cook --report` lists the model's `triangles`, `parts`, `draws` (the
   distinct meshes; instanced placements are one) and `bvhBytes`/`bvhShare`.
   Past `budgets.triangles` or `budgets.vertices` in project.ogt the cook
