@@ -39,8 +39,9 @@ function hud(): void {
     });
   });
   og.ui.anchor("Instrument", { anchor: phone ? "bottom" : "bottomRight", margin: 16 }, () => racing.speedometer("Speed", tach(Math.round(220 * k))));
-  // A moment half a second old on every frame, so the capture always holds it.
-  racing.raceBanner("Banner", { ...checkpoint(og.ui.tick() - 30), below: "" });
+  // A moment half a second old on every frame, so the capture always holds it. On a phone the lead column fills
+  // the top of the screen, so the split stands under it (below), as a game passes its own HUD's foot.
+  racing.raceBanner("Banner", { ...checkpoint(og.ui.tick() - 30), below: phone ? "Page/Lead" : "" });
 }
 
 function arcade(): void {

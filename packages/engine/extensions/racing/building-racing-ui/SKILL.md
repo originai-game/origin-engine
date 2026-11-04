@@ -42,6 +42,10 @@ og.ui.anchor("Instrument", { anchor: "bottomRight", margin: 16 }, () =>
   racing.speedometer("Speed", { style: "tach", speed: 238, unit: "mph", rpm: 0.8, gear: "5", anchor: null }));
 ```
 
+`raceBanner`'s `below` names the HUD element its checkpoint split and
+final-lap band stand under (`"Page/Lead"`, a phone's stacked lap column);
+without it they sit a ninth and a fifth of the way down.
+
 Call them from the system that builds the game's UI each tick. Generic
 pieces stay in `og.ui`: the minimap (`og.ui.minimapView`, with `track` and
 `sectors`), timers (`og.ui.hudTimer`), meters and counters.
