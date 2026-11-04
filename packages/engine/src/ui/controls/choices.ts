@@ -277,7 +277,7 @@ export function segmented(id: string, desc: Api.SegmentedDesc = {}): Api.ChoiceI
   let focused = -1;
   const small = desc.size === "small";
   // A segment is at least 44 tall under a finger: the track's padding is around it.
-  const inner = byText(Math.max((small ? t.controlSm : t.controlMd) - 4, frame().touch ? TOUCH : 0));
+  const inner = Math.max((small ? t.controlSm : t.controlMd) - 4, frame().touch ? TOUCH : 0);
   const pad = Math.max(2, Math.round(inner * 0.08));
   const h = inner + 2 * pad;
   const offAll = desc.disabled ?? false;
@@ -401,7 +401,7 @@ export function cycler(id: string, options: readonly string[], index: number, de
   const cur = n > 0 ? Math.max(0, Math.min(n - 1, index)) : -1;
   let next = cur;
   let focused = -1;
-  const h = byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+  const h = Math.max(t.controlMd, frame().touch ? TOUCH : 0);
   const step = (d: number): void => {
     if (n <= 0) return;
     const k = next + d;

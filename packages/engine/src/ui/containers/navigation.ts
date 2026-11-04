@@ -67,7 +67,7 @@ export function tabBar(id: string, desc: Api.TabBarDesc, build: Api.UiItemBuild)
       const nat = known.map((w) => w || guess);
       const natSum = nat.reduce((a, b) => a + b, 0) + 2 * pad + Math.max(0, n - 1) * gap;
       const clipW = kit.memory("~clipW", 0);
-      const tallFallback = byText(Math.max(phone ? 44 : 40, t.controlMd)) + 2 * pad;
+      const tallFallback = Math.max(phone ? 44 : 40, t.controlMd) + 2 * pad;
       const tall = kit.memory("~h", 0) || tallFallback;
       const contentW = Math.max(natSum, desc.fill ? clipW : 0);
       // A px past the end: a tab whose width is still being learnt (a cut label measures short) is never cut by a sliver.

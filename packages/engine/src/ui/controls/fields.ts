@@ -39,7 +39,7 @@ function framed(
   const lit = role("panel");
   let r: Api.FieldResult | null = null;
   let cleared = false;
-  const h = byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+  const h = Math.max(t.controlMd, frame().touch ? TOUCH : 0);
   const vd = validity(invalid);
   kit.open(id, {
     direction: "row",
@@ -246,7 +246,7 @@ export function searchBox(id: string, query: string, desc: Api.SearchBoxDesc = {
       // above it in the stacking; it overlaps the field's neighbours by design.
       const self = kit.lastPath();
       const fb = kit.bounds(`${parentOf(self)}/Frame`);
-      const fieldH = fb?.height ?? byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+      const fieldH = fb?.height ?? Math.max(t.controlMd, frame().touch ? TOUCH : 0);
       // Above the field when below it the list would run past the screen's bottom (a field low on a phone)
       // and above it there is room, as a select's list flips (last tick's sizes).
       const { viewport: vp } = frame();

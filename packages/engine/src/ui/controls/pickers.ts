@@ -28,7 +28,7 @@ export function dropdown(id: string, desc: Api.DropdownDesc = {}): Api.DropdownR
   const invalid = !!desc.error;
   let open = kit.memory(`${id}~open`, 0) > 0 && !disabled;
   const wasOpen = open;
-  const h = byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+  const h = Math.max(t.controlMd, frame().touch ? TOUCH : 0);
   const chosen = selected >= 0 ? options[selected] : undefined;
   const searchable = desc.searchable ?? options.length > 10;
   let filter = "";

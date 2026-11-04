@@ -254,7 +254,7 @@ export function onScreenKeyboard(id: string, open: boolean, desc: Api.KeyboardDe
       kit.open("Preview", {
         direction: "row",
         width: grow(),
-        height: px(byText(Math.max(t.controlMd, 44))),
+        height: px(Math.max(t.controlMd, 44)),
         padding: xy(t.md, 0),
         cross: "center",
         radius: t.control,

@@ -318,7 +318,7 @@ export function numberStepper(id: string, value: number, desc: Api.NumberStepper
   const large = desc.largeStep && desc.largeStep > 0 ? desc.largeStep : step * 10;
   const disabled = desc.disabled ?? false;
   const wrap = (desc.wrap ?? false) && min !== null && max !== null;
-  const h = byText(Math.max(t.controlMd, frame().touch ? TOUCH : 0));
+  const h = Math.max(t.controlMd, frame().touch ? TOUCH : 0);
   const now = kit.seconds();
   // A held button repeats: after 0.4 s, every 0.12 s, then 0.05 s; past a second by the large step.
   const since = kit.memory(`${id}~since`, -1);
