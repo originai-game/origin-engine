@@ -235,9 +235,10 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   studio-win, Safari, phones (iPhone, Android with Adreno and Mali) and any
   per-backend references are a compatibility phase after the features,
   not per merge or per wave. **Started early (the owner, 2026-11-04):**
-  Windows (DX12, Chrome, Edge) runs now on studio-win beside the
+  Windows (DX12, Chrome, Edge, Firefox) on studio-win and Safari
+  (macOS and the iOS Simulator) on macrunner run now beside the
   feature work (Android on the owner's Pixel stays a to-do until the
-  owner connects the phone), in one thread that fixes
+  owner connects the phone), one thread each, that fix
   engine bugs at the root, records per-backend references only for
   legitimate differences, commits its evidence under
   `tests/evidence/compat/` and sends heads to the art runner; Metal stays
