@@ -68,7 +68,7 @@ function figureCard(f: Figure, foot?: () => void): void {
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
   kit.open("Plate", { direction: "column", width: grow(), gap: u(2), padding: { left: u(14), right: u(14), top: 0, bottom: u(12) }, part: `${f.part.split(".")[0]}.plate`, partClass: "badge" });
   text("Name", f.name, { step: st(f.big ? 22 : 18), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow(), color: f.dim ? "inkMuted" : "ink" });
-  if (f.sub) text("Sub", f.sub, { step: st(14), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+  if (f.sub) text("Sub", f.sub, { step: st(14), color: "inkMuted", width: grow() });
   foot?.();
   kit.close();
   over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true, z: 2 });
@@ -153,7 +153,10 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   // ready word (at 200 % text the plate ran up over the head and the card above); a card too short for the line under
   // the name drops it (names win over marks), and the lineup scrolls when such cards outgrow its room.
   const lineOf = (s: Api.TypeStepName): number => stepSize(s).line;
-  const lean = u(12) + lineOf(st(22)) + u(2) + u(6) + Math.max(u(14), lineOf(st(13))) + u(44);
+  // The ready word wraps rather than being cut: the plate as laid without the line under the name (its tallest last tick,
+  // or as long ago as one was laid) holds the cards up too.
+  const leanLaid = kit.memory(`~l.lean.${id}`, 0);
+  const lean = Math.max(u(12) + lineOf(st(22)) + u(2) + u(6) + Math.max(u(14), lineOf(st(13))), leanLaid) + u(44);
   const full = lean + u(2) + lineOf(st(14));
   const roomH = Math.max(lean, (lineH - u(8) - (rows - 1) * gap) / rows / (me && !portrait ? 1.12 : 1));
   // The widest a card may stand, from the room's width and the seats alone: the name's step follows it, not the card's
@@ -164,6 +167,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   const cw = Math.floor(portrait ? maxW : Math.min(maxW, roomH / 1.75));
   const ch = Math.max(lean, Math.floor(Math.min(roomH, cw * (portrait ? 1.25 : 1.75))));
   const big = (m: Api.LobbyMember | null): number => (m?.you && !portrait ? 1.12 : 1);
+  let leanNow = 0;
   kit.openScroll("Room", { width: grow(), height: grow(), gap: 0, padding: xy(0, 0) } as never);
   kit.open("Lineup", { direction: "row", width: grow(), height: { kind: "fit", min: Math.max(0, lineH) }, gap, wrap: portrait, align: "center", cross: portrait ? "start" : "end", padding: { left: 0, right: 0, top: u(8), bottom: 0 }, part: "Lobby.lineup", partClass: "panel" });
   members.forEach((m, i) => {
@@ -195,15 +199,27 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
     }, () => {
       // A card too short for its whole plate at a large text size keeps the name and the ready word (names win over
       // marks); the level and title stay in its spoken name.
-      const tight = h < full;
+      // The line under the name wraps rather than being cut; where its lines would take the plate up past the crown's
+      // corner, it is dropped too. The plate's height with it is the one laid when it was last shown at this width.
+      const plateH = kit.memory(`~l.pw.${key}`, 0) === w ? kit.memory(`~l.ph.${key}`, 0) : 0;
+      const tight = h < full || plateH > Math.min(h - u(44), h * 0.6);
       figureCard({ texture: m.portrait, name: m.name ?? "", sub: tight ? "" : sub, width: w, height: h, big: maxW >= u(180), lit: !!m.you, hot: ix.hovered || ix.focused, dim: false, part: "Lobby.member" }, () => {
         // The ready foot: a tick in success and the word, or the muted word (a status in its place).
         kit.row("Foot", { width: grow(), gap: u(6), cross: "center", padding: { left: 0, right: 0, top: u(6), bottom: 0 }, part: `Lobby.foot${flags(m.ready && "ready")}`, partClass: "badge" }, () => {
           if (m.ready && !m.status) symbol("Tick", "check", u(14), role("success"));
-          text("Word", readyWord.toLocaleUpperCase(), { step: st(13), font: "display", nowrap: true, ellipsis: true, width: grow(), color: m.ready && !m.status ? mix(role("success"), role("ink"), 0.25) : "inkMuted" });
+          text("Word", readyWord.toLocaleUpperCase(), { step: st(13), font: "display", width: grow(), color: m.ready && !m.status ? mix(role("success"), role("ink"), 0.25) : "inkMuted" });
         });
         if (popped && !still()) kit.props({ enter: { values: [{ prop: "scale", value: 1.25 }], transition: spring("emphasis") } });
       });
+      // The plate as laid last tick is its height with the line only when the line was shown then; else without it.
+      const shownLast = kit.memory(`~l.ps.${key}`, 0) === 1;
+      const laid = kit.bounds(kit.lastPath())?.height ?? 0;
+      if (!shownLast) leanNow = Math.max(leanNow, laid);
+      const laidPlate = shownLast ? laid : 0;
+      const withSub = laidPlate > 0 ? laidPlate : plateH;
+      kit.remember(`~l.ph.${key}`, withSub);
+      kit.remember(`~l.pw.${key}`, withSub > 0 ? w : 0);
+      kit.remember(`~l.ps.${key}`, tight ? 0 : 1);
       if (m.ready && !m.status) {
         // A ready card's foot carries a band of success light along its bottom edge.
         kit.open("Band", { width: grow(), height: px(u(4)) });
@@ -254,6 +270,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   kit.semantics({ role: "list", name: desc.title ?? "Party" });
   kit.close();
   rememberPath(`${id}~lineup`, kit.lastPath());
+  kit.remember(`~l.lean.${id}`, leanNow || leanLaid);
 
   // The foot: the mode card at the start, the one call to action at the end (under the thumb on a phone).
   kit.open("Bar", { direction: portrait ? "column" : "row", width: grow(), gap: u(phone ? 10 : 18), cross: portrait ? "stretch" : "center", part: "Lobby.bar", partClass: "panel" });
@@ -274,7 +291,8 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
     kit.column("Words", { gap: u(2), width: portrait ? grow() : null }, () => {
       text("Eyebrow", (desc.modeLabel ?? "Mode").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
       text("Name", mode.name ?? "", { step: st(phone ? 18 : 22), font: "display", heading: true, nowrap: true, ellipsis: true });
-      if (mode.detail) text("Detail", mode.detail, { step: st(14), color: "inkMuted", nowrap: true, ellipsis: true });
+      // Across a phone's width it wraps; beside the action the card takes its words' width.
+      if (mode.detail) text("Detail", mode.detail, { step: st(14), color: "inkMuted", ...(portrait ? { width: grow() } : { nowrap: true }) });
     });
   });
   if (modeR.clicked && !desc.searching) {
@@ -773,9 +791,10 @@ export function versus(id: string, desc: Api.VersusDesc): Api.VersusResult {
   kit.column("Mark", { gap: u(6), cross: "center", part: "Versus.mark", partClass: "badge" }, () => {
     text("Text", desc.versusLabel ?? "VS", { step: phone ? "displayMd" : "displayXl", font: "display", heading: true, nowrap: true });
     if (desc.stage) {
-      kit.row("Stage", { padding: xy(u(12), u(4)), part: "Versus.stage", partClass: "badge" }, () => {
+      // The stage's pill is at most the screen's width less a margin; a longer name wraps inside it.
+      kit.row("Stage", { width: { kind: "fit", max: Math.max(u(120), W - u(32)) }, padding: xy(u(12), u(4)), part: "Versus.stage", partClass: "badge" }, () => {
         kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.75) }] });
-        text("Text", desc.stage!, { step: st(14), color: "inkMuted", nowrap: true });
+        text("Text", desc.stage!, { step: st(14), color: "inkMuted", align: "center" });
       });
     }
   });

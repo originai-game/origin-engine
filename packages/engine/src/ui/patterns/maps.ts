@@ -148,7 +148,10 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       radius: 999,
       lift: -u(3),
       semantics: { role: "button", name: [found ? m.name ?? key : desc.undiscoveredLabel ?? "???", word(desc.kindLabels, m.kind ?? ""), m.tracked ? "tracked" : ""].filter(Boolean).join(", "), selected: isSel },
-      props: {
+      // Placed over the map with its states (a later over() would replace them: the pin lost its hover, press and lift).
+      layer: {
+        insets: { start: p.x - size / 2 - pad, top: p.y - size / 2 - pad },
+        z: isSel ? 4 : 3,
         states: [{ name: "find", states: [vstate("discovered"), vstate("undiscovered")], transitions: [] }],
         state: [{ group: "find", state: found ? "discovered" : "undiscovered" }],
       },
@@ -181,7 +184,6 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
         kit.props({ opacity: isSel ? 1 : labelA });
       }
     });
-    over({ insets: { start: p.x - size / 2 - pad, top: p.y - size / 2 - pad }, z: isSel ? 4 : 3 });
     if (r.clicked) {
       out.selected = isSel ? "" : key;
       kit.feedback(isSel ? "back" : "select", -1);
@@ -219,7 +221,7 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
   } else if (legend) kit.open("Legend", { direction: "column", width: grow(), gap: u(4), padding: xy(u(14), u(14)), part: "WorldMap.legend", partClass: "panel" });
   if (!phone && legend) {
     kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.9) }, vgrad([[0, token("sheen", 0.06)], [1, token("sheen", 0)]])], effects: [shadow(u(8), u(24), 0.5)] });
-    if (desc.title) text("Title", desc.title, { step: st(24), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
+    if (desc.title) text("Title", desc.title, { step: st(24), font: "display", heading: true, width: grow() });
   }
   if (legend) for (const k of kinds) {
     const on = !hidden.has(k);

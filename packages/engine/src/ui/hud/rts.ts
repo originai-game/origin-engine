@@ -14,7 +14,7 @@
 // nothing here draws a glow edge or a bevel of a particular look.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, role, rtl, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
+import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, reduced, role, rtl, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
 import { slot } from "./abilities.ts";
 import { minimapView } from "./nav.ts";
 
@@ -196,13 +196,35 @@ function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) =
         if (panelPath && !side) leaf("Seam", { width: pct(1), height: px(2), part: sel("SelectionPanel", "seam") }, { fills: [solid(token("hud", 0.9))] }, absolute({ start: 0, bottom: -1 }, { z: 2, overlaps: [panelPath] }));
       }
       text("Label", g.label ?? "", { step: "caption", font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
-      const res = close({ opacity: empty ? 0.55 : 1, a11y: a11y("tab", g.label ?? "", { value: `${g.count ?? 0}`, selected: cur }) });
+      const res = close({ opacity: empty ? 0.55 : 1, ...feel(cur ? 0 : -u(2), 0.96), a11y: a11y("tab", g.label ?? "", { value: `${g.count ?? 0}`, selected: cur }) });
       if (res.clicked) onClick(g.key ?? "");
     }
   });
   kit.semantics(a11y("tablist", "Control groups"));
   // Over the panel built after them, so the current tab's seam lies over the panel's top hairline.
   if (panelPath && !side) kit.props({ z: 1 });
+}
+
+/**
+ * A custom control's hover, press and focus (docs/ui.md §7.3): the `interaction` group, which og-ui moves from input.
+ * Hover and focus wash it towards the ink and raise it by `lift`; a press washes it further and sinks it to `sink`.
+ * Under reduced motion only the wash changes.
+ */
+function feel(lift: number, sink: number): Pick<Api.ElementProps, "states" | "state"> {
+  const ink = role("ink");
+  const wash = (a: number): Api.PropValue[] => [
+    { prop: "backgroundR", value: ink.r }, { prop: "backgroundG", value: ink.g }, { prop: "backgroundB", value: ink.b }, { prop: "backgroundA", value: a },
+  ];
+  const move = (y: number, k: number): Api.PropValue[] => (reduced() ? [] : [{ prop: "y", value: y }, { prop: "scale", value: k }]);
+  const st = (name: string, values: Api.PropValue[]): Api.VisualState => ({ name, values, onEnter: "", onExit: "" });
+  return {
+    states: [{
+      name: "interaction",
+      states: [st("normal", [...wash(0), ...move(0, 1)]), st("hover", [...wash(0.08), ...move(lift, 1)]), st("pressed", [...wash(0.18), ...move(0, sink)]), st("focused", [...wash(0.08), ...move(lift, 1)]), st("disabled", [...wash(0), ...move(0, 1)])],
+      transitions: [],
+    }],
+    state: [],
+  };
 }
 
 /**
@@ -250,7 +272,7 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
   // 1080p), the art lit from its rim inward, and the glow round the tile above.
   if (focused) leaf("Focus", { width: pct(1), height: pct(1), part: sel("SelectionPanel", "focus") }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [stroke(Math.max(2, u(2)), token("highlight"), "inside")], effects: [innerGlow(u(10), token("highlight", 0.3))] }, absolute({ start: 0, top: 0 }));
   else leaf("Rim", { width: pct(1), height: pct(1) }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [{ width: 1, align: "inside", paint: vgrad([[0, lit(WHITE, 0.28)], [0.5, lit(WHITE, 0.05)], [1, lit(BLACK, 0.6)]]) }] }, absolute({ start: 0, top: 0 }));
-  const res = close({ a11y: a11y("option", u0.name ?? "", { value: max > 0 ? `${Math.round(u0.health ?? 0)} of ${Math.round(max)}` : "", selected: focused }) });
+  const res = close({ ...feel(-u(2), 0.94), a11y: a11y("option", u0.name ?? "", { value: max > 0 ? `${Math.round(u0.health ?? 0)} of ${Math.round(max)}` : "", selected: focused }) });
   kit.tooltip(u0.name ?? "");
   return res;
 }

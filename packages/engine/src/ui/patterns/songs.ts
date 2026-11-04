@@ -131,7 +131,7 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
     if (!compact) kit.column("Head", { width: grow(), gap: u(4) }, () => {
       text("Title", song?.title ?? "", { step: phone ? "xl3" : "displayMd", font: "display", heading: true, maxLines: 2, width: grow() });
       kit.props(fade);
-      text("Artist", song?.artist ?? "", { step: st(phone ? 15 : 20), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+      text("Artist", song?.artist ?? "", { step: st(phone ? 15 : 20), color: "inkMuted", width: grow() });
     });
     if (!compact) {
       kit.row("Stats", { gap: u(28), cross: "end", part: "Songs.stats", partClass: "badge" }, () => {
@@ -225,11 +225,21 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   // The wheel's rows take their words' height (at 200 % text the design's row is too short for a title over an artist).
   const lh = (s: Api.TypeStepName): number => stepSize(s).line;
   // A row's end stacks its lock or New tag over its BPM.
-  const rowWords = (sel: boolean, marked: boolean): number => u(16) + Math.max(lh(st(sel ? 20 : 16)) + u(2) + lh(st(13)), (marked ? Math.max(u(16), u(6) + lh(st(12))) + u(4) : 0) + lh(st(sel ? 18 : 15)));
+  // At a large text size it is a line under the title and the artist instead (stacked).
+  const stacked = (frame().theme.textScale ?? 1) > 1;
+  const rowWords = (sel: boolean, marked: boolean): number => {
+    const words = lh(st(sel ? 20 : 16)) + u(2) + lh(st(13));
+    const mark = marked ? Math.max(u(16), u(6) + lh(st(12))) : 0;
+    return u(16) + (stacked ? words + u(2) + Math.max(mark, lh(st(sel ? 18 : 15))) : Math.max(words, (mark ? mark + u(4) : 0) + lh(st(sel ? 18 : 15))));
+  };
   const rowDesign = u(phone ? 64 : 84);
   const bigDesign = Math.round(rowDesign * (portrait ? 1 : 1.22));
-  const rowH = Math.max(rowDesign, rowWords(false, songs.some((s) => s.locked || s.isNew)));
-  const big = Math.max(Math.round(rowH * (portrait ? 1 : 1.22)), rowWords(true, !!song && (!!song.locked || !!song.isNew)));
+  // A title or an artist too long for the row's width wraps to a second line rather than being cut: the rows take the
+  // tallest words laid last tick (the selected row's and the others' apart, their title steps differ).
+  const wordsH = (sel: boolean): number => u(16) + kit.memory(`~g.wh${sel ? 1 : 0}.${id}`, 0);
+  const rowH = Math.max(rowDesign, rowWords(false, songs.some((s) => s.locked || s.isNew)), wordsH(false));
+  const big = Math.max(Math.round(rowDesign * (portrait ? 1 : 1.22)), rowWords(true, !!song && (!!song.locked || !!song.isNew)), wordsH(true));
+  const laidWords = [0, 0];
   const gap = u(phone ? 6 : 10);
   const colGap = u(phone ? 12 : 28);
 
@@ -249,9 +259,10 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
         kit.column("Side", { width: grow(), gap: u(4) }, () => {
           text("Title", song?.title ?? "", { step: "xl3", font: "display", heading: true, maxLines: 2, width: grow() });
           kit.props(fade);
-          text("Artist", song?.artist ?? "", { step: st(15), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
-          if ((song?.bpm ?? 0) > 0) text("Stats", `${desc.bpmLabel ?? "BPM"} ${Math.round(song!.bpm!)} · ${mmss(song?.seconds ?? 0)}`, { step: st(13), font: "mono", color: "inkMuted", nowrap: true });
-          if ((song?.best ?? 0) > 0) text("Best", [`${desc.bestLabel ?? "Best score"} ${grouped(song!.best!)}`, song?.grade ?? ""].filter(Boolean).join(" · "), { step: st(13), font: "mono", nowrap: true, ellipsis: true, width: grow() });
+          // The head scrolls, so its words wrap whole rather than cut.
+          text("Artist", song?.artist ?? "", { step: st(15), color: "inkMuted", width: grow() });
+          if ((song?.bpm ?? 0) > 0) text("Stats", `${desc.bpmLabel ?? "BPM"} ${Math.round(song!.bpm!)} · ${mmss(song?.seconds ?? 0)}`, { step: st(13), font: "mono", color: "inkMuted", width: grow() });
+          if ((song?.best ?? 0) > 0) text("Best", [`${desc.bestLabel ?? "Best score"} ${grouped(song!.best!)}`, song?.grade ?? ""].filter(Boolean).join(" · "), { step: st(13), font: "mono", width: grow() });
         });
       });
       kit.close();
@@ -337,18 +348,23 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
           kit.close();
         }
       });
-      kit.column("Words", { width: grow(), gap: u(2) }, () => {
-        text("Title", s.title ?? key, { step: st(sel ? 20 : 16), font: "display", nowrap: true, ellipsis: true, width: grow(), color: s.locked ? "inkMuted" : "ink" });
-        text("Artist", s.artist ?? "", { step: st(13), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
-      });
-      kit.column("End", { gap: u(4), cross: "end" }, () => {
+      // The row's end: the lock or New tag over the BPM. At a large text size it is a line under the words instead, so
+      // the title and the artist keep the row's width.
+      const end = (): void => {
         if (s.locked) symbol("Lock", "lock", u(16), role("inkMuted"), { icon: "lock" });
         else if (s.isNew) cornerTag("New", desc.newLabel ?? "New");
         if ((s.bpm ?? 0) > 0) kit.row("Bpm", { gap: u(4), cross: "end" }, () => {
           text("Label", desc.bpmLabel ?? "BPM", { step: "caption", font: "display", color: "inkMuted", nowrap: true });
           text("Value", String(Math.round(s.bpm!)), { step: st(sel ? 18 : 15), font: "mono", nowrap: true });
         });
+      };
+      kit.column("Words", { width: grow(), gap: u(2) }, () => {
+        text("Title", s.title ?? key, { step: st(sel ? 20 : 16), font: "display", maxLines: 2, ellipsis: true, width: grow(), color: s.locked ? "inkMuted" : "ink" });
+        text("Artist", s.artist ?? "", { step: st(13), color: "inkMuted", maxLines: 2, ellipsis: true, width: grow() });
+        if (stacked) kit.row("End", { gap: u(8), cross: "center" }, end);
       });
+      laidWords[sel ? 1 : 0] = Math.max(laidWords[sel ? 1 : 0]!, Math.ceil(kit.bounds(kit.lastPath())?.height ?? 0));
+      if (!stacked) kit.column("End", { gap: u(4), cross: "end" }, end);
     });
     if (ix.focused && !sel && kit.memory(`~g.f.${id}`, 0) === 1) {
       out.selected = key;
@@ -371,6 +387,8 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   }
   kit.close();
   rememberPath(`${id}~wheel`, kit.lastPath());
+  // A kind of row not built this tick keeps what it had.
+  for (const k of [0, 1]) kit.remember(`~g.wh${k}.${id}`, laidWords[k] || kit.memory(`~g.wh${k}.${id}`, 0));
   kit.semantics({ role: "listbox", name: song?.title ?? "Songs" });
   kit.remember(`~g.f.${id}`, 1);
   if (portrait) {
