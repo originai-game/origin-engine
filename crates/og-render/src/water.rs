@@ -1006,16 +1006,8 @@ impl WaterRenderer {
         });
         // The ripples' normal map: tiled, trilinear and 16x anisotropic (three.js water normals are RepeatWrapping
         // with mips): the clamped, mip-less water sampler blocked them up at grazing angles and seamed every tile.
-        let ripple_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("water ripples"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            anisotropy_clamp: 16,
-            ..Default::default()
-        });
+        let ripple_sampler =
+            device.create_sampler(&crate::renderer::surface_sampler("water ripples"));
         let flat = height_texture(device, 1).1;
         WaterRenderer {
             ripple_sampler,

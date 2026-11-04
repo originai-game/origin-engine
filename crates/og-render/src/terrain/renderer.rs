@@ -219,16 +219,8 @@ impl TerrainRenderer {
             terrain_shadow_source(),
             false,
         );
-        let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("terrain layers"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            anisotropy_clamp: 8,
-            ..Default::default()
-        });
+        let layer_sampler =
+            device.create_sampler(&crate::renderer::surface_sampler("terrain layers"));
         let map_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("terrain maps"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,

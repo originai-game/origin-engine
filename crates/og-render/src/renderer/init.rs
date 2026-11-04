@@ -391,18 +391,7 @@ impl Renderer {
             });
 
         // Samplers and fixed-size targets.
-        let material_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("material"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            // Filter grazing-angle footprints along both axes. wgpu clamps
-            // this to 1 on devices without ANISOTROPIC_FILTERING.
-            anisotropy_clamp: 16,
-            ..Default::default()
-        });
+        let material_sampler = device.create_sampler(&super::surface_sampler("material"));
         // Sprites and the UI's images filter anisotropically where the
         // device can (RenderInfo::sprite_anisotropy): a nine-slice's middle
         // squeezed along one axis reads its mip level by the other one.
