@@ -68,8 +68,14 @@ statically links DXC on x64 MSVC, so the installed engine needs no compiler
 DLL. The native binaries use the Microsoft Visual C++ x64 runtime
 (MSVCP140/VCRUNTIME140); game authors need its redistributable, not Visual
 Studio or Rust. The reference harness falls back to Metal; differences are reported,
-not silently recorded. `og check` and the package's typecheck command use
-the pinned tsgo through Bun because there is no Windows tsrs package.
+not silently recorded. `crates/og-tests/references/dx12/` and `vulkan/`
+(`OG_GFX_BACKEND=vulkan`) hold a frame only where that backend differs from
+Metal's legitimately, each with its reason in the commit that recorded it:
+nearest-sampled texels whose edges fall on pixel centres (sprites-array,
+tilemap-lit), and NVIDIA's Vulkan anisotropic filter (post-adjust,
+sprites-20k, water-ocean, terrain-tiling). Every other scene is held to
+Metal's. `og check` and the package's typecheck command use the pinned tsgo
+through Bun because there is no Windows tsrs package.
 
 `OG_RELEASE=1 sh packages/engine/scripts/pack.sh` builds the Windows native
 package and the shared wasm package. Pack create-game in `packages/create`
