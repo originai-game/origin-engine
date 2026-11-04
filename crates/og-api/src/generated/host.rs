@@ -1313,6 +1313,10 @@ pub trait TerrainApi: Wire {
     fn og_terrain_bounds(&self, world: u32, data: f64, origin: Option<String>, quaternion: Option<String>, scale: Option<String>) -> String;
     /// `og.terrain.edit`
     fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String;
+    /// `og.terrain.stamp`
+    fn og_terrain_stamp(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.terrain.unstamp`
+    fn og_terrain_unstamp(&self, world: u32, data: f64, stamp: u32) -> String;
     /// `og.terrain.layer`
     fn og_terrain_layer(&self, world: u32, data: f64, index: u32) -> String;
     /// `og.terrain.setLayer`
@@ -2017,6 +2021,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_terrain_sample",
     "og_terrain_bounds",
     "og_terrain_edit",
+    "og_terrain_stamp",
+    "og_terrain_unstamp",
     "og_terrain_layer",
     "og_terrain_set_layer",
     "og_stream_status",

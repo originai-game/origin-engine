@@ -266,7 +266,7 @@ pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS,
     TERRAIN_TEXTURED_LAYERS, Terrain, TerrainClipmap, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLayerArrays, TerrainLevel, TerrainLod, TerrainSampler, TerrainScatter,
+    TerrainLayerArrays, TerrainLevel, TerrainLod, TerrainSampler, TerrainScatter, TerrainStampDraw,
 };
 pub use terrain_tiles::{
     ControlPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE,

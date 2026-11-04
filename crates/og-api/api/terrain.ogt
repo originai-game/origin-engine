@@ -24,6 +24,12 @@ module terrain {
     variant fill "Fill holes in again where `hole` would cut them."
   }
 
+  enum TerrainStampMode {
+    doc "What og.terrain.stamp does to the height field under a stamp's mesh."
+    variant carve "Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. Ground already lower is left as it is."
+    variant hole "Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal)."
+  }
+
   component Terrain {
     doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
@@ -42,6 +48,25 @@ module terrain {
     field lodRing u32 "Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4)." {
       min 0
       max 256
+    }
+  }
+
+  component TerrainStamp {
+    doc "Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry."
+    field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+    field geometry Geometry "The mesh."
+    field blend f32 "Metres above the ground under it over which the mesh fades into the ground's look (0: a hard edge)." {
+      default 1
+      min 0
+      max 64
+      unit m
+      tunable true
+    }
+    field visible bool "Draw it." {
+      default true
+    }
+    field castShadows bool "Cast shadows (with its terrain's own castShadows)." {
+      default true
     }
   }
 
@@ -365,6 +390,34 @@ module terrain {
     field maxHeight f32 "Its highest now." {
       unit m
     }
+    field stamp u32 "og.terrain.stamp: the stamp's id, for og.terrain.unstamp (from 1). 0 for every other edit."
+  }
+
+  struct TerrainStampDesc {
+    doc "One stamp of a mesh into a terrain (og.terrain.stamp)."
+    desc true
+    field data TerrainData "The terrain."
+    field origin Vector3 "Where the terrain stands: its og.Terrain entity's world position." {
+      unit m
+    }
+    field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation."
+    field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+      default 1 1 1
+    }
+    field geometry Geometry "The mesh (its og.TerrainStamp's geometry)."
+    field position Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
+      unit m
+    }
+    field rotation Quaternion "How the mesh is turned: its entity's world rotation."
+    field size Vector3 "How the mesh is scaled: its entity's world scale." {
+      default 1 1 1
+    }
+    field mode TerrainStampMode "What it does to the ground."
+    field depth f32 "carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh." {
+      default 0.25
+      min 0
+      unit m
+    }
   }
 
   struct TerrainLayerDesc {
@@ -478,6 +531,21 @@ module terrain {
     param data TerrainData "The terrain."
     param brush TerrainBrush "What to do and where."
     returns Result.TerrainEdit "Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it."
+  }
+
+  fn stamp {
+    doc "Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp."
+    param world World "The world."
+    param desc TerrainStampDesc "The terrain, the mesh, where both stand, and what to do."
+    returns Result.TerrainEdit "Refused for an unknown terrain, a geometry that is not loaded, or a mesh that covers none of the terrain."
+  }
+
+  fn unstamp {
+    doc "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made."
+    param world World "The world."
+    param data TerrainData "The terrain."
+    param stamp u32 "The id og.terrain.stamp answered."
+    returns Result.TerrainEdit "Refused for an unknown terrain or a stamp it does not hold."
   }
 
   fn layer {

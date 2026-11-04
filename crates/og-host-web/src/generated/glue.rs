@@ -2982,6 +2982,16 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> String {
+    <Host as TerrainApi>::og_terrain_stamp(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_unstamp(world: u32, data: f64, stamp: u32) -> String {
+    <Host as TerrainApi>::og_terrain_unstamp(&Host, world, data, stamp)
+}
+
+#[wasm_bindgen]
 pub fn og_terrain_layer(world: u32, data: f64, index: u32) -> String {
     <Host as TerrainApi>::og_terrain_layer(&Host, world, data, index)
 }

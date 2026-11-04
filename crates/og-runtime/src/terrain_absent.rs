@@ -134,6 +134,14 @@ pub fn og_terrain_edit(_world: u32, _data: f64, _brush: Option<String>) -> Strin
     absent()
 }
 
+pub fn og_terrain_stamp(_world: u32, _desc: Option<String>) -> String {
+    absent()
+}
+
+pub fn og_terrain_unstamp(_world: u32, _data: f64, _stamp: u32) -> String {
+    absent()
+}
+
 pub fn og_terrain_layer(_world: u32, _data: f64, _index: u32) -> String {
     absent()
 }

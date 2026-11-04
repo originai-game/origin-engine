@@ -129,6 +129,7 @@ impl RenderScene {
             light_cookies: Vec::new(),
             water: Vec::new(),
             terrains: Vec::new(),
+            terrain_stamps: Vec::new(),
             scatters: Vec::new(),
             grass: Vec::new(),
             impostors: Vec::new(),

@@ -25,6 +25,12 @@ impl TerrainApi for NodeHost {
     fn og_terrain_edit(&self, world: u32, data: f64, brush: Option<String>) -> String {
         rt::og_terrain_edit(world, data, brush)
     }
+    fn og_terrain_stamp(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_terrain_stamp(world, desc)
+    }
+    fn og_terrain_unstamp(&self, world: u32, data: f64, stamp: u32) -> String {
+        rt::og_terrain_unstamp(world, data, stamp)
+    }
     fn og_terrain_layer(&self, world: u32, data: f64, index: u32) -> String {
         rt::og_terrain_layer(world, data, index)
     }

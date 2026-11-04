@@ -249,7 +249,7 @@ pub use stream::{
 };
 pub use terrain::{
     og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load, og_terrain_sample,
-    og_terrain_set_layer,
+    og_terrain_set_layer, og_terrain_stamp, og_terrain_unstamp,
 };
 pub use timeline::{
     og_load_timeline, og_path_create, og_path_find, og_path_length, og_path_nearest,

@@ -3572,6 +3572,18 @@ pub fn og_terrain_edit(env: Env, world: u32, data: f64, brush: Option<String>) -
     <Host as TerrainApi>::og_terrain_edit(&Host, world, data, brush)
 }
 
+#[napi(js_name = "og_terrain_stamp")]
+pub fn og_terrain_stamp(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_stamp(&Host, world, desc)
+}
+
+#[napi(js_name = "og_terrain_unstamp")]
+pub fn og_terrain_unstamp(env: Env, world: u32, data: f64, stamp: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_unstamp(&Host, world, data, stamp)
+}
+
 #[napi(js_name = "og_terrain_layer")]
 pub fn og_terrain_layer(env: Env, world: u32, data: f64, index: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

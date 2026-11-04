@@ -153,6 +153,9 @@ impl RenderScene {
         for w in &mut self.water {
             moved(&mut w.transform, d);
         }
+        for t in &mut self.terrain_stamps {
+            moved(&mut t.transform, d);
+        }
         for t in &mut self.terrains {
             moved(&mut t.transform, d);
         }

@@ -29,6 +29,8 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+mod stamp;
+
 /// The Geometry handles of terrains' height fields: a range of their own,
 /// beside glTF geometries' (`assets::handle`).
 const GEOMETRY_BASE: u64 = 0x7e << 32;
@@ -273,6 +275,9 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
             continue;
         };
         let b: Value = serde_json::from_str(&brush).map_err(|e| e.to_string())?;
+        if stamp::removed(&b) {
+            continue;
+        }
         edit_loaded(eng, i, &b, false)?;
     }
     Ok(())
@@ -906,25 +911,36 @@ fn paint(
     touched
 }
 
-/// Applies a brush to loaded terrain `i` (and logs it, unless replaying).
+/// Loaded terrain `i`'s asset id, as the edit log names it.
+fn terrain_id(t: &TerrainState, i: usize) -> String {
+    t.by_id
+        .iter()
+        .find(|(_, k)| **k == i)
+        .map(|(id, _)| id.clone())
+        .unwrap_or_default()
+}
+
+/// Applies a brush or a stamp's patch to loaded terrain `i` (and logs it,
+/// unless replaying).
 fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, String> {
     {
         let (touched, snapshot, collision) = {
             let mut rs = eng.render.borrow_mut();
             let t = &mut rs.terrain.loaded[i];
-            let n = apply(t, b)?;
+            let n = if b.get("stamp").is_some() {
+                if t.field.is_none() {
+                    t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
+                }
+                t.edited = true;
+                stamp::apply(t.field.as_mut().expect("decoded above"), b)?
+            } else {
+                apply(t, b)?
+            };
             let snapshot = (t.render, t.field.clone().expect("edited"));
             (n, snapshot, t.collision)
         };
         if log {
-            let rs = eng.render.borrow();
-            let id = rs
-                .terrain
-                .by_id
-                .iter()
-                .find(|(_, k)| **k == i)
-                .map(|(id, _)| id.clone())
-                .unwrap_or_default();
+            let id = terrain_id(&eng.render.borrow().terrain, i);
             log_of(eng.id)
                 .lock()
                 .expect("the edit log")
@@ -941,7 +957,8 @@ fn edit_loaded(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<Value, St
             set_heightfield(eng, GEOMETRY_BASE + i as u64, &data)?;
         }
         let (lo, hi) = data.range();
-        Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi }))
+        let stamp = b["stamp"].as_u64().unwrap_or(0);
+        Ok(json!({ "samples": touched, "minHeight": lo, "maxHeight": hi, "stamp": stamp }))
     }
 }
 
@@ -953,6 +970,17 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
         let b = parse(brush.as_deref())?;
         edit_loaded(&eng, i, &b, true)
     })())
+}
+
+pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> String {
+    wire((|| {
+        let eng = engine(world)?;
+        stamp::stamp(&eng, &parse(desc.as_deref())?)
+    })())
+}
+
+pub fn og_terrain_unstamp(world: u32, data: f64, stamp: u32) -> String {
+    wire((|| stamp::unstamp(&*engine(world)?, data, stamp))())
 }
 
 fn layer_json(l: &TerrainLayer) -> Value {
@@ -1205,6 +1233,37 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             cast_shadows: on(&v, "castShadows", true),
             impostor,
             impostor_distance: f(&v, "impostorDistance", 0.0),
+        });
+    }
+    // og.TerrainStamp: meshes drawn with the drawn terrain of the same
+    // data, in its material and blended into its ground.
+    rs.scene.terrain_stamps.clear();
+    let layout = rs.draw.stamp.clone();
+    for (e, v) in rows(world, layout.as_ref()) {
+        if !on(&v, "visible", true) {
+            continue;
+        }
+        let Some(t) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0))
+            .and_then(|i| rs.terrain.loaded.get(i))
+        else {
+            rs.notes.push(format!(
+                "og.TerrainStamp on entity {e} names no loaded terrain"
+            ));
+            continue;
+        };
+        let Some(terrain) = rs.scene.terrains.iter().position(|d| d.terrain == t.render) else {
+            continue;
+        };
+        let geometry = (v["geometry"].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+        let Some(&mesh) = rs.geometries.get(geometry) else {
+            continue;
+        };
+        rs.scene.terrain_stamps.push(og_render::TerrainStampDraw {
+            terrain,
+            mesh,
+            transform: h.world_of(e),
+            blend: f(&v, "blend", 1.0),
+            cast_shadows: on(&v, "castShadows", true),
         });
     }
     // og.Grass: fields over the drawn terrain of the same data, generated

@@ -1187,6 +1187,10 @@ export interface HostAbi<A, V> {
   og_terrain_bounds(world: number, data: number, origin: string | undefined, quaternion: string | undefined, scale: string | undefined): string;
   /** `og.terrain.edit` */
   og_terrain_edit(world: number, data: number, brush: string | undefined): string;
+  /** `og.terrain.stamp` */
+  og_terrain_stamp(world: number, desc: string | undefined): string;
+  /** `og.terrain.unstamp` */
+  og_terrain_unstamp(world: number, data: number, stamp: number): string;
   /** `og.terrain.layer` */
   og_terrain_layer(world: number, data: number, index: number): string;
   /** `og.terrain.setLayer` */
@@ -1858,6 +1862,8 @@ export const SYMBOLS: readonly string[] = [
   "og_terrain_sample",
   "og_terrain_bounds",
   "og_terrain_edit",
+  "og_terrain_stamp",
+  "og_terrain_unstamp",
   "og_terrain_layer",
   "og_terrain_set_layer",
   "og_stream_status",

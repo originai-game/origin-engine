@@ -50005,6 +50005,13 @@ export declare function TerrainData(value?: TerrainData, options?: FieldOptions)
 export type TerrainBrushMode = "raise" | "lower" | "flatten" | "smooth" | "paint" | "hole" | "fill";
 
 /**
+ * What og.terrain.stamp does to the height field under a stamp's mesh.
+ * - `"carve"`: Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. Ground already lower is left as it is.
+ * - `"hole"`: Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal).
+ */
+export type TerrainStampMode = "carve" | "hole";
+
+/**
  * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
  *
  * The value of the `Terrain` component (token `og.Terrain`).
@@ -50038,6 +50045,39 @@ export interface Terrain {
    * @range 0..256
    */
   lodRing: number;
+}
+
+/**
+ * Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
+ *
+ * The value of the `TerrainStamp` component (token `og.TerrainStamp`).
+ */
+export interface TerrainStamp {
+  /** The terrain (og.terrain.load's TerrainInfo.data). */
+  data: TerrainData;
+  /** The mesh. */
+  geometry: Geometry;
+  /**
+   * Metres above the ground under it over which the mesh fades into the ground's look (0: a hard edge).
+   *
+   * @default 1
+   * @range 0..64
+   * @unit m (metres)
+   * @tunable
+   */
+  blend: number;
+  /**
+   * Draw it.
+   *
+   * @default true
+   */
+  visible: boolean;
+  /**
+   * Cast shadows (with its terrain's own castShadows).
+   *
+   * @default true
+   */
+  castShadows: boolean;
 }
 
 /**
@@ -50571,6 +50611,82 @@ export interface TerrainEdit {
    * @unit m (metres)
    */
   readonly maxHeight: number;
+  /**
+   * og.terrain.stamp: the stamp's id, for og.terrain.unstamp (from 1). 0 for every other edit.
+   */
+  readonly stamp: number;
+}
+
+/**
+ * One stamp of a mesh into a terrain (og.terrain.stamp).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainStampDesc {
+  /**
+   * The terrain.
+   *
+   * @default 0
+   */
+  readonly data?: TerrainData;
+  /**
+   * Where the terrain stands: its og.Terrain entity's world position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * How it is turned: its og.Terrain entity's world rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * How it is scaled: its og.Terrain entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly scale?: Vector3;
+  /**
+   * The mesh (its og.TerrainStamp's geometry).
+   *
+   * @default 0
+   */
+  readonly geometry?: Geometry;
+  /**
+   * Where the mesh stands: its og.TerrainStamp entity's world position.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * How the mesh is turned: its entity's world rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly rotation?: Quaternion;
+  /**
+   * How the mesh is scaled: its entity's world scale.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly size?: Vector3;
+  /**
+   * What it does to the ground.
+   *
+   * @default "carve"
+   */
+  readonly mode?: TerrainStampMode;
+  /**
+   * carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly depth?: number;
 }
 
 /**
@@ -50692,6 +50808,8 @@ export interface TerrainLayerDesc {
    */
   readonly altitudeFade?: number;
 }
+
+
 
 
 
@@ -58038,6 +58156,10 @@ export declare namespace og {
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32"> }, Terrain>;
   /**
+   * Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
+   */
+  const TerrainStamp: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly blend: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool"> }, TerrainStamp>;
+  /**
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
   const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32"> }, TerrainScatter>;
@@ -58087,6 +58209,23 @@ export declare namespace og {
      * @returns Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.
      */
     function edit(world: World, data: TerrainData, brush?: TerrainBrush): Result<TerrainEdit>;
+    /**
+     * Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp.
+     *
+     * @param world The world.
+     * @param desc The terrain, the mesh, where both stand, and what to do.
+     * @returns Refused for an unknown terrain, a geometry that is not loaded, or a mesh that covers none of the terrain.
+     */
+    function stamp(world: World, desc?: TerrainStampDesc): Result<TerrainEdit>;
+    /**
+     * Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.
+     *
+     * @param world The world.
+     * @param data The terrain.
+     * @param stamp The id og.terrain.stamp answered.
+     * @returns Refused for an unknown terrain or a stamp it does not hold.
+     */
+    function unstamp(world: World, data: TerrainData, stamp: number): Result<TerrainEdit>;
     /**
      * A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it).
      *

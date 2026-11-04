@@ -21,6 +21,8 @@ export const terrain = Object.freeze({
   bounds: (world: W, data: number, origin?: unknown, quaternion?: unknown, scale?: unknown) =>
     parse(abi().og_terrain_bounds(world.id, data, json(origin), json(quaternion), json(scale))),
   edit: (world: W, data: number, brush?: unknown) => parse(abi().og_terrain_edit(world.id, data, json(brush))),
+  stamp: (world: W, desc?: unknown) => parse(abi().og_terrain_stamp(world.id, json(desc))),
+  unstamp: (world: W, data: number, stamp: number) => parse(abi().og_terrain_unstamp(world.id, data, stamp)),
   layer: (world: W, data: number, index: number) => parse(abi().og_terrain_layer(world.id, data, index)),
   setLayer: (world: W, data: number, index: number, layer?: unknown) =>
     parse(abi().og_terrain_set_layer(world.id, data, index, json(layer))),

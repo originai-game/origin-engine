@@ -666,6 +666,8 @@ pub(crate) struct DrawLayouts {
     pub scatter: Option<Layout>,
     #[cfg(not(feature = "profile2d"))]
     pub grass: Option<Layout>,
+    #[cfg(not(feature = "profile2d"))]
+    pub stamp: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,
     /// og.Lines and og.Points (`super::geometry`).

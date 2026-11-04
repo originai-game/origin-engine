@@ -24,6 +24,7 @@ mod grass;
 mod impostors;
 mod material;
 mod sampling_scatter;
+mod stamps;
 mod streaming_wind;
 mod wind_models;
 

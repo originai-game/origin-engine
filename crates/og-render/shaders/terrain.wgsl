@@ -60,6 +60,15 @@ struct TerrainGrass {
   wind: WindField,
 };
 
+// A terrain stamp's draw (terrain.rs TerrainStampDraw; bound as group 2
+// by the stamps' passes in terrain_lit.wgsl and terrain_shadow.wgsl).
+struct TerrainStampUniform {
+  model: mat4x4<f32>,       // the mesh to the world
+  normal: mat3x3<f32>,      // its normals to the world (inverse transpose)
+  to_terrain: mat4x4<f32>,  // the world to the terrain's space
+  params: vec4<f32>,        // x: blend (m), y: world metres per unit of the terrain's y
+};
+
 // Positions are in grid units of the finest level's spacing from the
 // terrain's -x, -z corner: whole numbers, so two levels compute a shared
 // vertex bit for bit the same.

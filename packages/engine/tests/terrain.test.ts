@@ -340,6 +340,56 @@ test("og.TerrainScatter grows copies of a mesh over the terrain near the camera"
   expect(reds()).toBe(0);
 });
 
+test("a stamp carves the ground under its mesh for sample, physics and the hash; unstamp takes it back", () => {
+  const { engine, info } = start();
+  const w = engine.world;
+  const data = info.data as never;
+  const at = (x: number, z: number) => must(og.terrain.sample(w, { data, x, z })).height;
+  const ray = (x: number, z: number) => must(og.physics.raycast(w, { origin: { x, y: 50, z }, direction: { x: 0, y: -1, z: 0 } }))?.point.y ?? NaN;
+  const before = engine.probe.snapshot() as { id: string; hash: string };
+  // A 20 m tall rock, 4 × 4 m, standing at (20, 20) with its foot 10 m down.
+  const rock = must(og.render.boxGeometry(w, { width: 4, height: 20, depth: 4 }));
+  const stamp = { data, geometry: rock, position: { x: 20, y: 0, z: 20 }, mode: "carve" as never };
+  const carved = must(og.terrain.stamp(w, stamp));
+  expect(carved.stamp).toBe(1);
+  expect(carved.samples).toBe(9 * 9); // the half-metre samples from 18 to 22 along x and z
+  expect(at(20, 20)).toBeCloseTo(-10.25, 4); // the rock's underside, less the default depth
+  expect(at(24, 20)).toBeCloseTo(ground(24, 20), 1); // beside it, the hill as it was
+  expect(carved.minHeight).toBeCloseTo(-10.25, 4);
+  expect(engine.hash()).not.toBe(before.hash);
+  const stamped = engine.probe.snapshot() as { id: string; hash: string };
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray(20, 20)).toBeCloseTo(-10.25, 1);
+  // World state: a restore brings the carve back from the log alone.
+  must(og.terrain.edit(w, data, { mode: "raise" as never, center: { x: 20, y: 0, z: 20 }, radius: 6, strength: 3 }));
+  expect(engine.probe.restore(stamped.id)).toBeTrue();
+  expect(engine.hash()).toBe(stamped.hash);
+  expect(at(20, 20)).toBeCloseTo(-10.25, 4);
+  // The same stamp on another run gives the same world.
+  const replay = start();
+  const rw = replay.engine.world;
+  const again = must(og.render.boxGeometry(rw, { width: 4, height: 20, depth: 4 }));
+  must(og.terrain.stamp(rw, { ...stamp, data: replay.info.data as never, geometry: again }));
+  expect(replay.engine.hash()).toBe(stamped.hash);
+  // Unstamp: the ground as if it had never been made, with later edits kept.
+  must(og.terrain.edit(w, data, { mode: "raise" as never, center: { x: -20, y: 0, z: -20 }, radius: 4, strength: 2 }));
+  const back = must(og.terrain.unstamp(w, data, 1));
+  expect(back.samples).toBe(81);
+  expect(at(20, 20)).toBeCloseTo(ground(20, 20), 1);
+  expect(at(-20, -20)).toBeCloseTo(ground(-20, -20) + 2, 1);
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(ray(20, 20)).toBeCloseTo(ground(20, 20), 1);
+  expect(og.terrain.unstamp(w, data, 1).ok).toBeFalse(); // taken back already
+  // Ids are never reused; a hole stamp cuts the cells the rock covers.
+  const hole = must(og.terrain.stamp(w, { ...stamp, mode: "hole" as never }));
+  expect(hole.stamp).toBe(2);
+  expect(must(og.terrain.sample(w, { data, x: 20, z: 20 })).hole).toBeTrue();
+  expect(must(og.terrain.sample(w, { data, x: 23, z: 20 })).hole).toBeFalse();
+  const miss = og.terrain.stamp(w, { ...stamp, position: { x: 500, y: 0, z: 0 } });
+  expect(miss.ok).toBeFalse();
+  if (!miss.ok) expect(miss.reason).toContain("misses the terrain");
+}, 30_000);
+
 test("og.terrain refusals name the fix", () => {
   const { engine, info } = start();
   const w = engine.world;

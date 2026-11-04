@@ -875,3 +875,83 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     );
     scene
 }
+
+/// `cliff_scene`'s cliff: its height, the rock's half-width along x (its
+/// face towards +x at x = CLIFF_ROCK) and half-length along z.
+pub const CLIFF_HEIGHT: f32 = 300.0;
+pub const CLIFF_ROCK: f32 = 12.0;
+pub const CLIFF_LENGTH: f32 = 60.0;
+/// Where `cliff_scene`'s camera stands and what it looks at: the foot of
+/// the rock's face, where the stamp meets the valley's ground.
+pub const CLIFF_EYE: Vec3 = Vec3::new(CLIFF_ROCK + 22.0, 5.0, 9.0);
+pub const CLIFF_FOOT: Vec3 = Vec3::new(CLIFF_ROCK, 0.6, 0.0);
+
+/// T3: a 300 m cliff: a plateau for x < 0 over a valley at 0, one sample
+/// apart on a 1 m grid (a height field's sawtooth wall), with a block of
+/// rock 24 m across standing over the step as a terrain stamp, its foot
+/// at the valley floor and its top 2 m above the plateau. The ground
+/// under the block is carved as og.terrain.stamp carves it (to the
+/// block's underside less 0.25 m). Two layers: grass up to 40° of slope,
+/// rock past it, biplanar past 45°. The stamp is shaded by those layers
+/// by its own normal (rock on its face, grass on its top) and, within
+/// `blend` metres above the ground it meets, takes the ground's look.
+pub fn cliff_scene(blend: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let (n, size) = (513u32, 512.0f32);
+    let cell = size / (n - 1) as f32;
+    let mut heights = Vec::with_capacity((n * n) as usize);
+    for r in 0..n {
+        for c in 0..n {
+            let (x, z) = (c as f32 * cell - size * 0.5, r as f32 * cell - size * 0.5);
+            let ground = if x < 0.0 { CLIFF_HEIGHT } else { 0.0 };
+            let under = x.abs() <= CLIFF_ROCK && z.abs() <= CLIFF_LENGTH;
+            heights.push(if under { ground.min(-0.25) } else { ground });
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    scene.terrains.push(Terrain {
+        layers: vec![
+            TerrainLayer {
+                color: Vec3::new(0.16, 0.38, 0.08),
+                roughness: 0.95,
+                slope: [0.0, 40.0],
+                slope_fade: 4.0,
+                ..Default::default()
+            },
+            TerrainLayer {
+                color: Vec3::new(0.42, 0.4, 0.37),
+                roughness: 0.8,
+                slope: [40.0, 90.0],
+                slope_fade: 4.0,
+                project_slope: 45.0,
+                ..Default::default()
+            },
+        ],
+        ..Terrain::new(handle)
+    });
+    let rock = scene.add_mesh(shapes::cuboid(Vec3::new(
+        CLIFF_ROCK * 2.0,
+        CLIFF_HEIGHT + 2.0,
+        CLIFF_LENGTH * 2.0,
+    )));
+    scene.terrain_stamps.push(og_render::TerrainStampDraw {
+        terrain: 0,
+        mesh: rock,
+        transform: Mat4::from_translation(Vec3::new(0.0, (CLIFF_HEIGHT + 2.0) * 0.5, 0.0)),
+        blend,
+        cast_shadows: true,
+    });
+    plain_light(&mut scene);
+    // The sun from the valley's side, so the face and the ground are lit alike.
+    scene.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
+    scene.environment.sky.sun_direction = scene.light.direction_to_light;
+    scene.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
+    scene
+}

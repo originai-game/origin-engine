@@ -66,6 +66,14 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrain stamps.** `og.TerrainStamp { data, geometry, blend }` draws a
+  mesh (a cliff, arch or overhang) as part of a terrain: shaded with the
+  terrain's layers by its own normal, its lowest `blend` metres taking the
+  ground's look and normal so it meets the terrain without a seam.
+  `og.terrain.stamp` carves the height field to the mesh's underside (or
+  cuts holes under it) deterministically; the carve is logged as its patch,
+  so snapshots, the world hash and restores keep it without the mesh, and
+  `og.terrain.unstamp` takes it back. `TerrainEdit` gains `stamp`.
 - **Terrain material v2.** `TerrainLayerDesc` adds `antiTiling` (hex-tiling
   after Mikkelsen 2022: no visible repeat), `projectSlope` (planar below the
   slope, biplanar past it, so steep faces show their texture square instead

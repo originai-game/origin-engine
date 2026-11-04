@@ -178,6 +178,8 @@ pub const SCENES: &[&str] = &[
     "terrain-layers",
     "terrain-tiling",
     "terrain-steep",
+    "terrain-cliff",
+    "terrain-cliff-blend",
     "impostors",
     "impostor-scatter",
     "wind-models",
@@ -1382,6 +1384,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // 45): square cells on the face, not vertical streaks.
         "terrain-steep" => |g, _| {
             g.scene = crate::terrain_scenes::steep_scene(45.0);
+            Ok(())
+        },
+        // T3: a 300 m cliff the height field cannot make, drawn by a block
+        // of rock stamped over the step (og.TerrainStamp), its ground
+        // carved under it: grass on its top, rock on its face, its foot
+        // meeting the valley's grass with a hard edge (blend 0).
+        "terrain-cliff" => |g, _| {
+            g.scene = crate::terrain_scenes::cliff_scene(0.0);
+            Ok(())
+        },
+        // T3: the same cliff with blend 1: the face's lowest metre takes the
+        // ground's grass and normal, so it meets the valley with no seam.
+        "terrain-cliff-blend" => |g, _| {
+            g.scene = crate::terrain_scenes::cliff_scene(1.0);
             Ok(())
         },
         // R6: a ball red on its +x half and blue on its -x half, 2 m

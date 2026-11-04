@@ -733,6 +733,26 @@ or `distance` to save frame time; prefer it to a hand-made grass
 og.TerrainScatter, which suits flowers, stones and bushes. A navmesh .ogt's `terrain "terrain/island.ogt" { step 4 }` bakes
 the walkable slopes for og-ai. Lower `lodRing` on og.Terrain to trade
 detail for frame time.
+A cliff, arch or overhang the height field cannot make (a sheer 300 m drop
+on a half-metre grid is a sawtooth wall) is a mesh stamped into the
+terrain. Draw it with `og.TerrainStamp { data, geometry, blend }` on its
+own entity: it is shaded by the terrain's layers by its own normal (rock
+on its walls where the rock layer's slope rule says so, grass on its top)
+and its lowest `blend` metres take the ground's look, so it meets the
+terrain with no seam. Then, once, carve the ground under it in the tick:
+`og.terrain.stamp(world, { data, geometry, position, rotation, size,
+mode: "carve" })` (the stamp entity's world transform; `origin`,
+`quaternion` and `scale` for the terrain's, as for `sample`) lowers the
+height field to the mesh's underside, or `mode: "hole"` cuts the cells the
+mesh covers (a cave mouth). The carve is world state like an edit, and the
+id it answers in `stamp` takes it back with `og.terrain.unstamp(world,
+data, id)`. Give the stamp entity an `og.Collider` naming the same
+geometry to stand on it.
+```ts
+const rock = world.spawn({ name: "cliff", position: { x: 0, y: 151, z: 0 } });
+world.insert(rock, og.TerrainStamp, { data: info.data, geometry: cliffMesh, blend: 1 });
+og.terrain.stamp(world, { data: info.data, geometry: cliffMesh, position: { x: 0, y: 151, z: 0 }, mode: "carve" });
+```
 Its tiles stream: only the tiles the camera needs are on the GPU (16 MiB a
 terrain by default), decoded off the frame, the coarser level standing in
 until each arrives, and nothing a tick reads changes with it. In a probe

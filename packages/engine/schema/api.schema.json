@@ -19108,7 +19108,9 @@
         "TerrainData",
         "TerrainData",
         "TerrainBrushMode",
+        "TerrainStampMode",
         "Terrain",
+        "TerrainStamp",
         "TerrainScatter",
         "Grass",
         "TerrainInfo",
@@ -19117,6 +19119,7 @@
         "TerrainBounds",
         "TerrainBrush",
         "TerrainEdit",
+        "TerrainStampDesc",
         "TerrainLayerDesc"
       ],
       "consts": [],
@@ -19227,6 +19230,54 @@
           ],
           "returns": "Result<TerrainEdit>",
           "returnsDoc": "Refused for an unknown terrain, a layer beyond its layers, or a brush that misses it.",
+          "publish": true
+        },
+        {
+          "name": "stamp",
+          "doc": "Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TerrainStampDesc",
+              "optional": true,
+              "doc": "The terrain, the mesh, where both stand, and what to do."
+            }
+          ],
+          "returns": "Result<TerrainEdit>",
+          "returnsDoc": "Refused for an unknown terrain, a geometry that is not loaded, or a mesh that covers none of the terrain.",
+          "publish": true
+        },
+        {
+          "name": "unstamp",
+          "doc": "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "data",
+              "type": "TerrainData",
+              "optional": false,
+              "doc": "The terrain."
+            },
+            {
+              "name": "stamp",
+              "type": "u32",
+              "optional": false,
+              "doc": "The id og.terrain.stamp answered."
+            }
+          ],
+          "returns": "Result<TerrainEdit>",
+          "returnsDoc": "Refused for an unknown terrain or a stamp it does not hold.",
           "publish": true
         },
         {
@@ -83056,6 +83107,20 @@
         "fill": "Fill holes in again where `hole` would cut them."
       }
     },
+    "TerrainStampMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "terrain",
+      "description": "What og.terrain.stamp does to the height field under a stamp's mesh.",
+      "type": "string",
+      "enum": [
+        "carve",
+        "hole"
+      ],
+      "x-og-variants": {
+        "carve": "Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. Ground already lower is left as it is.",
+        "hole": "Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal)."
+      }
+    },
     "Terrain": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
@@ -83094,6 +83159,44 @@
           "default": 0,
           "minimum": 0,
           "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainStamp": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain (og.terrain.load's TerrainInfo.data).",
+          "default": 0
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh.",
+          "default": 0
+        },
+        "blend": {
+          "type": "number",
+          "description": "Metres above the ground under it over which the mesh fades into the ground's look (0: a hard edge).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 64,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Draw it.",
+          "default": true
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Cast shadows (with its terrain's own castShadows).",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -83745,13 +83848,109 @@
           "type": "number",
           "description": "Its highest now.",
           "x-og-unit": "m"
+        },
+        "stamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "og.terrain.stamp: the stamp's id, for og.terrain.unstamp (from 1). 0 for every other edit."
         }
       },
       "required": [
         "samples",
         "minHeight",
-        "maxHeight"
+        "maxHeight",
+        "stamp"
       ],
+      "additionalProperties": false
+    },
+    "TerrainStampDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "One stamp of a mesh into a terrain (og.terrain.stamp).",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/TerrainData",
+          "description": "The terrain.",
+          "default": 0
+        },
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the terrain stands: its og.Terrain entity's world position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How it is turned: its og.Terrain entity's world rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scale": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How it is scaled: its og.Terrain entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry",
+          "description": "The mesh (its og.TerrainStamp's geometry).",
+          "default": 0
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the mesh stands: its og.TerrainStamp entity's world position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "rotation": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "How the mesh is turned: its entity's world rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "How the mesh is scaled: its entity's world scale.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "mode": {
+          "$ref": "#/$defs/TerrainStampMode",
+          "description": "What it does to the ground.",
+          "default": "carve"
+        },
+        "depth": {
+          "type": "number",
+          "description": "carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "m"
+        }
+      },
       "additionalProperties": false
     },
     "TerrainLayerDesc": {

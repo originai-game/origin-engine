@@ -557,6 +557,28 @@ impl Terrain {
     }
 }
 
+/// A mesh drawn as part of a terrain this frame (a terrain stamp: a
+/// cliff, an arch, an overhang): shaded with the terrain's layers in world
+/// space, its own normals choosing them by their slope rules (rock on its
+/// faces, the ground's layers on its top), and within `blend` metres above
+/// the ground under it blended towards the ground's normal and look, so it
+/// meets the terrain without a seam (the runtime-virtual-texture technique
+/// without the texture: the terrain's material function is called
+/// directly, `terrain_lit.wgsl` `fs_stamp`). Drawn in every pass the
+/// terrain is (the frame, the prepass, the shadows, reflections, probes
+/// and views), with the terrain's visibility.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TerrainStampDraw {
+    /// Its terrain: an index into [`crate::RenderScene::terrains`].
+    pub terrain: usize,
+    pub mesh: crate::scene::MeshHandle,
+    /// The mesh's model to world.
+    pub transform: Mat4,
+    /// Metres above the ground over which it takes the ground's look (0: none).
+    pub blend: f32,
+    pub cast_shadows: bool,
+}
+
 /// The same layout the renderer uploads, before frustum culling.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainClipmap {
@@ -644,7 +666,52 @@ pub(crate) struct TerrainDraw {
     /// is the layer-array variant's (grass generation binds the group).
     pub terrain: usize,
     pub arrayed: bool,
+    /// Its stamps this frame and their group (the stamp uniforms).
+    pub stamps: Vec<StampDraw>,
+    pub stamp_group: Option<wgpu::BindGroup>,
 }
+
+/// One terrain stamp to draw: its uniform slot, its mesh and its bounds.
+#[derive(Clone, Debug)]
+pub(crate) struct StampDraw {
+    pub offset: u32,
+    pub vertices: wgpu::Buffer,
+    pub indices: wgpu::Buffer,
+    pub count: u32,
+    pub center: Vec3,
+    pub radius: f32,
+    pub cast_shadows: bool,
+}
+
+/// `TerrainStampUniform` in terrain.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct StampGpu {
+    model: [[f32; 4]; 4],
+    normal: [[f32; 4]; 3],
+    to_terrain: [[f32; 4]; 4],
+    params: [f32; 4],
+}
+
+impl StampGpu {
+    /// A stamp of `transform` on a terrain placed by `terrain`.
+    pub(crate) fn new(transform: Mat4, terrain: Mat4, blend: f32) -> StampGpu {
+        let n3 = glam::Mat3::from_mat4(transform).inverse().transpose();
+        StampGpu {
+            model: transform.to_cols_array_2d(),
+            normal: [
+                n3.x_axis.extend(0.0).to_array(),
+                n3.y_axis.extend(0.0).to_array(),
+                n3.z_axis.extend(0.0).to_array(),
+            ],
+            to_terrain: terrain.inverse().to_cols_array_2d(),
+            params: [blend.max(0.0), terrain.y_axis.truncate().length(), 0.0, 0.0],
+        }
+    }
+}
+
+/// The stride of the stamps' uniform slots.
+pub(crate) const STAMP_STRIDE: u64 = 256;
 
 /// The levels of one terrain for a camera, in whole grid units.
 #[derive(Clone, Debug, PartialEq)]
@@ -864,6 +931,22 @@ pub(crate) struct TerrainRenderer {
     /// Tiles uploaded in the last prepare and resident after it.
     pub uploads: u32,
     pub resident: u32,
+    /// The stamps' group layout (one uniform slot, dynamic offset), their
+    /// uniform slots and group, and their meshes uploaded (by mesh index:
+    /// the scene, the mesh's revision, its vertices and indices).
+    stamp_layout: wgpu::BindGroupLayout,
+    stamp_slots: Option<(u64, wgpu::Buffer, wgpu::BindGroup)>,
+    stamp_meshes: std::collections::HashMap<usize, StampMesh>,
+}
+
+/// A stamp's mesh on the GPU.
+struct StampMesh {
+    scene: u64,
+    revision: u64,
+    vertices: wgpu::Buffer,
+    indices: wgpu::Buffer,
+    count: u32,
+    bounds: (Vec3, Vec3),
 }
 
 pub(crate) const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
@@ -885,12 +968,17 @@ pub(crate) struct TerrainPipelines<'a> {
 }
 
 /// The lit, prepass and shadow pipelines of one terrain group layout: the
-/// standard one, or the layer-array variant's ([`TerrainRenderer`]).
+/// standard one, or the layer-array variant's ([`TerrainRenderer`]); and
+/// the same three for the terrain's stamps ([`TerrainStampDraw`]), which
+/// draw a mesh with the terrain's group and their own (group 2).
 #[derive(Clone)]
 pub(crate) struct TerrainPasses {
     pub lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
     pub prepass: Rc<Deferred<wgpu::RenderPipeline>>,
     pub shadow: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub stamp_lit: Rc<crate::deferred::Sampled<wgpu::RenderPipeline>>,
+    pub stamp_prepass: Rc<Deferred<wgpu::RenderPipeline>>,
+    pub stamp_shadow: Rc<Deferred<wgpu::RenderPipeline>>,
 }
 
 /// Which pass [`draw_levels`] draws: each terrain sets its own pipeline.
@@ -901,16 +989,21 @@ pub(crate) enum TerrainPass {
     Shadow,
 }
 
-/// The pipelines in [`TerrainPasses`] over `layout`, from these modules;
+/// The pipeline layouts and modules [`terrain_passes`] builds from.
+pub(crate) struct TerrainPassLayouts<'a> {
+    pub frame: &'a wgpu::BindGroupLayout,
+    pub shadow: &'a wgpu::BindGroupLayout,
+    pub terrain: &'a wgpu::BindGroupLayout,
+    pub stamp: &'a wgpu::BindGroupLayout,
+}
+
+/// The pipelines in [`TerrainPasses`] over `layouts`, from these modules;
 /// `holes`: with the hole test (terrain.wgsl `TERRAIN_HOLES`), whose
 /// discard a terrain without holes leaves out (early depth and Apple's
 /// hidden-surface removal keep working for it).
-#[allow(clippy::too_many_arguments)]
 fn terrain_passes(
     device: &wgpu::Device,
-    frame_layout: &wgpu::BindGroupLayout,
-    shadow_layout: &wgpu::BindGroupLayout,
-    layout: &wgpu::BindGroupLayout,
+    layouts: TerrainPassLayouts,
     samples: u32,
     lit_source: String,
     shadow_source: String,
@@ -927,28 +1020,41 @@ fn terrain_passes(
             immediate_size: 0,
         })
     };
-    let lit_layout = pl("terrain", &[frame_layout, layout]);
-    let shadow_layout = pl("terrain shadow", &[shadow_layout, layout]);
+    let lit_layout = pl("terrain", &[layouts.frame, layouts.terrain]);
+    let shadow_layout = pl("terrain shadow", &[layouts.shadow, layouts.terrain]);
+    let stamp_lit_layout = pl(
+        "terrain stamp",
+        &[layouts.frame, layouts.terrain, layouts.stamp],
+    );
+    let stamp_shadow_layout = pl(
+        "terrain stamp shadow",
+        &[layouts.shadow, layouts.terrain, layouts.stamp],
+    );
     let constants: &'static [(&'static str, f64)] = if holes {
         &[("TERRAIN_HOLES", 1.0)]
     } else {
         &[("TERRAIN_HOLES", 0.0)]
     };
-    let lit = {
-        let (device, lit_layout, lit_module) =
-            (device.clone(), lit_layout.clone(), lit_module.clone());
+    const STAMP_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+        &[Some(crate::VERTEX_LAYOUT)];
+    let lit = |label: &'static str,
+               layout: &wgpu::PipelineLayout,
+               vs: &'static str,
+               fs: &'static str,
+               buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
+        let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
         crate::deferred::Sampled::new(samples, move |samples| {
             crate::hdr_pipeline_with(
                 &device,
                 constants,
                 crate::HdrPipeline {
                     alpha_to_coverage: false,
-                    label: "terrain",
-                    layout: &lit_layout,
-                    module: lit_module.module(),
-                    vs: "vs",
-                    fs: "fs",
-                    buffers: &[],
+                    label,
+                    layout: &layout,
+                    module: module.module(),
+                    vs,
+                    fs,
+                    buffers,
                     cull: Some(wgpu::Face::Back),
                     depth_write: true,
                     depth_compare: wgpu::CompareFunction::Less,
@@ -978,61 +1084,70 @@ fn terrain_passes(
             bias: Default::default(),
         })
     };
-    let prepass = {
-        let (device, lit_layout) = (device.clone(), lit_layout.clone());
-        Deferred::new(move || {
-            let lit_module = lit_module.module();
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("terrain prepass"),
-                layout: Some(&lit_layout),
-                vertex: wgpu::VertexState {
-                    module: lit_module,
-                    entry_point: Some("vs"),
-                    compilation_options: options(),
-                    buffers: &[],
-                },
-                primitive: wgpu::PrimitiveState {
-                    cull_mode: Some(wgpu::Face::Back),
-                    ..Default::default()
-                },
-                depth_stencil: depth(true),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: lit_module,
-                    entry_point: Some("fs_prepass"),
-                    compilation_options: options(),
-                    targets: &[
-                        target(crate::post::GBUFFER_FORMAT),
-                        target(crate::post::LINDEPTH_FORMAT),
-                        target(crate::post::OUTLINE_FORMAT),
-                    ],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(&device).as_ref(),
+    let prepass =
+        |label: &'static str,
+         layout: &wgpu::PipelineLayout,
+         vs: &'static str,
+         fs: &'static str,
+         buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
+            let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
+            Deferred::new(move || {
+                let module = module.module();
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some(vs),
+                        compilation_options: options(),
+                        buffers,
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        cull_mode: Some(wgpu::Face::Back),
+                        ..Default::default()
+                    },
+                    depth_stencil: depth(true),
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some(fs),
+                        compilation_options: options(),
+                        targets: &[
+                            target(crate::post::GBUFFER_FORMAT),
+                            target(crate::post::LINDEPTH_FORMAT),
+                            target(crate::post::OUTLINE_FORMAT),
+                        ],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
             })
-        })
-    };
+        };
     // An open surface: both faces cast (the bias in the lit pass keeps
-    // its own lit side from shadowing itself).
-    let shadow = {
-        let (device, shadow_layout) = (device.clone(), shadow_layout.clone());
+    // its own lit side from shadowing itself); a stamp's back faces too.
+    let shadow = |label: &'static str,
+                  layout: &wgpu::PipelineLayout,
+                  vs: &'static str,
+                  fs: &'static str,
+                  buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
+        let (device, layout, module) = (device.clone(), layout.clone(), shadow_module.clone());
         Deferred::new(move || {
-            let shadow_module = shadow_module.module();
+            let module = module.module();
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("terrain shadow"),
-                layout: Some(&shadow_layout),
+                label: Some(label),
+                layout: Some(&layout),
                 vertex: wgpu::VertexState {
-                    module: shadow_module,
-                    entry_point: Some("vs_shadow"),
+                    module,
+                    entry_point: Some(vs),
                     compilation_options: options(),
-                    buffers: &[],
+                    buffers,
                 },
                 primitive: Default::default(),
                 depth_stencil: depth(true),
                 multisample: Default::default(),
                 fragment: Some(wgpu::FragmentState {
-                    module: shadow_module,
-                    entry_point: Some("fs_shadow"),
+                    module,
+                    entry_point: Some(fs),
                     compilation_options: options(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu::TextureFormat::R32Float,
@@ -1046,9 +1161,42 @@ fn terrain_passes(
         })
     };
     TerrainPasses {
-        lit: Rc::new(lit),
-        prepass: Rc::new(prepass),
-        shadow: Rc::new(shadow),
+        lit: Rc::new(lit("terrain", &lit_layout, "vs", "fs", &[])),
+        prepass: Rc::new(prepass(
+            "terrain prepass",
+            &lit_layout,
+            "vs",
+            "fs_prepass",
+            &[],
+        )),
+        shadow: Rc::new(shadow(
+            "terrain shadow",
+            &shadow_layout,
+            "vs_shadow",
+            "fs_shadow",
+            &[],
+        )),
+        stamp_lit: Rc::new(lit(
+            "terrain stamp",
+            &stamp_lit_layout,
+            "vs_stamp",
+            "fs_stamp",
+            STAMP_BUFFERS,
+        )),
+        stamp_prepass: Rc::new(prepass(
+            "terrain stamp prepass",
+            &stamp_lit_layout,
+            "vs_stamp",
+            "fs_stamp_prepass",
+            STAMP_BUFFERS,
+        )),
+        stamp_shadow: Rc::new(shadow(
+            "terrain stamp shadow",
+            &stamp_shadow_layout,
+            "vs_stamp_shadow",
+            "fs_stamp_shadow",
+            STAMP_BUFFERS,
+        )),
     }
 }
 
@@ -1368,6 +1516,13 @@ mod tests {
             (
                 fields!(LayerGpu: color, mapping, slope, altitude, offset, look, hex, hex_base, coarse),
                 size_of::<LayerGpu>()
+            )
+        );
+        assert_eq!(
+            members("TerrainStampUniform"),
+            (
+                fields!(StampGpu: model, normal, to_terrain, params),
+                size_of::<StampGpu>()
             )
         );
         let (list, span) = members("TerrainUniform");

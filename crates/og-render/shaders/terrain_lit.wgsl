@@ -547,11 +547,11 @@ fn blended_roughness(pick: LayerPick, w: vec4<f32>) -> f32 {
   return roughness;
 }
 
-fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
-  let p = in.world;
-  let n_geo = point.normal;
+// The layers at world point `p` whose geometric normal is `n_geo` (the
+// terrain's, or a stamp's) under control channels `control`.
+fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
   let count = u32(terrain.origin.w);
-  let pick = pick_layers(p, n_geo, point.control);
+  let pick = pick_layers(p, n_geo, control);
   // The picked layers' colours and normals (a layer of weight 0 skips its maps).
   var samples: array<LayerSample, 4>;
   var heights_of = vec4<f32>(1.0);
@@ -580,10 +580,8 @@ fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f
 
 // The roughness `terrain_look` gives a fragment, from the layers'
 // heights alone: the prepass reads no normal map and blends no colour.
-fn terrain_roughness(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
-  let p = in.world;
-  let n_geo = point.normal;
-  let pick = pick_layers(p, n_geo, point.control);
+fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
+  let pick = pick_layers(p, n_geo, control);
   var heights_of = vec4<f32>(1.0);
   if (terrain.params.x > 0.0 && !pick.fallback) {
     for (var k = 0u; k < 4u; k++) {
@@ -708,10 +706,16 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     return vec4<f32>(terrain_debug(in, point), 1.0);
   }
   let n_geo = point.normal;
-  let look = terrain_look(in, point, dpx, dpy);
+  let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
-  let normal = look.normal;
-  let roughness = look.roughness;
+  return terrain_shade(in.clip.xy, p, albedo, look.normal, look.roughness, n_geo);
+}
+
+// The terrain's shading of a fragment at world `p` (the ground or one of
+// its stamps): its layers' albedo, shading normal and roughness under
+// the sun's cascades, the local lights and image-based light, caustics
+// and fog, with the frame's diagnostic views.
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
@@ -722,7 +726,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   s = weathered.s;
   n = weathered.n;
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
-    return debug_unsupported(in.clip.xy);
+    return debug_unsupported(clip);
   }
   if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) {
     return vec4<f32>(s.albedo, 1.0);
@@ -757,7 +761,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
   // Point, spot and rect lights: this fragment's cluster's, or every light
   // in a reflection probe's face (area.wgsl surface_local_lights).
-  color += surface_local_lights(in.clip.xy, s, p, n, v);
+  color += surface_local_lights(clip, s, p, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
@@ -787,20 +791,110 @@ struct TerrainPrepass {
   @location(2) outline: vec4<f32>,
 };
 
+// The prepass's targets for a fragment of the ground or a stamp.
+fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, roughness: f32, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
+  let cur = cur_clip.xy / cur_clip.w;
+  let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
+  var o: TerrainPrepass;
+  o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  let reflectivity = reflectivity_bits(clamp(roughness, 0.04, 1.0), 0.0);
+  o.depth = vec4<f32>(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
+  o.outline = vec4<f32>(0.0);
+  return o;
+}
+
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   if (terrain_hole_at(in.local)) { discard; }
   let point = terrain_point(in.local);
-  let n = point.normal;
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
-  let roughness = terrain_roughness(in, point, dpdx(in.world), dpdy(in.world));
-  let cur = in.cur_clip.xy / in.cur_clip.w;
-  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
-  var o: TerrainPrepass;
-  o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  let reflectivity = reflectivity_bits(clamp(roughness, 0.04, 1.0), 0.0);
-  o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
-  o.outline = vec4<f32>(0.0);
+  let roughness = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
+  return terrain_prepass_out(in.world, point.normal, roughness, in.cur_clip, in.prev_clip);
+}
+
+// ── Terrain stamps ──────────────────────────────────────────────────────
+// A mesh drawn as part of the terrain (terrain.rs TerrainStampDraw): its
+// own geometry, shaded by `terrain_look` at its world point with its own
+// normal choosing the layers (the slope rules put rock on its faces and
+// the ground's layers on its top), the control map read at the point's
+// xz. Within `blend` metres above the ground under it the normal turns
+// to the ground's, and the far grass tint comes in, so where it meets the
+// terrain both are the same function of the same inputs: no seam (the
+// runtime-virtual-texture blend without the texture). Never cut by the
+// terrain's holes (a hole stamp cuts them under it).
+
+@group(2) @binding(0) var<uniform> stamp: TerrainStampUniform;
+
+struct StampIn {
+  @location(0) position: vec3<f32>,
+  @location(1) normal: vec3<f32>,
+};
+
+struct StampOut {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+  @location(1) normal: vec3<f32>,
+  @location(2) cur_clip: vec4<f32>,
+  @location(3) prev_clip: vec4<f32>,
+};
+
+@vertex
+fn vs_stamp(v: StampIn) -> StampOut {
+  let p = (stamp.model * vec4<f32>(v.position, 1.0)).xyz;
+  var o: StampOut;
+  o.clip = frame.view_proj * vec4<f32>(p, 1.0);
+  o.world = p;
+  o.normal = stamp.normal * v.normal;
+  o.cur_clip = terrain.view_proj * vec4<f32>(p, 1.0);
+  o.prev_clip = terrain.prev_view_proj * vec4<f32>(p, 1.0);
   return o;
+}
+
+// The ground under a stamp's fragment: its normal turned towards the
+// ground's by the blend, the control channels there and the blend's share.
+struct StampGround {
+  normal: vec3<f32>,
+  control: array<vec4<f32>, 4>,
+  ground: f32,
+  local: vec3<f32>,
+};
+
+// The ground it meets is read a cell and a half outwards along the mesh's
+// normal across the terrain: under a wall's foot the field is carved
+// below the mesh (og.terrain.stamp's depth), and the ground the eye sees
+// meeting the wall is the uncarved ground just outside it. A face turned
+// up reads the ground straight under it.
+fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
+  let local = (stamp.to_terrain * vec4<f32>(p, 1.0)).xyz;
+  let n_local = (stamp.to_terrain * vec4<f32>(n_mesh, 0.0)).xyz;
+  let out = n_local.xz / max(length(n_local), 1e-6) * 1.5 * terrain_cell();
+  let s = (local.xz + out - terrain_min()) / terrain_cell();
+  let m = terrain_maps_at(s, dpdx(s), dpdy(s));
+  let above = (local.y - terrain_height_at(0u, s)) * stamp.params.y;
+  var o: StampGround;
+  o.ground = select(0.0, 1.0 - smoothstep(0.0, stamp.params.x, above), stamp.params.x > 0.0);
+  o.normal = normalize(mix(n_mesh, normalize(terrain.normal * m.normal), o.ground));
+  o.control = m.control;
+  o.local = local;
+  return o;
+}
+
+@fragment
+fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
+  let p = in.world;
+  let dpx = dpdx(p);
+  let dpy = dpdy(p);
+  let g = stamp_ground(p, normalize(in.normal));
+  let look = terrain_look(p, g.normal, g.control, dpx, dpy);
+  let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
+  return terrain_shade(in.clip.xy, p, albedo, look.normal, look.roughness, g.normal);
+}
+
+@fragment
+fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
+  let p = in.world;
+  let g = stamp_ground(p, normalize(in.normal));
+  let roughness = terrain_roughness(p, g.normal, g.control, dpdx(p), dpdy(p));
+  return terrain_prepass_out(p, g.normal, roughness, in.cur_clip, in.prev_clip);
 }

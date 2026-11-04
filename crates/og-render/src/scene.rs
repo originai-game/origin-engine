@@ -238,6 +238,10 @@ pub struct RenderScene {
     pub water: Vec<crate::Water>,
     /// Terrains drawn this frame (clipmaps of [`RenderScene::add_terrain`] data).
     pub terrains: Vec<crate::Terrain>,
+    /// Meshes drawn as part of this frame's terrains (cliffs, arches,
+    /// overhangs placed as terrain stamps): shaded with their terrain's
+    /// layers and blended into its ground (`terrain.rs`).
+    pub terrain_stamps: Vec<crate::TerrainStampDraw>,
     /// Copies scattered over this frame's terrains, placed and drawn by
     /// the renderer from cached chunks.
     pub scatters: Vec<crate::ScatterDraw>,
