@@ -61,12 +61,19 @@ skip of a sun below the horizon.
   visible share. Around each source, the bloom taps are masked out (the sky
   round the sun, a lamp's bulb, and the bloom's spill of them onto an
   occluder's edge), so it flares once.
-- A source's ghosts are a smooth (1 - t²)² aperture at least 2.5 % of
-  the frame's height across, holding 2 % of its exposed radiance over the
-  threshold with the disc's energy kept, neither clamped nor split into
-  channels. Each ghost takes one coating tint (amber, teal, violet), the
-  hot core is rolled off, the chromatic aberration defaults to 0.001
-  (Filament: 0.005) and the halo radius to 0.28 (0.4): art direction.
+- A source's ghosts are sprites of a smooth aperture (a flat disc with a
+  soft rim): the sun's 8 % of the frame's height in radius, a light's
+  three times its disc's radius up to that and at least three flare
+  texels, drawn where Filament's taps would mirror the source and
+  magnified as they would be, up to 1.5 times. Each holds a share of the
+  source's exposed radiance over the threshold (0.56 % for the sun, 0.28 %
+  for a light) as the brightness of a ghost of the sun's radius, with the
+  energy kept over that radius, so a smaller ghost is as bright and
+  carries less light; linear in the source's light,
+  neither clamped nor split into channels. A ghost that would lie on its
+  own source's glare is left out. Each ghost takes one coating tint (amber,
+  teal, violet), the chromatic aberration defaults to 0.001 (Filament:
+  0.005) and the halo radius to 0.28 (0.4): art direction.
 - A spot only flares from inside its cone. Fog dims a source as frame.wgsl
   `fog_amount` does. The sun fades out over the horizon instead of being
   skipped at it.

@@ -28,8 +28,9 @@ is one line here, written at the merge that changes
   a world that never names it keeps its type table and hash) adds Filament's
   screen-space flare (ghosts, a halo with chromatic aberration and a
   starburst on the halo) after bloom, plus the sun's and up to seven point
-  and spot lights' own ghosts, smooth aperture discs that grow fainter as
-  they are magnified, each weighted by its visibility in the prepass depth
+  and spot lights' own ghosts, smooth aperture discs a few times their
+  source's size that grow fainter as they are magnified and keep off their
+  own source's glare, each weighted by its visibility in the prepass depth
   on the GPU. It is added in exposed light before the tone curve, so HDR
   output applies to it too. Its members: `enabled`, `intensity`, `ghosts`,
   `ghostSpacing`, `ghostThreshold`, `haloRadius`, `haloThickness`,

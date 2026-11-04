@@ -15,8 +15,9 @@
 //
 // The sun and the brightest lights also flare as sources of their own:
 // each casts ghosts where the taps would mirror it, sprites of a smooth
-// aperture holding a share of its disc's radiance, and feeds the halo's
-// taps, all scaled by how much of it the depth shows. That fraction comes from
+// aperture a few times its disc's size holding a share of its disc's
+// radiance, and feeds the halo's taps, all scaled by how much of it the
+// depth shows. That fraction comes from
 // a grid of view-depth samples around the light's position on screen, on
 // the GPU with no readback (`fs_flare_occlusion`), as Wicked Engine's
 // lens flare finds it (turanszkij/WickedEngine e8be9c773,
@@ -39,12 +40,12 @@ struct Flare {
   halo: vec4<f32>,      // x: radius, y: thickness (0: none), z: threshold, w: the sky's view depth (the camera's far plane)
   exposure: vec4<f32>,  // as post.wgsl Post.exposure
   meter: vec4<f32>,     // x: exposure compensation, y: the lights (0 to FLARE_LIGHTS)
-  mask: vec4<f32>,      // x, y: the bloom taps masked round the sun and round a light, in its disc's radii; z: a source ghost's least aperture radius (height units); w: a source ghost's share of its exposed radiance
+  mask: vec4<f32>,      // x, y: the bloom taps masked round the sun and round a light, in its disc's radii; z: the aperture's radius, a sun ghost's and a light's at most (height units); w: how far a ghost keeps off its own source's glare (height units)
   // Each light: xy its uv, z the view depth a sample must reach to see
   // it (below 0: the sky, for the sun), w its disc's radius (height units).
   lights: array<vec4<f32>, 8>,
   // rgb: the light's radiance as seen, unexposed (flare_tap exposes it),
-  // w: its flare's gain.
+  // w: its ghosts' gain, the share of that radiance they hold (0: none).
   colors: array<vec4<f32>, 8>,
 };
 @group(0) @binding(0) var<uniform> flare: Flare;
@@ -149,10 +150,17 @@ fn flare_tap(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
 }
 
 // A source ghost's least radius in this pass's texels, below which it would
-// shimmer as its few texels moved; under the least radius `mask.z` from a
-// frame 150 pixels high up, so a ghost's size and brightness do not depend
-// on the resolution.
+// shimmer as its few texels moved.
 const FLARE_APERTURE_TEXELS: f32 = 3.0;
+// A light's ghost's radius in its disc's radii, up to the aperture's
+// `mask.z` (art direction: a ghost a few times its source, so a small or
+// far lamp's ghosts are small; the sun's, the brightest by far, are the
+// whole aperture).
+const FLARE_GHOST_RADII: f32 = 3.0;
+// How far a ghost is magnified at most along the line through the centre
+// (art direction: Filament's spacing would magnify the second and third
+// ghosts up to five times, into huge faint discs).
+const FLARE_GHOST_MAGNIFICATION: f32 = 1.5;
 // The aperture's flat top, as a fraction of its radius; its rim rolls off
 // smoothly over the rest. `FLARE_APERTURE_AREA` is its integral over the
 // unit disc, as a fraction of the disc (0.36 + 0.288).
@@ -165,23 +173,32 @@ fn flare_aperture(t: f32) -> f32 {
   return 1.0 - smoothstep(FLARE_APERTURE_EDGE, 1.0, t);
 }
 
-// A source ghost's least radius (height units).
-fn flare_aperture_radius() -> f32 {
-  return max(flare.mask.z, FLARE_APERTURE_TEXELS / flare.size.y);
+// Source `i`'s ghost's radius before magnification (height units): the
+// aperture's `mask.z` for the sun (`lights.z` below 0), FLARE_GHOST_RADII
+// of its disc for a light, never over the aperture nor under
+// FLARE_APERTURE_TEXELS of this pass's texels.
+fn flare_ghost_radius(i: u32) -> f32 {
+  let sun = flare.lights[i].z < 0.0;
+  let r = select(min(FLARE_GHOST_RADII * flare_radius(i), flare.mask.z), flare.mask.z, sun);
+  return max(r, FLARE_APERTURE_TEXELS / flare.size.y);
 }
 
-// The light of source `i`'s disc, exposed, over `threshold`, times the
-// gain `mask.w` and spread over an aperture of radius `ra` with its
-// energy kept, times the share of it the depth shows and its gain. Linear
-// in the source's light, as its bloom halo is, so every source's ghosts
-// stand in the same proportion to its halo: a roll-off of the peak held
-// every lamp's ghosts near the sun's, as bright as their own halos.
-fn flare_source_light(i: u32, threshold: f32, ra: f32, exposure: f32) -> vec3<f32> {
+// The light of source `i`'s disc, exposed, over `threshold`, times its
+// gain (`colors.w`, the share of its radiance its ghosts hold), spread
+// with the disc's energy kept over the whole aperture (radius `mask.z`)
+// magnified `mag` times, and times the share of it the depth shows. The
+// brightness does not depend on the ghost's own radius: a smaller ghost
+// is as bright and carries less light, so a lamp's ghosts and the sun's
+// stand in the same proportion to their sources' bloom halos whatever
+// their size. Linear in the source's light, as its halo is: a roll-off of
+// the peak held every lamp's ghosts near the sun's, as bright as their own
+// halos.
+fn flare_source_light(i: u32, threshold: f32, mag: f32, exposure: f32) -> vec3<f32> {
   let seen = textureLoad(flare_visibility, vec2<i32>(i32(i), 0), 0).r * flare.colors[i].w;
   if (seen <= 0.0) { return vec3<f32>(0.0); }
-  let r = flare_radius(i);
-  let spread = (r / ra) * (r / ra) / FLARE_APERTURE_AREA;
-  return max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0)) * (flare.mask.w * spread * seen);
+  let r = flare_radius(i) / (flare.mask.z * mag);
+  let spread = r * r / FLARE_APERTURE_AREA;
+  return max(flare.colors[i].rgb * exposure - threshold, vec3<f32>(0.0)) * (spread * seen);
 }
 
 // The sources' share of the halo tap at `uv` (the halo warps the frame,
@@ -193,10 +210,9 @@ fn flare_sources_at(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
   let exposure = flare_exposure();
   var c = vec3<f32>(0.0);
   for (var i = 0u; i < n; i++) {
-    let ra = max(flare_radius(i), flare_aperture_radius());
-    let t = flare_distance(uv, flare.lights[i].xy) / ra;
+    let t = flare_distance(uv, flare.lights[i].xy) / flare_ghost_radius(i);
     if (t >= 1.0) { continue; }
-    c += flare_source_light(i, threshold, ra, exposure) * flare_aperture(t);
+    c += flare_source_light(i, threshold, 1.0, exposure) * flare_aperture(t);
   }
   return c;
 }
@@ -205,13 +221,18 @@ fn flare_sources_at(uv: vec2<f32>, threshold: f32) -> vec3<f32> {
 // would mirror them, as sprites of the lens's defocused aperture: ghost
 // `k` of a source at `p` stands where `fract(1 - q + (q - 0.5) s k)`
 // reaches `p` (`flare_ghosts`), at `1 - (p - s k / 2) / (1 - s k)`, and
-// is the source's aperture magnified by `1 / |1 - s k|` (at most 3 times)
-// with its light spread over it, so a large ghost is a faint one. Taken in
-// the taps' own space instead, the magnified ghosts had their sources'
-// brightness over up to 25 times the area, and every row of the
-// quarter-frame texels they stretched showed. Not split into red, green
-// and blue (the offsets copied the disc three times in rainbow colours),
-// and one coating tint per ghost.
+// is the source's aperture magnified by `1 / |1 - s k|` (at most
+// FLARE_GHOST_MAGNIFICATION) with its light spread over it, so a large
+// ghost is a faint one. Taken in the taps' own space instead, the
+// magnified ghosts had their sources' brightness over up to 25 times the
+// area, and every row of the quarter-frame texels they stretched showed.
+// Not split into red, green and blue (the offsets copied the disc three
+// times in rainbow colours), and one coating tint per ghost. A ghost on
+// its own source's glare (the last of Filament's four stands a quarter of
+// the way from the source to the centre's mirror, inside the glare of any
+// source near the centre) reads as a doubled lamp, not a reflection: it
+// is left out within `mask.w` of the glare's edge, fading in over as much
+// again.
 fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
   let n = min(u32(flare.meter.y), FLARE_LIGHTS);
   if (n == 0u) { return vec3<f32>(0.0); }
@@ -219,16 +240,19 @@ fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
   let s = flare.ghosts.y;
   var c = vec3<f32>(0.0);
   for (var i = 0u; i < n; i++) {
-    let ra0 = max(flare_radius(i), flare_aperture_radius());
+    let ra0 = flare_ghost_radius(i);
     let p = flare.lights[i].xy;
     for (var k = 0.0; k < flare.ghosts.x; k += 1.0) {
       let m = 1.0 - s * k;
       if (abs(m) < 0.05) { continue; }
       let center = 1.0 - (p - 0.5 * s * k) / m;
-      let ra = ra0 * clamp(1.0 / abs(m), 1.0, 3.0);
+      let mag = clamp(1.0 / abs(m), 1.0, FLARE_GHOST_MAGNIFICATION);
+      let ra = ra0 * mag;
+      let clear = smoothstep(1.0, 2.0, flare_distance(center, p) / (ra + flare.mask.w));
+      if (clear <= 0.0) { continue; }
       let t = flare_distance(q, center) / ra;
       if (t >= 1.0) { continue; }
-      c += flare_source_light(i, flare.ghosts.z, ra, exposure) * flare_aperture(t)
+      c += flare_source_light(i, flare.ghosts.z, mag, exposure) * (flare_aperture(t) * clear)
         * flare_ghost_tint(k);
     }
   }

@@ -36,14 +36,23 @@ const SUN_RADIUS_DEGREES: f32 = 0.27;
 /// round the sun, a light's own bulb.
 const SUN_MASK_RADII: f32 = 3.0;
 const LIGHT_MASK_RADII: f32 = 1.5;
-/// A source ghost's least radius, as a fraction of the frame's height: a
-/// soft aperture, not a sharp copy of a small source (`lens_flare.wgsl`
-/// FLARE_APERTURE_TEXELS keeps it three flare texels in frames under 150
-/// pixels high).
+/// The lens's aperture as a ghost shows it, its radius as a fraction of the
+/// frame's height: the sun's ghosts' radius, and a light's at most, a
+/// light's ghost being three times its disc (`lens_flare.wgsl`
+/// FLARE_GHOST_RADII; a lamp 0.2 m across at 10 m is 3 % of the height,
+/// at 50 m three flare texels).
 const GHOST_APERTURE: f32 = 0.08;
-/// A source ghost's share of its exposed radiance, the same for the sun and
-/// every light (art direction: a ghost 5 to 15 % of its source's halo).
-const GHOST_GAIN: f32 = 0.007;
+/// The share of a source's exposed radiance its ghosts hold, as the
+/// brightness of a ghost of the largest radius (a smaller ghost is as bright
+/// and carries less light): the sun's and a light's, set against the
+/// reference frames so a ghost's excess over its ground is 5 to 15 % of its
+/// source's bloom halo's (the sun's up to 20 %; art direction).
+const SUN_GHOST_GAIN: f32 = 0.0056;
+const LIGHT_GHOST_GAIN: f32 = 0.0028;
+/// How far a source's ghost keeps off the source's own glare, as a fraction
+/// of the frame's height: a ghost whose centre lies within this and its own
+/// radius of the source is left out, fading in over as much again.
+const GHOST_CLEARANCE: f32 = 0.06;
 /// The view depth a local light must lie past to flare (metres).
 const MIN_LIGHT_DEPTH: f32 = 0.05;
 
@@ -123,9 +132,11 @@ fn on_screen(uv: Vec2, radius: f32, aspect: f32) -> bool {
 /// holds its disc's uv, the view depth a sample must reach to see it (the
 /// sun: -1, the sky) and its radius in height units; its colour row the
 /// disc's radiance (its light over the disc's solid angle, so a source's
-/// ghosts do not shrink with distance), and its gain. A source of gain 0
-/// keeps its slot: it is still masked out of the bloom taps, so it casts no
-/// ghosts at all. `fog`: what the fog leaves of a light at a point.
+/// ghosts do not shrink with distance), and its ghosts' gain (the flare's
+/// `sun` or `lights` times [`SUN_GHOST_GAIN`] or [`LIGHT_GHOST_GAIN`]). A
+/// source of gain 0 keeps its slot: it is still masked out of the bloom
+/// taps, so it casts no ghosts at all. `fog`: what the fog leaves of a light
+/// at a point.
 pub(crate) fn flare_sources(
     flare: &crate::LensFlare,
     camera: &FlareCamera,
@@ -154,7 +165,9 @@ pub(crate) fn flare_sources(
         {
             let radiance = s.irradiance * s.fog_clear / (std::f32::consts::PI * theta * theta);
             out.lights[0] = [uv.x, uv.y, -1.0, radius];
-            out.colors[0] = radiance.extend(flare.sun * horizon).to_array();
+            out.colors[0] = radiance
+                .extend(flare.sun * horizon * SUN_GHOST_GAIN)
+                .to_array();
             out.count = 1;
         }
     }
@@ -196,7 +209,7 @@ pub(crate) fn flare_sources(
         let radiance = l.color * l.intensity * cone * fog(l.position)
             / (std::f32::consts::PI * FLARE_SOURCE_RADIUS * FLARE_SOURCE_RADIUS);
         out.lights[out.count] = [uv.x, uv.y, depth - FLARE_SOURCE_RADIUS, radius];
-        out.colors[out.count] = radiance.extend(flare.lights).to_array();
+        out.colors[out.count] = radiance.extend(flare.lights * LIGHT_GHOST_GAIN).to_array();
         out.count += 1;
     }
     out
@@ -236,7 +249,12 @@ pub(crate) fn flare_uniform(
         ],
         exposure: exposure.0,
         meter: [exposure.1, sources.count as f32, 0.0, 0.0],
-        mask: [SUN_MASK_RADII, LIGHT_MASK_RADII, GHOST_APERTURE, GHOST_GAIN],
+        mask: [
+            SUN_MASK_RADII,
+            LIGHT_MASK_RADII,
+            GHOST_APERTURE,
+            GHOST_CLEARANCE,
+        ],
         lights: sources.lights,
         colors: sources.colors,
     }
@@ -338,8 +356,8 @@ mod tests {
 
     /// The sun ahead and up is slot 0, at its projected uv, its disc the
     /// angular radius's share of the frame's height, its radiance its light
-    /// over that disc's solid angle; behind the camera or below the
-    /// horizon it has no slot.
+    /// over that disc's solid angle, its gain the sun's; behind the camera
+    /// or below the horizon it has no slot.
     #[test]
     fn the_sun_takes_slot_zero_only_when_it_can_be_seen() {
         let cam = camera();
@@ -363,7 +381,7 @@ mod tests {
         assert!((s.lights[0][3] - radius).abs() < 1e-5);
         let radiance = 3.0 * 0.5 / (std::f32::consts::PI * theta * theta);
         assert!((s.colors[0][0] - radiance).abs() / radiance < 1e-4);
-        assert_eq!(s.colors[0][3], 1.0);
+        assert_eq!(s.colors[0][3], SUN_GHOST_GAIN);
         let behind = FlareSun {
             direction: Vec3::new(0.0, 0.3, 1.0),
             ..sun
@@ -390,7 +408,7 @@ mod tests {
     /// ties in scene order, at most seven; those behind the camera, off
     /// screen, of no intensity or rect lights take none; a spot seen from
     /// outside its cone takes none; the visibility depth stands the source
-    /// radius in front of the light.
+    /// radius in front of the light; each gain is a light's.
     #[test]
     fn lights_take_the_slots_by_importance_with_ties_in_scene_order() {
         let cam = camera();
@@ -442,6 +460,7 @@ mod tests {
             (s.lights[1][0] - uv9.x).abs() < 1e-5,
             "light 9 before its tie"
         );
+        assert!((0..s.count).all(|k| s.colors[k][3] == LIGHT_GHOST_GAIN));
         let off = crate::LensFlare {
             lights: 0.0,
             ..flare

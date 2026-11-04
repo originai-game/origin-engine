@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2389 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2390 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
