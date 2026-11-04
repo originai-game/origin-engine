@@ -200,6 +200,14 @@ const ABOUT: &[(&str, &str)] = &[
         "broadcast",
         "sports broadcast: sharp lit bars, tracked capitals, snappy motion",
     ),
+    (
+        "jade",
+        "jade and gold: carved jade panels, gold-leaf edges and cloud filigree, brush calligraphy, calm motion (xianxia, wuxia, eastern fantasy gacha and MMO)",
+    ),
+    (
+        "midcore",
+        "chunky slate stone: thick outlines and bevels, a glossy green primary, heavy rounded type, bouncy motion (mobile strategy, card battlers, tower defence, base building)",
+    ),
 ];
 
 fn style_name_ok(name: &str) -> Result<(), String> {

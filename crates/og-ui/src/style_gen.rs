@@ -2202,6 +2202,83 @@ pub fn seeds() -> Vec<StyleChoices> {
                 0.04,
             ),
         ),
+        // The owner's approved sheets (jade-cultivation, jade-menu,
+        // jade-settings): carved jade-green panels edged in gold leaf,
+        // cloud filigree in their corners, gold primaries with dark ink,
+        // brush calligraphy for display (Kaushan Script, Ma Shan Zheng)
+        // over an old-style serif; unhurried motion like drifting silk.
+        seed(
+            "jade",
+            "eastern jade xianxia",
+            "a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds",
+            Dark,
+            (0xdcbc72, 0x0b1a16, Some(0xf2d68c)),
+            S::Soft,
+            O::Rich,
+            M::Calm,
+            F::Gradient,
+            fonts(
+                "shared/EBGaramond-Medium.ttf",
+                "shared/KaushanScript-Regular.ttf",
+                "shared/EBGaramond-Medium.ttf",
+                "NotoSerifSC-SemiBold.ttf",
+                "MaShanZheng-Regular.ttf",
+            ),
+            "fantasy/icons.png",
+            16.0,
+            0.0,
+            kit(
+                ("select", 25, 1.35),
+                ("pickup", 21, 1.1),
+                ("back", 26, 0.9),
+                ("whoosh", 28, 0.7),
+                ("error", 20, 0.85),
+                ("levelup", 24, 0.95),
+                0.5,
+                false,
+                0.05,
+            ),
+        ),
+        // The owner's approved sheets (midcore-battle, midcore-menu,
+        // midcore-settings): chunky slate-stone panels with thick dark
+        // outlines and bevels, a glossy green primary, blue energy bars,
+        // gold selection, heavy rounded type (Titan One); springy,
+        // punchy presses.
+        StyleChoices {
+            info: Some(rgb(0x3b9bff)),
+            ..seed(
+                "midcore",
+                "mobile midcore strategy",
+                "a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands",
+                Dark,
+                (0x52c234, 0x1c2128, Some(0xffc83a)),
+                S::Round,
+                O::Light,
+                M::Bouncy,
+                F::Bevel,
+                fonts(
+                    "shared/Rubik-SemiBold.ttf",
+                    "shared/TitanOne-Regular.ttf",
+                    "shared/TitanOne-Regular.ttf",
+                    "NotoSansSC-Bold.ttf",
+                    "ZCOOLQingKeHuangYou-Regular.ttf",
+                ),
+                "cartoon/icons.png",
+                16.0,
+                0.0,
+                kit(
+                    ("click", 21, 0.9),
+                    ("coin", 22, 1.05),
+                    ("back", 25, 0.95),
+                    ("whoosh", 27, 0.9),
+                    ("error", 19, 0.95),
+                    ("levelup", 22, 1.05),
+                    0.7,
+                    false,
+                    0.08,
+                ),
+            )
+        },
     ]
 }
 

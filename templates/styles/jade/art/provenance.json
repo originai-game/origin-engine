@@ -1,0 +1,190 @@
+{
+  "jade/bar": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the bar of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single bar only, centred, filling the image across its width, 4.00 times as wide as it is tall (64 x 16 proportions); nothing else in the image.\nArt direction: A meter's fill painted as one confident dry-brush stroke of ink in white and light greys only (the game tints it with the meter's colour): a bold, even band across the whole width, its left and right ends ragged and split into bristle marks where the brush landed and lifted, a few faint fibre streaks along its length, its middle a flat even near-white so it tints cleanly. As the brush-stroke health and inner-qi bars of the ink-wash concept. Its top and bottom edges are even along their whole length (they stretch): the ragged marks sit only at its two ends. The stroke alone fills the image from edge to edge and nearly its full height: no scenery anywhere, no mountains, pavilions, trees, clouds, waves, mist, seals or any picture, at its ends or behind it, and no frame or outline around it. Clear background, nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "8d7845e611ab468e",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793779027,
+    "date": "2026-11-04",
+    "postprocess": "greyscaled with magick (-colorspace Gray), so the meter's tint is its only hue"
+  },
+  "jade/button": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: its border and face, its centre plain so a label reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button: a carved jade-green (#1f453b) plate with softly rounded corners (about 8 px), a soft lighter band along its top like polished stone, a 1.5 px gold (#c9a75c) edge line and a tiny gold cloud curl at its left and right ends; the label area flat jade so light text reads on it. As the Graphics, Controls and Language tabs of the concept's settings. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "3622b5321fed8133",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793775588,
+    "date": "2026-11-04"
+  },
+  "jade/button-primary": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button primary of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: its border and face, its centre plain so a label reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button: a burnished pale-gold (#dcbc72) plate with softly rounded corners (about 8 px), lit slightly lighter towards its top edge like gold leaf, a thin darker gold (#a8863e) edge line, and one tiny jade bead set in a small gold cloud curl at its left and right ends only, each no wider than a third of the button's height and kept inside its rounded corners, never pointed caps or wings past its outline; the label area, everything between those two small curls, a flat even gold (#dcbc72) so dark text reads on it. As the Break Through and Purchase buttons of the concept. No text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "16943fdc0840c158",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793778796,
+    "date": "2026-11-04"
+  },
+  "jade/card": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the card of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A jade item card for a treasure grid, one of many repeated side by side: a dark jade-green (#132a24) rectangle with softly rounded corners (about 8 px), a thin 1.5 px muted gold (#b89a55) edge line and one small gold cloud curl in its top-left and bottom-right corners; plain otherwise: no text, icons, glow or other ornaments. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "00d6e73a14886309",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793775620,
+    "date": "2026-11-04"
+  },
+  "jade/corner": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the corner of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single corner only, centred, filling the image across its width, 1.00 times as wide as it is tall (32 x 32 proportions); nothing else in the image.\nArt direction: A small corner ornament: a gold (#d8b465) cloud-scroll filigree curl in the top-left corner, two thin curling strokes meeting at the corner point and spiralling inwards, fine and elegant, on a clear background. As the cloud filigree at the panel corners of the concept. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "b0e8d0e4e1013be1",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775293,
+    "date": "2026-11-04"
+  },
+  "jade/divider": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the divider of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: a thin 1.5 px gold (#c9a75c) line across the whole width, fading out at both ends, with one small gold diamond knot at its centre, on a clear background. As the thin gold rules between the concept's sections. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "22d51d5d31e104b8",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775277,
+    "date": "2026-11-04"
+  },
+  "jade/field": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the field of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (13% left, 30% top, 13% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A dropdown or text field box: a recessed dark jade (#0e211c) rectangle with softly rounded corners (about 6 px), a thin 1 px muted gold (#a88d4f) edge line and a faint inner shadow along its top; completely plain inside, no ornaments. As the Output Device box of the concept's settings. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "4bf6c7e87b2f27d3",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775412,
+    "date": "2026-11-04"
+  },
+  "jade/flourish": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the flourish of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single flourish only, centred, filling the image across its width, 2.67 times as wide as it is tall (64 x 24 proportions); nothing else in the image.\nArt direction: A heading flourish: a short, thin gold (#d8b465) cloud-scroll curl that trails off to one side like a brush stroke, delicate and small, on a clear background. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "7373b3513c58ab49",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775277,
+    "date": "2026-11-04"
+  },
+  "jade/hud": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the hud of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD readout plate for counters (spirit stones, coins, a timer): a dark jade-green (#132a24) rounded rectangle (about 12 px corners) with a thin gold (#c9a75c) hairline edge and a tiny gold cloud curl at its left and right ends; plain centre so light text reads on it. As the currency plates at the top of the concept's menu. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "8962bbd966eea0b4",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793775597,
+    "date": "2026-11-04"
+  },
+  "jade/knob": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob, on: one round pale ivory-jade disc (#e9efe6) with a fine gold ring and a small engraved cloud emblem in pale jade at its centre, on a clear background. As the on switch's knob of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "2611d04d76b41ed0",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775406,
+    "date": "2026-11-04"
+  },
+  "jade/knob-off": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob off of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob, off: one round pale grey disc (#c4c8c4) with a fine silver-grey ring and a small engraved cloud emblem in grey at its centre, on a clear background. As the off switch's knob of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f15c894baadda906",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775282,
+    "date": "2026-11-04"
+  },
+  "jade/panel": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the panel of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A carved jade interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a deep jade-green ground (#16302a) with a faint darker green mottling like polished nephrite, softly rounded corners (about 10 px at this size), a fine 2 px gold-leaf (#d8b465) line just inside its edge with a thinner gold hairline inside that, and gold cloud-scroll filigree (curling auspicious clouds) in each of its four corners only. As the Techniques, Cultivation Realm and Audio panels of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "95005f0d6b5093cb",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775432,
+    "date": "2026-11-04"
+  },
+  "jade/slot": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the slot of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An inventory socket: a recessed dark jade-green (#0f231e) square with softly rounded corners (about 8 px), an inner shadow along its top edge and a thin 1.5 px muted gold (#b09450) edge; plain inside. As the technique icon sockets of the concept. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "2c4b0049ee7d3b7d",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793775595,
+    "date": "2026-11-04"
+  },
+  "jade/thumb": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the thumb of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a corner, flourish or divider, on a clear background.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider thumb: one round polished jade bead (#5fbf97 at its lit top-left, #2e7d62 at its shaded bottom) with a fine gold ring around it and a small soft highlight, on a clear background. As the slider knobs of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f5d4d5cb26faf732",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg"
+    ],
+    "generation": 1793775286,
+    "date": "2026-11-04"
+  },
+  "jade/tooltip": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the tooltip of the jade UI style for a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds: a panel's border and ground, its centre plain so text reads on it.\nStyle: Luminous layered depths. Painterly side-on scenery in many foreground and background layers with strong luminous focal points against dark masses. Deep side-on layers, glowing focal points, light shafts and bloom, atmospheric fade into the distance.\nPalette: dark cool masses plus warm luminous accents; value structure first: dark foreground, mid play plane, glowing background.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat single-layer backgrounds; bright overall exposure; no focal light; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A small floating tooltip plate: a dark jade-green (#183630) rectangle with softly rounded corners (about 6 px) and a 1 px pale gold (#d8b465) hairline edge; plain, no ornaments. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "638320f41fc30e34",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+      "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+    ],
+    "generation": 1793775599,
+    "date": "2026-11-04"
+  }
+}

@@ -15,6 +15,16 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Two built-in styles: `jade` and `midcore`** (two of the sixteen
+  packs, docs/ui.md §12). `jade` is carved jade and gold leaf for
+  xianxia, wuxia and eastern fantasy, with brush-calligraphy titles and,
+  from inkwash, ink-wash backdrops and brush-stroke meter fills;
+  `midcore` is chunky slate stone with thick outlines, a glossy green
+  primary and heavy rounded type for mobile strategy, card battlers and
+  base building. Both are painted atlas packs with CJK fonts (Ma Shan
+  Zheng, ZCOOL QingKe HuangYou) and shared Latin faces (EB Garamond,
+  Kaushan Script, Rubik, Titan One). `ui "jade"` and `ui "midcore"`
+  cook; the kit's `style` command takes both.
 - **Style art: a meter fill slot, and button labels that keep their bar.**
   `og style art` packs a listed `<style>/bar` (a meter fill painted in
   white and greys) as `Meter.fill`'s tint slice, so every meter kind keeps
@@ -217,7 +227,7 @@ is one line here, written at the merge that changes
   virtual cameras' records and grants their writes.
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
-  into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`
+  into `storybook`, `inkwash` into `jade`, `neon`
   into `cyber`, `holo` into `scifi`. Their `@styles/<name>/` packs, kit
   looks, playtests and sheets are gone and a look naming one no longer
   cooks. The look presets that named `paper` name `storybook`, those that

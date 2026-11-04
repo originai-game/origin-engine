@@ -17,6 +17,8 @@ is also the pixel style's Latin face: its import cooks Latin-1 too, on its
 | `NotoSansSC-Bold.ttf` | SIL OFL 1.1 (`OFL-NotoSansSC.txt`) | the same at wght 700 |
 | `NotoSerifSC-SemiBold.ttf` | SIL OFL 1.1 (`OFL-NotoSerifSC.txt`) | Noto Serif SC (google/fonts `ofl/notoserifsc`) at wght 600, subset. Copyright 2012 Google Inc. |
 | `ZCOOLKuaiLe-Regular.ttf` | SIL OFL 1.1 (`OFL-ZCOOLKuaiLe.txt`) | ZCOOL KuaiLe (google/fonts `ofl/zcoolkuaile`), subset (the face covers GB2312 level 1). Copyright 2018 The ZCOOL KuaiLe Project Authors |
+| `MaShanZheng-Regular.ttf` | SIL OFL 1.1 (`OFL-MaShanZheng.txt`) | Ma Shan Zheng (google/fonts `ofl/mashanzheng`), a brush-calligraphy face, subset (GB2312, ASCII, CJK punctuation). Copyright 2018 The Ma Shan Zheng Project Authors |
+| `ZCOOLQingKeHuangYou-Regular.ttf` | SIL OFL 1.1 (`OFL-ZCOOLQingKeHuangYou.txt`) | ZCOOL QingKe HuangYou (google/fonts `ofl/zcoolqingkehuangyou`), a heavy display face, subset (GB2312, ASCII, CJK punctuation). Copyright 2018 The ZCOOL QingKe HuangYou Project Authors |
 | `FusionPixel12-zhHans.ttf` | SIL OFL 1.1 (`OFL-FusionPixel.txt`) | Fusion Pixel Font 12px proportional zh_hans (github.com/TakWolf/fusion-pixel-font, release 2026.10.25), subset. Copyright (c) 2022, TakWolf |
 
 | Pack | `cjk` (body, numbers) | `cjkDisplay` (titles) |
@@ -27,3 +29,5 @@ is also the pixel style's Latin face: its import cooks Latin-1 too, on its
 | scifi | Noto Sans SC Regular | Noto Sans SC Bold |
 | paper | Noto Sans SC Regular | Noto Serif SC SemiBold |
 | neon | Noto Sans SC Bold | Noto Sans SC Bold |
+| jade | Noto Serif SC SemiBold | Ma Shan Zheng |
+| midcore | Noto Sans SC Bold | ZCOOL QingKe HuangYou |

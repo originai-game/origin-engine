@@ -1,0 +1,518 @@
+{
+  "choices": {
+    "finish": "gradient",
+    "motion": "calm",
+    "ornament": "rich",
+    "scheme": "dark",
+    "seed": "#dcbc72",
+    "shape": "soft"
+  },
+  "concepts": [
+    "tests/evidence/ui-art/concepts/v2/jade-settings.jpg",
+    "tests/evidence/ui-art/concepts/v2/jade-menu.jpg",
+    "tests/evidence/ui-art/concepts/v2/jade-cultivation.jpg",
+    "tests/evidence/ui-art/concepts/v2/inkwash-hud.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "look": "eastern jade xianxia",
+  "lookPreset": "luminous-layered-painting",
+  "palette": {
+    "backdrop": "#0b1a16",
+    "highlight": "#fbf3dc",
+    "ink": "#fdfbf7",
+    "line": "#49534d",
+    "panel": "#222e28",
+    "primary": "#dcbc72"
+  },
+  "premise": "a xianxia cultivation saga of sects, flying swords and jade pavilions above the clouds",
+  "resample": "smooth",
+  "slots": [
+    {
+      "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
+      "fit": "nineSlice",
+      "flat": 0.12,
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "95005f0d6b5093cb",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "jade/panel",
+      "note": "A carved jade interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a deep jade-green ground (#16302a) with a faint darker green mottling like polished nephrite, softly rounded corners (about 10 px at this size), a fine 2 px gold-leaf (#d8b465) line just inside its edge with a thinner gold hairline inside that, and gold cloud-scroll filigree (curling auspicious clouds) in each of its four corners only. As the Techniques, Cultivation Realm and Audio panels of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#16302a",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "00d6e73a14886309",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
+      ],
+      "kind": "styleFrame",
+      "name": "jade/card",
+      "note": "A jade item card for a treasure grid, one of many repeated side by side: a dark jade-green (#132a24) rectangle with softly rounded corners (about 8 px), a thin 1.5 px muted gold (#b89a55) edge line and one small gold cloud curl in its top-left and bottom-right corners; plain otherwise: no text, icons, glow or other ornaments. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#132a24",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "4bf6c7e87b2f27d3",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "jade/field",
+      "note": "A dropdown or text field box: a recessed dark jade (#0e211c) rectangle with softly rounded corners (about 6 px), a thin 1 px muted gold (#a88d4f) edge line and a faint inner shadow along its top; completely plain inside, no ornaments. As the Output Device box of the concept's settings. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0e211c",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "2c4b0049ee7d3b7d",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "jade/slot",
+      "note": "An inventory socket: a recessed dark jade-green (#0f231e) square with softly rounded corners (about 8 px), an inner shadow along its top edge and a thin 1.5 px muted gold (#b09450) edge; plain inside. As the technique icon sockets of the concept. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0f231e",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "638320f41fc30e34",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "jade/tooltip",
+      "note": "A small floating tooltip plate: a dark jade-green (#183630) rectangle with softly rounded corners (about 6 px) and a 1 px pale gold (#d8b465) hairline edge; plain, no ornaments. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#183630",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "8962bbd966eea0b4",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "jade/hud",
+      "note": "A HUD readout plate for counters (spirit stones, coins, a timer): a dark jade-green (#132a24) rounded rectangle (about 12 px corners) with a thin gold (#c9a75c) hairline edge and a tiny gold cloud curl at its left and right ends; plain centre so light text reads on it. As the currency plates at the top of the concept's menu. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "3622b5321fed8133",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "jade/button",
+      "note": "A secondary button: a carved jade-green (#1f453b) plate with softly rounded corners (about 8 px), a soft lighter band along its top like polished stone, a 1.5 px gold (#c9a75c) edge line and a tiny gold cloud curl at its left and right ends; the label area flat jade so light text reads on it. As the Graphics, Controls and Language tabs of the concept's settings. No landscape, mountains, clouds of scenery or any picture painted on its face: its face is a plain polished jade. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "16943fdc0840c158",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "jade/button-primary",
+      "note": "The primary button: a burnished pale-gold (#dcbc72) plate with softly rounded corners (about 8 px), lit slightly lighter towards its top edge like gold leaf, a thin darker gold (#a8863e) edge line, and one tiny jade bead set in a small gold cloud curl at its left and right ends only, each no wider than a third of the button's height and kept inside its rounded corners, never pointed caps or wings past its outline; the label area, everything between those two small curls, a flat even gold (#dcbc72) so dark text reads on it. As the Break Through and Purchase buttons of the concept. No text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "b0e8d0e4e1013be1",
+      "kind": "ornament",
+      "name": "jade/corner",
+      "note": "A small corner ornament: a gold (#d8b465) cloud-scroll filigree curl in the top-left corner, two thin curling strokes meeting at the corner point and spiralling inwards, fine and elegant, on a clear background. As the cloud filigree at the panel corners of the concept. Nothing else.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "22d51d5d31e104b8",
+      "kind": "ornament",
+      "name": "jade/divider",
+      "note": "A horizontal divider: a thin 1.5 px gold (#c9a75c) line across the whole width, fading out at both ends, with one small gold diamond knot at its centre, on a clear background. As the thin gold rules between the concept's sections. Nothing else.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "7373b3513c58ab49",
+      "kind": "ornament",
+      "name": "jade/flourish",
+      "note": "A heading flourish: a short, thin gold (#d8b465) cloud-scroll curl that trails off to one side like a brush stroke, delicate and small, on a clear background. Nothing else.",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "jade/icons",
+      "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "f5d4d5cb26faf732",
+      "kind": "ornament",
+      "name": "jade/thumb",
+      "note": "A slider thumb: one round polished jade bead (#5fbf97 at its lit top-left, #2e7d62 at its shaded bottom) with a fine gold ring around it and a small soft highlight, on a clear background. As the slider knobs of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "2611d04d76b41ed0",
+      "kind": "ornament",
+      "name": "jade/knob",
+      "note": "A switch's knob, on: one round pale ivory-jade disc (#e9efe6) with a fine gold ring and a small engraved cloud emblem in pale jade at its centre, on a clear background. As the on switch's knob of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "f15c894baadda906",
+      "kind": "ornament",
+      "name": "jade/knob-off",
+      "note": "A switch's knob, off: one round pale grey disc (#c4c8c4) with a fine silver-grey ring and a small engraved cloud emblem in grey at its centre, on a clear background. As the off switch's knob of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Meter.fill"
+      ],
+      "file": "art/bar.png",
+      "hash": "8d7845e611ab468e",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "jade/bar",
+      "note": "A meter's fill painted as one confident dry-brush stroke of ink in white and light greys only (the game tints it with the meter's colour): a bold, even band across the whole width, its left and right ends ragged and split into bristle marks where the brush landed and lifted, a few faint fibre streaks along its length, its middle a flat even near-white so it tints cleanly. As the brush-stroke health and inner-qi bars of the ink-wash concept. Its top and bottom edges are even along their whole length (they stretch): the ragged marks sit only at its two ends. The stroke alone fills the image from edge to edge and nearly its full height: no scenery anywhere, no mountains, pavilions, trees, clouds, waves, mist, seals or any picture, at its ends or behind it, and no frame or outline around it. Clear background, nothing else.",
+      "pixels": [
+        192,
+        48
+      ],
+      "size": [
+        64,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
+    }
+  ],
+  "style": "jade"
+}

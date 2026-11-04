@@ -1,0 +1,479 @@
+{
+  "atlas": [
+    512,
+    262
+  ],
+  "base": [
+    0,
+    0
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "pending": [],
+  "resample": "smooth",
+  "slots": [
+    {
+      "derived": [],
+      "from": "art/panel.png",
+      "insets": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775284,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the panel of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A chunky stone interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat dark slate-grey (#2e343b) slab with rounded corners (about 12 px at this size), a thick 3 px near-black (#14171b) outline, a lighter slate (#4a525b) bevelled rim along its top and left inner edges and a darker rim along its bottom, and one small grey steel rivet bolt in each of its four corners. As the panels of the concept's hero upgrade and settings screens. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "e439c0e3ec4334f8"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "midcore/panel",
+      "source": [
+        389,
+        384
+      ],
+      "to": [
+        "Panel.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/card.png",
+      "insets": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775673,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the card of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A hero card frame, one of many repeated in a row: a dark slate (#262c33) square with rounded corners (about 10 px), a thick 3 px near-black (#14171b) outline and a 2 px lighter slate (#4a525b) inner bevel along its top; plain inside: no rivets, text, icons or other marks. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "2e8000052c75d662"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "midcore/card",
+      "source": [
+        386,
+        384
+      ],
+      "to": [
+        "Card.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/field.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775662,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the field of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (13% left, 30% top, 13% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A dropdown or text field: a recessed near-black slate (#1a1e23) rectangle with rounded corners (about 8 px), a 2 px darker (#0e1013) outline and an inner shadow along its top edge; plain inside. As the Speakers and English boxes of the concept's settings. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "c97b31b6ec2e7dee"
+      },
+      "size": [
+        135,
+        40
+      ],
+      "slot": "midcore/field",
+      "source": [
+        540,
+        160
+      ],
+      "to": [
+        "Field.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/slot.png",
+      "insets": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775661,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the slot of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An item socket: a recessed dark slate (#1f242a) square with rounded corners (about 10 px), a thick 3 px near-black (#14171b) outline and an inner shadow along its top; plain inside. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "0c9ea3f2998bf50e"
+      },
+      "size": [
+        64,
+        64
+      ],
+      "slot": "midcore/slot",
+      "source": [
+        258,
+        256
+      ],
+      "to": [
+        "Slot.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/tooltip.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775665,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the tooltip of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A tooltip plate: a dark slate (#2a3037) rectangle with rounded corners (about 8 px) and a 2 px near-black (#14171b) outline; plain. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "3810212cf0dc9a4f"
+      },
+      "size": [
+        86,
+        48
+      ],
+      "slot": "midcore/tooltip",
+      "source": [
+        343,
+        192
+      ],
+      "to": [
+        "Tooltip.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/hud.png",
+      "insets": [
+        14,
+        12,
+        14,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775285,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the hud of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a panel's border and ground, its centre plain so text reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD counter plate for currency and timers: a dark slate (#22272d) rounded rectangle (about 14 px corners) with a thick 3 px near-black (#14171b) outline and a lighter slate band along its top edge; plain centre so white numbers read on it. As the gold, gem and potion counters at the top of the concept's menu, without their icons or plus buttons. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "8f6214370ede1408"
+      },
+      "size": [
+        124,
+        40
+      ],
+      "slot": "midcore/hud",
+      "source": [
+        495,
+        160
+      ],
+      "to": [
+        "Hud.frame"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775278,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI button of the button of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: its border and face, its centre plain so a label reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button: a chunky slate-grey (#4a525b) rounded slab (about 10 px corners) with a thick 3 px near-black (#14171b) outline, a lighter (#626b75) glossy band across its top half and a darker (#363c43) lip along its bottom edge like a pressable block; the label area flat grey so white text reads on it. As the Graphics and Controls tabs and the arrow buttons of the concept. No icon or text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "af91befe8614d313"
+      },
+      "size": [
+        154,
+        44
+      ],
+      "slot": "midcore/button",
+      "source": [
+        616,
+        176
+      ],
+      "to": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button-primary.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793776707,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI button of the button primary of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: its border and face, its centre plain so a label reads on it.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button: a chunky glossy bright green (#7ad85a) rounded slab (about 10 px corners) with a thick 3 px dark green-black (#14301a) outline, a light glossy highlight band (#a6ec8a) across its top third and a deeper green (#4aa834) lip along its bottom edge; the label area a flat even light green (#80d862) so dark text reads on it. As the UPGRADE and DONE buttons of the concept. No check mark, coin or text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "6fa572b87b7f9586"
+      },
+      "size": [
+        141,
+        44
+      ],
+      "slot": "midcore/button-primary",
+      "source": [
+        565,
+        176
+      ],
+      "to": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/corner.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775466,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the corner of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a corner, flourish or divider, on a clear background.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single corner only, centred, filling the image across its width, 1.00 times as wide as it is tall (32 x 32 proportions); nothing else in the image.\nArt direction: A small corner ornament: one round grey steel rivet bolt (#8a929b) with a thick dark (#14171b) outline and a small light glint, sitting in the top-left corner, on a clear background. As the bolts at the corners of the concept's settings frame. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "1aec17d35ecd3c30"
+      },
+      "size": [
+        32,
+        32
+      ],
+      "slot": "midcore/corner",
+      "source": [
+        128,
+        131
+      ],
+      "to": [
+        "corner"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/divider.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775276,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the divider of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a corner, flourish or divider, on a clear background.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: a 4 px dark slate groove (#15181c) with a lighter (#4a525b) lower edge across the whole width, like a seam cut in stone, plain along its length, on a clear background. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "6853962b2476f542"
+      },
+      "size": [
+        192,
+        7
+      ],
+      "slot": "midcore/divider",
+      "source": [
+        1536,
+        57
+      ],
+      "to": [
+        "divider"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/thumb.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775468,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the thumb of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a corner, flourish or divider, on a clear background.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider thumb: one glossy round blue (#3b9bff) gem ball with a thick dark navy (#0d1d33) outline and a bright white glint at its top-left, on a clear background. As the slider knobs of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "9332144588bfb9fc"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "midcore/thumb",
+      "source": [
+        96,
+        96
+      ],
+      "to": [
+        "Slider.knob"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775282,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a corner, flourish or divider, on a clear background.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob, on: one round glossy white (#f4f6f8) disc with a thick dark (#14171b) outline and a soft grey shade along its bottom, on a clear background. As the On switch's knob of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "978d73c25cac946b"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "midcore/knob",
+      "source": [
+        96,
+        97
+      ],
+      "to": [
+        "Toggle.knob[on]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob-off.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793775466,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob off of the midcore UI style for a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands: a corner, flourish or divider, on a clear background.\nStyle: Inked comic 3D. Volumetric models keep bold outlines, drawn surface marks and exaggerated colour: a comic page given depth. Comic ink over 3D: heavy outlines, hatched shading painted in, punchy colour, exaggerated shapes.\nPalette: free, saturated; bold local colours, black ink for all shadow edges.\nConform: the cook then the look's 3-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a near-black #0a0810 line about 3 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: photoreal textures; thin outlines; muted colour; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob, off: one round glossy light grey (#c3c8ce) disc with a thick dark (#14171b) outline and a darker grey shade along its bottom, on a clear background. As the Off switch's knob of the concept's settings. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+        ],
+        "request": "18b12cc18e6b7c9d"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "midcore/knob-off",
+      "source": [
+        96,
+        96
+      ],
+      "to": [
+        "Toggle.knob[off]"
+      ]
+    }
+  ],
+  "stale": [],
+  "style": "midcore"
+}

@@ -1,0 +1,462 @@
+{
+  "choices": {
+    "finish": "bevel",
+    "motion": "bouncy",
+    "ornament": "light",
+    "scheme": "dark",
+    "seed": "#52c234",
+    "shape": "round"
+  },
+  "concepts": [
+    "tests/evidence/ui-art/concepts/v2/midcore-settings.jpg",
+    "tests/evidence/ui-art/concepts/v2/midcore-menu.jpg",
+    "tests/evidence/ui-art/concepts/v2/midcore-battle.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "look": "mobile midcore strategy",
+  "lookPreset": "inked-comic-3d",
+  "palette": {
+    "backdrop": "#1c2128",
+    "highlight": "#fff1c9",
+    "ink": "#f5fbf3",
+    "line": "#515959",
+    "panel": "#2d3537",
+    "primary": "#6acb50"
+  },
+  "premise": "a competitive card battler of chunky heroes, stone forts and lane pushes on floating islands",
+  "resample": "smooth",
+  "slots": [
+    {
+      "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
+      "fit": "nineSlice",
+      "flat": 0.14,
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "e439c0e3ec4334f8",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/panel",
+      "note": "A chunky stone interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat dark slate-grey (#2e343b) slab with rounded corners (about 12 px at this size), a thick 3 px near-black (#14171b) outline, a lighter slate (#4a525b) bevelled rim along its top and left inner edges and a darker rim along its bottom, and one small grey steel rivet bolt in each of its four corners. As the panels of the concept's hero upgrade and settings screens. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#2e343b",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "2e8000052c75d662",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/card",
+      "note": "A hero card frame, one of many repeated in a row: a dark slate (#262c33) square with rounded corners (about 10 px), a thick 3 px near-black (#14171b) outline and a 2 px lighter slate (#4a525b) inner bevel along its top; plain inside: no rivets, text, icons or other marks. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#262c33",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "c97b31b6ec2e7dee",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/field",
+      "note": "A dropdown or text field: a recessed near-black slate (#1a1e23) rectangle with rounded corners (about 8 px), a 2 px darker (#0e1013) outline and an inner shadow along its top edge; plain inside. As the Speakers and English boxes of the concept's settings. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1a1e23",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "0c9ea3f2998bf50e",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/slot",
+      "note": "An item socket: a recessed dark slate (#1f242a) square with rounded corners (about 10 px), a thick 3 px near-black (#14171b) outline and an inner shadow along its top; plain inside. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1f242a",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "3810212cf0dc9a4f",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/tooltip",
+      "note": "A tooltip plate: a dark slate (#2a3037) rectangle with rounded corners (about 8 px) and a 2 px near-black (#14171b) outline; plain. No rivets, bolts, leaves, vines or other ornaments anywhere on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#2a3037",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "8f6214370ede1408",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "midcore/hud",
+      "note": "A HUD counter plate for currency and timers: a dark slate (#22272d) rounded rectangle (about 14 px corners) with a thick 3 px near-black (#14171b) outline and a lighter slate band along its top edge; plain centre so white numbers read on it. As the gold, gem and potion counters at the top of the concept's menu, without their icons or plus buttons. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "af91befe8614d313",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "midcore/button",
+      "note": "A secondary button: a chunky slate-grey (#4a525b) rounded slab (about 10 px corners) with a thick 3 px near-black (#14171b) outline, a lighter (#626b75) glossy band across its top half and a darker (#363c43) lip along its bottom edge like a pressable block; the label area flat grey so white text reads on it. As the Graphics and Controls tabs and the arrow buttons of the concept. No icon or text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
+      "fit": "nineSlice",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "6fa572b87b7f9586",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "midcore/button-primary",
+      "note": "The primary button: a chunky glossy bright green (#7ad85a) rounded slab (about 10 px corners) with a thick 3 px dark green-black (#14301a) outline, a light glossy highlight band (#a6ec8a) across its top third and a deeper green (#4aa834) lip along its bottom edge; the label area a flat even light green (#80d862) so dark text reads on it. As the UPGRADE and DONE buttons of the concept. No check mark, coin or text on it. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "1aec17d35ecd3c30",
+      "kind": "ornament",
+      "name": "midcore/corner",
+      "note": "A small corner ornament: one round grey steel rivet bolt (#8a929b) with a thick dark (#14171b) outline and a small light glint, sitting in the top-left corner, on a clear background. As the bolts at the corners of the concept's settings frame. Nothing else.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "6853962b2476f542",
+      "kind": "ornament",
+      "name": "midcore/divider",
+      "note": "A horizontal divider: a 4 px dark slate groove (#15181c) with a lighter (#4a525b) lower edge across the whole width, like a seam cut in stone, plain along its length, on a clear background. Nothing else.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": [
+        1,
+        1
+      ],
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "kind": "iconSet",
+      "name": "midcore/icons",
+      "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "9332144588bfb9fc",
+      "kind": "ornament",
+      "name": "midcore/thumb",
+      "note": "A slider thumb: one glossy round blue (#3b9bff) gem ball with a thick dark navy (#0d1d33) outline and a bright white glint at its top-left, on a clear background. As the slider knobs of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "978d73c25cac946b",
+      "kind": "ornament",
+      "name": "midcore/knob",
+      "note": "A switch's knob, on: one round glossy white (#f4f6f8) disc with a thick dark (#14171b) outline and a soft grey shade along its bottom, on a clear background. As the On switch's knob of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "18b12cc18e6b7c9d",
+      "kind": "ornament",
+      "name": "midcore/knob-off",
+      "note": "A switch's knob, off: one round glossy light grey (#c3c8ce) disc with a thick dark (#14171b) outline and a darker grey shade along its bottom, on a clear background. As the Off switch's knob of the concept's settings. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    }
+  ],
+  "style": "midcore"
+}
