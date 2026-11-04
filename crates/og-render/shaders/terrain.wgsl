@@ -43,7 +43,7 @@ struct TerrainUniform {
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
   params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes, w: 1 with horizon shadows
   tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels, w: control pages (four layers each)
-  displace: vec4<f32>,  // x: the displacement's reach (the terrain's horizontal metres, 0: none), y: world metres per unit of the terrain's y
+  displace: vec4<f32>,  // x: the displacement's reach (the terrain's horizontal metres, 0: none), y: world metres per unit of the terrain's y, z: the terrain's y in its horizontal metres, w: lying snow's lift (world m, terrain.rs snow_lift)
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   pyramid: array<vec4<f32>, 16>,  // per level: x its first tile, y tiles along x, z along z

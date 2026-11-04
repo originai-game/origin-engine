@@ -650,7 +650,7 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 | `wetness` | `number` | `0` | — | `ratio` | read only | How wet the ground is, 0 dry to 1 soaked (written by og.weather). |
 | `puddles` | `number` | `0` | — | `ratio` | read only | How far standing water has spread, 0 none to 1 (written by og.weather). |
 | `dust` | `number` | `0` | — | `ratio` | read only | How much dust and sand has settled, 0 none to 1 covering what faces up (written by og.weather). |
-| `snowDepth` | `number` | `0` | — | `m` | read only | The depth of lying snow (written by og.weather). |
+| `snowDepth` | `number` | `0` | — | `m` | read only | The depth of lying snow (written by og.weather). The drawn terrain rises by it on level ground, up to 10 cm, once the cover has built up; only drawn: collision, og.terrain.sample, picking and what stands on the ground keep the terrain's own height. |
 | `strikes` | `number` | `0` | — | — | read only | Lightning strikes so far (written by og.weather). |
 | `lastStrike` | `number` | `0` | — | — | read only | The tick of the latest strike (0 before the first; written by og.weather). |
 | `strikePosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Where the latest strike landed (written by og.weather). |
@@ -750,7 +750,7 @@ resource WeatherState {
     readonly true
     unit ratio
   }
-  field snowDepth f32 "The depth of lying snow (written by og.weather)." {
+  field snowDepth f32 "The depth of lying snow (written by og.weather). The drawn terrain rises by it on level ground, up to 10 cm, once the cover has built up; only drawn: collision, og.terrain.sample, picking and what stands on the ground keep the terrain's own height." {
     readonly true
     unit m
   }

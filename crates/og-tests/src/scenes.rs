@@ -223,6 +223,7 @@ pub const SCENES: &[&str] = &[
     "weather-snow-buildup",
     "weather-dust-desert",
     "materials-cloth",
+    "weather-cobbles-wet",
     "aurora-arcs",
     "aurora-breakup",
     "live-sky",
@@ -1243,7 +1244,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Wave B: weather on surfaces (a rain-wet street, puddles drying,
-        // snow built up, a dusty desert) and velvet and cotton.
+        // snow built up, a dusty desert, rain on cobbles) and velvet and
+        // cotton.
         // The wet street and the puddles mirror through SSR, whose hits
         // read the frame before: they draw its 16.
         "weather-street-wet" | "weather-puddles" => |g, name| {
@@ -1251,7 +1253,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.frames = crate::depth_render_scenes::SSR_FRAMES;
             Ok(())
         },
-        "weather-snow-buildup" | "weather-dust-desert" | "materials-cloth" => |g, name| {
+        // Rain on T4's cobbles (a terrain).
+        "weather-snow-buildup"
+        | "weather-dust-desert"
+        | "materials-cloth"
+        | "weather-cobbles-wet" => |g, name| {
             g.scene = crate::weather_scenes::weather_scene(name);
             Ok(())
         },

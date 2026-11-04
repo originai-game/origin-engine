@@ -19,6 +19,7 @@ pub const WEATHER_SCENES: &[&str] = &[
     "weather-snow-buildup",
     "weather-dust-desert",
     "materials-cloth",
+    "weather-cobbles-wet",
 ];
 
 /// Smooth value noise over the plane (0..1), wrapping every `period` cells.
@@ -118,6 +119,7 @@ pub fn weather_scene(name: &str) -> RenderScene {
         "weather-snow-buildup" => snow_buildup(),
         "weather-dust-desert" => desert(),
         "materials-cloth" => cloth(),
+        "weather-cobbles-wet" => cobbles_wet(),
         _ => panic!("no weather scene {name}"),
     }
 }
@@ -605,5 +607,22 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
+    scene
+}
+
+/// T4's displaced cobbles over their crest in the rain (a terrain): the
+/// mortar joints, the layer's low relief, fill with water first and
+/// mirror the sky between the stones, whose tops stay dark and wet under
+/// the running film, the drops splashing on them.
+fn cobbles_wet() -> RenderScene {
+    let mut scene = crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
+    scene.surface_weather = Some(SurfaceWeather {
+        wetness: 1.0,
+        puddles: 0.55,
+        rain: 1.0,
+        puddle_size: 1.5,
+        shelter: 0.0,
+        ..SurfaceWeather::default()
+    });
     scene
 }

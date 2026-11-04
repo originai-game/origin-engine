@@ -650,8 +650,11 @@ together with a probe.
   sand on what faces up (`dustTime`, `dustColor`) until rain washes it off
   (`washTime`). Roofs and canopies keep what is under them dry
   (`shelterSize`). Meshes, terrain and grass all take it; a material's
-  relief comes from its `aoMap` (water and dust fill its dark crevices
-  first). Set `weathering: 0` on a material the weather must not touch
+  relief comes from its `aoMap` and a terrain's from its layers' height
+  maps (water, snow and dust fill the dark crevices and the mortar
+  joints first). Lying snow lifts the drawn terrain by `snowDepth`, at
+  most 10 cm (drawn only: what stands on the ground does not rise with
+  it), buries the grass's roots and bows its blades. Set `weathering: 0` on a material the weather must not touch
   (an interior seen through a door, a screen, a lamp's glass), or between
   0 and 1 for one that sheds some. For a scene that starts wet, write the
   state's fields once at setup rather than waiting for rain.

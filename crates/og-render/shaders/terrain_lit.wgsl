@@ -160,12 +160,43 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   return s;
 }
 
-// The blended layers at a fragment: albedo, shading normal, roughness.
+// The blended layers at a fragment: albedo, shading normal, roughness,
+// and how high it lies in their relief (`layers_height`).
 struct TerrainLook {
   albedo: vec3<f32>,
   normal: vec3<f32>,
   roughness: f32,
+  height: f32,
 };
+
+// How high a fragment lies in its picked layers' relief under weights
+// `w`, 0 (a hollow) to 1 (a crest): their height maps' heights blended,
+// 0.5 (none known) for a layer without one. The weather fills the
+// hollows first (weather_surface.wgsl `cavity`); the lit pass and the
+// prepass both, so puddles and the reflections' gloss agree.
+fn layers_height(pick: LayerPick, w: vec4<f32>, heights_of: vec4<f32>) -> f32 {
+  var h = 0.0;
+  var total = 0.0;
+  for (var k = 0u; k < 4u; k++) {
+    if (k < pick.n && w[k] > 0.0) {
+      let mapped = (u32(terrain.layers[pick.ids[k]].mapping.w) & 1u) != 0u;
+      h += w[k] * select(0.5, heights_of[k], mapped);
+      total += w[k];
+    }
+  }
+  return select(0.5, h / total, total > 0.0);
+}
+
+// The weather's cavity for a layers' height: the relief's crests and
+// hollows, kept off the extremes (as pbr_fs.wgsl weather_cavity).
+fn terrain_cavity(height: f32) -> f32 {
+  return 0.15 + 0.7 * height;
+}
+
+// Whether the weather lays anything on the ground this frame.
+fn weather_active() -> bool {
+  return max(max(max(frame.weather.x, frame.weather.y), frame.weather.z), frame.weather_dust.w) > 0.0;
+}
 
 // The picked layers' roughness under weights `w` (the lit pass and the
 // prepass both: their roughness is one function of the same weights).
@@ -204,26 +235,32 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dp
       normal += samples[k].normal * w[k];
     }
   }
+  var height = layers_height(pick, w, heights_of);
   if (count == 0u) {
     albedo = vec3<f32>(0.5);
     normal = n_geo;
+    height = 0.5;
   }
-  return TerrainLook(albedo, normal, blended_roughness(pick, w));
+  return TerrainLook(albedo, normal, blended_roughness(pick, w), height);
 }
 
-// The roughness `terrain_look` gives a fragment, from the layers'
-// heights alone: the prepass reads no normal map and blends no colour.
-fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
+// The roughness `terrain_look` gives a fragment (x) and its height in
+// the layers' relief (y), from the layers' heights alone: the prepass
+// reads no normal map and blends no colour. (The heights are read when
+// the layers blend by them or the weather needs them.)
+fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec2<f32> {
   let pick = pick_layers(p, n_geo, control);
   var heights_of = vec4<f32>(1.0);
-  if (terrain.params.x > 0.0 && !pick.fallback) {
+  if ((terrain.params.x > 0.0 && !pick.fallback) || weather_active()) {
     for (var k = 0u; k < 4u; k++) {
       if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
         heights_of[k] = sample_layer_albedo(pick.ids[k], p, n_geo, dpx, dpy).a;
       }
     }
   }
-  return blended_roughness(pick, blend_weights(pick, heights_of));
+  let w = blend_weights(pick, heights_of);
+  let height = select(0.5, layers_height(pick, w, heights_of), u32(terrain.origin.w) > 0u);
+  return vec2<f32>(blended_roughness(pick, w), height);
 }
 
 // The toon ramp's three bands for the terrain (pbr.wgsl toon_ramp's built-in
@@ -351,7 +388,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   // normal-offset bias and shadows itself in squares of shadow texels,
   // and the drawn one is interpolated per vertex, faceted.
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_geo);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_geo, look.height);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -365,14 +402,15 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
 // the shadow lookup's offset (a stamp's blended foot takes the ground's
 // normal, but its wall still faces out: offset along the ground's, the
 // wall shadowed itself in a dark strip along its foot).
-fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>) -> vec4<f32> {
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>, height: f32) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
   s.metallic = 0.0;
   s.roughness = clamp(roughness, 0.04, 1.0);
   s.f0 = vec3<f32>(0.04);
-  let weathered = weather_surface(s, n, n_geo, p);
+  // The weather on the ground, its hollows (the layers' relief) first.
+  let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, 1.0);
   s = weathered.s;
   n = weathered.n;
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
@@ -466,13 +504,18 @@ struct TerrainPrepass {
   @location(2) outline: vec4<f32>,
 };
 
-// The prepass's targets for a fragment of the ground or a stamp.
-fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, roughness: f32, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
+// The prepass's targets for a fragment of the ground or a stamp: `n` its
+// drawn normal, `n_geo` the field's (or the stamp's) the weather lies by,
+// `layers` its roughness and height (terrain_roughness). Wet ground,
+// puddles and their ripples as the lit pass shades them
+// (weather_surface.wgsl weather_gloss), so reflections see them.
+fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec2<f32>, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
   let cur = cur_clip.xy / cur_clip.w;
   let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
+  let g = weather_gloss(clamp(layers.x, 0.04, 1.0), 0.0, n, n_geo, p, terrain_cavity(layers.y), 1.0);
   var o: TerrainPrepass;
-  o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  let reflectivity = reflectivity_bits(clamp(roughness, 0.04, 1.0), 0.0);
+  o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  let reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
   o.depth = vec4<f32>(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   return o;
@@ -485,8 +528,8 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
   let layers = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
-  let roughness = toksvig_roughness(layers, point.variance);
-  return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), roughness, in.cur_clip, in.prev_clip);
+  let roughness = toksvig_roughness(layers.x, point.variance);
+  return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), point.normal, vec2<f32>(roughness, layers.y), in.cur_clip, in.prev_clip);
 }
 
 // ── Terrain stamps ──────────────────────────────────────────────────────
@@ -570,7 +613,7 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
-  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal));
+  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
 }
 
 @fragment
@@ -578,5 +621,5 @@ fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
   let p = in.world;
   let g = stamp_ground(p, normalize(in.normal));
   let roughness = terrain_roughness(p, g.normal, g.control, dpdx(p), dpdy(p));
-  return terrain_prepass_out(p, g.normal, roughness, in.cur_clip, in.prev_clip);
+  return terrain_prepass_out(p, g.normal, g.normal, roughness, in.cur_clip, in.prev_clip);
 }

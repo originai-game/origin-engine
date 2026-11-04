@@ -34,7 +34,11 @@ is one line here, written at the merge that changes
   puddles, snow and dust first. The screen-space reflections read the wet
   roughness and the puddles' flat, rippled normal from the prepass. Grass
   darkens and glosses in the rain, and lying snow buries its roots and bows
-  its blades (every pass alike, the shadows and motion included). Sheen
+  its blades (every pass alike, the shadows and motion included). A
+  terrain's puddles, snow and dust follow its layers' height maps (the
+  mortar joints fill first), its prepass writes the wet gloss for the
+  reflections, and lying snow lifts the drawn ground by `snowDepth`, at
+  most 10 cm (drawn only). Sheen
   is now Estevez and Kulla's Charlie with their shadowing and soft
   terminator, lit under the image-based light through its directional
   albedo (the BRDF table's blue channel) and energy-conserving. Velvet and

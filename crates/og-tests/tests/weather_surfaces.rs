@@ -316,3 +316,140 @@ fn plain_with(
 }
 
 // SCRATCH (removed before commit): the frames for reading.
+
+/// A flat 128 m terrain of one grey layer whose albedo map carries the
+/// height `alpha` (four texels across, tiled once every 256 m), lit and
+/// seen as [`plain`]'s ground, with `post` a dark post (weathering 0)
+/// standing 3 m ahead of a camera 40 cm over the ground.
+fn terrain_with(alpha: [u8; 4], post: bool, weather: Option<SurfaceWeather>) -> RgbaImage {
+    use og_render::{Terrain, TerrainData, TerrainLayer};
+    let mut scene = RenderScene::new();
+    scene.light = DirectionalLight {
+        direction_to_light: Vec3::new(0.3, 0.8, 0.5).normalize(),
+        intensity: 2.0,
+        cast_shadows: false,
+        ..Default::default()
+    };
+    let n = 65u32;
+    let handle = scene.add_terrain(TerrainData {
+        size: glam::Vec2::splat(128.0),
+        columns: n,
+        rows: n,
+        heights: std::sync::Arc::from(vec![0.0f32; (n * n) as usize]),
+        control: None,
+        holes: None,
+    });
+    let mut rgba = Vec::new();
+    for a in alpha {
+        rgba.extend_from_slice(&[150, 140, 130, a]);
+    }
+    let albedo = scene.add_texture(TextureData {
+        width: 4,
+        height: 1,
+        rgba,
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    });
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(albedo),
+            color: Vec3::ONE,
+            roughness: 0.9,
+            tile: 256.0,
+            ..Default::default()
+        }],
+        ..Terrain::new(handle)
+    });
+    if post {
+        let h = scene.add_standard_material(StandardMaterial {
+            color: Vec3::splat(0.03),
+            roughness: 0.9,
+            weathering: 0.0,
+            ..Default::default()
+        });
+        let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 2.0, 0.4)));
+        scene.add_instance(mesh, h, Mat4::from_translation(Vec3::new(0.0, 1.0, -3.0)));
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 0.4, 0.0),
+            target: Vec3::new(0.0, 0.1, -3.0),
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+    } else {
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 6.0, 4.0),
+            target: Vec3::new(0.0, 0.0, -4.0),
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+    }
+    scene.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
+    frame(&scene)
+}
+
+/// Puddles on a terrain fill its layers' hollows first: a layer whose
+/// height map is low right of the frame's centre and high left of it
+/// (world x < 0 wraps to the map's high texels) takes more standing
+/// water on its right. Dry, the halves are alike. (The terrain's weather
+/// knew no relief: both halves puddled alike.)
+#[test]
+fn puddles_on_a_terrain_fill_its_layers_hollows_first() {
+    let halves = |w: Option<SurfaceWeather>| {
+        let img = terrain_with([0, 0, 255, 255], false, w);
+        (
+            spread(&blocks(&img, 0, 560, 0, 320)),
+            spread(&blocks(&img, 720, 1280, 0, 320)),
+        )
+    };
+    let dry = halves(None);
+    let wet = halves(Some(SurfaceWeather {
+        wetness: 1.0,
+        puddles: 0.45,
+        ..SurfaceWeather::default()
+    }));
+    println!("terrain: dry {dry:?}, puddled {wet:?}");
+    assert!(
+        (dry.0 - dry.1).abs() < 0.1 * dry.0.max(0.01),
+        "dry halves alike"
+    );
+    assert!(
+        wet.1 > 0.05 && wet.1 > 1.8 * wet.0,
+        "the hollow (right) half holds more water: {wet:?}"
+    );
+}
+
+/// Lying snow lifts the drawn terrain: with 10 cm of it a dark post's
+/// foot is buried, so less of the post shows than under a dusting of the
+/// same cover with no depth. (The terrain's snow was paint: it lay at the
+/// field's height.)
+#[test]
+fn lying_snow_lifts_a_terrain_round_a_post() {
+    let dark = |depth: f32| {
+        let img = terrain_with(
+            [255; 4],
+            true,
+            Some(SurfaceWeather {
+                snow: 0.9,
+                snow_depth: depth,
+                ..SurfaceWeather::default()
+            }),
+        );
+        let mut count = 0;
+        for y in 0..img.height {
+            for x in 600..680 {
+                let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
+                if (p[0] as u32 + p[1] as u32 + p[2] as u32) < 300 {
+                    count += 1;
+                }
+            }
+        }
+        count
+    };
+    let (thin, deep) = (dark(0.0), dark(0.1));
+    println!("post pixels: no depth {thin}, 10 cm {deep}");
+    assert!(thin > 0, "the post shows");
+    assert!(
+        (deep as f32) < 0.95 * thin as f32,
+        "the snow buries the post's foot: {deep} vs {thin}"
+    );
+}

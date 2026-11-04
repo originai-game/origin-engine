@@ -60,7 +60,25 @@ fn split_height(h: vec4<f32>, f: vec2<f32>) -> f32 {
 fn grid_height(c: vec2<f32>, step: f32) -> f32 {
   let s = c * level.camera.z / terrain_cell();
   let h = field_height(s);
-  return h + terrain_displacement(c, s, h, step);
+  return h + terrain_displacement(c, s, h, step) + terrain_snow_lift(s, step);
+}
+
+// How far lying snow lifts the drawn ground at field coordinates `s`, in
+// the terrain's units: `terrain.displace.w` world metres (terrain.rs
+// snow_lift, from the weather's lying depth) on level ground, none on
+// slopes steeper than about 45 degrees. On every level of the clipmap
+// and in every pass (here, not in terrain_displacement, which fades with
+// distance and slope), so the coarser level's morph target carries it
+// too and no crack opens. Only drawn: collision, og.terrain.sample, the
+// id pass, the clipmap's error measure and what stands on the ground
+// keep the field, so it stays centimetres.
+fn terrain_snow_lift(s: vec2<f32>, step: f32) -> f32 {
+  let lift = terrain.displace.w;
+  if (lift <= 0.0) { return 0.0; }
+  let spacing = step * level.camera.z;
+  let maps = terrain_maps_at(s, vec2<f32>(spacing / terrain_cell().x, 0.0), vec2<f32>(0.0, spacing / terrain_cell().y));
+  let n = normalize(terrain.normal * maps.normal);
+  return lift * smoothstep(0.6, 0.85, n.y) / max(terrain.displace.y, 1e-6);
 }
 
 // ── Displacement ────────────────────────────────────────────────────────

@@ -750,7 +750,8 @@ struct TerrainGpu {
     tiles: [f32; 4],
     /// x: the displacement's reach (the terrain's horizontal metres, 0:
     /// none), y: world metres per unit of the terrain's y, z: the
-    /// terrain's y in its horizontal metres.
+    /// terrain's y in its horizontal metres, w: lying snow's lift (world
+    /// metres, [`snow_lift`]).
     displace: [f32; 4],
     view_proj: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
@@ -1754,6 +1755,19 @@ fn layer_look(l: &TerrainLayer, origin: Vec3) -> LayerGpu {
         coarse: uv_offset(origin, l.tile * 4.0),
         ..LayerGpu::default()
     }
+}
+
+/// How far lying snow lifts the drawn ground, in world metres
+/// (terrain_vertex.wgsl terrain_snow_lift): the weather's lying depth
+/// (`SurfaceWeather::snow_depth`) once its cover has built up, at most
+/// 10 cm. Only the drawn ground moves (collision, `og.terrain.sample`,
+/// picking and what stands on the ground keep the field), so it stays
+/// small enough that nothing visibly floats or sinks.
+pub(crate) fn snow_lift(scene: &crate::RenderScene) -> f32 {
+    scene.surface_weather.as_ref().map_or(0.0, |w| {
+        let t = (w.snow / 0.3).clamp(0.0, 1.0);
+        w.snow_depth.clamp(0.0, 0.1) * t * t * (3.0 - 2.0 * t)
+    })
 }
 
 pub(crate) const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");

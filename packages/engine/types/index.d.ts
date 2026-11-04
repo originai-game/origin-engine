@@ -16704,7 +16704,7 @@ export interface WeatherState {
    */
   readonly dust: number;
   /**
-   * The depth of lying snow (written by og.weather).
+   * The depth of lying snow (written by og.weather). The drawn terrain rises by it on level ground, up to 10 cm, once the cover has built up; only drawn: collision, og.terrain.sample, picking and what stands on the ground keep the terrain's own height.
    *
    * @unit m (metres)
    * @readonly written by the engine

@@ -20179,7 +20179,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "",
                 label: "",
-                doc: doc!("The depth of lying snow (written by og.weather)."),
+                doc: doc!("The depth of lying snow (written by og.weather). The drawn terrain rises by it on level ground, up to 10 cm, once the cover has built up; only drawn: collision, og.terrain.sample, picking and what stands on the ground keep the terrain's own height."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

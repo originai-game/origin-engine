@@ -998,7 +998,7 @@ impl TerrainRenderer {
                     } else {
                         0.0
                     };
-                    [reach, up, up / across, 0.0]
+                    [reach, up, up / across, crate::terrain::snow_lift(scene)]
                 },
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
