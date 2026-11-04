@@ -84,6 +84,7 @@ use glam::Vec3;
 use og_core::ogt::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+mod flat;
 mod geometry;
 
 pub use geometry::*;
@@ -177,7 +178,7 @@ const PAINT_VERSION: u32 = 2;
 
 /// Moves flattened mesh textures' stamps when the palette limit's steps
 /// change (`flatten`).
-const FLAT_VERSION: u32 = 1;
+const FLAT_VERSION: u32 = 2;
 
 /// What an output the contract leaves as it was reports.
 pub const UNCHANGED: &str = "meets the contract as it is";
@@ -1079,88 +1080,19 @@ pub(in crate::cook) fn texture(
 }
 
 /// A linear colour texture held to `max` colours and `ramp` shades per hue
-/// family (0: no limit): the asset's own palette (the 2D conform's Oklab
-/// median cut and ramp merge, `texture2d::palette::adaptive`), every
-/// opaque texel on its nearest colour, then one pass of a 3x3 majority
-/// filter on the colours (wrapping, as the texture tiles): a texel that at
-/// least five of its eight neighbours outvote takes their colour, so the
-/// lone texels a photograph leaves after the cut (speckle) join their
-/// field while straight edges between fields stay. Alpha is untouched.
-/// The report's line, or `None` when the texture already holds.
+/// family (0: no limit), abstracted into flat regions ([`flat`]): the
+/// report's line, or `None` when the texture already holds.
 fn flatten(img: &mut Image, max: u32, ramp: u32) -> Option<String> {
-    use super::texture2d::palette;
-    let px: Vec<[u8; 4]> = img
-        .rgba
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|p| if p[3] == 0 { [0; 4] } else { *p })
-        .collect();
-    let before = px
-        .iter()
-        .filter(|p| p[3] > 0)
-        .map(|p| [p[0], p[1], p[2]])
-        .collect::<BTreeSet<_>>()
-        .len();
-    let pal = palette::adaptive(&px, max, ramp);
-    if pal.rgb.is_empty() {
-        return None;
-    }
-    let all: Vec<usize> = (0..pal.rgb.len()).collect();
-    let mut ix = palette::map(
-        &px,
-        img.width,
-        &|_, _| (0, 0),
-        &pal,
-        &all,
-        palette::Dither::None,
-    );
-    let (w, h) = (img.width as i64, img.height as i64);
-    let at =
-        |ix: &[Option<usize>], x: i64, y: i64| ix[(y.rem_euclid(h) * w + x.rem_euclid(w)) as usize];
-    let mut out = ix.clone();
-    for y in 0..h {
-        for x in 0..w {
-            let Some(own) = at(&ix, x, y) else { continue };
-            let mut votes: BTreeMap<usize, u32> = BTreeMap::new();
-            for (dx, dy) in [
-                (-1, -1),
-                (0, -1),
-                (1, -1),
-                (-1, 0),
-                (1, 0),
-                (-1, 1),
-                (0, 1),
-                (1, 1),
-            ] {
-                if let Some(n) = at(&ix, x + dx, y + dy) {
-                    *votes.entry(n).or_default() += 1;
-                }
-            }
-            if let Some((&best, &n)) = votes.iter().max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0)))
-                && best != own
-                && n >= 5
-            {
-                out[(y * w + x) as usize] = Some(best);
-            }
-        }
-    }
-    ix = out;
-    let mut changed = false;
-    for (p, i) in img.rgba.as_chunks_mut::<4>().0.iter_mut().zip(&ix) {
-        if let Some(i) = i {
-            changed |= p[..3] != pal.rgb[*i];
-            p[..3].copy_from_slice(&pal.rgb[*i]);
-        }
-    }
-    let after = ix.iter().flatten().collect::<BTreeSet<_>>().len();
+    let (before, after, area) = flat::flatten(img, max, ramp)?;
     let limits = [(max, "maxColors"), (ramp, "rampSteps")]
         .iter()
         .filter(|(v, _)| *v > 0)
         .map(|(v, n)| format!("ArtPalette.{n} {v}"))
         .collect::<Vec<_>>()
         .join(", ");
-    changed.then(|| format!("{before} → {after} colours, speckle merged ({limits})"))
+    Some(format!(
+        "{before} → {after} colours in flat regions of {area} texels or more ({limits})"
+    ))
 }
 
 #[cfg(test)]
@@ -1280,29 +1212,34 @@ mod tests {
         assert_eq!(n.rgba, src.rgba);
     }
 
-    /// A field with lone off-colour texels (the speckle a photographic
-    /// texture leaves after its colours are cut) cooks to the field alone,
-    /// even where the speckle fits the colour budget; a straight edge
-    /// between two fields stays where it was.
+    /// A photograph of a lawn with a patch of dirt (every texel its own
+    /// shade, noise of ±16 on each channel) cooks to flat fields: the lawn
+    /// one green and the dirt one brown, edge to edge where the patch was,
+    /// with no region smaller than the texture's smallest shape (36 texels
+    /// at 256²). Old code (a cut to 48 colours and a 3x3 majority) left
+    /// dozens of shades in hundreds of specks.
     #[test]
-    fn the_palette_limits_merge_speckle_and_keep_edges() {
-        let (w, h) = (32u32, 32u32);
-        let green = [60u8, 140, 60];
-        let brown = [120u8, 80, 40];
+    fn the_palette_limits_flatten_a_photograph_into_fields() {
+        let (w, h) = (256u32, 256u32);
+        let green = [70i32, 130, 60];
+        let brown = [130i32, 95, 60];
+        // The dirt: a square from (64, 64) to (160, 160).
+        let dirt = |x: u32, y: u32| (64..160).contains(&x) && (64..160).contains(&y);
+        let mut seed = 0x2545_f491u32;
+        let mut noise = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            (seed % 33) as i32 - 16
+        };
         let mut rgba = Vec::new();
         for y in 0..h {
             for x in 0..w {
-                // A field edge at x = 20; a lone texel every 6 along a
-                // diagonal, none on or beside the edge.
-                let lone = x % 6 == 2 && y % 6 == 2 && x < 18;
-                let c = if lone {
-                    [200, (x * 7) as u8, (y * 5) as u8]
-                } else if x < 20 {
-                    green
-                } else {
-                    brown
-                };
-                rgba.extend_from_slice(&[c[0], c[1], c[2], 255]);
+                let c = if dirt(x, y) { brown } else { green };
+                for k in c {
+                    rgba.push((k + noise()).clamp(0, 255) as u8);
+                }
+                rgba.push(255);
             }
         }
         let img = Image {
@@ -1311,12 +1248,33 @@ mod tests {
             rgba,
         };
         let c = of("ArtPalette {\n  maxColors 48\n}\n").unwrap();
-        let (out, _, _, _) = texture(&c, None, img, kind::COLOR, true);
-        for (i, p) in out.rgba.as_chunks::<4>().0.iter().enumerate() {
-            let x = i as u32 % w;
-            let want = if x < 20 { green } else { brown };
-            assert_eq!(p[..3], want, "texel ({x}, {})", i as u32 / w);
+        let (out, _, _, note) = texture(&c, None, img, kind::COLOR, true);
+        let px: Vec<[u8; 3]> = out
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| [p[0], p[1], p[2]])
+            .collect();
+        let colours: BTreeSet<[u8; 3]> = px.iter().copied().collect();
+        assert_eq!(colours.len(), 2, "one green, one brown: {colours:?}");
+        // Away from the patch's edge (the filter's reach), each field is
+        // its own colour: green where the lawn was, brown on the dirt.
+        let at = |x: u32, y: u32| px[(y * w + x) as usize];
+        let (lawn, soil) = (at(8, 8), at(112, 112));
+        assert!(lawn[1] > lawn[0] && soil[0] > soil[1], "{lawn:?} {soil:?}");
+        for y in 0..h {
+            for x in 0..w {
+                let inside = (68..156).contains(&x) && (68..156).contains(&y);
+                let outside = !(60..164).contains(&x) || !(60..164).contains(&y);
+                if inside {
+                    assert_eq!(at(x, y), soil, "({x}, {y}) on the dirt");
+                } else if outside {
+                    assert_eq!(at(x, y), lawn, "({x}, {y}) on the lawn");
+                }
+            }
         }
+        assert!(note.unwrap().contains("flat regions of 36 texels"));
     }
 
     #[test]
