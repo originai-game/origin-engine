@@ -656,18 +656,19 @@ pub(crate) struct LevelDraw {
     pub offset: u32,
     pub center: Vec3,
     pub radius: f32,
-    pub blocks: Vec<(std::ops::Range<u32>, Vec3, f32)>,
+    /// Each block's index range and its world box (min, max).
+    pub blocks: Vec<(std::ops::Range<u32>, Vec3, Vec3)>,
 }
 
-/// The index ranges of `blocks` that `visible` admits, neighbours in the
-/// buffer merged into one range.
+/// The index ranges of `blocks` whose boxes `visible` admits, neighbours
+/// in the buffer merged into one range.
 pub(crate) fn visible_ranges(
-    blocks: &[(std::ops::Range<u32>, Vec3, f32)],
-    visible: impl Fn(Vec3, f32) -> bool,
+    blocks: &[(std::ops::Range<u32>, Vec3, Vec3)],
+    visible: impl Fn(Vec3, Vec3) -> bool,
 ) -> Vec<std::ops::Range<u32>> {
     let mut out: Vec<std::ops::Range<u32>> = Vec::new();
-    for (r, c, radius) in blocks {
-        if r.is_empty() || !visible(*c, *radius) {
+    for (r, lo, hi) in blocks {
+        if r.is_empty() || !visible(*lo, *hi) {
             continue;
         }
         match out.last_mut() {
@@ -1764,15 +1765,21 @@ mod tests {
                 continue;
             }
             levels += ring.all.len() / 3;
-            let spheres: Vec<_> = boxes
+            let world: Vec<_> = boxes
                 .iter()
                 .zip(&ring.blocks)
                 .map(|((a, b), range)| {
-                    let (c, r) = renderer::world_sphere(t.transform, *a, *b);
-                    (range.clone(), c, r)
+                    let (lo, hi) = renderer::world_box(t.transform, *a, *b);
+                    (range.clone(), lo, hi)
                 })
                 .collect();
-            blocks += visible_ranges(&spheres, visible)
+            let inside = |lo: Vec3, hi: Vec3| {
+                planes.iter().all(|p| {
+                    let n = p.truncate();
+                    n.dot(Vec3::select(n.cmpge(Vec3::ZERO), hi, lo)) + p.w >= 0.0
+                })
+            };
+            blocks += visible_ranges(&world, inside)
                 .iter()
                 .map(|r| r.len() / 3)
                 .sum::<usize>();

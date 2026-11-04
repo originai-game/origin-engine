@@ -294,7 +294,7 @@ impl Renderer {
                 terrain_draws,
                 indices,
                 terrain::TerrainPass::Lit,
-                |c, r| view_frustum.intersects_sphere(c, r),
+                view_frustum,
                 Some(&mut probe_select::Binder::new(probe_binding)),
             );
             stats.draw_calls += n;

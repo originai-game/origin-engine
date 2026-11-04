@@ -3997,7 +3997,7 @@ impl Renderer {
                     &terrain_draws,
                     indices,
                     terrain::TerrainPass::Prepass,
-                    |c, rad| frustum.intersects_sphere(c, rad),
+                    frustum,
                     None,
                 )
                 .0;
@@ -4061,7 +4061,7 @@ impl Renderer {
                         &terrain_draws,
                         indices,
                         terrain::TerrainPass::Shadow,
-                        |c, r| frustum.intersects_sphere(c, r),
+                        frustum,
                         None,
                     );
                     stats.draw_calls += n;

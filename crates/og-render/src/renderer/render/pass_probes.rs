@@ -267,7 +267,7 @@ impl Renderer {
                         terrain_draws,
                         indices,
                         terrain::TerrainPass::Lit,
-                        |c, r| frustum.intersects_sphere(c, r),
+                        &frustum,
                         None,
                     )
                     .0;

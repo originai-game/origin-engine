@@ -155,7 +155,7 @@ impl Renderer {
                 terrain_draws,
                 indices,
                 terrain::TerrainPass::Lit,
-                |c, rad| frustum.intersects_sphere(c, rad),
+                &frustum,
                 None,
             );
             stats.draw_calls += n;

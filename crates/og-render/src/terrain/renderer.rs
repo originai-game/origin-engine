@@ -979,6 +979,7 @@ impl TerrainRenderer {
             let mut level_bytes = vec![0u8; LEVEL_STRIDE as usize * list.len().max(1)];
             let mut out = Vec::with_capacity(list.len());
             let (hmin, hmax) = data.range;
+            let resident = resident_boxes(data);
             for (k, l) in list.iter().enumerate() {
                 let g = LevelGpu {
                     center: [
@@ -1005,9 +1006,13 @@ impl TerrainRenderer {
                 let blocks = level_blocks(l, n, unit, lay.size, (hmin, hmax))
                     .into_iter()
                     .zip(&ring.blocks)
-                    .map(|((a, b), r)| {
-                        let (c, radius) = world_sphere(model, a, b);
-                        (r.clone(), c, radius)
+                    .map(|((mut a, mut b), r)| {
+                        (a.y, b.y) = block_range(&resident, a, b).unwrap_or((hmin, hmax));
+                        let (lo, hi) = world_box(model, a, b);
+                        // A block wholly off the terrain clamps to its
+                        // edge: zero-area triangles, never drawn.
+                        let off = a.x >= b.x || a.z >= b.z;
+                        (if off { r.start..r.start } else { r.clone() }, lo, hi)
                     })
                     .collect();
                 // Bounds: the level's square on the terrain, its height range.
@@ -1296,6 +1301,51 @@ pub(crate) fn horizontal_scale(model: Mat4) -> f32 {
         .max(1e-6)
 }
 
+/// Every resident tile's square in the terrain's space (grown by one of
+/// its level's samples: its border) and its height range.
+fn resident_boxes(data: &GpuData) -> Vec<(Vec2, Vec2, (f32, f32))> {
+    let lay = &data.layout;
+    let cell = lay.cell();
+    let lo = -lay.size * 0.5;
+    data.slots
+        .iter()
+        .flatten()
+        .filter_map(|st| {
+            let (k, tx, tz) = lay.locate(st.tile)?;
+            let span = (lay.tile * lay.step(k)) as f32;
+            let border = lay.step(k) as f32;
+            let a = Vec2::new(tx as f32 * span - border, tz as f32 * span - border);
+            let b = a + Vec2::splat(span + 2.0 * border);
+            Some((lo + a * cell, lo + b * cell, st.data.range))
+        })
+        .collect()
+}
+
+/// The heights a clipmap block from `a` to `b` (the terrain's space) can
+/// draw: each point is drawn from a resident tile (the finest there, or
+/// mixed with its parent while it fades in), so the union of the ranges
+/// of the resident tiles it meets; `None` when it meets none.
+fn block_range(resident: &[(Vec2, Vec2, (f32, f32))], a: Vec3, b: Vec3) -> Option<(f32, f32)> {
+    resident
+        .iter()
+        .filter(|(lo, hi, _)| lo.x <= b.x && hi.x >= a.x && lo.y <= b.z && hi.y >= a.z)
+        .map(|(_, _, r)| *r)
+        .reduce(|p, q| (p.0.min(q.0), p.1.max(q.1)))
+}
+
+/// The world box (min, max) around a box in the terrain's space.
+pub(crate) fn world_box(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, Vec3) {
+    (0..8).fold((Vec3::MAX, Vec3::MIN), |(a, b), i| {
+        let corner = Vec3::new(
+            if i & 1 == 0 { lo.x } else { hi.x },
+            if i & 2 == 0 { lo.y } else { hi.y },
+            if i & 4 == 0 { lo.z } else { hi.z },
+        );
+        let p = model.transform_point3(corner);
+        (a.min(p), b.max(p))
+    })
+}
+
 /// The world bounding sphere (centre, radius) of a box in the terrain's
 /// space.
 pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
@@ -1312,7 +1362,8 @@ pub(crate) fn world_sphere(model: Mat4, lo: Vec3, hi: Vec3) -> (Vec3, f32) {
     (center, radius)
 }
 
-/// Draws the levels of `draws` that touch `visible` (group 1: the terrain;
+/// Draws the levels of `draws` that touch `frustum`, each level's blocks
+/// culled by their boxes (group 1: the terrain;
 /// group 0 bound by the caller, or per level the reflection probe's frame
 /// group `probes` picks: probe_select.rs). Returns (draws, triangles).
 pub(crate) fn draw_levels(
@@ -1320,7 +1371,7 @@ pub(crate) fn draw_levels(
     draws: &[TerrainDraw],
     indices: &wgpu::Buffer,
     which: TerrainPass,
-    visible: impl Fn(Vec3, f32) -> bool,
+    frustum: &crate::frame::Frustum,
     mut probes: Option<&mut crate::probe_select::Binder>,
 ) -> (u32, u64) {
     let mut calls = 0;
@@ -1338,10 +1389,10 @@ pub(crate) fn draw_levels(
             TerrainPass::Shadow => d.passes.shadow.get(),
         });
         for l in &d.levels {
-            if !visible(l.center, l.radius) {
+            if !frustum.intersects_sphere(l.center, l.radius) {
                 continue;
             }
-            let runs = visible_ranges(&l.blocks, &visible);
+            let runs = visible_ranges(&l.blocks, |lo, hi| frustum.intersects_box(lo, hi));
             if runs.is_empty() {
                 continue;
             }
@@ -1361,7 +1412,8 @@ pub(crate) fn draw_levels(
         };
         let mut bound = false;
         for st in &d.stamps {
-            if (which == TerrainPass::Shadow && !st.cast_shadows) || !visible(st.center, st.radius)
+            if (which == TerrainPass::Shadow && !st.cast_shadows)
+                || !frustum.intersects_sphere(st.center, st.radius)
             {
                 continue;
             }

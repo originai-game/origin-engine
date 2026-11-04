@@ -191,14 +191,8 @@ impl Renderer {
         );
         if let Some(indices) = terrain_indices {
             let prepass = terrain::TerrainPass::Prepass;
-            let (n, _) = terrain::draw_levels(
-                &mut p,
-                terrain_draws,
-                indices,
-                prepass,
-                |c, r| view_frustum.intersects_sphere(c, r),
-                None,
-            );
+            let (n, _) =
+                terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
             stats.prepass_draws += n;
         }
         let (n, _) = self.scatter.draw(
