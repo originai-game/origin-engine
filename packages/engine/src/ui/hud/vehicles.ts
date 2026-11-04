@@ -198,14 +198,34 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
   const over = rpm >= red;
   const shifting = rpm >= shiftAt;
   const c = size / 2;
+  // The readout: the speed, the largest numeral, in a fixed box of three digits (condensed and slanted), its unit
+  // under it, the gear beside it. It keeps the player's whole text size (§15.2; the coordinator, 2026-11-04): its
+  // step is the one the uncapped dial's would be, though the dial itself stops at a third of the short side.
+  const vp = frame().viewport;
+  const size100 = Math.min(u(desc.size || (bp().phone ? 132 : 180)), Math.round(0.34 * Math.min(vp.width, vp.height)));
+  const speedStep = tsFit(40, size100 * 0.27 * Math.min(2, textScale()), true);
+  const sp = stepSize(speedStep);
+  const digitsW = Math.ceil(3 * sp.size * 0.62 * 0.88);
   // Numbers at caption size round the outside; dropped where they would be
   // larger than a tenth of the dial (200 % text on a small dial).
   const numStep = tsFit(10, size * 0.1);
   const numLine = stepSize(numStep).line;
-  const showNums = size >= 120 && stepSize(numStep).size <= size * 0.075 + 0.5;
-  const ring = showNums ? numLine + Math.max(2, size * 0.01) : Math.max(2, size * 0.02);
+  let showNums = size >= 120 && stepSize(numStep).size <= size * 0.075 + 0.5;
+  let band = Math.max(5, Math.round(size / 20));
+  const ringOf = () => (showNums ? numLine + Math.max(2, size * 0.01) : Math.max(2, size * 0.02));
+  // Whether the speed's box sits inside the ticks: its corners within the circle the major ticks leave.
+  const fits = () => {
+    const rIn = c - ringOf() - band - Math.max(3, size * 0.03);
+    const half = sp.line / 2;
+    return rIn > half && digitsW / 2 <= Math.sqrt(rIn * rIn - half * half) * 0.95;
+  };
+  // A numeral too large for the interior reflows it: a thinner ring first, then no numbers round it; only then
+  // does the speed leave the dial for a digital readout under it.
+  if (!fits()) band = Math.max(3, Math.round(size / 32));
+  if (!fits()) showNums = false;
+  const below = !fits();
+  const ring = ringOf();
   const Ro = c - ring;
-  const band = Math.max(5, Math.round(size / 20));
   const accent = role("primary");
   const danger = role("danger");
   const arc = (rid: string, r: number, from: number, sweep: number, thick: number, paint: Api.Paint, part: string, effects: Api.Effect[] = []) =>
@@ -214,12 +234,7 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       fills: [solid(paint)],
       effects,
     }, fixed({ start: c - r, top: c - r }));
-  // The readout: the speed, the largest numeral, in a fixed box of three
-  // digits (condensed and slanted), its unit under it, the gear beside it.
-  const speedStep = tsFit(40, size * 0.27, true);
-  const sp = stepSize(speedStep);
   const unitStep = tsFit(10, size * 0.07);
-  const digitsW = Math.ceil(3 * sp.size * 0.62 * 0.88);
   const gearStep = tsFit(12, sp.size * 0.45, true);
   const gearSide = Math.ceil(Math.max(stepSize(gearStep).line, (desc.gear ?? "").length * stepSize(gearStep).size * 0.62 + 6));
   const gap = Math.max(3, Math.round(size * 0.02));
@@ -231,8 +246,8 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
   const besideW = digitsW + (desc.gear ? lean + gap + gearSide : 0);
   // A large text size on a capped dial: the unit and the gear move under it, off the arc, and the speed takes the
   // middle alone.
-  const under = stepSize(unitStep).size > size * 0.07 + 0.5 || besideW > inner * 0.84 || unitW > inner * 0.6;
-  const underH = under ? Math.max(stepSize(unitStep).line, desc.gear ? gearSide : 0) : 0;
+  const under = below || stepSize(unitStep).size > size * 0.07 + 0.5 || besideW > inner * 0.84 || unitW > inner * 0.6;
+  const underH = under ? Math.max(stepSize(unitStep).line, desc.gear ? gearSide : 0) + (below ? sp.line + gap : 0) : 0;
   const rowW = under ? digitsW : besideW;
   const speedTop = under ? c - sp.line * 0.5 : c - sp.line * 0.6;
   const left = c - rowW / 2;
@@ -279,8 +294,12 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
     // Laid out at the digits' own width and condensed by the transform toward its end, which stays the box's end:
     // a box of the condensed width cut its own text (72.7 px in 70.5).
     const textW = Math.ceil(3 * sp.size * 0.64);
-    text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(textW), align: "end" },
-      fixed({ start: left + digitsW - textW, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
+    const speedText = (at: ReturnType<typeof fixed>) =>
+      text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(textW), align: "end" }, at);
+    const condensed = { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } };
+    // Below the dial (the last reflow), centred, over the unit and the gear.
+    if (below) speedText(fixed({ start: c + digitsW / 2 - textW, top: size + gap }, condensed));
+    else speedText(fixed({ start: left + digitsW - textW, top: speedTop }, condensed));
     const gearBox = (extra?: ReturnType<typeof fixed>) => {
       const g = desc.gear!;
       const neutral = g === "N" || g === "R";
@@ -297,7 +316,7 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       box("Under", { direction: "row", width: px(size), gap: gap * 2, align: "center", cross: "center" }, undefined, () => {
         text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true, outline: 0.8 });
         if (desc.gear) gearBox();
-      }, fixed({ start: 0, top: size + gap }));
+      }, fixed({ start: 0, top: size + gap + (below ? sp.line + gap : 0) }));
     } else {
       // The unit fits its text (a translation may be longer than "km/h"), centred under the digits.
       box("UnitLine", { width: px(size), cross: "center", align: "center" }, undefined, () =>

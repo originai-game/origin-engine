@@ -1096,6 +1096,14 @@ test("og.ui.speedometer tach: shift lights fill to the shift point and all light
   expect(speed(big.els).height).toBeGreaterThanOrEqual(speed(small.els).height);
   expect(overlaps(big.frame).join("; ")).toBe("");
   expect(speed(desk.els).text).toBe("187");
+  // A portrait phone at 150 %: the dial still a third of the short side at most, and the speed at the whole text size
+  // (34 → 51 px; a dial-bound step held it at 33), inside the dial or in a readout under it, overlapping nothing.
+  const PORTRAIT = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
+  const drawn = (f: UiFrameSnapshot) => f.texts.find((x) => x.text === "187")!.size;
+  const p100 = tachFor(0.7, PORTRAIT, 1), p150 = tachFor(0.7, PORTRAIT, 1.5);
+  expect(p150.els.find((x) => x.path.endsWith("/Tach"))!.width).toBeLessThanOrEqual(Math.round(0.34 * 390));
+  expect(drawn(p150.frame)).toBeGreaterThanOrEqual(1.5 * drawn(p100.frame) - 0.5);
+  expect(overlaps(p150.frame).join("; ")).toBe("");
 });
 
 test("og.ui.raceBanner: the countdown's numerals and lights by the second, GO, a checkpoint's split that leaves after 1.5 s, the finish, and wrong way over every other moment", () => {
