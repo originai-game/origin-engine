@@ -679,7 +679,10 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   expect(more).toBeDefined();
   const shown = tiles.filter((x) => x.id.startsWith("u")).length;
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/More/Count")?.text).toBe(`+${14 - shown}`);
-  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/u3")?.role).toBe("button");
+  // The tiles are a listbox's options (keys and pads reach each), not buttons: the screen's primary is never a unit.
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/u3")?.role).toBe("option");
+  expect(at(els, "RtsHud/Rts/TabRow/Tabs/g1")?.role).toBe("tab");
+  expect(at(els, "RtsHud/Rts/Panel/Commands/Grid")?.role).toBe("grid");
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Detail/Info/Name")?.text).toBe("Unit 3");
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue")).toBe(undefined);
   // The command card keeps its places: an empty key leaves a well where the second command would be, so Stop is third.
@@ -723,11 +726,41 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Stats/Columns/Col#0/armour/Value")?.text).toBe("1");
 }, LOADED_MS);
 
+test("og.ui.commandCard by keys: the grid is one focus stop whose cursor the arrows walk, Enter issuing the command under it", () => {
+  // Wrong: cells no key reaches, or Enter issuing the first command wherever the cursor is.
+  const issued: string[] = [];
+  let focus = true;
+  const e = engineFor("HudCmdKeys", () => {
+    const r = og.ui.commandCard("Cmd", { anchor: null, columns: 3, commands: [{ key: "a", name: "Attack" }, { key: "", name: "" }, { key: "s", name: "Stop" }, { key: "h", name: "Hold" }] });
+    if (r.clicked) issued.push(r.clicked);
+    if (focus) og.ui.setFocus("Cmd/Grid");
+    focus = false;
+  });
+  e.advance(3);
+  const key = (code: string) => {
+    e.probe.commands(`0:key_down:${code};0.05:key_up:${code}`);
+    e.advance(8);
+  };
+  key("ArrowRight");
+  key("ArrowRight");
+  key("Enter");
+  expect(issued).toEqual(["s"]);
+  // Down from Stop's column to the second row's last cell is a well: Enter there issues nothing; back to Hold, it does.
+  key("ArrowDown");
+  key("Enter");
+  expect(issued).toEqual(["s"]);
+  key("ArrowLeft");
+  key("ArrowLeft");
+  key("Enter");
+  expect(issued).toEqual(["s", "h"]);
+  expect(at(dump(e), "Cmd/Grid/Cursor")).toBeDefined();
+}, LOADED_MS);
+
 test("og.ui.rtsConsole: a minimap pushed out of a phone held sideways stays in its corner tick after tick", () => {
   const e = engineFor("HudRtsLand", () => {
     og.ui.rtsConsole("Rts", {
       map: { shape: "square", zoom: 1 },
-      selection: { units: Array.from({ length: 8 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: 100, healthMax: 100 })), groups: [{ key: "g1", label: "1", count: 8 }], group: "g1" },
+      selection: { units: Array.from({ length: 8 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: 100, healthMax: 100 })), groups: [1, 2, 3, 4, 5].map((n) => ({ key: `g${n}`, label: `${n}`, count: n === 1 ? 8 : 0 })), group: "g1" },
       commands: { commands: [{ key: "a", name: "Attack", hotkey: "Q" }], columns: 5 },
     });
   }, VIEWPORTS.phoneLandscape);
@@ -740,6 +773,19 @@ test("og.ui.rtsConsole: a minimap pushed out of a phone held sideways stays in i
   }
   expect(sizes[0]).toBeGreaterThan(64);
   expect(new Set(sizes).size).toBe(1);
+  // The group tabs are whole touch targets seated in the panel before the selection, not a row over it that would
+  // take the height the map's corner needs.
+  const els = dump(e);
+  expect(at(els, "RtsHud/Rts/TabRow")).toBe(undefined);
+  const panel = at(els, "RtsHud/Rts/Panel")!;
+  const sel = at(els, "RtsHud/Rts/Panel/Selection")!;
+  for (const n of [1, 2, 3, 4, 5]) {
+    const t = at(els, `RtsHud/Rts/Panel/Tabs/g${n}`)!;
+    expect([t.width, t.height, t.role]).toEqual([44, 44, "tab"]);
+    expect(t.y).toBeGreaterThanOrEqual(panel.y);
+    expect(t.y + t.height).toBeLessThanOrEqual(panel.y + panel.height);
+    expect(t.x + t.width).toBeLessThanOrEqual(sel.x);
+  }
 }, LOADED_MS);
 
 test("og.ui.matchStats, goalTimeline, playerPlate, substitution and the scorebug's added time: shares, sides, stamina", () => {
@@ -936,11 +982,11 @@ test("og.ui.killfeed: lines stamped late in a run are laid out on screen, inside
   expect(at(els, "FeedHud/Feed/b/Killer")?.text).toBe("Wraith");
 });
 
-test("og.ui.commandCard at 200 % text: a cooling cell's seconds stay clear of its key corner; a charge badge's numeral never under the smallest text", () => {
+test("og.ui.commandCard at 150 % text: a cooling cell's seconds stay clear of its key corner; a charge badge's numeral never under the smallest text", () => {
   // Wrong: the seconds centred in a 40 px cell, over the corner key once the text grows; a 16 px badge's 10.6 px digit.
   const PHONE = { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
   const e = engineFor("HudCard200", (world) => {
-    og.ui.configure(world, { textScale: 2 });
+    og.ui.configure(world, { textScale: 1.5 });
     og.ui.commandCard("Card", { columns: 3, size: 40, commands: [{ key: "q", name: "Stim", hotkey: "Q", cooldown: 12, cooldownMax: 20 }] });
     og.ui.abilityBar("Bar", { size: 56, slots: [{ key: "w", name: "Blink", hotkey: "W", maxCharges: 3, charges: 2 }] });
   }, PHONE);

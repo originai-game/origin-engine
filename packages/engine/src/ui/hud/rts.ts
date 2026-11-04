@@ -14,7 +14,7 @@
 // nothing here draws a glow edge or a bevel of a particular look.
 
 import type * as Api from "@origingame/engine";
-import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, role, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
+import { BLACK, WHITE, a11y, absolute, anchorOf, arc, artTile, box, bp, chip, clamp01, close, countdown, edge, fillDraw, frame, glow, groups, innerGlow, hudPlace, hudRoom, hueOf, icon, keyId, kit, leaf, lit, mix, open, pct, px, role, rtl, sel, shapeOf, solid, sound, stepSize, stroke, text, token, ts, tsFit, u, ut, vgrad, type Rgba } from "./core.ts";
 import { slot } from "./abilities.ts";
 import { minimapView } from "./nav.ts";
 
@@ -147,55 +147,68 @@ export function productionQueue(id: string, desc: Api.ProductionQueueDesc = {}):
 
 // ── selection ─────────────────────────────────────────────────────────
 
-/** A tab's height: the label's at the text size, but never more than a fifth of the zone it stands on (200 % text). */
-function tabHeight(zone: number): number {
-  return Math.max(u(20), Math.min(ut(26), Math.round(zone * 0.22)));
+/** A tab's height: its label's line with a little air, growing with the text size; a whole touch target (44 px) on touch. */
+function tabHeight(): number {
+  return Math.max(frame().touch ? 44 : 0, u(20), ut(26), Math.ceil(stepSize("caption").line) + u(4));
 }
 
 /**
  * The control group tabs, seated on the panel's top edge as tabs of the selection zone: the current one on the panel's
  * own ground (a seam over the panel's top hairline lets that ground run on into it), lit by the highlight along its top;
- * the others a step back on a darker ground. Labels at the caption step.
+ * the others a step back on a darker ground. Labels at the ramp's caption step, which carries the text size (the tab
+ * grows round it rather than the label shrinking to the tab). Each tab is a focus stop of a tablist, so
+ * keys and pads switch groups as the pointer does. `side` seats them in the panel instead, at the selection's start
+ * edge: a block of square tabs `side` wide, lines of them as tall as the zone holds (a short touch screen, where a
+ * row of 44 px tabs above the panel would take the height the minimap needs).
  */
-function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void, panelPath = ""): void {
+function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void, panelPath = "", side = 0): void {
   const list = desc.groups ?? [];
   if (list.length === 0) return;
   const r = Math.min(shapeOf("hud").radius, u(6));
-  const capStep: Api.TypeStepName = stepSize("caption").size <= tabH * 0.62 ? "caption" : tsFit(12, tabH * 0.62, true);
-  kit.row("Tabs", { gap: Math.max(2, u(2)), cross: "end" }, () => {
+  // On touch a tab is 44 px wide at the least (five of them still fit a phone's console); elsewhere half again its height.
+  const minW = frame().touch ? 44 : Math.round(tabH * 1.5);
+  const radii: [number, number, number, number] = side ? [r, r, r, r] : [r, r, 0, 0];
+  const gap = Math.max(2, u(2));
+  kit.row("Tabs", side ? { gap, wrap: true, width: px(side) } : { gap, cross: "end" }, () => {
     for (const g of list) {
       const cur = (g.key ?? "") === (desc.group ?? "");
       const empty = (g.count ?? 0) === 0;
       open(keyId(g.key ?? g.label ?? ""), {
-        direction: "row", gap: 0, cross: "center", align: "center", interactive: true,
-        height: px(tabH), width: { kind: "fit", min: Math.round(tabH * 1.5) }, padding: { left: u(14), right: u(14), top: 0, bottom: 0 },
+        direction: "row", gap: 0, cross: "center", align: "center", interactive: true, focusable: true,
+        height: px(tabH), width: side ? px(tabH) : { kind: "fit", min: minW }, padding: side ? { left: u(4), right: u(4), top: 0, bottom: 0 } : { left: u(14), right: u(14), top: 0, bottom: 0 },
         part: sel("SelectionPanel", "tab", cur ? "current" : null, empty ? "empty" : null),
       }, cur ? {
         // The panel's ground and edge (panelDraw), so the current tab and the panel read as one surface.
-        shape: { kind: "rect", radii: [r, r, 0, 0] },
+        shape: { kind: "rect", radii },
         fills: [solid(token("hud", 0.9))],
         strokes: [stroke(1, token("lineStrong", 0.55))],
         effects: [{ kind: "backdrop", blur: u(12) }],
       } : {
-        shape: { kind: "rect", radii: [r, r, 0, 0] },
+        shape: { kind: "rect", radii },
         fills: [solid(token("hud", 0.72)), solid(lit(BLACK, 0.18))],
         strokes: [stroke(1, token("line", 0.6))],
       });
       if (cur) {
-        leaf("Lit", { width: pct(1), height: px(Math.max(2, u(2))), part: sel("SelectionPanel", "tabLit") }, { shape: { kind: "rect", radii: [r, r, 0, 0] }, fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
+        // The highlight along its top; in the panel, along its start edge, the side the selection's tabs face from.
+        if (side) leaf("Lit", { width: px(Math.max(2, u(2))), height: pct(1), part: sel("SelectionPanel", "tabLit") }, { shape: { kind: "rect", radii: [r, 0, 0, r] }, fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
+        else leaf("Lit", { width: pct(1), height: px(Math.max(2, u(2))), part: sel("SelectionPanel", "tabLit") }, { shape: { kind: "rect", radii }, fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
         // Over the tab's foot and the panel's top hairline under it: the panel's ground running on into the tab.
-        if (panelPath) leaf("Seam", { width: pct(1), height: px(2), part: sel("SelectionPanel", "seam") }, { fills: [solid(token("hud", 0.9))] }, absolute({ start: 0, bottom: -1 }, { z: 2, overlaps: [panelPath] }));
+        if (panelPath && !side) leaf("Seam", { width: pct(1), height: px(2), part: sel("SelectionPanel", "seam") }, { fills: [solid(token("hud", 0.9))] }, absolute({ start: 0, bottom: -1 }, { z: 2, overlaps: [panelPath] }));
       }
-      text("Label", g.label ?? "", { step: capStep, font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
+      text("Label", g.label ?? "", { step: "caption", font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
       const res = close({ opacity: empty ? 0.55 : 1, a11y: a11y("tab", g.label ?? "", { value: `${g.count ?? 0}`, selected: cur }) });
       if (res.clicked) onClick(g.key ?? "");
     }
   });
+  kit.semantics(a11y("tablist", "Control groups"));
   // Over the panel built after them, so the current tab's seam lies over the panel's top hairline.
-  if (panelPath) kit.props({ z: 1 });
+  if (panelPath && !side) kit.props({ z: 1 });
 }
 
-/** One unit's tile: its portrait, a thin health bar under the art (its shield and energy beside it), a gold build line. */
+/**
+ * One unit's tile: its portrait, a thin health bar under the art (its shield and energy beside it), a gold build line.
+ * An option of the selection's listbox, not a button: a focus stop keys and pads reach, never the screen's primary.
+ */
 function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Response {
   const r = Math.min(shapeOf("slot").radius, Math.max(3, side / 9));
   const k = keyId(u0.key ?? u0.name ?? "");
@@ -204,7 +217,7 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
   const level = hp < 0.25 ? "critical" : hp < 0.5 ? "low" : null;
   const barH = Math.max(3, Math.round(side / 14));
   const inset = Math.max(2, Math.round(side / 18));
-  open(k, { width: px(side), height: px(side), interactive: true, part: sel("SelectionPanel", "tile", focused ? "focused" : null), partClass: "slot" }, {
+  open(k, { width: px(side), height: px(side), interactive: true, focusable: true, part: sel("SelectionPanel", "tile", focused ? "focused" : null), partClass: "slot" }, {
     shape: { kind: "rect", radii: [r, r, r, r] },
     fills: [solid(lit(BLACK, 0.9))],
     strokes: [stroke(1, focused ? token("highlight", 0.6) : token("lineStrong", 0.4), "outside")],
@@ -237,7 +250,7 @@ function tile(u0: Api.SelectedUnit, side: number, focused: boolean): Api.Respons
   // 1080p), the art lit from its rim inward, and the glow round the tile above.
   if (focused) leaf("Focus", { width: pct(1), height: pct(1), part: sel("SelectionPanel", "focus") }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [stroke(Math.max(2, u(2)), token("highlight"), "inside")], effects: [innerGlow(u(10), token("highlight", 0.3))] }, absolute({ start: 0, top: 0 }));
   else leaf("Rim", { width: pct(1), height: pct(1) }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [{ width: 1, align: "inside", paint: vgrad([[0, lit(WHITE, 0.28)], [0.5, lit(WHITE, 0.05)], [1, lit(BLACK, 0.6)]]) }] }, absolute({ start: 0, top: 0 }));
-  const res = close({ a11y: a11y("button", u0.name ?? "", { value: max > 0 ? `${Math.round(u0.health ?? 0)} of ${Math.round(max)}` : "", selected: focused }) });
+  const res = close({ a11y: a11y("option", u0.name ?? "", { value: max > 0 ? `${Math.round(u0.health ?? 0)} of ${Math.round(max)}` : "", selected: focused }) });
   kit.tooltip(u0.name ?? "");
   return res;
 }
@@ -262,7 +275,22 @@ function tiles(desc: Api.SelectionPanelDesc, side: number, cols: number, rows: n
         text("Count", `+${more + 1}`, { step: tsFit(13, side * 0.4, true), font: "display", color: token("inkMuted"), nowrap: true });
       }, { a11y: a11y("text", `${more + 1} more`) });
     }
-  }, { a11y: a11y("list", "Selection") });
+  }, { a11y: a11y("listbox", "Selection") });
+}
+
+/**
+ * The card's art inside its frame, never past it beside the info: a picture at the frame's full height cropped to its
+ * width (a square picture's middle), or the glyph tile as large as the frame holds, centred in it.
+ */
+function portraitArt(un: Api.SelectedUnit, port: number, h: number, hue: Rgba): void {
+  if (!un.image) {
+    const side = Math.min(port, h);
+    artTile("Art", null, un.icon ?? "", side, hue, absolute({ start: (port - side) / 2, top: (h - side) / 2 }));
+    return;
+  }
+  const f = Math.min(1, port / Math.max(1, h));
+  kit.image("Art", { texture: un.image, uv: [0.5 - f / 2, 0, 0.5 + f / 2, 1], width: px(port), height: px(h), label: "" });
+  kit.props(absolute({ start: 0, top: 0 }));
 }
 
 /** The focused unit's card: the portrait at full height, then name, type, health numeral over a bar, stats, tags. */
@@ -285,7 +313,7 @@ function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number,
       strokes: [stroke(1, token("lineStrong", 0.4), "outside")],
       clip: "shape",
     }, () => {
-      artTile("Art", un.image, un.icon ?? "", Math.max(port, h), hueOf(un.icon || un.name || k), absolute({ start: (port - Math.max(port, h)) / 2, top: 0 }));
+      portraitArt(un, port, h, hueOf(un.icon || un.name || k));
       leaf("Rim", { width: pct(1), height: pct(1) }, { shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [{ width: 1, align: "inside", paint: vgrad([[0, lit(WHITE, 0.28)], [0.5, lit(WHITE, 0.05)], [1, lit(BLACK, 0.6)]]) }] }, absolute({ start: 0, top: 0 }));
     });
     const infoW = w - port - tk.md;
@@ -365,6 +393,11 @@ function statsZone(desc: Api.SelectionPanelDesc, h: number, w: number): void {
       text("Tags", tags.join("  ·  "), { step: tagStep, color: token("inkMuted"), nowrap: true, ellipsis: true, width: pct(1) });
     }
   });
+}
+
+/** The height of unitLine's row: its tallest step's line. */
+function unitLineH(): number {
+  return Math.ceil(Math.max(stepSize(ts(13, true)).line, stepSize(ts(12)).line, stepSize(ts(10)).line));
 }
 
 /** The unit card as one line, for a screen with no room for the card: name, type, health. */
@@ -521,7 +554,7 @@ export function selectionPanel(id: string, desc: Api.SelectionPanelDesc = {}): A
   const n = (desc.units ?? []).length;
   hudPlace(id, anchor, (inAnchor) => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
-      tabs(desc, tabHeight(h), (k) => { res.group = k; }, inAnchor ? `${kit.openPath()}/Panel` : "");
+      tabs(desc, tabHeight(), (k) => { res.group = k; }, inAnchor ? `${kit.openPath()}/Panel` : "");
       if (inAnchor) {
         box("Panel", { padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("SelectionPanel", "frame"), partClass: "hud" }, panelDraw(), () => selectionBody(desc, h, lay, res));
       } else selectionBody(desc, h, lay, res);
@@ -544,6 +577,11 @@ function gridRows(desc: Api.CommandCardDesc, trim = false): number {
   return Math.max(1, Math.ceil((last + 1) / cols));
 }
 
+/**
+ * The command card's grid. Keys and pads reach it as one stop (a grid widget) whose cursor walks its cells, the arrows
+ * its own while the cursor can still move that way, so the focus leaves the card at its edges; A or Enter issues the
+ * command under the cursor. The pointer and a finger press the cells themselves, and a press moves the cursor there.
+ */
 function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.AbilityBarResult {
   const cmds = desc.commands ?? [];
   const cols = Math.max(1, desc.columns || 5);
@@ -552,7 +590,18 @@ function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.Ab
   const r = Math.min(shapeOf("slot").radius, Math.max(3, cell / 10));
   let clicked: string | null = null;
   const pressed: string[] = [];
-  kit.column("Grid", { gap }, () => {
+  // The cursor's cell and whether keys put the ring on the grid, as last tick left them.
+  let cx = Math.min(cols - 1, kit.memory("~cmdX", 0));
+  let cy = Math.min(rows - 1, kit.memory("~cmdY", 0));
+  const ring = kit.memory("~cmdRing", 0) === 1;
+  const back = rtl() ? cx < cols - 1 : cx > 0;
+  const forth = rtl() ? cx > 0 : cx < cols - 1;
+  const under = cmds[cy * cols + cx];
+  const grid = box("Grid", {
+    direction: "column", gap, interactive: true, focusable: true, ownRing: true,
+    arrows: { left: back, right: forth, up: cy > 0, down: cy < rows - 1 },
+    part: sel("CommandCard", "grid"),
+  }, undefined, (path) => {
     for (let y = 0; y < rows; y++) {
       kit.row(kit.idi("Row", y), { gap }, () => {
         for (let x = 0; x < cols; x++) {
@@ -563,11 +612,33 @@ function cardGrid(desc: Api.CommandCardDesc, cell: number, trim = false): Api.Ab
           }
           const resp = slot(keyId(c.key), c, cell, true);
           if (resp.clicked) clicked = c.key;
-          if (resp.pressed) pressed.push(c.key);
+          if (resp.pressed) {
+            pressed.push(c.key);
+            cx = x;
+            cy = y;
+          }
         }
       });
     }
-  });
+    // The cursor of keys and pads: a ring in the focus ink round the cell it is on, over the slot's own frame.
+    if (ring) {
+      leaf("Cursor", { width: px(cell), height: px(cell), part: sel("CommandCard", "cursor") }, {
+        shape: { kind: "rect", radii: [r, r, r, r] },
+        strokes: [stroke(Math.max(2, u(3)), token("focus"), "inside"), stroke(Math.max(2, u(3)), token("focus", 0.35), "outside")],
+      }, absolute({ start: cx * (cell + gap), top: cy * (cell + gap) }, { z: 3, inert: true, overlaps: [path] }));
+    }
+  }, { a11y: a11y("grid", "Commands", { value: under?.key ? (under.name ?? under.key) : "" }) });
+  if (grid.focused) {
+    const dx = rtl() ? -grid.adjust : grid.adjust;
+    cx = Math.max(0, Math.min(cols - 1, cx + dx));
+    cy = Math.max(0, Math.min(rows - 1, cy + (grid.adjustY ?? 0)));
+    // A or Enter on the grid (not the pointer's release over a well): the command under the cursor, unless locked.
+    const at = cmds[cy * cols + cx];
+    if (grid.clicked && !kit.framePointer().released && at?.key && !at.locked && !grid.adjust && !grid.adjustY) clicked = at.key;
+  }
+  kit.remember("~cmdX", cx);
+  kit.remember("~cmdY", cy);
+  kit.remember("~cmdRing", grid.ring ? 1 : 0);
   return { clicked, pressed };
 }
 
@@ -608,16 +679,37 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
   // the command card over the selection.
   // What fits, in order: the four zones with the selection grid narrowed to what is left (at least four columns);
   // then the minimap out to the game's corner; then the card as a line; then the command card over the selection.
-  const selRoom = (m: boolean) => room - pad * 2 - (m ? h + zone : 0) - zone - cmdW;
+  // A short touch screen (a phone held sideways) seats the group tabs in the panel before the selection, as many
+  // lines of 44 px tabs as its height holds: a row of them above the panel would cost the minimap its corner.
+  const tabH = tabHeight();
+  const vp0 = frame().viewport;
+  const nTabs = (sd.groups ?? []).length;
+  const short = frame().touch && nTabs > 0 && vp0.height - vp0.safeArea.top - vp0.safeArea.bottom < 480;
+  const tabGap = Math.max(2, u(2));
+  const perLine = Math.ceil(nTabs / Math.max(1, Math.floor((h + tabGap) / (tabH + tabGap))));
+  let side = short ? perLine * tabH + (perLine - 1) * tabGap : 0;
+  const selRoom = (m: boolean) => room - pad * 2 - (m ? h + zone : 0) - (side ? side + zone : 0) - zone - cmdW;
   let withMap = !!desc.map;
   let lay = selLayout(sd, h, selRoom(withMap), false);
-  const wide = (l: SelLayout, m: boolean) => pad * 2 + (m ? h + zone : 0) + selWidth(l) + zone + cmdW;
+  const wide = (l: SelLayout, m: boolean) => pad * 2 + (m ? h + zone : 0) + (side ? side + zone : 0) + selWidth(l) + zone + cmdW;
   if (withMap && (lay.cols < 4 || wide(lay, true) > room)) {
     withMap = false;
     lay = selLayout(sd, h, selRoom(false), false);
   }
   if (lay.cols < 4 || wide(lay, withMap) > room) lay = selLayout(sd, h, selRoom(withMap), true);
+  if (lay.compact && (sd.units ?? []).length > 0) {
+    // Compact beside the command card, the focused unit's line (and a queue) stand under the tiles: the tiles take what
+    // is left of the zone's height, in as many rows as hold a whole tile (a touch target under a finger), so the
+    // selection is no taller than the card and the console keeps its height at 200 % text (a phone on its side).
+    const queued = !!sd.queue && (sd.queue.items ?? []).length > 0;
+    const left = h - unitLineH() - u(6) - (queued ? lay.queueSide + u(6) : 0);
+    const least = frame().touch ? 44 : u(24);
+    const rows = Math.max(1, Math.min(Math.max(1, sd.rows || 2), Math.floor((left + gap) / (least + gap))));
+    lay = selLayout({ ...sd, rows }, Math.max(least * rows + gap * (rows - 1), left), selRoom(withMap), true);
+  }
   const stacked = wide(lay, withMap) > room;
+  // Stacked, the console is narrow and tall: the tabs go back above it.
+  if (stacked) side = 0;
   if (stacked) lay = selLayout(sd, Math.round(h * 0.82), room - pad * 2, true);
   if (desc.map && !withMap) {
     // Out of the console: beside it at the bottom start where the band leaves it the width (a phone held sideways,
@@ -643,14 +735,15 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
       out.mapClicked = m.clicked;
     }
   }
-  const tabH = tabHeight(h);
   const sres: Mut<Api.SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
   hudPlace(id, anchorOf(desc, "bottom"), () => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
-      // The tabs stand on the panel's top edge over the selection zone.
+      // The tabs stand on the panel's top edge over the selection zone, unless they are seated in it (`side`).
       const panelPath = `${kit.openPath()}/Panel`;
-      kit.row("TabRow", { padding: { left: pad + (withMap && !stacked ? h + zone : 0), right: 0, top: 0, bottom: 0 } }, () => tabs(sd, tabH, (k) => { sres.group = k; }, panelPath));
-      kit.props({ z: 1 });
+      if (!side) {
+        kit.row("TabRow", { padding: { left: pad + (withMap && !stacked ? h + zone : 0), right: 0, top: 0, bottom: 0 } }, () => tabs(sd, tabH, (k) => { sres.group = k; }, panelPath));
+        kit.props({ z: 1 });
+      }
       box("Panel", { direction: stacked ? "column" : "row", gap: stacked ? tk.sm : pad, cross: stacked ? "start" : "center", padding: { left: pad, right: pad, top: pad, bottom: pad }, part: sel("RtsConsole", "frame"), partClass: "hud" }, panelDraw(), () => {
         if (withMap && desc.map) {
           kit.column("Map", { width: px(h), height: px(h), cross: "center" }, () => {
@@ -669,6 +762,10 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
           leaf("StackRule", { width: pct(1), height: px(1), part: sel("RtsConsole", "rule") }, { fills: [solid(token("line", 0.9))] });
           kit.column("Selection", {}, () => selectionBody(sd, Math.round(h * 0.82), lay, sres));
         } else {
+          if (side) {
+            tabs(sd, tabH, (k) => { sres.group = k; }, panelPath, side);
+            rule("TabsRule", h);
+          }
           kit.column("Selection", {}, () => selectionBody(sd, h, lay, sres));
           rule("CmdRule", h);
           box("Commands", {}, undefined, () => {
