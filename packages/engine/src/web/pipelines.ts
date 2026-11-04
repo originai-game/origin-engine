@@ -18,10 +18,16 @@
 //   browser's pipeline fills in when the promise resolves. The requests are
 //   sent `PER_TASK` a task, so a frame's dozens are not one GPU-process task
 //   again.
-// - A render pass's `setPipeline` of a stand-in not filled in yet skips that
-//   pipeline's draws (counted) instead of waiting; a render bundle, a bind
+// - The renderer encodes the passes it draws again every frame inside a span
+//   too (og-render `FrameSpan`, `FramePass::redrawn`), so the pipelines a
+//   pass makes when it first sets one (og-render deferred.rs: a 2D game's
+//   sprites, text and tonemap) are asked for this way as well.
+// - A render pass's `setPipeline` of a stand-in not filled in yet, inside a
+//   span, skips that pipeline's draws (counted) instead of waiting; outside
+//   one (a pass whose output later frames keep), a render bundle, a bind
 //   group layout asked of it, or one the browser refused makes it then, with
 //   `createRenderPipeline` (which reports a refused one's error as before).
+//   A harness's frame (`drawnWhole`) is drawn whole the same way, as natively.
 // - While on (`enable`), a WGSL module is created at the first pipeline that
 //   uses it (s64), so a game's dozens of material modules are compiled
 //   (Tint) in the pipeline requests' tasks, not all in the task that
@@ -64,6 +70,8 @@ interface LateModule {
 
 let enabled = false;
 let span = 0;
+/** `drawnWhole` calls open. */
+let whole = 0;
 let pending = 0;
 let skipped = 0;
 const queue: Slot[] = [];
@@ -109,6 +117,23 @@ export function enable(on: boolean): void {
 export function frameSpan(on: boolean): void {
   if (on && span === 0) counts.spans++;
   span = Math.max(0, span + (on ? 1 : -1));
+}
+
+/** Whether a render pipeline made now is asked for asynchronously, and a pass may skip a stand-in's draws. */
+const framing = () => enabled && span > 0 && whole === 0;
+
+/**
+ * Runs `f` with every pipeline it meets made at once and every draw drawn, spans or not: a
+ * harness's frame (`frame` calls: the reference pages, og run's one tick and one frame), which is
+ * compared with the same frame drawn natively.
+ */
+export function drawnWhole<T>(f: () => T): T {
+  whole++;
+  try {
+    return f();
+  } finally {
+    whole--;
+  }
 }
 
 /** Render pipelines asked for asynchronously and not made yet. */
@@ -206,7 +231,7 @@ export function install(proto: Device): void {
     };
   };
   proto.createRenderPipeline = function (this: Device, desc: Descriptor) {
-    if (!(enabled && span > 0)) {
+    if (!framing()) {
       counts.sync++;
       return createRenderPipeline.call(this, bindModules(desc));
     }
@@ -237,7 +262,9 @@ function patchEncoders(): void {
     const setPipeline = pass["setPipeline"] as (this: Js, p: unknown) => void;
     pass["setPipeline"] = function (this: Js, p: unknown) {
       const slot = (p as Js | null)?.[SLOT] as Slot | undefined;
-      if (slot && !slot.made && enabled && !slot.refused) {
+      // Only a pass encoded in a frame span may skip: one outside it (a shadow map's static
+      // casters, a probe's capture, a one-shot bake) keeps what it draws, so it makes it now.
+      if (slot && !slot.made && framing() && !slot.refused) {
         skipped++;
         this[SKIP] = true;
         return;

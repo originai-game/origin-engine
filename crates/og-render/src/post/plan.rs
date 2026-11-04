@@ -166,6 +166,26 @@ pub(super) fn ldr_name(i: usize) -> String {
 }
 
 impl FramePass {
+    /// Whether what the pass draws is drawn again next frame, so a draw it
+    /// skips costs that one frame: the passes encoded in the web host's
+    /// frame span (fork s60), whose pipelines compile asynchronously there.
+    /// Not the passes whose output later frames keep: the shadow maps
+    /// (their static casters are kept), the weather map, the live sky's
+    /// slices, the probe GI, the reflection probes' captures and the
+    /// secondary views.
+    pub fn redrawn(self) -> bool {
+        !matches!(
+            self,
+            FramePass::Cascade(_)
+                | FramePass::LocalFace(_)
+                | FramePass::Shelter
+                | FramePass::LiveSky
+                | FramePass::GiProbes
+                | FramePass::Probes
+                | FramePass::View(_)
+        )
+    }
+
     /// Whether the pass runs after TAA, on the frame TAA resolved: at the
     /// output's size under TAAU ([`GraphConfig::post`]).
     pub fn after_taa(self) -> bool {

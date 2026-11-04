@@ -156,32 +156,58 @@ thread_local! {
 
 /// Fork s60: `hook(true)` before the renderer makes its frame pipelines
 /// (the materials' lit, shadow and prepass pipelines, the particles',
-/// [`Renderer::warm`]'s) and `hook(false)` after, on this thread; `None`
-/// (the default) calls nothing. The web host makes the render pipelines
-/// asked for in between with `createRenderPipelineAsync` and skips the
-/// draws of one not made yet (packages/engine/src/web/pipelines.ts), so a
-/// frame that meets dozens of new pipelines does not hold the browser's GPU
-/// process while they compile. One-shot passes (mips, IBL, captures) make
-/// theirs outside it, at once: their draws must not be skipped.
+/// [`Renderer::warm`]'s) or encodes the passes it draws again every frame
+/// (which make their pipelines when they first set them, deferred.rs), and
+/// `hook(false)` after, on this thread; `None` (the default) calls nothing.
+/// The web host makes the render pipelines asked for in between with
+/// `createRenderPipelineAsync` and, in those passes, skips the draws of one
+/// not made yet (packages/engine/src/web/pipelines.ts), so a frame that
+/// meets dozens of new pipelines does not hold the browser's GPU process
+/// while they compile. The passes whose output later frames keep (shadow
+/// maps, captures, IBL, mips) are encoded outside it and make theirs at
+/// once: their draws must not be skipped.
 pub fn set_frame_pipelines_hook(hook: Option<fn(bool)>) {
     FRAME_PIPELINES_HOOK.with(|c| c.set(hook));
 }
 
 /// Runs `f`, which makes frame pipelines, inside the host's hook.
 fn frame_pipelines<R>(f: impl FnOnce() -> R) -> R {
-    let Some(hook) = FRAME_PIPELINES_HOOK.with(|c| c.get()) else {
-        return f();
-    };
-    let depth = FRAME_PIPELINES_DEPTH.with(|d| d.replace(d.get() + 1));
-    if depth == 0 {
-        hook(true);
+    let _span = FrameSpan::open();
+    f()
+}
+
+/// Fork s60: the host's frame span, open while this lives (only the
+/// outermost calls the hook). What is made and encoded inside is the
+/// frame's: the web host makes its render pipelines asynchronously and
+/// skips a pass's draws while their pipeline compiles, so only passes whose
+/// output is drawn again next frame are encoded in one
+/// (`FramePass::redrawn`); a pass outside makes a pipeline still
+/// compiling at once instead.
+struct FrameSpan(Option<fn(bool)>);
+
+impl FrameSpan {
+    fn open() -> FrameSpan {
+        let hook = FRAME_PIPELINES_HOOK.with(|c| c.get());
+        if let Some(hook) = hook
+            && FRAME_PIPELINES_DEPTH.with(|d| d.replace(d.get() + 1)) == 0
+        {
+            hook(true);
+        }
+        FrameSpan(hook)
     }
-    let r = f();
-    FRAME_PIPELINES_DEPTH.with(|d| d.set(depth));
-    if depth == 0 {
-        hook(false);
+}
+
+impl Drop for FrameSpan {
+    fn drop(&mut self) {
+        if let Some(hook) = self.0
+            && FRAME_PIPELINES_DEPTH.with(|d| {
+                d.set(d.get() - 1);
+                d.get()
+            }) == 0
+        {
+            hook(false);
+        }
     }
-    r
 }
 
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit, the

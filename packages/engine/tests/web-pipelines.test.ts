@@ -8,6 +8,9 @@
 // - the requests sent in one task again → PER_TASK a task
 // - a pass draws with no pipeline (a validation error) or waits for it →
 //   its draws skipped and counted until a made pipeline is set
+// - a pass whose output later frames keep (encoded outside a span: a static
+//   shadow map, a probe capture, a bake) skips a draw → it makes the
+//   pipeline at once instead, as a harness's frame (drawnWhole) does
 // - a stand-in handed to the browser → the made pipeline in setPipeline and
 //   in a bundle
 // - a refused pipeline skipped for ever → made synchronously at its use
@@ -103,12 +106,11 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   expect(made("createShaderModule").length).toBe(0);
   p.frameSpan(true);
   const stands = [0, 1, 2, 3, 4].map((i) => device.createRenderPipeline(desc(shared, `p${i}`)));
-  p.frameSpan(false);
   expect(made("createRenderPipeline").length).toBe(0);
   expect(made("createRenderPipelineAsync").length).toBe(0);
   expect(p.compiling()).toBe(5);
 
-  // A pass meanwhile skips the stand-in's draws and draws after a made pipeline.
+  // A pass encoded in the span meanwhile skips the stand-in's draws and draws after a made pipeline.
   const pass = new FakePass();
   pass.setPipeline(stands[0]);
   pass.draw(3);
@@ -119,6 +121,7 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   pass.setPipeline(ready);
   pass.draw(3);
   expect(pass.draws).toBe(1);
+  p.frameSpan(false);
   expect(p.takeSkipped()).toBe(1);
   expect(p.takeSkipped()).toBe(0);
 
@@ -141,6 +144,51 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   expect((after.pipeline as { pipeline: string; desc: { label: string } }).pipeline).toBe("async");
   expect((after.pipeline as { desc: { label: string } }).desc.label).toBe("p3");
   expect(made("createRenderPipeline").length).toBe(0);
+});
+
+test("a pass outside a span makes a stand-in at once instead of skipping its draws", async () => {
+  calls.length = 0;
+  p.enable(true);
+  p.frameSpan(true);
+  const stand = device.createRenderPipeline(desc({ module: "m" }, "kept"));
+  p.frameSpan(false);
+  const before = p.stats();
+  const pass = new FakePass();
+  pass.setPipeline(stand);
+  pass.draw(3);
+  expect(pass.draws).toBe(1);
+  expect((pass.pipeline as { pipeline: string }).pipeline).toBe("sync");
+  expect(p.takeSkipped()).toBe(0);
+  expect(p.stats().fallback - before.fallback).toBe(1);
+  await tasks(0);
+  await tasks(0);
+  // Made before its request's task: never asked for again.
+  expect(made("createRenderPipelineAsync").length).toBe(0);
+  expect(p.compiling()).toBe(0);
+});
+
+test("a harness's frame is drawn whole: its pipelines made at once and no draw skipped", async () => {
+  calls.length = 0;
+  p.enable(true);
+  p.frameSpan(true);
+  const earlier = device.createRenderPipeline(desc({ module: "m" }, "earlier"));
+  p.frameSpan(false);
+  const pass = new FakePass();
+  const fresh = p.drawnWhole(() => {
+    p.frameSpan(true);
+    const now = device.createRenderPipeline(desc({ module: "m" }, "now")) as { pipeline: string };
+    pass.setPipeline(earlier);
+    pass.draw(3);
+    p.frameSpan(false);
+    return now;
+  });
+  expect(fresh.pipeline).toBe("sync");
+  expect(pass.draws).toBe(1);
+  expect((pass.pipeline as { pipeline: string }).pipeline).toBe("sync");
+  expect(p.takeSkipped()).toBe(0);
+  await tasks(0);
+  await tasks(0);
+  expect(p.compiling()).toBe(0);
 });
 
 test("a stand-in a bundle or a bind group layout needs is made at once, and kept", async () => {

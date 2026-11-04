@@ -1330,7 +1330,8 @@ export function startWorker(game: GameToken): void {
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
     fault: (_, [site]) => glueRef?.og_web_lanes_fault?.(String(site)) ?? false,
     frame: (e, [ms]) => {
-      const answered = e.frame(Number(ms));
+      // Fork s60: a harness's frame is compared with the native one: nothing in it skipped for a pipeline compiling.
+      const answered = pipelines.drawnWhole(() => e.frame(Number(ms)));
       relay(answered);
       pumpRoom(e);
       return answered;

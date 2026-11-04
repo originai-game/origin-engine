@@ -700,42 +700,48 @@ impl Renderer {
         if let Some(draws) = &gpu_sprites.tiles
             && (!draws.is_empty() || self.tiles_gpu.is_some())
         {
-            let tiles = self.tiles_gpu.get_or_insert_with(|| {
-                tiles_gpu::Tiles::new(
+            // Fork s60: the tile chunks' pipelines are drawn by the main pass.
+            frame_pipelines(|| {
+                let tiles = self.tiles_gpu.get_or_insert_with(|| {
+                    tiles_gpu::Tiles::new(
+                        &self.device,
+                        [
+                            &self.frame_layout,
+                            &self.sprite_layout,
+                            &self.sprite_fx_layout,
+                        ],
+                        self.samples,
+                    )
+                });
+                tiles.prepare(
                     &self.device,
-                    [
-                        &self.frame_layout,
-                        &self.sprite_layout,
-                        &self.sprite_fx_layout,
-                    ],
+                    &self.queue,
+                    scene,
+                    draws,
+                    self.sprite_normals
+                        .as_ref()
+                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
                     self.samples,
-                )
+                );
             });
-            tiles.prepare(
-                &self.device,
-                &self.queue,
-                scene,
-                draws,
-                self.sprite_normals
-                    .as_ref()
-                    .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
-                self.samples,
-            );
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite_meshes.is_empty() {
             let corners = sprite_mesh::vertices(scene, lit, self.sprite_skin_supported);
             let meshes = self.sprite_meshes.get_or_insert_with(|| {
-                sprite_mesh::SpriteMeshRenderer::new(
-                    &self.device,
-                    [
-                        &self.frame_layout,
-                        &self.sprite_layout,
-                        &self.sprite_fx_layout,
-                    ],
-                    self.samples,
-                    self.sprite_skin_supported,
-                )
+                // Fork s60: drawn by the main pass, as the tiles are.
+                frame_pipelines(|| {
+                    sprite_mesh::SpriteMeshRenderer::new(
+                        &self.device,
+                        [
+                            &self.frame_layout,
+                            &self.sprite_layout,
+                            &self.sprite_fx_layout,
+                        ],
+                        self.samples,
+                        self.sprite_skin_supported,
+                    )
+                })
             });
             if let Some(skin) = &mut meshes.skin {
                 skin.prepare(
@@ -4311,6 +4317,7 @@ impl Renderer {
         for &pass in self.graph.order() {
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
+            let _span = pass.redrawn().then(FrameSpan::open);
             match pass {
                 FramePass::Cascade(i) => shadow_pass(
                     &mut encoder,
@@ -4721,6 +4728,8 @@ impl Renderer {
             pass_ms,
             pass_queries,
         };
+        // Everything after the graph is drawn again each frame (FrameSpan).
+        let tail = FrameSpan::open();
         let views_at = timings.begin(&encoder, &stats);
         // Viewport views (split-screen, views.rs) over the finished frame,
         // under the lines and the overlay.
@@ -4882,6 +4891,7 @@ impl Renderer {
             stats.draw_calls += 1;
             timings.end("hdr-output", at, &encoder, &stats);
         }
+        drop(tail);
         let Timings {
             pass_ms,
             pass_queries,
