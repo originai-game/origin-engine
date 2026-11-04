@@ -276,8 +276,11 @@ function tach(id: string, speed: number, rpm: number, red: number, unit: string,
       arc("BoostTrack", rb, 0, 1, th, token("shadow", 0.6), sel("Speedometer", "boost"));
       if (desc.boost > 0) arc("Boost", rb, 0, clamp01(desc.boost), th, lit(role("info")), sel("Speedometer", "boost"));
     }
-    text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(digitsW), align: "end" },
-      fixed({ start: left, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
+    // Laid out at the digits' own width and condensed by the transform toward its end, which stays the box's end:
+    // a box of the condensed width cut its own text (72.7 px in 70.5).
+    const textW = Math.ceil(3 * sp.size * 0.64);
+    text("Speed", String(Math.min(999, Math.round(speed))), { step: speedStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2, width: px(textW), align: "end" },
+      fixed({ start: left + digitsW - textW, top: speedTop }, { transform: { scaleX: 0.88, skewX: -0.2, pivotX: 1, pivotY: 1 } }));
     const gearBox = (extra?: ReturnType<typeof fixed>) => {
       const g = desc.gear!;
       const neutral = g === "N" || g === "R";

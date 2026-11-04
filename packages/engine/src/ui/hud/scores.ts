@@ -11,7 +11,7 @@
 // Gate 3 (portraits in the order they act, the current one larger).
 
 import type * as Api from "@origingame/engine";
-import { luminance, a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props, ut, tsFit, stepSize } from "./core.ts";
+import { luminance, a11y, absolute, anchorOf, box, chip, close, fitLevel, hudRoom, open, clamp01, countdown, easeBack, easeOut, edge, ellipseShape, fillDraw, formatNumber, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, paintRgba, pct, pop, pulse, px, reduced, role, sel, shapeOf, solid, sound, spring, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, type Rgba, apply, type Props, ut, tsFit, stepSize, textScale } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -270,7 +270,10 @@ export function comboCounter(id: string, desc: Api.ComboDesc = {}): void {
   const short = Math.min(vp.width, vp.height);
   const want = stepSize(ts(48, true));
   const underLine = stepSize(ts(14)).line + (desc.decay !== null && desc.decay !== undefined ? u(4) + u(4) : 0);
-  const countMax = Math.max(stepSize(ts(14)).size, ((short * 0.34 - underLine) / 1.45) * (want.size / want.line));
+  // Its share of the short side grows half as fast as the text (as a slot does), so at 150 % on a phone the count
+  // still reaches its step (a fixed third held 48 px to 54).
+  const ks = Math.min(2, textScale());
+  const countMax = Math.max(stepSize(ts(14)).size, ((short * 0.34 * (1 + (ks - 1) / 2) - underLine) / 1.45) * (want.size / want.line));
   const countStep = tsFit(48, countMax, true);
   const cl = stepSize(countStep).line;
   hudPlace(id, anchorOf(desc, "right"), () => {

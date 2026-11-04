@@ -384,7 +384,14 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
           box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(bw), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
             mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {}, true);
             if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
-              text("Distance", `${Math.round(p.distance)}${desc.units ?? "m"}`, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
+              const words = `${Math.round(p.distance)}${desc.units ?? "m"}`;
+              // In the strip's faded ends (where a clamped marker holds) the shadow behind it thins to nothing:
+              // the distance takes a chip there, as the bearing has, so it reads over a bright sky (2.44:1 bare).
+              if (x < width * 0.18 || x > width * 0.82) {
+                box("Plate", { padding: { left: u(3), right: u(3), top: 0, bottom: 0 }, part: sel("Compass", "distance"), partClass: "chip" }, chip(3, true), () => {
+                  text("Distance", words, { step: ts(10), font: "mono", color: token("ink"), nowrap: true });
+                });
+              } else text("Distance", words, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
             }
           }, fixed({ start: x - bw / 2, top: markTop }, { a11y: a11y("image", p.label ?? ""), ...(clamped ? { opacity: 0.8 } : {}) }));
         }

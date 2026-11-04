@@ -246,7 +246,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         // A step under the name at any text size: the ramp's floor gives both the same step on a phone at 200 %, so the
         // class line is drawn at about three quarters of the name's size, in muted ink.
         const tStep = ts(11);
-        const want = Math.min(stepSize(tStep).size, stepSize(ts(m.name)).size * 0.74);
+        const want = Math.min(stepSize(tStep).size, Math.max(stepSize(ts(m.name)).size * 0.74, minText() * textScale()));
         const fit = shrunk(tStep, want, stepSize(tStep).line);
         const tw = Math.max(0, barsW / Math.max(0.01, fit.k));
         const tl = stepSize(tStep).line;

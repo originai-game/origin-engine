@@ -199,7 +199,11 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
     // 200 % text in a small cell the two never meet.
     if (cooling && !locked) {
       const room = size - line - keyBottom;
-      const tStep = tsFit(size >= 52 ? 20 : 17, corner0 ? Math.min(size * 0.4, room * 0.85) : size * 0.4, true);
+      // Four tenths of the slot at 100 %; the slot grows half as fast as the text (slotSize), so the numeral's share
+      // grows by the rest and the numeral keeps the player's text size (§15.2): 0.48 of the slot at 150 %.
+      const ks = Math.min(2, textScale());
+      const share = 0.4 * (ks / (1 + (ks - 1) / 2));
+      const tStep = tsFit(size >= 52 ? 20 : 17, corner0 ? Math.min(size * share, room * 0.85) : size * share, true);
       const { size: tSize, line: tLine } = stepSize(tStep);
       if ((size - tLine) / 2 >= keyBottom) {
         text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), nowrap: true, outline: 2.4 }, absolute({ centerX: true, centerY: true }));
@@ -307,8 +311,9 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       // One neutral ink at full strength: quiet means small, not faint (it reads at 4.5:1 on a light scene with its shadow);
       // state lives on the slot (the tints, the glow), never on the key's label.
       const capInk = token("ink");
-      // At most about a quarter of the slot's height, so at 200 % text the key stays a quiet label and the art leads.
-      const keyPx = Math.min(stepSize(keyStep).size, size * 0.26);
+      // At most about a quarter of the slot's height, so the key stays a quiet label and the art leads, but never
+      // under the smallest text at the player's text size (§15.2): the slot's cap alone held 16 px at 150 %.
+      const keyPx = Math.min(stepSize(keyStep).size, Math.max(size * 0.26, minText() * textScale()));
       const fit = shrunk(keyStep, keyPx, stepSize(keyStep).line);
       box("Hotkey", { height: px(Math.ceil(keyPx * 1.05)), width: px(Math.ceil(Math.max(keyPx, keyText.length * keyPx * 0.72) + 4)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
         if (keyIcon) icon("Glyph", keyIcon, Math.round(keyPx * 1.1), capInk);
@@ -330,7 +335,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
 function pill(id: string, value: string, ink: Paint, size: number, line: number, lift: number, glyphName?: string, glyphInk?: Paint, part?: string): void {
   const step = tsFit(10, size * 0.2, true);
   const { line: lh, size: fs } = stepSize(step);
-  const fit = shrunk(step, Math.max(12, size * 0.19), lh);
+  const fit = shrunk(step, Math.max(minText() * textScale(), size * 0.19), lh);
   box(id, { direction: "row", gap: 1, cross: "center", height: px(Math.ceil(lh)), padding: { left: u(3), right: u(4), top: 0, bottom: 0 }, ...(part ? { part } : {}) }, {
     shape: { kind: "rect", radii: [lh / 2, lh / 2, lh / 2, lh / 2] },
     fills: [solid(lit(BLACK, 0.68))],
@@ -444,9 +449,11 @@ function tileSide(fx: Api.StatusEffect, base: number, target: boolean): number {
 function timeOf(fx: Api.StatusEffect, base: number, timers: boolean, target = false): { text: string; step: Api.TypeStepName; px: number; width: number } {
   const size = tileSide(fx, base, target);
   const remaining = fx.remaining ?? 0;
-  const step = tsFit(11, size * 0.3);
-  // About half the tile's height at most, whatever the text size: a secondary figure under the art, never its rival.
-  const px0 = Math.min(stepSize(step).size, size * 0.46);
+  // About half the tile's height at most: a secondary figure under the art, never its rival. Never under the
+  // smallest text at the player's text size, though (§15.2): a cap of the tile's alone held 12 px at 150 %.
+  const least = minText() * textScale();
+  const step = tsFit(11, Math.max(size * 0.3, least));
+  const px0 = Math.min(stepSize(step).size, Math.max(size * 0.46, least));
   const text = timers && remaining > 0 ? shortTime(remaining, false) : "";
   return { text, step, px: px0, width: text ? Math.ceil(text.length * px0 * 0.62) + frame().t.sm + 4 : 0 };
 }
@@ -496,7 +503,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
     if ((fx.stacks ?? 0) >= 2) {
       // Small in the bottom end corner (as a charge badge is): the art stays the tile's one large thing.
       const sStep = tsFit(10, size * 0.4, true);
-      const sFit = shrunk(sStep, size * 0.36, stepSize(sStep).line);
+      const sFit = shrunk(sStep, Math.max(size * 0.36, minText() * textScale()), stepSize(sStep).line);
       text("Stacks", String(fx.stacks), { step: sStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * String(fx.stacks).length * stepSize(sStep).size * 0.3) } } : {}));
     }
     res = close({
