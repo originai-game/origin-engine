@@ -484,7 +484,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
       effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
       clip: "shape",
     });
-    artTile("Icon", fx.image, fx.icon ?? fx.name ?? "", art, fx.debuff ? ink : hueOf(fx.icon || fx.name || id), absolute({ start: rim, top: rim }, { overlaps: [tilePath] }), sel("StatusGrid", "icon"));
+    artTile("Icon", fx.image, fx.icon ?? fx.name ?? "", art, fx.debuff ? ink : hueOf(fx.icon || fx.name || id), absolute({ start: rim, top: rim }, { overlaps: [tilePath] }), sel("StatusGrid", "icon", fx.debuff ? "debuff" : "buff"));
     if (!lasting && (fx.duration ?? 0) > 0) {
       // The time gone darkens clockwise (linear-light blending: 75 % reads as about half).
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("StatusGrid", "sweep") }, {

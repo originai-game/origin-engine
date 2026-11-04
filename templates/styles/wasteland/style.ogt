@@ -302,6 +302,33 @@ dress "Slot.frame[rarity=mythic]" {
 dress "Slider.track" {
   segments 16 2
 }
+dress "AbilitySlot.frame[active]" {
+  stroke 2 primary outside
+  effect dropShadow 0 3 10 0 "#0000008c"
+  effect outerGlow 12 "#f5821fa6"
+}
+dress "AbilitySlot.edge[active]" {
+  stroke 2 primary inside
+}
+dress "AbilitySlot.icon" {
+  fill linear 180 panelRaised well
+}
+dress "StatusGrid.tile[buff]" {
+  stroke 1 lineStrong inside
+}
+dress "StatusGrid.tile[debuff]" {
+  stroke 2 primary inside
+}
+dress "StatusGrid.icon[buff]" {
+  fill linear 180 panelRaised well
+}
+dress "StatusGrid.icon[debuff]" {
+  fill linear 180 "#7a3512" "#2e150a"
+}
+dress "Compass.strip" {
+  fill hud
+  stroke 1 line inside
+}
 dress "Inventory.item" {
   stroke 2 lineStrong inside
   effect innerShadow 2 2 0 0 "#0000004d"

@@ -2324,7 +2324,37 @@ pub fn seeds() -> Vec<StyleChoices> {
             display_tracking: Some(0.03),
             // The sheet's sliders read as a ruler of ticks: a segmented
             // track, whole segments lit.
-            dressings: own(&[("Slider.track", &["segments 16 2"])]),
+            dressings: own(&[
+                ("Slider.track", &["segments 16 2"]),
+                // The art review (2026-11-04): the hotbar's selection in
+                // hazard orange, not the kit's info blue; an item with no
+                // art on the pack's plate, not a hue of its name; the
+                // status squares on plate, a debuff rimmed and tinted
+                // rust-orange.
+                (
+                    "AbilitySlot.frame[active]",
+                    &[
+                        "stroke 2 primary outside",
+                        "effect dropShadow 0 3 10 0 \"#0000008c\"",
+                        "effect outerGlow 12 \"#f5821fa6\"",
+                    ],
+                ),
+                ("AbilitySlot.edge[active]", &["stroke 2 primary inside"]),
+                ("AbilitySlot.icon", &["fill linear 180 panelRaised well"]),
+                ("StatusGrid.tile[buff]", &["stroke 1 lineStrong inside"]),
+                ("StatusGrid.tile[debuff]", &["stroke 2 primary inside"]),
+                (
+                    "StatusGrid.icon[buff]",
+                    &["fill linear 180 panelRaised well"],
+                ),
+                (
+                    "StatusGrid.icon[debuff]",
+                    &["fill linear 180 \"#7a3512\" \"#2e150a\""],
+                ),
+                // The compass on the HUD's plate (a fix-forward note), so
+                // its letters read over a sunset sky.
+                ("Compass.strip", &["fill hud", "stroke 1 line inside"]),
+            ]),
             // The sheet sets its labels and panel headings in the
             // condensed sans and keeps the stencil for the big tabs and
             // the CRAFT button: display text under 26 px (after the text
@@ -2374,6 +2404,43 @@ pub fn seeds() -> Vec<StyleChoices> {
             // pale muted ink above 3:1 on a bright sky.
             shadow: Some(Srgba::BLACK.fade(0.75)),
             display_tracking: Some(0.12),
+            // The art review (2026-11-04): the build palette on iron in a
+            // brass rim, its selection molten orange, not the kit's info
+            // blue; an item with no art on the plate; the goals on the
+            // HUD's plate, so their steps read over a sunlit field.
+            dressings: own(&[
+                (
+                    "AbilitySlot.frame",
+                    &[
+                        "fill linear 180 panelRaised well",
+                        "stroke 1.5 \"#a9844a\" outside",
+                    ],
+                ),
+                (
+                    "AbilitySlot.frame[active]",
+                    &[
+                        "stroke 2 primary outside",
+                        "effect dropShadow 0 3 10 0 \"#0000008c\"",
+                        "effect outerGlow 12 \"#f0843aa6\"",
+                    ],
+                ),
+                ("AbilitySlot.edge[active]", &["stroke 2 primary inside"]),
+                ("AbilitySlot.icon", &["fill linear 180 panelRaised well"]),
+                ("StatusGrid.tile[buff]", &["stroke 1 \"#a9844a\" inside"]),
+                ("StatusGrid.tile[debuff]", &["stroke 2 primary inside"]),
+                (
+                    "StatusGrid.icon[buff]",
+                    &["fill linear 180 panelRaised well"],
+                ),
+                (
+                    "StatusGrid.icon[debuff]",
+                    &["fill linear 180 \"#7a3a14\" \"#2c160b\""],
+                ),
+                (
+                    "ObjectiveTracker.frame",
+                    &["fill hud", "stroke 1 line inside"],
+                ),
+            ]),
             ..seed(
                 "foundry",
                 "industrial iron and brass",

@@ -310,6 +310,37 @@ dress "Slot.frame[rarity=mythic]" {
   effect outerGlow 12 "#ef444480"
   material hologram 0.5 2
 }
+dress "AbilitySlot.frame" {
+  fill linear 180 panelRaised well
+  stroke 1.5 "#a9844a" outside
+}
+dress "AbilitySlot.frame[active]" {
+  stroke 2 primary outside
+  effect dropShadow 0 3 10 0 "#0000008c"
+  effect outerGlow 12 "#f0843aa6"
+}
+dress "AbilitySlot.edge[active]" {
+  stroke 2 primary inside
+}
+dress "AbilitySlot.icon" {
+  fill linear 180 panelRaised well
+}
+dress "StatusGrid.tile[buff]" {
+  stroke 1 "#a9844a" inside
+}
+dress "StatusGrid.tile[debuff]" {
+  stroke 2 primary inside
+}
+dress "StatusGrid.icon[buff]" {
+  fill linear 180 panelRaised well
+}
+dress "StatusGrid.icon[debuff]" {
+  fill linear 180 "#7a3a14" "#2c160b"
+}
+dress "ObjectiveTracker.frame" {
+  fill hud
+  stroke 1 line inside
+}
 dress "Inventory.item" {
   stroke 2 lineStrong inside
   effect innerShadow 0 3 0 0 "#0000001f"
