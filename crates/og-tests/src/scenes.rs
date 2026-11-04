@@ -344,6 +344,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.desc.antialias = Antialias::Fxaa;
             Ok(())
         },
+        "smaa" => |g, _| {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::Smaa;
+            Ok(())
+        },
         // The same geometry under TAA with the camera sliding sideways:
         // Catmull-Rom history and a 0.5 sharpening pass, after 16 frames.
         // The browser tier judges a moving camera's reprojection against

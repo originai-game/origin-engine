@@ -404,6 +404,17 @@ multisampled, resolved before the post chain. No jitter and no history,
 so sprites, text and pixel art stay sharp and a moving camera never
 blurs; it does not smooth shading or texture aliasing as TAA does.
 
+**SMAA 1x** (`Antialias::Smaa`, TypeScript `antialias: "smaa"`): the
+reference high preset (Jimenez et al., 2012), with perceptual luma edges,
+diagonal/corner searches and area/search lookup textures. Three passes
+after tonemapping and stylisation, before pixel-grid upscale and the
+overlay. Edges use sRGB-encoded luma; neighbourhood blending uses linear
+colour. No jitter or history: this replaces rather than stacks with TAA,
+and TAAU remains exclusive to TAA. Dedicated edge/weight/blend layouts
+use 2/4/3 bindings, with no extra lit bindings. Reference and WGSL-port
+licences, provenance and texture dimensions: `third_party/smaa/`.
+The `smaa` thin-geometry reference scene is for Metal capture by macrunner.
+
 **Bloom follows the antialiasing.** Bloom's prefilter reads the lit
 image after antialiasing, so the method decides how much of a
 thin emitter's energy reaches it. The 4× MSAA resolve averages the HDR

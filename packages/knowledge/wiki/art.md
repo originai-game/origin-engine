@@ -16,7 +16,7 @@ module art {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 29546</sub>
+<sub>`api.ogt` line 29547</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ resource ArtPalette {
 }
 ```
 
-<sub>`api.ogt` line 29651</sub>
+<sub>`api.ogt` line 29652</sub>
 
 <a id="record-ArtPixels"></a>
 
@@ -121,7 +121,7 @@ resource ArtPixels {
 }
 ```
 
-<sub>`api.ogt` line 29667</sub>
+<sub>`api.ogt` line 29668</sub>
 
 <a id="record-ArtTexels"></a>
 
@@ -154,7 +154,7 @@ resource ArtTexels {
 }
 ```
 
-<sub>`api.ogt` line 29686</sub>
+<sub>`api.ogt` line 29687</sub>
 
 <a id="record-ArtShape"></a>
 
@@ -205,7 +205,7 @@ resource ArtShape {
 }
 ```
 
-<sub>`api.ogt` line 29700</sub>
+<sub>`api.ogt` line 29701</sub>
 
 <a id="record-ArtLine"></a>
 
@@ -242,7 +242,7 @@ resource ArtLine {
 }
 ```
 
-<sub>`api.ogt` line 29729</sub>
+<sub>`api.ogt` line 29730</sub>
 
 <a id="record-ArtMotion"></a>
 
@@ -277,7 +277,7 @@ resource ArtMotion {
 }
 ```
 
-<sub>`api.ogt` line 29746</sub>
+<sub>`api.ogt` line 29747</sub>
 
 <a id="record-ArtCamera"></a>
 
@@ -326,7 +326,7 @@ resource ArtCamera {
 }
 ```
 
-<sub>`api.ogt` line 29763</sub>
+<sub>`api.ogt` line 29764</sub>
 
 ## Types
 
@@ -355,7 +355,7 @@ enum ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 29551</sub>
+<sub>`api.ogt` line 29552</sub>
 
 <a id="type-ArtFilter"></a>
 
@@ -380,7 +380,7 @@ enum ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 29566</sub>
+<sub>`api.ogt` line 29567</sub>
 
 <a id="type-ArtMips"></a>
 
@@ -405,7 +405,7 @@ enum ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 29580</sub>
+<sub>`api.ogt` line 29581</sub>
 
 <a id="type-ArtNormals"></a>
 
@@ -432,7 +432,7 @@ enum ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 29594</sub>
+<sub>`api.ogt` line 29595</sub>
 
 <a id="type-ArtLinePlace"></a>
 
@@ -457,7 +457,7 @@ enum ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 29609</sub>
+<sub>`api.ogt` line 29610</sub>
 
 <a id="type-ArtBrush"></a>
 
@@ -482,7 +482,7 @@ enum ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 29623</sub>
+<sub>`api.ogt` line 29624</sub>
 
 <a id="type-ArtProjection"></a>
 
@@ -507,7 +507,7 @@ enum ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 29637</sub>
+<sub>`api.ogt` line 29638</sub>
 
 ## Column kinds
 
@@ -532,7 +532,7 @@ column ArtRotation {
 }
 ```
 
-<sub>`api.ogt` line 29559</sub>
+<sub>`api.ogt` line 29560</sub>
 
 ```ogt
 column ArtFilter {
@@ -543,7 +543,7 @@ column ArtFilter {
 }
 ```
 
-<sub>`api.ogt` line 29573</sub>
+<sub>`api.ogt` line 29574</sub>
 
 ```ogt
 column ArtMips {
@@ -554,7 +554,7 @@ column ArtMips {
 }
 ```
 
-<sub>`api.ogt` line 29587</sub>
+<sub>`api.ogt` line 29588</sub>
 
 ```ogt
 column ArtNormals {
@@ -565,7 +565,7 @@ column ArtNormals {
 }
 ```
 
-<sub>`api.ogt` line 29602</sub>
+<sub>`api.ogt` line 29603</sub>
 
 ```ogt
 column ArtLinePlace {
@@ -576,7 +576,7 @@ column ArtLinePlace {
 }
 ```
 
-<sub>`api.ogt` line 29616</sub>
+<sub>`api.ogt` line 29617</sub>
 
 ```ogt
 column ArtBrush {
@@ -587,7 +587,7 @@ column ArtBrush {
 }
 ```
 
-<sub>`api.ogt` line 29630</sub>
+<sub>`api.ogt` line 29631</sub>
 
 ```ogt
 column ArtProjection {
@@ -598,4 +598,4 @@ column ArtProjection {
 }
 ```
 
-<sub>`api.ogt` line 29644</sub>
+<sub>`api.ogt` line 29645</sub>

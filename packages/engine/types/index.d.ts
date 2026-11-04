@@ -5660,8 +5660,9 @@ export type RenderTier = "webgpu" | "vulkan" | "vulkan-cpu" | "metal" | "none";
  * - `"msaa4"`: 4x MSAA: sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled.
  * - `"taa"`: Temporal antialiasing (what tier resolves to): a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it.
  * - `"fxaa"`: FXAA: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture.
+ * - `"smaa"`: SMAA 1x high preset: perceptual luma edges, area/search weights and neighbourhood blending over the tonemapped image; the overlay stays sharp. No jitter or history; an alternative to TAA, not combined with TAAU.
  */
-export type Antialias = "tier" | "off" | "msaa4" | "taa" | "fxaa";
+export type Antialias = "tier" | "off" | "msaa4" | "taa" | "fxaa" | "smaa";
 
 /**
  * How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.

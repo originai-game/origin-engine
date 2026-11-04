@@ -116,7 +116,7 @@ impl Backend {
 
 /// Antialiasing. [`RenderInfo::antialias`] reports what a renderer resolved
 /// it to (never `Tier`). Every backend (WebGPU, Metal, Vulkan, DX12) has
-/// all four methods.
+/// all five methods.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Antialias {
     /// None: every pixel is one sample.
@@ -135,6 +135,9 @@ pub enum Antialias {
     /// overlay: one full-screen pass, no extra samples and no history.
     /// Softer than MSAA on texture detail; nothing to converge.
     Fxaa,
+    /// SMAA 1x high preset: perceptual luma edges, area/search weights,
+    /// neighbourhood blending before the overlay. No jitter or history.
+    Smaa,
 }
 
 /// How TAA reads its history ([`RenderDesc::taa_history`]).
@@ -294,7 +297,7 @@ pub struct RenderInfo {
     pub adapter: String,
     pub backend: wgpu::Backend,
     pub device_type: wgpu::DeviceType,
-    /// The antialiasing in use: `Off`, `Msaa4`, `Taa` or `Fxaa`.
+    /// The antialiasing in use: `Off`, `Msaa4`, `Taa`, `Fxaa` or `Smaa`.
     pub antialias: Antialias,
     /// The samples per pixel the device multisamples the scene at:
     /// [`MSAA_SAMPLES`] where the antialiasing resolved to

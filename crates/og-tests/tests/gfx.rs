@@ -443,6 +443,12 @@ fn antialiasing_smooths_edges() {
     let (msaa, msaa_mode) = edge_pixels(Antialias::Msaa4, 1);
     let (taa, taa_mode) = edge_pixels(Antialias::Taa, 16);
     let (fxaa, fxaa_mode) = edge_pixels(Antialias::Fxaa, 1);
+    let (smaa, smaa_mode) = edge_pixels(Antialias::Smaa, 1);
+    assert_eq!(smaa_mode, Antialias::Smaa);
+    assert!(
+        smaa > off + 1_000,
+        "SMAA left {smaa} partial pixels versus {off} without AA"
+    );
     println!(
         "partially covered pixels: off {off}, msaa {msaa} ({msaa_mode:?}), taa {taa}, fxaa {fxaa}"
     );

@@ -389,6 +389,12 @@ fn fxaa_matches_its_reference() {
 }
 
 #[test]
+fn smaa_matches_its_reference() {
+    let report = check("smaa");
+    assert_eq!(report.info.antialias, Antialias::Smaa);
+}
+
+#[test]
 fn taa_sharp_matches_its_reference() {
     let report = check("taa-sharp");
     assert_eq!(report.info.antialias, Antialias::Taa);

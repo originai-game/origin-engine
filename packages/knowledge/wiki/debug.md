@@ -16,7 +16,7 @@ module debug {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 28944</sub>
+<sub>`api.ogt` line 28945</sub>
 
 ## Contents
 
@@ -68,7 +68,7 @@ fn line {
 }
 ```
 
-<sub>`api.ogt` line 28966</sub>
+<sub>`api.ogt` line 28967</sub>
 
 <a id="fn-box"></a>
 
@@ -101,7 +101,7 @@ fn box {
 }
 ```
 
-<sub>`api.ogt` line 28974</sub>
+<sub>`api.ogt` line 28975</sub>
 
 <a id="fn-sphere"></a>
 
@@ -134,7 +134,7 @@ fn sphere {
 }
 ```
 
-<sub>`api.ogt` line 28982</sub>
+<sub>`api.ogt` line 28983</sub>
 
 <a id="fn-arrow"></a>
 
@@ -167,7 +167,7 @@ fn arrow {
 }
 ```
 
-<sub>`api.ogt` line 28990</sub>
+<sub>`api.ogt` line 28991</sub>
 
 <a id="fn-axes"></a>
 
@@ -200,7 +200,7 @@ fn axes {
 }
 ```
 
-<sub>`api.ogt` line 28998</sub>
+<sub>`api.ogt` line 28999</sub>
 
 <a id="fn-text"></a>
 
@@ -233,7 +233,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 29006</sub>
+<sub>`api.ogt` line 29007</sub>
 
 <a id="fn-clear"></a>
 
@@ -260,7 +260,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 29014</sub>
+<sub>`api.ogt` line 29015</sub>
 
 <a id="fn-setView"></a>
 
@@ -289,7 +289,7 @@ fn setView {
 }
 ```
 
-<sub>`api.ogt` line 29019</sub>
+<sub>`api.ogt` line 29020</sub>
 
 <a id="fn-view"></a>
 
@@ -317,7 +317,7 @@ fn view {
 }
 ```
 
-<sub>`api.ogt` line 29025</sub>
+<sub>`api.ogt` line 29026</sub>
 
 <a id="fn-setEnabled"></a>
 
@@ -346,7 +346,7 @@ fn setEnabled {
 }
 ```
 
-<sub>`api.ogt` line 29031</sub>
+<sub>`api.ogt` line 29032</sub>
 
 <a id="fn-enabled"></a>
 
@@ -374,7 +374,7 @@ fn enabled {
 }
 ```
 
-<sub>`api.ogt` line 29037</sub>
+<sub>`api.ogt` line 29038</sub>
 
 ## Types
 
@@ -411,4 +411,4 @@ struct DebugDrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 28950</sub>
+<sub>`api.ogt` line 28951</sub>

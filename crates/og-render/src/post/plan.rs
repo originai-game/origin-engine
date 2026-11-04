@@ -93,6 +93,9 @@ pub(crate) enum FramePass {
     Quantize,
     /// FXAA over the tonemapped image (an alternative to TAA and MSAA).
     Fxaa,
+    SmaaEdges,
+    SmaaWeights,
+    SmaaBlend,
     Upscale,
 }
 
@@ -104,6 +107,7 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
         FramePass::Lens,
         FramePass::Quantize,
         FramePass::Fxaa,
+        FramePass::SmaaBlend,
         FramePass::Upscale,
     ]
     .into_iter()
@@ -143,6 +147,9 @@ impl FramePass {
                 | FramePass::Lens
                 | FramePass::Quantize
                 | FramePass::Fxaa
+                | FramePass::SmaaEdges
+                | FramePass::SmaaWeights
+                | FramePass::SmaaBlend
                 | FramePass::Upscale
         )
     }
@@ -192,6 +199,9 @@ impl FramePass {
             FramePass::Lens => "lens".into(),
             FramePass::Quantize => "quantize".into(),
             FramePass::Fxaa => "fxaa".into(),
+            FramePass::SmaaEdges => "smaa-edges".into(),
+            FramePass::SmaaWeights => "smaa-weights".into(),
+            FramePass::SmaaBlend => "smaa-blend".into(),
             FramePass::Upscale => "upscale".into(),
         }
     }
@@ -537,6 +547,16 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     for i in 0..chain.len() {
         g.transient(ldr_name(i), desc(pw, ph, LDR_FORMAT, 1, attach_bind));
     }
+    if has(FramePass::SmaaBlend) {
+        g.transient(
+            "smaa.edges",
+            desc(pw, ph, wgpu::TextureFormat::Rg8Unorm, 1, attach_bind),
+        );
+        g.transient(
+            "smaa.weights",
+            desc(pw, ph, wgpu::TextureFormat::Rgba8Unorm, 1, attach_bind),
+        );
+    }
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, attach_bind));
     }
@@ -821,11 +841,20 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 };
                 g.pass(name, &reads, &[target.as_str()])
             }
+            FramePass::SmaaEdges => {
+                let i = chain
+                    .iter()
+                    .position(|&c| c == FramePass::SmaaBlend)
+                    .expect("SMAA in chain");
+                g.pass(name, &[&ldr_name(i)], &["smaa.edges"])
+            }
+            FramePass::SmaaWeights => g.pass(name, &["smaa.edges"], &["smaa.weights"]),
             FramePass::Paint
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize
             | FramePass::Fxaa
+            | FramePass::SmaaBlend
             | FramePass::Upscale => {
                 let i = chain.iter().position(|&c| c == p).expect("in the chain");
                 let read = ldr_name(i);
@@ -837,6 +866,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 // The paint and lines passes bind the prepass
                 // (`Bindings::chain`).
                 let mut reads = vec![read.as_str()];
+                if p == FramePass::SmaaBlend {
+                    reads.push("smaa.weights");
+                }
                 if matches!(p, FramePass::Paint | FramePass::Lines) && prepass {
                     reads.extend(["lindepth", "gbuffer"]);
                     if cfg.object_space {
@@ -907,6 +939,40 @@ mod tests {
                 };
                 assert_eq!(format, want, "taa {taa} gi {gi}");
             }
+        }
+    }
+
+    #[test]
+    fn smaa_keeps_the_color_source_alive_through_weights_and_upscale() {
+        for stylise in [false, true] {
+            let mut passes = vec![FramePass::Main, FramePass::Tonemap];
+            if stylise {
+                passes.push(FramePass::Quantize);
+            }
+            passes.extend([
+                FramePass::SmaaEdges,
+                FramePass::SmaaWeights,
+                FramePass::SmaaBlend,
+                FramePass::Upscale,
+            ]);
+            let plan = build_graph(&passes, &cfg(false, false)).compile().unwrap();
+            let names = plan.ordered_names();
+            let at = |name| names.iter().position(|&n| n == name).unwrap();
+            assert!(at("tonemap") < at("smaa-edges"));
+            assert!(at("smaa-edges") < at("smaa-weights"));
+            assert!(at("smaa-weights") < at("smaa-blend"));
+            assert!(at("smaa-blend") < at("upscale"));
+            let source = plan.slot(&ldr_name(usize::from(stylise))).unwrap();
+            let edges = plan.slot("smaa.edges").unwrap();
+            let weights = plan.slot("smaa.weights").unwrap();
+            assert_ne!(source, edges);
+            assert_ne!(source, weights);
+            assert_ne!(edges, weights);
+            assert_eq!(plan.physical()[edges].format, wgpu::TextureFormat::Rg8Unorm);
+            assert_eq!(
+                plan.physical()[weights].format,
+                wgpu::TextureFormat::Rgba8Unorm
+            );
         }
     }
 }

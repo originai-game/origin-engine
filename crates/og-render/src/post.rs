@@ -8,6 +8,7 @@
 mod graph;
 mod passes;
 mod plan;
+mod smaa;
 mod targets;
 pub(crate) use graph::*;
 pub(crate) use plan::*;
@@ -379,6 +380,7 @@ pub(crate) struct PostPasses {
     post_shader: crate::deferred::Module,
     stylise_shader: Option<wgpu::ShaderModule>,
     fxaa_shader: Option<wgpu::ShaderModule>,
+    smaa: Option<smaa::Smaa>,
     output_format: wgpu::TextureFormat,
     /// `struct Stylise` (stylise.wgsl), written per frame.
     pub stylise_buffer: wgpu::Buffer,
@@ -549,6 +551,9 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("exposure", EXPOSURE_WGSL),
         ("taa", TAA_WGSL),
         ("fxaa", FXAA_WGSL),
+        ("smaa edges", smaa::EDGES),
+        ("smaa weights", smaa::WEIGHTS),
+        ("smaa blend", smaa::BLEND),
         ("stylise", STYLISE_WGSL),
         ("fx post", fx.as_str()),
     ]

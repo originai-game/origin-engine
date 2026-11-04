@@ -154,6 +154,7 @@ impl Renderer {
             Antialias::Off => Antialias::Off,
             Antialias::Taa => Antialias::Taa,
             Antialias::Fxaa => Antialias::Fxaa,
+            Antialias::Smaa => Antialias::Smaa,
             Antialias::Tier => Antialias::Taa,
             Antialias::Msaa4 if msaa_ok => Antialias::Msaa4,
             // No multisampled HDR target: the post-process instead.

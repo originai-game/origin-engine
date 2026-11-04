@@ -289,6 +289,34 @@ impl FrameGraph {
                     &passes.source_layout,
                     &[tex(source), sampler.clone()],
                 )
+            } else if p == FramePass::SmaaBlend {
+                let smaa = passes.smaa.as_ref().expect("SMAA renderer");
+                chain.insert(
+                    FramePass::SmaaEdges,
+                    group(
+                        "smaa edges",
+                        &passes.source_layout,
+                        &[tex(source), sampler.clone()],
+                    ),
+                );
+                chain.insert(
+                    FramePass::SmaaWeights,
+                    group(
+                        "smaa weights",
+                        &smaa.weights_layout,
+                        &[
+                            tex(self.view("smaa.edges")),
+                            sampler.clone(),
+                            tex(&smaa.area),
+                            tex(&smaa.search),
+                        ],
+                    ),
+                );
+                group(
+                    "smaa blend",
+                    &smaa.blend_layout,
+                    &[tex(source), sampler.clone(), tex(self.view("smaa.weights"))],
+                )
             } else {
                 group(
                     &p.name(),
@@ -658,11 +686,29 @@ impl FrameGraph {
                 }
                 1
             }
+            FramePass::SmaaEdges | FramePass::SmaaWeights => {
+                let smaa = passes.smaa.as_ref().expect("SMAA renderer");
+                let (target, pipeline) = if pass == FramePass::SmaaEdges {
+                    ("smaa.edges", &smaa.edges)
+                } else {
+                    ("smaa.weights", &smaa.weights)
+                };
+                fullscreen_pass(
+                    encoder,
+                    &pass.name(),
+                    self.view(target),
+                    wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    pipeline,
+                    &b.chain[&pass],
+                );
+                1
+            }
             FramePass::Paint
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize
             | FramePass::Fxaa
+            | FramePass::SmaaBlend
             | FramePass::Upscale => {
                 let chain = chain_passes(&self.passes);
                 let i = chain.iter().position(|&p| p == pass).expect("in the chain");

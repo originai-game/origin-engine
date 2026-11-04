@@ -429,6 +429,8 @@ impl PostPasses {
             chain: HashMap::new(),
             stylise_layout,
             stylise_pl,
+            smaa: (antialias == Antialias::Smaa)
+                .then(|| smaa::Smaa::new(device, queue, &source_pl)),
             source_pl,
             post_pl,
             post_shader,
@@ -471,7 +473,7 @@ impl PostPasses {
                 continue;
             }
             let entry: &str = match pass {
-                FramePass::Fxaa => "fs",
+                FramePass::Fxaa | FramePass::SmaaBlend => "fs",
                 FramePass::Paint => "fs_paint",
                 FramePass::Lines => "fs_lines",
                 FramePass::Lens => "fs_lens",
@@ -479,7 +481,7 @@ impl PostPasses {
                 FramePass::Upscale => "fs_upscale",
                 _ => unreachable!("not a pass after the tonemap"),
             };
-            let encoded = if pass == FramePass::Fxaa {
+            let encoded = if matches!(pass, FramePass::Fxaa | FramePass::SmaaBlend) {
                 "fs_srgb_encode".to_string()
             } else {
                 format!("{entry}_srgb")
@@ -493,6 +495,9 @@ impl PostPasses {
                     })
                 });
                 (&*shader, &self.source_pl)
+            } else if pass == FramePass::SmaaBlend {
+                let smaa = self.smaa.as_ref().expect("SMAA renderer");
+                (&smaa.blend_shader, &smaa.blend_pl)
             } else {
                 let shader = self.stylise_shader.get_or_insert_with(|| {
                     device.create_shader_module(wgpu::ShaderModuleDescriptor {

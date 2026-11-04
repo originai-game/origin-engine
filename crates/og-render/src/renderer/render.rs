@@ -2457,6 +2457,13 @@ impl Renderer {
         if self.info.antialias == Antialias::Fxaa {
             passes.push(FramePass::Fxaa);
         }
+        if self.info.antialias == Antialias::Smaa {
+            passes.extend([
+                FramePass::SmaaEdges,
+                FramePass::SmaaWeights,
+                FramePass::SmaaBlend,
+            ]);
+        }
         // Under TAAU the frame after TAA is already the output's size.
         if self.history_size() != (self.out_width, self.out_height) {
             passes.push(FramePass::Upscale);

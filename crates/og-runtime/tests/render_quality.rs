@@ -24,6 +24,19 @@ use std::rc::Rc;
 
 struct NoAssets;
 
+#[test]
+fn smaa_render_option_reaches_both_hosts_without_temporal_aa() {
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({"render": {"antialias": "smaa"}}).to_string()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let desc = og_runtime::render_desc(engine, og_render::RenderDesc::default());
+    assert_eq!(desc.antialias, og_render::Antialias::Smaa);
+    assert_eq!(og_runtime::antialias_name(desc.antialias), "smaa");
+    assert!(og_runtime::og_engine_destroy(engine));
+}
+
 impl Hooks for NoAssets {
     fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
         Ok(String::new())

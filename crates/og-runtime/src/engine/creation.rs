@@ -907,6 +907,7 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
         "msaa4" => og_render::Antialias::Msaa4,
         "taa" => og_render::Antialias::Taa,
         "fxaa" => og_render::Antialias::Fxaa,
+        "smaa" => og_render::Antialias::Smaa,
         _ => og_render::Antialias::Tier,
     };
     if let Some(size) = options["shadowMapSize"].as_u64() {
@@ -940,6 +941,7 @@ pub fn antialias_name(a: og_render::Antialias) -> &'static str {
         og_render::Antialias::Msaa4 => "msaa4",
         og_render::Antialias::Taa => "taa",
         og_render::Antialias::Fxaa => "fxaa",
+        og_render::Antialias::Smaa => "smaa",
         og_render::Antialias::Off | og_render::Antialias::Tier => "off",
     }
 }
