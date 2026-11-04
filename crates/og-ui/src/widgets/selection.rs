@@ -358,11 +358,10 @@ impl Ui {
         // The spinbutton is one stop for keys and pads, Left and Right (or
         // Up and Down) stepping it (the ARIA spinbutton pattern, as
         // og.ui.numberStepper); − and + are the pointer's shortcuts for
-        // that, and stops of their own only under a finger.
+        // that, never stops of their own.
         self.nodes[spin].el.interactive = true;
         self.nodes[spin].el.radius = t.radius.control;
         let spun = self.nav_target(spin, true);
-        let touch = self.viewport.coarse_pointer;
         // Its hover and press states (and the focus ring), on a clear ground.
         let amounts = self.state_amounts(spin, &spun);
         let clear = t.palette.control.fade(0.0);
@@ -419,10 +418,11 @@ impl Ui {
                     ..Element::default()
                 },
             );
+            // Never a stop of their own, under a finger too: inside the
+            // spinbutton's box, a pad that met them could never land on the
+            // spinbutton round them.
             let r = if at_end {
                 Response::default()
-            } else if touch {
-                self.nav_target(i, true)
             } else {
                 let key = self.nodes[i].key;
                 self.respond(key)
