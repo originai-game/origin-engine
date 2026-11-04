@@ -1457,6 +1457,11 @@ later.
   includes GPU work and inter-frame scheduling; subtracting poll time does
   not isolate either one. Compile/upload are null on the web; unfinished
   phases are null. The 3 ms slicing is unchanged.
+  The `beforePalette*` counters stop at the first generated palette: readback
+  count, CPU decode calls/work, time waiting to resume decode, budget yields,
+  accepted frames, discarded characters (their in-flight goal was replaced),
+  rendered frames since first readback, and palette work. They distinguish
+  a decode-budget wait from a discarded first batch followed by more inference.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its

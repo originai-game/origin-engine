@@ -129,6 +129,7 @@ struct Landing {
     /// Waited for (a starved agent on a native host): its latency is not
     /// the sliced one.
     forced: bool,
+    decode_wait_started: f64,
 }
 
 struct Ready {
@@ -164,6 +165,15 @@ struct Startup {
     first_inference_wall_ms: Option<f64>,
     first_inference_poll_ms: f64,
     first_palette_delay_ms: Option<f64>,
+    before_palette_readbacks: u32,
+    before_palette_decode_calls: u32,
+    before_palette_decode_ms: f64,
+    before_palette_decode_wait_ms: f64,
+    before_palette_decode_budget_yields: u32,
+    before_palette_discarded_characters: u32,
+    before_palette_accepted_frames: u32,
+    before_palette_frames_after_readback: u32,
+    before_palette_palette_ms: f64,
     #[serde(skip)]
     resident_at: f64,
     #[serde(skip)]
@@ -592,6 +602,9 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
         }
     };
     let flight = r.flight.take().expect("polled above");
+    if r.startup.first_palette_delay_ms.is_none() {
+        r.startup.before_palette_readbacks += 1;
+    }
     if r.startup.first_inference_wall_ms.is_none() {
         let finished = now_ms();
         r.startup.first_inference_wall_ms = Some(finished - flight.started);
@@ -610,6 +623,7 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
                 motion: vec![0.0; FRAMES * MOTION_FEATURES],
                 started: flight.started,
                 forced: block,
+                decode_wait_started: now_ms(),
             });
         }
         Err(e) => {
@@ -629,6 +643,11 @@ fn decode(r: &mut Ready, budget: Option<f64>, stats: &mut (u64, (usize, f64))) -
         return true;
     };
     let t0 = now_ms();
+    let startup = r.startup.first_palette_delay_ms.is_none();
+    if startup {
+        r.startup.before_palette_decode_calls += 1;
+        r.startup.before_palette_decode_wait_ms += t0 - l.decode_wait_started;
+    }
     let n = l.batch.characters.len();
     while l.next < n {
         let i = l.next;
@@ -640,14 +659,27 @@ fn decode(r: &mut Ready, budget: Option<f64>, stats: &mut (u64, (usize, f64))) -
             i,
             &mut l.motion,
         );
+        let queued = r.motion.queued(l.batch.characters[i]);
         r.motion
             .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
+        if startup {
+            let accepted = r.motion.queued(l.batch.characters[i]) - queued;
+            r.startup.before_palette_accepted_frames += accepted as u32;
+            r.startup.before_palette_discarded_characters += u32::from(accepted == 0);
+        }
         l.next += 1;
         if budget.is_some_and(|b| now_ms() - t0 >= b) {
             break;
         }
     }
+    if startup {
+        r.startup.before_palette_decode_ms += now_ms() - t0;
+    }
     if l.next < n {
+        if startup {
+            r.startup.before_palette_decode_budget_yields += 1;
+        }
+        l.decode_wait_started = now_ms();
         return false;
     }
     let latency = now_ms() - l.started;
@@ -923,6 +955,9 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         return;
     };
     let mut stats = (p.batches, p.last_batch);
+    if r.startup.first_palette_delay_ms.is_none() && r.startup.inference_finished_at.is_some() {
+        r.startup.before_palette_frames_after_readback += 1;
+    }
     poll_flight(r, false, &mut p.errors);
     decode(r, Some(DECODE_BUDGET_MS), &mut stats);
     p.agents
@@ -1079,9 +1114,14 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         if s.next.is_none() || s.phase >= 1.0 {
             s.phase = s.phase.min(1.0);
         }
-        if let Some(sys) = sys.as_ref()
-            && let Some(m) = palette(r, a, s, elapsed, &goals, sys)
-        {
+        let palette_started = now_ms();
+        let matrices = sys
+            .as_ref()
+            .and_then(|sys| palette(r, a, s, elapsed, &goals, sys));
+        if r.startup.first_palette_delay_ms.is_none() {
+            r.startup.before_palette_palette_ms += now_ms() - palette_started;
+        }
+        if let Some(m) = matrices {
             s.shown += 1;
             p.palettes.insert(a.entity, m);
             p.generated.insert(a.entity);
