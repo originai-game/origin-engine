@@ -1,15 +1,16 @@
 type look
 version 1
 ---
-# A coarse grid, four tones per channel through a Bayer dither, no antialiasing, authored colours untouched.
+# A coarse grid, no antialiasing, authored colours untouched: the cook holds the
+# art to 16 colours in 4-step ramps (ArtPalette), so the frame posterises
+# nothing (posterize over conformed art turned every colour between two RGB
+# steps into a full-screen 2x2 checker).
 name "8-bit-inspired pixel art"
 ui "pixel"
 antialias off
 Stylise {
   pixelHeight 192
   pixelSnap true
-  posterize 4
-  dither bayer2
 }
 RenderSettings {
   toneMapping none

@@ -1,15 +1,15 @@
 type look
 version 1
 ---
-# A finer grid with eight-tone ramps and a Bayer 4 dither.
+# A finer grid with the cook's 64 colours in 6-step ramps (ArtPalette) and no
+# frame posterise: the art keeps its flat fields instead of a crawling Bayer
+# cross-stitch over every colour between two RGB steps.
 name "16-bit-inspired pixel art"
 ui "pixel"
 antialias off
 Stylise {
   pixelHeight 224
   pixelSnap true
-  posterize 8
-  dither bayer4
 }
 RenderSettings {
   toneMapping none

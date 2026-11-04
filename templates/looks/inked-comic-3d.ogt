@@ -19,6 +19,7 @@ Stylise {
   hatchingColor "#0a0810"
   hatchingSpace surface
   hatchingDepth 0.7
+  hatchingKeepColor true
   ink true
   inkThreshold 0.15
   inkWidth 1.5

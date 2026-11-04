@@ -1,7 +1,8 @@
 type look
 version 1
 ---
-# Cel shading with thick outlines, ink on every edge and six flat tones.
+# Cel shading with thick outlines, ink on every edge and six flat tones, the
+# shade printed as four-colour process dots a pixel out of register.
 name "Bold comic illustration"
 ui "fantasy"
 MaterialStyle {
@@ -14,6 +15,11 @@ Stylise {
   inkThreshold 0.12
   inkWidth 1.5
   posterize 6
+  halftone 0.7
+  halftoneMode cmyk
+  halftoneSize 5
+  halftoneRegion shade
+  halftoneMisregistration 1
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 20 to 40 colours; the preset's 3 px ink line; 5k to 20k triangles
