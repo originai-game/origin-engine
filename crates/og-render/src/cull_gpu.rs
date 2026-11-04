@@ -47,7 +47,11 @@ use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub(crate) const CULL_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull.wgsl"));
+pub(crate) const CULL_WGSL: &str = concat!(
+    wgsl!("instance.wgsl"),
+    wgsl!("cull.wgsl"),
+    wgsl!("cull_hiz.wgsl")
+);
 const HIZ_WGSL: &str = wgsl!("hiz.wgsl");
 pub(crate) const DEPTH_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull_depth.wgsl"));
 
