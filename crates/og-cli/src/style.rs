@@ -200,6 +200,14 @@ const ABOUT: &[(&str, &str)] = &[
         "broadcast",
         "sports broadcast: sharp lit bars, tracked capitals, snappy motion",
     ),
+    (
+        "wasteland",
+        "post-apocalyptic survival: rusted riveted plate, duct tape, stencils, safety orange (survival, crafting, extraction)",
+    ),
+    (
+        "foundry",
+        "industrial iron and brass: rivets, gauges, furnace orange, wide serif capitals (city builders, factory, 4X)",
+    ),
 ];
 
 fn style_name_ok(name: &str) -> Result<(), String> {

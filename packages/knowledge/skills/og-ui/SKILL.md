@@ -554,8 +554,8 @@ The usual way in is the game's look (og-taste §12): its `ui` line names
 the style, and every catalogue preset already names one. `ui "pixel"` is a
 built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
 `fantasy`, `scifi`, and the generated seeds `gilded`, `storybook`,
-`tactical`, `cyber`, `kawaii`, `craft`, `dread`, `broadcast`, one per look
-family;
+`tactical`, `cyber`, `kawaii`, `craft`, `dread`, `broadcast`, `wasteland`,
+`foundry`, one per look family;
 `og cook` bundles the one a look names and the fonts and icons it shares). `ui
 "styles/<name>/style.ogt"` is the game's own, and a game's
 `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.

@@ -1,0 +1,170 @@
+{
+  "foundry/button": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: its border and face, its centre plain so a label reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button or tab: a raised plate of dark iron (#2c2926) with a 2 px brass rim (#a77c3a, lit #d8ad62 along its top, darker along its bottom) and a small 45° chamfer at its corners; the label area plain so cream text reads on it. Hovered: the rim brighter. No rivets in the middle, no icons, no text. As the inactive tabs of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "34f76f1c7fe77622",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774786,
+    "date": "2026-11-04"
+  },
+  "foundry/button-primary": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button primary of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: its border and face, its centre plain so a label reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button: a plate of glowing furnace orange (#f0843a) filling the whole piece, a brighter hot core at its centre (#f6a060) and a 2 px brass rim (#b8893f), a soft warm glow just inside the rim, a small 45° chamfer at its corners. Its label area even orange so near-black text reads on it. No gear, no text. As the BEGIN RESEARCH button of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "4d1e5a0cf415c093",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774786,
+    "date": "2026-11-04"
+  },
+  "foundry/card": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the card of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A building or research card, repeated many times side by side: dark iron (#211f1d) with a 2 px brass rim (#a77c3a) and one small rivet in each corner, a small 45° chamfer at the corners. Plain inside, no glow, no text. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "cedbf6c4f9ed8752",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774810,
+    "date": "2026-11-04"
+  },
+  "foundry/corner": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the corner of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single corner only, centred, filling the image across its width, 1.00 times as wide as it is tall (32 x 32 proportions); nothing else in the image.\nArt direction: A small corner mark: a riveted brass corner bracket, an L of polished brass (#c4954a) about 20 px each way and 4 px thick with two round rivet heads, on a clear background. As the brass corners of the concept's frames. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f003e6cc95dee3b0",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774647,
+    "date": "2026-11-04"
+  },
+  "foundry/divider": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the divider of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: one thin polished brass rule (#b8893f) 2 px tall with a 1 px dark line under it, even from end to end, on a clear background. As the rule under MUSIC in the concept.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "a7043f46484a0d09",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774640,
+    "date": "2026-11-04"
+  },
+  "foundry/field": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the field of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (21% left, 30% top, 21% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A plain dropdown or input box: a recessed black iron well (#141312) with a 1.5 px dull brass edge (#8a6a36) and a faint inner shadow along its top. Square corners. No rivets, nothing else. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "06e07c1ef5fca583",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774651,
+    "date": "2026-11-04"
+  },
+  "foundry/flourish": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the flourish of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single flourish only, centred, filling the image across its width, 2.67 times as wide as it is tall (64 x 24 proportions); nothing else in the image.\nArt direction: A heading accent: a small brass cog wheel about 18 px across with six teeth and a dark hub, on a clear background. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "7624c76cf26e7825",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774642,
+    "date": "2026-11-04"
+  },
+  "foundry/hud": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the hud of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD readout plate laid over a city scene: a small opaque rectangle of dark iron (#1d1b1a) with a 2 px brass rim (#a77c3a, lit along its top) and one small rivet in each corner, its centre plain. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "42de371d751f7f83",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774653,
+    "date": "2026-11-04"
+  },
+  "foundry/knob": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: Only the sliding knob of a toggle switch, not the switch: one small round polished brass knob (#d8a85a) with a lit top and a dark rim, as the lever head of the concept's ON toggle. Fully transparent around it.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "8cf9c1d88636a4cd",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774792,
+    "date": "2026-11-04"
+  },
+  "foundry/knob-off": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob off of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: Only the sliding knob of a toggle switch, not the switch: one small round dull dark bronze knob (#6c5a40) with a dark rim, as the lever head of the concept's OFF toggle. Fully transparent around it.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "72cad62f294c224f",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774788,
+    "date": "2026-11-04"
+  },
+  "foundry/panel": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the panel of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A large industrial-age interface panel, completely opaque and solid everywhere including its centre: its whole face one even plate of blackened cast iron (#231f19), the same tone from its edge to its centre with a faint fine grain: no inner rectangle, no darker or lighter centre, no inset, no vignette. It is framed by a 4 px polished brass rim (#b8893f, lit #e0b86a along its top edge, shadowed #6e4f22 along its bottom) with small round brass rivets in its four corners and a fine dark line just inside the rim. Corners cut by a small 45° chamfer of about 6 px. No gears, no pipes, no text. As the settings and research frames of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "2563156c1bb87d46",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793775144,
+    "date": "2026-11-04"
+  },
+  "foundry/slot": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the slot of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: A slot repeated many times in a grid: a sunken square of dark iron (#191817) with a 2 px brass rim (#9a7536) darkened at its top, a 1 px dark inner line. Square corners; plain; no rivets, no glow. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "61e1ac5e168f584c",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774669,
+    "date": "2026-11-04"
+  },
+  "foundry/thumb": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the thumb of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: one narrow upright polished brass lever block (#c4954a, lit along its left, shadowed along its right) centred in a square image, as tall as the image and about a third as wide (8 of 24), with rounded ends. Fully transparent to its left and right. As the brass handles on the concept's sliders. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "7b70bd3a49ec64dd",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774646,
+    "date": "2026-11-04"
+  },
+  "foundry/tooltip": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the tooltip of the foundry UI style for a city builder of furnaces, steam engines and a research tree, in a frozen industrial age: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A small tooltip: a fully opaque dark iron plate (#1a1817) with a 1.5 px brass edge (#a77c3a) and a tiny rivet in each corner. Square corners; plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "6e1b88917a9b6d84",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/foundry-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/foundry-build.jpg"
+    ],
+    "generation": 1793774654,
+    "date": "2026-11-04"
+  }
+}

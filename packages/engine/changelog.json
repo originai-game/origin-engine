@@ -430,6 +430,10 @@
       {
         "member": "og.PlatformNoticeKind.host",
         "summary": "A notice from the page that frames the game, outside any platform service: Player protocol 2 `platform` `{ notice: { kind: \"host\", data: { name, ... } } }`, applied at the next tick's start as og.PlatformNotice like the others. The engine gives it no meaning of its own; the game and its page agree what each name means (engine.origingame.ai's hero switches scenes with it). An appended variant: a game that never reads notices runs as before."
+      },
+      {
+        "member": "the built-in styles wasteland and foundry",
+        "summary": "Two built-in UI styles of the sixteen packs (docs/ui.md §12.5), each painted from its approved sheet: wasteland (rusted riveted plate, duct tape, safety orange, a stencil display face; survival, crafting and extraction) and foundry (iron in brass rims, rivets, furnace orange, wide serif capitals; city builders, factory and 4X). A look names them with ui \"wasteland\" or ui \"foundry\"; og style list names them and og style new starts from them for their look families. Every other built-in style is unchanged."
       }
     ],
     "fixed": [

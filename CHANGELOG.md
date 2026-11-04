@@ -222,6 +222,16 @@ is one line here, written at the merge that changes
   is version 3 (versions 1 and 2 load); the og.Timeline blob is unchanged.
   Load dialogues and timelines with shots in setup: loading registers the
   virtual cameras' records and grants their writes.
+- **Two built-in styles: `wasteland` and `foundry`** (packs of the sixteen
+  the owner settled, each painted from its approved sheet). `wasteland`:
+  rusted riveted plate, duct-tape corners, safety orange, a stencil display
+  (Big Shoulders Stencil) over Barlow, stencil icons (survival, crafting,
+  extraction). `foundry`: blackened iron in brass rims with rivets, a
+  furnace-orange primary, wide-set serif capitals (Spectral SC over
+  Spectral), struck-plate icons (city builders, factory, 4X). `ui
+  "wasteland"` and `ui "foundry"` cook; `og style new` starts from them for
+  their look families. Its choices gain `on_primary` (the primary's label)
+  and `display_tracking`, both off for every other seed, which is unchanged.
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
   into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`

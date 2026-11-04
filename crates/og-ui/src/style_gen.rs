@@ -173,6 +173,14 @@ pub struct StyleChoices {
     pub ink: Option<Srgba>,
     /// A second accent for focus and highlights (`None`: from the seed).
     pub accent: Option<Srgba>,
+    /// The primary's label (`None`: white or a near-black of the seed's
+    /// hue, whichever reads better); the primary moves until the label
+    /// reads 7.4:1 on it: a near-black keeps a safety orange saturated.
+    pub on_primary: Option<Srgba>,
+    /// The shadow token (`None`: black at 0.55 on a dark scheme, a
+    /// seed-tinted 0.24 on a light one): the drops and the chips the kit
+    /// sets over the scene, so a heavier one keeps pale ink reading there.
+    pub shadow: Option<Srgba>,
     pub shape: ShapeLanguage,
     pub ornament: Ornament,
     pub motion: Motion,
@@ -186,6 +194,9 @@ pub struct StyleChoices {
     pub body: f32,
     /// Labels set in capitals with this tracking (em): tactical, broadcast.
     pub label_tracking: f32,
+    /// The display and title steps' tracking (em; `None`: the generator's
+    /// slight tightening): foundry's wide-set serif capitals.
+    pub display_tracking: Option<f32>,
     pub sound: SoundKit,
     /// Dialogs, panels and toasts enter with a glitch of this strength
     /// (0: the motion personality's own entrances): cyber.
@@ -342,11 +353,13 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
     // The primary and its label at 7.2:1 in every state.
     let light_label = w.mix(c.seed, 0.03);
     let dark_label = k.mix(c.seed, 0.22);
-    let label = if c.seed.contrast(light_label) >= c.seed.contrast(dark_label) {
-        light_label
-    } else {
-        dark_label
-    };
+    let label = c.on_primary.unwrap_or(
+        if c.seed.contrast(light_label) >= c.seed.contrast(dark_label) {
+            light_label
+        } else {
+            dark_label
+        },
+    );
     let away = if label.luminance() > 0.5 { k } else { w };
     let primary = c.seed.readable_on(label, 7.4).map_or(c.seed, |_| {
         let mut p = c.seed;
@@ -408,11 +421,11 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
     // (4.5:1, pack_contrast's bar for a danger button).
     let status_of = |base: Srgba| status_at(base, 4.6);
     let danger = c.danger.map_or_else(|| status(2.0, 0.7), status_of);
-    let shadow = if dark {
+    let shadow = c.shadow.unwrap_or(if dark {
         k.fade(0.55)
     } else {
         k.mix(c.seed, 0.25).fade(0.24)
-    };
+    });
     crate::theme::Palette {
         backdrop: ground,
         well,
@@ -725,6 +738,11 @@ fn v1_text(c: &StyleChoices, p: &crate::theme::Palette, m: &MotionSet) -> String
                 lit(p.shadow.fade(1.0).mix(Srgba::BLACK, 0.4))
             ));
         }
+        // A hard step under the display face, as the bevels have: a
+        // title read over the scene keeps its edge on a bright sky.
+        Finish::Bevel => {
+            s.push_str("textShadow display 2 2 0 \"#000000c0\"\n");
+        }
         _ => {}
     }
     s.push_str(&format!(
@@ -757,12 +775,13 @@ fn typography(c: &StyleChoices) -> String {
     let b = c.body;
     let display_w = 700;
     let label_upper = c.label_tracking > 0.0;
+    let (display_tr, title_tr) = c.display_tracking.map_or((-0.01, -0.005), |t| (t, t));
     let rows = [
         (
             "display",
             3.2,
             1.12,
-            -0.01,
+            display_tr,
             display_w,
             "display",
             Some((0.8, 0.9)),
@@ -771,7 +790,7 @@ fn typography(c: &StyleChoices) -> String {
             "title",
             2.0,
             1.2,
-            -0.005,
+            title_tr,
             display_w,
             "display",
             Some((0.85, 0.92)),
@@ -1936,6 +1955,8 @@ fn seed(
         ground: Some(rgb(colours.1)),
         ink: None,
         accent: colours.2.map(rgb),
+        on_primary: None,
+        shadow: None,
         shape,
         ornament,
         motion,
@@ -1944,6 +1965,7 @@ fn seed(
         icons: Some(format!("@styles/{icons}")),
         body,
         label_tracking,
+        display_tracking: None,
         sound,
         glitch: 0.0,
         danger: None,
@@ -2288,6 +2310,103 @@ pub fn seeds() -> Vec<StyleChoices> {
                 0.04,
             ),
         ),
+        // The owner's approved sheet (wasteland-hud ui-art/13876c1858fa,
+        // -menu 37b06d223094, -settings 860fbeffcbb7): rusted riveted
+        // plate on near-black, safety orange for the primary and the
+        // selection, a stencil display face and condensed caps; radiation
+        // green stays a game role (the meters, a toggle's on).
+        StyleChoices {
+            ink: Some(rgb(0xebe4d4)),
+            on_primary: Some(rgb(0x120a04)),
+            // A heavier drop: the kit's chips over the scene keep the
+            // pale muted ink above 3:1 on a bright sky.
+            shadow: Some(Srgba::BLACK.fade(0.75)),
+            display_tracking: Some(0.03),
+            // The sheet's sliders read as a ruler of ticks: a segmented
+            // track, whole segments lit.
+            dressings: own(&[("Slider.track", &["segments 16 2"])]),
+            // The sheet sets its labels and panel headings in the
+            // condensed sans and keeps the stencil for the big tabs and
+            // the CRAFT button: display text under 26 px (after the text
+            // scale) falls back to the body face.
+            display_min: Some(26.0),
+            ..seed(
+                "wasteland",
+                "post-apocalyptic survival",
+                "a survival and extraction game of scavenged stashes, crafting and radiation",
+                Dark,
+                (0xf5821f, 0x12110f, Some(0xf59a3c)),
+                S::Sharp,
+                O::Light,
+                M::Heavy,
+                F::Bevel,
+                fonts(
+                    "shared/BarlowSemiCondensed-SemiBold.ttf",
+                    "shared/BigShouldersStencilDisplay-SemiBold.ttf",
+                    "shared/BarlowCondensed-SemiBold.ttf",
+                    "NotoSansSC-Regular.ttf",
+                    "NotoSansSC-Bold.ttf",
+                ),
+                "shared/stencil-icons.png",
+                16.0,
+                0.06,
+                kit(
+                    ("click", 24, 0.6),
+                    ("door", 7, 1.15),
+                    ("back", 26, 0.7),
+                    ("door", 8, 0.75),
+                    ("error", 18, 0.8),
+                    ("pickup", 18, 0.85),
+                    0.6,
+                    false,
+                    0.05,
+                ),
+            )
+        },
+        // The owner's approved sheet (foundry-build ui-art/a19f7660818a,
+        // -menu 2593651e20db, -settings 2b3bf48492bf): blackened iron
+        // framed in brass with rivets, furnace orange for the primary and
+        // its glow, brass for focus, wide-set serif capitals.
+        StyleChoices {
+            ink: Some(rgb(0xf1e4c6)),
+            on_primary: Some(rgb(0x140b05)),
+            // A heavier drop: the kit's chips over the scene keep the
+            // pale muted ink above 3:1 on a bright sky.
+            shadow: Some(Srgba::BLACK.fade(0.75)),
+            display_tracking: Some(0.12),
+            ..seed(
+                "foundry",
+                "industrial iron and brass",
+                "a city builder of furnaces, steam engines and a research tree, in a frozen industrial age",
+                Dark,
+                (0xf0843a, 0x111214, Some(0xd8a85a)),
+                S::Cut,
+                O::Light,
+                M::Mechanical,
+                F::Gradient,
+                fonts(
+                    "shared/Spectral-SemiBold.ttf",
+                    "shared/SpectralSC-SemiBold.ttf",
+                    "shared/Spectral-SemiBold.ttf",
+                    "NotoSerifSC-SemiBold.ttf",
+                    "NotoSerifSC-SemiBold.ttf",
+                ),
+                "shared/plate-icons.png",
+                16.0,
+                0.07,
+                kit(
+                    ("click", 27, 0.85),
+                    ("coin", 19, 0.75),
+                    ("back", 28, 0.85),
+                    ("whoosh", 28, 0.55),
+                    ("error", 19, 0.7),
+                    ("levelup", 22, 0.8),
+                    0.6,
+                    true,
+                    0.03,
+                ),
+            )
+        },
     ]
 }
 

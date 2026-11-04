@@ -46,15 +46,15 @@ const page = (screen: string, name: string): ShowcasePage => ({ screen, name: `s
  * its pack is the seed style it is shown in first. The matrix has no row for
  * MOBA, fighting or open world: MOBA takes fantasy (its heroes' look), fighting
  * cyber (high contrast, bold numerals, hard angles; cartoon its light check),
- * open world storybook's painted land (kawaii its light check); survival takes
- * craft, wasteland's secondary, until the wasteland pack lands (the art
- * director, 2026-11-03).
+ * open world storybook's painted land (kawaii its light check). Survival is
+ * wasteland's and management foundry's, each with craft, its secondary, as
+ * its light check (2026-11-04; craft stood in for both before).
  */
 export const SHOWCASES: readonly Showcase[] = [
   { key: "action", pack: "pixel", pages: [page("actionTitle", "title"), page("actionHud", "hud"), page("actionPause", "pause"), page("actionTutorial", "tutorial"), page("actionLoading", "loading"), page("actionResults", "results")] },
   { key: "shooter", pack: "tactical", pages: [page("shooterHud", "hud"), page("shooterScore", "scoreboard"), page("loadout", "loadout"), page("lobby", "lobby")] },
   { key: "puzzle", pack: "cartoon", pages: [page("board", "board"), page("saga", "saga"), page("store", "store")] },
-  { key: "management", pack: "craft", pages: [page("manageHud", "hud"), page("generators", "generators"), page("ledger", "ledger"), page("cityMap", "cityMap")] },
+  { key: "management", pack: "foundry", light: "craft", pages: [page("manageHud", "hud"), page("generators", "generators"), page("ledger", "ledger"), page("cityMap", "cityMap")] },
   { key: "racing", pack: "scifi", light: "cartoon", dark: "broadcast", pages: [page("raceHud", "hud"), page("raceResults", "results"), page("garage", "garage"), page("raceBoard", "leaderboard"), page("sportsHud", "sportsHud"), page("matchFacts", "matchFacts")] },
   { key: "moba", pack: "fantasy", pages: [page("mobaHud", "hud"), page("draft", "draft")] },
   { key: "rpg", pack: "fantasy", pages: [page("rpgHud", "hud"), page("gear", "gear"), page("quests", "quests"), page("dialogue", "dialogue")] },
@@ -65,7 +65,7 @@ export const SHOWCASES: readonly Showcase[] = [
   { key: "rhythm", pack: "cyber", pages: [page("rhythmHud", "hud"), page("songs", "songs")] },
   { key: "fighting", pack: "cyber", light: "cartoon", pages: [page("fightHud", "hud"), page("select", "select"), page("versus", "versus")] },
   { key: "narrative", pack: "kawaii", pages: [page("vn", "vn"), page("routes", "routes"), page("cgGallery", "cgGallery")] },
-  { key: "survival", pack: "craft", pages: [page("survivalHud", "hud")] },
+  { key: "survival", pack: "wasteland", light: "craft", pages: [page("survivalHud", "hud")] },
   { key: "horror", pack: "dread", pages: [page("horrorHud", "hud")] },
   { key: "openworld", pack: "storybook", pages: [page("openHud", "hud"), page("worldMap", "worldMap"), page("photo", "photo")] },
 ];

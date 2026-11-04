@@ -9,7 +9,8 @@ templates/styles/<name>/ (og's cook reads them from there or from the
 engine package's styles/; a look names one with `ui "<name>"`), and it
 writes templates/styles/shared/ink-icons.png and glow-icons.png, the
 seed styles' icons (the paper and neon packs' before they were folded into
-storybook and cyber, 2026-11-02):
+storybook and cyber, 2026-11-02), and stencil-icons.png and plate-icons.png
+(the wasteland and foundry seeds'):
 
 - atlas.png: the nine-slice frames (panel, card, button and its hover,
   pressed and disabled states, field, slot, tooltip, capsule, progress track
@@ -320,6 +321,55 @@ def icon_sheet(style):
             a = np.asarray(m, dtype=np.float64)
             b = np.asarray(inner, dtype=np.float64)
             m = Image.fromarray(np.clip(a * 0.85 + b * 0.15, 0, 255).astype(np.uint8), "L")
+        elif style == "stencil":
+            # A spray stencil: the glyph thickened, cut by bridges (one
+            # upright, sometimes one across, off centre by the icon's hash)
+            # only where it is thick enough to hold them, as a cut stencil
+            # is, and its edge worn where the paint caught.
+            m = m.filter(ImageFilter.MaxFilter(3))
+            a = np.asarray(m, dtype=np.float64) / 255
+            solid = a > 0.3
+            ys, xs = np.mgrid[0:cell, 0:cell]
+            bx = 28 + int(hash01(k, 1, 31) * 8)
+            by = 27 + int(hash01(k, 2, 31) * 10)
+
+            def run(line, i):
+                # The length of the solid run of `line` through index i.
+                if not line[i]:
+                    return 0
+                lo, hi = i, i
+                while lo > 0 and line[lo - 1]:
+                    lo -= 1
+                while hi < len(line) - 1 and line[hi + 1]:
+                    hi += 1
+                return hi - lo + 1
+
+            # An upright bridge crosses only a run at least 14 px wide (it
+            # cuts across a stroke, never along one); the bar across, on
+            # half the icons, the same for a run 14 px tall.
+            cut = np.zeros((cell, cell), dtype=bool)
+            for y in range(cell):
+                if run(solid[y], bx) >= 14:
+                    cut[y, bx - 1:bx + 2] = True
+            if hash01(k, 3, 31) > 0.5:
+                for x in range(cell):
+                    if run(solid[:, x], by) >= 14:
+                        cut[by - 1:by + 2, x] = True
+            a = np.where(cut, 0.0, a)
+            j = np.vectorize(lambda x, y: hash01(int(x) // 2, int(y) // 2, k + 31))(xs, ys)
+            edge = (a > 0.08) & (a < 0.92)
+            a = np.where(edge, np.clip(a + (j - 0.5) * 0.8, 0, 1), a)
+            a = a * (0.93 + 0.07 * j)
+            m = Image.fromarray((a * 255).astype(np.uint8), "L")
+        elif style == "plate":
+            # A struck brass plate: a full rim and a face sunk inside it,
+            # lit from above (the face a shade darker at its top).
+            inner = m.filter(ImageFilter.MinFilter(7))
+            a = np.asarray(m, dtype=np.float64)
+            b = np.asarray(inner, dtype=np.float64)
+            ys = np.mgrid[0:cell, 0:cell][0]
+            face = b * (0.62 + 0.2 * ys / cell)
+            m = Image.fromarray(np.clip(np.clip(a - b, 0, 255) + face, 0, 255).astype(np.uint8), "L")
         glyph = Image.merge("LA", (Image.new("L", (cell, cell), 255), m))
         sheet.paste(glyph, ((k % cols) * cell, (k // cols) * cell))
     return sheet.convert("RGBA")
@@ -1194,7 +1244,9 @@ def main():
     # The icon sheets the seed styles share (templates/styles/shared), from
     # the paper and neon packs folded into storybook and cyber (2026-11-02).
     shared = os.path.join(STYLES, "shared")
-    for variant, name in (("paper", "ink-icons.png"), ("neon", "glow-icons.png")):
+    # stencil and plate: the wasteland and foundry seeds' own (2026-11-04).
+    for variant, name in (("paper", "ink-icons.png"), ("neon", "glow-icons.png"),
+                          ("stencil", "stencil-icons.png"), ("plate", "plate-icons.png")):
         icon_sheet(variant).save(os.path.join(shared, name), optimize=True)
         print("wrote", os.path.join(shared, name))
 
