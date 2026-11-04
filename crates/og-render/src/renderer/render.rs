@@ -2161,16 +2161,21 @@ impl Renderer {
                 scene.tick_rate,
             ),
             caustics: water::caustics(scene_water, scene.origin),
-            shadow: [
-                if cascades.is_empty() {
-                    0.0
-                } else {
-                    light.shadow_softness.max(0.0)
-                },
-                (self.info.point_shadows == PointShadows::Paraboloid) as u32 as f32,
-                0.0,
-                0.0,
-            ],
+            shadow: {
+                let (softness, fill) = light.shadow_softness_and_fill();
+                [
+                    if cascades.is_empty() { 0.0 } else { softness },
+                    (self.info.point_shadows == PointShadows::Paraboloid) as u32 as f32,
+                    fill,
+                    // The shadow filters' spiral turns per drawn frame
+                    // under TAA (lighting.wgsl shadow_turn).
+                    if taa {
+                        1.0 + (self.frame_index % 16) as f32
+                    } else {
+                        0.0
+                    },
+                ]
+            },
             stylise: crate::Retro3d::uniform(scene.stylise.retro, self.width, self.height),
             shadow_tint: {
                 let m = &scene.stylise.material;

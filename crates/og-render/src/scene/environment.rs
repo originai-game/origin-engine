@@ -263,6 +263,38 @@ pub struct DirectionalLight {
     /// (0: one texel each).
     pub shadow_bias: f32,
     pub shadow_normal_bias: f32,
+    /// How much of the sun's light a cloud cover or the weather has
+    /// scattered across the sky, 0 (a clear sky, the default) to 1 (an
+    /// overcast): what is left of the beam then comes from a wide patch of
+    /// cloud round the sun, so its shadow softens (PCSS at up to a quarter
+    /// metre of penumbra per metre behind the caster) and fades to 0.35 of
+    /// its depth, as the rest of the scattered light reaches the shadow
+    /// too. [`DirectionalLight::cover`] sets it.
+    pub diffusion: f32,
+}
+
+impl DirectionalLight {
+    /// Dims the light under a cover that passes `beam` (0..1) of it, as
+    /// clouds and the weather do ([`crate::Clouds::light_scene`],
+    /// [`crate::WeatherLook::light`]): its intensity times `beam`, and the
+    /// rest counted as scattered ([`DirectionalLight::diffusion`]), from
+    /// none while the cover takes less than 15 % to all of it past 85 %
+    /// (smoothly between). Two covers keep the greater diffusion.
+    pub fn cover(&mut self, beam: f32) {
+        let beam = beam.clamp(0.0, 1.0);
+        self.intensity *= beam;
+        let t = ((1.0 - beam - 0.15) / 0.7).clamp(0.0, 1.0);
+        self.diffusion = self.diffusion.max(t * t * (3.0 - 2.0 * t));
+    }
+
+    /// What the frame's shadows read of [`DirectionalLight::diffusion`]:
+    /// the PCSS softness (the declared one, or the scattered light's
+    /// wider, 0.25 at full diffusion) and how much of the shadow's depth
+    /// it fills in (0.65 at full diffusion).
+    pub(crate) fn shadow_softness_and_fill(&self) -> (f32, f32) {
+        let d = self.diffusion.clamp(0.0, 1.0);
+        (self.shadow_softness.max(0.0).max(0.25 * d), 0.65 * d)
+    }
 }
 
 impl Default for DirectionalLight {
@@ -281,6 +313,7 @@ impl Default for DirectionalLight {
             shadow_focus_drop: 0.0,
             shadow_bias: 0.0,
             shadow_normal_bias: 0.0,
+            diffusion: 0.0,
         }
     }
 }
@@ -752,5 +785,45 @@ mod sky_params_tests {
         ] {
             assert_eq!(GroundProjection::gpu(Some(bad)), [[0.0; 4]; 2]);
         }
+    }
+
+    /// A cover's scattered light reaches the sun's shadow: none while it
+    /// takes under 15 % (a broken sky's frames stay as they were), most of
+    /// the weather's rain dimming (0.35 left: a smoothstep at 5/7, 0.8016),
+    /// all of an overcast's; the PCSS softness and the fill follow, and a
+    /// second, thinner cover keeps the first's.
+    #[test]
+    fn a_cover_softens_and_fills_the_suns_shadow() {
+        let mut fair = DirectionalLight::default();
+        fair.cover(0.9);
+        assert_eq!(fair.diffusion, 0.0);
+        assert!((fair.intensity - 2.7).abs() < 1e-6);
+        assert_eq!(fair.shadow_softness_and_fill(), (0.0, 0.0));
+
+        let mut rain = DirectionalLight::default();
+        rain.cover(0.35);
+        assert!((rain.diffusion - 0.8016).abs() < 1e-3, "{}", rain.diffusion);
+        let (softness, fill) = rain.shadow_softness_and_fill();
+        assert!((softness - 0.2004).abs() < 1e-3 && (fill - 0.5210).abs() < 1e-3);
+        rain.cover(0.95);
+        assert!((rain.diffusion - 0.8016).abs() < 1e-3);
+        assert!((rain.intensity - 3.0 * 0.35 * 0.95).abs() < 1e-5);
+
+        let mut overcast = crate::RenderScene::new();
+        crate::Clouds {
+            coverage: 1.0,
+            ..crate::Clouds::default()
+        }
+        .light_scene(&mut overcast);
+        assert!(overcast.light.diffusion > 0.999);
+        assert!((overcast.light.shadow_softness_and_fill().1 - 0.65).abs() < 1e-3);
+
+        // A declared softness wider than the cover's is kept.
+        let mut soft = DirectionalLight {
+            shadow_softness: 0.3,
+            ..Default::default()
+        };
+        soft.cover(0.0);
+        assert_eq!(soft.shadow_softness_and_fill(), (0.3, 0.65));
     }
 }

@@ -340,6 +340,121 @@ fn penumbra(img: &RgbaImage, lit: &RgbaImage) -> usize {
         .count()
 }
 
+/// `img`'s luma in linear light (sRGB decoded) at pixel coordinates
+/// (`x`, `y`), bilinear between pixel centres.
+fn linear_at(img: &RgbaImage, x: f32, y: f32) -> f32 {
+    let decode = |v: u8| {
+        let v = v as f32 / 255.0;
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let texel = |x: i64, y: i64| {
+        let x = x.clamp(0, img.width as i64 - 1) as u32;
+        let y = y.clamp(0, img.height as i64 - 1) as u32;
+        let i = ((y * img.width + x) * 4) as usize;
+        let p = &img.pixels[i..i + 3];
+        0.2126 * decode(p[0]) + 0.7152 * decode(p[1]) + 0.0722 * decode(p[2])
+    };
+    let (fx, fy) = (x - 0.5, y - 0.5);
+    let (x0, y0) = (fx.floor(), fy.floor());
+    let (tx, ty) = (fx - x0, fy - y0);
+    let (x0, y0) = (x0 as i64, y0 as i64);
+    let top = texel(x0, y0) * (1.0 - tx) + texel(x0 + 1, y0) * tx;
+    let bottom = texel(x0, y0 + 1) * (1.0 - tx) + texel(x0 + 1, y0 + 1) * tx;
+    top * (1.0 - ty) + bottom * ty
+}
+
+/// The sun's direct light reaching `img`'s ground pixels of the lower 40 %
+/// (the ground near the casters), as a share of what reaches them
+/// unshadowed (`lit`), in linear light: every pixel whose unshadowed level
+/// is the plain ground's.
+fn ground_shares(img: &RgbaImage, lit: &RgbaImage) -> Vec<(usize, f32)> {
+    let (w, h) = (img.width, img.height);
+    let at = |m: &RgbaImage, i: usize| {
+        linear_at(m, (i as u32 % w) as f32 + 0.5, (i as u32 / w) as f32 + 0.5)
+    };
+    let start = (w * h * 3 / 5) as usize;
+    let mut levels: Vec<f32> = (start..(w * h) as usize).map(|i| at(lit, i)).collect();
+    levels.sort_by(f32::total_cmp);
+    let ground = levels[levels.len() / 2];
+    (start..(w * h) as usize)
+        .filter_map(|i| {
+            let l = at(lit, i);
+            ((l - ground).abs() < 0.02 * ground && l > 0.01).then(|| (i, at(img, i) / l))
+        })
+        .collect()
+}
+
+/// The weather's cover reaches the sun's shadow
+/// (`DirectionalLight::cover`): under rain's dimming (0.35 of the sun
+/// left) most of the lost light is scattered across the sky (diffusion
+/// 0.80, a smoothstep at 5/7), so the umbra keeps about half the direct
+/// light the open ground takes (0.52) instead of none, and the edges
+/// soften (PCSS at a fifth of a metre of penumbra per metre): many more
+/// ground pixels lie between the umbra's level and the open ground's.
+/// The rain frame's sun shadows stayed hard and black under a full
+/// overcast (the site imagery audit, 2026-11-04).
+#[test]
+fn a_cover_fills_and_softens_the_suns_shadow() {
+    let desc = scenes::base_desc();
+    let scene = |cover: Option<f32>, shadows: bool| {
+        let mut s = plain_soft_scene(false);
+        s.post.tonemap = Tonemap::None;
+        if let Some(beam) = cover {
+            s.light.cover(beam);
+        }
+        s.light.cast_shadows = shadows;
+        s
+    };
+    let (clear, _) = frame(&desc, &scene(None, true), 1);
+    let (clear_lit, _) = frame(&desc, &scene(None, false), 1);
+    let (rain, _) = frame(&desc, &scene(Some(0.35), true), 1);
+    let (rain_lit, _) = frame(&desc, &scene(Some(0.35), false), 1);
+    if let Ok(dir) = std::env::var("OG_SHADOW_FRAMES") {
+        for (name, img) in [("clear", &clear), ("rain", &rain)] {
+            let path = PathBuf::from(format!("{dir}/cover-{name}.png"));
+            gfx::save_png(&path, img).expect("write");
+        }
+    }
+    let clear_shares = ground_shares(&clear, &clear_lit);
+    let rain_shares: std::collections::HashMap<usize, f32> =
+        ground_shares(&rain, &rain_lit).into_iter().collect();
+    // The clear sky's umbra, read in both frames.
+    let mut umbra: Vec<f32> = clear_shares
+        .iter()
+        .filter(|&&(_, v)| v < 0.05)
+        .filter_map(|(i, _)| rain_shares.get(i).copied())
+        .collect();
+    assert!(umbra.len() > 2_000, "umbra pixels: {}", umbra.len());
+    umbra.sort_by(f32::total_cmp);
+    let filled = umbra[umbra.len() / 2];
+    // Between the umbra and the open ground: the clear sky's from 15 % to
+    // 85 % of the light, the rain's from 15 % to 85 % of the way from its
+    // fill (0.521) to the open ground.
+    const FILL: f32 = 0.521;
+    let between = |v: f32, floor: f32| {
+        let t = (v - floor) / (1.0 - floor);
+        t > 0.15 && t < 0.85
+    };
+    let hard = clear_shares
+        .iter()
+        .filter(|&&(_, v)| between(v, 0.0))
+        .count();
+    let soft = rain_shares.values().filter(|&&v| between(v, FILL)).count();
+    println!(
+        "umbra under rain takes {filled:.3} of the direct light ({} pixels); between: clear {hard}, rain {soft}",
+        umbra.len()
+    );
+    assert!(
+        (0.45..0.9).contains(&filled),
+        "the rain's umbra takes {filled:.3} of the direct light"
+    );
+    assert!(soft > 3 * hard, "rain {soft} vs clear {hard}");
+}
+
 /// PCSS: the sun's penumbrae widen (many more pixels between shadow and
 /// lit) while the hard frame has edges only.
 #[test]
@@ -617,10 +732,67 @@ fn contact_strip(img: &RgbaImage) -> Vec<(u32, u32)> {
     out
 }
 
+/// The contact scene's floor pixels whose centre sees the floor between
+/// `from` and `to` metres past the box's lit-away face (x = 0.4), with
+/// nothing in front: along that face's base, rows at its middle seven
+/// eighths.
+fn base_strip(img: &RgbaImage, from: f32, to: f32) -> Vec<(u32, u32)> {
+    let (w, h) = (img.width as f32, img.height as f32);
+    let view_proj = contact_view_proj(img);
+    let inverse = view_proj.inverse();
+    let face = shadow_scenes::CONTACT_BOX.x * 0.5;
+    let half = shadow_scenes::CONTACT_BOX * 0.5;
+    let block = Caster::Box(
+        glam::Vec3::new(-half.x, 0.0, -half.z),
+        glam::Vec3::new(half.x, shadow_scenes::CONTACT_BOX.y, half.z),
+    );
+    let mut out = Vec::new();
+    for k in -7..=7 {
+        let base = view_proj.project_point3(glam::Vec3::new(face, 0.0, k as f32 * 0.05));
+        let (bx, by) = ((base.x * 0.5 + 0.5) * w, (0.5 - base.y * 0.5) * h);
+        for dy in -1i32..=1 {
+            for dx in -4i32..=12 {
+                let (x, y) = (bx as i32 + dx, by as i32 + dy);
+                let ndc = glam::Vec2::new(
+                    (x as f32 + 0.5) / w * 2.0 - 1.0,
+                    1.0 - (y as f32 + 0.5) / h * 2.0,
+                );
+                let near = inverse.project_point3(ndc.extend(0.0));
+                let far = inverse.project_point3(ndc.extend(1.0));
+                let d = (far - near).normalize();
+                if d.y >= 0.0 {
+                    continue;
+                }
+                let t = -near.y / d.y;
+                let q = near + d * t;
+                let past = q.x - face;
+                if past < from || past >= to || q.z.abs() > 0.35 {
+                    continue;
+                }
+                if block.enter(near, d).is_some_and(|b| b < t - 1e-4) {
+                    continue;
+                }
+                if !out.contains(&(x as u32, y as u32)) {
+                    out.push((x as u32, y as u32));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Local lights' shadows start at the caster's base: the floor right
 /// beside a box standing on it, on the side away from the light, is in
 /// shadow for a spot and a point light (cube and paraboloid), not lit
 /// through a bias gap; and their edges are soft rather than stepped.
+/// Right at the base too: the floor's pixels within a centimetre of the
+/// face (the first one or two) take no more light than those 1 to 4 cm
+/// out. The box's bottom face lies in the floor's plane, and a receiver
+/// filtered over its own plane with a bias towards the light read it as
+/// lit there: a broken 1 px grey line along the base (shadows-local-
+/// contact, art review of 73e6c771a; a CPU model of the spot: 24 % to 53 %
+/// of the light 1 mm out). A closed receiver now compares past its depth
+/// (lighting.wgsl shadow_closed): under 1 % (5 % for a paraboloid).
 ///
 /// Measured as the share of the light's direct light that reaches the
 /// strip, in linear light (no tonemap, sRGB decoded) with the ambient
@@ -677,6 +849,24 @@ fn local_shadows_touch_their_casters() {
             full > 0.05,
             "the light reaches the strip unshadowed: {full:.3}"
         );
+        let base = base_strip(&shadowed, 0.0, 0.01);
+        assert!(base.len() >= 15, "base pixels: {}", base.len());
+        let share = |q: &(u32, u32)| {
+            let (x, y) = (q.0 as f32 + 0.5, q.1 as f32 + 0.5);
+            let dark = linear_at(&dark, x, y);
+            (linear_at(&shadowed, x, y) - dark) / (linear_at(&lit, x, y) - dark).max(1e-4)
+        };
+        let shares: Vec<f32> = base.iter().map(share).collect();
+        let worst = shares.iter().copied().fold(0.0, f32::max);
+        let mean = shares.iter().sum::<f32>() / shares.len() as f32;
+        println!(
+            "point {point} {storage:?}: the floor's {} pixels within 1 cm of the base take {mean:.3} of their direct light, {worst:.3} at most",
+            base.len()
+        );
+        assert!(
+            mean < 0.05 && worst < 0.2,
+            "a lit line along the base: {mean:.3} of the direct light on average, {worst:.3} at most"
+        );
         let ratio = reached / full;
         println!(
             "point {point} {storage:?}: floor beside the box takes {ratio:.3} of its direct light ({reached:.4} of {full:.4}, ambient {:.4})",
@@ -687,6 +877,80 @@ fn local_shadows_touch_their_casters() {
             "the floor beside the box is lit through the bias: {ratio:.3} of its direct light"
         );
     }
+}
+
+/// A spot's shadow edge far from its caster runs straight: the box's top
+/// edge's shadow on the floor, about 0.73 m past the box, crosses the
+/// spot's texels at a shallow angle (about 11 degrees), where a 3x3
+/// filter printed their steps along it (art review of 73e6c771a). Where
+/// half the direct light reaches, found along the floor at 2 mm steps
+/// for each z from -0.5 to 0.25 m (clear of its corners' penumbrae), the
+/// edge strays under 0.3 cm rms from a
+/// straight fit. A CPU model of the scene (texels 2.45 cm there) put it at
+/// 0.53 cm under the tent and 0.14 under local_wide's 7x7.
+#[test]
+fn a_spot_shadows_far_edge_runs_straight() {
+    let desc = scenes::base_desc();
+    let scene = |shadows: bool, on: bool| {
+        let mut s = shadow_scenes::local_contact_scene(false, shadows);
+        s.post.tonemap = Tonemap::None;
+        if !on {
+            s.lights[0].intensity = 0.0;
+        }
+        s
+    };
+    let (shadowed, _) = frame(&desc, &scene(true, true), 1);
+    let (lit, _) = frame(&desc, &scene(false, true), 1);
+    let (dark, _) = frame(&desc, &scene(false, false), 1);
+    let (w, h) = (shadowed.width as f32, shadowed.height as f32);
+    let view_proj = contact_view_proj(&shadowed);
+    let share = |p: glam::Vec3| {
+        let q = view_proj.project_point3(p);
+        let (x, y) = ((q.x * 0.5 + 0.5) * w, (0.5 - q.y * 0.5) * h);
+        let d = linear_at(&dark, x, y);
+        (linear_at(&shadowed, x, y) - d) / (linear_at(&lit, x, y) - d).max(1e-4)
+    };
+    let mut edge = Vec::new();
+    for k in 0..=75 {
+        let z = -0.5 + 0.01 * k as f32;
+        let mut last = (0.95f32, share(glam::Vec3::new(0.95, 0.0, z)));
+        assert!(
+            last.1 < 0.2,
+            "z {z}: the floor at x 0.95 is in shadow ({:.3})",
+            last.1
+        );
+        for i in 1..=200 {
+            let x = 0.95 + 0.002 * i as f32;
+            let v = share(glam::Vec3::new(x, 0.0, z));
+            if v >= 0.5 {
+                edge.push((
+                    z,
+                    last.0 + (x - last.0) * (0.5 - last.1) / (v - last.1).max(1e-6),
+                ));
+                break;
+            }
+            last = (x, v);
+        }
+    }
+    assert_eq!(edge.len(), 76, "the edge is found along every row");
+    let n = edge.len() as f32;
+    let (mz, mx) = (
+        edge.iter().map(|e| e.0).sum::<f32>() / n,
+        edge.iter().map(|e| e.1).sum::<f32>() / n,
+    );
+    let b = edge.iter().map(|e| (e.0 - mz) * (e.1 - mx)).sum::<f32>()
+        / edge.iter().map(|e| (e.0 - mz).powi(2)).sum::<f32>();
+    let wander = edge
+        .iter()
+        .map(|e| e.1 - (mx + b * (e.0 - mz)))
+        .collect::<Vec<_>>();
+    let rms = (wander.iter().map(|r| r * r).sum::<f32>() / n).sqrt() * 100.0;
+    let most = wander.iter().fold(0.0f32, |m, r| m.max(r.abs())) * 100.0;
+    println!("the spot's far edge at x {mx:.3} m strays {rms:.3} cm rms, {most:.3} cm at most");
+    assert!(
+        rms < 0.3,
+        "the far edge steps: {rms:.3} cm rms ({most:.3} at most)"
+    );
 }
 
 /// The contact scenes' camera (`shadow_scenes::local_contact_camera`)

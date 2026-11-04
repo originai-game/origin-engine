@@ -35,7 +35,9 @@ pub struct WeatherLook {
     pub ahead: f32,
     /// Its fog.
     pub fog: Option<Fog>,
-    /// A multiplier on the directional light (and half as much on the ambient).
+    /// A multiplier on the directional light (and half as much on the
+    /// ambient), applied with [`crate::DirectionalLight::cover`], which
+    /// softens and fills in the sun's shadow by what it scatters.
     pub light: f32,
 }
 

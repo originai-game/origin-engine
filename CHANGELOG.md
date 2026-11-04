@@ -38,6 +38,18 @@ is one line here, written at the merge that changes
     and the sky occluded under roofs and in rooms.
   - With `PostEffects.ao`'s GTAO on, the probes are read along its bent
     normals.
+- **Shadows: weather, filtering and the box-base leak.** A cloud cover or
+  og.Weather's dimming now reaches the sun's shadow too: the light it
+  scatters fills in up to 65 % of the umbra and softens the edges (PCSS)
+  under an overcast, where the shadows stayed hard and black; a broken sky
+  draws as before. The sun's PCSS spiral turns per pixel and, under TAA,
+  per frame (interleaved gradient noise) instead of printing rings. Point
+  and spot shadows on lit surfaces filter over 7×7 texels away from the
+  caster, hardening to the 3×3 tent at contact, so a far edge no longer
+  steps texel by texel. A closed, single-sided receiver compares its
+  shadows past its own depth, so the floor along a box's shadowed base
+  is no longer lit through the box's bottom face (a grey 1 px line). No
+  IDL change; render-only, no simulation pins move.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

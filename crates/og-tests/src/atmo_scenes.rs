@@ -667,7 +667,7 @@ pub fn weather_scene(kind: u32) -> RenderScene {
         None,
     );
     scene.fog = look.fog;
-    scene.light.intensity *= look.light;
+    scene.light.cover(look.light);
     scene.environment.intensity *= 0.5 + 0.5 * look.light;
     if let Some(e) = look.emitter.clone() {
         let emitter = scene.add_emitter(e);

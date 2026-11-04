@@ -108,6 +108,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // One discard for the alpha cut-off and the dissolve (see dissolve_at);
   // none in most lean pipelines (DISCARD).
   let mode = u32(material.flags.w);
+  // A closed, single-sided surface (mode 32): its shadows compare past its depth (lighting.wgsl shadow_closed).
+  shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16, an alpha-tested material): alpha past the cut-off over one pixel's change of it is the
   // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;

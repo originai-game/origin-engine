@@ -160,13 +160,15 @@ impl Clouds {
     }
 
     /// Dims `scene`'s light under this cover, as every scene with clouds
-    /// is lit: the sun by [`Clouds::light`]'s first value; the image-based
+    /// is lit: the sun by [`Clouds::light`]'s first value (its shadow
+    /// softened and filled in by what the cover scattered,
+    /// [`crate::DirectionalLight::cover`]); the image-based
     /// light by its second only where that light is not the live sky's
     /// capture ([`RenderScene::sky_captured`]), which holds the clouds
     /// already (dimmed twice, an overcast noon drew as night).
     pub fn light_scene(&self, scene: &mut crate::RenderScene) {
         let (sun, sky) = self.light();
-        scene.light.intensity *= sun;
+        scene.light.cover(sun);
         if !scene.sky_captured() {
             scene.environment.intensity *= sky;
         }

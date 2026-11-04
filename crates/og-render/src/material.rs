@@ -910,7 +910,9 @@ pub(crate) struct MaterialUniform {
     pub emissive: [f32; 4],
     /// x: normal map (0 none, 1 RGB, 2 two-channel), y: ao intensity (< 0: no
     /// map), z: environment intensity, w: mode bits (1 flat, 2 unlit, 4
-    /// blended, 8 unstyled: no shadow tint or outline distance).
+    /// blended, 8 unstyled: no shadow tint or outline distance, 16 alpha to
+    /// coverage, 32 single-sided: a closed surface, whose shadows compare
+    /// past its own depth, lighting.wgsl `shadow_closed`).
     pub flags: [f32; 4],
     /// x: toon (0 off, 1 gradient map, 2 built-in bands), y: rim intensity,
     /// z: rim power, w: flash amount.
@@ -983,7 +985,8 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
         | ((m.unlit != 0) as u32) << 1
         | (m.is_transparent() as u32) << 2
         | ((m.styled == 0) as u32) << 3
-        | ((m.alphaToCoverage != 0 && m.alphaTest > 0.0) as u32) << 4;
+        | ((m.alphaToCoverage != 0 && m.alphaTest > 0.0) as u32) << 4
+        | ((m.side() != Side::Double) as u32) << 5;
     let scale = if has_normal { m.normalScale } else { Vec2::ONE };
     MaterialUniform {
         base_color: [m.color.x, m.color.y, m.color.z, m.opacity],
@@ -1550,5 +1553,22 @@ mod style_tests {
             uniform(&StandardMaterial::default(), false).flags[3] as u32 & 8,
             0
         );
+    }
+
+    /// Mode bit 32: a single-sided material, front or back, is a closed
+    /// surface whose shadows compare past its depth (lighting.wgsl
+    /// `shadow_closed`); a double-sided one is in the shadow map itself.
+    #[test]
+    fn single_sided_materials_are_closed_for_shadows() {
+        let closed = |side: Side| {
+            let m = StandardMaterial {
+                side: side as u32,
+                ..Default::default()
+            };
+            uniform(&m, false).flags[3] as u32 & 32 != 0
+        };
+        assert!(closed(Side::Front));
+        assert!(closed(Side::Back));
+        assert!(!closed(Side::Double));
     }
 }

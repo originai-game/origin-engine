@@ -340,6 +340,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   let mode = u32(material.flags.w);
+  // A closed, single-sided surface (mode 32): its shadows compare past its depth (lighting.wgsl shadow_closed).
+  shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16): as pbr_fs.wgsl.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
   let coverage = clamp((base.a - material.emissive.w) / max(fwidth(base.a), 1e-4) + 0.5, 0.0, 1.0);

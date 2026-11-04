@@ -60,7 +60,7 @@ struct Frame {
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
   caustics_cells: array<vec4<f32>, 2>,  // the two cell layers at the frame's origin: xy whole cells, zw the rest (origin.rs)
-  shadow: vec4<f32>,          // x: the sun's softness (0: hard), y: 1 when point lights' shadows are paraboloids, zw: unused
+  shadow: vec4<f32>,          // x: the sun's softness (0: hard), y: 1 when point lights' shadows are paraboloids, z: how much of the sun's shadow the cover scattered away (0: none), w: 1 + the drawn frame of 16 under TAA (0: not temporal)
   // Stylisation (stylise.rs): the retro-3D vertex path and the material style.
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
   shadow_tint: vec4<f32>,     // rgb: the tint shadowed light moves towards, w: amount (0: off)

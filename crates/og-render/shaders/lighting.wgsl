@@ -51,10 +51,10 @@ fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, sl
   return mix(mix(lit[0], lit[1], f.x), mix(lit[2], lit[3], f.x), f.y);
 }
 
-// A wider PCF for the lit surfaces' shadows (the sun's cascades and the
-// local lights'): the 3x3 bilinear PCFs one texel apart summed, as one pass
-// over the 4x4 texels around uv with separable tent weights (1 - f, 1, 1,
-// f) / 3 per axis (Castaño's filter for The Witness, as Unity's
+// A wider PCF for the sun's shadows on lit surfaces (the local lights'
+// take [`local_wide`]): the 3x3 bilinear PCFs one texel apart summed, as
+// one pass over the 4x4 texels around uv with separable tent weights
+// (1 - f, 1, 1, f) / 3 per axis (Castaño's filter for The Witness, as Unity's
 // SampleShadow_ComputeSamples_Tent_5x5). Edges come out soft over about
 // three texels and straight instead of stepping texel by texel; the
 // receiver plane (`slope`, as pcf's) keeps the wider kernel off the
@@ -130,19 +130,52 @@ fn cascade_tint(c: u32) -> vec3<f32> {
   }
 }
 
-// The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`): a
-// blocker search over the widest penumbra the cascade allows, then 16
-// bilinear PCF taps over the penumbra the blockers' mean depth gives
-// (softness × the distance from blocker to receiver, in texels). A
-// Vogel disc spreads the taps; a slope term keeps the wide kernel off a
-// receiver tilted from the light. Every read is a textureLoad compare, as
-// pcf's.
+// Whether the surface being lit is a closed, single-sided one
+// (StandardMaterial side front or back: material mode bit 32), set by the
+// standard and physical fragment stages; every other caller leaves it
+// false. Front-sided casters store their far side (shadow_pipeline), so
+// such a receiver is never in the map itself: what lies at its own depth
+// there is a caster resting on it (a box's bottom face on the floor), and
+// it is compared a quarter texel past its depth with no receiver plane,
+// so that contact reads as shadow. The receiver plane and a depth bias
+// towards the light are for a double-sided surface (a leaf, a cloth),
+// which is in the map and would otherwise shadow itself; on a closed
+// receiver they read a caster's coplanar base as lit and left a lit line
+// along the far side of every box standing on a floor (a CPU model of
+// local_shadows_touch_their_casters' scene under a spot: the floor 1 mm
+// past the face 53 % lit under the tent with the plane, 24 % without;
+// under 1 % this way with local_wide, the floor before its lit face 98 %
+// lit 2 mm from it; a paraboloid's 5 % and 80 %, 92 % at 1 cm).
+var<private> shadow_closed: bool = false;
+
+// A turn in [0, 2π) for PCSS's spiral at `texel` (a position in shadow
+// texels): interleaved gradient noise (Jimenez, "Next Generation Post
+// Processing in Call of Duty: Advanced Warfare", SIGGRAPH 2014; Bevy turns
+// its shadow spirals the same way), so neighbouring pixels turn their
+// spirals apart, and under TAA (frame.shadow.w: 1 + the drawn frame of 16)
+// every drawn frame again, so the history averages the 16 taps into the
+// smooth disc they sample.
+fn shadow_turn(texel: vec2<f32>) -> f32 {
+  let k = max(frame.shadow.w - 1.0, 0.0);
+  return 6.2831853 * fract(52.9829189 * fract(dot(texel + k * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+}
+
+// The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`, and
+// the weather's: frame.shadow.x): a blocker search over the widest
+// penumbra the cascade allows, then 16 bilinear PCF taps over the penumbra
+// the blockers' mean depth gives (softness × the distance from blocker to
+// receiver, in texels). A Vogel disc spreads the taps, turned per pixel
+// and per drawn frame ([`shadow_turn`]): a fixed disc printed its spiral
+// as rings of copies across a wide penumbra. A slope term keeps the wide
+// kernel off a receiver tilted from the light (an open one; a closed one
+// compares past its own depth, as [`shadow_closed`]). Every read is a
+// textureLoad compare, as pcf's.
 const PCSS_TAPS: i32 = 16;
 const PCSS_MAX_TEXELS: f32 = 24.0;
 
-fn vogel(i: i32, radius: f32) -> vec2<f32> {
-  let r = sqrt((f32(i) + 0.5) / f32(PCSS_TAPS)) * radius;
-  let a = f32(i) * 2.39996323;
+fn vogel(i: i32, n: i32, radius: f32, turn: f32) -> vec2<f32> {
+  let r = sqrt((f32(i) + 0.5) / f32(n)) * radius;
+  let a = f32(i) * 2.39996323 + turn;
   return vec2<f32>(cos(a), sin(a)) * r;
 }
 
@@ -153,16 +186,20 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   let texel = bias.x;
   let depth_range = texel / max(bias.y, 1e-12);
   let softness = frame.shadow.x;
-  // How the receiver's light-space depth changes per texel along it.
-  let slope = bias.y * min(tan_l, 4.0);
+  // How the receiver's light-space depth changes per texel along it (an
+  // open receiver's; a closed one is compared a quarter texel past its
+  // depth instead, as shadow_closed says).
+  let slope = select(bias.y * min(tan_l, 4.0), 0.0, shadow_closed);
+  let reference = select(ref_depth, ref_depth + 1.25 * bias.y, shadow_closed);
+  let turn = shadow_turn(uv * size);
   let search = clamp(softness * ref_depth * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
   var blockers = 0.0;
   var sum = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, search);
+    let o = vogel(i, PCSS_TAPS, search, turn);
     let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
     let d = textureLoad(cascade_map, at, i32(c), 0).r;
-    if (d < ref_depth - slope * length(o)) {
+    if (d < reference - slope * length(o)) {
       blockers += 1.0;
       sum += d;
     }
@@ -172,8 +209,8 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   let penumbra = clamp(softness * (ref_depth - blocker) * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, penumbra);
-    lit += pcf(cascade_map, uv + o / size, c, ref_depth - slope * length(o), vec2<f32>(0.0));
+    let o = vogel(i, PCSS_TAPS, penumbra, turn);
+    lit += pcf(cascade_map, uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
   }
   return lit / f32(PCSS_TAPS);
 }
@@ -182,8 +219,9 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
 // world units scaled by the cascade's texel size (a normal offset growing
 // with the light's angle to the surface, plus a depth bias converted to the
 // cascade's normalized depth), so it holds at any scene scale.
-// `wide` filters with the tent over the receiver plane; the volumetric
-// march takes the 2x2 PCF, as it averages many samples anyway.
+// `wide` filters with the tent (over the receiver plane for an open
+// receiver; [`shadow_closed`]); the volumetric march takes the 2x2 PCF,
+// as it averages many samples anyway.
 fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f32 {
   let bias = frame.cascade_bias[c];
   let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
@@ -198,6 +236,8 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
     return pcss(uv, c, sp.z - bias.y, bias, sin_l / max(n_dot_l, 0.05));
   }
   if (!wide) { return pcf(cascade_map, uv, c, sp.z - bias.y, vec2<f32>(0.0)); }
+  // A closed receiver: a quarter texel past its own depth, flat.
+  if (shadow_closed) { return pcf_tent(cascade_map, uv, c, sp.z + 0.25 * bias.y, vec2<f32>(0.0)); }
   // The receiver plane, a texel along each tangent (orthographic: exact).
   let t = plane_tangents(n);
   let sb = frame.cascade_view_proj[c] * vec4<f32>(offset + t[0] * bias.x, 1.0);
@@ -216,7 +256,9 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
 // to its far split, `DirectionalLight::cascade_blend`) it fades into the
 // next one, which covers that band too. Shadows fade out over the last
-// tenth of the shadow distance.
+// tenth of the shadow distance, and by frame.shadow.z everywhere: the share
+// of the sun's light a cloud cover or the weather has scattered across
+// the sky (`DirectionalLight::diffusion`), which reaches the shadow too.
 fn cascade_shadow(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
   return cascade_shadow_lookup(p, n, n_dot_l, true);
 }
@@ -235,7 +277,7 @@ fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -
     shadow = mix(shadow, next, smoothstep(band, frame.cascade_bias[c].z, depth));
   }
   let last = frame.cascade_bias[count - 1u].z;
-  return mix(shadow, 1.0, smoothstep(0.9 * last, last, depth));
+  return mix(mix(shadow, 1.0, smoothstep(0.9 * last, last, depth)), 1.0, frame.shadow.z);
 }
 
 // A point light's cube face (+x, -x, +y, -y, +z, -z) for a direction from it.
@@ -253,38 +295,106 @@ fn cube_face(d: vec3<f32>) -> u32 {
 const PARABOLOID_SCALE: f32 = 0.9;
 
 // A point on hemisphere `sigma`'s paraboloid (sigma 1 below the light):
-// its uv and stored depth.
-fn paraboloid_uv_ref(light: LocalLight, q: vec3<f32>, sigma: f32) -> vec3<f32> {
+// its uv and its distance / range scaled by `k` (the depth bias,
+// [`local_bias`]).
+fn paraboloid_uv_ref(light: LocalLight, q: vec3<f32>, sigma: f32, k: f32) -> vec3<f32> {
   let to = q - light.position_range.xyz;
   let l = vec3<f32>(to.x, sigma * to.z, -sigma * to.y);
   let d = max(length(l), 1e-6);
   let u = l / d;
   let ndc = vec2<f32>(-u.x, u.y) * (PARABOLOID_SCALE / (1.0 + u.z));
-  return vec3<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, d * (1.0 - light.cone.w) / light.position_range.w);
+  return vec3<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, d * k / light.position_range.w);
 }
 
 // A point seen by local shadow layer `layer` (a spot's or a cube face's):
-// its uv and stored depth (w <= 0: behind the layer's view).
-fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>) -> vec4<f32> {
+// its uv and its distance / range scaled by `k` (w <= 0: behind the
+// layer's view).
+fn perspective_uv_ref(light: LocalLight, layer: u32, q: vec3<f32>, k: f32) -> vec4<f32> {
   let clip = frame.local_view_proj[layer] * vec4<f32>(q, 1.0);
   let ndc = clip.xy / clip.w;
-  let r = length(q - light.position_range.xyz) * (1.0 - light.cone.w) / light.position_range.w;
+  let r = length(q - light.position_range.xyz) * k / light.position_range.w;
   return vec4<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5, r, clip.w);
 }
 
+// The factor on a receiver's distance it is compared at: a tenth of a
+// texel towards the light (`cone.w`), or, for a closed receiver
+// ([`shadow_closed`]), a quarter of a texel past it.
+fn local_bias(light: LocalLight) -> f32 {
+  return select(1.0 - light.cone.w, 1.0 + 2.5 * light.cone.w, shadow_closed);
+}
+
 // Local shadows store distance / range; the fragment compares its own,
-// filtered with the tent (`local_shadow_lookup`'s `wide`).
+// filtered with [`local_wide`] (`local_shadow_lookup`'s `wide`).
 fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   return local_shadow_lookup(light, p, n, true);
 }
 
+// The local lights' filter for lit surfaces: contact hardening between
+// two box-filtered bilinear PCFs over the same 8x8 texels, the tent's 3x3
+// (its width at contact) and 7x7 (Castaño's separable weights, as
+// pcf_tent's, widened: (1 - f, 1, ..., 1, f) / 7 per axis), mixed by how
+// far behind the casters the receiver lies: the casters' mean distance
+// among those texels (Fernando's PCSS blocker search, "Percentage-Closer
+// Soft Shadows", 2005), all 7x7 at 30 % of their distance behind them. A
+// shadow's edge far from its caster crosses the map's texels at a shallow
+// angle, and the 3x3 printed their steps along it: a CPU model of the
+// spot box's far edge (texels 2.45 cm there) put its 0.5 contour 0.53 cm
+// rms (1.13 at most) off a straight line under the 3x3, 0.27 (0.61)
+// under a 5x5, 0.14 (0.24) under the 7x7. Nearer contact the edge stays
+// the tent's. The light has no size: the widening is in texels, an
+// antialiasing filter of the map, not a penumbra. 64 reads a shadowed
+// light per pixel, against the tent's 16.
+fn local_wide(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(local_shadow_map));
+  let p = uv * vec2<f32>(size) - 0.5;
+  let base = vec2<i32>(floor(p)) - 3;
+  let f = fract(p);
+  var wide = 0.0;
+  var narrow = 0.0;
+  var blockers = 0.0;
+  var sum = 0.0;
+  for (var j = 0; j < 8; j++) {
+    let wy = select(select(1.0, f.y, j == 7), 1.0 - f.y, j == 0);
+    let ny = select(0.0, select(select(1.0, f.y, j == 5), 1.0 - f.y, j == 2), j >= 2 && j <= 5);
+    for (var i = 0; i < 8; i++) {
+      let wx = select(select(1.0, f.x, i == 7), 1.0 - f.x, i == 0);
+      let nx = select(0.0, select(select(1.0, f.x, i == 5), 1.0 - f.x, i == 2), i >= 2 && i <= 5);
+      let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
+      let d = textureLoad(local_shadow_map, at, i32(layer), 0).r;
+      let r = ref_depth + dot(slope, vec2<f32>(f32(i - 3), f32(j - 3)) - f);
+      let w = wx * wy;
+      if (r <= d) {
+        wide += w;
+        narrow += nx * ny;
+      } else {
+        blockers += w;
+        sum += w * d;
+      }
+    }
+  }
+  if (blockers <= 0.0) { return 1.0; }
+  let blocker = max(sum / blockers, 1e-6);
+  let t = clamp((ref_depth - blocker) / blocker / 0.3, 0.0, 1.0);
+  return mix(narrow / 9.0, wide / 49.0, t);
+}
+
+// One filter of a local layer: the 2x2 PCF (`wide` false) or
+// [`local_wide`].
+fn local_filter(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>, wide: bool) -> f32 {
+  if (!wide) { return pcf(local_shadow_map, uv, layer, ref_depth, vec2<f32>(0.0)); }
+  return local_wide(uv, layer, ref_depth, slope);
+}
+
 // Both biases scale with the distance to the light, as its texels widen
 // with it (`cone.z`: the normal offset per metre at a grazing light, `cone.w`:
-// the depth bias as a fraction of the distance), and the normal offset with
-// the light's angle to the surface (a quarter of it facing the light), so
-// a box standing on a floor casts its shadow from its base, not from a
-// little way out. `wide` filters with the tent; the volumetric march takes
-// the 2x2 PCF, as it averages many samples anyway.
+// the depth bias as a fraction of the distance, [`local_bias`]), and the
+// normal offset with the light's angle to the surface (a quarter of it
+// facing the light), so a box standing on a floor casts its shadow from
+// its base, not from a little way out. An open receiver is filtered over
+// its plane ([`receiver_slope`]; a closed one is flat, as
+// [`shadow_closed`] says). `wide` filters with [`local_filter`]'s wide
+// kernels; the volumetric march takes the 2x2 PCF, as it averages many
+// samples anyway.
 fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool) -> f32 {
   let slot = i32(light.direction_slot.w);
   if (slot < 0) { return 1.0; }
@@ -296,6 +406,8 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
   let offset = p + n * light.cone.z * dist * (0.25 + sin_l);
   var layer = u32(slot);
   let size = vec2<f32>(textureDimensions(local_shadow_map));
+  let k = local_bias(light);
+  let plane = wide && !shadow_closed;
   // The receiver plane, about a texel along each tangent (a 90-degree
   // face's texel at this distance; the plane is what matters, not the step).
   let t = plane_tangents(n);
@@ -304,32 +416,36 @@ fn local_shadow_lookup(light: LocalLight, p: vec3<f32>, n: vec3<f32>, wide: bool
     let below = offset.y - light.position_range.y <= 0.0;
     let sigma = select(-1.0, 1.0, below);
     layer += select(1u, 0u, below);
-    let a = paraboloid_uv_ref(light, offset, sigma);
-    if (!wide) { return pcf(local_shadow_map, a.xy, layer, a.z, vec2<f32>(0.0)); }
-    let slope = receiver_slope(
-      a,
-      paraboloid_uv_ref(light, offset + t[0] * h, sigma),
-      paraboloid_uv_ref(light, offset + t[1] * h, sigma),
-      size,
-      n_dot_l,
-    );
-    return pcf_tent(local_shadow_map, a.xy, layer, a.z, slope);
+    let a = paraboloid_uv_ref(light, offset, sigma, k);
+    var slope = vec2<f32>(0.0);
+    if (plane) {
+      slope = receiver_slope(
+        a,
+        paraboloid_uv_ref(light, offset + t[0] * h, sigma, k),
+        paraboloid_uv_ref(light, offset + t[1] * h, sigma, k),
+        size,
+        n_dot_l,
+      );
+    }
+    return local_filter(a.xy, layer, a.z, slope, wide);
   }
   if (light.color_kind.w < 0.5) { layer += cube_face(to_frag); }
-  let a = perspective_uv_ref(light, layer, offset);
+  let a = perspective_uv_ref(light, layer, offset, k);
   if (a.w <= 0.0) { return 1.0; }
   let uv = a.xy;
   if (light.color_kind.w > 0.5 && (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)))) { return 1.0; }
   let at = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
-  if (!wide) { return pcf(local_shadow_map, at, layer, a.z, vec2<f32>(0.0)); }
-  let slope = receiver_slope(
-    a.xyz,
-    perspective_uv_ref(light, layer, offset + t[0] * h).xyz,
-    perspective_uv_ref(light, layer, offset + t[1] * h).xyz,
-    size,
-    n_dot_l,
-  );
-  return pcf_tent(local_shadow_map, at, layer, a.z, slope);
+  var slope = vec2<f32>(0.0);
+  if (plane) {
+    slope = receiver_slope(
+      a.xyz,
+      perspective_uv_ref(light, layer, offset + t[0] * h, k).xyz,
+      perspective_uv_ref(light, layer, offset + t[1] * h, k).xyz,
+      size,
+      n_dot_l,
+    );
+  }
+  return local_filter(at, layer, a.z, slope, wide);
 }
 
 struct Surface {

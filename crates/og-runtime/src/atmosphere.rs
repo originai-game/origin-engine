@@ -488,7 +488,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }
             scene.fog = Some(fog);
         }
-        scene.light.intensity *= look.light;
+        scene.light.cover(look.light);
         scene.environment.intensity *= 0.5 + 0.5 * look.light;
         if let Some(emitter) = &look.emitter {
             // The emitter is remade only when its inputs change.
