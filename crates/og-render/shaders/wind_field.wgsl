@@ -28,7 +28,9 @@ struct Sim {
   // z: turbulence (0..1), w: the gust patches' size (m).
   drive: vec4<f32>,
   // x: the step (s), y: 1 on the first step of a frame (the drawn lean
-  // moves to `previous`), z: the motors, w: cells a side.
+  // moves to `previous`), 2 on the last step of a start with no frame
+  // drawn before (`previous` is the lean this step reaches: no motion),
+  // z: the motors, w: cells a side.
   step: vec4<f32>,
   // Per motor two rows: (x, z absolute, radius, strength m/s) and
   // (direction x, z, kind: 0 omni, 1 directional, 2 vortex, 0).
@@ -193,16 +195,29 @@ fn advect(@builtin(global_invocation_id) id: vec3<u32>) {
   aux_b[i] = aux_a[j];
 }
 
-// The velocity's divergence (per cell), the solid edges mirrored.
+// The velocity at cell `c` less the motors' push there: what the
+// projection keeps free of divergence.
+fn unforced(c: vec2<i32>, level: i32) -> vec2<f32> {
+  let k = clamp_cell(c);
+  return vel_b[cell_index(k, level)].xy - motor_velocity(cell_world(vec2<f32>(k), level));
+}
+
+// The velocity's divergence (per cell), the solid edges mirrored, less
+// the motors' own. The field is a slice of the air near the ground: a
+// motor's outflow (an omni blast spreading from its centre, a gust
+// fading at a directional's edge) is fed from and lost to the air above,
+// a source the projection must keep (Stam, *Stable Fluids*, 1999, §3's
+// sources; Ghost of Tsushima's motors push the air outward). Projected
+// whole, an omni motor's push cancelled itself and moved nothing.
 @compute @workgroup_size(8, 8, 1)
 fn divergence_pass(@builtin(global_invocation_id) id: vec3<u32>) {
   let c = vec2<i32>(id.xy);
   let level = i32(id.z);
   if (!inside_grid(c) || level > 1) { return; }
-  let l = vel_b[cell_index(clamp_cell(c - vec2<i32>(1, 0)), level)].x;
-  let r = vel_b[cell_index(clamp_cell(c + vec2<i32>(1, 0)), level)].x;
-  let b = vel_b[cell_index(clamp_cell(c - vec2<i32>(0, 1)), level)].y;
-  let t = vel_b[cell_index(clamp_cell(c + vec2<i32>(0, 1)), level)].y;
+  let l = unforced(c - vec2<i32>(1, 0), level).x;
+  let r = unforced(c + vec2<i32>(1, 0), level).x;
+  let b = unforced(c - vec2<i32>(0, 1), level).y;
+  let t = unforced(c + vec2<i32>(0, 1), level).y;
   let i = cell_index(c, level);
   divergence[i] = 0.5 * (r - l + t - b);
   if (sim.shift[level].z != 0) { pressure[i] = 0.0; }
@@ -271,6 +286,7 @@ fn project(@builtin(global_invocation_id) id: vec3<u32>) {
   }
   let m = length(lean);
   if (m > WIND_MAX_LEAN) { lean *= WIND_MAX_LEAN / m; }
+  if (sim.step.y > 1.5) { a = vec4<f32>(a.xy, lean); }
   vel_a[i] = vec4<f32>(u, lean);
   aux_a[i] = vec4<f32>(rate, a.zw);
   textureStore(lean_out, vec2<i32>(c.x, level * n_side() + c.y), vec4<f32>(lean, a.zw));
