@@ -138,7 +138,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames)".into(),
         },
         0,
         move |_world, _args| {
@@ -172,6 +172,13 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 // the last the frame was drawn at (RenderSettings.interpolate),
                 // null when it was drawn at the tick.
                 "interpolation": rs.interp.drawn,
+                // What the frame's temporal noise was resolved with: the
+                // antialiasing resolved (`off`, `msaa4`, `taa`, `fxaa`),
+                // the frames drawn so far, and how many TAA's history has
+                // accumulated since its last reset (0 without TAA).
+                "antialias": rs.backend.as_ref().map(|b| b.antialias()),
+                "frameIndex": rs.backend.as_ref().and_then(|b| b.history()).map(|h| h.0),
+                "taaHistoryFrames": rs.backend.as_ref().and_then(|b| b.history()).map(|h| h.1),
                 // The frame's reflection probes: baked ones sampling a capture
                 // `og bake probes` wrote (`bakedFromCache`) or drawing their own.
                 "reflectionProbes": rs.scene.reflection_probes.iter().map(|p| json!({

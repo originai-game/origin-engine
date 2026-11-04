@@ -7,6 +7,14 @@ impl Renderer {
         &self.info
     }
 
+    /// The frames drawn so far, and how many of them TAA has accumulated
+    /// into its history since it was last reset (the last one included;
+    /// 0 when the last frame drew without TAA). What a capture's temporal
+    /// noise was resolved over (`dump_render`).
+    pub fn history(&self) -> (u64, u64) {
+        (self.frame_index, self.taa_history_frames)
+    }
+
     pub fn size(&self) -> (u32, u32) {
         (self.out_width, self.out_height)
     }
