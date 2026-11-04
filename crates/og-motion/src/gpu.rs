@@ -446,6 +446,12 @@ pub struct Gpu {
     /// The device's measured rate, FLOP a millisecond.
     rate: f64,
     timer: Option<Timer>,
+    /// Cumulative (submitted slices, timestamped slices, summed GPU ms).
+    pub slice_timing: (u32, u32, f64),
+    /// Native wall time suspended between GPU slice submissions. GPU work
+    /// can overlap this interval; it is not an independent compute timer.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub slice_yield_ms: f64,
     /// Native wall time in pipeline creation and weight/mask buffer creation.
     /// Buffer creation is CPU upload submission, not a GPU completion fence.
     #[cfg(not(target_arch = "wasm32"))]
@@ -643,6 +649,9 @@ impl Gpu {
             budget: None,
             rate: FIRST_RATE,
             timer,
+            slice_timing: (0, 0, 0.0),
+            #[cfg(not(target_arch = "wasm32"))]
+            slice_yield_ms: 0.0,
             #[cfg(not(target_arch = "wasm32"))]
             startup_ms: (compile_ms, upload_ms),
         })
@@ -679,6 +688,7 @@ impl Gpu {
             self.queue.write_buffer(buffer, 0, data);
         }
         let slices = slices(&plan.ops, self.budget.map(|ms| ms * self.rate));
+        self.slice_timing.0 += slices.len() as u32;
         let timed = if self.budget.is_some() && self.timer.is_some() {
             slices.len().min(TIMED_SLICES as usize)
         } else {
@@ -705,7 +715,13 @@ impl Gpu {
             }
             if i < last {
                 self.queue.submit(Some(encoder.finish()));
+                #[cfg(not(target_arch = "wasm32"))]
+                let yielded = std::time::Instant::now();
                 Yield(false).await;
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    self.slice_yield_ms += yielded.elapsed().as_secs_f64() * 1000.0;
+                }
                 encoder = self.encoder();
             }
         }
@@ -732,6 +748,8 @@ impl Gpu {
             if ms > 0.05 {
                 self.rate = 0.5 * self.rate + 0.5 * (work / ms);
             }
+            self.slice_timing.1 += timed as u32;
+            self.slice_timing.2 += ms;
         }
         Ok(out)
     }

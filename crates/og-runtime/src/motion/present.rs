@@ -164,6 +164,10 @@ struct Startup {
     first_dispatch_delay_ms: Option<f64>,
     first_inference_wall_ms: Option<f64>,
     first_inference_poll_ms: f64,
+    first_inference_slices: u32,
+    first_inference_timed_slices: u32,
+    first_inference_gpu_ms: Option<f64>,
+    first_inference_slice_yield_ms: Option<f64>,
     first_palette_delay_ms: Option<f64>,
     before_palette_readbacks: u32,
     before_palette_decode_calls: u32,
@@ -637,6 +641,14 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     if r.startup.first_inference_wall_ms.is_none() {
         let finished = now_ms();
         r.startup.first_inference_wall_ms = Some(finished - flight.started);
+        let (slices, timed, ms) = gpu.slice_timing;
+        r.startup.first_inference_slices = slices;
+        r.startup.first_inference_timed_slices = timed;
+        r.startup.first_inference_gpu_ms = (timed > 0).then_some(ms);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            r.startup.first_inference_slice_yield_ms = Some(gpu.slice_yield_ms);
+        }
         r.startup.inference_finished_at = Some(finished);
     }
     r.rate = gpu.rate();
