@@ -301,6 +301,22 @@ first frame its view stays. `FrameStats::shadow_cached` counts the layers
 whose static casters came from the cache (`shadow_passes` still counts
 every layer). Nothing feeds back into the simulation.
 
+**Contact shadows** (fxpost.wgsl `fs_contact`, `frame.rs`
+`contact_lights`). Only the three shadowed point and spot lights brightest
+at the camera (the shadows' importance: radiance over squared distance,
+ties in scene order) get screen-space contact shadows; every other
+shadowed light keeps its shadow map alone, and rect lights never get them.
+From each pixel a 16-step ray of max(4 cm per metre of view depth, 10 cm)
+marches towards each of those lights through the prepass depth; a sample
+within a quarter of the pixel's view depth behind the depth buffer hides
+the light. The masks share the AO texture (its gba, the AO in r), so they
+are off with screen-space GI, and only the standard and physical lit
+shaders read them (not terrain, scattered copies, custom lit shaders,
+probe faces, views or planar reflections). They resolve the centimetres
+where a caster meets what it stands on, which a local map's texels (1.4 to
+3.1 cm at 3.6 m from the light) cannot. Every frame with a shadowed point or
+spot light draws the prepass for them.
+
 **Point shadows** (`RenderDesc::point_shadows`, the IDL's
 `RenderOptions.pointShadows`): `Cube` draws six 90° faces, `Paraboloid` the
 hemisphere below the light and the one above, each in one pass (the
