@@ -1228,7 +1228,7 @@ is part of discovery or installation.
 versions, entry/type/skill paths and every document. The installed copy
 wins for a kind/name pair. `og ui eject <kit>/<document> [project]` copies
 an extension document to `assets/ui/<kit>/<document>.ogt`, alongside its
-companion files so relative references survive. Existing companion edits
+companion documents and assets so relative references survive (§17.5). Existing companion edits
 are preserved; `--force` replaces only the requested document. Legacy library
 screen names remain supported. The installed documents are ordinary
 assets: `og.load.document(world, "ui-kits/racing/results.ogt")` uses the
@@ -1421,6 +1421,28 @@ moves the kit's types out of `@origingame/engine` imports and
 the kit, bundled or installed, is kept. A call through another alias of
 `og.ui`, or a file where the kit's name is already bound, is listed for a
 manual edit. A second run changes nothing.
+
+A kit's composed screens are documents, so a game changes their layout or
+adds a field in text instead of copying a fixed-field function. The racing
+kit's `race-results.ogt` (`type screen`, name `race-results`) holds the
+place, the best lap and points, the classification as a `for row in rows`
+block and the rewards, emits `continue`, `restart` and `replay`, and
+leaves a `Podium` slot for the game's own podium. A game loads it from
+its installed kit (`og.load.document(world,
+"ui-kits/racing/race-results.ogt")`) or ejects it alone (`og ui eject
+racing/race-results`, loaded as `ui/racing/race-results.ogt`). Eject
+copies the document's companions, the other documents and assets of the
+kit, never the kit's TypeScript, manifest, skill or review sheet: those
+come with `og ui add`. `og ui sheet <kit>` installs the kit into its
+working copy of the sheet, so a page loads the kit's documents from
+`ui-kits/<kit>/` exactly as a game does.
+
+Data a genre varies is open. A gacha with its own tiers (SSR, SR, R, or a
+ladder of ten) gives a featured unit or a pull item a `tier` (`{ label,
+rank, color }`) over the engine's `Rarity`: its colour tints the reveal,
+its label names it, and its rank orders the summary and, from 5, shines
+and bursts as legendary does. Scoreboards take any number of teams, a
+resource bar any resources, and a standings tower any field.
 
 ## 17a. The existing coverage kit
 

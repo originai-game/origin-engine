@@ -125,6 +125,10 @@
     ],
     "added": [
       {
+        "member": "UI kits: documents and open tiers",
+        "summary": "The racing kit ships race-results.ogt, a type screen document (place, best lap and points, the classification as a for block, rewards, a Podium slot; emits continue, restart and replay) that a game edits as text. Gacha featured units and pull items take a tier { label, rank, color } over Rarity for a game's own tiers. og ui sheet installs a kit into its sheet's working copy, so pages load the kit's documents as a game does."
+      },
+      {
         "member": "UI phase 0 grammar and review",
         "summary": "Selector-addressed painted parts, per-dressing ornamentTint, paint token alpha and gradients, selection/onSelection/accent/sceneInk/scenePlate/sceneShadow roles, per-role tracking/cjkTracking and locale-aware case upper, hero typography, document tabs, IconDesc.secondary/secondaryTint and LabelDesc.onScene. og ui sheet renders pack or kit baseline pages on demand at desktop and phone, 100% and 150%, outside the gate. MSDF overlap resolution handles negative bearings before sign/error correction."
       },
