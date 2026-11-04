@@ -56,7 +56,7 @@ function build(world: World): void {
   world.insert(crate, og.RigidBody, { kind: BODY_DYNAMIC, gravityScale: 0 });
   world.insert(crate, og.Collider, { shape: SHAPE_BOX, size: { x: 0.8, y: 0.8, z: 0.8 }, density: 600 });
   // Glass: weak, light, shattering at a touch.
-  prop(world, "props/pane.ogt", "pane", PANE, { toughness: 50, strength: 0, density: 2500, impactThreshold: 2, impactRadius: 0.5, sparks });
+  prop(world, "props/pane.ogt", "pane", PANE, { toughness: 25, strength: 0, density: 2500, impactThreshold: 2, impactRadius: 0.8, sparks });
 
   const sun = must(world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.4, y: -0.75, z: -0.5 }) }));
   world.insert(sun, og.DirectionalLight, { intensity: 3.2, castShadow: true });
