@@ -735,7 +735,8 @@ without clusters, object-space stylise, and `Culling.cpu`
 maps go through the same dispatch: each cascade and each local light's
 face is a view of its own, whose rows test the clustered casters (on
 every layer) against that pass's planes alone, with no normal cone (a
-front-sided caster draws its back faces) and no pyramid (it is the
+front-sided caster draws its back faces in a cascade, its front faces
+in a local light's view) and no pyramid (it is the
 camera's), at the level the camera picked, so a caster's shadow has the
 shape it is drawn with; they are drawn by vertex pulling in the shadow
 pipeline's state (`meshlet_shadow.wgsl`; alpha-tested and dissolving

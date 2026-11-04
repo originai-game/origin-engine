@@ -23,7 +23,9 @@ fn paraboloid_local(v: vec3<f32>, sigma: f32) -> vec3<f32> {
 
 // The clip position of a world point in this pass. A paraboloid hemisphere
 // is not a linear projection: each vertex is projected (the direction's xy
-// over 1 + its z), and the depth is distance / range. Points far behind the
+// over 1 + its z, x mirrored like the other local views, frame.rs
+// `LIT_SIDE`, so its casters draw their lit side), and the depth is
+// distance / range. Points far behind the
 // hemisphere keep a finite position; the fragment stage drops them.
 fn shadow_clip(world: vec4<f32>) -> vec4<f32> {
   return shadow_project(world, shadow_pass.view_proj * world);
@@ -37,7 +39,7 @@ fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
   let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.y);
   let d = max(length(l), 1e-6);
   let q = l / d;
-  let xy = vec2<f32>(-q.x, q.y) * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
+  let xy = q.xy * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
   return vec4<f32>(xy, clamp(d / shadow_pass.light.w, 0.0, 1.0), 1.0);
 }
 
@@ -55,7 +57,7 @@ fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32
     let sigma = shadow_pass.paraboloid.y;
     if (paraboloid_local(to, sigma).z < -PARABOLOID_MARGIN * dist) { discard; }
     let size = shadow_pass.paraboloid.z;
-    let ndc = vec2<f32>(1.0 - frag.x / size * 2.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
+    let ndc = vec2<f32>(frag.x / size * 2.0 - 1.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
     let r2 = dot(ndc, ndc);
     let q = vec3<f32>(2.0 * ndc, 1.0 - r2) / (1.0 + r2);
     let ray = vec3<f32>(q.x, -sigma * q.z, sigma * q.y);

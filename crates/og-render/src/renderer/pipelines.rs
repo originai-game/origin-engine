@@ -611,10 +611,12 @@ pub(crate) fn shadow_pipeline(
             compilation_options: Default::default(),
             buffers: if skinned { &skin } else { &plain },
         },
-        // Front-sided casters draw back faces only: the stored depth is the
-        // far side of a closed caster, so its lit side never compares
-        // against itself. Back-sided ones draw front faces; double-sided
-        // ones (open surfaces) both.
+        // Front-sided casters draw back faces only: in a cascade the stored
+        // depth is the far side of a closed caster, so its lit side never
+        // compares against itself. Back-sided ones draw front faces;
+        // double-sided ones (open surfaces) both. A local light's view is
+        // mirrored (frame.rs `LIT_SIDE`), which turns this around: its
+        // layers store a caster's lit side.
         primitive: wgpu::PrimitiveState {
             cull_mode: match side {
                 Side::Front => Some(wgpu::Face::Front),

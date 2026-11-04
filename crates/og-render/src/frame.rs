@@ -511,6 +511,25 @@ pub(crate) struct LocalShadow {
     pub faces: Vec<(Mat4, Frustum)>,
 }
 
+/// Mirrors a local shadow view's x after its projection, which turns the
+/// faces its casters draw around: a local layer stores a front-sided
+/// caster's lit side, where the cascades store its far side (pipelines.rs
+/// `shadow_pipeline`). A closed caster standing on a floor has its far
+/// side at the floor, its base face on it and its face away from the
+/// light a few centimetres above it, so a local map's filter taps, wider
+/// than those centimetres a few metres from the light, read the floor as
+/// lit beside the caster's base. The lit side is the caster's nearest face
+/// to the light, as far from the floor as the caster is tall. Every
+/// caster's pass and every lookup takes the same matrix, so nothing else
+/// changes; a paraboloid hemisphere mirrors its projection in
+/// shadow_pass.wgsl and lighting.wgsl the same way.
+const LIT_SIDE: Mat4 = Mat4::from_cols(
+    glam::Vec4::new(-1.0, 0.0, 0.0, 0.0),
+    glam::Vec4::Y,
+    glam::Vec4::Z,
+    glam::Vec4::W,
+);
+
 const CUBE_FACES: [(Vec3, Vec3); 6] = [
     (Vec3::X, Vec3::NEG_Y),
     (Vec3::NEG_X, Vec3::NEG_Y),
@@ -649,7 +668,7 @@ pub(crate) fn local_lights(
                                 light.position + dir,
                                 up,
                             );
-                            let vp = proj * view;
+                            let vp = LIT_SIDE * proj * view;
                             (vp, Frustum::from_view_proj(vp))
                         })
                         .collect()
@@ -673,7 +692,7 @@ pub(crate) fn local_lights(
                         light.position + dir,
                         up,
                     );
-                    let vp = proj * view;
+                    let vp = LIT_SIDE * proj * view;
                     vec![(vp, Frustum::from_view_proj(vp))]
                 }
                 LightKind::Rect {
@@ -700,7 +719,7 @@ pub(crate) fn local_lights(
                                 light.position + normal * side,
                                 up,
                             );
-                            let vp = proj * view;
+                            let vp = LIT_SIDE * proj * view;
                             (vp, Frustum::from_view_proj(vp))
                         })
                         .collect()
@@ -754,16 +773,25 @@ pub(crate) fn local_lights(
         // spans 2 / size radians at its centre, a paraboloid's 4 / (scale ×
         // size), about 2.2 times as much): the normal offset at a grazing
         // light, a texel (lighting.wgsl scales it down to a quarter facing
-        // the light), and the depth bias, half a texel, as a fraction of the
-        // distance. Both used to be larger and the depth bias a fixed
-        // fraction of the range, which lifted shadows off their casters'
-        // bases (light under a box standing on the floor).
+        // the light), and the depth bias, as a fraction of the distance, a
+        // texel, a texel and a half in a paraboloid. The maps store their
+        // casters' lit side (`LIT_SIDE`), so a lit surface compares against
+        // itself: half a texel left the tent's far taps on a floor at 50 to
+        // 60° from a paraboloid's light up to 3 % in its own shadow, and a
+        // paraboloid's straight edges, short of the curved ones the
+        // projection gives, carry a face's plane a little past its edge onto
+        // the lit face beside it (a 0.8 m box's lit faces up to 7 % at a
+        // texel, none at a texel and a half). A caster's base has its whole
+        // height of margin now, so the bias no longer lifts its shadow off
+        // it (back faces stored the floor itself under a box standing on
+        // it, which the filter's taps read beside its base).
         let texel = if point_paraboloid {
             4.0 / (PARABOLOID_SCALE * shadow_size as f32)
         } else {
             2.0 / shadow_size as f32
         };
-        let (normal_offset, depth_bias) = (texel, 0.5 * texel);
+        let depth_bias = if point_paraboloid { 1.5 * texel } else { texel };
+        let normal_offset = texel;
         gpu.push(LightGpu {
             position_range: light.position.extend(range).to_array(),
             color_kind: radiance.extend(kind).to_array(),

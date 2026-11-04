@@ -899,7 +899,8 @@ impl ScatterRenderer {
                     compilation_options: Default::default(),
                     buffers: &buffers,
                 },
-                // As shadow.wgsl's casters: front-sided ones draw back faces.
+                // As shadow.wgsl's casters: front-sided ones draw back faces (in a
+                // cascade; a local view is mirrored, frame.rs `LIT_SIDE`).
                 primitive: wgpu::PrimitiveState {
                     cull_mode: match side {
                         Side::Front => Some(wgpu::Face::Front),
