@@ -345,13 +345,13 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
-  // A displaced ground: the shadow lookup is offset along the drawn
-  // surface (or its relief would shadow itself), and its shading takes the
-  // relief no normal map draws. Weathering keeps the field's normal: the
-  // drawn one is interpolated per vertex, and faceted there.
-  let n_drawn = terrain_tilt(point, n_geo, in.relief.xy);
+  // A displaced ground's shading takes the relief no normal map draws.
+  // Its shadow lookup and weathering keep the field's normal: offset along
+  // the drawn one, a face turned towards a low sun gets less of the
+  // normal-offset bias and shadows itself in squares of shadow texels,
+  // and the drawn one is interpolated per vertex, faceted.
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_drawn);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_geo);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of

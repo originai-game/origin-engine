@@ -1029,7 +1029,7 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
 /// the ground falls away from it (m per m², a parabola).
 pub const DISPLACED_CREST: f32 = -12.0;
 pub const DISPLACED_FALL: f32 = 0.04;
-/// The cobbles' displacement in `displaced_scene` (m).
+/// The setts' displacement in `displaced_scene` (m).
 pub const DISPLACED_RELIEF: f32 = 0.1;
 
 /// The ground's height in `displaced_scene` at z.
@@ -1037,15 +1037,18 @@ pub fn displaced_height(z: f32) -> f32 {
     -DISPLACED_FALL * (z - DISPLACED_CREST) * (z - DISPLACED_CREST)
 }
 
-/// `displaced_scene`'s stones: metres per repeat of the texture, stones
-/// a side per repeat, texels a side, and the joint's width (in stones).
+/// `displaced_scene`'s setts: metres per repeat of the texture, courses
+/// per repeat (20 cm each), stones per course (25 cm), texels a side, and
+/// the joint's width and the rim's rounding (in courses: 2 cm each).
 const COBBLE_TILE: f32 = 1.0;
-const COBBLE_STONES: i32 = 4;
+const COBBLE_COURSES: i32 = 5;
+const COBBLE_PER_COURSE: i32 = 4;
 const COBBLE_TEXELS: u32 = 512;
-const COBBLE_JOINT: f32 = 0.12;
+const COBBLE_JOINT: f32 = 0.1;
+const COBBLE_RIM: f32 = 0.1;
 
-/// A point of the cobble texture: its height (0 in the joints, each
-/// stone rounded at its edge and nearly flat on top at its own height),
+/// A point of the sett texture: its height (0 in the joints, each stone
+/// flat on top at its own height and tilt, rounded only over its rim),
 /// how much of it is stone, its distance from the joint's middle and its
 /// stone's id (0 to 1).
 struct Cobble {
@@ -1055,55 +1058,70 @@ struct Cobble {
     id: f32,
 }
 
-/// The cobbles at texture coordinates (u, v), repeating: a jittered
-/// Voronoi grid of stones whose edges are the distance to the cell's
-/// border (the second-nearest centre's distance minus the nearest's,
-/// Worley 1996), the joints between them where that is small.
+/// The setts at texture coordinates (u, v), repeating: dressed stones
+/// laid in courses along u, each course's joints moved along by its own
+/// hash (so they never line up course to course) and each joint by a
+/// little more, each stone a rounded rectangle (its signed distance,
+/// Quílez's 2D box with rounded corners) whose edges a little noise
+/// breaks, as hand-dressed edges are.
 fn cobble(u: f32, v: f32) -> Cobble {
-    let n = COBBLE_STONES;
+    let (n, k) = (COBBLE_COURSES, COBBLE_PER_COURSE);
+    // Course units: a course is 1 tall; along it, k stones fill n units.
     let (x, y) = (u * n as f32, v * n as f32);
-    let (cx, cy) = (x.floor() as i32, y.floor() as i32);
-    let (mut f1, mut f2, mut id) = (f32::MAX, f32::MAX, 0.0f32);
-    for dy in -2..=2 {
-        for dx in -2..=2 {
-            let (gx, gy) = (cx + dx, cy + dy);
-            let (wx, wy) = (gx.rem_euclid(n), gy.rem_euclid(n));
-            let jitter = |s: u32| 0.1 + 0.8 * hash2(wx, wy, s);
-            let d = Vec2::new(x - (gx as f32 + jitter(71)), y - (gy as f32 + jitter(73))).length();
-            if d < f1 {
-                (f2, f1) = (f1, d);
-                id = hash2(wx, wy, 79);
-            } else if d < f2 {
-                f2 = d;
-            }
-        }
+    let row = (y.floor() as i32).rem_euclid(n);
+    let span = n as f32 / k as f32;
+    let shift = hash2(row, 0, 91) * span;
+    // The joints of this course, each moved by up to a fifth of a stone.
+    let joint = |j: i32| {
+        let w = j.rem_euclid(k);
+        let wrap = (j - w) / k;
+        (w as f32 + 0.4 * (hash2(row, w, 93) - 0.5)) * span + shift + (wrap * n) as f32
+    };
+    let mut j = ((x - shift) / span).floor() as i32 - 1;
+    while joint(j + 1) <= x {
+        j += 1;
     }
-    let edge = (f2 - f1) * 0.5;
-    let stone = ((edge - COBBLE_JOINT * 0.5) / 0.03).clamp(0.0, 1.0);
-    // A rounded fillet over the stone's outer 0.2 (a quarter circle, two
-    // of the drawn grid's spacings at the eye), and
-    // a smooth crown from its middle (the nearest centre's distance): no
-    // ridge along the cell's medial axis.
-    let t = ((edge - COBBLE_JOINT * 0.5) / 0.2).clamp(0.0, 1.0);
-    let fillet = (1.0 - (1.0 - t) * (1.0 - t)).sqrt();
-    let crown = 1.0 - 0.35 * (f1 / 0.7).min(1.0).powi(2);
-    let top = 0.8 + 0.2 * id;
-    let profile = fillet * crown;
+    while joint(j) > x {
+        j -= 1;
+    }
+    let (x0, x1) = (joint(j), joint(j + 1));
+    let id = hash2(row, j.rem_euclid(k), 79);
+    // The stone's rounded rectangle, the joint's half taken off each side.
+    let centre = Vec2::new((x0 + x1) * 0.5, y.floor() + 0.5);
+    let half = Vec2::new((x1 - x0) * 0.5, 0.5) - COBBLE_JOINT * 0.5;
+    let r = 0.12;
+    let q = (Vec2::new(x, y) - centre).abs() - half + r;
+    let rough = 0.025 * (tiling_fbm(u, v, 32, 95) - 0.5);
+    let d = q.max(Vec2::ZERO).length() + q.max_element().min(0.0) - r + rough;
+    let inside = (-d).max(0.0);
+    // Flat on top at its own height and tilt, rounded over its rim only:
+    // a superellipse of power 4, so the top stays flat to within about
+    // half the rim of the edge and drops there over a tight arris into a
+    // steep side (a circle, power 2, domes the whole rim into a pillow).
+    let t = (inside / COBBLE_RIM).min(1.0);
+    let rim = (1.0 - (1.0 - t).powi(4)).powf(0.25);
+    let tilt = Vec2::new(
+        hash2(row, j.rem_euclid(k), 97),
+        hash2(row, j.rem_euclid(k), 99),
+    ) - 0.5;
+    let lean = 0.12 * tilt.dot((Vec2::new(x, y) - centre) / half.max(Vec2::splat(0.1)));
+    let top = 0.62 + 0.26 * id + lean;
     Cobble {
-        height: profile * top,
-        stone,
-        edge,
+        height: rim * top,
+        stone: (inside / 0.02).min(1.0),
+        edge: (COBBLE_JOINT * 0.5 - d.max(0.0)).max(0.0),
         id,
     }
 }
 
 /// T4: a 128 m terrain sampled every 50 cm, a gentle crest running along
 /// x at z -12 (the ground falls away from it on both sides), one layer of
-/// cobbles about 25 cm across set in mortar joints (`cobble`): its albedo,
+/// dressed setts 25 × 20 cm laid in courses with mortar joints (`cobble`):
+/// its albedo,
 /// its height in the albedo's alpha, `displacement` metres of it, and the
 /// normal map of that relief; seen from 4 m before the crest,
 /// 30 cm over the ground (34 cm under the crest), under a low sun from the
-/// side: the crest is the skyline, and the cobbles throw shadows towards
+/// side: the crest is the skyline, and the setts throw shadows towards
 /// the camera's right.
 pub fn displaced_scene(displacement: f32) -> RenderScene {
     let mut scene = RenderScene::new();

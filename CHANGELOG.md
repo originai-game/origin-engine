@@ -51,9 +51,10 @@ is one line here, written at the merge that changes
   cells' split triangles, as collision does, instead of bilinearly; this
   also changes a `lodSpacing` finer than the samples. In the morph band
   even corners now also move, to the coarser level's corner as that level
-  reads it, so displaced levels meet without cracks. The shadow lookup
-  is offset along the displaced surface, and a layer without a normal map
-  is shaded with its relief's slope. Collision,
+  reads it, so displaced levels meet without cracks. A layer without a
+  normal map is shaded with its relief's slope; the shadow lookup keeps
+  the field's normal (offset along the drawn one, a face turned to a low
+  sun shadowed itself in squares of shadow texels). Collision,
   `og.terrain.sample` and picking keep the undisplaced field. The terrain
   blob's layer row is v4, so terrains cook again. Off by default:
   existing terrains draw as before.

@@ -48,8 +48,11 @@ fn skyline_roughness(img: &RgbaImage) -> f32 {
 }
 
 /// The crest 4 m out is the skyline. Undisplaced it is a straight line
-/// (the ground is the same all along x); with 10 cm of cobbles it rises
-/// and falls over each cobble, several pixels at that distance.
+/// (the ground is the same all along x); with 10 cm of setts it steps
+/// up and down from sett to sett. Their tops are flat, so it runs level
+/// along each and breaks only at the joints: about a pixel RMS about its
+/// line at that distance (rounded cobbles strayed twice that), where the
+/// flat crest strays none.
 #[test]
 fn displacement_roughens_the_skyline() {
     let report = check("terrain-displaced");
@@ -61,7 +64,7 @@ fn displacement_roughens_the_skyline() {
     let (before, after) = (skyline_roughness(&flat), skyline_roughness(&cobbled));
     assert!(before < 0.5, "the flat crest's skyline strays {before} px");
     assert!(
-        after > 2.0,
+        after > 0.5,
         "the cobbled crest's skyline strays only {after} px"
     );
 }
