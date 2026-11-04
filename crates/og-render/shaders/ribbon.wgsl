@@ -118,6 +118,18 @@ fn fs_oit_list(in: RibbonOut, @builtin(sample_mask) mask: u32) -> OitOutput {
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: RibbonOut) -> OitOutput {
+  let c = ribbon_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: RibbonOut) {
+  let c = ribbon_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
   let tex = textureSample(ribbon_tex, ribbon_sampler, in.uv);
   var c = in.color;

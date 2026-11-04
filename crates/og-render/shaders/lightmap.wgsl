@@ -99,3 +99,19 @@ fn fs_lightmap_oit_list(in: LightmappedOut, @builtin(front_facing) front_facing:
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
 }
+
+@fragment
+fn fs_lightmap_oit_front(in: LightmappedOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lightmapped_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_lightmap_oit_mark(in: LightmappedOut, @builtin(front_facing) front_facing: bool) {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lightmapped_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}

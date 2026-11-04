@@ -480,6 +480,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         .transient(
             "oit.reveal",
             desc(w, h, crate::oit::REVEAL_FORMAT, cfg.samples, attach_bind),
+        )
+        .transient(
+            "oit.front",
+            desc(w, h, crate::oit::FRONT_FORMAT, cfg.samples, attach_bind),
         );
     }
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
@@ -843,7 +847,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                     writes.push("gi-write");
                 }
                 if cfg.oit.is_some() {
-                    writes.extend(["oit.accum", "oit.reveal"]);
+                    writes.extend(["oit.accum", "oit.reveal", "oit.front"]);
                 }
                 g.pass(name, &reads, &writes)
             }
@@ -1061,6 +1065,10 @@ mod tests {
             assert_eq!(
                 plan.lifetime("oit.reveal").unwrap(),
                 (at("main"), at("taa"))
+            );
+            assert_eq!(
+                plan.lifetime("oit.front").unwrap(),
+                (at("main"), at("main"))
             );
             assert_eq!(
                 plan.lifetime("oit.accum").unwrap(),

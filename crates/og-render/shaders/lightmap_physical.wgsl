@@ -61,6 +61,22 @@ fn fs_physical_lightmap_oit_list(in: PhysicalLightmappedOut, @builtin(front_faci
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_physical_lightmap_oit_front(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_lightmapped_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_physical_lightmap_oit_mark(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_lightmapped_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 fn physical_lightmapped_fragment(in: PhysicalLightmappedOut) -> vec4<f32> {
   baked_lightmap = lightmap_texel(in.lightmap);
   var p: PhysicalOut;

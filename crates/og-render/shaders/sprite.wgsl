@@ -334,6 +334,18 @@ fn fs_oit_list(in: SpriteOut, @builtin(sample_mask) mask: u32) -> OitOutput {
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: SpriteOut) -> OitOutput {
+  let c = sprite_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: SpriteOut) {
+  let c = sprite_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 fn sprite_fragment(in: SpriteOut) -> vec4<f32> {
   var c = sprite_color(in);
   if (in.shadow > 0.5) {
@@ -430,6 +442,18 @@ fn fs_msdf_oit_list(in: SpriteOut, @builtin(sample_mask) mask: u32) -> OitOutput
   let c = msdf_fragment(in);
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
+}
+
+@fragment
+fn fs_msdf_oit_front(in: SpriteOut) -> OitOutput {
+  let c = msdf_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_msdf_oit_mark(in: SpriteOut) {
+  let c = msdf_fragment(in);
+  oit_front_mark(in.clip, c.a);
 }
 
 fn msdf_fragment(in: SpriteOut) -> vec4<f32> {

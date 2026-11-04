@@ -150,7 +150,11 @@ impl Renderer {
     /// ([`RenderInfo::transparency`], [`FrameStats::transparency_layers`]).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn read_transparency_counts(&self) -> Option<Result<crate::TransparencyCounts, String>> {
-        let arena = self.oit.arena.as_ref()?;
+        let arena = self
+            .oit
+            .arena
+            .as_ref()
+            .filter(|a| a.size.nodes_per_pixel > 0)?;
         Some(arena.read_counts(&self.device, &self.queue))
     }
 

@@ -6,12 +6,22 @@
 //! scene before the additive effects, the sprites and the post chain.
 //!
 //! - [`Transparency::Weighted`], the default: weighted blended OIT
-//!   (McGuire and Bavoil, JCGT 2(2), 2013). Each fragment adds its
+//!   (McGuire and Bavoil, JCGT 2(2), 2013) with one exact layer (hybrid
+//!   transparency: Maule, Comba, Torchelsen and Bastos, I3D 2013). A
+//!   marking pass leaves each pixel's nearest depth of a fragment at least
+//!   1/8 opaque in the arena (an `atomicMax` of the inverted depth bits,
+//!   the same in any order); the OIT pass sends that fragment to a front
+//!   target and every other one to the weighted tail, where it adds its
 //!   premultiplied colour times a weight of its alpha and depth into a
 //!   half-float accumulation target and multiplies its transmittance into
-//!   a revealage target; the resolve covers the opaque scene with the
-//!   weighted mean colour by one minus the revealage. An approximation:
-//!   overlapping layers of similar alpha read as their mean.
+//!   a revealage target. The resolve composites the front exactly over the
+//!   tail's weighted mean, so a billboard before glass keeps its colour;
+//!   only the layers behind the nearest read as their mean. Chosen over
+//!   moment-based OIT (Münstermann et al. 2018: two shading passes and
+//!   32-bit float moments, whose blending is optional on the web, still
+//!   approximate in front) and over k > 1 layers (k-buffers, stochastic
+//!   layered alpha: ordered pixel access or 64-bit atomics, which WebGPU
+//!   lacks). Weighted alone where the device writes no fragment storage.
 //! - [`Transparency::LinkedList`], the high tier: every fragment is also
 //!   kept in its pixel's own nodes in one storage arena (group 0 binding
 //!   12, [`Arena`]), up to [`RenderDesc::transparency_layers`] a pixel;
@@ -72,16 +82,34 @@ pub const MAX_TRANSPARENCY_LAYERS: u32 = 32;
 /// What a pass draws its blended surfaces into.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Oit {
-    /// The weighted targets only.
+    /// The weighted targets only (a device without fragment storage).
     Weighted,
-    /// The weighted targets and the arena.
+    /// The weighted mode's hybrid: the weighted targets, the pixel's
+    /// nearest layer kept exact in the front target, chosen by the depth
+    /// [`Oit::Mark`] left in the arena (`oit_arena.wgsl` `oit_hybrid`).
+    Front,
+    /// The front layer's marking pass before [`Oit::Front`]: no colour
+    /// targets, each fragment's depth into its pixel's arena word.
+    Mark,
+    /// The weighted targets and the linked lists' arena.
     List,
+}
+
+impl Oit {
+    /// Whether its passes bind the arena (the frame group's binding 12).
+    pub fn arena(self) -> bool {
+        self != Oit::Weighted
+    }
 }
 
 /// The accumulation target: premultiplied colour and alpha times weight.
 pub(crate) const ACCUM_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-/// The revealage target: the product of the fragments' transmittance.
-pub(crate) const REVEAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+/// The revealage target: the product of the tail fragments'
+/// transmittance (r) and of the front layer's (g).
+pub(crate) const REVEAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+/// The front layer: its premultiplied colour and alpha, added (one
+/// fragment, or the coplanar ones that share the front).
+pub(crate) const FRONT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// The participants' shared fragment code.
 pub(crate) const OIT_WGSL: &str = wgsl!("oit.wgsl");
@@ -91,17 +119,21 @@ const RESOLVE_WGSL: &str = wgsl!("oit_resolve.wgsl");
 const LIST_WGSL: &str = wgsl!("oit_list.wgsl");
 
 /// The fragment entry of `fs` drawing into `mode`'s targets: `fs_oit`,
-/// `fs_oit_list` (every participant module defines both beside `fs`).
+/// `fs_oit_front`, `fs_oit_mark`, `fs_oit_list` (every participant module
+/// defines them beside `fs`).
 pub(crate) fn fragment_entry(fs: &str, mode: Oit) -> String {
     match mode {
         Oit::Weighted => format!("{fs}_oit"),
+        Oit::Front => format!("{fs}_oit_front"),
+        Oit::Mark => format!("{fs}_oit_mark"),
         Oit::List => format!("{fs}_oit_list"),
     }
 }
 
-/// The two targets an OIT pass draws: colour and alpha added, revealage
-/// multiplied by each fragment's transmittance.
-pub(crate) fn targets() -> [Option<wgpu::ColorTargetState>; 2] {
+/// The three targets an OIT pass draws: the tail's colour and alpha
+/// added, the revealages multiplied by each fragment's transmittance, the
+/// front layer added.
+pub(crate) fn targets() -> [Option<wgpu::ColorTargetState>; 3] {
     let add = wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::One,
         dst_factor: wgpu::BlendFactor::One,
@@ -127,7 +159,15 @@ pub(crate) fn targets() -> [Option<wgpu::ColorTargetState>; 2] {
                 color: reveal,
                 alpha: reveal,
             }),
-            write_mask: wgpu::ColorWrites::RED,
+            write_mask: wgpu::ColorWrites::RED | wgpu::ColorWrites::GREEN,
+        }),
+        Some(wgpu::ColorTargetState {
+            format: FRONT_FORMAT,
+            blend: Some(wgpu::BlendState {
+                color: add,
+                alpha: add,
+            }),
+            write_mask: wgpu::ColorWrites::ALL,
         }),
     ]
 }
@@ -135,7 +175,8 @@ pub(crate) fn targets() -> [Option<wgpu::ColorTargetState>; 2] {
 /// The OIT variant of a blended HDR pipeline `p` (its module, vertex
 /// state, culling and depth test): the fragment entry of `mode`, the OIT
 /// targets, no depth write and no alpha to coverage. `p.layout` must be
-/// the arena's ([`OitState::layout`]) for [`Oit::List`].
+/// the arena's ([`OitState::layout`]) for the modes that bind it
+/// ([`Oit::arena`]); [`Oit::Mark`] draws no colour.
 pub(crate) fn pipeline(
     device: &wgpu::Device,
     constants: &[(&str, f64)],
@@ -147,6 +188,7 @@ pub(crate) fn pipeline(
         ..Default::default()
     };
     let fs = fragment_entry(p.fs, mode);
+    let targets = targets();
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(&format!("{} (oit)", p.label)),
         layout: Some(p.layout),
@@ -175,7 +217,7 @@ pub(crate) fn pipeline(
             module: p.module,
             entry_point: Some(&fs),
             compilation_options: options,
-            targets: &targets(),
+            targets: if mode == Oit::Mark { &[] } else { &targets },
         }),
         multiview_mask: None,
         cache: crate::pipeline_cache::of(device).as_ref(),
@@ -255,6 +297,20 @@ impl ArenaSize {
             height,
             nodes_per_pixel,
             bytes: HEADER_BYTES + pixels * (COUNT_BYTES + NODE_BYTES * u64::from(nodes_per_pixel)),
+        })
+    }
+
+    /// The weighted mode's front layer (`oit_arena.wgsl` `oit_front_mark`):
+    /// the header and one word a pixel, in the place of the counts; `None`
+    /// where `max_bytes` cannot hold it.
+    pub fn front(width: u32, height: u32, max_bytes: u64) -> Option<Self> {
+        let pixels = u64::from(width) * u64::from(height);
+        let bytes = HEADER_BYTES + pixels * COUNT_BYTES;
+        (pixels > 0 && bytes <= max_bytes.min(u64::from(u32::MAX) * 4)).then_some(ArenaSize {
+            width,
+            height,
+            nodes_per_pixel: 0,
+            bytes,
         })
     }
 
@@ -487,7 +543,9 @@ pub(crate) struct OitState {
     pub layers: u32,
     /// The device's arena budget ([`arena_budget`]).
     pub budget: u64,
-    /// The frame group with binding 12 (linked lists only).
+    /// The frame group with binding 12, the arena (the linked lists, and
+    /// the weighted mode's front layer), where the device writes storage
+    /// from fragment shaders.
     pub frame_list_layout: Option<wgpu::BindGroupLayout>,
     pub arena: Option<Arena>,
     pub resolver: Resolver,
@@ -510,11 +568,11 @@ impl OitState {
             Transparency::LinkedList if supports_lists(flags, limits) => Transparency::LinkedList,
             _ => Transparency::Weighted,
         };
-        let frame_list_layout = (mode == Transparency::LinkedList).then(|| {
+        let frame_list_layout = supports_lists(flags, limits).then(|| {
             let mut entries = frame_entries.to_vec();
             entries.push(arena_layout_entry());
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("frame (oit lists)"),
+                label: Some("frame (oit arena)"),
                 entries: &entries,
             })
         });
@@ -531,8 +589,10 @@ impl OitState {
     }
 
     /// The pass mode of a frame drawn at `width` x `height`: the linked
-    /// lists while an arena of at least one node a pixel fits (made or
-    /// made again here at that size), else weighted.
+    /// lists while an arena of at least one node a pixel fits, the
+    /// weighted mode with its front layer while one word a pixel fits
+    /// (the arena made or made again here at that size), else weighted
+    /// alone (no arena: the device writes no storage from fragments).
     pub fn frame_mode(
         &mut self,
         device: &wgpu::Device,
@@ -540,17 +600,24 @@ impl OitState {
         width: u32,
         height: u32,
     ) -> Oit {
-        if self.mode != Transparency::LinkedList {
+        if self.frame_list_layout.is_none() {
             return Oit::Weighted;
         }
-        let Some(size) = ArenaSize::new(width, height, self.layers, self.budget) else {
+        let list = (self.mode == Transparency::LinkedList)
+            .then(|| ArenaSize::new(width, height, self.layers, self.budget))
+            .flatten();
+        let (size, mode) = match list {
+            Some(size) => (Some(size), Oit::List),
+            None => (ArenaSize::front(width, height, self.budget), Oit::Front),
+        };
+        let Some(size) = size else {
             self.arena = None;
             return Oit::Weighted;
         };
         if self.arena.as_ref().is_none_or(|a| a.size != size) {
             self.arena = Some(Arena::new(device, queue, size));
         }
-        Oit::List
+        mode
     }
 
     /// The pipeline layout `name` of an OIT pass in `mode`: group 0 the
@@ -563,7 +630,7 @@ impl OitState {
         frame: &wgpu::BindGroupLayout,
         rest: &[&wgpu::BindGroupLayout],
     ) -> &wgpu::PipelineLayout {
-        let list = mode == Oit::List;
+        let list = mode.arena();
         let frame = match (&self.frame_list_layout, list) {
             (Some(l), true) => l,
             _ => frame,
@@ -600,8 +667,10 @@ pub(crate) fn resolve_source(msaa: bool, list: bool) -> String {
         "{fullscreen}
 @group(0) @binding(0) var oit_accum: {texture};
 @group(0) @binding(1) var oit_reveal: {texture};
+@group(0) @binding(2) var oit_front: {texture};
 fn oit_accum_at(p: vec2<i32>, s: u32) -> vec4<f32> {{ return textureLoad(oit_accum, p, {sample}); }}
-fn oit_reveal_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_reveal, p, {sample}).r; }}
+fn oit_reveal_at(p: vec2<i32>, s: u32) -> vec2<f32> {{ return textureLoad(oit_reveal, p, {sample}).rg; }}
+fn oit_front_at(p: vec2<i32>, s: u32) -> vec4<f32> {{ return textureLoad(oit_front, p, {sample}); }}
 "
     );
     if list {
@@ -611,8 +680,8 @@ fn oit_reveal_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_reveal, 
             "texture_depth_2d"
         };
         s.push_str(&format!(
-            "@group(0) @binding(2) var oit_depth: {depth};
-@group(0) @binding(3) var<storage, read> oit_nodes: array<u32>;
+            "@group(0) @binding(3) var oit_depth: {depth};
+@group(0) @binding(4) var<storage, read> oit_nodes: array<u32>;
 fn oit_depth_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_depth, p, {sample}); }}
 {LIST_WGSL}"
         ));
@@ -663,10 +732,10 @@ impl Resolver {
                 },
                 count: None,
             };
-            let mut entries = vec![texture(0), texture(1)];
+            let mut entries = vec![texture(0), texture(1), texture(2)];
             if list {
                 entries.push(wgpu::BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Depth,
@@ -676,7 +745,7 @@ impl Resolver {
                     count: None,
                 });
                 entries.push(wgpu::BindGroupLayoutEntry {
-                    binding: 3,
+                    binding: 4,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },

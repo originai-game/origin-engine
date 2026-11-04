@@ -78,6 +78,22 @@ fn fs_oit_list(in: VertexOut, @builtin(front_facing) front_facing: bool, @builti
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: VertexOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lit_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = lit_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 // The lit shading of a fragment (`fs`, and `fs_lean`).
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);

@@ -219,7 +219,9 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // clamped to it, never loaded out of bounds (which may answer zero and
   // drop the history). With OIT `at` is the scene pixel, oit.reveal's size.
   let reactive_size = vec2<i32>(textureDimensions(reactive_tex));
-  let reveal = clamp(textureLoad(reactive_tex, min(at, reactive_size - 1), 0).r, 0.0, 1.0);
+  let reactive = textureLoad(reactive_tex, min(at, reactive_size - 1), 0);
+  // The tail's transmittance times the front layer's (oit.rs REVEAL_FORMAT).
+  let reveal = clamp(reactive.r * reactive.g, 0.0, 1.0);
   let a = 1.0 - (1.0 - taa.params.x * near) * reveal;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));

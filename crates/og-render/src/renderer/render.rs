@@ -3151,7 +3151,7 @@ impl Renderer {
             .frame_list_layout
             .as_ref()
             .zip(self.oit.arena.as_ref())
-            .filter(|_| oit_mode == Some(oit::Oit::List));
+            .filter(|_| oit_mode.is_some_and(oit::Oit::arena));
         let (probe_groups, face_groups, oit_frame_group, oit_probe_groups) = {
             let ibl = self.ibl.views();
             let group_in = |layout: &wgpu::BindGroupLayout,
@@ -3664,8 +3664,8 @@ impl Renderer {
         let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
         // The blended skinned batches' OIT pipelines (oit.rs), the rest as
         // `lit_skinned` (not drawn by the OIT pass).
-        let oit_skinned: Vec<&wgpu::RenderPipeline> = match oit_mode {
-            Some(mode) => skinned_visible
+        let oit_skinned = |mode: oit::Oit| -> Vec<&wgpu::RenderPipeline> {
+            skinned_visible
                 .iter()
                 .zip(&lit_skinned)
                 .map(|(b, &sorted)| {
@@ -3678,8 +3678,7 @@ impl Renderer {
                         })
                         .unwrap_or(sorted)
                 })
-                .collect(),
-            None => Vec::new(),
+                .collect()
         };
         // A part of the main camera's transparent surfaces under OIT
         // (`BlendedPart`): the transmissive meshes, the blended surfaces
@@ -3750,10 +3749,9 @@ impl Renderer {
                 blended: Some(mode.is_some()),
                 material_group: 1,
                 palette_at: 3,
-                pipelines: if mode.is_some() {
-                    &oit_skinned
-                } else {
-                    &lit_skinned
+                pipelines: &match mode {
+                    Some(m) => oit_skinned(m),
+                    None => lit_skinned.clone(),
                 },
                 physical_fx,
                 probes,

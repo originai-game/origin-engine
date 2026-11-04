@@ -439,10 +439,50 @@ impl Renderer {
                 stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before);
                 drop(pass);
                 // The blended surfaces in any order into the weighted
-                // targets (and the arena's nodes), against the depth.
-                let arena = self.oit.arena.as_ref().filter(|_| mode == oit::Oit::List);
+                // targets (and the arena's nodes or front layer), against
+                // the depth.
+                let arena = self.oit.arena.as_ref().filter(|_| mode.arena());
                 if let Some(a) = arena {
                     a.clear(encoder);
+                }
+                let (frame_group, probes) = match (mode.arena(), oit_frame_group) {
+                    (true, Some(g)) => (g, oit_probe_binding),
+                    _ => (frame_bind_group, probe_binding),
+                };
+                // The weighted mode's front layer: each pixel's nearest
+                // fragment marked in the arena first (no colour), which
+                // the OIT pass then keeps exact (oit_arena.wgsl).
+                if mode == oit::Oit::Front {
+                    let mark = oit::Oit::Mark;
+                    let mut mark_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("main (oit front)"),
+                        color_attachments: &[],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: self.graph.view("depth"),
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    mark_pass.set_bind_group(0, frame_group, &[]);
+                    mark_pass.set_bind_group(2, fx_group, &[]);
+                    stats.draw_calls +=
+                        draw_oit_part(&mut mark_pass, BlendedPart::Oit(mark), probes);
+                    if let Some(p) = self.oit_pipeline(oit::Source::Particles, mark) {
+                        stats.draw_calls +=
+                            particles(&mut mark_pass, particles_gpu::ParticlePart::Oit(p));
+                    }
+                    stats.draw_calls += self.frame_draw_strips(
+                        &mut mark_pass,
+                        &ribbon_frame.runs,
+                        diagnostic,
+                        StripPart::Oit(mark),
+                    );
                 }
                 let target = |name, clear: f64| {
                     Some(wgpu::RenderPassColorAttachment {
@@ -464,7 +504,11 @@ impl Renderer {
                 };
                 let mut oit_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("main (oit)"),
-                    color_attachments: &[target("oit.accum", 0.0), target("oit.reveal", 1.0)],
+                    color_attachments: &[
+                        target("oit.accum", 0.0),
+                        target("oit.reveal", 1.0),
+                        target("oit.front", 0.0),
+                    ],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: self.graph.view("depth"),
                         depth_ops: Some(wgpu::Operations {
@@ -477,10 +521,6 @@ impl Renderer {
                     occlusion_query_set: None,
                     multiview_mask: None,
                 });
-                let (frame_group, probes) = match (mode, oit_frame_group) {
-                    (oit::Oit::List, Some(g)) => (g, oit_probe_binding),
-                    _ => (frame_bind_group, probe_binding),
-                };
                 oit_pass.set_bind_group(0, frame_group, &[]);
                 oit_pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
@@ -495,7 +535,7 @@ impl Renderer {
                     StripPart::Oit(mode),
                 );
                 drop(oit_pass);
-                if let Some(a) = arena {
+                if let Some(a) = arena.filter(|_| mode == oit::Oit::List) {
                     a.copy_count(encoder, self.frame_index);
                 }
                 stats.draw_calls += self.encode_oit_resolve(encoder, mode);

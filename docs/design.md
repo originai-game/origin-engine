@@ -569,7 +569,9 @@ tests in orbs and CI, and the probe's CPU description of a frame.
 
 - Order-independent transparency for the main camera's blended surfaces
   (`oit.rs`, `RenderOptions.transparency`): weighted blended (McGuire and
-  Bavoil 2013) by default; per-pixel lists as the high tier, one packed
+  Bavoil 2013) with each pixel's nearest layer exact (hybrid transparency,
+  Maule et al. 2013; marked by an alpha-only depth pass into the same
+  arena) by default; per-pixel lists as the high tier, one packed
   atomic arena at group 0 binding 12 with a fixed node budget a pixel,
   sized against the device's own limits, every fragment also weighted and
   a pixel past its budget resolved whole as weighted and counted (stats,

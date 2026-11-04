@@ -53,6 +53,18 @@ fn fs_oit_list(in: CustomOut, @builtin(sample_mask) mask: u32) -> OitOutput {
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: CustomOut) -> OitOutput {
+  let c = custom_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: CustomOut) {
+  let c = custom_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 fn custom_fragment(in: CustomOut) -> vec4<f32> {
   let v = custom_view(in.world);
   let out = custom_surface(in, v);

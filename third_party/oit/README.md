@@ -5,6 +5,12 @@ Order-Independent Transparency*, JCGT 2(2), 2013, equations 9–10:
 https://jcgt.org/published/0002/02/09/ . The implementation is written
 for the engine; no code is copied from the paper or its blog examples.
 
+The weighted mode's exact front layer follows Maule, Comba, Torchelsen
+and Bastos, *Hybrid Transparency*, I3D 2013,
+https://doi.org/10.1145/2448196.2448212 , with k = 1 so the nearest
+layer is found by a 32-bit `atomicMax` (WebGPU has no 64-bit atomics or
+ordered pixel access); written for the engine from the paper.
+
 The linked-list construction and resolve are adapted from:
 
 - Bevy, revision `4c344352e063923257e50efd65f265fea76bb4ff`,

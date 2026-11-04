@@ -319,6 +319,22 @@ fn fs_oit_list(in: PhysicalOut, @builtin(front_facing) front_facing: bool, @buil
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> OitOutput {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: PhysicalOut, @builtin(front_facing) front_facing: bool) {
+  hook_front = select(-1.0, 1.0, front_facing);
+  oit_pass = true;
+  let c = physical_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 // The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
 // `fs_physical_lightmap`).
 fn physical_fragment(in: PhysicalOut) -> vec4<f32> {

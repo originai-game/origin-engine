@@ -16,9 +16,15 @@
 // not its own (pbr_fs.wgsl, physical.wgsl, lib.rs `screen_ao`).
 var<private> oit_pass: bool;
 
+// What a fragment adds to the OIT pass's targets: `accum` the weighted
+// tail's colour and alpha times weight, `reveal` the transmittances the
+// tail (r) and the front layer (g) multiply in, `front` the front layer's
+// premultiplied colour and alpha (oit_arena.wgsl `oit_hybrid`). A fragment
+// adds to the tail or to the front, never both.
 struct OitOutput {
   @location(0) accum: vec4<f32>,
-  @location(1) reveal: f32,
+  @location(1) reveal: vec2<f32>,
+  @location(2) front: vec4<f32>,
 };
 
 // The weight of a fragment of `alpha` at window depth `depth`
@@ -32,12 +38,23 @@ fn oit_weight(alpha: f32, depth: f32) -> f32 {
 }
 
 // A fragment's straight colour `color` (as the sorted blending drew it,
-// src alpha over the scene) into the weighted targets. The premultiplied
+// src alpha over the scene) into the weighted tail. The premultiplied
 // colour is kept below 64 so a pixel of many bright layers stays finite.
 fn oit_weighted(color: vec4<f32>, depth: f32) -> OitOutput {
   let alpha = clamp(color.a, 0.0, 1.0);
   let premultiplied = clamp(color.rgb * alpha, vec3<f32>(0.0), vec3<f32>(64.0));
-  return OitOutput(vec4<f32>(premultiplied, alpha) * oit_weight(alpha, depth), alpha);
+  return OitOutput(
+    vec4<f32>(premultiplied, alpha) * oit_weight(alpha, depth),
+    vec2<f32>(alpha, 0.0),
+    vec4<f32>(0.0));
+}
+
+// The same fragment as the pixel's front layer: composited exactly over
+// the weighted tail in the resolve (oit_resolve.wgsl).
+fn oit_front(color: vec4<f32>) -> OitOutput {
+  let alpha = clamp(color.a, 0.0, 1.0);
+  let premultiplied = clamp(color.rgb * alpha, vec3<f32>(0.0), vec3<f32>(64.0));
+  return OitOutput(vec4<f32>(0.0), vec2<f32>(0.0, alpha), vec4<f32>(premultiplied, alpha));
 }
 
 // FNV-1a over a word.

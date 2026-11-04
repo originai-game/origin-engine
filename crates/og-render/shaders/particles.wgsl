@@ -268,6 +268,18 @@ fn fs_oit_list(in: ParticleOut, @builtin(sample_mask) mask: u32) -> OitOutput {
   return oit_weighted(c, in.clip.z);
 }
 
+@fragment
+fn fs_oit_front(in: ParticleOut) -> OitOutput {
+  let c = particle_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_oit_mark(in: ParticleOut) {
+  let c = particle_fragment(in);
+  oit_front_mark(in.clip, c.a);
+}
+
 fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
   var c = in.color;

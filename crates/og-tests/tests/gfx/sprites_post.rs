@@ -238,17 +238,26 @@ fn billboards_and_glass(pane: bool) -> RenderScene {
 /// transparent meshes, so the red one drew over the glass too and its
 /// pixels were the same with the pane as without.
 ///
-/// Drawn with the linked lists (og-render's oit.rs), which composite a
-/// pixel's fragments exactly, front over back. Weighted blending, the
-/// default, resolves the green billboard and the glass behind it in one
-/// pixel as their weighted mean (about 0.7 green there), not as the green
-/// over the glass: the approximation `Transparency::Weighted` documents.
+/// In both transparency modes (og-render's oit.rs): the linked lists
+/// composite every fragment exactly, and the weighted default keeps each
+/// pixel's nearest layer exact over the weighted rest (hybrid
+/// transparency). Weighted alone resolved the green billboard and the
+/// glass behind it as their weighted mean, [75, 223, 178] against
+/// [63, 255, 63] on Metal: the glass bled through the billboard before it.
 #[test]
 fn billboards_sort_among_transparent_meshes() {
-    let desc = og_render::RenderDesc {
-        transparency: og_render::Transparency::LinkedList,
-        ..scenes::base_desc()
-    };
+    for transparency in [
+        og_render::Transparency::Weighted,
+        og_render::Transparency::LinkedList,
+    ] {
+        billboards_over_glass(og_render::RenderDesc {
+            transparency,
+            ..scenes::base_desc()
+        });
+    }
+}
+
+fn billboards_over_glass(desc: og_render::RenderDesc) {
     let (with, _) = frame(&desc, &billboards_and_glass(true), 1);
     let (without, _) = frame(&desc, &billboards_and_glass(false), 1);
     // The billboards' centres on screen: x = 640 ± 1.2 / (depth · tan 22.5°) · 360 px.
@@ -259,12 +268,18 @@ fn billboards_sort_among_transparent_meshes() {
     };
     let (back, back0) = (at(&with, 8.0, -1.2), at(&without, 8.0, -1.2));
     let (front, front0) = (at(&with, 4.0, 1.2), at(&without, 4.0, 1.2));
-    println!("behind the glass {back:?} (no glass {back0:?}); in front {front:?} ({front0:?})");
+    let mode = desc.transparency;
+    println!(
+        "{mode:?}: behind the glass {back:?} (no glass {back0:?}); in front {front:?} ({front0:?})"
+    );
     assert!(
         back[2] > back0[2] + 40 && back[0] < back0[0],
-        "the red billboard through the glass: {back:?} against {back0:?}"
+        "{mode:?}: the red billboard through the glass: {back:?} against {back0:?}"
     );
-    assert_eq!(front, front0, "the green billboard over the glass");
+    assert_eq!(
+        front, front0,
+        "{mode:?}: the green billboard over the glass"
+    );
 }
 
 /// World text faces the camera (`RenderScene::text_facing`): seen almost

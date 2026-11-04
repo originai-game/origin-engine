@@ -76,6 +76,12 @@ impl Renderer {
         self.oit
             .resolver
             .ensure(&self.device, samples, mode == Oit::List);
+        // The weighted mode's front layer is marked by a pass of its own.
+        let modes: &[Oit] = if mode == Oit::Front {
+            &[Oit::Front, Oit::Mark]
+        } else {
+            &[mode]
+        };
         let mut wanted: Vec<Source> = Vec::new();
         for b in batches.iter().filter(|b| b.transparent && b.blend) {
             let physical = b.physical && self.physical.is_some();
@@ -98,7 +104,10 @@ impl Renderer {
         if strips.1 && self.gpu_trails.is_some() {
             wanted.push(Source::Strip);
         }
-        for source in wanted {
+        for (source, &mode) in wanted
+            .iter()
+            .flat_map(|&s| modes.iter().map(move |m| (s, m)))
+        {
             if self.oit.pipelines.contains_key(&(source, mode, samples)) {
                 continue;
             }
@@ -395,6 +404,7 @@ impl Renderer {
         let mut resources = vec![
             wgpu::BindingResource::TextureView(self.graph.view("oit.accum")),
             wgpu::BindingResource::TextureView(self.graph.view("oit.reveal")),
+            wgpu::BindingResource::TextureView(self.graph.view("oit.front")),
         ];
         if list {
             let arena = self.oit.arena.as_ref().expect("a list frame's arena");

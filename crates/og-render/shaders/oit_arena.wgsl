@@ -44,3 +44,59 @@ fn oit_store(position: vec4<f32>, color: vec4<f32>, mask: u32, key: vec2<u32>) {
   atomicStore(&oit_arena[node + 5u], key.x);
   atomicStore(&oit_arena[node + 6u], (key.y & 0x0fffffffu) | ((mask & 15u) << 28u));
 }
+
+// Hybrid transparency (Maule, Comba, Torchelsen and Bastos, I3D 2013),
+// with one exact layer: the weighted mode's front layer. Where the device
+// writes storage from fragment shaders, the arena of the weighted mode is
+// the header and one word a pixel (oit.rs `ArenaSize::front`). The front
+// pass (`*_oit_mark`, no colour targets) leaves in each pixel's word the
+// nearest depth of a fragment at least OIT_FRONT_ALPHA opaque, inverted so
+// a cleared word (0) is none and atomicMax keeps the nearest: positive
+// floats order as their bits, and the maximum does not depend on the
+// order the fragments came in. The OIT pass (`*_oit_front`) sends the
+// fragment at that depth to the front target and every other one to the
+// weighted tail; the resolve composites the front over the tail, so the
+// nearest surface (a billboard before glass) keeps its own colour rather
+// than the weighted mean of everything in the pixel.
+
+// The least alpha that makes a fragment the front layer: a faint haze in
+// front (smoke) does not take the place of a surface behind it, and is
+// composited in the tail at an error of at most its own alpha.
+const OIT_FRONT_ALPHA: f32 = 0.125;
+// How far (in units of the depth's last place) a fragment may lie behind
+// the marked depth and still be the front: the two passes compute one
+// fragment's depth in two pipelines. Fragments that close are coplanar
+// and share the front, averaged (`oit_front_of` in both, order-free).
+const OIT_FRONT_ULPS: u32 = 4u;
+
+fn oit_front_word(position: vec4<f32>) -> u32 {
+  let width = atomicLoad(&oit_arena[0]);
+  let height = atomicLoad(&oit_arena[1]);
+  let px = vec2<u32>(position.xy);
+  if (px.x >= width || px.y >= height) { return 0xffffffffu; }
+  return OIT_HEADER_WORDS + px.y * width + px.x;
+}
+
+fn oit_front_mark(position: vec4<f32>, alpha: f32) {
+  if (!(clamp(alpha, 0.0, 1.0) >= OIT_FRONT_ALPHA)) { return; }
+  let w = oit_front_word(position);
+  if (w == 0xffffffffu) { return; }
+  atomicMax(&oit_arena[w], ~bitcast<u32>(max(position.z, 0.0)));
+}
+
+fn oit_front_of(position: vec4<f32>, alpha: f32) -> bool {
+  if (!(clamp(alpha, 0.0, 1.0) >= OIT_FRONT_ALPHA)) { return false; }
+  let w = oit_front_word(position);
+  if (w == 0xffffffffu) { return false; }
+  let marked = atomicLoad(&oit_arena[w]);
+  if (marked == 0u) { return false; }
+  return bitcast<u32>(max(position.z, 0.0)) <= ~marked + OIT_FRONT_ULPS;
+}
+
+// A fragment of the weighted mode with the front layer.
+fn oit_hybrid(color: vec4<f32>, position: vec4<f32>) -> OitOutput {
+  if (oit_front_of(position, color.a)) {
+    return oit_front(color);
+  }
+  return oit_weighted(color, position.z);
+}
