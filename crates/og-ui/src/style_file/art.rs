@@ -450,6 +450,11 @@ pub struct Art {
     /// pixels (at a phone's 3 device pixels per CSS pixel a stroke is three
     /// wide and gains a third, not double).
     pub text_weights: [f32; 3],
+    /// `fonts { displayMin <px> }`: text in the display role smaller than
+    /// this (CSS px, after the text scale) is set in the body face, so a
+    /// dense display face (a stencil) sets titles and the body face its
+    /// small labels (0: the display face at every size).
+    pub display_min: f32,
     pub press: Option<Press>,
     pub hover: Option<Hover>,
     pub motion: StyleMotion,

@@ -50,6 +50,19 @@ impl Ui {
                 self.nodes[i].out = out;
             }
         }
+        // A style's display face stops at its `displayMin`: smaller text in
+        // the display role takes the body face, before it is measured.
+        let min = self.theme.art.display_min;
+        if min > 0.0 {
+            for n in &mut self.nodes {
+                if let Content::Text(tc) = &mut n.content
+                    && tc.font == crate::FontRole::Display
+                    && tc.step.size < min
+                {
+                    tc.font = crate::FontRole::Body;
+                }
+            }
+        }
         crate::layout::snap_pixel_text(&mut self.nodes, &self.fonts);
         self.reuse_check();
         let mut floating: Vec<usize> = self

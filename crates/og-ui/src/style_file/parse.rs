@@ -341,6 +341,14 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 // Simplified Chinese forms); the rest are its other faces.
                 for c in &p.block()?.entries {
                     let q = P { e: c };
+                    if c.key == "displayMin" {
+                        let n = q.num(0)?;
+                        if c.values.len() != 1 || !(0.0..=96.0).contains(&n) {
+                            return Err(q.err("takes one size of 0 to 96 CSS px"));
+                        }
+                        theme.art.display_min = n;
+                        continue;
+                    }
                     let (i, role, cjk) = match c.key.as_str() {
                         "body" => (0, crate::FontRole::Body, false),
                         "display" => (1, crate::FontRole::Display, false),
@@ -350,7 +358,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         "cjkDisplay" => (5, crate::FontRole::Display, true),
                         _ => {
                             return Err(q.err(
-                                "is a font role: body, display, numeric, fallback, cjk or cjkDisplay",
+                                "is a font role (body, display, numeric, fallback, cjk or cjkDisplay) or displayMin",
                             ));
                         }
                     };

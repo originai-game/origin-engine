@@ -256,3 +256,67 @@ fn a_pixel_font_is_set_at_multiples_of_its_grid() {
     assert!((width(pixel(), 12.0, 0.1) - 28.0).abs() < 0.01);
     assert!((width(FontMetrics::fixed(0.5), 14.0, 0.0) - 28.0).abs() < 0.01);
 }
+
+/// A style's `fonts { displayMin }`: display-role text under the size is
+/// set in the body face, at and over it in the display face (wasteland's
+/// stencil for titles, its body face for 14 px eyebrows).
+#[test]
+fn display_text_under_the_styles_display_min_takes_the_body_face() {
+    let pack = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/styles/storybook/style.ogt"
+    ))
+    .expect("the storybook seed");
+    let text = pack.replacen("fonts {\n", "fonts {\n  displayMin 18\n", 1);
+    let file = og_ui::style_file::parse_style(&text).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(file.theme.art.display_min, 18.0);
+    let mut narrow = font("Inter-Display.ttf");
+    narrow.metrics = narrow.metrics.clone().with_file(None);
+    let mut wide = font("EBGaramond-Medium.ttf");
+    wide.metrics = wide.metrics.clone().with_file(None);
+    let width = |min: f32, size: f32, role: FontRole| {
+        let mut ui = Ui::new(UiDesc::default());
+        let mut theme = Theme::default();
+        theme.art.display_min = min;
+        ui.set_theme(theme);
+        let mut fonts = Fonts {
+            body: narrow.clone(),
+            display: Some(wide.clone()),
+            ..Fonts::default()
+        };
+        fonts.link();
+        ui.set_fonts(fonts);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        let mut step = ui.type_step(og_ui::tokens::TypeRole::Body);
+        step.size = size;
+        ui.label(
+            "N",
+            "SALVAGE YARD",
+            LabelDesc {
+                nowrap: true,
+                font: role,
+                step: Some(step),
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+        ui.frame().element("N").expect("the label").width
+    };
+    // Wrong: the threshold ignored (14 px display drawn in the display
+    // face), or applied at and over it, or to the other roles.
+    assert_eq!(
+        width(18.0, 14.0, FontRole::Display),
+        width(0.0, 14.0, FontRole::Body),
+        "under: the body face"
+    );
+    assert_ne!(
+        width(18.0, 14.0, FontRole::Display),
+        width(0.0, 14.0, FontRole::Display),
+        "the faces differ"
+    );
+    assert_eq!(
+        width(18.0, 18.0, FontRole::Display),
+        width(0.0, 18.0, FontRole::Display),
+        "at it: the display face"
+    );
+}

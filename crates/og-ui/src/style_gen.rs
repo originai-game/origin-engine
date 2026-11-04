@@ -199,6 +199,10 @@ pub struct StyleChoices {
     /// the generated block of its selector (or added after them): the art
     /// review's notes on one pack (cyber's solid tab, its red Delete).
     pub dressings: Vec<(String, Vec<String>)>,
+    /// Display-role text under this size (CSS px) takes the body face
+    /// (`fonts { displayMin }`): a stencil or other dense display face
+    /// for titles only.
+    pub display_min: Option<f32>,
 }
 
 /// A generated style: its `style.ogt` and the sound files it names.
@@ -697,9 +701,13 @@ fn v1_text(c: &StyleChoices, p: &crate::theme::Palette, m: &MotionSet) -> String
         num(d[5])
     ));
     s.push_str(&format!(
-        "fonts {{\n  body \"{}\"\n  display \"{}\"\n  numeric \"{}\"\n  cjk \"{}\"\n  cjkDisplay \"{}\"\n}}\n",
+        "fonts {{\n  body \"{}\"\n  display \"{}\"\n  numeric \"{}\"\n  cjk \"{}\"\n  cjkDisplay \"{}\"\n",
         c.fonts[0], c.fonts[1], c.fonts[2], c.fonts[3], c.fonts[4]
     ));
+    if let Some(m) = c.display_min {
+        s.push_str(&format!("  displayMin {}\n", num(m)));
+    }
+    s.push_str("}\n");
     if let Some(i) = &c.icons {
         s.push_str(&format!("icons \"{i}\" 8 4 {{\n  names"));
         for n in ICON_NAMES {
@@ -1941,6 +1949,7 @@ fn seed(
         danger: None,
         info: None,
         dressings: Vec::new(),
+        display_min: None,
     }
 }
 
