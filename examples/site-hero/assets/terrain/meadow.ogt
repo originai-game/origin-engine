@@ -25,15 +25,16 @@ layer {
   slope 0 38
   slopeFade 8
 }
-# The cliff's rock, projected three ways, wherever it is steep (control B).
-# Tinted to the authored cliff stack's mean albedo (models/cliff.glb, linear
-# 0.26 0.25 0.15 against rock.png's 0.37 0.35 0.30), so the height field's
-# wall and the stack in front of it read as one warm sandstone cliff rather
-# than a pale grey sheet behind it.
+# The cliff's rock, projected three ways, wherever it is steep (control B):
+# horizontal sandstone strata like the authored cliff stack's, so a face seen
+# edge-on from the close shot shows bands across its slope (the isotropic
+# rock.png foreshortened into streaks down it, at any anisotropy). Tinted to
+# the stack's mean albedo (models/cliff.glb, linear 0.26 0.25 0.15 against
+# the strata's 0.47 0.28 0.19), so the wall and the stack read as one cliff.
 layer {
-  albedo "textures/rock.png"
-  color 0.7 0.72 0.5
-  tile 9
+  albedo "textures/rock-strata.png"
+  color 0.55 0.89 0.81
+  tile 12
   roughness 0.9
   triplanar true
   slope 34 90

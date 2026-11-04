@@ -60,6 +60,23 @@ with ImageMagick:
 - flowers.png: media 44eeeabd3ed5b658219c6b2ddad04029 (modulate 100,75,93)
 - rock.png: media 4f9bec150075126ecc7c2daab1b3353b
 - dirt.png: media df6b7b245d91d7aca389d91903d8a8e4 (modulate 100,80,100)
+- rock-strata.png (the cliff's rock layer since the close shots; rock.png
+  stays for reference): `generate_image` (gpt-image-2.5-sunburst), media
+  a174e6dc9316dbc28b09d9eca9476e63, generation a6c9ce87-0c56-4e8b-bfbe-780e60692307,
+  1254² resized to 1024², no colour change (the layer's `color` tints it).
+  Prompt: "Seamless tileable square texture of a sea-cliff rock face, viewed
+  straight on (orthographic, flat lighting, no shadows cast across it, no
+  perspective). Stylised fantasy, hand-painted painterly look in the spirit of
+  Zelda Tears of the Kingdom and Genshin Impact. Warm sandstone and cool
+  lilac-grey layered sedimentary strata running strictly horizontally across
+  the whole tile, bands of varied thickness (2 to 10 percent of the tile
+  height), a few short vertical joints and cracks between bands, subtle
+  mottling inside each band, low to medium contrast, no strong highlights, no
+  grass, no moss, no text. Must tile seamlessly left-right and top-bottom."
+  Why: seen about 87° from its normal, the wall foreshortens the layer about
+  20×; the isotropic rock.png smeared into streaks down the slope at both 8×
+  and 16× anisotropy (macrunner, hold 708: strip high-pass 0.0061 against the
+  stack's 0.0018). Horizontal strata stay bands across the slope.
 
 ## Sky props (meadow): replacing the procedural stand-ins
 
