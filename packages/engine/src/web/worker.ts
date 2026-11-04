@@ -537,29 +537,119 @@ export async function transcodeBundle(
   let transcoder: BasisTranscoder | null = null;
   let transcoded = 0;
   const total = fetched.textures.length;
+  const put = (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => {
+    if (out.format === "rgba8") {
+      glue.og_web_put_texture(id, out.width, out.height, out.levels, out.srgb);
+    } else {
+      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, out.levels);
+      if (refused) throw new Error(refused);
+    }
+    if (!used.includes(out.format)) used.push(out.format);
+    transcoded++;
+    // Fork s61: by texture, as a fraction of the stage (the Worker places it on the bar).
+    if (transcoded % 8 === 0 || transcoded === total) progress(transcoded / Math.max(1, total), "transcode");
+  };
   // The wasm keeps the bundle it parsed last (og-host-web `bundle_of`, s58): the manifest's text
   // crosses once, and "" names it in every later call.
   let manifest = fetched.manifest;
+  const jobs: BasisJob[] = [];
   for (const t of fetched.textures) {
     const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
     if (manifest !== null) manifest = "";
-    if (ktx2.length > 0) {
-      transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
-      const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, "", t.id, t.bytes);
-      const out = transcodeKtx2(transcoder, ktx2, isTextureFormat(target) ? target : "rgba8");
-      if (out.format === "rgba8") {
-        glue.og_web_put_texture(t.id, out.width, out.height, out.levels[0]!, out.srgb);
-      } else {
-        const refused = glue.og_web_put_texture_encoded(t.id, out.format, out.width, out.height, out.srgb, concat(out.levels));
-        if (refused) throw new Error(refused);
-      }
-      if (!used.includes(out.format)) used.push(out.format);
-      transcoded++;
-      // Fork s61: by texture, as a fraction of the stage (the Worker places it on the bar).
-      if (transcoded % 8 === 0 || transcoded === total) progress(transcoded / Math.max(1, total), "transcode");
-    }
+    if (ktx2.length > 0) jobs.push({ id: t.id, ktx2, target: engine === null ? "rgba8" : glue.og_web_texture_target(engine, "", t.id, t.bytes) });
+  }
+  // Fork s62: a bundle of many textures is transcoded by a pool of Workers (copies of this one)
+  // in parallel; a pool that does not start leaves the rest to this Worker.
+  const left = jobs.length >= POOL_MIN_JOBS ? await transcodeInPool(jobs, basis, put) : jobs;
+  for (const job of left) {
+    transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
+    const out = transcodeKtx2(transcoder, job.ktx2, isTextureFormat(job.target) ? job.target : "rgba8");
+    put(job.id, { ...out, levels: out.format === "rgba8" ? out.levels[0]! : concat(out.levels) });
   }
   return { files: fetched.files, failed: fetched.failed, textures: transcoded, textureFormat: used.length ? used.join("+") : "rgba8" };
+}
+
+interface BasisJob {
+  readonly id: string;
+  readonly ktx2: Uint8Array;
+  readonly target: string;
+}
+type BasisAnswer = { type: "og-basis"; id: number; error?: string; format: string; width: number; height: number; srgb: boolean; levels: Uint8Array };
+
+/** Fork s62: below this many Basis textures the boot transcodes them itself. */
+const POOL_MIN_JOBS = 24;
+
+/** Fork s62: the transcoding Workers: up to 4, leaving two cores to the page and this Worker. */
+function poolSize(): number {
+  const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 1;
+  return Math.max(0, Math.min(4, cores - 2));
+}
+
+/**
+ * Fork s62: transcode `jobs` on a pool of Workers running this module (its `og-basis` message,
+ * `basisJob`), each answer handed to `put` as it lands. Answers the jobs no Worker did (all of
+ * them when the pool cannot start), for this Worker to do.
+ */
+async function transcodeInPool(
+  jobs: readonly BasisJob[],
+  basis: { js: string; wasm: string } | undefined,
+  put: (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => void,
+): Promise<BasisJob[]> {
+  const n = poolSize();
+  const url = (globalThis as { location?: { href: string } }).location?.href;
+  if (n < 2 || !url || typeof Worker !== "function") return [...jobs];
+  const pool: Worker[] = [];
+  const left: BasisJob[] = [];
+  let next = 0;
+  let failure: unknown = null;
+  try {
+    await Promise.all(
+      Array.from({ length: n }, async () => {
+        const w = new Worker(url, { type: "module" });
+        pool.push(w);
+        // Each Worker takes the next job when it answered the last; one that fails gives its job back.
+        for (;;) {
+          if (failure !== null || next >= jobs.length) return;
+          const k = next++;
+          const job = jobs[k]!;
+          const answer = await new Promise<BasisAnswer | null>((resolve) => {
+            w.onmessage = (e: MessageEvent) => resolve(e.data as BasisAnswer);
+            w.onerror = () => resolve(null);
+            const ktx2 = job.ktx2.slice();
+            w.postMessage({ type: "og-basis", id: k, ktx2, target: job.target, basis }, [ktx2.buffer]);
+          });
+          if (!answer || answer.error) {
+            left.push(job);
+            if (!answer) return; // this Worker did not load: the others go on
+            continue;
+          }
+          try {
+            put(job.id, answer);
+          } catch (e) {
+            failure = e;
+          }
+        }
+      }),
+    );
+  } finally {
+    for (const w of pool) w.terminate();
+  }
+  if (failure !== null) throw failure;
+  // The jobs no Worker reached (every one failed to load) are this Worker's.
+  return [...left, ...jobs.slice(next)];
+}
+
+/** Fork s62: this Worker as one of the pool: a Basis transcode, answered with its levels (transferred). */
+let poolTranscoder: Promise<BasisTranscoder> | null = null;
+async function basisJob(data: { id: number; ktx2: Uint8Array; target: string; basis?: { js: string; wasm: string } }): Promise<void> {
+  try {
+    poolTranscoder ??= data.basis ? loadBasisTranscoder(data.basis.js, data.basis.wasm) : loadBasisTranscoder();
+    const out = transcodeKtx2(await poolTranscoder, data.ktx2, isTextureFormat(data.target) ? data.target : "rgba8");
+    const levels = out.format === "rgba8" ? out.levels[0]! : concat(out.levels);
+    (self as unknown as { postMessage(m: unknown, transfer: Transferable[]): void }).postMessage({ type: "og-basis", id: data.id, format: out.format, width: out.width, height: out.height, srgb: out.srgb, levels }, [levels.buffer as ArrayBuffer]);
+  } catch (e) {
+    self.postMessage({ type: "og-basis", id: data.id, error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 function isTextureFormat(name: string): name is TextureFormat {
@@ -1191,6 +1281,8 @@ export function startWorker(game: GameToken): void {
   };
 
   self.onmessage = async ({ data }) => {
+    // Fork s62: a copy of this Worker in the boot's Basis pool.
+    if ((data as { type: string }).type === "og-basis") return basisJob(data as unknown as Parameters<typeof basisJob>[0]);
     if (data.type === "start") {
       try {
         if (data.telemetry) frameCounter = new FrameCounter();
