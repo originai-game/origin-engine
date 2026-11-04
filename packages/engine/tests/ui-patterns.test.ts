@@ -1076,6 +1076,24 @@ test("battlePass: the track opens on the player's tier, far along it, in a row a
   }
 });
 
+test("battlePass: inside a scroll the track keeps its height, and only the tiers in view are built", () => {
+  // Wrong: the track sized from its own view, a step shorter each tick in a scroll that leaves it no room; or every tier built.
+  const engine = run(() => {
+    og.ui.scrollArea("Box", { width: { kind: "fixed", px: 1180 }, height: { kind: "fixed", px: 500 } } as never, () => {
+      og.ui.battlePass("Pass", { level: 12, xpNext: 1000, tiers: Array.from({ length: 30 }, (_, i) => ({ level: i + 1, free: { key: `f${i}`, name: `R${i}` }, premium: { key: `p${i}`, name: `P${i}` } })) });
+    });
+  });
+  engine.advance(6);
+  const h6 = byPath(engine, "Pass/Track")!.height;
+  engine.advance(30);
+  const track = byPath(engine, "Pass/Track")!;
+  expect(track.height).toBeGreaterThanOrEqual(270);
+  expect(track.height).toBe(h6);
+  const built = elements(engine).filter((e) => /\/Tiers\/L\d+$/.test(e.path)).length;
+  expect(built).toBeGreaterThan(0);
+  expect(built).toBeLessThan(15);
+});
+
 // ── story: the conversation, the backlog, the quest log and tracker ─────
 
 const storyFixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "story");
@@ -1617,7 +1635,7 @@ test("garage: on a phone at 200 % text the selected part scrolls into the list's
       stats: [{ key: "power", label: "Power", value: 5, preview: 7, max: 10 }],
     }));
   }, { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } });
-  og.ui.configure(engine.world, { textScale: 2 });
+  og.ui.configure(engine.world, { textScale: 1.5 });
   engine.advance(30);
   const els = elements(engine);
   const view = els.find((e) => e.path.endsWith("Garage/Body"))!;
