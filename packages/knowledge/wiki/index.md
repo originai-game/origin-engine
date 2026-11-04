@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2393 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2398 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1393,7 +1393,10 @@ Field units the docs and Tune use.
 | [`og.terrain.load`](terrain.md#fn-load) | function | terrain | `og_terrain_load` |
 | [`og.terrain.sample`](terrain.md#fn-sample) | function | terrain | `og_terrain_sample` |
 | [`og.terrain.setLayer`](terrain.md#fn-setLayer) | function | terrain | `og_terrain_set_layer` |
+| [`og.terrain.stamp`](terrain.md#fn-stamp) | function | terrain | `og_terrain_stamp` |
+| [`og.terrain.unstamp`](terrain.md#fn-unstamp) | function | terrain | `og_terrain_unstamp` |
 | [`og.TerrainScatter`](terrain.md#record-TerrainScatter) | component | terrain | — |
+| [`og.TerrainStamp`](terrain.md#record-TerrainStamp) | component | terrain | — |
 | [`og.TextInput`](input.md#record-TextInput) | event | input | — |
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
@@ -2341,6 +2344,8 @@ Field units the docs and Tune use.
 | [`TerrainLayerDesc`](terrain.md#type-TerrainLayerDesc) | desc struct | terrain | — |
 | [`TerrainSample`](terrain.md#type-TerrainSample) | struct | terrain | — |
 | [`TerrainSampleDesc`](terrain.md#type-TerrainSampleDesc) | desc struct | terrain | — |
+| [`TerrainStampDesc`](terrain.md#type-TerrainStampDesc) | desc struct | terrain | — |
+| [`TerrainStampMode`](terrain.md#type-TerrainStampMode) | enum | terrain | — |
 | [`TextAlign`](ui.md#type-TextAlign) | enum | ui | — |
 | [`TextAreaDesc`](ui.md#type-TextAreaDesc) | desc struct | ui | — |
 | [`TextBlockDesc`](ui.md#type-TextBlockDesc) | desc struct | ui | — |

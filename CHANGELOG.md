@@ -66,6 +66,25 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrain horizon shadows and sky occlusion (T5).** `og cook` bakes each
+  terrain tile's horizon (the highest ground in 8 directions, from a max
+  pyramid so no ridge is missed; tile row v4, `og cook` redoes terrain
+  blobs). Past the sun's shadow cascades a valley behind a ridge now falls
+  into its shade out to the horizon, and the sky a valley's walls hide
+  lights it less, so far mountains read their form. New `og.Terrain`
+  field `horizonShadows` (default on). og.Terrain is now registered
+  lazily, as og.Grass is: a world without a terrain keeps its type table
+  and hash as the component grows; the five pinned world hashes moved
+  once for it.
+- **Stamps meet the ground without a trench.** `og.terrain.stamp`'s carve
+  lowers the samples on the mesh's edge to its underside, not `depth`
+  under it: the cell beside a cliff's foot no longer dips into a dark
+  line. `og.TerrainStamp.blend` is wholly the ground over its lowest third,
+  so a blended foot is the ground it meets.
+- **Terrain block culling (T2).** Each clipmap block is culled by its box
+  with the height range of the tiles under it (not the whole terrain's),
+  and blocks off the terrain draw nothing.
+
 - **Terrain edits cost what they touch (T6).** An `og.terrain.edit` or a
   stamp's carve now builds again only the tiles its brush reaches (a few
   per level, where every resident tile was rebuilt and uploaded), and

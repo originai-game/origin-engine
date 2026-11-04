@@ -27,7 +27,9 @@ module terrain {
 | [`TerrainData`](#type-TerrainData) | handle | A loaded terrain: its heights, control map and layers. |
 | [`TerrainData()`](#column-TerrainData) | column kind | A TerrainData handle field. |
 | [`TerrainBrushMode`](#type-TerrainBrushMode) | enum | What og.terrain.edit does under its brush. |
+| [`TerrainStampMode`](#type-TerrainStampMode) | enum | What og.terrain.stamp does to the height field under a stamp's mesh. |
 | [`og.Terrain`](#record-Terrain) | component | Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to. |
+| [`og.TerrainStamp`](#record-TerrainStamp) | component | Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry. |
 | [`og.TerrainScatter`](#record-TerrainScatter) | component | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities. |
 | [`og.Grass`](#record-Grass) | component | A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one). |
 | [`TerrainInfo`](#type-TerrainInfo) | struct | A loaded terrain. |
@@ -36,11 +38,14 @@ module terrain {
 | [`TerrainBounds`](#type-TerrainBounds) | struct | A terrain's box in world space. |
 | [`TerrainBrush`](#type-TerrainBrush) | desc struct | One runtime edit of a terrain (og.terrain.edit). |
 | [`TerrainEdit`](#type-TerrainEdit) | struct | What an edit changed. |
+| [`TerrainStampDesc`](#type-TerrainStampDesc) | desc struct | One stamp of a mesh into a terrain (og.terrain.stamp). |
 | [`TerrainLayerDesc`](#type-TerrainLayerDesc) | desc struct | One material layer of a terrain: its look and the rules that place it. A layer shows where its control-map channel (1 without a map) times its slope band times its altitude band is high; the layers' weights are normalised. |
 | [`og.terrain.load`](#fn-load) | function | Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. |
 | [`og.terrain.sample`](#fn-sample) | function | The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world). |
 | [`og.terrain.bounds`](#fn-bounds) | function | A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners. |
 | [`og.terrain.edit`](#fn-edit) | function | Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its control map (making one when it has none). |
+| [`og.terrain.stamp`](#fn-stamp) | function | Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp. |
+| [`og.terrain.unstamp`](#fn-unstamp) | function | Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made. |
 | [`og.terrain.layer`](#fn-layer) | function | A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it). |
 | [`og.terrain.setLayer`](#fn-setLayer) | function | Replace a terrain's layer look and rules (its textures stay). Drawn from the next frame. |
 
@@ -74,7 +79,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 28781</sub>
+<sub>`api.ogt` line 28857</sub>
 
 <a id="fn-sample"></a>
 
@@ -104,7 +109,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 28788</sub>
+<sub>`api.ogt` line 28864</sub>
 
 <a id="fn-bounds"></a>
 
@@ -146,7 +151,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 28795</sub>
+<sub>`api.ogt` line 28871</sub>
 
 <a id="fn-edit"></a>
 
@@ -178,7 +183,69 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 28811</sub>
+<sub>`api.ogt` line 28887</sub>
+
+<a id="fn-stamp"></a>
+
+### `og.terrain.stamp`
+
+Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp.
+
+```ts
+og.terrain.stamp(world: World, desc?: TerrainStampDesc): Result<TerrainEdit>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `TerrainStampDesc` | yes | The terrain, the mesh, where both stand, and what to do. |
+
+**Returns** `Result<TerrainEdit>`: Refused for an unknown terrain, a geometry that is not loaded, or a mesh that covers none of the terrain.
+
+Binding symbol `og_terrain_stamp` · publish builds: kept
+
+```ogt
+fn stamp {
+  doc "Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like og.terrain.edit's (a snapshot keeps it, the world hash covers it, a restore replays it, and the replay needs only the log, not the mesh). The renderer, physics and og.terrain.sample see the change from the next frame and tick. Answers the stamp's id in TerrainEdit.stamp."
+  param world World "The world."
+  param desc TerrainStampDesc "The terrain, the mesh, where both stand, and what to do."
+  returns Result.TerrainEdit "Refused for an unknown terrain, a geometry that is not loaded, or a mesh that covers none of the terrain."
+}
+```
+
+<sub>`api.ogt` line 28895</sub>
+
+<a id="fn-unstamp"></a>
+
+### `og.terrain.unstamp`
+
+Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.
+
+```ts
+og.terrain.unstamp(world: World, data: TerrainData, stamp: number): Result<TerrainEdit>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `data` | `TerrainData` | no | The terrain. |
+| `stamp` | `number` | no | The id og.terrain.stamp answered. |
+
+**Returns** `Result<TerrainEdit>`: Refused for an unknown terrain or a stamp it does not hold.
+
+Binding symbol `og_terrain_unstamp` · publish builds: kept
+
+```ogt
+fn unstamp {
+  doc "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made."
+  param world World "The world."
+  param data TerrainData "The terrain."
+  param stamp u32 "The id og.terrain.stamp answered."
+  returns Result.TerrainEdit "Refused for an unknown terrain or a stamp it does not hold."
+}
+```
+
+<sub>`api.ogt` line 28902</sub>
 
 <a id="fn-layer"></a>
 
@@ -210,7 +277,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 28819</sub>
+<sub>`api.ogt` line 28910</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -244,7 +311,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 28827</sub>
+<sub>`api.ogt` line 28918</sub>
 
 ## Components, resources and events
 
@@ -261,6 +328,7 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 | `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
 | `visible` | `boolean` | `true` | — | — | — | Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it). |
 | `castShadows` | `boolean` | `true` | — | — | — | Cast the directional and local lights' shadows (it always receives them). |
+| `horizonShadows` | `boolean` | `true` | — | — | — | Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less. |
 | `lodSpacing` | `number` | `0` | 0 … 64 | `m` | tunable | The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing). |
 | `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level (0: the terrain file's, else 64; 16 to 256, rounded to a multiple of 4). |
 
@@ -272,6 +340,9 @@ component Terrain {
     default true
   }
   field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
+    default true
+  }
+  field horizonShadows bool "Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less." {
     default true
   }
   field lodSpacing f32 "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing)." {
@@ -287,7 +358,46 @@ component Terrain {
 }
 ```
 
-<sub>`api.ogt` line 28383</sub>
+<sub>`api.ogt` line 28389</sub>
+
+<a id="record-TerrainStamp"></a>
+
+### `og.TerrainStamp` (component)
+
+Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry.
+
+Token `og.TerrainStamp`, registered under the schema name `og.TerrainStamp`; its value type is `TerrainStamp`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
+| `geometry` | `Geometry` | `0` | — | — | — | The mesh. |
+| `blend` | `number` | `1` | 0 … 64 | `m` | tunable | Metres above the ground under it over which the mesh fades into the ground's look: wholly the ground over its lowest third, then fading to the mesh's own (0: a hard edge). |
+| `visible` | `boolean` | `true` | — | — | — | Draw it. |
+| `castShadows` | `boolean` | `true` | — | — | — | Cast shadows (with its terrain's own castShadows). |
+
+```ogt
+component TerrainStamp {
+  doc "Draws a mesh as part of a loaded terrain: a cliff, arch or overhang the height field cannot make, placed by the entity's world transform. It is shaded with the terrain's own layers and rules (by its own normal: grass on its top, rock on its walls, biplanar where steep) and, within `blend` metres above the ground under it, takes the ground's look and normal, so it meets the terrain without a seam. Drawn with the og.Terrain drawing the same data. Only drawn: carve the ground under it with og.terrain.stamp, and make it solid with an og.Collider naming the same geometry."
+  field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
+  field geometry Geometry "The mesh."
+  field blend f32 "Metres above the ground under it over which the mesh fades into the ground's look: wholly the ground over its lowest third, then fading to the mesh's own (0: a hard edge)." {
+    default 1
+    min 0
+    max 64
+    unit m
+    tunable true
+  }
+  field visible bool "Draw it." {
+    default true
+  }
+  field castShadows bool "Cast shadows (with its terrain's own castShadows)." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 28413</sub>
 
 <a id="record-TerrainScatter"></a>
 
@@ -382,7 +492,7 @@ component TerrainScatter {
 }
 ```
 
-<sub>`api.ogt` line 28404</sub>
+<sub>`api.ogt` line 28432</sub>
 
 <a id="record-Grass"></a>
 
@@ -569,7 +679,7 @@ component Grass {
 }
 ```
 
-<sub>`api.ogt` line 28469</sub>
+<sub>`api.ogt` line 28497</sub>
 
 ## Types
 
@@ -620,6 +730,29 @@ enum TerrainBrushMode {
 
 <sub>`api.ogt` line 28372</sub>
 
+<a id="type-TerrainStampMode"></a>
+
+### `TerrainStampMode` (enum)
+
+What og.terrain.stamp does to the height field under a stamp's mesh.
+
+A string: one of the variants below. The zero value is `"carve"`.
+
+| Variant | Doc |
+|---|---|
+| `"carve"` | Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. On the edge of what the mesh covers the ground goes down to the underside itself, so the ground beside the mesh meets its foot with no trench. Ground already lower is left as it is. |
+| `"hole"` | Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal). |
+
+```ogt
+enum TerrainStampMode {
+  doc "What og.terrain.stamp does to the height field under a stamp's mesh."
+  variant carve "Lower the ground under the mesh to `depth` below its underside (the lowest of its triangles over each height sample), so the mesh is the surface there: a cliff's face and lip, an arch, an overhang. On the edge of what the mesh covers the ground goes down to the underside itself, so the ground beside the mesh meets its foot with no trench. Ground already lower is left as it is."
+  variant hole "Cut out every cell whose centre the mesh covers (seen from above), neither drawn nor collided with: the mesh stands in the ground's place (a cave mouth, a tunnel's portal)."
+}
+```
+
+<sub>`api.ogt` line 28383</sub>
+
 <a id="type-TerrainInfo"></a>
 
 ### `TerrainInfo` (struct)
@@ -667,7 +800,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 28615</sub>
+<sub>`api.ogt` line 28643</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -707,7 +840,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 28639</sub>
+<sub>`api.ogt` line 28667</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -738,7 +871,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 28658</sub>
+<sub>`api.ogt` line 28686</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -763,7 +896,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 28671</sub>
+<sub>`api.ogt` line 28699</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -821,7 +954,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 28681</sub>
+<sub>`api.ogt` line 28709</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -834,6 +967,7 @@ What an edit changed.
 | `samples` | `number` | `0` | — | — | — | Height or control-map samples it touched. |
 | `minHeight` | `number` | `0` | — | `m` | — | The terrain's lowest point now. |
 | `maxHeight` | `number` | `0` | — | `m` | — | Its highest now. |
+| `stamp` | `number` | `0` | — | — | — | og.terrain.stamp: the stamp's id, for og.terrain.unstamp (from 1). 0 for every other edit. |
 
 ```ogt
 struct TerrainEdit {
@@ -845,10 +979,63 @@ struct TerrainEdit {
   field maxHeight f32 "Its highest now." {
     unit m
   }
+  field stamp u32 "og.terrain.stamp: the stamp's id, for og.terrain.unstamp (from 1). 0 for every other edit."
 }
 ```
 
-<sub>`api.ogt` line 28715</sub>
+<sub>`api.ogt` line 28743</sub>
+
+<a id="type-TerrainStampDesc"></a>
+
+### `TerrainStampDesc` (desc struct)
+
+One stamp of a mesh into a terrain (og.terrain.stamp).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `data` | `TerrainData` | `0` | — | — | — | The terrain. |
+| `origin` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the terrain stands: its og.Terrain entity's world position. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How it is turned: its og.Terrain entity's world rotation. |
+| `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How it is scaled: its og.Terrain entity's world scale. |
+| `geometry` | `Geometry` | `0` | — | — | — | The mesh (its og.TerrainStamp's geometry). |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the mesh stands: its og.TerrainStamp entity's world position. |
+| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How the mesh is turned: its entity's world rotation. |
+| `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How the mesh is scaled: its entity's world scale. |
+| `mode` | `TerrainStampMode` | `"carve"` | — | — | — | What it does to the ground. |
+| `depth` | `number` | `0.25` | ≥ 0 | `m` | — | carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh. |
+
+```ogt
+struct TerrainStampDesc {
+  doc "One stamp of a mesh into a terrain (og.terrain.stamp)."
+  desc true
+  field data TerrainData "The terrain."
+  field origin Vector3 "Where the terrain stands: its og.Terrain entity's world position." {
+    unit m
+  }
+  field quaternion Quaternion "How it is turned: its og.Terrain entity's world rotation."
+  field scale Vector3 "How it is scaled: its og.Terrain entity's world scale." {
+    default 1 1 1
+  }
+  field geometry Geometry "The mesh (its og.TerrainStamp's geometry)."
+  field position Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
+    unit m
+  }
+  field rotation Quaternion "How the mesh is turned: its entity's world rotation."
+  field size Vector3 "How the mesh is scaled: its entity's world scale." {
+    default 1 1 1
+  }
+  field mode TerrainStampMode "What it does to the ground."
+  field depth f32 "carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh." {
+    default 0.25
+    min 0
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 28755</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -863,7 +1050,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the layer's texture (linear). |
 | `roughness` | `number` | `0.9` | 0.04 … 1 | — | — | Its roughness. |
 | `tile` | `number` | `4` | 0.01 … 1000 | `m` | — | Metres per repeat of its textures. |
-| `triplanar` | `boolean` | `false` | — | — | — | Sample by three projections blended by the normal (for cliffs). |
+| `triplanar` | `boolean` | `false` | — | — | — | Sample by three projections blended by the normal (for cliffs). `projectSlope` above 0 decides instead. |
+| `projectSlope` | `number` | `0` | 0 … 90 | `deg` | — | The slope past which the layer is sampled by the two projections facing the surface most (biplanar: no projection seen edge-on, so a steep face does not streak) instead of from above, faded over 10° around it; below it, from above. 0: `triplanar` decides. |
+| `antiTiling` | `number` | `0` | 0 … 1 | `ratio` | — | How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat. |
+| `heightContrast` | `number` | `0` | 0 … 1 | `ratio` | — | How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim). |
+| `macroVariation` | `number` | `0` | 0 … 1 | `ratio` | — | A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none. |
 | `normalStrength` | `number` | `1` | 0 … 4 | — | — | How strongly its normal map bends the surface. |
 | `slopeMin` | `number` | `0` | 0 … 90 | `deg` | — | The flattest slope it shows on. |
 | `slopeMax` | `number` | `90` | 0 … 90 | `deg` | — | The steepest. |
@@ -890,7 +1081,27 @@ struct TerrainLayerDesc {
     max 1000
     unit m
   }
-  field triplanar bool "Sample by three projections blended by the normal (for cliffs)."
+  field triplanar bool "Sample by three projections blended by the normal (for cliffs). `projectSlope` above 0 decides instead."
+  field projectSlope f32 "The slope past which the layer is sampled by the two projections facing the surface most (biplanar: no projection seen edge-on, so a steep face does not streak) instead of from above, faded over 10° around it; below it, from above. 0: `triplanar` decides." {
+    min 0
+    max 90
+    unit deg
+  }
+  field antiTiling f32 "How far the texture's repeat is broken: each point blends three hexagonal tiles of it, each turned (by up to half a turn at 1) and moved by its own hash, so no period shows across a field. 0: the plain repeat." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field heightContrast f32 "How sharp the height blend (the terrain file's `heightBlend`) is at this layer's edges: 0 the default window, 1 ten times narrower (a crisp rim)." {
+    min 0
+    max 1
+    unit ratio
+  }
+  field macroVariation f32 "A slow drift of brightness and hue over the ground and, with distance, the texture at a quarter of its frequency blended in, so a field of one layer does not read as one texture from afar. 0: none." {
+    min 0
+    max 1
+    unit ratio
+  }
   field normalStrength f32 "How strongly its normal map bends the surface." {
     default 1
     min 0
@@ -929,7 +1140,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 28726</sub>
+<sub>`api.ogt` line 28782</sub>
 
 ## Column kinds
 
