@@ -312,9 +312,14 @@ pub fn skinning_scene() -> RenderScene {
 /// 7 × 5 cylinders playing one baked clip at their own frames, its back
 /// three rows behind a grey wall, and in front a posed cylinder whose
 /// palette carries it 12 m from where its bind pose stands (out of view
-/// there): culled by its posed box, it is drawn. In the frame: the wall
-/// across the middle, the two front rows of bending pink cylinders before
-/// it, and the moved cylinder, orange, at the centre in front.
+/// there): culled by its posed box, it is drawn. The wall is 30 m wide and
+/// 10 m tall, past the frame's top and sides: the occlusion test reads up
+/// to 2 × 2 texels of the depth pyramid around a box's rectangle (texels
+/// as large as the rectangle), so a wall whose top edge ran just above the
+/// crowd would leave sky in them and hide nothing. In the frame: the grey
+/// wall filling everything above the ground, the two front rows of
+/// bending pink cylinders before it, and the moved cylinder, orange, at
+/// the centre in front.
 pub fn crowd_culling_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
@@ -330,7 +335,7 @@ pub fn crowd_culling_scene() -> RenderScene {
         roughness: 0.5,
         ..Default::default()
     });
-    let wall = scene.add_mesh(og_render::shapes::cuboid(Vec3::new(14.0, 4.0, 0.4)));
+    let wall = scene.add_mesh(og_render::shapes::cuboid(Vec3::new(30.0, 10.0, 0.4)));
     let grey = scene.add_material(Material {
         base_color: [0.5, 0.5, 0.52, 1.0],
         roughness: 0.8,
@@ -339,7 +344,7 @@ pub fn crowd_culling_scene() -> RenderScene {
     scene.add_instance(
         wall,
         grey,
-        Mat4::from_translation(Vec3::new(0.0, 2.0, -2.6)),
+        Mat4::from_translation(Vec3::new(0.0, 5.0, -2.6)),
     );
     scene.baked_clips.push(og_render::BakedClip {
         joints: CYLINDER_BONES as u32,
