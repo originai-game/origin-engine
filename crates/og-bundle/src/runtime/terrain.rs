@@ -59,9 +59,9 @@ impl CookedTerrain {
         }
     }
 
-    /// The compressed bytes of a tile: its zlib'd 16-bit heights and, with
-    /// a control map, its zlib'd texels (for an inflater elsewhere: the
-    /// web host's DecompressionStream).
+    /// The compressed bytes of a tile: its zlib'd 16-bit heights (then its
+    /// horizon's words) and, with a control map, its zlib'd texels (for an
+    /// inflater elsewhere: the web host's DecompressionStream).
     pub fn tile_zlib(&self, index: u32) -> Option<(&[u8], Option<&[u8]>)> {
         let t = self.tiles.rows.get(index as usize)?;
         let h = self
@@ -79,14 +79,22 @@ impl CookedTerrain {
         Some((h, c))
     }
 
+    /// The bytes of a tile's inflated heights stream: its 16-bit heights,
+    /// then its horizon's words.
+    fn stream_bytes(&self) -> usize {
+        let side = self.layout.heights_side() as usize;
+        side * side * 2 + self.layout.horizon_words() as usize * 4
+    }
+
     /// A tile's heights in metres from its inflated 16-bit values (with
     /// holes, each one's lowest bit its cell's hole flag:
     /// `og_render::hole_bit`).
     pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
         let side = self.layout.heights_side() as usize;
-        if raw.len() != side * side * 2 {
+        if raw.len() != self.stream_bytes() {
             return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
         }
+        let raw = &raw[..side * side * 2];
         let (lo, hi) = self.range;
         let span = hi - lo;
         let holes = self.layout.holes;
@@ -128,15 +136,27 @@ impl CookedTerrain {
             }
             (_, None) => return Err(self.bad(format!("tile {index} has no control texels"))),
         };
-        Ok(og_render::TerrainTile::build(&self.layout, index, h, c))
+        let side = self.layout.heights_side() as usize;
+        let horizon = heights[side * side * 2..]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|w| u32::from_le_bytes(*w))
+            .collect();
+        Ok(og_render::TerrainTile::build(
+            &self.layout,
+            index,
+            h,
+            horizon,
+            c,
+        ))
     }
 
     fn inflate(&self, index: u32) -> Result<(Vec<u8>, Option<Vec<u8>>), LoadError> {
         let (h, c) = self
             .tile_zlib(index)
             .ok_or_else(|| self.bad(format!("tile {index} is out of range")))?;
-        let side = self.layout.heights_side() as usize;
-        let h = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(h, side * side * 2)
+        let h = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(h, self.stream_bytes())
             .map_err(|_| self.bad(format!("tile {index} does not inflate")))?;
         let c = match c {
             None => None,

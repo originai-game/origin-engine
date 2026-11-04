@@ -526,7 +526,9 @@ row!(
     /// heights in `heights` and its zlib'd control texels in `control`.
     /// v3: a level past 0 holds its finer level's heights under a centred
     /// tent filter (og-render's `HeightPyramid`), no longer decimated.
-    TerrainTileRow, "og.Terrain.tile", 3 {
+    /// v4: the heights' stream goes on with the tile's horizon
+    /// (`HeightPyramid::horizon`: `horizon_words()` little-endian u32s).
+    TerrainTileRow, "og.Terrain.tile", 4 {
         index: u32,
         level: u32,
         x: u32,

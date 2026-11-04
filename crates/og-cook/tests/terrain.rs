@@ -196,6 +196,20 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
             .map(|(a, b)| (a - b).abs())
             .fold(0.0f32, f32::max);
         assert!(off <= step * 1.01, "tile {index} is off by {off}");
+        // Its horizon, cooked with it, is the field's own (from the
+        // source the cook read, so within a few of its steps).
+        let cooked = t.tile(index).unwrap().horizon;
+        let own = data.horizon(&t.layout, index, &pyramid);
+        assert_eq!(cooked.len(), t.layout.horizon_words() as usize);
+        let worst = cooked
+            .iter()
+            .zip(&own)
+            .flat_map(|(a, b)| {
+                (0..2).map(move |k| ((a >> (12 * k)) & 4095).abs_diff((b >> (12 * k)) & 4095))
+            })
+            .max()
+            .unwrap();
+        assert!(worst <= 8, "tile {index}'s horizon is off by {worst} steps");
     }
     // A level-1 sample is the mean of the source under it, a centred tent
     // over its 3 × 3 finest samples: at (298, 26) the source wraps from

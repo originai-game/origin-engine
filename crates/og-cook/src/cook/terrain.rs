@@ -797,6 +797,11 @@ pub(super) fn cook_terrain(
             }
             q.extend_from_slice(&n.to_le_bytes());
         }
+        // Then its horizon (og-render's `HeightPyramid::horizon`), in the
+        // same stream: a host that inflates the heights inflates it too.
+        for w in field.horizon(&layout, index, &heights) {
+            q.extend_from_slice(&w.to_le_bytes());
+        }
         let z_heights = miniz_oxide::deflate::compress_to_vec_zlib(&q, 6);
         let (control_offset, control_bytes) = match &pyramid {
             Some(p) => {
