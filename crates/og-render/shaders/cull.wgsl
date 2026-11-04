@@ -357,9 +357,9 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   if (scan[at + k + 1u] != scan[at + k] && (b.flags & SKINNED) != 0u) {
     // A skinned instance: its record into the pass's skinned region.
     let base = params.motion.z;
-    let from = (k - base) * SKINNED_FLOATS;
-    let to = ((g + 1u) * params.motion.w + b.first - base + scan[at + k] - start) * SKINNED_FLOATS;
-    for (var j = 0u; j < SKINNED_FLOATS; j++) { skinned[to + j] = skinned[from + j]; }
+    let src = (k - base) * SKINNED_FLOATS;
+    let dst = ((g + 1u) * params.motion.w + b.first - base + scan[at + k] - start) * SKINNED_FLOATS;
+    for (var j = 0u; j < SKINNED_FLOATS; j++) { skinned[dst + j] = skinned[src + j]; }
   } else if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
