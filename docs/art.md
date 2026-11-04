@@ -231,7 +231,7 @@ by `og cook --report` and `og style check`.
 |---|---|---|
 | texture used by sprites, flipbooks, tile sets, UI images (2D) | `ArtPixels`, `ArtPalette`, `ArtLine` | resample to the pixel unit with a pixel-art downscale (a dominant-colour box filter, never bilinear), alpha to 1 bit, palette mapping by Oklab nearest with the palette's dither, ramp limiting per hue, the outline drawn into the cell (Pixelorama's OutlineInline, diamond/circle/square brush, outside or inside), an index texture beside it for runtime swaps, `rotation prerotated N` bakes N rotations with cleanEdge |
 | painted 2D (paint and line styles) | `Stylise`'s paint fields read as texel space | the Kuwahara, pigment pooling and canvas grain applied in the texture's own texels, so the stroke follows the sprite, not the screen |
-| texture used by meshes (3D) | `ArtTexels`, `ArtPalette`, `Stylise`'s paint fields | resample to the density for the model's size, then (painted styles) the same texel-space paint as painted 2D on a model's own colour textures, so strokes follow the surface (not on a texture no model claims, nor on normal or data maps), palette mapping where `strict`, nearest filter and no mips where `filter nearest` (low-resolution 3D) |
+| texture used by meshes (3D) | `ArtTexels`, `ArtPalette`, `Stylise`'s paint fields | resample to the density for the model's size, then (painted styles) the same texel-space paint as painted 2D on a model's own colour textures, so strokes follow the surface (not on a texture no model claims, nor on normal or data maps), palette mapping where `strict`, nearest filter and no mips where `filter nearest` (low-resolution 3D); every other colour texture held to `maxColors` and `rampSteps` (the asset's own Oklab median cut and ramp merge, then a 3x3 majority pass that merges the speckle a photograph leaves), so a flat look's ground and props are not photographs under its bands |
 | model (glTF, `type model`, `.vox`) | `ArtShape`, `ArtTexels`, `ArtPalette` | decimate to the face budget (meshopt simplify, already a cook dependency, else quadric), flat normals or an angle split, bevel (a chamfer on hard edges), voxelise at `voxel` (the `.vox` importer's mesher) with colours from the palette, bake vertex colours where the style is untextured (faceted, minimal geometric), the outline hull's data for `ArtLine` |
 | animation clips and flipbooks | `ArtMotion` | step the sampled clip at `stepFps`, drop frames beyond `maxFrames` with a warning |
 
@@ -274,9 +274,14 @@ their zero value:
 palette hit rate (share of opaque texels within ΔE00 2 of a palette
 colour), distinct colours, pixel-grid alignment (texels per logical pixel
 constant, no half pixels), texel density spread, faces against the
-budget, normal smoothness (flat share), outline width found; per frame
+budget, normal smoothness (flat share), outline width found; per clip
+(`ArtMotion`): a model clip's rate and held poses against `stepFps`, its
+frames against `maxFrames`, a flipbook's frame durations as whole steps;
+per frame
 (`og run --headless --commands` captures of title, play, results): colour
-count, palette hit rate, edge statistics, and the three catalogue checks
+count, palette hit rate, edge statistics, the camera it was captured with
+(`og.Camera` through the probe) against `ArtCamera` (projection, pitch and
+yaw with `fixedAngle`, the field of view's range), and the three catalogue checks
 handed to the critic as written (`--critic` prints the prompt and the
 frames; the platform's critic answers them). JSON with `--json`.
 `og build --publish` prints its summary as warnings; it never refuses a

@@ -1,7 +1,7 @@
 type look
 version 1
 ---
-# Thin ink on every edge, light hatching in the shadows, six tones.
+# Thin ink on every edge, light hatching in the shadows that keeps their colour, six tones.
 name "Fine-line doodle worlds"
 ui "storybook"
 Stylise {
@@ -11,6 +11,7 @@ Stylise {
   hatching 0.5
   hatchingLevels 2
   hatchingScale 5
+  hatchingKeepColor true
   posterize 6
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and

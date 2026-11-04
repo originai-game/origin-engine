@@ -2,6 +2,7 @@ type look
 version 1
 ---
 # A low grid, two tones per channel through a Bayer 8 dither, every pixel black or white (the engine's @palettes/1bit): true 1-bit.
+# The dither lies on the surfaces (Obra Dinn), so it stays on the forms as the camera moves.
 name "Monochrome dithered 3D"
 ui "pixel"
 antialias off
@@ -10,6 +11,7 @@ Stylise {
   posterize 2
   palette "@palettes/1bit"
   dither bayer8
+  ditherSpace surface
 }
 RenderSettings {
   toneMapping none

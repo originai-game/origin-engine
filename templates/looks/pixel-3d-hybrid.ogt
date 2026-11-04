@@ -10,6 +10,7 @@ Stylise {
   pixelSnap true
   posterize 10
   dither bayer4
+  ditherSpace surface
 }
 PostEffects {
   depthOfField true
