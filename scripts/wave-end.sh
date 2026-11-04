@@ -9,9 +9,14 @@
 #   scripts/wave-end.sh [--dry-run] [--stages LIST] [--templates LIST] [--record NAMES]
 #
 # Stages, in order (--stages takes a comma list of them; default
-# gate,web,conformance,release):
+# gate,web,art,conformance,release):
 #   gate       scripts/check.sh --all
 #   web        scripts/check.sh web-reference
+#   art        every look's frame redrawn: tools/art-samples/capture.ts for
+#              each examples/art-<family> into target/evidence/wave-end/art/,
+#              then compared with its references/metal/ (frames-vs-metal.ts,
+#              a measurement); --record art or art/<family> captures into
+#              the references instead (docs/art.md §2.6)
 #   conformance scripts/tsrs-diff.sh: tsrs misses no diagnostic tsgo reports
 #              on the engine, the templates, the examples and the corpus
 #   release    scripts/release.sh pack, then verify: the five packages as
@@ -39,7 +44,8 @@
 #              <template> (every playtest of it), <template>/<playtest>,
 #              gfx (every og-tests scene), gfx/<scene>, or og-ui (its GPU
 #              tests' frames). A playtest named runs with OG_FX_CAPTURE=1 and
-#              OG_UI_CAPTURE=1; a gfx scene's capture is copied into
+#              OG_UI_CAPTURE=1; art (every family's look frames) or
+#              art/<family>, on this machine's tier; a gfx scene's capture is copied into
 #              crates/og-tests/references/vulkan-cpu/; og-ui runs its tests
 #              with OG_UI_CAPTURE=1.
 #              Nothing is recorded without it.
@@ -60,10 +66,10 @@ cd "$OG_ROOT" || exit 1
 
 IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
-ALL_STAGES="gate web conformance release cross prepare gfx ui playtests table"
+ALL_STAGES="gate web art conformance release cross prepare gfx ui playtests table"
 # og-ui's GPU test modules, all in its one test binary (tests/main.rs).
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
-stages="gate web conformance release"
+stages="gate web art conformance release"
 templates="ui-kit"
 for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
   [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
@@ -124,8 +130,8 @@ docker_run() {
 recorded() {
   local r
   for r in $record; do
-    if [ "$1" = gfx ]; then
-      case "$r" in gfx|"gfx/$2") return 0 ;; esac
+    if [ "$1" = gfx ] || [ "$1" = art ]; then
+      case "$r" in "$1"|"$1/$2") return 0 ;; esac
     else
       case "$r" in "${2%%/*}"|"$2") return 0 ;; esac
     fi
@@ -136,6 +142,24 @@ recorded() {
 stage_gate() { run scripts/check.sh --all; }
 
 stage_web() { run scripts/check.sh web-reference; }
+
+# The art samples (examples/art-<family>, docs/art.md §2.6): no gate lane
+# draws them, so the wave's end redraws every look on this machine's tier
+# with the gate's og and compares each with its committed frame.
+stage_art() {
+  local dir family out rc=0 args=() og="$OG_TARGET_DIR/debug/og"
+  if [ "$dry" != 1 ] && [ ! -x "$og" ]; then og_err "no $og: the gate stage builds it (or cargo build -p og-cli)"; return 1; fi
+  for dir in examples/art-*/; do
+    dir="${dir%/}"
+    family="${dir#examples/art-}"
+    if recorded art "$family"; then out="$dir/references/metal"
+    else out="$OUT/art/$family"; [ "$dry" = 1 ] || rm -rf "$out"; fi
+    run bun tools/art-samples/capture.ts --only "$family" --og "$og" --out "$out" || rc=1
+    args+=(--set "art-$family" "$out" "$dir/references/metal")
+  done
+  run bun scripts/frames-vs-metal.ts --out "$OUT/art-vs-metal.tsv" "${args[@]}" || rc=1
+  return "$rc"
+}
 
 stage_conformance() { run scripts/tsrs-diff.sh; }
 

@@ -29,7 +29,8 @@ project with one look, so an example per family is also the honest shape.
 points its look at the style, cooks, runs one frame and `og style check`.
 The examples sit outside every gate lane (no `package.json`, no `tests/`),
 so they cost the gate nothing; each still passes `og check` (tsrs) when it
-runs.
+runs. Since 2026-11-04 the wave's end redraws them: `scripts/wave-end.sh`'s
+`art` stage captures every look and compares it with its Metal frame.
 
 ## How the assets were made
 

@@ -63,3 +63,7 @@ the art brief it was requested with (kind, subject, metres).
 The frame of style `<slug>` is `examples/art-<family>/references/<tier>/<slug>.png`
 at 1280x720: `bun tools/art-samples/capture.ts --only <family> --out
 examples/art-<family>/references/metal` on macrunner records a family's.
+The wave's end redraws every family (`scripts/wave-end.sh`, stage `art`:
+captures in `target/evidence/wave-end/art/<family>/`, compared with the
+committed frames in `art-vs-metal.tsv`); `--record art` or
+`--record art/<family>` records them in place.
