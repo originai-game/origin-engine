@@ -35,6 +35,8 @@ fn imp_right(d: vec3<f32>) -> vec3<f32> {
 
 struct ImpCard {
   world: vec4<f32>,
+  // The card's vertex in the model's space (its sway's `local`).
+  local: vec3<f32>,
   // Each frame's image of the card's vertex ([-1, 1]², y up): where the
   // frame's own orthographic view along its direction sees that point.
   uv01: vec4<f32>,
@@ -113,6 +115,7 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
   let p = (r * q.x + u * q.y) * radius;
   var o: ImpCard;
   o.world = mul_point(model, vec4<f32>(c + p, 1.0));
+  o.local = c + p;
   // The three frames around v (impostor.rs `blend_frames`).
   let g = imp_grid();
   let n = f32(g - 1u);
@@ -197,6 +200,15 @@ fn imp_dropped(pixel: vec2<f32>, lo: f32, hi: f32) -> bool {
 fn imp_fade(at: vec3<f32>) -> vec2<f32> {
   if (scatter.impostor_grid.y <= 0.0) { return vec2<f32>(0.0, 1.0); }
   return vec2<f32>(scatter_near(at), 1.0);
+}
+
+// How the wind moves the card's vertex `card` of the copy `i` scaled by
+// `size`: as scatter_sway moves its mesh's point at the same height in the
+// model's space, so the card leans and sways with the mesh it stands for
+// through the crossfade (a model impostor: still, its sway is the mesh's).
+fn imp_sway(card: ImpCard, i: ScatterInstance, size: f32, previous: bool) -> vec3<f32> {
+  if (scatter.impostor_grid.y <= 0.0) { return vec3<f32>(0.0); }
+  return scatter_sway(card.local, i.m3, length(i.m1) * size, previous);
 }
 
 // The card's size over the distance fade (scatter_scale; a model impostor's 1).

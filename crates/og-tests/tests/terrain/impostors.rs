@@ -248,3 +248,36 @@ fn taa_resolves_the_crossfade_without_grain() {
         "crossfade grain {g:.3} vs meshes {m:.3}"
     );
 }
+
+/// G2: impostor cards sway with the wind field as their meshes do: the
+/// field drawn all as cards changes when the wind blows. Before G2 a card
+/// stood still in any wind (its mesh swayed, so the crossfade jumped).
+#[test]
+fn impostor_cards_sway_in_the_wind() {
+    let mut scene = is::impostor_scatter_scene(1.0);
+    scene.scatters[0].scatter.sway = 1.0;
+    scene.light.cast_shadows = false;
+    let still = render(&scene).0;
+    scene.wind = Some(og_render::Wind {
+        strength: 0.4,
+        direction: Vec3::X,
+        gust: 0.0,
+        turbulence: 0.0,
+        ..og_render::Wind::default()
+    });
+    scene.tick = 60;
+    let (blown, stats) = render(&scene);
+    keep("impostor-cards-wind", &blown);
+    assert!(stats.scatter_draws > 0);
+    let changed = still
+        .pixels
+        .chunks(4)
+        .zip(blown.pixels.chunks(4))
+        .filter(|(a, b)| a.iter().zip(*b).any(|(x, y)| x.abs_diff(*y) > 24))
+        .count();
+    println!("cards in the wind: {changed} pixels moved");
+    assert!(
+        changed > 500,
+        "the cards stood still in the wind ({changed} pixels)"
+    );
+}

@@ -16,6 +16,8 @@
 // meshlet_sway.wgsl's `MeshletDraw`, and the vertex pool for its foliage
 // regions: a swaying caster's shadow sways with it.
 @group(3) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
+// The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+@group(3) @binding(18) var meshlet_wind_tex: texture_2d<f32>;
 @group(3) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
 
 // Work item `ii`'s transform, and its corner `vi`'s vertex index (none
@@ -46,7 +48,7 @@ fn meshlet_corner(vi: u32, ii: u32) -> MeshletCorner {
   if (c.w != 0u) {
     let at = meshlet_sway_row(c.w, r.index);
     let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
-    r.position += meshlet_sway(r.position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], r.model, meshlet_draw.wind[0], sway);
+    r.position += meshlet_sway(r.position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], r.model, meshlet_draw.wind[0], sway, false);
   }
   return r;
 }

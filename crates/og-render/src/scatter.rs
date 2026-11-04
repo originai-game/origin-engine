@@ -110,6 +110,11 @@ pub struct Wind {
     /// How much the lean varies in the gusts, 0..1: 0 a steady lean, 1
     /// from upright to twice the mean.
     pub gust: f32,
+    /// How much the simulated field (`wind_field.rs`) swirls on its own,
+    /// 0..1: curl noise of the gusts' size, at this share of the speed.
+    pub turbulence: f32,
+    /// The gust patches' size (m).
+    pub gust_size: f32,
 }
 
 impl Default for Wind {
@@ -119,6 +124,8 @@ impl Default for Wind {
             direction: Vec3::X,
             speed: 3.0,
             gust: 0.6,
+            turbulence: 0.3,
+            gust_size: 14.0,
         }
     }
 }
@@ -554,14 +561,11 @@ struct ScatterGpu {
     fade: [f32; 4],
     view_proj: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
-    /// xy: the wind's horizontal direction (x, z), z: its strength times
-    /// the scatter's sway (0: still), w: its gust.
+    /// xy: og.Wind's horizontal direction (x, z), z: the scatter's sway
+    /// (0: still); the lean is the wind field's (`wind_field.rs`).
     wind: [f32; 4],
-    /// The wind's time phases (`wind_phases`): xy this frame's, zw the
-    /// previous frame's.
-    wind_phase: [f32; 4],
-    /// x: the gust wave's wavenumber (rad/m), y: the mesh's top above its
-    /// origin (m), zw: the scene's origin's x and z (`origin.rs`).
+    /// y: the mesh's top above its origin (m), zw: the scene's origin's x
+    /// and z (`origin.rs`).
     wind_shape: [f32; 4],
     /// The impostor's sphere in the model's space (xyz centre, w radius),
     /// its grid and distance (x frames per side, y the distance past which
@@ -683,6 +687,8 @@ pub(crate) struct ScatterPipelines<'a> {
     /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
     /// crossfade thresholds its pixels by.
     pub blue_noise: wgpu::TextureView,
+    /// The wind field's lean (`wind_field.rs`) the copies and cards sway by.
+    pub wind_field: wgpu::TextureView,
 }
 
 /// Draws [`ScatterDraw`]s from cached chunks.
@@ -708,9 +714,12 @@ pub(crate) struct ScatterRenderer {
     frame: u64,
     /// Chunks built for the last frame.
     pub built: u32,
-    /// The wind's phases the last frame drew with (the motion vectors'
-    /// previous positions).
-    wind_phase: Option<[f32; 2]>,
+    /// The tick the last frame drew (the analytic wind's previous phases).
+    last_tick: Option<u64>,
+    /// The frame's og.Wind (`WindField`, group 2 binding 2).
+    wind_uniform: wgpu::Buffer,
+    /// The wind field's lean (`wind_field.rs`).
+    wind_field: wgpu::TextureView,
     /// The frame's model impostors' transforms, and how many it holds.
     impostor_instances: Option<(wgpu::Buffer, u64)>,
 }
@@ -744,6 +753,28 @@ impl ScatterRenderer {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<
+                            crate::wind::WindFieldGpu,
+                        >() as u64),
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
                         view_dimension: wgpu::TextureViewDimension::D2,
@@ -786,7 +817,19 @@ impl ScatterRenderer {
             label: Some("scatter shadow"),
             source: wgpu::ShaderSource::Wgsl(p.shadow_wgsl.into()),
         });
-        let (uniform, group) = Self::slots(device, &uniform_layout, &p.blue_noise, 4);
+        let wind_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("scatter wind"),
+            size: std::mem::size_of::<crate::wind::WindFieldGpu>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let (uniform, group) = Self::slots(
+            device,
+            &uniform_layout,
+            [&p.blue_noise, &p.wind_field],
+            &wind_uniform,
+            4,
+        );
         ScatterRenderer {
             lit_layout,
             lit_fx_layout,
@@ -805,7 +848,9 @@ impl ScatterRenderer {
             chunks: HashMap::new(),
             frame: 0,
             built: 0,
-            wind_phase: None,
+            last_tick: None,
+            wind_uniform,
+            wind_field: p.wind_field,
             impostor_instances: None,
         }
     }
@@ -813,7 +858,8 @@ impl ScatterRenderer {
     fn slots(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-        blue_noise: &wgpu::TextureView,
+        [blue_noise, wind_field]: [&wgpu::TextureView; 2],
+        wind: &wgpu::Buffer,
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -837,6 +883,14 @@ impl ScatterRenderer {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::TextureView(blue_noise),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wind.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(wind_field),
                 },
             ],
         });
@@ -1141,6 +1195,7 @@ impl ScatterRenderer {
         view_proj: Mat4,
         prev_view_proj: Mat4,
         frame_index: u64,
+        (wind_grid, lean_cap): (crate::wind_field::WindGrid, f32),
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
@@ -1152,9 +1207,22 @@ impl ScatterRenderer {
         let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
         let wind = scene.wind.filter(|w| w.strength > 0.0);
-        let phase = wind.map(|w| wind_phases(&w, scene.tick, scene.tick_rate));
-        let prev_phase = self.wind_phase.or(phase).unwrap_or_default();
-        self.wind_phase = phase;
+        let previous = self.last_tick.unwrap_or(scene.tick);
+        self.last_tick = Some(scene.tick);
+        queue.write_buffer(
+            &self.wind_uniform,
+            0,
+            bytemuck::bytes_of(&crate::wind::field_gpu(
+                wind,
+                scene.tick,
+                previous,
+                scene.tick_rate,
+                scene.origin,
+                wind_grid,
+            )),
+        );
+        // `lean_cap`: the most a copy leans this frame (wind_field.rs; its
+        // chunks' bounds widen by its tip's reach).
         // The model impostors by atlas, in the order each first appears.
         let mut groups: Vec<(crate::Impostor, Vec<usize>)> = Vec::new();
         for (i, d) in scene.impostors.iter().enumerate() {
@@ -1166,7 +1234,13 @@ impl ScatterRenderer {
         let slots = (scene.scatters.len() + groups.len()) as u64;
         if self.slots < slots {
             self.slots = slots.next_power_of_two();
-            let (u, g) = Self::slots(device, &self.uniform_layout, &self.blue_noise, self.slots);
+            let (u, g) = Self::slots(
+                device,
+                &self.uniform_layout,
+                [&self.blue_noise, &self.wind_field],
+                &self.wind_uniform,
+                self.slots,
+            );
             self.uniform = u;
             self.group = g;
         }
@@ -1178,7 +1252,6 @@ impl ScatterRenderer {
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
-            wind_phase: [0.0; 4],
             wind_shape: [0.0, 0.0, scene.origin.x, scene.origin.z],
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
@@ -1399,30 +1472,21 @@ impl ScatterRenderer {
             }
             // The wind: its lean on this scatter, and the furthest a copy
             // moves (the tip of the tallest at the top of a gust).
-            let (wind_row, sway) = match wind {
-                Some(w) if s.sway > 0.0 && mesh_top > 0.0 => {
-                    let dir = Vec2::new(w.direction.x, w.direction.z).normalize_or(Vec2::X);
-                    let lean = w.strength * s.sway;
-                    let gust = w.gust.clamp(0.0, 1.0);
-                    let tip = lean * (1.0 + gust) * mesh_top * s.scale[1].max(s.scale[0]);
-                    ([dir.x, dir.y, lean, gust], tip)
-                }
-                _ => ([0.0; 4], 0.0),
+            let (wind_row, sway) = if s.sway > 0.0 && mesh_top > 0.0 && lean_cap > 0.0 {
+                let d = wind.map_or(Vec3::X, |w| w.direction);
+                let dir = Vec2::new(d.x, d.z).normalize_or(Vec2::X);
+                let tip = lean_cap * s.sway * mesh_top * s.scale[1].max(s.scale[0]);
+                ([dir.x, dir.y, s.sway, 0.0], tip)
+            } else {
+                ([0.0; 4], 0.0)
             };
-            let now = phase.unwrap_or_default();
             let mut gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
                 fade: [s.fade_from(), noise, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,
-                wind_phase: [now[0], now[1], prev_phase[0], prev_phase[1]],
-                wind_shape: [
-                    std::f32::consts::TAU / WIND_WAVELENGTH,
-                    mesh_top,
-                    scene.origin.x,
-                    scene.origin.z,
-                ],
+                wind_shape: [0.0, mesh_top, scene.origin.x, scene.origin.z],
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],

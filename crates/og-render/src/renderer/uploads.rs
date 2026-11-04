@@ -133,7 +133,8 @@ impl Renderer {
     /// A shared mesh takes the largest current/previous sway of its instances;
     /// this avoids adding a per-instance cull stream just for the margin.
     pub(crate) fn refresh_foliage_bounds(&mut self, scene: &RenderScene) {
-        let winds = crate::foliage::foliage_winds(scene, self.previous_wind).0;
+        let winds =
+            crate::foliage::foliage_winds(scene, self.previous_wind, crate::wind_field::NO_GRID).0;
         let mut sway = vec![0.0f32; self.cache.meshes.len()];
         let previous = if self.previous_sway.len() == scene.instances.len() {
             self.previous_sway.as_slice()
@@ -175,7 +176,12 @@ impl Renderer {
             let f = mesh.foliage.as_ref().unwrap();
             let margin = winds
                 .iter()
-                .map(|w| f.deformation.deform_margin(*w))
+                .map(|w| {
+                    f.deformation.deform_margin(
+                        crate::wind_field::lean_cap(Some(*w).filter(|w| w.strength > 0.0), false)
+                            .max(self.wind_field.lean_cap()),
+                    )
+                })
                 .fold(0.0f32, f32::max)
                 * sway[i].max(1.0);
             mesh.bounds = f

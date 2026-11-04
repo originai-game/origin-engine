@@ -15,12 +15,20 @@ const WIND_TIME_PERIOD: f32 = 3600.0;
 const WIND_GUST_CELL: f32 = 14.0;
 const WIND_GUST_PERIOD: i32 = 256;
 
+// og.Wind's travelling wave: its wavelength (scatter.rs WIND_WAVELENGTH).
+const WIND_WAVELENGTH: f32 = 10.0;
+
 // One frame of og.Wind (wind.rs WindFieldGpu).
 struct WindField {
   dir: vec4<f32>,     // xy: where it blows (world x, z), z: its strength (0: still), w: its gust
   phase: vec4<f32>,   // xy: its wave's two phases (scatter.rs wind_phases), zw: last frame's
   offset: vec4<f32>,  // xy: how far the gust patches have travelled (cells, within the period), zw: last frame's
   time: vec4<f32>,    // x: seconds (within WIND_TIME_PERIOD), y: last frame's, zw: the frame's origin's x and z (origin.rs)
+  // The simulated field (wind_field.rs): its fine level's min corner
+  // (x, z, from the frame's origin), cell (m), and 1 when it runs (0: the
+  // analytic wind alone); its coarse level's corner, cell, and cells a side.
+  grid: vec4<f32>,
+  grid_outer: vec4<f32>,
 };
 
 // PCG hash (Jarzynski and Olano, 2020). grass.rs `hash`.
@@ -71,4 +79,24 @@ fn wind_gust(w: WindField, at: vec2<f32>, previous: bool) -> f32 {
   let offset = select(w.offset.xy, w.offset.zw, previous);
   let p = at / WIND_GUST_CELL - offset;
   return 0.65 * wind_noise(p) + 0.35 * wind_noise(p * 2.0 + vec2<f32>(37.0, 11.0));
+}
+
+// The gusts' share at world point `at` (x, z), in [-1, 1]: the travelling
+// wave of two octaves mixed with the gust patches, so a gust rolls across
+// the field as a band and in patches. What every tier leans by (grass,
+// scattered copies, cards, trees, swaying models) and what the simulated
+// field is forced towards (wind_field.wgsl).
+fn wind_gust_share(w: WindField, at: vec2<f32>, previous: bool) -> f32 {
+  let dir = w.dir.xy;
+  let phase = select(w.phase.xy, w.phase.zw, previous);
+  let x = WIND_TAU / WIND_WAVELENGTH * dot(at, dir);
+  let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
+  return clamp(0.5 * wave + 1.4 * (wind_gust(w, at, previous) - 0.5), -1.0, 1.0);
+}
+
+// og.Wind's lean at world point `at` without the simulated field: downwind
+// by its strength times one plus its gust times the gusts' share.
+fn wind_lean_analytic(w: WindField, at: vec2<f32>, previous: bool) -> vec2<f32> {
+  if (w.dir.z <= 0.0) { return vec2<f32>(0.0); }
+  return w.dir.xy * w.dir.z * (1.0 + w.dir.w * wind_gust_share(w, at, previous));
 }

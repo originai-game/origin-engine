@@ -81,7 +81,7 @@ struct Frame {
   origin: vec4<f32>,          // xyz: where the zero of the frame's coordinates is in the world (origin.rs)
   // The grounded dome (GroundProjection::gpu): [0] xyz its centre, w its height above the ground (0: none); [1].x its radius.
   env_dome: array<vec4<f32>, 2>,
-  foliage_wind: array<array<vec4f, 7>, 2>, // current, previous drawn; FoliageWind
+  foliage_wind: array<array<vec4f, 9>, 2>, // current, previous drawn; FoliageWind
   // The material style's toon model (stylise.rs MaterialStyle): x the band
   // edges' softness in pixels (0: hard steps), y how smooth a toon
   // material's ambient light stays (0 one flat colour, 1 the PBR ambient),

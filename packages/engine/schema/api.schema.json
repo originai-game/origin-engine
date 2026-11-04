@@ -7948,6 +7948,9 @@
         "LightningStrike",
         "Weather",
         "Wind",
+        "WindMotorKind",
+        "WindMotorKind",
+        "WindMotor",
         "Water",
         "Water2D"
       ],
@@ -38563,7 +38566,7 @@
     "Wind": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
+      "description": "The wind the renderer sways vegetation with: og.TerrainScatter copies and their impostor cards, og.Grass blades, swaying trees, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Where the renderer can (RenderCapabilities.compute) it simulates the wind as one field around the camera that every one of them reads, so a gust front crosses grass, copies and trees together, eddies (`turbulence`), carries og.WindMotor pushes, and vegetation springs into a gust and settles after it; og.Model sway keeps the wind's own gusts. Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).",
       "type": "object",
       "properties": {
         "strength": {
@@ -38600,6 +38603,72 @@
           "minimum": 0,
           "maximum": 1,
           "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "turbulence": {
+          "type": "number",
+          "description": "How much the wind swirls on its own between the gusts, where the renderer simulates it (RenderCapabilities.compute): 0 the gusts alone, 1 eddies as strong as the wind.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "gustSize": {
+          "type": "number",
+          "description": "How large the gust patches are.",
+          "default": 14,
+          "minimum": 1,
+          "maximum": 200,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindMotorKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "atmosphere",
+      "description": "How an og.WindMotor pushes the wind.",
+      "type": "string",
+      "enum": [
+        "omni",
+        "directional",
+        "vortex"
+      ],
+      "x-og-variants": {
+        "omni": "Outward from its centre: a blast, a landing, a horse's hooves.",
+        "directional": "Along the entity's forward (its -z, horizontal part): a fan, a rotor's downwash leaning the grass one way.",
+        "vortex": "Around its centre, counter-clockwise seen from above: a whirlwind, a spell."
+      }
+    },
+    "WindMotor": {
+      "x-og-kind": "component",
+      "x-og-module": "atmosphere",
+      "description": "A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away from it (omni), along it (directional) or around it (vortex), the push fading to nothing at its edge; the field carries and swirls the push, so it ripples out and settles after the motor stops. Needs no og.Wind (a motor in still air moves only what it reaches). Visual only, where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it, and the same ticks draw the same push on every run. The 16 nearest the camera act.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/WindMotorKind",
+          "description": "How it pushes.",
+          "default": "omni"
+        },
+        "radius": {
+          "type": "number",
+          "description": "How far it reaches.",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 200,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "strength": {
+          "type": "number",
+          "description": "Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind.",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "mps",
           "x-og-tunable": true
         }
       },

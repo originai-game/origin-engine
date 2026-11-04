@@ -14,11 +14,14 @@ use glam::Vec3;
 /// Prepend [`WIND_WGSL`] once: the gust sampler is shared with grass.
 pub const WGSL: &str = wgsl!("meshlet_foliage.wgsl");
 pub const WIND_WGSL: &str = wgsl!("wind_common.wgsl");
+/// The simulated wind field's lean the trunk bends by (after [`WIND_WGSL`]).
+pub const WIND_LEAN_WGSL: &str = wgsl!("wind_lean.wgsl");
 
 /// Both drawn states, shared by meshlets and conventional instancing.
 pub(crate) fn foliage_winds(
     scene: &crate::RenderScene,
     previous: Option<(Wind, u64, f32)>,
+    grid: crate::wind_field::WindGrid,
 ) -> ([Wind; 2], [FoliageWind; 2]) {
     let current = scene.wind.unwrap_or(Wind {
         strength: 0.0,
@@ -28,8 +31,15 @@ pub(crate) fn foliage_winds(
     (
         [current, old],
         [
-            FoliageWind::new(current, scene.tick, scene.tick_rate, 0.0, scene.origin),
-            FoliageWind::new(old, tick, rate, 0.0, scene.origin),
+            FoliageWind::new(
+                current,
+                scene.tick,
+                scene.tick_rate,
+                0.0,
+                scene.origin,
+                grid,
+            ),
+            FoliageWind::new(old, tick, rate, 0.0, scene.origin, grid),
         ],
     )
 }
@@ -71,7 +81,16 @@ pub struct FoliageWind {
 }
 
 impl FoliageWind {
-    pub fn new(wind: Wind, tick: u64, tick_rate: f32, top: f32, origin: Vec3) -> Self {
+    /// og.Wind at `tick`, read with the simulated field of grid `grid`
+    /// (`wind_field.rs`; [`crate::wind_field::NO_GRID`]: analytic alone).
+    pub fn new(
+        wind: Wind,
+        tick: u64,
+        tick_rate: f32,
+        top: f32,
+        origin: Vec3,
+        grid: crate::wind_field::WindGrid,
+    ) -> Self {
         let phase = crate::wind_phases(&wind, tick, tick_rate);
         let direction = Vec3::new(wind.direction.x, 0.0, wind.direction.z).normalize_or(Vec3::X);
         Self {
@@ -80,7 +99,7 @@ impl FoliageWind {
             origin: origin
                 .extend(std::f32::consts::TAU / WIND_WAVELENGTH)
                 .to_array(),
-            field: crate::wind::field_gpu(Some(wind), tick, tick, tick_rate, origin),
+            field: crate::wind::field_gpu(Some(wind), tick, tick, tick_rate, origin, grid),
         }
     }
 }
@@ -114,8 +133,9 @@ impl FoliageBounds {
     /// bending branch and trunk. For a rotation through at most θ, the chord
     /// is 2r sin(θ/2). Outer rotations preserve the length of an inner
     /// displacement, so the sum of the three rest-pose chords is conservative.
-    pub fn deform_margin(&self, wind: Wind) -> f32 {
-        let lean = wind.strength.max(0.0) * (1.0 + wind.gust.clamp(0.0, 1.0));
+    /// `lean` is the most the trunk leans ([`crate::wind_field::lean_cap`]).
+    pub fn deform_margin(&self, lean: f32) -> f32 {
+        let lean = lean.max(0.0);
         let chord = |radius: f32, amplitude: f32| 2.0 * radius * (0.5 * amplitude.atan()).sin();
         let leaf = chord(self.leaf_radius, lean * 0.35 * self.flutter);
         let branch = chord(self.branch_radius, lean * self.flexibility);
@@ -159,7 +179,7 @@ mod tests {
             layouter[handle].size as usize,
             std::mem::size_of::<FoliageWind>()
         );
-        assert_eq!(std::mem::size_of::<FoliageWind>(), 7 * 16);
+        assert_eq!(std::mem::size_of::<FoliageWind>(), 9 * 16);
     }
 
     #[test]
@@ -177,7 +197,7 @@ mod tests {
             gust: 0.8,
             ..Wind::default()
         };
-        let margin = bounds.deform_margin(wind);
+        let margin = bounds.deform_margin(crate::wind_field::lean_cap(Some(wind), false));
         // Independent geometric sampling: varying axes and signed angles,
         // at the maximum gust, can move the inner rotations outwards before
         // the outer one rotates them. No time or frequency formula is reused.
@@ -201,18 +221,19 @@ mod tests {
                 assert!(p.distance(original) <= margin);
             }
         }
-        assert_eq!(
-            bounds.deform_margin(Wind {
-                strength: 0.0,
-                ..wind
-            }),
-            0.0
-        );
+        assert_eq!(bounds.deform_margin(0.0), 0.0);
         let rigid = FoliageBounds {
             flexibility: 0.0,
             flutter: 0.0,
             ..bounds
         };
-        assert!(rigid.deform_margin(wind) < margin);
+        assert!(rigid.deform_margin(crate::wind_field::lean_cap(Some(wind), false)) < margin);
+        // The field's turbulence and motors widen it.
+        let gusty = Wind {
+            turbulence: 1.0,
+            ..wind
+        };
+        assert!(bounds.deform_margin(crate::wind_field::lean_cap(Some(gusty), false)) >= margin);
+        assert!(bounds.deform_margin(crate::wind_field::lean_cap(None, true)) > 0.0);
     }
 }

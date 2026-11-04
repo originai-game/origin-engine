@@ -19,6 +19,8 @@ use std::collections::HashMap;
 
 pub(crate) struct VisBuffer {
     layout: wgpu::BindGroupLayout,
+    /// The wind field's lean the foliage sways by (`wind_field.rs`).
+    wind_field: wgpu::TextureView,
     depth: wgpu::ComputePipeline,
     id: wgpu::ComputePipeline,
     setup: wgpu::ComputePipeline,
@@ -65,7 +67,7 @@ pub(crate) struct VisFrame<'a> {
 }
 
 impl VisBuffer {
-    pub fn new(device: &wgpu::Device) -> VisBuffer {
+    pub fn new(device: &wgpu::Device, wind_field: wgpu::TextureView) -> VisBuffer {
         let c = wgpu::ShaderStages::COMPUTE;
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("meshlet raster"),
@@ -79,6 +81,17 @@ impl VisBuffer {
                 storage(6, false, c),
                 storage(7, false, c),
                 storage(8, true, c),
+                // The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
+                wgpu::BindGroupLayoutEntry {
+                    binding: 9,
+                    visibility: c,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -107,6 +120,7 @@ impl VisBuffer {
         });
         let usage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
         VisBuffer {
+            wind_field,
             depth: pipeline("raster_depth"),
             id: pipeline("raster_id"),
             setup: pipeline("setup"),
@@ -210,6 +224,10 @@ impl VisBuffer {
                 },
                 entry(7, &self.attrs),
                 entry(8, f.previous),
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: wgpu::BindingResource::TextureView(&self.wind_field),
+                },
             ],
         });
         let clusters = f.list.1;

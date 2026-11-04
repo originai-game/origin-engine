@@ -31,13 +31,18 @@ fn meshlet_sway_row(region: u32, index: u32) -> u32 {
 // instance at `model` swaying by `sway`, in the mesh's own space:
 // `foliage_offset`'s world offset carried back through the model's 3x3,
 // so the pull adds it to the vertex before the shared vertex code runs.
-// `header` is the region's first row (its w the model's top).
+// `header` is the region's first row (its w the model's top). The trunk
+// leans by the wind field at the instance's root (`meshlet_wind_tex`, the
+// including module's binding; wind_common.wgsl wind_lean), now or as last
+// drawn (`previous`).
 fn meshlet_sway(p: vec3<f32>, header: vec4<f32>, f0: vec4<f32>, f1: vec4<f32>,
-                model: mat4x4<f32>, wind: FoliageWind, sway: f32) -> vec3<f32> {
+                model: mat4x4<f32>, wind: FoliageWind, sway: f32, previous: bool) -> vec3<f32> {
+  if (sway <= 0.0) { return vec3<f32>(0.0); }
   var w = wind;
-  w.dir_strength.w = wind.dir_strength.w * sway;
   w.gust_top.y = header.w;
-  let world = foliage_offset(p, f0, f1, model, w);
+  let lean4 = wind_lean(meshlet_wind_tex, wind.field, model[3].xz);
+  let lean = select(lean4.xy, lean4.zw, previous) * sway;
+  let world = foliage_offset(p, f0, f1, model, w, lean);
   let a = model[0].xyz;
   let b = model[1].xyz;
   let c = model[2].xyz;

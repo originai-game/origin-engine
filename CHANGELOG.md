@@ -174,6 +174,13 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **One wind field for all vegetation (G2).** Where compute runs, the
+  renderer simulates og.Wind as a camera-centred stable-fluids field that
+  grass, TerrainScatter copies, impostor cards and meshlet trees all lean
+  by, with a damped spring so gusts arrive and settle. New members (off by
+  default in effect, compatible): `Wind.turbulence`, `Wind.gustSize`,
+  `enum WindMotorKind`, `component WindMotor { kind, radius, strength }`.
+  Impostor cards now sway with their meshes. Wind frames move.
 - **Scatter fades without grain.** TerrainScatter's `fade` now shrinks and
   thins copies out (each copy shrinks over its own part of the fade) instead
   of dithering their pixels, and the mesh-to-impostor crossfade thresholds by

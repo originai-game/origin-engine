@@ -135,6 +135,7 @@ impl RenderScene {
             grass: Vec::new(),
             impostors: Vec::new(),
             wind: None,
+            wind_motors: Vec::new(),
             water_2d: Vec::new(),
             metaballs: Vec::new(),
             fluids_3d: Vec::new(),

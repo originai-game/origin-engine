@@ -211,6 +211,8 @@ export interface ColumnKinds {
    * A Style handle field (0 is none): a UI style og.load.style answered, kept for og.ui.configure.
    */
   Style: { readonly array: Uint32Array; readonly stride: 2; readonly value: Style };
+  /** A WindMotorKind field: the variant's index. */
+  WindMotorKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: WindMotorKind };
   /** A SkeletonAsset handle field. */
   SkeletonAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: SkeletonAsset };
   /** A ClipAsset handle field. */
@@ -16675,7 +16677,7 @@ export interface Weather {
 }
 
 /**
- * The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+ * The wind the renderer sways vegetation with: og.TerrainScatter copies and their impostor cards, og.Grass blades, swaying trees, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Where the renderer can (RenderCapabilities.compute) it simulates the wind as one field around the camera that every one of them reads, so a gust front crosses grass, copies and trees together, eddies (`turbulence`), carries og.WindMotor pushes, and vegetation springs into a gust and settles after it; og.Model sway keeps the wind's own gusts. Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
  *
  * The `Wind` resource (token `og.Wind`).
  */
@@ -16712,6 +16714,69 @@ export interface Wind {
    * @tunable
    */
   gust: number;
+  /**
+   * How much the wind swirls on its own between the gusts, where the renderer simulates it (RenderCapabilities.compute): 0 the gusts alone, 1 eddies as strong as the wind.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  turbulence: number;
+  /**
+   * How large the gust patches are.
+   *
+   * @default 14
+   * @range 1..200
+   * @unit m (metres)
+   * @tunable
+   */
+  gustSize: number;
+}
+
+/**
+ * How an og.WindMotor pushes the wind.
+ * - `"omni"`: Outward from its centre: a blast, a landing, a horse's hooves.
+ * - `"directional"`: Along the entity's forward (its -z, horizontal part): a fan, a rotor's downwash leaning the grass one way.
+ * - `"vortex"`: Around its centre, counter-clockwise seen from above: a whirlwind, a spell.
+ */
+export type WindMotorKind = "omni" | "directional" | "vortex";
+
+/**
+ * A WindMotorKind field: the variant's index.
+ *
+ * A `WindMotorKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function WindMotorKind(value?: WindMotorKind, options?: FieldOptions): FieldSpec<"WindMotorKind">;
+
+/**
+ * A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away from it (omni), along it (directional) or around it (vortex), the push fading to nothing at its edge; the field carries and swirls the push, so it ripples out and settles after the motor stops. Needs no og.Wind (a motor in still air moves only what it reaches). Visual only, where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it, and the same ticks draw the same push on every run. The 16 nearest the camera act.
+ *
+ * The value of the `WindMotor` component (token `og.WindMotor`).
+ */
+export interface WindMotor {
+  /** How it pushes. */
+  kind: WindMotorKind;
+  /**
+   * How far it reaches.
+   *
+   * @default 6
+   * @range 0..200
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind.
+   *
+   * @default 10
+   * @range 0..100
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  strength: number;
 }
 
 /**
@@ -54580,9 +54645,13 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * The wind the renderer sways vegetation with: og.TerrainScatter copies, og.Grass blades, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
+   * The wind the renderer sways vegetation with: og.TerrainScatter copies and their impostor cards, og.Grass blades, swaying trees, and og.Model instances with a sway, lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Where the renderer can (RenderCapabilities.compute) it simulates the wind as one field around the camera that every one of them reads, so a gust front crosses grass, copies and trees together, eddies (`turbulence`), carries og.WindMotor pushes, and vegetation springs into a gust and settles after it; og.Model sway keeps the wind's own gusts. Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind).
    */
-  const Wind: ResourceType<{ readonly strength: FieldSpec<"f32">; readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32"> }, Wind>;
+  const Wind: ResourceType<{ readonly strength: FieldSpec<"f32">; readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32">; readonly turbulence: FieldSpec<"f32">; readonly gustSize: FieldSpec<"f32"> }, Wind>;
+  /**
+   * A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away from it (omni), along it (directional) or around it (vortex), the push fading to nothing at its edge; the field carries and swirls the push, so it ripples out and settles after the motor stops. Needs no og.Wind (a motor in still air moves only what it reaches). Visual only, where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it, and the same ticks draw the same push on every run. The 16 nearest the camera act.
+   */
+  const WindMotor: ComponentType<{ readonly kind: FieldSpec<"WindMotorKind">; readonly radius: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, WindMotor>;
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
