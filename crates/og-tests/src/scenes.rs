@@ -74,6 +74,7 @@ pub const SCENES: &[&str] = &[
     "stylised",
     "skinning",
     "crowd-culling",
+    "crowd-lods",
     "atmosphere-fog",
     "atmosphere-dusk",
     "atmosphere-night",
@@ -345,6 +346,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Crowds at scale (fx_scenes/crowds.rs): 5,000, 20,000 and 50,000
         // walkers playing one baked walk, every one moving and stepping
         // each frame, under TAA and a shadowing sun. Perf only.
+        // Crowds' levels and occlusion (fx_scenes/crowds.rs): an avenue
+        // of 4,800 walkers from 4 m to 160 m, a gate across it.
+        "crowd-lods" => |g, _| {
+            g.scene = fx::crowd_lods_scene();
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 12;
+            Ok(())
+        },
         // The same at 2,000 walkers: GPU culling's crowd scene (culling.rs).
         "crowd-2k" => |g, _| crowd_perf(g, 2_000),
         "crowd-5k" => |g, _| crowd_perf(g, 5_000),

@@ -53,6 +53,13 @@ fn mean_luma(img: &RgbaImage) -> f32 {
     img.pixels.as_chunks::<4>().0.iter().map(luma).sum::<f32>() / (img.width * img.height) as f32
 }
 
+/// Crowds on the GPU-driven path (og-render's crowd.rs): an avenue of
+/// walkers at every level, behind a gate, with their shadows.
+#[test]
+fn crowd_lods_matches_its_reference() {
+    check("crowd-lods");
+}
+
 /// The spike's reference scene (M0 reproduced it byte for byte before the
 /// sky pass; `tests/evidence/M0/spike-frame-reproduced.png`), now with CSM.
 #[test]

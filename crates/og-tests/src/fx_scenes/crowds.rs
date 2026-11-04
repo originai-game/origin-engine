@@ -319,3 +319,96 @@ pub fn walk_crowd(scene: &mut RenderScene, frame: u32) {
         m.transform = at;
     }
 }
+
+/// The crowd reference frame (`crowd-lods`): 2,400 walkers down a 160 m
+/// avenue seen from 7 m up, from 4 m away to the far end, so the full
+/// mesh, both coarser levels and the occlusion test are in one frame:
+/// buildings line both sides and a gate crosses the avenue at 60 m (its
+/// piers and lintel hide the crowd behind them). Still (no update), under
+/// TAA and a low sun from the right casting long shadows across the crowd.
+pub fn crowd_lods_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 400.0);
+    let levels: Vec<og_render::MeshHandle> = [(16, 4), (8, 2), (4, 1)]
+        .iter()
+        .map(|&(sides, rings)| {
+            let (mesh, skin) = walker_mesh(sides, rings);
+            scene.add_skinned_mesh(mesh, skin)
+        })
+        .collect();
+    let cloth = scene.add_material(Material {
+        roughness: 0.7,
+        ..Default::default()
+    });
+    scene.baked_clips.push(walker_clip(CROWD_FRAMES));
+    let stone = scene.add_material(Material {
+        base_color: [0.62, 0.58, 0.52, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let block = scene.add_mesh(shapes::cuboid(Vec3::new(10.0, 16.0, 18.0)));
+    for k in 0..9 {
+        let z = -6.0 - k as f32 * 19.0;
+        for x in [-21.0, 21.0] {
+            scene.add_instance(block, stone, Mat4::from_translation(Vec3::new(x, 8.0, z)));
+        }
+    }
+    // The gate: two piers and a lintel across the avenue.
+    let pier = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 12.0, 2.0)));
+    let lintel = scene.add_mesh(shapes::cuboid(Vec3::new(32.0, 3.0, 2.0)));
+    for x in [-11.5, 11.5] {
+        scene.add_instance(
+            pier,
+            stone,
+            Mat4::from_translation(Vec3::new(x, 6.0, -60.0)),
+        );
+    }
+    scene.add_instance(
+        lintel,
+        stone,
+        Mat4::from_translation(Vec3::new(0.0, 13.5, -60.0)),
+    );
+    let (cols, rows) = (24u32, 100u32);
+    let members = (0..cols * rows)
+        .map(|i| {
+            let (x, z) = ((i % cols) as f32, (i / cols) as f32);
+            let at = Vec3::new(
+                (x - (cols - 1) as f32 * 0.5 + (unit(i, 1) - 0.5) * 0.7) * 1.3,
+                0.0,
+                -4.0 - (z + (unit(i, 2) - 0.5) * 0.7) * 1.6,
+            );
+            let heading = unit(i, 3) * std::f32::consts::TAU;
+            let scale = 0.9 + unit(i, 5) * 0.2;
+            let m = Mat4::from_translation(at)
+                * Mat4::from_rotation_y(heading)
+                * Mat4::from_scale(Vec3::splat(scale));
+            let mut member =
+                og_render::CrowdMember::new(m, 0, unit(i, 6) * (CROWD_FRAMES - 1) as f32);
+            // Every eighth member in a shirt of its own (the tint).
+            if i % 8 == 0 {
+                member.fx.tint = Vec3::new(0.55 + unit(i, 7) * 0.45, 0.8, 0.55 + unit(i, 8) * 0.45);
+            }
+            member
+        })
+        .collect();
+    scene.crowds.push(og_render::Crowd {
+        parts: vec![og_render::CrowdPart {
+            levels,
+            material: cloth,
+        }],
+        errors: vec![0.0, 0.02, 0.06],
+        center: Vec3::new(0.0, 0.9, 0.0),
+        radius: 0.95,
+        members,
+        ..Default::default()
+    });
+    scene.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
+    scene.light.cast_shadows = true;
+    scene.camera = Camera {
+        position: Vec3::new(2.0, 7.0, 4.0),
+        target: Vec3::new(0.0, 0.0, -60.0),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
