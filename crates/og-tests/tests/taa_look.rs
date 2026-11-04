@@ -272,10 +272,12 @@ fn pane_difference(a: &RgbaImage, b: &RgbaImage) -> f64 {
 
 /// A pane that appears over a converged history: the frame it appears in is
 /// compared with a renderer that drew the pane from the start, on the same
-/// jitter. What is left of the pane-less history is the plain weight's
-/// 1 - 0.1 = 0.9 of the frame before's difference without the mask, and
-/// (1 - 0.1) * revealage 0.5 = 0.45 with it, less where the neighbourhood
-/// clamp takes more: the mask must leave at most 0.65 of it.
+/// jitter. Without the mask the pane-less history keeps the plain weight's
+/// 1 - 0.1 = 0.9 of the frame before's difference, with it (1 - 0.1) *
+/// revealage 0.5 = 0.45, each less where the neighbourhood clamp takes
+/// more. Measured on Metal (2026-11-04): 0.32 with the mask (3.77 of 11.80
+/// codes) and 0.50 with it forced off (`reveal = 1`, 5.90 codes): the bound
+/// 0.40 lies between them, about a quarter from each.
 #[test]
 fn the_oit_revealage_lowers_the_taa_history_under_a_pane() {
     let mut appears = Renderer::new_blocking(&desc()).expect("renderer");
@@ -304,7 +306,7 @@ fn the_oit_revealage_lowers_the_taa_history_under_a_pane() {
     println!("pane difference: {before:.2} codes before it appears, {after:.2} as it does");
     assert!(before > 8.0, "the pane changes the frame: {before:.2}");
     assert!(
-        after <= 0.65 * before,
+        after <= 0.40 * before,
         "the history under the pane kept {:.2} of the difference",
         after / before
     );
