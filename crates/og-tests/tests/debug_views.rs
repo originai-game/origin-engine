@@ -23,6 +23,16 @@ const VIEWS: [DebugView; 11] = [
 
 fn scene(name: &str, remove: bool) -> RenderScene {
     let mut s = scenes::build(name).unwrap().scene;
+    if name == "shader-full-dissolve" {
+        // The standard-material ground dominates this scene but is not
+        // the custom shading path under test. Keep only its custom draws.
+        s.instances = s
+            .instances
+            .iter()
+            .filter(|i| s.material_shader(i.material).is_some())
+            .copied()
+            .collect();
+    }
     s.post = Default::default();
     s.post.ao = Some(AmbientOcclusion::default());
     s.camera.exposure = Exposure::linear(1.0);
