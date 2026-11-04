@@ -669,8 +669,7 @@ impl Renderer {
                     first: b.first,
                     count: b.count,
                     cast: b.cast,
-                    // A material shader may move its vertices with the clock.
-                    always_dynamic: (b.foliage && swaying) || b.shader.is_some(),
+                    always_dynamic: shadow_cache::deforms(b.foliage, swaying, b.shader.is_some()),
                 })
                 .collect();
             self.shadow_cache.split(

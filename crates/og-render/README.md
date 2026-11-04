@@ -282,7 +282,13 @@ while its view stands still: a caster is static once it has stood still
 for eight frames (its drawn transform, sway, mesh and material and their
 revisions unchanged), and a batch (mesh and material) is dynamic while one
 of its instances moves, while foliage sways in a wind and always with a
-material shader (its clock). A layer with nothing dynamic in it is not
+material shader (its clock). The rule is that whatever a vertex shader
+moves without its transform changing is dynamic: foliage sway (og.Model's
+`sway` and the branch and leaf wind) and material vertex hooks through the
+batch (`shadow_cache::deforms`); skinned and morphed meshes, scattered
+copies in a wind, og.Grass's shadow and the meshlet path's casters by
+drawing over every layer they reach each frame. A new vertex deformation
+must join one of the two. A layer with nothing dynamic in it is not
 drawn at all; a layer with dynamic casters copies its static casters
 (shadow value and depth) back from a texture of its own and draws only
 the dynamic ones over them, the skinned casters, scattered copies, grass,

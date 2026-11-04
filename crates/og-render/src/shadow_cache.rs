@@ -19,6 +19,15 @@
 //! needs back after an overlay is kept in a texture of its own (made on
 //! first need, in the renderer). Rendering never feeds back into the
 //! simulation: the cache only decides what a frame redraws.
+//!
+//! The rule: whatever a vertex shader moves without its instance's
+//! transform changing is dynamic. The skinned casters (joints and morph
+//! targets: morphed meshes draw only as skinned instances), scattered
+//! copies in [`crate::Wind`], og.Grass's shadow (the first cascade) and the
+//! clustered casters (the meshlet path's foliage sway among them) draw over
+//! every layer they reach, every frame; an instance batch is dynamic while
+//! [`deforms`] says so (foliage in a wind, a material shader). A new kind
+//! of vertex deformation joins one of the two.
 
 use glam::Vec3;
 
@@ -119,6 +128,17 @@ pub(crate) struct BatchInfo {
     /// Dynamic whatever its instances do (swaying foliage, a material
     /// shader's clock).
     pub always_dynamic: bool,
+}
+
+/// Whether an instance batch's vertices move without its transforms
+/// changing, so its shadow is never cached: a foliage mesh (its batch's
+/// [`crate::RenderScene::set_mesh_foliage`]; og.Model's sway) while the
+/// wind drawn this frame or the last blows (`swaying`: the sway animates
+/// with the clock at a steady strength, and settles the frame after it
+/// stops), and a batch with a material shader, whose vertex hook may
+/// displace it with the clock.
+pub(crate) fn deforms(foliage: bool, swaying: bool, shader: bool) -> bool {
+    (foliage && swaying) || shader
 }
 
 /// The renderer's static shadow cache state (the textures stay with the
@@ -528,6 +548,20 @@ mod tests {
         let plan = w.cache.plan(0, 3, &near, true, false);
         assert_eq!(plan, Plan::ALL, "nothing static");
         assert!(plan.single() && !plan.cached());
+    }
+
+    /// Foliage is dynamic only in a wind, a material shader always; a plain
+    /// batch never is (its instances' transforms say when it moves).
+    #[test]
+    fn what_a_vertex_shader_moves_is_dynamic() {
+        assert!(deforms(true, true, false));
+        assert!(
+            !deforms(true, false, false),
+            "foliage without wind is still"
+        );
+        assert!(!deforms(false, true, false), "wind moves only foliage");
+        assert!(deforms(false, false, true));
+        assert!(!deforms(false, false, false));
     }
 
     /// An instance gone or not drawn takes its cached shadow with it; a

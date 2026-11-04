@@ -780,3 +780,102 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         }
     }
 }
+
+/// The static shadow cache never keeps what a vertex shader moves: a
+/// foliage tree swaying in a steady wind under a still sun and camera is
+/// drawn into the cascades every frame (its transform never changes), while
+/// the still ground stays cached; without wind it joins the cache. The
+/// last swaying frame is what a fresh renderer draws at that tick.
+#[test]
+fn a_swaying_caster_is_never_cached() {
+    use glam::{Mat4, Vec3};
+    use og_render::{Wind, foliage::FoliageVertex, meshlet::MeshFoliage, shapes};
+    let desc = RenderDesc {
+        culling: Culling::Cpu,
+        ..scenes::base_desc()
+    };
+    let scene = |wind: bool, tick: u64| {
+        let mut s = scenes::point_spot_lights();
+        s.lights.clear();
+        s.light.cast_shadows = true;
+        let tree = s.add_mesh(shapes::cuboid(Vec3::new(0.4, 3.0, 0.4)));
+        let vertices = s
+            .mesh(tree)
+            .expect("tree")
+            .vertices
+            .iter()
+            .map(|v| {
+                let up = (v.position[1] + 1.5) / 3.0;
+                FoliageVertex {
+                    branch: [0.0, -1.5, 0.0, 0.0],
+                    leaf: [v.position[0], v.position[1], v.position[2], up],
+                }
+            })
+            .collect();
+        assert!(s.set_mesh_foliage(
+            tree,
+            Some(MeshFoliage {
+                vertices,
+                top: 3.0,
+                canopy_center: Vec3::new(0.0, 1.0, 0.0),
+                leaves: false,
+            })
+        ));
+        let bark = s.add_material(Material::default());
+        s.add_instance(tree, bark, Mat4::from_translation(Vec3::new(1.0, 1.5, 1.0)));
+        s.instances.last_mut().expect("the tree").sway = 1.0;
+        s.wind = wind.then(|| Wind {
+            strength: 0.6,
+            gust: 0.8,
+            ..Wind::default()
+        });
+        s.tick = tick;
+        s
+    };
+    for wind in [true, false] {
+        let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
+        let mut stats = Vec::new();
+        for tick in 0..14 {
+            stats.push(
+                renderer
+                    .render(&scene(wind, tick), &RenderTarget::Offscreen)
+                    .expect("render"),
+            );
+        }
+        for (i, s) in stats.iter().enumerate() {
+            println!(
+                "wind {wind} frame {i}: {} passes, {} cached, {} casters drawn",
+                s.shadow_passes, s.shadow_cached, s.shadow_casters
+            );
+        }
+        let last = stats.last().expect("frames");
+        // The ground and pillars are static: every layer keeps them.
+        assert_eq!(last.shadow_cached, last.shadow_passes, "wind {wind}");
+        if wind {
+            // The tree, drawn over the cache into every cascade it reaches.
+            for s in &stats[1..] {
+                assert!(s.shadow_casters > 0, "a swaying tree was cached: {s:?}");
+            }
+            let swaying = renderer.read_offscreen().expect("capture");
+            let (fresh, _) = frame(&desc, &scene(true, 13), 1);
+            let exact = Tolerance {
+                channel: 1,
+                max_outlier_fraction: 0.0,
+                rmse: 0.001,
+            };
+            let diff = compare(
+                &swaying.pixels,
+                &fresh.pixels,
+                fresh.width,
+                fresh.height,
+                &exact,
+            )
+            .expect("same size");
+            println!("swaying against fresh: {diff:?}");
+            diff.check(&exact)
+                .unwrap_or_else(|e| panic!("swaying against fresh: {e}"));
+        } else {
+            assert_eq!(last.shadow_casters, 0, "a still tree is cached: {last:?}");
+        }
+    }
+}
