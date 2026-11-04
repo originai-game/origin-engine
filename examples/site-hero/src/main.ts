@@ -15,7 +15,8 @@
 // (og.motion.react with actions/brace.ogt), `cloth:<0|1>` takes the
 // cloak's simulation off or puts it back (a diagnostic: off, the cloak is
 // drawn as skinned), `clouds:<0|1>` hides the cloud sea or shows it (a
-// diagnostic for what the clouds draw over).
+// diagnostic for what the clouds draw over), `paint:<radius|shot>` holds
+// the painterly filter's radius (0 off) or gives it back to the shot.
 //
 //   og run examples/site-hero --size 1920x1080 --commands "6:screenshot:frame0.png;6.1:quit"
 
@@ -37,7 +38,7 @@ export const View = defineResource("View", {
   shot: u32(0, { max: 2, doc: "The view: 0 the hero framing, 1 a step further back, 2 close on the traveller." }),
 });
 
-const scene = { terrain: 0 as unknown as TerrainData, traveller: 0 as unknown as Entity, paint: 0 };
+const scene = { terrain: 0 as unknown as TerrainData, traveller: 0 as unknown as Entity, paint: 0, paintOverride: -1 };
 
 const DEG = Math.PI / 180;
 type Quat = { x: number; y: number; z: number; w: number };
@@ -200,7 +201,7 @@ const Frame = defineSystem("Frame", { reads: [View, og.Transform], writes: [og.C
   const n = must(world.resource(View)).shot;
   const cam = must(world.resource(og.Camera));
   // Close up, the painterly filter is lighter: at the look's radius it smears the hands and face.
-  must(world.resource(og.Stylise)).paintRadius = n === 2 ? CLOSE.paint : scene.paint;
+  must(world.resource(og.Stylise)).paintRadius = scene.paintOverride >= 0 ? scene.paintOverride : n === 2 ? CLOSE.paint : scene.paint;
   if (n === 2) {
     const t = must(world.get(scene.traveller, og.Transform)).position;
     const x = t.x + CLOSE.dx;
@@ -230,6 +231,13 @@ function cloth(world: World, args: readonly string[]): void {
   else throw new Error("write cloth:<0|1>");
 }
 
+function paint(_world: World, args: readonly string[]): void {
+  const r = Number(args[0]);
+  if (args[0] === "shot") scene.paintOverride = -1;
+  else if (r >= 0) scene.paintOverride = r;
+  else throw new Error("write paint:<radius|shot>");
+}
+
 function clouds(world: World, args: readonly string[]): void {
   if (args[0] !== "0" && args[0] !== "1") throw new Error("write clouds:<0|1>");
   must(world.resource(og.Clouds)).enabled = args[0] === "1";
@@ -248,12 +256,13 @@ export default og.game({
   resources: [View],
   systems: [Frame],
   start,
-  commands: { shot, brace, cloth, clouds },
+  commands: { shot, brace, cloth, clouds, paint },
   commandHelp: {
     shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
     brace: { usage: "<seconds>", doc: "Brace against the wind and shield the eyes, held this long (1.5 s if omitted)." },
     cloth: { usage: "<0|1>", doc: "Take the cloak's simulation off (0, drawn as skinned) or put it back (1)." },
     clouds: { usage: "<0|1>", doc: "Hide the cloud sea (0) or show it (1)." },
+    paint: { usage: "<radius|shot>", doc: "Diagnostic: hold the painterly filter's radius (0 off), or give it back to the shot." },
   },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);
