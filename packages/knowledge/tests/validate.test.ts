@@ -207,6 +207,8 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       const cat = JSON.parse(s);
       const [a, b, c] = cat.styles;
       a.checks = a.checks.slice(0, 2);
+      delete a.intended;
+      c.intended = `Hard steps are the style, not defects, in ${c.name}.`;
       b.look.support = "planned";
       b.look.missing = [];
       c.look.primitives = [...c.look.primitives, "Stylise.posterise"];
@@ -233,6 +235,8 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       `looks/catalogue.json: ${c}: support ${cat.styles[2]!.look.support} disagrees with look.layers (content exactly when authored art is needed)`,
       `looks/catalogue.json: ${c}: look.family pixel-moon is none of pixel-side, pixel-topdown, pixel-3d, paint-2d, ink-3d, shape-3d, toon-3d, cinematic-3d`,
       `looks/catalogue.json: ${c}: preview is previews/nowhere.webp, expected previews/${c}.webp`,
+      `looks/catalogue.json: ${a}: needs intended, one sentence naming the traits that look like defects but are the style ("… are the style, not …")`,
+      `looks/catalogue.json: ${c}: intended names the style; a blind critic reads it`,
       `looks/catalogue.json: ${d}: a second style with this slug`,
       "looks/catalogue.json: a-new-look: preview is previews/" + cat.styles[4]!.slug + ".webp, expected previews/a-new-look.webp",
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",

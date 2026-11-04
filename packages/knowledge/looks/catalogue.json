@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame, the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what (docs/art.md). `look.family` is the sample scene the style is proven on. og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
+  "about": "Origin Engine's style catalogue: 37 art styles in the engine's own words, each with what a critic checks on a rendered frame and what it must not hold as a defect (`intended`: the traits that look like defects but are the style, such as hard pixel steps, dither or broken edges; it never names the style, so a blind critic reads it too), the premises it fits, the look preset it maps to (an .ogt of type look; `extends \"<slug>\"` in a game's own look builds on it), the built-in UI style its look's `ui` line names, palette and asset specs, and an art-bible direction the agent expands per project. `preview` is a picture of the style as a game, 960x540 (previews/<slug>.webp against the root of the package that carries the catalogue: @origingame/engine/knowledge and @origingame/create-game; not in the platform mount, whose payload is text). `look.layers` names what the style needs: frame (the look's render resources), conform (the cook makes the assets meet the look's art contract), runtime (sprite outline, palette swap, pixel-art rotation, camera presets), authored (art no conformance makes); `look.support` follows from them: full when every layer but authored is implemented, content when authored art is needed, partial otherwise, with `missing` naming what (docs/art.md). `look.family` is the sample scene the style is proven on. og-taste §12 explains how to use it. The descriptions are original; no game or studio is the reference for a style.",
   "categories": {
     "pixel": "Pixel and retro",
     "paint": "Paint and line",
@@ -28,6 +28,7 @@
         "Colours are non-naturalistic: shadows carry saturated hues (greens, violets) instead of grey.",
         "Edges between colour masses are broken and uneven, never clean vector curves."
       ],
+      "intended": "Uneven brush marks, broken edges between colour masses, distorted faces and non-naturalistic shadow hues are the style, not unfinished art or colour errors.",
       "premise": {
         "genre": "narrative RPG, detective, dialogue-heavy adventure",
         "mood": "melancholy, feverish, introspective",
@@ -89,6 +90,7 @@
         "Shadows are hard-edged shapes, two or three values per material.",
         "Saturated accents cover under 15 % of the frame and sit on the characters or pickups."
       ],
+      "intended": "Thick dark contours, hard-edged two- or three-value shadows and large areas of near-black are the style, not heavy outlines or crushed shadows.",
       "premise": {
         "genre": "action roguelike, brawler, hero shooter",
         "mood": "intense, mythic, confident",
@@ -149,6 +151,7 @@
         "A paper grain is visible in flat areas at 100 %.",
         "At least a quarter of the frame is light, unpainted or nearly unpainted space."
       ],
+      "intended": "Darker pigment rims, uneven washes, visible paper grain and large unpainted light areas are the style, not banding, noise or missing art.",
       "premise": {
         "genre": "exploration platformer, narrative puzzle, relaxing adventure",
         "mood": "gentle, sad, hopeful",
@@ -208,6 +211,7 @@
         "Foreground and background blur by depth (depth of field visible at the frame's top and bottom).",
         "Sprites cast or receive shadows that agree with the set's sun."
       ],
+      "intended": "Hard-edged unsmoothed sprites standing in a smoothly shaded, depth-blurred set are the style: the contrast between the two is intended, not a resolution mismatch.",
       "premise": {
         "genre": "JRPG, tactics, adventure",
         "mood": "nostalgic, grand, warm",
@@ -269,6 +273,7 @@
         "Surfaces carry flat colour, not detailed textures.",
         "Depth reads by value: farther layers are lighter or lower in contrast than nearer ones, and the play area keeps full contrast."
       ],
+      "intended": "Hard edges between flat-shaded triangles and untextured colour fields are the style, not missing smooth normals or missing textures.",
       "premise": {
         "genre": "exploration, flight, puzzle, survival",
         "mood": "serene, airy, contemplative",
@@ -326,6 +331,7 @@
         "Edges are rounded and blunt; no sharp machined corners.",
         "Animation holds poses for 2 or more ticks (stepped, not interpolated)."
       ],
+      "intended": "Lumpy, slightly irregular surfaces, blunt edges and animation that holds poses for several ticks are the style, not modelling defects or dropped frames.",
       "premise": {
         "genre": "adventure, platformer, comedy, party games",
         "mood": "warm, odd, playful, handmade",
@@ -390,6 +396,7 @@
         "A capture holds at most 16 distinct colours outside the UI, and each sprite uses at most 4.",
         "Characters are 16 to 24 logical pixels tall and readable as silhouettes when filled black."
       ],
+      "intended": "Hard one-pixel steps, aliased edges, very few colours per sprite and visibly repeating tiles are the style, not missing antialiasing, banding or a low-effort palette.",
       "premise": {
         "genre": "platformers, arcade action, short roguelikes",
         "mood": "brisk, cheerful or tense",
@@ -450,6 +457,7 @@
         "The cube size is consistent across characters and environment (or in clear multiples).",
         "Faces shade flat; light changes per face, not per pixel gradient on a face."
       ],
+      "intended": "Stepped, jagged silhouettes made of cubes and flat per-face shading are the style, not aliasing or missing smooth shading.",
       "premise": {
         "genre": "sandbox, building, destruction, survival",
         "mood": "playful, creative, chunky",
@@ -507,6 +515,7 @@
         "Figures are flat (no cast shadows or form shading beyond line).",
         "Text in the UI uses a calligraphic or book face and sits inside the composition, not in floating boxes."
       ],
+      "intended": "Flat figures without cast shadows, ink lines, wide ornamental margins and lettering inside the picture are the style, not missing lighting or a cramped layout.",
       "premise": {
         "genre": "narrative mystery, historical adventure, card games",
         "mood": "scholarly, wry, devout",
@@ -567,6 +576,7 @@
         "Animation shows squash and stretch on every anticipation and landing.",
         "Film grain or gate weave is visible on the full frame."
       ],
+      "intended": "Film grain, gate weave, tapered heavy ink lines and constant squash and stretch are the style, not noise, camera shake or deformation bugs.",
       "premise": {
         "genre": "boss-rush shooters, platformers, party games",
         "mood": "manic, playful, grotesque",
@@ -628,6 +638,7 @@
         "Paper grain is visible in light areas.",
         "The capture is greyscale or within one hue (sepia) except for at most one accent."
       ],
+      "intended": "Parallel hatch lines in place of gradients, visible paper grain and an almost colourless frame are the style, not noise, moiré or a washed-out grade.",
       "premise": {
         "genre": "horror, mystery, folk tales, exploration",
         "mood": "uneasy, intimate, old",
@@ -686,6 +697,7 @@
         "Backgrounds contain dense curling ornament or pointed arches in at least two depth layers.",
         "Farther layers fade into haze or glow behind the play area, and the play area keeps full contrast."
       ],
+      "intended": "Characters drawn as simple shapes with little facial detail against dense ornament, and far layers lost in haze or glow, are the style, not unfinished characters or fog bugs.",
       "premise": {
         "genre": "interconnected exploration platformer, challenging 2D action",
         "mood": "melancholy, ominous, beautiful",
@@ -748,6 +760,7 @@
         "Lit surfaces are warm and shadows cool (or the reverse) across the whole frame.",
         "The environment is dense but layered: what is nearer the camera, the play plane and what lies beyond or beneath it separate by value."
       ],
+      "intended": "Visible brushwork in opaque masses and a strong warm-light, cool-shadow split are the style, not texture noise or a colour cast.",
       "premise": {
         "genre": "action RPG, isometric adventure, story platformer",
         "mood": "rich, nostalgic, elegiac",
@@ -810,6 +823,7 @@
         "Vegetation and props carry repeating decorative patterns.",
         "Depth comes from overlapping flat planes, not from perspective shading."
       ],
+      "intended": "Thin contours a shade darker than the fill, repeating decorative patterns and depth from overlapping flat planes are the style, not weak outlines, tiling or missing perspective.",
       "premise": {
         "genre": "cosy adventure, crafting, puzzle, children's games",
         "mood": "whimsical, cosy, curious",
@@ -871,6 +885,7 @@
         "Cut edges between elements are visible and deliberate.",
         "Characters move as cut-out pieces (rotating parts), not as smooth deformation."
       ],
+      "intended": "Craquelure, visible cut seams between elements and characters moving as rotating cut-out pieces are the style, not compositing errors or broken rigs.",
       "premise": {
         "genre": "point-and-click adventure, absurdist comedy",
         "mood": "irreverent, solemn, surreal",
@@ -931,6 +946,7 @@
         "A capture shows at least 30 separate small figures or objects.",
         "Shading is minimal: forms read by line, not by light."
       ],
+      "intended": "Thin, slightly irregular hand-drawn lines, minimal shading and a frame crowded with tiny figures are the style, not shaky rendering, missing lighting or clutter.",
       "premise": {
         "genre": "hidden object, sandbox toys, puzzle",
         "mood": "playful, busy, curious",
@@ -991,6 +1007,7 @@
         "Figures are solid silhouettes with thin lighter detail lines inside.",
         "The composition is organised in horizontal bands with patterned borders."
       ],
+      "intended": "A frame of two to four colours, solid dark silhouettes with thin incised lines and banded borders are the style, not a dull palette or missing shading.",
       "premise": {
         "genre": "action platformer, myth adventure, fighting",
         "mood": "heroic, mythic, stylised",
@@ -1052,6 +1069,7 @@
         "Transitions from light to shadow use rough hatching, not gradients.",
         "Bright highlights appear only on characters, threats or interactables."
       ],
+      "intended": "Large areas of solid black, rough hatching instead of gradients and muted colour are the style, not crushed blacks, noise or a dim grade.",
       "premise": {
         "genre": "roguelike, gothic RPG, horror",
         "mood": "grim, oppressive, desperate",
@@ -1111,6 +1129,7 @@
         "Every sprite reads as a silhouette on the ground: no mid-tones inside shapes.",
         "Text and HUD use the same two colours."
       ],
+      "intended": "Two colours covering nearly the whole frame, no mid-tones inside shapes and hard one-pixel steps are the style, not a broken palette or a contrast fault.",
       "premise": {
         "genre": "exploration platformer, puzzle, short narrative",
         "mood": "stark, quiet, playful or eerie",
@@ -1170,6 +1189,7 @@
         "Shading on sprites steps through 4 to 6 tones per material with no smooth gradients.",
         "Edges stay on the logical pixel grid when the camera moves (compare two captures 1 s apart at 400 %)."
       ],
+      "intended": "Hard one-pixel steps, four to six flat tones per material with no smooth gradient, and outlines broken by light are the style, not banding, missing antialiasing or gaps in the line.",
       "premise": {
         "genre": "platformers, action adventure, racing, fighting",
         "mood": "energetic, bright, heroic",
@@ -1229,6 +1249,7 @@
         "Each material shows at least 6 tones with visible hue shifts between them.",
         "Characters still read against the scenery: a greyscale capture separates them by value."
       ],
+      "intended": "Single-pixel clusters and dither forming texture, and a pixel grid visible up close, are the style, not noise or an upscaling artefact.",
       "premise": {
         "genre": "exploration, adventure, interconnected platformers, narrative platformers",
         "mood": "warm, wondrous, melancholy",
@@ -1289,6 +1310,7 @@
         "Light sources show a halo (bloom or glow) wider than the source itself.",
         "The player character is lit from at least one local light, not only ambient."
       ],
+      "intended": "A mostly dark frame with a few saturated light sources, glow halos wider than their sources and hard pixel steps are the style, not underexposure, bloom bleed or aliasing.",
       "premise": {
         "genre": "action adventure, twin-stick, cyber and sci-fi exploration",
         "mood": "mysterious, intense, lonely",
@@ -1349,6 +1371,7 @@
         "Characters are drawn upright and are occluded by tall tiles in front of them (y-sorting works).",
         "Tile seams are invisible: no gaps or bleeding lines between tiles at any camera position."
       ],
+      "intended": "Hard pixel steps, a repeating tile grid and upright sprites drawn over the top-down map are the style, not aliasing, tiling or perspective errors.",
       "premise": {
         "genre": "action RPG, tactics, farming and life sims, overhead adventure",
         "mood": "adventurous, cosy, curious",
@@ -1408,6 +1431,7 @@
         "Textures show large visible texels (64 to 256 px textures on whole characters).",
         "Vertices wobble or snap as the camera moves (compare two captures)."
       ],
+      "intended": "A low-resolution frame scaled up with nearest filtering, large visible texels and vertices that snap as the camera moves are the style, not upscaling blur, texture loss or jitter bugs.",
       "premise": {
         "genre": "survival horror, exploration, retro shooter",
         "mood": "uncanny, nostalgic, lonely",
@@ -1469,6 +1493,7 @@
         "At least 40 % of a capture is a flat background mass.",
         "Large colour masses (sky, floor, walls) each use a single colour."
       ],
+      "intended": "Figures a few pixels tall with no faces, single-colour masses and large empty areas are the style, not missing detail or unfinished backgrounds.",
       "premise": {
         "genre": "point-and-click horror, narrative, minimalist puzzle",
         "mood": "eerie, contemplative, unsettling",
@@ -1527,6 +1552,7 @@
         "Characters have a dark contour whose width is consistent at the same distance.",
         "Shadow colour is tinted (cool or warm), not black or grey."
       ],
+      "intended": "Hard one- or two-band shadows with no gradient, tinted shadow colour and contour lines are the style, not banding, a colour cast or outline artefacts.",
       "premise": {
         "genre": "fighting, action RPG, character action",
         "mood": "dramatic, energetic, youthful",
@@ -1588,6 +1614,7 @@
         "Ink marks (hatching or strokes) are painted onto surfaces.",
         "Proportions are exaggerated (oversized hands, heads or weapons)."
       ],
+      "intended": "Thick black outlines, ink strokes painted onto surfaces and exaggerated proportions are the style, not outline artefacts, dirty textures or broken models.",
       "premise": {
         "genre": "looter shooter, action, brawler",
         "mood": "irreverent, loud, gritty",
@@ -1648,6 +1675,7 @@
         "Paper grain or fibre is visible on lit surfaces.",
         "Layered sheets cast soft contact shadows on the layer behind."
       ],
+      "intended": "Crisp folds on flat planes, visible fibre and soft contact shadows between stacked sheets are the style, not low-poly faceting, noise or ambient-occlusion bugs.",
       "premise": {
         "genre": "puzzle, cosy adventure, platformer",
         "mood": "calm, delicate, handmade",
@@ -1711,6 +1739,7 @@
         "Shadows are soft with strong ambient occlusion in corners.",
         "The camera looks down at 30 to 60 degrees."
       ],
+      "intended": "Blurred top and bottom bands, soft shadows with strong corner occlusion and a high downward camera are the style, not focus or lighting faults.",
       "premise": {
         "genre": "city builder, cosy building, puzzle, tactics",
         "mood": "calm, charming, cosy",
@@ -1775,6 +1804,7 @@
         "Forms are deliberately shaped and exaggerated (architecture leans, props chunky).",
         "Colour is harmonised across the frame (a coherent palette, not natural variety)."
       ],
+      "intended": "Broad brushy colour regions with little surface detail and deliberately leaning or chunky forms are the style, not low-resolution textures or modelling errors.",
       "premise": {
         "genre": "immersive sim, action adventure, RPG",
         "mood": "atmospheric, stylised, moody",
@@ -1837,6 +1867,7 @@
         "Lighting is naturalistic with soft shadows and indirect fill (ambient occlusion visible).",
         "The frame is graded (a LUT or colour cast) and draws focus with light, depth of field or atmosphere outside the play area, which keeps full contrast."
       ],
+      "intended": "A colour grade or cast, depth of field and atmosphere outside the play area are the style, not a white-balance error or focus fault; the play area itself keeps full contrast.",
       "premise": {
         "genre": "action adventure, open world, narrative drama",
         "mood": "grounded, epic, intimate",
@@ -1898,6 +1929,7 @@
         "Light arrives in local beams or pools (god rays or spot lights) made visible by haze in their path, not by a fog over the whole frame.",
         "Forms are simplified but keep volume (soft shading, no outlines)."
       ],
+      "intended": "Low saturation over the whole frame, dark areas outside the light beams and visible haze in the beams' path are the style, not a washed-out grade, underexposure or fog bugs.",
       "premise": {
         "genre": "puzzle platformer, horror, cinematic adventure",
         "mood": "bleak, tense, haunting",
@@ -1958,6 +1990,7 @@
         "At least three depth layers are visible, each lighter than the one in front.",
         "The player is identifiable by silhouette alone."
       ],
+      "intended": "A near-black foreground with no surface detail and successively lighter, hazier layers behind are the style, not crushed shadows or missing textures.",
       "premise": {
         "genre": "puzzle platformer, cinematic platformer, exploration",
         "mood": "lonely, tense, dreamlike",
@@ -2017,6 +2050,7 @@
         "A capture uses at most 6 colours.",
         "At least 30 % of the frame is empty background."
       ],
+      "intended": "Plain basic shapes, at most six colours and large empty areas are the style, not placeholder art or an unfinished background.",
       "premise": {
         "genre": "puzzle, rhythm, abstract arcade",
         "mood": "calm, precise, playful",
@@ -2076,6 +2110,7 @@
         "Lines glow: a halo wider than the line itself (bloom).",
         "Geometry is drawn as lines or wireframes, not filled surfaces."
       ],
+      "intended": "A nearly black frame, thin full-brightness lines with halos and unfilled wireframe geometry are the style, not underexposure, bloom bleed or missing surfaces.",
       "premise": {
         "genre": "arcade shooter, rhythm, racing",
         "mood": "electric, hypnotic, intense",
@@ -2137,6 +2172,7 @@
         "Gradients are rendered as a visible ordered or noise dither pattern.",
         "The scene keeps real 3D perspective and depth cues."
       ],
+      "intended": "Two to four colours and a visible ordered or noise dither pattern in every gradient are the style, not banding, noise or a broken palette.",
       "premise": {
         "genre": "mystery, exploration, horror, puzzle",
         "mood": "eerie, nostalgic, dreamlike",
@@ -2195,6 +2231,7 @@
         "Luminous focal points (glows, light shafts) stand against dark masses.",
         "Layers behind the play plane fade by atmospheric perspective (lighter and cooler), and the play plane keeps full contrast."
       ],
+      "intended": "Dark foreground masses, strong glowing focal points and far layers faded lighter and cooler are the style, not crushed shadows, bloom bleed or fog bugs.",
       "premise": {
         "genre": "exploration platformer, adventure",
         "mood": "wondrous, mysterious, emotional",

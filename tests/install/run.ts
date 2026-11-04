@@ -203,6 +203,28 @@ function host(): void {
     const packaged = join(enginePkg, "dist", "web-publish", "origin-engine_bg.wasm");
     if (sha256(shipped) !== sha256(packaged)) step.fail("the shipped publish wasm differs from the package's dist/web-publish/origin-engine_bg.wasm");
 
+    // 4b. og ui check from the package (src/node/ui-run.ts): a reviewer's contrast numbers come from it, so the
+    // package must carry it (0.7.8-dev.17 did not). Exit 3 is findings, still a run; its JSON names each
+    // finding's value, bar and box, and every cell's frame.
+    step = new Step("4b og ui check, og style check --sizes, og frame measure");
+    const ui = run(step, ["bun", "x", "og", "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
+    if (ui.status !== 0 && ui.status !== 3) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
+    const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; frames?: Array<{ viewport: number[] }> };
+    if (!(checked.cells > 0) || checked.frames?.length !== checked.cells) step.fail(`og ui check --json: ${ui.stdout.slice(0, 400)}`);
+    if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
+    log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
+    // The reviewer's other two: og style check at desktop and phone size (labelled frames with their tier), and a region
+    // of one of them measured by og frame measure.
+    // Exit 3 is the template's dropship off faceted-low-poly's face budget (project.ogt says so): still a run.
+    const style = run(step, ["bun", "x", "og", "style", "check", ".", "--title", "0.5:screenshot", "--sizes", "desktop,phone", "--json"], demo, { allowFail: true });
+    if (style.status !== 0 && style.status !== 3) step.fail(`og style check exited ${style.status}\n${style.stderr.slice(-2000)}`);
+    const styled = JSON.parse(style.stdout.trim().split("\n").at(-1)!) as { frames: Array<{ label: string; path: string; size: number[] }> };
+    const labels = styled.frames.map((f) => f.label).sort();
+    if (labels.join(",") !== "title@desktop,title@phoneLandscape") step.fail(`og style check --sizes framed ${labels.join(", ")}`);
+    const measured = og(step, demo, "frame", "measure", styled.frames[0]!.path, "--units", "fraction", "--region", "0,0,0.5,0.5", "--json");
+    const ratio = (JSON.parse(measured.stdout) as { metrics: { contrast: { ratio: number } } }).metrics.contrast.ratio;
+    if (!(ratio >= 1)) step.fail(`og frame measure printed ${measured.stdout.slice(0, 200)}`);
+
     // 5. An archetype.
     step = new Step("5 the runner archetype");
     const runner = join(work, "demo-runner");

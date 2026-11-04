@@ -649,6 +649,16 @@ entry's three checks handed to the critic that reads the frames.
 | `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | full | `pixel` |
 | `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
 
+**What looks like a defect but is the style.** Each entry's `intended`
+says, in one sentence that never names the style, which traits of its
+frames look like defects and are the style: hard one-pixel steps and
+aliased edges in the pixel styles, dither in the dithered ones, broken
+edges and uneven marks in the painted ones, crushed-looking blacks in
+the ink and silhouette ones. Every critic reads it beside the three
+`checks` (`og style check --critic` prints both), so no critic holds a
+game for being in its own style, and every critic reads the same traits
+the same way (visual-acceptance §5, §6).
+
 Use the catalogue as a vocabulary, never as a list of games to copy: every
 design, character and composition stays original (the platform's rule),
 and the descriptors deliberately name no game or studio.

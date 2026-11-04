@@ -434,6 +434,26 @@
       {
         "member": "the built-in styles wasteland and foundry",
         "summary": "Two built-in UI styles of the sixteen packs (docs/ui.md §12.5), each painted from its approved sheet: wasteland (rusted riveted plate, duct tape, safety orange, a stencil display face; survival, crafting and extraction) and foundry (iron in brass rims, rivets, furnace orange, wide serif capitals; city builders, factory and 4X). A look names them with ui \"wasteland\" or ui \"foundry\"; og style list names them and og style new starts from them for their look families. Every other built-in style is unchanged."
+      },
+      {
+        "member": "og frame measure",
+        "summary": "New command: og frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction] [--metric contrast,highpass,mean,ramp] [--rows N] [--json] measures a region of any captured frame the same way on every machine, so a reviewer's numbers reproduce without image scripts: WCAG contrast (the ink, the region's darkest or brightest 5 %, against the median ground of --against or of the region), high-pass energy (the mean |grey - its σ 2 px Gaussian blur|, with its ratio to --against), the mean colour and grey, and the grey per band of --rows rows with the largest step. Reads the PNG's 8-bit sRGB values only; exit 2 on a usage error, 1 when the image cannot be read or the region lies off it."
+      },
+      {
+        "member": "og style check (screens, --sizes, --json)",
+        "summary": "project.ogt's screens {} takes any screen name: title, play and results are captured first, then the block's other screens in order, then the ui { screen } entries it does not name (before, a name other than title, play or results was refused, so nothing a game declared beyond them was captured). --sizes desktop,phone (also phoneLandscape, phonePortrait, tablet or WxH; phone follows publish { orientation }) captures every screen at each size into og-out/style/<screen>@<viewport>/; --size and the default (desktop 1280x720) keep og-out/style/<screen>/. --json adds to each frame its viewport, label (<screen>@<viewport>), size and the renderer tier that drew it; to contract its extends chain, the look's flattened art blocks (art, colours as sRGB hex), the palette's colours (palette.hex) and the catalogue style's checks and intended (style); and a coverage block (screens, viewports, uncoveredScenes: each scenes {} entry with no screen of its name, the start scene covered by play). --critic adds the style's intended traits and each frame's label (JSON: intended, shots); its frames list is unchanged. Additive: existing fields keep their meaning."
+      },
+      {
+        "member": "og ui check --json, @origingame/engine/ui-check UiFinding",
+        "summary": "Each finding carries value, bar and unit where its rule measures a number (contrast's ratio against 3, 7 or the 4.5 warning bar; a text's size against its floor; a touch target's side against 44; an overlap's or overflow's area or px against 0) and at, one UiFindingAt per cell: the cell, its viewport, the box in CSS px (the overlap's rectangle, the text's line box, else the first path's element) and the cell's captured frame. check.json and --json list every cell's frame (frames), and --json names check.json (report). mergeFindings keeps every cell's place. Optional fields: findings built by older code still merge and print."
+      },
+      {
+        "member": "looks/catalogue.json intended",
+        "summary": "Every style entry has intended: one sentence, never naming the style, saying which traits of its frames look like defects and are the style (hard one-pixel steps, dither, broken edges, crushed-looking blacks), read by every critic beside the three checks (og-taste §12); the validator requires it. An added field: readers of the catalogue that ignore it read it as before."
+      },
+      {
+        "member": "skill:visual-acceptance §5, §6",
+        "summary": "The skill gains §5, the art bar a frame that passes every check is still held to (hierarchy, art, numerals, selection, depth, spacing, motion: each worded relative to the game's own look and decided by a number og frame measure, og ui check or og style check reproduces), and §6, verdicts: approve or hold, every hold a frame, a region, a criterion (style-check-N, bible:, contract:, measure:, bar:<item>), the measured value and what passes; a preference is a note, contrast is judged at the bar the engine's check states and never stricter, and a resubmission is judged on the held notes and regressions only. The skill keeps its name; its body is a new pack version. og-build §8, og-ui §8 and og-taste §12 describe the new measures."
       }
     ],
     "fixed": [

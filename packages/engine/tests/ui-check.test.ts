@@ -400,3 +400,34 @@ test("a label drawn in two inks with split clips (a meter's fill and track) is o
   expect(checkFrame(scaled, c200).filter((f) => f.rule === "text-scale")).toEqual([]);
   expect(checkScale(base, scaled, c200)).toEqual([]);
 });
+
+test("a finding carries its number, its bar and its box per cell, so a reviewer can name the region and the value", () => {
+  // The label sits at 0,0 120×40 in a 120×40 frame; a ground of 90 under ink 150 measures about 2.3:1.
+  const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as Rect4 };
+  const f = frame({ elements: [el("Hint", "", "label", "text", [0, 0, 120, 40], { text: "Hint text" })] }, vp);
+  const error = checkFrame(f, cell, { image: textImage(90, 150) }).find((x) => x.rule === "contrast")!;
+  expect(error.unit).toBe(":1");
+  expect(error.bar).toBe(3);
+  expect(error.value!).toBeGreaterThan(1.5);
+  expect(error.value!).toBeLessThan(3);
+  expect(error.measured).toContain(`${error.value}:1`);
+  expect(error.at).toEqual([{ cell: "s phonePortrait game locale", viewport: [120, 40], rect: [0, 0, 120, 40], value: error.value }]);
+  // Under 4.5 but over 3: a warning whose bar is the recommended 4.5, not the error floor.
+  const warning = checkFrame(f, cell, { image: textImage(20, 108) }).find((x) => x.rule === "contrast")!;
+  expect([warning.severity, warning.bar]).toEqual(["warning", 4.5]);
+  // A text size on a phone: the line box (not the element's) and the 12 px touch floor it misses.
+  const small = frame({ elements: [el("Small", "", "label", "text", [10, 100, 80, 20], { text: "Small" })], texts: [{ text: "Small", size: 10, bounds: [12, 103, 40, 14], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
+  const size = checkFrame(small, cell).find((x) => x.rule === "text-size")!;
+  expect([size.value, size.bar, size.unit]).toEqual([10, 12, "CSS px"]);
+  expect(size.at![0]!.rect).toEqual([12, 103, 40, 14]);
+  // The same finding in two cells is one finding with both places, each with its own box.
+  const wide = { ...cell, breakpoint: "phoneLandscape" };
+  const moved = frame({ elements: [el("Close", "", "button", "button", [700, 60, 30, 30])] }, { width: 844, height: 390, safeArea: [47, 0, 47, 21], breakpoint: "phoneLandscape" });
+  const merged = mergeFindings([...checkFrame(frame({ elements: [el("Close", "", "button", "button", [300, 100, 30, 30])] }), cell), ...checkFrame(moved, wide)]).filter((x) => x.rule === "touch-target");
+  expect(merged.length).toBe(1);
+  expect([merged[0]!.value, merged[0]!.bar]).toEqual([30, 44]);
+  expect(merged[0]!.at!.map((a) => [a.cell, a.viewport, a.rect])).toEqual([
+    ["s phonePortrait game locale", [390, 844], [300, 100, 30, 30]],
+    ["s phoneLandscape game locale", [844, 390], [700, 60, 30, 30]],
+  ]);
+});

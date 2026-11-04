@@ -271,10 +271,16 @@ palette hit rate (share of opaque texels within ΔE00 2 of a palette
 colour), distinct colours, pixel-grid alignment (texels per logical pixel
 constant, no half pixels), texel density spread, faces against the
 budget, normal smoothness (flat share), outline width found; per frame
-(`og run --headless --commands` captures of title, play, results): colour
-count, palette hit rate, edge statistics, and the three catalogue checks
-handed to the critic as written (`--critic` prints the prompt and the
-frames; the platform's critic answers them). JSON with `--json`.
+(`og run --headless --commands` captures of every declared screen: title,
+play and results first, then the rest of `screens {}` and the `ui {
+screen }` entries, at each viewport of `--sizes`, each labelled
+`<screen>@<viewport>` with its size and renderer tier): colour count,
+palette hit rate, edge statistics, and the three catalogue checks and the
+style's `intended` traits handed to the critic as written (`--critic`
+prints the prompt and the frames; the platform's critic answers them).
+JSON with `--json`, carrying the look's flattened art blocks and the
+scenes no capture script reaches. A reviewer measures a region of any of
+those frames with `og frame measure` (visual-acceptance §5, §6).
 `og build --publish` prints its summary as warnings; it never refuses a
 build (numbers cannot judge a style, og-taste §11).
 

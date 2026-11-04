@@ -30,15 +30,30 @@
 //! what the cook leaves alone by kind) is listed: an opted-out asset is
 //! still measured and judged, since it is still the game's art.
 //!
-//! Frames: the title, play and results screens are captured by `og run
-//! --headless --commands` (project.ogt's `screens { title "<commands>" ...
-//! }`, or `--title`, `--play`, `--results`; a script without a
-//! `screenshot` gets one at its last step), and each is measured: colour
-//! count, palette hit rate, edge statistics (edge density, the share of
-//! hard one-pixel steps, mean contrast) and its pixel grid. `--critic`
-//! prints only the catalogue entry's three checks as written and the
-//! frames' paths, for a blind critic: never the style's name, slug or the
-//! look's id. `--json` prints one JSON document.
+//! Frames: every screen the project declares is captured by `og run
+//! --headless --commands`: project.ogt's `screens { title "<commands>"
+//! play ... results ... shop ... }` (title, play and results first, each
+//! replaceable by `--title`, `--play`, `--results`; any other name a
+//! screen of the game's own, such as a shop or a map), then the `ui {
+//! screen "<name>" "<commands>" }` entries og ui check visits; a script
+//! without a `screenshot` gets one at its last step, one with several
+//! (a mid-transition still) gives a frame for each. Each screen is
+//! captured once per viewport: `--size WxH` one size, `--sizes
+//! desktop,phone` several (desktop 1280×720, phoneLandscape 844×390,
+//! phonePortrait 390×844, tablet 820×1180, or WxH; `phone` is the phone
+//! in the game's orientation, portrait under `publish { orientation
+//! portrait }`, else landscape); the default is desktop alone. Each frame
+//! is labelled `<screen>@<viewport>`, carries its size and the renderer
+//! tier that drew it, and is measured: colour count, palette hit rate,
+//! edge statistics (edge density, the share of hard one-pixel steps, mean
+//! contrast) and its pixel grid. The coverage line names each scene
+//! project.ogt declares with no capture script (a screen of its name; the
+//! start scene is covered by `play`). `--critic` prints only the catalogue
+//! entry's three checks as written, the traits the style means (the
+//! entry's `intended`, which a critic must not read as defects) and the
+//! frames, for a blind critic: never the style's name, slug or the look's
+//! id. `--json` prints one JSON document, its `contract` the flattened art
+//! blocks the frames were judged against.
 //!
 //! A project whose project.ogt names no look has no contract: it says so
 //! and exits 0. Otherwise the exit status is 0 when every asset meets the
@@ -62,13 +77,23 @@ mod measures;
 pub use measures::*;
 use measures::{LINE_RGB, pct, srgb8};
 
-const USAGE: &str = "usage: og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH | --sizes desktop,phone,...] [--no-frames] [--critic] [--json]";
 
 /// The catalogue of styles (the knowledge package's), for `--critic`'s checks.
 const CATALOGUE: &str = include_str!("../../../packages/knowledge/looks/catalogue.json");
 
-/// The screens a style check captures, in order.
+/// The screens every game is captured at, first and in this order (each
+/// replaceable by its flag); `screens {}` may name more.
 pub const SCREENS: [&str; 3] = ["title", "play", "results"];
+
+/// The named viewports of `--sizes` (og ui check's breakpoints): name,
+/// width, height in CSS px.
+pub const VIEWPORTS: [(&str, u32, u32); 4] = [
+    ("desktop", 1280, 720),
+    ("phoneLandscape", 844, 390),
+    ("phonePortrait", 390, 844),
+    ("tablet", 820, 1180),
+];
 
 /// A texel or pixel on a palette colour: within this ΔE00 of one.
 pub const PALETTE_DELTA_E: f64 = 2.0;
@@ -120,6 +145,10 @@ pub struct Contract {
     pub filter: String,
     /// `ArtTexels.mips`: `any`, `full` or `none`.
     pub mips: String,
+    /// Every art block of the cooked (flattened) look as JSON, field by
+    /// field: numbers, booleans, words, strings, lists of numbers, and a
+    /// colour as sRGB `#rrggbb` (the terms the frames were judged against).
+    pub art: Value,
 }
 
 fn field<'a>(look: &'a LookFile, resource: &str, name: &str) -> Option<&'a og_core::ogt::Value> {
@@ -157,6 +186,51 @@ fn line_colour(look: &LookFile) -> [u8; 3] {
         }
         _ => LINE_RGB,
     }
+}
+
+/// One look value as JSON: a number, `true`/`false`, a word or a string.
+fn value_json(v: &og_core::ogt::Value) -> Value {
+    match v {
+        og_core::ogt::Value::Number(n) => json!(n.as_f64()),
+        og_core::ogt::Value::String(s) => json!(s),
+        og_core::ogt::Value::Word(w) => match w.as_str() {
+            "true" => json!(true),
+            "false" => json!(false),
+            w => json!(w),
+        },
+    }
+}
+
+/// The look's art blocks as JSON (`{ "ArtLine": { "width": 2, "color":
+/// "#1a1a2e" }, ... }`), in the order og_cook's ART_RESOURCES lists them.
+fn art_blocks(look: &LookFile) -> Value {
+    let mut out = serde_json::Map::new();
+    for r in og_cook::look::ART_RESOURCES {
+        let Some(b) = look.blocks.iter().find(|b| b.resource == *r) else {
+            continue;
+        };
+        let mut fields = serde_json::Map::new();
+        for (name, values, _) in &b.fields {
+            let numbers: Option<Vec<f32>> = values
+                .iter()
+                .map(|v| v.as_number().map(|n| n.as_f32()))
+                .collect();
+            let v = match (name.as_str(), values.as_slice(), numbers) {
+                // A colour is cooked linear: written back as the sRGB a look writes.
+                ("color", [_, _, _, ..], Some(n)) => json!(format!(
+                    "#{:02x}{:02x}{:02x}",
+                    srgb8(n[0]),
+                    srgb8(n[1]),
+                    srgb8(n[2])
+                )),
+                (_, [one], _) => value_json(one),
+                (_, many, _) => json!(many.iter().map(value_json).collect::<Vec<_>>()),
+            };
+            fields.insert(name.clone(), v);
+        }
+        out.insert(r.to_string(), Value::Object(fields));
+    }
+    Value::Object(out)
 }
 
 /// Reads a palette asset's sRGB colours by id.
@@ -207,6 +281,7 @@ impl Contract {
             max_size: num(look, "ArtTexels", "maxSize") as u32,
             filter: word(look, "ArtTexels", "filter", "any"),
             mips: word(look, "ArtTexels", "mips", "any"),
+            art: art_blocks(look),
         })
     }
 
@@ -228,6 +303,15 @@ fn catalogue_styles() -> Vec<Value> {
         .ok()
         .and_then(|c| c["styles"].as_array().cloned())
         .unwrap_or_default()
+}
+
+/// The catalogue's `intended` for `slug`: the traits that look like defects
+/// but are the style (hard steps, dither, broken edges), as written.
+pub fn catalogue_intended(slug: &str) -> Option<String> {
+    catalogue_styles()
+        .iter()
+        .find(|e| e["slug"] == slug)
+        .and_then(|e| e["intended"].as_str().map(str::to_string))
 }
 
 /// The catalogue's three checks for `slug`, as written.
@@ -487,6 +571,12 @@ pub fn measure(
 #[derive(Clone, Debug)]
 pub struct Frame {
     pub screen: String,
+    /// The viewport's name (`desktop`, `phoneLandscape`) or `WxH`.
+    pub viewport: String,
+    /// The frame's size in pixels, as captured.
+    pub size: [u32; 2],
+    /// The renderer tier that drew it (`og run --json`'s `tier`), when known.
+    pub tier: Option<String>,
     pub path: PathBuf,
     pub colours: usize,
     /// The fewest colours that cover 95 % of the pixels.
@@ -496,9 +586,18 @@ pub struct Frame {
     pub grid: u32,
 }
 
+impl Frame {
+    /// `<screen>@<viewport>`: the frame's name for a reviewer.
+    pub fn label(&self) -> String {
+        format!("{}@{}", self.screen, self.viewport)
+    }
+}
+
 /// Measures one frame (a PNG) against the contract's palette.
 pub fn measure_frame(
     screen: &str,
+    viewport: &str,
+    tier: Option<&str>,
     path: &Path,
     palette: Option<&[[u8; 3]]>,
 ) -> Result<Frame, String> {
@@ -525,6 +624,9 @@ pub fn measure_frame(
     let g = grid(&img);
     Ok(Frame {
         screen: screen.to_string(),
+        viewport: viewport.to_string(),
+        size: [img.w, img.h],
+        tier: tier.map(str::to_string),
         path: path.to_path_buf(),
         colours: counts.len(),
         colours95,
@@ -535,38 +637,124 @@ pub fn measure_frame(
 }
 
 /// The scripts that reach each screen: project.ogt's `screens { title
-/// "<commands>" play "..." results "..." }`, each replaced by its flag.
+/// "<commands>" play "..." results "..." }` (title, play and results first,
+/// each replaced by its flag, then the block's other screens in order),
+/// then the `ui { screen "<name>" "<commands>" }` entries not named there.
 pub fn screens(
     root: &Path,
     flags: &BTreeMap<String, String>,
 ) -> Result<Vec<(String, String)>, String> {
     let body = project_body(root)?;
-    let mut out = Vec::new();
+    let mut out: Vec<(String, String)> = Vec::new();
     let block = body.get("screens").and_then(|e| e.block.clone());
+    let mut declared: Vec<(String, String)> = Vec::new();
     if let Some(b) = &block {
         for e in &b.entries {
-            if !SCREENS.contains(&e.key.as_str()) {
+            let script = e.string(0).map_err(|_| {
+                format!(
+                    "project.ogt:{}: screens takes <name> \"<commands>\" (e.g. play \"0:key:Enter\"); `{}` has no commands",
+                    e.line, e.key
+                )
+            })?;
+            if declared.iter().any(|(n, _)| n == &e.key) {
                 return Err(format!(
-                    "project.ogt:{}: screens names {}; `{}` is not one",
-                    e.line,
-                    SCREENS.join(", "),
-                    e.key
+                    "project.ogt:{}: screens names `{}` twice",
+                    e.line, e.key
                 ));
             }
+            declared.push((e.key.clone(), script.to_string()));
         }
     }
     for s in SCREENS {
         let script = flags.get(s).cloned().or_else(|| {
-            block
-                .as_ref()
-                .and_then(|b| b.get(s))
-                .and_then(|e| e.string(0).ok().map(str::to_string))
+            declared
+                .iter()
+                .find(|(n, _)| n == s)
+                .map(|(_, c)| c.clone())
         });
         if let Some(script) = script {
             out.push((s.to_string(), with_screenshot(&script)));
         }
     }
+    for (name, script) in declared
+        .into_iter()
+        .filter(|(n, _)| !SCREENS.contains(&n.as_str()))
+    {
+        out.push((name, with_screenshot(&script)));
+    }
+    let ui = og_cook::cook::ui_screens::screens(&body).map_err(|e| format!("project.ogt:{e}"))?;
+    for s in ui {
+        if !out.iter().any(|(n, _)| n == &s.name) {
+            out.push((s.name, with_screenshot(&s.commands)));
+        }
+    }
     Ok(out)
+}
+
+/// The scenes project.ogt declares (`scenes { <name> "<path>" }`) that no
+/// capture script reaches: no screen of their name, and for the start
+/// scene (`scene <name>`) no `play` either.
+pub fn uncovered_scenes(root: &Path, captured: &[String]) -> Result<Vec<String>, String> {
+    let body = project_body(root)?;
+    let start = body
+        .get("scene")
+        .and_then(|e| e.word(0).or_else(|_| e.string(0)).ok())
+        .map(str::to_string);
+    let has = |n: &str| captured.iter().any(|c| c == n);
+    Ok(body
+        .get("scenes")
+        .and_then(|e| e.block.as_ref())
+        .map(|b| b.entries.iter().map(|e| e.key.clone()).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|s| !has(s) && !(start.as_deref() == Some(s.as_str()) && has("play")))
+        .collect())
+}
+
+/// `--sizes`' list as (label, `WxH`): a named viewport or `WxH`; `phone`
+/// is phonePortrait when `portrait`, else phoneLandscape.
+pub fn viewports(spec: &str, portrait: bool) -> Result<Vec<(String, String)>, String> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for v in spec.split(',').map(str::trim).filter(|v| !v.is_empty()) {
+        let name = match v {
+            "phone" if portrait => "phonePortrait",
+            "phone" => "phoneLandscape",
+            v => v,
+        };
+        let entry = if let Some((n, w, h)) = VIEWPORTS.iter().find(|(n, _, _)| *n == name) {
+            (n.to_string(), format!("{w}x{h}"))
+        } else {
+            let ok = name.split_once('x').is_some_and(|(w, h)| {
+                w.parse::<u32>().is_ok_and(|w| w > 0) && h.parse::<u32>().is_ok_and(|h| h > 0)
+            });
+            if !ok {
+                return Err(format!(
+                    "--sizes: `{v}` is not WxH nor one of phone, {}",
+                    VIEWPORTS.map(|(n, _, _)| n).join(", ")
+                ));
+            }
+            (name.to_string(), name.to_string())
+        };
+        if out.iter().any(|(_, s)| *s == entry.1) {
+            return Err(format!("--sizes names {} twice", entry.1));
+        }
+        out.push(entry);
+    }
+    if out.is_empty() {
+        return Err("--sizes names no viewport".into());
+    }
+    Ok(out)
+}
+
+/// Whether the game is designed portrait (`publish { orientation portrait }`).
+fn portrait(root: &Path) -> bool {
+    project_body(root).ok().is_some_and(|b| {
+        b.get("publish")
+            .and_then(|e| e.block.as_ref())
+            .and_then(|p| p.get("orientation"))
+            .and_then(|e| e.word(0).ok())
+            == Some("portrait")
+    })
 }
 
 /// `script` with a `screenshot` at its last step's time when it takes none.
@@ -592,21 +780,30 @@ pub fn with_screenshot(script: &str) -> String {
     all.join(";")
 }
 
-/// Captures one screen with `og run --headless --commands`: its PNGs.
+/// Captures one screen with `og run --headless --commands` into `dir`
+/// (under og-out/style/): its PNGs and the renderer tier that drew them.
 fn capture(
     root: &Path,
+    dir: &str,
     screen: &str,
     script: &str,
     size: Option<&str>,
-) -> Result<Vec<PathBuf>, String> {
-    let dir = root.join("og-out/style").join(screen);
+) -> Result<(Vec<PathBuf>, Option<String>), String> {
+    let dir = root.join("og-out/style").join(dir);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let mut cmd = std::process::Command::new(exe);
     cmd.arg("run")
         .arg(root)
-        .args(["--headless", "--no-check", "--commands", script, "--out"])
+        .args([
+            "--headless",
+            "--no-check",
+            "--json",
+            "--commands",
+            script,
+            "--out",
+        ])
         .arg(&dir);
     if let Some(s) = size {
         cmd.args(["--size", s]);
@@ -638,7 +835,16 @@ fn capture(
             "the {screen} screen's run (`{script}`) wrote no frame: no renderer in this environment, or its screenshot step never ran"
         ));
     }
-    Ok(pngs)
+    Ok((pngs, run_tier(&String::from_utf8_lossy(&out.stdout))))
+}
+
+/// The renderer tier of `og run --json`'s summary (its last JSON line).
+pub fn run_tier(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .rev()
+        .filter_map(|l| serde_json::from_str::<Value>(l.trim()).ok())
+        .find_map(|v| v["tier"].as_str().map(str::to_string))
 }
 
 // ── output ──────────────────────────────────────────────────────────────────
@@ -660,6 +866,10 @@ fn asset_json(a: &Asset) -> Value {
 fn frame_json(f: &Frame) -> Value {
     json!({
         "screen": f.screen,
+        "viewport": f.viewport,
+        "label": f.label(),
+        "size": f.size,
+        "tier": f.tier,
         "path": f.path.display().to_string(),
         "colours": f.colours,
         "colours95": f.colours95,
@@ -669,14 +879,39 @@ fn frame_json(f: &Frame) -> Value {
     })
 }
 
+/// What a check captured: the screens it ran and the scenes none reaches.
+#[derive(Clone, Debug, Default)]
+pub struct Coverage {
+    pub screens: Vec<String>,
+    pub viewports: Vec<String>,
+    pub uncovered: Vec<String>,
+}
+
 /// The whole check as one JSON document.
-pub fn to_json(m: &Measured, frames: &[Frame], frame_errors: &[String]) -> Value {
+pub fn to_json(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Coverage) -> Value {
     let c = &m.contract;
+    let slug = c.slug();
     json!({
         "contract": {
             "look": c.look,
+            "extends": c.extends,
             "sets": c.sets,
-            "palette": c.palette.as_ref().map(|(id, p)| json!({ "id": id, "colours": p.len() })),
+            "palette": c.palette.as_ref().map(|(id, p)| json!({
+                "id": id,
+                "colours": p.len(),
+                "hex": p.iter().map(|q| format!("#{:02x}{:02x}{:02x}", q[0], q[1], q[2])).collect::<Vec<_>>(),
+            })),
+            "art": c.art,
+            "style": slug.as_ref().map(|s| json!({
+                "slug": s,
+                "checks": catalogue_checks(s),
+                "intended": catalogue_intended(s),
+            })),
+        },
+        "coverage": {
+            "screens": cov.screens,
+            "viewports": cov.viewports,
+            "uncoveredScenes": cov.uncovered,
         },
         "assets": m.assets.iter().map(asset_json).collect::<Vec<_>>(),
         "optOuts": m.opt_outs.iter().map(|(a, w)| json!({ "asset": a, "why": w })).collect::<Vec<_>>(),
@@ -744,7 +979,7 @@ fn asset_line(a: &Asset) -> String {
 }
 
 /// The check as lines for a reader.
-pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String]) -> String {
+pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String], cov: &Coverage) -> String {
     let c = &m.contract;
     let mut s = format!(
         "contract: {} sets {}\n",
@@ -785,9 +1020,10 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String]) -> String
     }
     for f in frames {
         s.push_str(&format!(
-            "  {:<7} {}\n          colours {} (95% in {}){}  edges {} of pixels, {} hard, contrast {:.2}  grid {} px\n",
-            f.screen,
+            "  {:<16} {}{}\n          colours {} (95% in {}){}  edges {} of pixels, {} hard, contrast {:.2}  grid {} px\n",
+            f.label(),
             f.path.display(),
+            f.tier.as_ref().map(|t| format!("  ({}×{}, {t})", f.size[0], f.size[1])).unwrap_or_else(|| format!("  ({}×{})", f.size[0], f.size[1])),
             f.colours,
             f.colours95,
             f.palette_hit.map(|h| format!("  palette {}", pct(h))).unwrap_or_default(),
@@ -800,18 +1036,29 @@ pub fn report(m: &Measured, frames: &[Frame], frame_errors: &[String]) -> String
     for e in frame_errors {
         s.push_str(&format!("  failed: {e}\n"));
     }
+    if !cov.uncovered.is_empty() {
+        s.push_str(&format!(
+            "coverage: no capture script for the scene(s) {}: add <name> \"<commands>\" to project.ogt's screens {{}} for each\n",
+            cov.uncovered.join(", ")
+        ));
+    }
     s
 }
 
-/// `--critic`: the catalogue's checks as written and the frames, nothing
-/// that names the style.
-pub fn critic(checks: &[String], frames: &[Frame], json: bool) -> String {
-    let prompt = "Look at the frames below. For each check, answer yes or no, with one sentence on what in the frames shows it.";
+/// `--critic`: the catalogue's checks as written, the traits the style
+/// means (never defects) and the frames, nothing that names the style.
+pub fn critic(checks: &[String], intended: Option<&str>, frames: &[Frame], json: bool) -> String {
+    let prompt = "Look at the frames below. For each check, answer yes or no, with one sentence on what in the frames shows it. What the style means is not a defect.";
     if json {
         return json!({
             "prompt": prompt,
             "checks": checks,
+            "intended": intended,
             "frames": frames.iter().map(|f| f.path.display().to_string()).collect::<Vec<_>>(),
+            "shots": frames.iter().map(|f| json!({
+                "label": f.label(), "screen": f.screen, "viewport": f.viewport,
+                "size": f.size, "tier": f.tier, "path": f.path.display().to_string(),
+            })).collect::<Vec<_>>(),
         })
         .to_string();
     }
@@ -822,12 +1069,15 @@ pub fn critic(checks: &[String], frames: &[Frame], json: bool) -> String {
     for (i, c) in checks.iter().enumerate() {
         s.push_str(&format!("  {}. {c}\n", i + 1));
     }
+    if let Some(t) = intended {
+        s.push_str(&format!("\nthe style, not a defect:\n  {t}\n"));
+    }
     s.push_str("\nframes:\n");
     if frames.is_empty() {
         s.push_str("  (none captured)\n");
     }
     for f in frames {
-        s.push_str(&format!("  {}\n", f.path.display()));
+        s.push_str(&format!("  {}  {}\n", f.label(), f.path.display()));
     }
     s
 }
@@ -880,6 +1130,7 @@ struct Args {
     project: String,
     flags: BTreeMap<String, String>,
     size: Option<String>,
+    sizes: Option<String>,
     frames: bool,
     critic: bool,
     json: bool,
@@ -890,6 +1141,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         project: ".".into(),
         flags: BTreeMap::new(),
         size: None,
+        sizes: None,
         frames: true,
         critic: false,
         json: false,
@@ -900,12 +1152,14 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             "--json" => a.json = true,
             "--critic" => a.critic = true,
             "--no-frames" => a.frames = false,
-            f @ ("--title" | "--play" | "--results" | "--size") => {
+            f @ ("--title" | "--play" | "--results" | "--size" | "--sizes") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{f} needs a value. {USAGE}"));
                 };
                 if f == "--size" {
                     a.size = Some(v.to_string());
+                } else if f == "--sizes" {
+                    a.sizes = Some(v.to_string());
                 } else {
                     a.flags.insert(f[2..].to_string(), v.to_string());
                 }
@@ -915,6 +1169,9 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             p => a.project = p.to_string(),
         }
         i += 1;
+    }
+    if a.size.is_some() && a.sizes.is_some() {
+        return Err(format!("--size and --sizes: give one. {USAGE}"));
     }
     Ok(a)
 }
@@ -972,40 +1229,70 @@ pub fn run(args: &[&str]) -> ExitCode {
     };
     let mut frames = Vec::new();
     let mut frame_errors = Vec::new();
-    if a.frames {
-        let scripts = match screens(&root, &a.flags) {
-            Ok(s) => s,
+    let sizes = match (&a.sizes, &a.size) {
+        (Some(s), _) => match viewports(s, portrait(&root)) {
+            Ok(v) => v,
             Err(e) => {
                 eprintln!("og style check: {e}");
-                return ExitCode::FAILURE;
+                return ExitCode::from(2);
             }
-        };
+        },
+        (None, Some(s)) => vec![(s.clone(), s.clone())],
+        (None, None) => vec![("desktop".to_string(), "1280x720".to_string())],
+    };
+    let mut cov = Coverage {
+        viewports: sizes.iter().map(|(n, _)| n.clone()).collect(),
+        ..Coverage::default()
+    };
+    // What would be captured, and the scenes nothing reaches, said with or without frames.
+    let scripts = match screens(&root, &a.flags) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("og style check: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    cov.screens = scripts.iter().map(|(n, _)| n.clone()).collect();
+    match uncovered_scenes(&root, &cov.screens) {
+        Ok(u) => cov.uncovered = u,
+        Err(e) => {
+            eprintln!("og style check: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
+    if a.frames {
         let palette = measured
             .contract
             .palette
             .as_ref()
             .map(|(_, p)| p.as_slice());
-        for (screen, script) in scripts {
-            match capture(&root, &screen, &script, a.size.as_deref()) {
-                Ok(pngs) => {
-                    for p in pngs {
-                        match measure_frame(&screen, &p, palette) {
-                            Ok(f) => frames.push(f),
-                            Err(e) => frame_errors.push(e),
+        for (screen, script) in &scripts {
+            for (viewport, size) in &sizes {
+                // One viewport keeps og-out/style/<screen>/; several, one directory each.
+                let dir = if a.sizes.is_some() {
+                    format!("{screen}@{viewport}")
+                } else {
+                    screen.clone()
+                };
+                match capture(&root, &dir, screen, script, Some(size)) {
+                    Ok((pngs, tier)) => {
+                        for p in pngs {
+                            match measure_frame(screen, viewport, tier.as_deref(), &p, palette) {
+                                Ok(f) => frames.push(f),
+                                Err(e) => frame_errors.push(e),
+                            }
                         }
                     }
+                    Err(e) => frame_errors.push(e),
                 }
-                Err(e) => frame_errors.push(e),
             }
         }
     }
     if a.critic {
-        let checks = measured
-            .contract
-            .slug()
-            .map(|s| catalogue_checks(&s))
-            .unwrap_or_default();
-        print!("{}", critic(&checks, &frames, a.json));
+        let slug = measured.contract.slug();
+        let checks = slug.as_deref().map(catalogue_checks).unwrap_or_default();
+        let intended = slug.as_deref().and_then(catalogue_intended);
+        print!("{}", critic(&checks, intended.as_deref(), &frames, a.json));
         if a.json {
             println!();
         }
@@ -1022,10 +1309,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         };
     }
     if a.json {
-        println!("{}", to_json(&measured, &frames, &frame_errors));
+        println!("{}", to_json(&measured, &frames, &frame_errors, &cov));
     } else {
         println!("og style check {}", root.display());
-        print!("{}", report(&measured, &frames, &frame_errors));
+        print!("{}", report(&measured, &frames, &frame_errors, &cov));
     }
     if !frame_errors.is_empty() {
         ExitCode::FAILURE
@@ -1461,6 +1748,9 @@ mod tests {
         assert_eq!(checks.len(), 3);
         let frames = vec![Frame {
             screen: "play".into(),
+            viewport: "phoneLandscape".into(),
+            size: [844, 390],
+            tier: Some("high".into()),
             path: PathBuf::from("/g/og-out/style/play/screenshot-000210.png"),
             colours: 0,
             colours95: 0,
@@ -1472,7 +1762,13 @@ mod tests {
         let entry = styles.iter().find(|e| e["slug"] == "16bit-pixel").unwrap();
         let name = entry["name"].as_str().unwrap();
         for json in [false, true] {
-            let out = critic(&checks, &frames, json);
+            let intended = catalogue_intended("16bit-pixel");
+            let out = critic(&checks, intended.as_deref(), &frames, json);
+            assert!(out.contains("play@phoneLandscape"), "{out}");
+            assert!(
+                out.contains(intended.as_deref().unwrap().split(' ').next().unwrap()),
+                "{out}"
+            );
             for c in &checks {
                 let c = if json {
                     serde_json::to_string(c).unwrap()
@@ -1487,6 +1783,109 @@ mod tests {
                 "{out}"
             );
         }
+    }
+
+    fn project(text: &str) -> PathBuf {
+        static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "og-style-screens-{}-{}",
+            std::process::id(),
+            N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("project.ogt"),
+            format!("type project\nversion 1\n---\nname \"x\"\n{text}"),
+        )
+        .unwrap();
+        dir
+    }
+
+    // A game's own screens are captured too: title, play and results first
+    // (whatever order the block writes them), then the block's others in
+    // order, then the ui block's screens it does not name; a flag replaces
+    // its screen's script. A scene with no screen of its name is uncovered,
+    // but the start scene counts as covered by play.
+    #[test]
+    fn every_declared_screen_is_captured_and_uncovered_scenes_are_named() {
+        let dir = project(
+            "scenes {\n  main \"scenes/main.ogt\"\n  shop \"scenes/shop.ogt\"\n  map \"scenes/map.ogt\"\n}\nscene main\nscreens {\n  shop \"1:screenshot\"\n  results \"2:screenshot\"\n  play \"0.5:key:Enter\"\n}\nui {\n  screen \"hud\" \"0:key:Enter\"\n  screen \"shop\" \"9:key:KeyS\"\n}\n",
+        );
+        let flags = BTreeMap::from([("results".to_string(), "3:key:Escape".to_string())]);
+        let got = screens(&dir, &flags).unwrap();
+        assert_eq!(
+            got,
+            vec![
+                (
+                    "play".to_string(),
+                    "0.5:key:Enter;0.5:screenshot".to_string()
+                ),
+                (
+                    "results".to_string(),
+                    "3:key:Escape;3:screenshot".to_string()
+                ),
+                ("shop".to_string(), "1:screenshot".to_string()),
+                ("hud".to_string(), "0:key:Enter;0:screenshot".to_string()),
+            ]
+        );
+        let names: Vec<String> = got.into_iter().map(|(n, _)| n).collect();
+        assert_eq!(
+            uncovered_scenes(&dir, &names).unwrap(),
+            vec!["map".to_string()]
+        );
+        // Without play, the start scene is uncovered too.
+        assert_eq!(
+            uncovered_scenes(&dir, &["shop".to_string()]).unwrap(),
+            vec!["main".to_string(), "map".to_string()]
+        );
+        // A screen without commands, or named twice, is refused with its line.
+        let bad = project("screens {\n  shop 3\n}\n");
+        assert!(
+            screens(&bad, &BTreeMap::new())
+                .unwrap_err()
+                .contains("project.ogt:6")
+        );
+        let twice = project("screens {\n  shop \"1:screenshot\"\n  shop \"2:screenshot\"\n}\n");
+        assert!(
+            screens(&twice, &BTreeMap::new())
+                .unwrap_err()
+                .contains("twice")
+        );
+        for d in [dir, bad, twice] {
+            let _ = std::fs::remove_dir_all(d);
+        }
+    }
+
+    // `phone` follows the game's orientation; WxH passes as itself; an
+    // unknown name or a size given twice is refused.
+    #[test]
+    fn sizes_name_viewports_and_phone_follows_the_orientation() {
+        assert_eq!(
+            viewports("desktop,phone", false).unwrap(),
+            vec![
+                ("desktop".to_string(), "1280x720".to_string()),
+                ("phoneLandscape".to_string(), "844x390".to_string()),
+            ]
+        );
+        assert_eq!(
+            viewports("phone,1600x900", true).unwrap(),
+            vec![
+                ("phonePortrait".to_string(), "390x844".to_string()),
+                ("1600x900".to_string(), "1600x900".to_string()),
+            ]
+        );
+        assert!(viewports("watch", false).is_err());
+        assert!(viewports("desktop,1280x720", false).is_err());
+        let p = project("publish {\n  orientation portrait\n}\n");
+        assert!(portrait(&p));
+        let _ = std::fs::remove_dir_all(p);
+    }
+
+    #[test]
+    fn the_tier_comes_from_the_runs_last_json_line() {
+        let out = "{\"event\":\"check\",\"ok\":true}\n{\"tick\":120,\"tier\":\"high\"}\n";
+        assert_eq!(run_tier(out).as_deref(), Some("high"));
+        assert_eq!(run_tier("tick 120 hash 1\n"), None);
     }
 
     #[test]

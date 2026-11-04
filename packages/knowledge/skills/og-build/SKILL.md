@@ -521,27 +521,55 @@ art.
 
 Frames: name the screens the check captures in project.ogt, each a
 command script that reaches it (a `screenshot` is added at its last step
-when it has none):
+when it has none; a script with several screenshots, such as one
+mid-transition, gives a frame for each):
 
 ```text
 screens {
   title "0.5:screenshot"
   play "3.5:screenshot"
   results "1:key_down:Escape;1.05:key_up:Escape;2:screenshot"
+  shop "0.5:key:KeyS;0.9:screenshot;1.5:screenshot"
 }
 ```
 
-or pass `--title`, `--play`, `--results` (and `--size 640x360`). Each is
-run with `og run --headless --commands` into `og-out/style/<screen>/` and
-measured: colours (and how few cover 95 % of the pixels), the palette hit
-rate, edge density, the share of hard one-pixel steps (pixel art and hard
-outlines are high, filtered and blurred edges low) and the frame's pixel
-grid. `--no-frames` skips them.
+Title, play and results come first (`--title`, `--play`, `--results`
+replace their scripts); any other name is a screen of the game's own,
+captured after them, and so is each `ui { screen }` entry the block does
+not name. Every scene of `scenes {}` should have a screen of its name
+(the start scene is covered by `play`): the check names the ones without
+(`coverage`). Each screen is run with `og run --headless --commands` at
+one size (`--size 640x360`; desktop 1280×720 by default) into
+`og-out/style/<screen>/`, or at several with `--sizes desktop,phone`
+(also `phoneLandscape`, `phonePortrait`, `tablet` or `WxH`; `phone` is
+the game's orientation, portrait under `publish { orientation portrait
+}`) into `og-out/style/<screen>@<viewport>/`. Each frame is labelled
+`<screen>@<viewport>`, carries its size and the renderer tier that drew
+it, and is measured: colours (and how few cover 95 % of the pixels), the
+palette hit rate, edge density, the share of hard one-pixel steps (pixel
+art and hard outlines are high, filtered and blurred edges low) and the
+frame's pixel grid. `--no-frames` skips them.
 
-`--critic` prints the style's three catalogue checks as written and the
-frames' paths, and nothing that names the style (no name, slug or look
+`--critic` prints the style's three catalogue checks as written, the
+traits the style means (`intended`, og-taste §12) and the frames with
+their labels, and nothing that names the style (no name, slug or look
 id): hand it to a blind critic, who answers each check from the frames.
-`--json` prints one document (`assets`, `optOuts`, `frames`, `summary`).
+`--json` prints one document (`contract`, `coverage`, `assets`,
+`optOuts`, `frames`, `summary`); its `contract` carries the look's
+flattened art blocks (`art`, colours as sRGB hex), the palette's colours
+and the catalogue's `checks` and `intended`, so a reviewer gets the terms
+from the run that measured them.
+
+**Measuring a region.** `og frame measure <png> --region x,y,w,h
+[--units fraction] [--against x,y,w,h] [--metric
+contrast,highpass,mean,ramp] [--json]` reads the numbers a reviewer
+quotes off any captured frame, the same on every machine: WCAG contrast
+(the ink, the darkest or brightest 5 % of the region, against the median
+of `--against` or of the region), high-pass energy (the mean difference
+between the grey and its σ 2 px blur, with its ratio to `--against`),
+the mean colour, and the grey per band of `--rows` rows with the largest
+step. Visual-acceptance §5 says which number decides which item of the
+art bar.
 The exit status is 0 when every asset meets the contract, 3 when one does
 not (each failed number against its term), 1 when the cook or a capture
 failed; a project whose project.ogt names no look has no contract, says

@@ -796,6 +796,13 @@ Each cell is a fresh engine laid out through og.ui.previewViewport, so a
 game needs no viewport command of its own. Outputs land in
 `og-out/ui-check/` (check.json, check.txt; exit 3 on an error) and
 `og-out/ui-preview/` (sheet-<screen>.png, index.json, film.png).
+`--json` prints the same as check.json: every finding with its `value`,
+the `bar` it is held to and their `unit` (contrast's ratio against 3, 7
+or 4.5, a text's size against the floor, a target's side against 44), and
+`at`, one entry per cell with its viewport, the box in CSS px (the
+overlap, the text's line, else the element) and the cell's captured
+`frame`; `frames` lists every cell's frame. A reviewer's region and
+number come from there.
 
 What `og ui check` reports (docs/ui.md §16.5), each with the fix:
 
@@ -806,7 +813,7 @@ What `og ui check` reports (docs/ui.md §16.5), each with the fix:
 | `text-truncated` | an ellipsis without a tooltip (a warning: a tooltip only exists while hovered) | og.ui.tooltip right after it |
 | `safe-area`, `covered` | under the notch or home indicator, or under the player shell's Back (`Viewport.covered`) | place with og.ui.anchor, which keeps to both |
 | `touch-target` | an interactive element under 44×44 CSS px on a coarse pointer | its size, or hit slop |
-| `contrast` | text under 4.5:1 on the pixels (7:1 in high contrast) | the style's palette, never per call |
+| `contrast` | live text on a UI ground under 3:1 on the pixels (7:1 in high contrast) is an error, under 4.5:1 a warning; dimmed, disabled and over-the-scene text is left to the eye | the style's palette, never per call |
 | `text-size` | text under 12 CSS px on touch, under 18 px at 1080p on desktop | a larger step of the ramp |
 | `focus-reach`, `focus-trap` | a control the d-pad cannot reach from the default focus (two in one place, not focusable), or cannot leave | line controls up in rows and columns; make it focusable. Not checked on a screen that calls `og.ui.setNavigation(false)` (its pad drives the game) |
 | `a11y-name`, `a11y-locale` | a control with no name; a name or text the same in another locale as in the game's own | its text (or its desc's `label`, where the widget has one); og.i18n.t |

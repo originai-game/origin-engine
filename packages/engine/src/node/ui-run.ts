@@ -278,6 +278,9 @@ async function main(): Promise<void> {
             else if (base) found.push(...checkLocales(base, r.frame, cell));
           } else if (unscaled) found.push(...checkScale(unscaled, r.frame, cell));
         }
+        // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
+        const size = BREAKPOINTS[bp]!;
+        for (const x of found) x.at = (x.at ?? [{ cell: cellName(cell), viewport: [size.width, size.height], rect: null }]).map((a) => ({ ...a, frame: frame ? join(outDir, frame) : null }));
         for (const w of r.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
         all.push(...found);
         cells.push({ ...cell, index, dpr: BREAKPOINTS[bp]!.dpr, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
@@ -289,7 +292,9 @@ async function main(): Promise<void> {
   const errors = findings.filter((f) => f.severity === "error").length;
   const project_ = basename(resolve(root!));
   const rules = RULES.map((r) => ({ ...r, findings: findings.filter((f) => f.rule === r.id).length }));
-  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, errors, warnings: findings.length - errors, findings, rules, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
+  // Every cell's frame, so a reader holds a finding's `at` against the frame it was measured on.
+  const frames = cells.map((c) => ({ cell: cellName(c), screen: c.screen, breakpoint: c.breakpoint, viewport: [BREAKPOINTS[c.breakpoint]!.width, BREAKPOINTS[c.breakpoint]!.height], frame: c.frame ? join(outDir, c.frame) : null }));
+  writeFileSync(join(outDir, "check.json"), JSON.stringify({ project: project_, cells: cells.length, errors, warnings: findings.length - errors, findings, rules, frames, cellList: cells.map((c) => ({ index: c.index, cell: cellName(c), dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })) }, null, 1) + "\n");
   writeFileSync(join(outDir, "check.txt"), formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) (${screens.length} screen(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} breakpoint(s) × ${locales.length} locale(s) × ${scales.length} scale(s))`));
   if (mode === "preview") {
     // One sheet per screen and style: a row per breakpoint, a column per locale and scale.
@@ -307,7 +312,7 @@ async function main(): Promise<void> {
     else process.stdout.write(`og ui preview: ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${sheets.map((s) => basename(s)).join(", ")}; ${join(outDir, "index.json")}\n`);
     return;
   }
-  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, errors, warnings: findings.length - errors, findings }) + "\n");
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ cells: cells.length, errors, warnings: findings.length - errors, findings, frames, report: join(outDir, "check.json") }) + "\n");
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`));
   process.exit(errors > 0 ? 3 : 0);
 }

@@ -22,6 +22,7 @@ mod dev;
 mod device;
 mod doctor;
 mod doctor_project;
+mod frame;
 mod i18n;
 mod lockstep_lint;
 mod migrate;
@@ -183,6 +184,13 @@ commands:
                       src/ui/screens/, one for every screen type of docs/ui.md Appendix B) into
                       assets/ui/<screen>.ogt to edit as the game's own; refuses to overwrite one
                       there without --force; --list prints each with its Appendix B row
+  frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
+      [--metric contrast,highpass,mean,ramp] [--rows N] [--json]
+                      a reviewer's numbers off a captured frame, the same on every machine: WCAG
+                      contrast (the ink, the region's darkest or brightest 5 %, against the median
+                      ground of --against or the region), high-pass energy (mean |grey - its σ 2
+                      blur|, with its ratio to --against), mean colour, and the grey per band of
+                      --rows rows with the largest step (visual-acceptance §5, §6)
   relay [--port P] [--host <ip>]
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep)
@@ -299,6 +307,7 @@ fn main() -> ExitCode {
         ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
+        ["frame", rest @ ..] => frame::run(rest),
         [] => {
             eprint!("{USAGE}");
             ExitCode::from(2)

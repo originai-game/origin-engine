@@ -125,6 +125,28 @@ export interface UiFinding {
   fix: string;
   /** The cells it was found in (`phonePortrait en`). */
   cells: string[];
+  /** The measured number in the first cell, for the rules that measure one (contrast's ratio, a text's or target's CSS px, an overlap's or overflow's px). */
+  value?: number;
+  /** The bar `value` is held to: contrast 3 or 7 for an error and 4.5 for a warning, the minimum text size, 44 for a touch target, 0 for an overlap or overflow. */
+  bar?: number;
+  /** `value`'s and `bar`'s unit: `:1` (a contrast ratio), `CSS px`, `CSS px²`. */
+  unit?: string;
+  /** Each cell it was found in, with the box it was found at: one entry per cell, in the order of `cells`. */
+  at?: UiFindingAt[];
+}
+
+/** Where a finding was found in one cell: what a reviewer draws a region from. */
+export interface UiFindingAt {
+  /** The cell's name, as in `cells`. */
+  cell: string;
+  /** The cell's viewport, CSS px (the captured frame's size: the check captures at DPR 1). */
+  viewport: [number, number];
+  /** The box, CSS px in that viewport: the overlap's rectangle, the text's line box, else the first path's element; null when the finding has no place (the style, the frame). */
+  rect: Rect4 | null;
+  /** The measured number in this cell (as `value`). */
+  value?: number;
+  /** The captured frame of the cell (`og ui check` fills it in; absent when the cell drew none). */
+  frame?: string | null;
 }
 
 // ── the rules ──────────────────────────────────────────────────────────────
@@ -418,13 +440,16 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   const out: UiFinding[] = [];
   const skip = new Set(opts.skip ?? []);
   const where = cellName(cell);
-  const add = (rule: string, x: Omit<UiFinding, "rule" | "severity" | "cells"> & { severity?: Severity }) => {
-    if (skip.has(rule)) return;
-    out.push({ rule, severity: x.severity ?? "error", paths: x.paths, measured: x.measured, limit: x.limit, prop: x.prop, fix: x.fix, cells: [where] });
-  };
   const v = f.viewport;
   const paths = elementPaths(f);
   const byPath = new Map(paths.map((p, i) => [p, i]));
+  const add = (rule: string, x: Omit<UiFinding, "rule" | "severity" | "cells" | "at"> & { severity?: Severity; rect?: Rect4 | null }) => {
+    if (skip.has(rule)) return;
+    const e = f.elements[byPath.get(x.paths[0] ?? "") ?? -1];
+    const rect = x.rect !== undefined ? x.rect : e ? rectOf(e) : null;
+    const measure = { ...(x.value === undefined ? {} : { value: x.value }), ...(x.bar === undefined ? {} : { bar: x.bar }), ...(x.unit === undefined ? {} : { unit: x.unit }) };
+    out.push({ rule, severity: x.severity ?? "error", paths: x.paths, measured: x.measured, limit: x.limit, prop: x.prop, fix: x.fix, cells: [where], ...measure, at: [{ cell: where, viewport: [v.width, v.height], rect: rect && (rect.map(r1) as Rect4), ...(x.value === undefined ? {} : { value: x.value }) }] });
+  };
   const kindAt = (p: string) => f.elements[byPath.get(p) ?? -1]?.kind ?? "";
   const underTouch = (i: number) => {
     for (const [j, e] of f.elements.entries()) if (TOUCH_CONTROLS.has(e.kind ?? "") && within(paths[i]!, paths[j]!)) return true;
@@ -441,6 +466,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     listed.push(o);
     add("overlap", {
       paths: [o.path, o.other],
+      rect: o.rect,
+      value: r1(o.rect[2] * o.rect[3]),
+      bar: 0,
+      unit: "CSS px²",
       measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (siblings in the flow)" : ""}${pseudo}`,
       limit: "no overlap unless declared",
       prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets (or \`overlaps: ["${o.other}"]\` in og.ui.props when it is meant)`,
@@ -479,6 +508,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       add(cell.scale !== 100 ? "text-scale" : "text-cut", {
         ...(e?.clipped ? { severity: "warning" as const } : {}),
         paths: [path],
+        rect: t.bounds,
         measured: `"${t.text.slice(0, 32)}" cut by its clip: ${cut}${pseudo}`,
         limit: "text shows whole, or ends in an ellipsis with a tooltip",
         prop: `${path}: ellipsis and maxLines (og.ui.label), or its box's width`,
@@ -487,6 +517,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     } else if (e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
       add(cell.scale !== 100 ? "text-scale" : "text-cut", {
         paths: [path],
+        rect: t.bounds,
+        value: r1(w - e.width),
+        bar: 0,
+        unit: "CSS px",
         measured: `"${t.text.slice(0, 32)}" is ${r1(w)} CSS px in a ${r1(e.width)} px box${pseudo}`,
         limit: "text inside its box",
         prop: `${path}: width (fit or grow), or ellipsis`,
@@ -507,6 +541,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     if (t.size + 0.01 < (inDense ? denseSize : minSize)) {
       add("text-size", {
         paths: [path],
+        rect: t.bounds,
+        value: r1(t.size),
+        bar: inDense ? denseSize : minSize,
+        unit: "CSS px",
         measured: `${r1(t.size)} CSS px "${t.text.slice(0, 32)}"${inDense ? " (dense)" : ""}`,
         limit: inDense
           ? `${denseSize} CSS px at ${v.width}×${v.height} at ${cell.scale} % text (a dense HUD: 12 px at 1080p, growing with the text scale)`
@@ -524,6 +562,9 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     const m = /^'([^']+)' is laid out (\d+) px past the (\d+x\d+) screen/.exec(w);
     if (m) add("offscreen", {
       paths: [m[1]!],
+      value: Number(m[2]),
+      bar: 0,
+      unit: "CSS px",
       measured: `${m[2]} CSS px past the ${m[3]} screen${pseudo}`,
       limit: "every control on screen or in a scroll container",
       prop: `${m[1]}: its container (a scroll container), step or direction`,
@@ -548,6 +589,9 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       placed.add(paths[i]!);
       add("safe-area", {
         paths: [paths[i]!],
+        value: r1(outside),
+        bar: 0,
+        unit: "CSS px²",
         measured: `${r1(outside)} CSS px² outside the safe area (${safe.map(r1).join(", ")})`,
         limit: "inside the safe area",
         prop: `${paths[i]!}: its anchor or insets (anchored groups keep to the safe area by themselves)`,
@@ -559,6 +603,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       const under = intersect(r, c);
       if (under[2] > 0.5 && under[3] > 0.5) add("covered", {
         paths: [paths[i]!],
+        rect: under,
         measured: `${r1(under[2])}×${r1(under[3])} CSS px under the shell's control at ${c.map(r1).join(", ")}`,
         limit: "nothing under the host's control",
         prop: `${paths[i]!}: its placement (anchored groups move off the covered region; read og.ui.frameViewport().covered for a corner of your own)`,
@@ -575,6 +620,9 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     if (e.kind === "link" && kindAt(paths[i]!.slice(0, paths[i]!.lastIndexOf("/"))) === "richtext") continue;
     add("touch-target", {
       paths: [paths[i]!],
+      value: r1(Math.min(e.width, e.height)),
+      bar: 44,
+      unit: "CSS px",
       measured: `${r1(e.width)}×${r1(e.height)} CSS px`,
       limit: "44×44 CSS px on a coarse pointer",
       prop: `${paths[i]!}: size (min 44) or hitSlop`,
@@ -601,6 +649,9 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       add("contrast", {
         ...(error ? {} : { severity: "warning" as const }),
         paths: [path],
+        value: b.contrast,
+        bar: error ? bar : 4.5,
+        unit: ":1",
         measured: `${b.contrast}:1 "${b.text.slice(0, 32)}"`,
         limit: error ? `${bar}:1${high ? " (high contrast)" : " for live text"}` : "4.5:1 recommended (a warning: the art director judges it)",
         prop: "the style's ink and ground tokens (palette), never per call",
@@ -814,10 +865,10 @@ export function mergeFindings(all: readonly UiFinding[]): UiFinding[] {
     // By severity too: a cell whose measure is a warning (3.62:1) is never listed under another cell's error (1:1).
     const k = `${f.rule}\u0000${f.severity}\u0000${f.paths.join("\u0000")}`;
     const had = by.get(k);
-    if (had) for (const c of f.cells) {
-      if (!had.cells.includes(c)) had.cells.push(c);
-    }
-    else by.set(k, { ...f, cells: [...f.cells] });
+    if (had) {
+      for (const c of f.cells) if (!had.cells.includes(c)) had.cells.push(c);
+      for (const a of f.at ?? []) if (!had.at!.some((h) => h.cell === a.cell)) had.at!.push(a);
+    } else by.set(k, { ...f, cells: [...f.cells], at: [...(f.at ?? [])] });
   }
   return [...by.values()];
 }

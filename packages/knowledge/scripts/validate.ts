@@ -547,6 +547,8 @@ interface Style {
   category: string;
   descriptor: string;
   checks: string[];
+  /** The traits that look like defects but are the style, one sentence a blind critic reads beside the checks. */
+  intended: string;
   premise: Record<string, string>;
   look: { preset: string; presetReady: boolean; support: string; layers: string[]; family: string; profiles: string[]; primitives: string[]; missing: string[] };
   ui: string;
@@ -619,6 +621,10 @@ function looks(roots: Roots, files: readonly PayloadFile[], problems: string[]):
     if (!categories.includes(s.category)) problems.push(`${id}: category ${s.category} is none of ${categories.join(", ")}`);
     if (!packs.includes(s.ui)) problems.push(`${id}: ui ${s.ui} is none of the built-in styles (${packs.join(", ")})`);
     if (!Array.isArray(s.checks) || s.checks.length !== 3 || !s.checks.every(text)) problems.push(`${id}: needs exactly three checks a critic can judge on a frame`);
+    // What a critic must not hold against the style: said once, the same for every critic (og-taste §12), and blind
+    // like the checks (og style check --critic prints it), so it never names the style.
+    if (!text(s.intended) || !/ (is|are) the style\b/.test(s.intended)) problems.push(`${id}: needs intended, one sentence naming the traits that look like defects but are the style ("… are the style, not …")`);
+    else if ([s.name, s.slug].some((n) => text(n) && s.intended.toLowerCase().includes(n.toLowerCase()))) problems.push(`${id}: intended names the style; a blind critic reads it`);
     for (const k of PREMISE) if (!text(s.premise?.[k])) problems.push(`${id}: premise has no ${k}`);
     for (const k of ASSET_SPECS) if (!text(s.assets?.[k])) problems.push(`${id}: assets has no ${k}`);
     if (!text(s.palette?.size) || !text(s.palette?.rules)) problems.push(`${id}: palette needs a size and rules`);

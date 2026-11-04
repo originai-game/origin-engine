@@ -477,6 +477,20 @@ fn style_check_measures_cooked_sprites_and_lists_opt_outs() {
             .cloned()
             .unwrap_or_else(|| panic!("{id} in {v}"))
     };
+    // The contract the frames and assets were judged against, flattened, and what was captured.
+    assert_eq!(v["contract"]["art"]["ArtPalette"]["strict"], true, "{v}");
+    assert_eq!(
+        v["contract"]["art"]["ArtPalette"]["colors"], "palettes/two.hex",
+        "{v}"
+    );
+    assert_eq!(
+        v["contract"]["palette"]["hex"],
+        serde_json::json!(["#808080", "#c82828"])
+    );
+    assert_eq!(v["coverage"]["viewports"], serde_json::json!(["desktop"]));
+    // The project declares no scenes and no screens: nothing captured, nothing uncovered.
+    assert_eq!(v["coverage"]["screens"], serde_json::json!([]));
+    assert_eq!(v["coverage"]["uncoveredScenes"], serde_json::json!([]));
     assert_eq!(asset("on.png")["measures"]["paletteHit"], 1.0);
     assert_eq!(asset("on.png")["ok"], true);
     assert_eq!(asset("off.png")["measures"]["paletteHit"], 0.75);
@@ -490,6 +504,13 @@ fn style_check_measures_cooked_sprites_and_lists_opt_outs() {
             .any(|o| o["asset"] == "off.png"),
         "{v}"
     );
+    // A bad --sizes is a usage error before anything is captured.
+    let bad = og()
+        .args(["style", "check", "--sizes", "desktop,watch", "--json"])
+        .arg(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(bad.status.code(), Some(2), "{}", text(&bad));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -676,5 +697,72 @@ fn style_art_packs_painted_slots_at_three_densities() {
         "{}",
         text(&out)
     );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `og frame measure` as a reviewer runs it on a captured frame: a 40×20
+/// PNG, a white label ground on the left with grey-119 strokes (4.48:1 by
+/// WCAG's formula, by hand) beside a black right half. The region is given
+/// in fractions, the ground taken from `--against`; a region off the frame
+/// is refused.
+///
+/// Ways it could fail: fractions read as pixels, the ground taken from the
+/// region when --against is given, or an unknown metric accepted.
+#[test]
+fn frame_measure_reads_contrast_in_a_fractional_region_against_its_ground() {
+    let dir = style_project("measure-frame", &[]);
+    std::fs::create_dir_all(&dir).unwrap();
+    let png = dir.join("frame.png");
+    let img = image::RgbImage::from_fn(40, 20, |x, y| {
+        if x >= 20 {
+            image::Rgb([0, 0, 0])
+        } else if (4..16).contains(&y) && x % 4 == 1 {
+            image::Rgb([119, 119, 119])
+        } else {
+            image::Rgb([255, 255, 255])
+        }
+    });
+    img.save(&png).unwrap();
+    let out = og()
+        .args(["frame", "measure"])
+        .arg(&png)
+        .args([
+            "--units",
+            "fraction",
+            "--region",
+            "0,0.2,0.5,0.6",
+            "--against",
+            "0,0,0.5,0.2",
+            "--metric",
+            "contrast,mean",
+            "--json",
+        ])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["region"], serde_json::json!([0, 4, 20, 12]));
+    assert_eq!(v["against"], serde_json::json!([0, 0, 20, 4]));
+    assert_eq!(v["metrics"]["contrast"]["ratio"], 4.48);
+    assert_eq!(v["metrics"]["contrast"]["ground"]["colour"], "#ffffff");
+    assert!(v["metrics"].get("highpass").is_none(), "{v}");
+    // The whole frame by default, and text output names the ratio.
+    let all = og().args(["frame", "measure"]).arg(&png).output().unwrap();
+    assert!(text(&all).contains("region 0,0 40×20 px"), "{}", text(&all));
+    assert!(text(&all).contains("highpass"), "{}", text(&all));
+    let off = og()
+        .args(["frame", "measure"])
+        .arg(&png)
+        .args(["--region", "30,0,20,10"])
+        .output()
+        .unwrap();
+    assert_eq!(off.status.code(), Some(1), "{}", text(&off));
+    let bad = og()
+        .args(["frame", "measure"])
+        .arg(&png)
+        .args(["--metric", "sharpness"])
+        .output()
+        .unwrap();
+    assert_eq!(bad.status.code(), Some(2), "{}", text(&bad));
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -15,6 +15,19 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **A reviewer's measures (the art director, origin-agent).** `og frame
+  measure <png> --region x,y,w,h [--against …] [--units fraction]` prints
+  WCAG contrast, high-pass energy, mean colour and a row ramp for any
+  region of a frame, the same on every machine. `og style check` captures
+  every screen `screens {}` or `ui { screen }` declares (any name, not
+  only title, play and results), at several viewports with `--sizes
+  desktop,phone`, labels each frame `<screen>@<viewport>` with its size
+  and renderer tier, and its `--json` carries the look's flattened art
+  blocks and the scenes no capture script reaches. `og ui check --json`
+  findings carry their `value`, `bar`, `unit` and a box per cell (`at`)
+  with the cell's frame. The catalogue gains `intended` per style (the
+  traits that look like defects but are the style), and visual-acceptance
+  gains §5 (the art bar) and §6 (verdicts). All additive.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements
