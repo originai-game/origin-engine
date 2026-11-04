@@ -1063,6 +1063,15 @@ impl ParticleRenderer {
         }
         let frame = self.frame;
         self.systems.retain(|_, s| s.seen == frame);
+        // The unsupported diagnostic is opaque, not emitted light. Adding
+        // it to the background destroys the checker's black and magenta.
+        if scene.debug != crate::DebugView::None {
+            for s in &mut out.systems {
+                if s.kind != DrawKind::Sprite {
+                    s.blend = ParticleBlend::Alpha;
+                }
+            }
+        }
         // Far systems first; additive after alpha within the same depth.
         og_core::sort::sort_by(&mut out.systems, |a, b| {
             b.depth

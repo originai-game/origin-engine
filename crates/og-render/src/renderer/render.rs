@@ -3444,7 +3444,7 @@ impl Renderer {
         // Trails, ribbons and beams drawn with the 3D scene (layered 2D
         // trails go with the sprites): the main camera's or a view's runs.
         let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
-            self.frame_draw_strips(pass, runs)
+            self.frame_draw_strips(pass, runs, scene.debug != DebugView::None)
         };
         // Sprites and text over a camera's scene, in sorted order: the main
         // camera's runs with its effect group and metaball fields, or a

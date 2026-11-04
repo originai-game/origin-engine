@@ -7,12 +7,18 @@ impl Renderer {
         &self,
         pass: &mut wgpu::RenderPass,
         runs: &[ribbons::RibbonRun],
+        diagnostic: bool,
     ) -> u32 {
         let mut draws = 0;
         for run in runs.iter().filter(|r| r.layer.is_none()) {
+            let blend = if diagnostic {
+                ParticleBlend::Alpha
+            } else {
+                run.blend
+            };
             self.draw_strip_run(
                 pass,
-                run.blend as u8,
+                blend as u8,
                 run.texture,
                 run.points,
                 run.first,
