@@ -601,11 +601,8 @@ fn surfaces_that_receive_no_shadows_are_lit_as_if_unshadowed() {
 /// The floor just past the box's lit-away face, in pixels of the contact
 /// scene's frame: points 1 to 4 cm out from the face, along its middle.
 fn contact_strip(img: &RgbaImage) -> Vec<(u32, u32)> {
-    let cam = shadow_scenes::local_contact_camera();
     let (w, h) = (img.width as f32, img.height as f32);
-    let view_proj =
-        glam::camera::rh::proj::directx::perspective(50f32.to_radians(), w / h, 0.1, 100.0)
-            * glam::camera::rh::view::look_at_mat4(cam.position, cam.target, glam::Vec3::Y);
+    let view_proj = contact_view_proj(img);
     let face = shadow_scenes::CONTACT_BOX.x * 0.5;
     let mut out = Vec::new();
     for dx in [0.01f32, 0.02, 0.03, 0.04] {
@@ -689,6 +686,241 @@ fn local_shadows_touch_their_casters() {
             ratio < 0.1,
             "the floor beside the box is lit through the bias: {ratio:.3} of its direct light"
         );
+    }
+}
+
+/// The contact scenes' camera (`shadow_scenes::local_contact_camera`)
+/// for a frame of `img`'s size.
+fn contact_view_proj(img: &RgbaImage) -> glam::Mat4 {
+    let cam = shadow_scenes::local_contact_camera();
+    glam::camera::rh::proj::directx::perspective(
+        50f32.to_radians(),
+        img.width as f32 / img.height as f32,
+        0.1,
+        100.0,
+    ) * glam::camera::rh::view::look_at_mat4(cam.position, cam.target, glam::Vec3::Y)
+}
+
+/// A caster of the contact scenes, for the false-contact probes' geometry.
+#[derive(Clone, Copy)]
+enum Caster {
+    /// Least and greatest corners.
+    Box(glam::Vec3, glam::Vec3),
+    /// Centre and radius.
+    Ball(glam::Vec3, f32),
+}
+
+impl Caster {
+    /// Where the ray from `o` along unit `d` enters it, if ahead of `o`.
+    fn enter(self, o: glam::Vec3, d: glam::Vec3) -> Option<f32> {
+        match self {
+            Caster::Box(lo, hi) => {
+                let inv = d.recip();
+                let (a, b) = ((lo - o) * inv, (hi - o) * inv);
+                let near = a.min(b).max_element();
+                let far = a.max(b).min_element();
+                (near <= far && near > 0.0).then_some(near)
+            }
+            Caster::Ball(c, r) => {
+                let oc = o - c;
+                let b = oc.dot(d);
+                let disc = b * b - (oc.length_squared() - r * r);
+                let t = -b - disc.max(0.0).sqrt();
+                (disc >= 0.0 && t > 0.0).then_some(t)
+            }
+        }
+    }
+
+    fn distance(self, q: glam::Vec3) -> f32 {
+        match self {
+            Caster::Box(lo, hi) => (lo - q).max(q - hi).max(glam::Vec3::ZERO).length(),
+            Caster::Ball(c, r) => q.distance(c) - r,
+        }
+    }
+}
+
+/// Whether the segment from `a` to `b` passes through one of `casters`.
+fn blocked(a: glam::Vec3, b: glam::Vec3, casters: &[Caster]) -> bool {
+    let (d, len) = ((b - a).normalize(), a.distance(b));
+    casters
+        .iter()
+        .any(|c| c.enter(a, d).is_some_and(|t| t < len - 1e-4))
+}
+
+/// Where a contact scene's frame shows lit floor or wall that lies just
+/// past the silhouette of one of `behind`, at a depth gap: points the
+/// light reaches, clear of every caster by 8 cm at their distance from it
+/// (more than a local map's filter and normal offset reach there, so no
+/// map shades them), whose pixel and its neighbours two pixels away show
+/// that receiver, and from which the ray towards the light passes behind
+/// one of `behind` as the camera sees it within 48 pixels (inside a
+/// screen-space trace's reach) without touching anything. A trace that
+/// takes a silhouette in front of a far surface for an occluder darkens
+/// them.
+fn behind_silhouettes(img: &RgbaImage, casters: &[Caster], behind: &[Caster]) -> Vec<(u32, u32)> {
+    use glam::Vec3;
+    let light = shadow_scenes::CONTACT_LIGHT;
+    let eye = shadow_scenes::local_contact_camera().position;
+    let view_proj = contact_view_proj(img);
+    let inv = view_proj.inverse();
+    let (w, h) = (img.width as f32, img.height as f32);
+    let to_px = |p: Vec3| {
+        let q = view_proj.project_point3(p);
+        ((q.x * 0.5 + 0.5) * w, (0.5 - q.y * 0.5) * h)
+    };
+    // What the camera sees through a pixel's centre: 0 the floor, 1 the
+    // wall, 2 a caster.
+    let seen = |x: f32, y: f32| -> u8 {
+        let ndc = Vec3::new((x + 0.5) / w * 2.0 - 1.0, 1.0 - (y + 0.5) / h * 2.0, 0.5);
+        let d = (inv.project_point3(ndc) - eye).normalize();
+        let floor = if d.y < 0.0 { -eye.y / d.y } else { f32::MAX };
+        let wall = if d.z < 0.0 {
+            (-2.0 - eye.z) / d.z
+        } else {
+            f32::MAX
+        };
+        let caster = casters
+            .iter()
+            .filter_map(|c| c.enter(eye, d))
+            .fold(f32::MAX, f32::min);
+        if caster < floor.min(wall) {
+            2
+        } else if floor < wall {
+            0
+        } else {
+            1
+        }
+    };
+    let clearance = |p: Vec3| {
+        let far = p.distance(light);
+        (1..100)
+            .map(|i| p.lerp(light, i as f32 / 100.0))
+            .flat_map(|q| {
+                casters
+                    .iter()
+                    .map(move |c| c.distance(q) * far / q.distance(light))
+            })
+            .fold(f32::MAX, f32::min)
+    };
+    let floor = (-60..=60).flat_map(|x| {
+        (-39..40).map(move |z| (Vec3::new(x as f32 * 0.05, 0.0, z as f32 * 0.05), 0u8))
+    });
+    let wall = (-60..=60).flat_map(|x| {
+        (1..50).map(move |y| (Vec3::new(x as f32 * 0.05, y as f32 * 0.05, -2.0), 1u8))
+    });
+    let mut out = Vec::new();
+    for (p, receiver) in floor.chain(wall) {
+        let (x, y) = to_px(p);
+        if x < 4.0 || y < 4.0 || x >= w - 4.0 || y >= h - 4.0 || blocked(eye, p, casters) {
+            continue;
+        }
+        let (x, y) = (x.floor(), y.floor());
+        let clean = [-2.0, 0.0, 2.0].iter().all(|&ox| {
+            [-2.0, 0.0, 2.0]
+                .iter()
+                .all(|&oy| seen(x + ox, y + oy) == receiver)
+        });
+        if !clean || clearance(p) < 0.08 {
+            continue;
+        }
+        let d = (light - p).normalize();
+        let passes_behind = (1..200)
+            .map(|i| p + d * (i as f32 * 0.01))
+            .take_while(|&q| {
+                let (qx, qy) = to_px(q);
+                (qx - x).hypot(qy - y) <= 48.0
+            })
+            .any(|q| blocked(eye, q, behind));
+        if passes_behind {
+            out.push((x as u32, y as u32));
+        }
+    }
+    out
+}
+
+/// The share of their direct light that `points` keep in `shadowed`
+/// (`lit`: the light unshadowed, `dark`: off): the least and the mean.
+fn kept_light(
+    points: &[(u32, u32)],
+    shadowed: &RgbaImage,
+    lit: &RgbaImage,
+    dark: &RgbaImage,
+) -> (f32, f32) {
+    let at = |img: &RgbaImage, (x, y): (u32, u32)| {
+        let i = ((y * img.width + x) * 4) as usize;
+        luma(&img.pixels[i..i + 3])
+    };
+    let ratios: Vec<f32> = points
+        .iter()
+        .map(|&q| (at(shadowed, q) - at(dark, q)) / (at(lit, q) - at(dark, q)).max(1.0))
+        .collect();
+    let least = ratios.iter().copied().fold(f32::MAX, f32::min);
+    (
+        least,
+        ratios.iter().sum::<f32>() / ratios.len().max(1) as f32,
+    )
+}
+
+/// Contact shadows never darken what lies behind a silhouette: the lit
+/// floor and wall just past the contact scene's box, and past a large
+/// ball and a thin pole, at a depth gap behind them, where a screen-space
+/// trace towards the light passes behind them (the false contact the art
+/// director held on contact 497: a blurred bar beside the box's corner,
+/// a dark column along the ball). Each keeps its direct light, for a spot
+/// and for both point shadow storages.
+#[test]
+fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
+    use shadow_scenes::{CONTACT_BOX, SILHOUETTE_BALL, SILHOUETTE_POLE};
+    let desc = scenes::base_desc();
+    let half = CONTACT_BOX * 0.5;
+    let boxed = Caster::Box(
+        glam::Vec3::new(-half.x, 0.0, -half.z),
+        glam::Vec3::new(half.x, CONTACT_BOX.y, half.z),
+    );
+    let small_ball = Caster::Ball(glam::Vec3::new(-1.0, 0.25, 0.9), 0.25);
+    let ball = Caster::Ball(SILHOUETTE_BALL.0, SILHOUETTE_BALL.1);
+    let pole = Caster::Box(SILHOUETTE_POLE.0, SILHOUETTE_POLE.1);
+    for (point, storage) in [
+        (false, PointShadows::Cube),
+        (true, PointShadows::Cube),
+        (true, PointShadows::Paraboloid),
+    ] {
+        let desc = RenderDesc {
+            point_shadows: storage,
+            ..desc
+        };
+        // The scene shadowed, its light unshadowed, and its light off.
+        let frames = |scene: &dyn Fn() -> RenderScene| {
+            let take = |shadows: bool, on: bool| {
+                let mut s = scene();
+                s.post.tonemap = Tonemap::None;
+                s.lights[0].cast_shadows = shadows;
+                if !on {
+                    s.lights[0].intensity = 0.0;
+                }
+                frame(&desc, &s, 1).0
+            };
+            (take(true, true), take(false, true), take(false, false))
+        };
+        let contact = frames(&|| shadow_scenes::local_contact_scene(point, true));
+        let silhouettes = frames(&|| shadow_scenes::contact_silhouettes_scene(point));
+        for (name, (shadowed, lit, dark), casters, behind, least) in [
+            ("box", &contact, vec![boxed, small_ball], vec![boxed], 60),
+            ("ball", &silhouettes, vec![ball, pole], vec![ball], 25),
+            ("thin pole", &silhouettes, vec![ball, pole], vec![pole], 60),
+        ] {
+            let points = behind_silhouettes(shadowed, &casters, &behind);
+            let (min, mean) = kept_light(&points, shadowed, lit, dark);
+            println!(
+                "point {point} {storage:?}: {} lit points behind the {name}'s silhouette keep {min:.3} to {mean:.3} (mean) of their direct light",
+                points.len()
+            );
+            assert!(points.len() >= least, "{name}: {} points", points.len());
+            assert!(
+                min > 0.85 && mean > 0.95,
+                "{name}: the floor and wall behind its silhouette darkened (least {min:.3}, mean {mean:.3})"
+            );
+        }
     }
 }
 

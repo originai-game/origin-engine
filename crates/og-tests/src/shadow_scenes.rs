@@ -460,6 +460,68 @@ pub fn local_contact_camera() -> Camera {
 /// shadow falls to its right and should start at its base, with no lit
 /// line under it, and its edges should be soft and straight.
 pub fn local_contact_scene(point: bool, shadows: bool) -> RenderScene {
+    let mut scene = contact_room(point, shadows);
+    let block = scene.add_mesh(shapes::cuboid(CONTACT_BOX));
+    let white = contact_white(&mut scene);
+    scene.add_instance(
+        block,
+        white,
+        Mat4::from_translation(Vec3::new(0.0, CONTACT_BOX.y * 0.5, 0.0)),
+    );
+    let ball = scene.add_mesh(shapes::sphere(48, 32));
+    scene.add_instance(
+        ball,
+        white,
+        Mat4::from_translation(Vec3::new(-1.0, 0.25, 0.9)) * Mat4::from_scale(Vec3::splat(0.5)),
+    );
+    scene
+}
+
+/// [`contact_silhouettes_scene`]'s ball (centre, radius), resting on the
+/// floor.
+pub const SILHOUETTE_BALL: (Vec3, f32) = (Vec3::new(1.1, 0.4, -0.6), 0.4);
+
+/// [`contact_silhouettes_scene`]'s pole (its box's least and greatest
+/// corners): 8 cm thick and 1.2 m tall, standing on the floor.
+pub const SILHOUETTE_POLE: (Vec3, Vec3) =
+    (Vec3::new(-0.54, 0.0, -0.64), Vec3::new(-0.46, 1.2, -0.56));
+
+/// [`local_contact_scene`]'s room, light and camera with a large ball and a
+/// thin pole in place of the box: from the camera, much of the lit floor
+/// and wall lies just past their silhouettes, at a depth gap behind them,
+/// where a screen-space trace towards the light passes behind them
+/// without touching them. Contact shadows must leave it lit.
+pub fn contact_silhouettes_scene(point: bool) -> RenderScene {
+    let mut scene = contact_room(point, true);
+    let white = contact_white(&mut scene);
+    let (lo, hi) = SILHOUETTE_POLE;
+    let pole = scene.add_mesh(shapes::cuboid(hi - lo));
+    scene.add_instance(pole, white, Mat4::from_translation((lo + hi) * 0.5));
+    let (centre, radius) = SILHOUETTE_BALL;
+    let ball = scene.add_mesh(shapes::sphere(48, 32));
+    scene.add_instance(
+        ball,
+        white,
+        // shapes::sphere has radius 0.5.
+        Mat4::from_translation(centre) * Mat4::from_scale(Vec3::splat(2.0 * radius)),
+    );
+    scene
+}
+
+/// The contact scenes' light, both their caster's position and the
+/// contact tests' (shadows.rs).
+pub const CONTACT_LIGHT: Vec3 = Vec3::new(-1.6, 3.0, 0.4);
+
+fn contact_white(scene: &mut RenderScene) -> og_render::MaterialHandle {
+    scene.add_material(Material {
+        base_color: [0.85, 0.85, 0.85, 1.0],
+        roughness: 0.7,
+        ..Default::default()
+    })
+}
+
+/// The contact scenes' floor and wall, their one light and their camera.
+fn contact_room(point: bool, shadows: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     let grey = scene.add_material(Material {
         base_color: [0.75, 0.75, 0.75, 1.0],
@@ -474,24 +536,7 @@ pub fn local_contact_scene(point: bool, shadows: bool) -> RenderScene {
         grey,
         Mat4::from_translation(Vec3::new(0.0, 3.0, -2.0)),
     );
-    let block = scene.add_mesh(shapes::cuboid(CONTACT_BOX));
-    let white = scene.add_material(Material {
-        base_color: [0.85, 0.85, 0.85, 1.0],
-        roughness: 0.7,
-        ..Default::default()
-    });
-    scene.add_instance(
-        block,
-        white,
-        Mat4::from_translation(Vec3::new(0.0, CONTACT_BOX.y * 0.5, 0.0)),
-    );
-    let ball = scene.add_mesh(shapes::sphere(48, 32));
-    scene.add_instance(
-        ball,
-        white,
-        Mat4::from_translation(Vec3::new(-1.0, 0.25, 0.9)) * Mat4::from_scale(Vec3::splat(0.5)),
-    );
-    let position = Vec3::new(-1.6, 3.0, 0.4);
+    let position = CONTACT_LIGHT;
     scene.lights.push(Light {
         kind: if point {
             LightKind::Point
