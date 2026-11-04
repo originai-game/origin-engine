@@ -286,6 +286,14 @@ export interface GameToken {
 }
 
 const gameHandles = new WeakMap<object, number>();
+const gameLooks = new WeakMap<object, string>();
+
+/** Tooling reads declarations without creating a world or running GameDesc.start. */
+export function declaredGameLook(game: object): string {
+  const look = gameLooks.get(game);
+  if (look === undefined) throw new Error("not a game: expected the result of og.game()");
+  return look;
+}
 
 export interface GameDescIn {
   readonly tick?: number;
@@ -324,6 +332,7 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
   const facts = desc.facts ? callback(desc.facts) : null;
   const start = desc.start ? callback(desc.start) : null;
   const token = Object.freeze({ tick: desc.tick ?? 60, systems: Object.freeze(list) });
+  gameLooks.set(token, desc.look ?? "");
   const migrations = [...(desc.migrations ?? [])];
   gameMigrations.set(token, migrations);
   // Built when the host takes it, so the systems' host handles are known.

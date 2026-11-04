@@ -29,6 +29,7 @@ import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shi
 import { buildRaceScene, RaceView } from "./raceScene.ts";
 import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
 import { defineHudActions } from "./huds.ts";
+import { styleNames } from "../tools/style-names.js" with { type: "macro" };
 
 export const SCREENS = [
   "gallery", "widgets", "toasts",
@@ -49,11 +50,7 @@ export type Screen = (typeof SCREENS)[number];
  * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each): the
  * atlas packs, then the seed styles og style new generated;
  * "default" is the engine's default style (the design language's, for prototypes). */
-export const STYLES = [
-  "default", "pixel", "cartoon", "fantasy", "scifi",
-  "gilded", "storybook", "tactical", "cyber", "kawaii", "craft", "dread", "broadcast",
-  "wasteland", "foundry",
-] as const;
+export const STYLES = styleNames();
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
 
@@ -1352,7 +1349,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    style: { usage: "<default|pixel|cartoon|fantasy|scifi|gilded|storybook|tactical|cyber|kawaii|craft|dread|broadcast|wasteland|foundry>", doc: "Dress every screen in a built-in style." },
+    style: { usage: `<${STYLES.join("|")}>`, doc: "Dress every screen in one of the kit's look documents." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },

@@ -15,6 +15,16 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **UI extensions and authored data packs (phase 0).** `og ui add/list/eject`
+  and `og style add` discover directory extensions with `extension.json`.
+  Installed documents cook as ordinary assets on both hosts; kits export
+  typed namespaces beside the frozen `og.ui`. Pack choices, skills and
+  nested assets live with each style. `og style new --seeds` is removed:
+  edit authored packs directly, and bootstrap only new packs. The primary
+  colour is no longer contrast-lifted. `og style check` finds a look declared
+  in `GameDesc` when the project file does not name one, without starting
+  a world. Pack acceptance uses parse/asset checks, not contrast thresholds.
+
 - **A reviewer's measures (the art director, origin-agent).** `og frame
   measure <png> --region x,y,w,h [--against …] [--units fraction]` prints
   WCAG contrast, high-pass energy, mean colour and a row ramp for any

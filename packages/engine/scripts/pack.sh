@@ -108,7 +108,9 @@ rm -rf "$here/styles"
 for pack in "$here"/../../templates/styles/*/; do
   name=$(basename "$pack")
   mkdir -p "$here/styles/$name"
-  find "$pack" -maxdepth 1 -type f ! -name '.*' -exec cp {} "$here/styles/$name/" \;
+  # Preserve nested assets and each extension's authoring skill, not art sources.
+  (cd "$pack" && tar --exclude='./art' --exclude='./.*' -cf - .) |
+    (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's

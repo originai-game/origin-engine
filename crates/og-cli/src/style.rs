@@ -40,8 +40,8 @@
 //! `art-requests.json`, the art slots it asks for (frames, buttons,
 //! ornaments, icons) which the art brief's `styleArtBriefs` turns into
 //! prompts. Its fonts and icons are the built-in packs' (`@styles/...`),
-//! which the cook bundles. `og style new --seeds [--out <dir>]` rewrites the
-//! seed styles of `templates/styles` from their recorded choices.
+//! which the cook bundles. Pack-owned choices.json supplies the starting
+//! values; existing style.ogt files are authored data and never regenerated.
 //!
 //! `og style upgrade <style.ogt> [--out <file>] [--check]` writes a
 //! version 1 style as version 2 (og-ui's `upgrade_style`, docs/ui.md
@@ -54,7 +54,7 @@ use image::{Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og style list\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style new --seeds [--out <dir>]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style art <pack dir> [--art <dir>] [--check]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
+const USAGE: &str = "usage: og style list\n       og style add <pack|directory> [project]\n       og style new <name> [--look <family>] [--premise <text>] [--seed <#rrggbb>] [--scheme dark|light] [--shape <s>] [--ornament <o>] [--motion <m>] [--finish <f>] [--project <dir> | --out <dir>] [--force]\n       og style upgrade <style.ogt> [--out <file>] [--check]\n       og style eject <slug> [<name>] [--project <dir>] [--force]\n       og style pack <dir> [--out <dir>]\n       og style art <pack dir> [--art <dir>] [--check]\n       og style check [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH] [--no-frames] [--critic] [--json]";
 
 /// The parts a nine-patch can dress (og-ui's `StylePart` names) and `soft`.
 const SLICES: [&str; 13] = [
@@ -91,18 +91,19 @@ const NO_STYLES: &str = "the engine's built-in styles were not found: no styles/
 
 pub fn run(args: &[&str]) -> ExitCode {
     match args {
+        ["add", rest @ ..] => crate::ui::extensions::add(rest, "style"),
         ["check", rest @ ..] => crate::style_check::run(rest),
         ["list"] => {
-            if og_cook::cook::look::styles_dir().is_none() {
-                eprintln!("og style list: {NO_STYLES}");
-                return ExitCode::FAILURE;
-            }
-            for slug in og_cook::cook::look::style_slugs() {
-                let about = ABOUT
-                    .iter()
-                    .find(|(s, _)| *s == slug)
-                    .map_or("", |(_, a)| a);
-                println!("{slug:<10} {about}");
+            match crate::ui::extensions::discover(Path::new(".")) {
+                Ok(all) => {
+                    for e in all.iter().filter(|e| e.manifest.kind == "style") {
+                        println!("{:<10} {}", e.manifest.name, e.manifest.description);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("og style list: {e}");
+                    return ExitCode::FAILURE;
+                }
             }
             ExitCode::SUCCESS
         }
@@ -148,76 +149,17 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
 }
 
-/// Each built-in style's signature (og-taste §1's table), for `og style list`.
-const ABOUT: &[(&str, &str)] = &[
-    (
-        "cartoon",
-        "thick outlines, cream panels, squash on press, pops (casual, match-3, party, idle, store bundles)",
-    ),
-    (
-        "fantasy",
-        "parchment, gold corners and flourishes, a serif display (RPGs, card battlers, quests)",
-    ),
-    (
-        "pixel",
-        "square frames, 2 px bevels, hard shadows, a bitmap face (platformers, roguelikes, retro, arcade)",
-    ),
-    (
-        "scifi",
-        "hairlines, cut corners, brackets, scanlines, mono numerals (space, ship status, tactics, hacking, mech, RTS)",
-    ),
-    // The seed styles og style new generated (no atlas: tokens and
-    // procedural dressings), by look family.
-    (
-        "gilded",
-        "ornate fantasy: notched gold-lit frames, corner ornaments, heavy motion",
-    ),
-    (
-        "storybook",
-        "storybook: soft paper sheets, ink lines, ornaments, floaty motion (narrative, visual novels, mysteries)",
-    ),
-    (
-        "tactical",
-        "tactical military: cut corners, flat olive, tracked capitals, mechanical motion",
-    ),
-    (
-        "cyber",
-        "cyberpunk: notched frames on black, snappy motion (racing, rhythm, hacking)",
-    ),
-    (
-        "kawaii",
-        "kawaii gacha: pastel capsules, frosted glass, bouncy motion",
-    ),
-    (
-        "craft",
-        "paper and craft: round cut paper, dashed fields, snappy motion",
-    ),
-    (
-        "dread",
-        "diegetic horror: sharp ink-stained sheets, heavy motion, low sounds",
-    ),
-    (
-        "broadcast",
-        "sports broadcast: sharp lit bars, tracked capitals, snappy motion",
-    ),
-    (
-        "wasteland",
-        "post-apocalyptic survival: rusted riveted plate, duct tape, stencils, safety orange (survival, crafting, extraction)",
-    ),
-    (
-        "foundry",
-        "industrial iron and brass: rivets, gauges, furnace orange, wide serif capitals (city builders, factory, 4X)",
-    ),
-];
-
 fn style_name_ok(name: &str) -> Result<(), String> {
-    if name.is_empty()
-        || name.starts_with(['@', '.', '-'])
-        || name.contains(['/', '\\', '"'])
-        || name.chars().any(char::is_whitespace)
+    if !name.starts_with(|c: char| c.is_ascii_lowercase())
+        || !name
+            .bytes()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
+        || name.ends_with('-')
+        || name.contains("--")
+        || name.len() > 56
     {
         return Err(format!(
-            "'{name}' is not a style name: one directory name under assets/styles/ (letters, digits, - and _)"
+            "'{name}' is not a style extension name: start with a lowercase letter, use lowercase letters, digits and single hyphens, at most 56 characters, no trailing hyphen"
         ));
     }
     Ok(())
@@ -251,6 +193,22 @@ fn write_generated(
     let requests = serde_json::to_string_pretty(&og_ui::style_gen::art_requests_json(c))
         .map_err(|e| e.to_string())?;
     let mut files: Vec<(String, String)> = vec![("style.ogt".into(), g.text)];
+    files.push((
+        "choices.json".into(),
+        serde_json::to_string_pretty(c).map_err(|e| e.to_string())?,
+    ));
+    files.push((
+        "extension.json".into(),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "format": 1, "kind": "style", "name": c.name, "version": "1.0.0",
+            "description": format!("{} UI style", c.name), "skill": "styling-pack/SKILL.md"
+        }))
+        .map_err(|e| e.to_string())?,
+    ));
+    files.push(("styling-pack/SKILL.md".into(), format!(
+        "---\nname: styling-pack\ndescription: \"Edits this UI style. Use when installing the pack, changing its parts or making a related style.\"\n---\n\n# Styling with {}\n\nInstall this directory with `og style add <directory>`. In the game's look,\nset `ui \"{}\"`. Edit `style.ogt` directly: palette, typography and dress\nselectors own its appearance. `choices.json` seeds new styles only. Keep\nfonts, art and their licences beside the style. Run `og cook` after edits.\n\nTo change a results screen, `og ui eject results`, edit its document in\n`assets/ui/`, and use `og.load.document` with the game's viewmodel.\nTo create a new pack, `og style new my-style`; change its data and this\nskill, not the engine generator. Review desktop, phone and 150% text.\n",
+        c.name, c.name
+    )));
     files.extend(g.sounds);
     files.push(("LICENSES.md".into(), generated_licences(c)));
     // A painted pack keeps its own requests: they carry its concepts and
@@ -273,6 +231,7 @@ fn write_generated(
     std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for (f, text) in &files {
         let path = dir.join(f);
+        std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
         std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     }
     Ok(files.into_iter().map(|(f, _)| f).collect())
@@ -285,7 +244,7 @@ fn painted(dir: &Path) -> bool {
 
 /// `og style new`.
 fn new(args: &[&str]) -> Result<(), String> {
-    use og_ui::style_gen::{Finish, Motion, Ornament, ShapeLanguage, StyleChoices, seeds};
+    use og_ui::style_gen::{Finish, Motion, Ornament, ShapeLanguage, StyleChoices, read_seeds};
     let usage = USAGE
         .lines()
         .filter(|l| l.contains(" new "))
@@ -293,12 +252,12 @@ fn new(args: &[&str]) -> Result<(), String> {
         .join("\n");
     let mut it = args.iter();
     let (mut name, mut look, mut premise) = (None, None, None);
-    let (mut project, mut out, mut force, mut all) = (PathBuf::from("."), None, false, false);
+    let (mut project, mut out, mut force) = (PathBuf::from("."), None, false);
     let mut flags: Vec<(&str, &str)> = Vec::new();
     while let Some(a) = it.next() {
         match *a {
             "--force" => force = true,
-            "--seeds" => all = true,
+            "--seeds" => return Err("packs are authored data: edit their style.ogt and choices.json directly; og style new only starts a new style".into()),
             "--project" => project = PathBuf::from(it.next().ok_or(usage.clone())?),
             "--out" => out = Some(PathBuf::from(it.next().ok_or(usage.clone())?)),
             "--look" => look = Some(*it.next().ok_or(usage.clone())?),
@@ -311,33 +270,18 @@ fn new(args: &[&str]) -> Result<(), String> {
             _ => return Err(usage),
         }
     }
-    if all {
-        if name.is_some() || look.is_some() || !flags.is_empty() {
-            return Err(usage);
-        }
-        let root = out.unwrap_or_else(|| PathBuf::from("templates/styles"));
-        for c in seeds() {
-            let dir = root.join(&c.name);
-            let files = write_generated(&dir, &c, true)?;
-            // A painted seed is its generated style with its art packed in.
-            if painted(&dir) {
-                let d = dir.to_string_lossy();
-                crate::style_art::run(&[d.as_ref()])?;
-            }
-            println!(
-                "og style new: {} ({}) -> {}/ ({} files)",
-                c.name,
-                c.look,
-                dir.display(),
-                files.len()
-            );
-        }
-        return Ok(());
-    }
     let name = name.ok_or(usage.clone())?;
     style_name_ok(name)?;
     let look = look.unwrap_or("minimal modern");
-    let mut c = StyleChoices::for_look(name, look, premise.unwrap_or("a game"));
+    let mut seeds = read_seeds(og_cook::cook::look::styles_dir().ok_or(NO_STYLES)?)?;
+    let installed = project.join("assets/styles");
+    if installed.is_dir() {
+        for own in read_seeds(&installed)? {
+            seeds.retain(|s| s.name != own.name);
+            seeds.push(own);
+        }
+    }
+    let mut c = StyleChoices::for_look_from(name, look, premise.unwrap_or("a game"), &seeds);
     for (flag, v) in flags {
         let bad = |what: &str, names: String| format!("{flag} {v}: not a {what} ({names})");
         match flag {
@@ -493,7 +437,19 @@ fn eject(args: &[&str]) -> Result<(), String> {
     );
     for (f, bytes) in &targets {
         let path = dir.join(f);
-        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+        if name != slug && matches!(f.as_str(), "extension.json" | "choices.json") {
+            let mut data: serde_json::Value =
+                serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+            data["name"] = name.into();
+            std::fs::write(
+                &path,
+                serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
         println!("  {rel_dir}/{f}");
     }
     println!(

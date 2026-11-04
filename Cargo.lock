@@ -2293,6 +2293,7 @@ dependencies = [
  "og-net",
  "og-render",
  "og-ui",
+ "serde",
  "serde_json",
  "tungstenite",
 ]
@@ -2691,6 +2692,7 @@ dependencies = [
  "og-render",
  "og-tween",
  "rustybuzz",
+ "serde",
  "serde_json",
  "ttf-parser",
  "unicode-bidi",

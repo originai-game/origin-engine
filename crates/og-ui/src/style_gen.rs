@@ -11,16 +11,19 @@
 //!
 //! A generated style is held to the same tests as a built-in one
 //! (og-ui's tests/packs.rs and og-tests-cooked's pack_contrast.rs generate a matrix of
-//! them); the seed styles of `templates/styles` are generated here from
-//! their recorded choices, then read and kept.
+//! them). Each pack owns its choices.json and authored style.ogt; this
+//! generator only bootstraps a new style, never rewrites existing packs.
 
 use crate::Srgba;
 use crate::slot::{SlotKind, SlotSpec};
 use crate::style::Scheme;
 use crate::tokens::{SoundEvent, hex};
 
+mod choices;
+
 /// How corners are drawn across the element classes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ShapeLanguage {
     /// Gentle rounding: modern, cosy.
     Soft,
@@ -41,7 +44,8 @@ pub enum ShapeLanguage {
 }
 
 /// How much a style frames and decorates.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Ornament {
     None,
     Light,
@@ -49,7 +53,8 @@ pub enum Ornament {
 }
 
 /// How a style moves (docs/ui.md §7.7).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Motion {
     /// Unhurried, no bounce.
     Calm,
@@ -66,7 +71,8 @@ pub enum Motion {
 }
 
 /// The surface treatment the dressings paint.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Finish {
     /// Flat fills, hairlines.
     Flat,
@@ -87,15 +93,16 @@ pub enum Finish {
 }
 
 /// The `type sfx` presets a style's UI sounds come from.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SoundKit {
     /// A press: (preset, seed, pitch); a second seed makes the set.
-    pub tap: (&'static str, u32, f32),
-    pub confirm: (&'static str, u32, f32),
-    pub back: (&'static str, u32, f32),
-    pub open: (&'static str, u32, f32),
-    pub error: (&'static str, u32, f32),
-    pub reward: (&'static str, u32, f32),
+    pub tap: (String, u32, f32),
+    pub confirm: (String, u32, f32),
+    pub back: (String, u32, f32),
+    pub open: (String, u32, f32),
+    pub error: (String, u32, f32),
+    pub reward: (String, u32, f32),
     /// The press set's volume (0–1); hovers sound at a third of it when
     /// `hover` (a tactile, clicky style).
     pub volume: f32,
@@ -156,7 +163,8 @@ choice!(Finish {
 });
 
 /// What `og style new` is given.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StyleChoices {
     /// The style's slug.
     pub name: String,
@@ -164,22 +172,28 @@ pub struct StyleChoices {
     pub look: String,
     /// One line of what the game is.
     pub premise: String,
+    #[serde(with = "choices::scheme")]
     pub scheme: Scheme,
     /// The palette seed: the accent the palette is built round.
+    #[serde(with = "choices::color")]
     pub seed: Srgba,
     /// The screen's ground (`None`: from the seed and the scheme).
+    #[serde(with = "choices::optional_color", default)]
     pub ground: Option<Srgba>,
     /// The main ink (`None`: from the scheme, tinted by the seed).
+    #[serde(with = "choices::optional_color", default)]
     pub ink: Option<Srgba>,
     /// A second accent for focus and highlights (`None`: from the seed).
+    #[serde(with = "choices::optional_color", default)]
     pub accent: Option<Srgba>,
     /// The primary's label (`None`: white or a near-black of the seed's
-    /// hue, whichever reads better); the primary moves until the label
-    /// reads 7.4:1 on it: a near-black keeps a safety orange saturated.
+    /// hue, whichever reads better). The primary keeps the authored seed.
+    #[serde(with = "choices::optional_color", default)]
     pub on_primary: Option<Srgba>,
     /// The shadow token (`None`: black at 0.55 on a dark scheme, a
     /// seed-tinted 0.24 on a light one): the drops and the chips the kit
     /// sets over the scene, so a heavier one keeps pale ink reading there.
+    #[serde(with = "choices::optional_color", default)]
     pub shadow: Option<Srgba>,
     pub shape: ShapeLanguage,
     pub ornament: Ornament,
@@ -203,8 +217,10 @@ pub struct StyleChoices {
     pub glitch: f32,
     /// The hue danger and health take (`None`: the scheme's red and
     /// green), held to the status bar like them: cyber's signal red.
+    #[serde(with = "choices::optional_color", default)]
     pub danger: Option<Srgba>,
     /// The hue info takes (`None`: the scheme's blue): cyber's cyan.
+    #[serde(with = "choices::optional_color", default)]
     pub info: Option<Srgba>,
     /// The seed's own dressings, a selector and its lines, each replacing
     /// the generated block of its selector (or added after them): the art
@@ -297,10 +313,8 @@ fn readable_on_all(ink: Srgba, grounds: &[Srgba], bar: f32) -> Srgba {
     c
 }
 
-/// A palette with every role, its inks at their bars: body inks 7:1 on the
-/// panels, muted and faint 4.6:1 on the panels and controls, the primary's
-/// label 7.2:1 in every state, the status inks 5.5:1 on the screen and the
-/// panels.
+/// Bootstrap palette with every role. Inks are derived for their surfaces;
+/// the primary preserves the author's seed rather than lifting its contrast.
 pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
     let dark = c.scheme == Scheme::Dark;
     let (h, s, _) = hsl(c.seed);
@@ -350,7 +364,7 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
     if ink.contrast(knob) < 4.8 {
         knob = knob.readable_on(ink, 4.8).unwrap_or(panel);
     }
-    // The primary and its label at 7.2:1 in every state.
+    // Choose a label without changing the author's primary hue or value.
     let light_label = w.mix(c.seed, 0.03);
     let dark_label = k.mix(c.seed, 0.22);
     let label = c.on_primary.unwrap_or(
@@ -361,15 +375,7 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
         },
     );
     let away = if label.luminance() > 0.5 { k } else { w };
-    let primary = c.seed.readable_on(label, 7.4).map_or(c.seed, |_| {
-        let mut p = c.seed;
-        let mut t = 0.0;
-        while p.contrast(label) < 7.4 && t < 1.0 {
-            t += 0.02;
-            p = c.seed.mix(away, t);
-        }
-        p
-    });
+    let primary = c.seed;
     let primary_hover = primary.mix(away, 0.08);
     let primary_active = primary.mix(away, 0.16);
     let accent = c.accent.unwrap_or(if dark {
@@ -1762,12 +1768,12 @@ pub fn generate(c: &StyleChoices) -> Result<Generated, String> {
     let sounds = vec![
         (
             "sfx-tap.ogt".to_string(),
-            sfx(k.tap.0, k.tap.1, k.tap.2, 0.8, "A press"),
+            sfx(&k.tap.0, k.tap.1, k.tap.2, 0.8, "A press"),
         ),
         (
             "sfx-tap2.ogt".to_string(),
             sfx(
-                k.tap.0,
+                &k.tap.0,
                 k.tap.1 + 1,
                 k.tap.2 * 1.03,
                 0.8,
@@ -1776,23 +1782,23 @@ pub fn generate(c: &StyleChoices) -> Result<Generated, String> {
         ),
         (
             "sfx-confirm.ogt".to_string(),
-            sfx(k.confirm.0, k.confirm.1, k.confirm.2, 0.85, "A confirm"),
+            sfx(&k.confirm.0, k.confirm.1, k.confirm.2, 0.85, "A confirm"),
         ),
         (
             "sfx-back.ogt".to_string(),
-            sfx(k.back.0, k.back.1, k.back.2, 0.8, "A back or cancel"),
+            sfx(&k.back.0, k.back.1, k.back.2, 0.8, "A back or cancel"),
         ),
         (
             "sfx-open.ogt".to_string(),
-            sfx(k.open.0, k.open.1, k.open.2, 0.6, "A dialog opening"),
+            sfx(&k.open.0, k.open.1, k.open.2, 0.6, "A dialog opening"),
         ),
         (
             "sfx-error.ogt".to_string(),
-            sfx(k.error.0, k.error.1, k.error.2, 0.8, "An error"),
+            sfx(&k.error.0, k.error.1, k.error.2, 0.8, "An error"),
         ),
         (
             "sfx-reward.ogt".to_string(),
-            sfx(k.reward.0, k.reward.1, k.reward.2, 0.85, "A reward"),
+            sfx(&k.reward.0, k.reward.1, k.reward.2, 0.85, "A reward"),
         ),
     ];
     Ok(Generated { text, sounds })
@@ -1883,12 +1889,12 @@ fn kit(
     spread: f32,
 ) -> SoundKit {
     SoundKit {
-        tap,
-        confirm,
-        back,
-        open,
-        error,
-        reward,
+        tap: (tap.0.into(), tap.1, tap.2),
+        confirm: (confirm.0.into(), confirm.1, confirm.2),
+        back: (back.0.into(), back.1, back.2),
+        open: (open.0.into(), open.1, open.2),
+        error: (error.0.into(), error.1, error.2),
+        reward: (reward.0.into(), reward.1, reward.2),
         volume,
         hover,
         spread,
@@ -1914,19 +1920,6 @@ fn fonts(body: &str, display: &str, numeric: &str, cjk: &str, cjk_display: &str)
         shared(cjk),
         shared(cjk_display),
     ]
-}
-
-/// A seed's own dressings ([`StyleChoices::dressings`]).
-fn own(blocks: &[(&str, &[&str])]) -> Vec<(String, Vec<String>)> {
-    blocks
-        .iter()
-        .map(|(sel, lines)| {
-            (
-                sel.to_string(),
-                lines.iter().map(|l| l.to_string()).collect(),
-            )
-        })
-        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2019,611 +2012,30 @@ fn fallback() -> StyleChoices {
     )
 }
 
-/// The seed styles of `templates/styles` (docs/ui.md §12.5): one per look
-/// family of og-taste §12, each generated from these choices. Their
-/// directories are written by `og style new --seeds` and held to these
-/// choices by og-ui's tests.
-pub fn seeds() -> Vec<StyleChoices> {
-    use Finish as F;
-    use Motion as M;
-    use Ornament as O;
-    use Scheme::{Dark, Light};
-    use ShapeLanguage as S;
-    vec![
-        seed(
-            "gilded",
-            "ornate fantasy",
-            "a high-fantasy RPG of guilds, relics and gilded halls",
-            Dark,
-            (0xc9973a, 0x15100b, Some(0xe8c46a)),
-            S::Notch,
-            O::Rich,
-            M::Heavy,
-            F::Gradient,
-            fonts(
-                "fantasy/Newsreader-Medium.ttf",
-                "fantasy/Cinzel-Bold.ttf",
-                "fantasy/Cinzel-Bold.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-            ),
-            "fantasy/icons.png",
-            15.0,
-            0.0,
-            kit(
-                ("click", 4, 0.8),
-                ("select", 2, 0.85),
-                ("back", 1, 0.8),
-                ("whoosh", 3, 0.7),
-                ("error", 1, 0.85),
-                ("levelup", 2, 0.9),
-                0.7,
-                false,
-                0.04,
-            ),
-        ),
-        seed(
-            "storybook",
-            "storybook",
-            "a gentle illustrated adventure told like a picture book",
-            Light,
-            (0xb5523b, 0xefe3c8, Some(0x4f7d5b)),
-            S::Soft,
-            O::Rich,
-            M::Floaty,
-            F::Paper,
-            fonts(
-                "shared/InstrumentSans-Regular.ttf",
-                "shared/Newsreader-SemiBold.ttf",
-                "shared/Newsreader-SemiBold.ttf",
-                "NotoSansSC-Regular.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-            ),
-            "shared/ink-icons.png",
-            16.0,
-            0.0,
-            kit(
-                ("pickup", 2, 1.2),
-                ("select", 5, 1.1),
-                ("back", 3, 1.05),
-                ("whoosh", 6, 1.2),
-                ("error", 2, 1.1),
-                ("coin", 3, 1.0),
-                0.55,
-                false,
-                0.08,
-            ),
-        ),
-        seed(
-            "tactical",
-            "tactical military",
-            "a squad tactics game of briefings, loadouts and grid maps",
-            Dark,
-            (0x9aae5c, 0x101210, Some(0xe0b13a)),
-            S::Cut,
-            O::Light,
-            M::Mechanical,
-            F::Flat,
-            fonts(
-                "shared/Rajdhani-Bold.ttf",
-                "shared/ChakraPetch-SemiBold.ttf",
-                "scifi/JetBrainsMono-Regular.ttf",
-                "NotoSansSC-Regular.ttf",
-                "NotoSansSC-Bold.ttf",
-            ),
-            "scifi/icons.png",
-            15.0,
-            0.12,
-            kit(
-                ("click", 7, 0.7),
-                ("select", 8, 0.75),
-                ("back", 4, 0.7),
-                ("click", 9, 0.55),
-                ("error", 3, 0.75),
-                ("powerup", 4, 0.8),
-                0.6,
-                true,
-                0.02,
-            ),
-        ),
-        // The owner's approved sheet (ui-art-2 59079f25d): acid yellow,
-        // signal red and cyan on near-black, 45° cuts, bold condensed type
-        // and dense data text; no magenta, no glow; a glitch on
-        // transitions only.
-        StyleChoices {
-            glitch: 0.8,
-            danger: Some(rgb(0xff3b3b)),
-            info: Some(rgb(0x2de2e6)),
-            // The art review (2026-11-04): the selected tab a solid yellow
-            // slab on its cut corners; Delete and Abort a deep red fill.
-            dressings: own(&[
-                ("Tabs.tab[selected]", &["fill primary", "stroke none"]),
-                // A tab bar's pill slides under its tabs, whose labels
-                // take the plain ink: the pill is the mark there.
-                ("Tabs.tab[selected][pill]", &["fill none", "stroke none"]),
-                ("Button.base[danger]", &["fill \"#9e0f14\"", "stroke none"]),
-                // A slider is a signal bar: twelve segments, whole ones lit.
-                ("Slider.track", &["segments 12 2"]),
-            ]),
-            ..seed(
-                "cyber",
-                "cyberpunk signal",
-                "a street-level heist game of black-market chrome and data runs in a megacity",
-                Dark,
-                (0xf5e60c, 0x0a0a0c, Some(0x2bf0ff)),
-                S::Cut,
-                O::Light,
-                M::Snappy,
-                F::Flat,
-                fonts(
-                    "shared/ChakraPetch-SemiBold.ttf",
-                    "shared/Rajdhani-Bold.ttf",
-                    "scifi/JetBrainsMono-Regular.ttf",
-                    "NotoSansSC-Bold.ttf",
-                    "NotoSansSC-Bold.ttf",
-                ),
-                "shared/glow-icons.png",
-                15.0,
-                0.08,
-                kit(
-                    ("laser", 11, 1.4),
-                    ("powerup", 9, 1.3),
-                    ("back", 8, 1.3),
-                    ("whoosh", 10, 1.6),
-                    ("error", 6, 1.3),
-                    ("levelup", 7, 1.2),
-                    0.6,
-                    true,
-                    0.06,
-                ),
-            )
-        },
-        // Concept C: navy ink on ivory, not ink of the gold's hue.
-        StyleChoices {
-            ink: Some(rgb(0x1d2a4e)),
-            ..seed(
-                "kawaii",
-                "kawaii anime gacha",
-                "an anime adventure gacha of bright skies, ivory halls and star pulls",
-                Light,
-                (0xd6a443, 0xf7f0e3, Some(0x283a6e)),
-                S::Pill,
-                O::Light,
-                M::Bouncy,
-                F::Glass,
-                fonts(
-                    "cartoon/Fredoka-SemiBold.ttf",
-                    "cartoon/LilitaOne-Regular.ttf",
-                    "cartoon/Fredoka-SemiBold.ttf",
-                    "ZCOOLKuaiLe-Regular.ttf",
-                    "ZCOOLKuaiLe-Regular.ttf",
-                ),
-                "cartoon/icons.png",
-                15.0,
-                0.0,
-                kit(
-                    ("pickup", 14, 1.6),
-                    ("coin", 8, 1.35),
-                    ("back", 12, 1.4),
-                    ("powerup", 11, 1.5),
-                    ("error", 9, 1.4),
-                    ("levelup", 12, 1.3),
-                    0.6,
-                    false,
-                    0.12,
-                ),
-            )
-        },
-        seed(
-            "craft",
-            "paper and craft",
-            "a cosy crafting sim of cut paper, stickers and tape",
-            Light,
-            (0x2f7d6d, 0xd9bf94, Some(0xd9623b)),
-            S::Round,
-            O::Light,
-            M::Snappy,
-            F::Paper,
-            fonts(
-                "shared/InstrumentSans-Regular.ttf",
-                "cartoon/LilitaOne-Regular.ttf",
-                "shared/PTMono-Regular.ttf",
-                "NotoSansSC-Regular.ttf",
-                "ZCOOLKuaiLe-Regular.ttf",
-            ),
-            "shared/ink-icons.png",
-            15.0,
-            0.0,
-            kit(
-                ("footstep", 4, 1.4),
-                ("select", 14, 1.0),
-                ("back", 16, 0.95),
-                ("whoosh", 14, 1.0),
-                ("error", 11, 1.0),
-                ("coin", 15, 0.95),
-                0.55,
-                false,
-                0.09,
-            ),
-        ),
-        seed(
-            "dread",
-            "diegetic horror",
-            "a survival horror game read through notes, tapes and a dying torch",
-            Dark,
-            (0xa3241f, 0x0c0a09, Some(0xc9b28a)),
-            S::Sharp,
-            O::Light,
-            M::Heavy,
-            F::Brush,
-            fonts(
-                "fantasy/Newsreader-Medium.ttf",
-                "shared/Newsreader-SemiBold.ttf",
-                "shared/PTMono-Regular.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-            ),
-            "fantasy/icons.png",
-            15.0,
-            0.0,
-            kit(
-                ("footstep", 9, 0.6),
-                ("door", 3, 0.8),
-                ("back", 20, 0.6),
-                ("door", 5, 0.6),
-                ("hurt", 6, 0.7),
-                ("death", 2, 1.2),
-                0.5,
-                false,
-                0.06,
-            ),
-        ),
-        seed(
-            "broadcast",
-            "sports broadcast",
-            "an arcade football game framed like a live TV broadcast",
-            Dark,
-            (0xe8322b, 0x0a1431, Some(0xffd21a)),
-            S::Sharp,
-            O::None,
-            M::Snappy,
-            F::Gradient,
-            fonts(
-                "shared/Rajdhani-Bold.ttf",
-                "shared/ChakraPetch-BoldItalic.ttf",
-                "shared/ChakraPetch-SemiBold.ttf",
-                "NotoSansSC-Bold.ttf",
-                "NotoSansSC-Bold.ttf",
-            ),
-            "scifi/icons.png",
-            15.0,
-            0.08,
-            kit(
-                ("whoosh", 20, 1.8),
-                ("select", 21, 1.2),
-                ("back", 22, 1.15),
-                ("whoosh", 22, 1.0),
-                ("error", 15, 1.1),
-                ("levelup", 18, 1.1),
-                0.65,
-                false,
-                0.04,
-            ),
-        ),
-        // The owner's approved sheet (wasteland-hud ui-art/13876c1858fa,
-        // -menu 37b06d223094, -settings 860fbeffcbb7): rusted riveted
-        // plate on near-black, safety orange for the primary and the
-        // selection, a stencil display face and condensed caps; radiation
-        // green stays a game role (the meters, a toggle's on).
-        StyleChoices {
-            ink: Some(rgb(0xebe4d4)),
-            on_primary: Some(rgb(0x120a04)),
-            // A heavier drop: the kit's chips over the scene keep the
-            // pale muted ink above 3:1 on a bright sky.
-            shadow: Some(Srgba::BLACK.fade(0.75)),
-            display_tracking: Some(0.03),
-            // The sheet's sliders read as a ruler of ticks: a segmented
-            // track, whole segments lit.
-            dressings: own(&[
-                ("Slider.track", &["segments 16 2"]),
-                // The art review (2026-11-04): the hotbar's selection in
-                // hazard orange, not the kit's info blue; an item with no
-                // art on the pack's plate, not a hue of its name; the
-                // status squares on plate, a debuff rimmed and tinted
-                // rust-orange.
-                (
-                    "AbilitySlot.frame[active]",
-                    &[
-                        "stroke 2 primary outside",
-                        "effect dropShadow 0 3 10 0 \"#0000008c\"",
-                        "effect outerGlow 12 \"#f5821fa6\"",
-                    ],
-                ),
-                ("AbilitySlot.edge[active]", &["stroke 2 primary inside"]),
-                ("AbilitySlot.icon", &["fill linear 180 panelRaised well"]),
-                ("StatusGrid.tile[buff]", &["stroke 1 lineStrong inside"]),
-                ("StatusGrid.tile[debuff]", &["stroke 2 primary inside"]),
-                (
-                    "StatusGrid.icon[buff]",
-                    &["fill linear 180 panelRaised well"],
-                ),
-                (
-                    "StatusGrid.icon[debuff]",
-                    &["fill linear 180 \"#7a3512\" \"#2e150a\""],
-                ),
-                // The compass on the HUD's plate (a fix-forward note), so
-                // its letters read over a sunset sky.
-                ("Compass.strip", &["fill hud", "stroke 1 line inside"]),
-            ]),
-            // The sheet sets its labels and panel headings in the
-            // condensed sans and keeps the stencil for the big tabs and
-            // the CRAFT button: display text under 26 px (after the text
-            // scale) falls back to the body face.
-            display_min: Some(26.0),
-            ..seed(
-                "wasteland",
-                "post-apocalyptic survival",
-                "a survival and extraction game of scavenged stashes, crafting and radiation",
-                Dark,
-                (0xf5821f, 0x12110f, Some(0xf59a3c)),
-                S::Sharp,
-                O::Light,
-                M::Heavy,
-                F::Bevel,
-                fonts(
-                    "shared/BarlowSemiCondensed-SemiBold.ttf",
-                    "shared/BigShouldersStencilDisplay-SemiBold.ttf",
-                    "shared/BarlowCondensed-SemiBold.ttf",
-                    "NotoSansSC-Regular.ttf",
-                    "NotoSansSC-Bold.ttf",
-                ),
-                "shared/stencil-icons.png",
-                16.0,
-                0.06,
-                kit(
-                    ("click", 24, 0.6),
-                    ("door", 7, 1.15),
-                    ("back", 26, 0.7),
-                    ("door", 8, 0.75),
-                    ("error", 18, 0.8),
-                    ("pickup", 18, 0.85),
-                    0.6,
-                    false,
-                    0.05,
-                ),
-            )
-        },
-        // The owner's approved sheet (foundry-build ui-art/a19f7660818a,
-        // -menu 2593651e20db, -settings 2b3bf48492bf): blackened iron
-        // framed in brass with rivets, furnace orange for the primary and
-        // its glow, brass for focus, wide-set serif capitals.
-        StyleChoices {
-            ink: Some(rgb(0xf1e4c6)),
-            on_primary: Some(rgb(0x140b05)),
-            // A heavier drop: the kit's chips over the scene keep the
-            // pale muted ink above 3:1 on a bright sky.
-            shadow: Some(Srgba::BLACK.fade(0.75)),
-            display_tracking: Some(0.12),
-            // The art review (2026-11-04): the build palette on iron in a
-            // brass rim, its selection molten orange, not the kit's info
-            // blue; an item with no art on the plate; the goals on the
-            // HUD's plate, so their steps read over a sunlit field.
-            dressings: own(&[
-                (
-                    "AbilitySlot.frame",
-                    &[
-                        "fill linear 180 panelRaised well",
-                        "stroke 1.5 \"#a9844a\" outside",
-                    ],
-                ),
-                (
-                    "AbilitySlot.frame[active]",
-                    &[
-                        "stroke 2 primary outside",
-                        "effect dropShadow 0 3 10 0 \"#0000008c\"",
-                        "effect outerGlow 12 \"#f0843aa6\"",
-                    ],
-                ),
-                ("AbilitySlot.edge[active]", &["stroke 2 primary inside"]),
-                ("AbilitySlot.icon", &["fill linear 180 panelRaised well"]),
-                ("StatusGrid.tile[buff]", &["stroke 1 \"#a9844a\" inside"]),
-                ("StatusGrid.tile[debuff]", &["stroke 2 primary inside"]),
-                (
-                    "StatusGrid.icon[buff]",
-                    &["fill linear 180 panelRaised well"],
-                ),
-                (
-                    "StatusGrid.icon[debuff]",
-                    &["fill linear 180 \"#7a3a14\" \"#2c160b\""],
-                ),
-                (
-                    "ObjectiveTracker.frame",
-                    &["fill hud", "stroke 1 line inside"],
-                ),
-                // The compass on the HUD's plate, so a clamped marker's
-                // distance reads over a sunset sky (220m was 2.44:1).
-                ("Compass.strip", &["fill hud", "stroke 1 line inside"]),
-            ]),
-            ..seed(
-                "foundry",
-                "industrial iron and brass",
-                "a city builder of furnaces, steam engines and a research tree, in a frozen industrial age",
-                Dark,
-                (0xf0843a, 0x111214, Some(0xd8a85a)),
-                S::Cut,
-                O::Light,
-                M::Mechanical,
-                F::Gradient,
-                fonts(
-                    "shared/Spectral-SemiBold.ttf",
-                    "shared/SpectralSC-SemiBold.ttf",
-                    "shared/Spectral-SemiBold.ttf",
-                    "NotoSerifSC-SemiBold.ttf",
-                    "NotoSerifSC-SemiBold.ttf",
-                ),
-                "shared/plate-icons.png",
-                16.0,
-                0.07,
-                kit(
-                    ("click", 27, 0.85),
-                    ("coin", 19, 0.75),
-                    ("back", 28, 0.85),
-                    ("whoosh", 28, 0.55),
-                    ("error", 19, 0.7),
-                    ("levelup", 22, 0.8),
-                    0.6,
-                    true,
-                    0.03,
-                ),
-            )
-        },
-    ]
+/// Read pack-owned choices in directory order. Invalid choices are errors,
+/// not silently replaced by another style's defaults.
+pub fn read_seeds(root: &std::path::Path) -> Result<Vec<StyleChoices>, String> {
+    let mut paths = std::fs::read_dir(root)
+        .map_err(|e| format!("{}: {e}", root.display()))?
+        .map(|e| e.map(|e| e.path().join("choices.json")))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    paths.sort();
+    paths
+        .into_iter()
+        .filter(|p| p.is_file())
+        .map(|p| {
+            let text = std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+            serde_json::from_str(&text).map_err(|e| format!("{}: {e}", p.display()))
+        })
+        .collect()
 }
 
-/// The look families of the seeds folded into other packs (the owner,
-/// 2026-11-02: holo into scifi, bubbly into cartoon, arcade into pixel,
-/// inkwash into jade): no built-in pack ships them, but `og style new`
-/// still starts from their choices for a look of their family, since the
-/// packs that absorbed them are painted atlas packs, not choices it can
-/// start from.
-fn retired() -> Vec<StyleChoices> {
-    use Finish as F;
-    use Motion as M;
-    use Ornament as O;
-    use Scheme::{Dark, Light};
-    use ShapeLanguage as S;
-    vec![
-        seed(
-            "holo",
-            "sci-fi holographic",
-            "a starship command game on holographic consoles",
-            Dark,
-            (0x3cc8ff, 0x050d16, Some(0x7ef0ff)),
-            S::Cut,
-            O::Light,
-            M::Snappy,
-            F::Hologram,
-            fonts(
-                "scifi/ChakraPetch-Medium.ttf",
-                "scifi/Orbitron-Bold.ttf",
-                "scifi/JetBrainsMono-Regular.ttf",
-                "NotoSansSC-Regular.ttf",
-                "NotoSansSC-Bold.ttf",
-            ),
-            "scifi/icons.png",
-            15.0,
-            0.06,
-            kit(
-                ("laser", 5, 1.8),
-                ("select", 9, 1.3),
-                ("back", 6, 1.2),
-                ("whoosh", 8, 1.4),
-                ("error", 4, 1.2),
-                ("powerup", 6, 1.15),
-                0.5,
-                true,
-                0.05,
-            ),
-        ),
-        seed(
-            "bubbly",
-            "casual cartoon",
-            "a bright match-and-collect puzzle game for everyone",
-            Light,
-            (0x2f7bff, 0xffd36e, Some(0xff7a1a)),
-            S::Round,
-            O::Light,
-            M::Bouncy,
-            F::Gradient,
-            fonts(
-                "cartoon/Fredoka-SemiBold.ttf",
-                "cartoon/LilitaOne-Regular.ttf",
-                "cartoon/LilitaOne-Regular.ttf",
-                "ZCOOLKuaiLe-Regular.ttf",
-                "ZCOOLKuaiLe-Regular.ttf",
-            ),
-            "cartoon/icons.png",
-            16.0,
-            0.0,
-            kit(
-                ("pickup", 12, 1.3),
-                ("coin", 5, 1.1),
-                ("back", 10, 1.2),
-                ("jump", 4, 1.3),
-                ("error", 7, 1.2),
-                ("levelup", 9, 1.05),
-                0.7,
-                false,
-                0.1,
-            ),
-        ),
-        seed(
-            "arcade",
-            "pixel retro",
-            "an 8-bit arcade platformer with a high-score table",
-            Dark,
-            (0xffcc1a, 0x0f0f26, Some(0x40e0ff)),
-            S::Pixel,
-            O::None,
-            M::Mechanical,
-            F::Bevel,
-            fonts(
-                // The pixel pack's one face, Latin and Chinese on one
-                // 12-pixel grid (its import's `pixel 12`).
-                "FusionPixel12-zhHans.ttf",
-                "FusionPixel12-zhHans.ttf",
-                "FusionPixel12-zhHans.ttf",
-                "FusionPixel12-zhHans.ttf",
-                "FusionPixel12-zhHans.ttf",
-            ),
-            "pixel/icons.png",
-            16.0,
-            0.0,
-            kit(
-                ("jump", 15, 1.6),
-                ("coin", 13, 1.0),
-                ("back", 14, 1.0),
-                ("powerup", 13, 1.1),
-                ("hurt", 3, 1.0),
-                ("levelup", 14, 1.0),
-                0.6,
-                false,
-                0.0,
-            ),
-        ),
-        seed(
-            "inkwash",
-            "ink and eastern brush",
-            "a wuxia journey painted in ink on rice paper",
-            Light,
-            (0xb22f26, 0xece3cf, Some(0x2d4a43)),
-            S::Soft,
-            O::Light,
-            M::Calm,
-            F::Brush,
-            fonts(
-                "fantasy/Newsreader-Medium.ttf",
-                "shared/Newsreader-SemiBold.ttf",
-                "shared/Newsreader-SemiBold.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-                "NotoSerifSC-SemiBold.ttf",
-            ),
-            "fantasy/icons.png",
-            16.0,
-            0.0,
-            kit(
-                ("whoosh", 24, 0.9),
-                ("select", 23, 0.8),
-                ("back", 24, 0.8),
-                ("whoosh", 26, 0.75),
-                ("error", 17, 0.85),
-                ("levelup", 20, 0.85),
-                0.5,
-                false,
-                0.05,
-            ),
-        ),
-    ]
+/// The checkout's seeds for generator tests. Installed tools pass their
+/// discovered styles directory to `read_seeds` instead.
+pub fn seeds() -> Vec<StyleChoices> {
+    read_seeds(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles"))
+        .expect("the checkout's pack choices")
 }
 
 impl StyleChoices {
@@ -2632,6 +2044,16 @@ impl StyleChoices {
     /// none), renamed:
     /// what `og style new` starts from before its flags.
     pub fn for_look(name: &str, look: &str, premise: &str) -> StyleChoices {
+        Self::for_look_from(name, look, premise, &seeds())
+    }
+
+    /// Starts from choices discovered beside the installed engine or in a game.
+    pub fn for_look_from(
+        name: &str,
+        look: &str,
+        premise: &str,
+        all: &[StyleChoices],
+    ) -> StyleChoices {
         let words = |s: &str| -> Vec<String> {
             s.to_lowercase()
                 .split(|c: char| !c.is_alphanumeric())
@@ -2640,8 +2062,6 @@ impl StyleChoices {
                 .collect()
         };
         let want = words(look);
-        let mut all = seeds();
-        all.extend(retired());
         let best = all
             .iter()
             .map(|s| {
@@ -2689,6 +2109,11 @@ mod tests {
             }
         }
         for c in &all {
+            assert_eq!(
+                palette(c).primary,
+                c.seed,
+                "the authored primary is not contrast-lifted"
+            );
             let g = generate(c).unwrap_or_else(|e| panic!("{}: {e}", c.name));
             let f = crate::style_file::parse_style(&g.text).unwrap();
             assert_eq!(f.version, 2, "{}", c.name);

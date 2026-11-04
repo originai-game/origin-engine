@@ -1,0 +1,76 @@
+{
+  "name": "craft",
+  "look": "paper and craft",
+  "premise": "a cosy crafting sim of cut paper, stickers and tape",
+  "scheme": "light",
+  "seed": [
+    "#2f7d6d",
+    1.0
+  ],
+  "ground": [
+    "#d9bf94",
+    1.0
+  ],
+  "ink": null,
+  "accent": [
+    "#d9623b",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "round",
+  "ornament": "light",
+  "motion": "snappy",
+  "finish": "paper",
+  "fonts": [
+    "@styles/shared/InstrumentSans-Regular.ttf",
+    "@styles/cartoon/LilitaOne-Regular.ttf",
+    "@styles/shared/PTMono-Regular.ttf",
+    "@styles/cjk/NotoSansSC-Regular.ttf",
+    "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
+  ],
+  "icons": "@styles/shared/ink-icons.png",
+  "body": 15.0,
+  "labelTracking": 0.0,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "footstep",
+      4,
+      1.4
+    ],
+    "confirm": [
+      "select",
+      14,
+      1.0
+    ],
+    "back": [
+      "back",
+      16,
+      0.95
+    ],
+    "open": [
+      "whoosh",
+      14,
+      1.0
+    ],
+    "error": [
+      "error",
+      11,
+      1.0
+    ],
+    "reward": [
+      "coin",
+      15,
+      0.95
+    ],
+    "volume": 0.55,
+    "hover": false,
+    "spread": 0.09
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}

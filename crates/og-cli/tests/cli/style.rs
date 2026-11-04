@@ -63,6 +63,21 @@ fn style_new_generates_a_style_the_game_cooks() {
     let style = std::fs::read_to_string(style_dir.join("style.ogt")).unwrap();
     let file = og_ui::parse_style(&style).unwrap_or_else(|e| panic!("{e}\n{style}"));
     assert_eq!((file.version, file.name.as_str()), (2, "arena"));
+    let listed = og()
+        .args(["ui", "list"])
+        .arg(&dir)
+        .arg("--json")
+        .output()
+        .unwrap();
+    assert!(listed.status.success(), "{}", text(&listed));
+    let extensions: serde_json::Value = serde_json::from_slice(&listed.stdout).unwrap();
+    assert!(
+        extensions
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["manifest"]["name"] == "arena" && e["installed"] == true)
+    );
     // The pill shape language and the bouncy press over broadcast's seed.
     assert!(style.contains("  button round pill\n"), "{style}");
     assert!(style.contains("  press 1.06 0.9 3\n"), "{style}");
@@ -133,16 +148,36 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
     );
     let template = repo().join("templates/styles/scifi");
     let ejected = mine.join("assets/styles/keeper");
-    let names = |d: &Path| -> Vec<String> {
+    fn names(d: &Path) -> Vec<String> {
         let mut v: Vec<String> = std::fs::read_dir(d)
             .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .flat_map(|e| {
+                let e = e.unwrap();
+                let name = e.file_name().to_string_lossy().to_string();
+                if e.path().is_dir() {
+                    names(&e.path())
+                        .into_iter()
+                        .map(|f| format!("{name}/{f}"))
+                        .collect()
+                } else {
+                    vec![name]
+                }
+            })
             .collect();
         v.sort();
         v
-    };
+    }
     assert_eq!(names(&ejected), names(&template));
     for f in names(&template) {
+        if matches!(f.as_str(), "extension.json" | "choices.json") {
+            let mut expected: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(template.join(&f)).unwrap()).unwrap();
+            expected["name"] = "keeper".into();
+            let actual: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(ejected.join(&f)).unwrap()).unwrap();
+            assert_eq!(actual, expected);
+            continue;
+        }
         assert!(
             std::fs::read(ejected.join(&f)).unwrap() == std::fs::read(template.join(&f)).unwrap(),
             "{f} differs from templates/styles/scifi"
@@ -406,10 +441,16 @@ fn style_project(name: &str, files: &[(&str, Vec<u8>)]) -> PathBuf {
 fn style_check_without_a_look_says_there_is_no_contract_and_exits_0() {
     let dir = style_project(
         "nolook",
-        &[(
-            "project.ogt",
-            b"type project\nversion 1\n---\nname \"x\"\nentry \"src/main.ts\"\n".to_vec(),
-        )],
+        &[
+            (
+                "project.ogt",
+                b"type project\nversion 1\n---\nname \"x\"\nentry \"src/main.ts\"\n".to_vec(),
+            ),
+            (
+                "src/main.ts",
+                b"import { og } from '@origingame/engine'; export default og.game({});\n".to_vec(),
+            ),
+        ],
     );
     let out = og().args(["style", "check"]).arg(&dir).output().unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));

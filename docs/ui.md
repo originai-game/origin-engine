@@ -788,8 +788,11 @@ A **style generator** (`og style new`) makes a game its own style from the
 look, the premise and a few choices (palette seed, shape language,
 ornament level, motion personality): tokens and procedural dressings
 first, then the art slots of its frames, buttons, ornaments and icon set
-filled through the art brief (§13.3). A generated style passes the same
-contrast and completeness tests as a built-in one.
+filled through the art brief (§13.3). Each pack owns `choices.json` and
+`style.ogt` as independent authored data; directory discovery supplies the
+seed catalogue. There is no regenerate-all command or seed-equality test.
+A generated style passes parsing and completeness checks, not contrast
+thresholds (§17, the owner's decision of 2026-11-04).
 
 ### 12.6 Painted art at every density
 
@@ -1174,7 +1177,94 @@ slots and the checks. A new `ui-craft` skill holds the design craft:
 hierarchy, layout grammar per genre, motion personality, the conventions
 of each genre from Appendix A. `og-taste`'s UI parts point to it.
 
-## 17. The kit
+## 17. Extensions (phase 0, approved 2026-11-04)
+
+The core owns elements, layout, motion, drawing, documents, style grammar
+and common components. Genre kits and style packs are directories, not
+host plugins. They use only the public TypeScript API and the document
+and style formats. Their versions are independent of the engine version.
+The first kits are RPG, shooter, puzzle/casual, gacha, strategy/TD and
+racing. Fantasy, scifi, cartoon and pixel are the flagship styles; the
+other packs are frozen. Contrast is not an acceptance check.
+
+### 17.1 Manifest and installation
+
+An extension has an `extension.json` at its root:
+
+```json
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "racing",
+  "version": "1.0.0",
+  "description": "Race HUDs and results, built from common components",
+  "skill": "SKILL.md",
+  "entry": "index.ts",
+  "types": "index.d.ts"
+}
+```
+
+`kind` is `kit` or `style`. Names use lowercase ASCII letters, digits and
+hyphens, starting with a letter. `format` versions this manifest contract;
+`version` versions the extension. All paths are relative to the directory,
+without parent traversal or symlinks. `skill` is required and explains
+discovery, calling, modifying, and creating a component or style. `entry`
+and `types` are optional together for a document-only kit. A style has
+`style.ogt` at its root and no executable entry. Documents are discovered
+recursively by their `type screen` or `type component` header, rather than
+listed in a shared registry. Asset references within a pack are relative;
+shared built-in fonts may still use `@styles/`.
+
+Official kits live in `packages/engine/extensions/<name>` and ship there.
+Official styles stay in `templates/styles/<name>` and ship in the engine's
+`styles/<name>`. Both use the same manifest. A game installs an editable
+copy with `og ui add <name|directory> [project]` or
+`og style add <name|directory> [project]`. Kits go in
+`assets/ui-kits/<name>`, styles in `assets/styles/<name>`. An existing
+installation is never silently replaced. No network fetch or code execution
+is part of discovery or installation.
+
+`og ui list [project]` lists installed and bundled extensions, their
+versions, entry/type/skill paths and every document. The installed copy
+wins for a kind/name pair. `og ui eject <kit>/<document> [project]` copies
+an extension document to `assets/ui/<kit>/<document>.ogt`, alongside its
+companion files so relative references survive. Existing companion edits
+are preserved; `--force` replaces only the requested document. Legacy library
+screen names remain supported. The installed documents are ordinary
+assets: `og.load.document(world, "ui-kits/racing/results.ogt")` uses the
+same cooked document on both hosts, with no runtime filesystem discovery.
+A look's `ui "fantasy"` finds the game's installed
+`assets/styles/fantasy/style.ogt` before the bundled pack. Explicit asset
+paths remain valid. Installation preserves the directory tree and licences.
+
+### 17.2 Typed TypeScript kits beside the frozen core
+
+Kits import `registerUiExtension` from
+`@origingame/engine/ui-extensions` and export its result:
+
+```ts
+export const racing = registerUiExtension("racing", { speedometer, results });
+```
+
+Registration returns a shallow-frozen, inferred component namespace; the
+kit's own declarations describe its functions. It never mutates `og.ui`,
+adds a host binding or evaluates a manifest's entry automatically. The
+game explicitly imports the installed kit's entry. Re-importing during hot
+reload may register a fresh object: each importer retains its own namespace,
+never a global function table that another registration can overwrite.
+The registry is one TypeScript implementation shared by native and web.
+Components keep state in the engine's public world/UI memory APIs, not
+module globals, so snapshots and multiple worlds retain their meaning.
+
+### 17.3 Pack authoring and review
+
+`style.ogt` is authored data. Each pack's choices file is local to that
+pack; `og style new` only bootstraps a new style, never regenerates the
+built-in collection. Adding a pack or kit requires no shared name list.
+The on-demand `og ui sheet <pack|kit>` renders baseline pages on the pack's
+own ground at desktop, phone and 150% text. It is not a gate step.
+
+## 17a. The existing coverage kit
 
 `templates/ui-kit` is rebuilt as the coverage proof:
 

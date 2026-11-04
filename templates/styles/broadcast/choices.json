@@ -1,0 +1,76 @@
+{
+  "name": "broadcast",
+  "look": "sports broadcast",
+  "premise": "an arcade football game framed like a live TV broadcast",
+  "scheme": "dark",
+  "seed": [
+    "#e8322b",
+    1.0
+  ],
+  "ground": [
+    "#0a1431",
+    1.0
+  ],
+  "ink": null,
+  "accent": [
+    "#ffd21a",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "sharp",
+  "ornament": "none",
+  "motion": "snappy",
+  "finish": "gradient",
+  "fonts": [
+    "@styles/shared/Rajdhani-Bold.ttf",
+    "@styles/shared/ChakraPetch-BoldItalic.ttf",
+    "@styles/shared/ChakraPetch-SemiBold.ttf",
+    "@styles/cjk/NotoSansSC-Bold.ttf",
+    "@styles/cjk/NotoSansSC-Bold.ttf"
+  ],
+  "icons": "@styles/scifi/icons.png",
+  "body": 15.0,
+  "labelTracking": 0.08,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "whoosh",
+      20,
+      1.8
+    ],
+    "confirm": [
+      "select",
+      21,
+      1.2
+    ],
+    "back": [
+      "back",
+      22,
+      1.15
+    ],
+    "open": [
+      "whoosh",
+      22,
+      1.0
+    ],
+    "error": [
+      "error",
+      15,
+      1.1
+    ],
+    "reward": [
+      "levelup",
+      18,
+      1.1
+    ],
+    "volume": 0.65,
+    "hover": false,
+    "spread": 0.04
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}

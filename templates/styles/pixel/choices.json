@@ -1,0 +1,76 @@
+{
+  "name": "pixel",
+  "look": "pixel retro",
+  "premise": "a game",
+  "scheme": "dark",
+  "seed": [
+    "#ffcc1a",
+    1.0
+  ],
+  "ground": [
+    "#0f0f26",
+    1.0
+  ],
+  "ink": null,
+  "accent": [
+    "#40e0ff",
+    1.0
+  ],
+  "onPrimary": null,
+  "shadow": null,
+  "shape": "pixel",
+  "ornament": "none",
+  "motion": "mechanical",
+  "finish": "bevel",
+  "fonts": [
+    "@styles/cjk/FusionPixel12-zhHans.ttf",
+    "@styles/cjk/FusionPixel12-zhHans.ttf",
+    "@styles/cjk/FusionPixel12-zhHans.ttf",
+    "@styles/cjk/FusionPixel12-zhHans.ttf",
+    "@styles/cjk/FusionPixel12-zhHans.ttf"
+  ],
+  "icons": "@styles/pixel/icons.png",
+  "body": 16.0,
+  "labelTracking": 0.0,
+  "displayTracking": null,
+  "sound": {
+    "tap": [
+      "jump",
+      15,
+      1.6
+    ],
+    "confirm": [
+      "coin",
+      13,
+      1.0
+    ],
+    "back": [
+      "back",
+      14,
+      1.0
+    ],
+    "open": [
+      "powerup",
+      13,
+      1.1
+    ],
+    "error": [
+      "hurt",
+      3,
+      1.0
+    ],
+    "reward": [
+      "levelup",
+      14,
+      1.0
+    ],
+    "volume": 0.6,
+    "hover": false,
+    "spread": 0.0
+  },
+  "glitch": 0.0,
+  "danger": null,
+  "info": null,
+  "dressings": [],
+  "displayMin": null
+}

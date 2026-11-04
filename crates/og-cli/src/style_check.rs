@@ -55,7 +55,7 @@
 //! id. `--json` prints one JSON document, its `contract` the flattened art
 //! blocks the frames were judged against.
 //!
-//! A project whose project.ogt names no look has no contract: it says so
+//! A project with no look in project.ogt or GameDesc has no contract: it says so
 //! and exits 0. Otherwise the exit status is 0 when every asset meets the
 //! contract, 3 when one does not (the check says what), 1 when the cook or
 //! a capture failed. Numbers cannot judge a style (og-taste §11): `og
@@ -338,24 +338,49 @@ fn project_body(root: &Path) -> Result<og_core::ogt::Block, String> {
         .map_err(|e| format!("{}: {}", path.display(), e.reason()))
 }
 
-/// The contract of the project at `root`, read from its cooked look;
-/// `None` when project.ogt names no look.
-pub fn contract(root: &Path) -> Result<Option<Contract>, String> {
+/// Resolve a declaration from project.ogt, then the game's evaluated GameDesc.
+/// Importing the bundle records declarations only: no world or start callback.
+fn declared_look(root: &Path) -> Result<Option<String>, String> {
     let body = project_body(root)?;
-    let Some(id) = og_cook::look::project_look(&body).map_err(|e| format!("project.ogt:{e}"))?
-    else {
-        return Ok(None);
-    };
+    if let Some(id) = og_cook::look::project_look(&body).map_err(|e| format!("project.ogt:{e}"))? {
+        return Ok(Some(id));
+    }
+    let p = crate::project::Project::open(root)?;
+    let package = crate::project::engine_package(Some(root)).ok_or(crate::project::NO_ENGINE)?;
+    let bundle = crate::project::bundle_native(&p, &package)?;
+    let output = p.work_dir().join("game-look.json");
+    let status = crate::project::bun(&package, "src/node/game-look.ts")
+        .arg(&bundle)
+        .arg(&output)
+        .stdout(std::process::Stdio::null())
+        .status()
+        .map_err(|e| e.to_string())?;
+    if !status.success() {
+        return Err("could not read GameDesc.look (the error is above)".into());
+    }
+    let look: String = serde_json::from_slice(&std::fs::read(&output).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    Ok((!look.is_empty()).then(|| og_cook::runtime::asset_id(&look).to_string()))
+}
+
+/// The contract of the project at `root`, read from its cooked look.
+pub fn contract(root: &Path) -> Result<Option<Contract>, String> {
+    declared_look(root)?
+        .map(|id| contract_of(root, &id))
+        .transpose()
+}
+
+fn contract_of(root: &Path, id: &str) -> Result<Contract, String> {
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
-    let bytes = bundle.read(&id).map_err(|e| e.to_string())?;
-    let look = bundle.look(&id, &bytes).map_err(|e| e.to_string())?;
+    let bytes = bundle.read(id).map_err(|e| e.to_string())?;
+    let look = bundle.look(id, &bytes).map_err(|e| e.to_string())?;
     let palette = |pid: &str| -> Result<Vec<[u8; 3]>, String> {
         let bytes = bundle
             .read(pid)
             .map_err(|e| format!("the look's ArtPalette.colors: {e}"))?;
         bundle.palette(pid, &bytes).map_err(|e| e.to_string())
     };
-    Contract::of(&id, &look, &palette).map(Some)
+    Contract::of(id, &look, &palette)
 }
 
 // ── measures ────────────────────────────────────────────────────────────────
@@ -1193,10 +1218,8 @@ pub fn run(args: &[&str]) -> ExitCode {
         return ExitCode::FAILURE;
     }
     let root = std::path::absolute(&root).unwrap_or(root);
-    match project_body(&root)
-        .and_then(|b| og_cook::look::project_look(&b).map_err(|e| format!("project.ogt:{e}")))
-    {
-        Ok(Some(_)) => {}
+    let look = match declared_look(&root) {
+        Ok(Some(id)) => id,
         Ok(None) => {
             if a.json {
                 println!("{}", json!({ "contract": null, "message": NO_CONTRACT }));
@@ -1209,7 +1232,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             eprintln!("og style check: {e}");
             return ExitCode::FAILURE;
         }
-    }
+    };
     let cooked = match crate::cook::cook(&root, 0, false) {
         Ok(r) => r,
         Err(e) => {
@@ -1217,16 +1240,14 @@ pub fn run(args: &[&str]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let measured = match contract(&root)
-        .and_then(|c| c.ok_or_else(|| NO_CONTRACT.to_string()))
-        .and_then(|c| measure(&root, c, opt_outs_of(&cooked)))
-    {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("og style check: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+    let measured =
+        match contract_of(&root, &look).and_then(|c| measure(&root, c, opt_outs_of(&cooked))) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("og style check: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
     let mut frames = Vec::new();
     let mut frame_errors = Vec::new();
     let sizes = match (&a.sizes, &a.size) {
@@ -1324,7 +1345,7 @@ pub fn run(args: &[&str]) -> ExitCode {
 }
 
 /// What the check says of a project whose project.ogt names no look.
-pub const NO_CONTRACT: &str = "project.ogt names no look (`look \"looks/<id>.ogt\"`), so there is no art contract to check against";
+pub const NO_CONTRACT: &str = "neither project.ogt nor GameDesc declares a look, so there is no art contract to check against";
 
 /// `og doctor --project`'s line: the asset part of the check, read from
 /// `cooked/` as it is (no cook) with the opt-outs of the last cook report.
@@ -1415,6 +1436,43 @@ mod tests {
     use og_render::Vertex;
 
     const CLEAR: [u8; 4] = [0, 0, 0, 0];
+
+    #[test]
+    fn contract_follows_game_desc_look_without_starting_the_game() {
+        let root = std::env::temp_dir().join(format!("og-style-game-look-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("assets/looks")).unwrap();
+        std::fs::write(
+            root.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"Test\"\nentry \"main.ts\"\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("main.ts"), r#"
+            import { og } from "@origingame/engine";
+            const family = "custom";
+            export default og.game({ look: `looks/${family}.ogt`, start() { throw new Error("must not start"); } });
+        "#).unwrap();
+        std::fs::write(
+            root.join("assets/looks/custom.ogt"),
+            "type look\nversion 1\n---\nArtLine {\n  width 2\n}\n",
+        )
+        .unwrap();
+        assert_eq!(
+            declared_look(&root).unwrap().as_deref(),
+            Some("looks/custom.ogt")
+        );
+        crate::cook::cook(&root, 0, false).unwrap();
+        let c = super::contract(&root).unwrap().unwrap();
+        assert_eq!(c.look, "looks/custom.ogt");
+        assert_eq!(c.line, 2.0);
+        std::fs::write(
+            root.join("main.ts"),
+            "import { og } from '@origingame/engine'; export default og.game({});",
+        )
+        .unwrap();
+        assert!(declared_look(&root).unwrap().is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     /// An image from rows of letters, each a colour of `key` ('.' clear).
     fn art(rows: &[&str], key: &[(char, [u8; 3])]) -> Image {

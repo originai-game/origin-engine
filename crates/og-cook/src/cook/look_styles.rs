@@ -24,7 +24,9 @@ use std::sync::OnceLock;
 /// it asks for): never cooked into a game's bundle, only written beside the
 /// rest by `og style eject`, since a copied font travels with its licence.
 fn licence(file: &str) -> bool {
-    file == "LICENSES.md"
+    file.ends_with(".md")
+        || file == "extension.json"
+        || file == "choices.json"
         || file == "art-requests.json"
         || (file.starts_with("OFL") && file.ends_with(".txt"))
 }
@@ -88,7 +90,7 @@ fn table() -> &'static Table {
     })
 }
 
-/// Every file directly in a pack's directory, sorted: `(pack, file, path)`.
+/// Every shipped file in a pack's directory, sorted: `(pack, file, path)`.
 /// A pack's `art/` (the sources `og style art` packs) is not a built-in.
 fn files(dir: &Path) -> Vec<(String, String, PathBuf)> {
     let names = |d: &Path, want_dir: bool| -> Vec<String> {
@@ -105,11 +107,22 @@ fn files(dir: &Path) -> Vec<(String, String, PathBuf)> {
     };
     let mut out = Vec::new();
     for pack in names(dir, true) {
-        for file in names(&dir.join(&pack), false) {
-            let path = dir.join(&pack).join(&file);
-            out.push((pack.clone(), file, path));
+        let mut pending = vec![String::new()];
+        while let Some(prefix) = pending.pop() {
+            let parent = dir.join(&pack).join(&prefix);
+            for file in names(&parent, false) {
+                let relative = format!("{prefix}{file}");
+                out.push((pack.clone(), relative, parent.join(file)));
+            }
+            for child in names(&parent, true) {
+                if prefix.is_empty() && child == "art" {
+                    continue;
+                }
+                pending.push(format!("{prefix}{child}/"));
+            }
         }
     }
+    out.sort();
     out
 }
 
@@ -120,7 +133,13 @@ fn find_dir() -> Option<PathBuf> {
         let d = PathBuf::from(d);
         return d.is_dir().then_some(d);
     }
-    let styles = |p: PathBuf| p.join("fantasy/style.ogt").is_file().then_some(p);
+    let styles = |p: PathBuf| {
+        std::fs::read_dir(&p)
+            .ok()?
+            .flatten()
+            .any(|e| e.path().join("style.ogt").is_file())
+            .then_some(p)
+    };
     // A checkout's packages/engine has the checkout's packs two levels up.
     if let Some(pkg) = std::env::var_os("OG_ENGINE_PACKAGE").map(PathBuf::from)
         && let Some(d) =
