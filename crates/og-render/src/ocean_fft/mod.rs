@@ -59,6 +59,16 @@ pub fn sources() -> [(&'static str, String); 3] {
     ]
 }
 
+/// Bytes between two steps' uniforms in a ring (`FftParams`, `FoamParams`):
+/// each step of a frame reads its own through a dynamic offset, so every
+/// step records into the frame's one encoder (W4: a warm-up is no longer
+/// some 140 submits, one per step).
+const RING_ALIGN: u64 = 256;
+
+fn ring_stride<T>() -> u64 {
+    (std::mem::size_of::<T>() as u64).div_ceil(RING_ALIGN) * RING_ALIGN
+}
+
 /// `FftParams` in ocean_fft.wgsl.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -154,9 +164,10 @@ impl FftOcean {
                 mapped_at_creation: false,
             })
         };
+        // A slot per foam step and one for the frame's fields.
         let uniform = buffer(
             "ocean fft",
-            std::mem::size_of::<FftGpu>() as u64,
+            ring_stride::<FftGpu>() * (foam::MAX_STEPS as u64 + 1),
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         );
         let spectrum = buffer(
@@ -196,20 +207,21 @@ impl FftOcean {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
         });
-        let uniform_entry = wgpu::BindGroupLayoutEntry {
+        let uniform_entry = |size: usize| wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
+                has_dynamic_offset: true,
+                min_binding_size: wgpu::BufferSize::new(size as u64),
             },
             count: None,
         };
+        let fft_entry = uniform_entry(std::mem::size_of::<FftGpu>());
         let rows_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ocean fft rows"),
             entries: &[
-                uniform_entry,
+                fft_entry,
                 storage(1, true),
                 storage(2, false),
                 storage(3, false),
@@ -218,7 +230,7 @@ impl FftOcean {
         let columns_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ocean fft columns"),
             entries: &[
-                uniform_entry,
+                fft_entry,
                 storage(4, true),
                 storage(5, true),
                 storage_texture(6),
@@ -273,7 +285,7 @@ impl FftOcean {
             device,
             &fields,
             cascades,
-            &uniform_entry,
+            &uniform_entry(std::mem::size_of::<foam::FoamGpu>()),
             &pipeline,
             &module,
         );
@@ -283,7 +295,7 @@ impl FftOcean {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: uniform.as_entire_binding(),
+                    resource: ring_binding::<FftGpu>(&uniform),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -306,7 +318,7 @@ impl FftOcean {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: uniform.as_entire_binding(),
+                    resource: ring_binding::<FftGpu>(&uniform),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
@@ -392,12 +404,14 @@ impl FftOcean {
     }
 
     /// Steps the foam up to `seconds` of the scene's clock (its tick over
-    /// its rate), then records the fields at `seconds` into `encoder`: each
-    /// foam step is submitted on its own, after the fields at its own time
-    /// ([`foam`]: the steps since the last frame, or the warm-up after a
-    /// restart). `eye` is the camera's absolute world xz (the frame's plus
-    /// `origin`), `swell` og_core's waves at a time (`WaterGpu::swell`),
-    /// `shore` the seabed's texture and its rows at a time (`WaterGpu::shore`).
+    /// its rate), then records the fields at `seconds`, all into `encoder`:
+    /// each foam step after the fields at its own time ([`foam`]: the steps
+    /// since the last frame, or the warm-up after a restart), each reading
+    /// its own slot of the uniform rings, so a warm-up costs the frame no
+    /// submit of its own. `eye` is the camera's absolute world xz (the
+    /// frame's plus `origin`), `swell` og_core's waves at a time
+    /// (`WaterGpu::swell`), `shore` the seabed's texture and its rows at a
+    /// time (`WaterGpu::shore`). Returns the foam steps recorded.
     #[allow(clippy::too_many_arguments)]
     pub fn advance(
         &mut self,
@@ -410,28 +424,31 @@ impl FftOcean {
         sea: &foam::FoamSea,
         swell: &dyn Fn(f64) -> [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
         shore: (&wgpu::TextureView, &dyn Fn(f64) -> [[f32; 4]; 3]),
-    ) {
+    ) -> usize {
         let group = self.foam.group(device, shore.0);
         let now = (seconds / foam::STEP).floor() as i64;
         let last = self.foam.last.map(|(k, _)| k);
         let (steps, restart) = foam::schedule(last, now);
+        debug_assert!(steps.len() <= foam::MAX_STEPS);
         if restart {
             self.foam.last = None;
         }
         let snaps = foam::snaps(eye);
-        for (k, span) in steps {
+        if !self.foam.detail_made {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.foam.detail);
+            pass.set_bind_group(0, &self.foam.detail_group, &[]);
+            pass.dispatch_workgroups(N / 8, N / 8, 1);
+            self.foam.detail_made = true;
+        }
+        let fft_stride = ring_stride::<FftGpu>();
+        let foam_stride = ring_stride::<foam::FoamGpu>();
+        let mut fft_ring = vec![0u8; (fft_stride as usize) * (steps.len() + 1)];
+        let mut foam_ring = vec![0u8; (foam_stride as usize) * steps.len().max(1)];
+        let first = foam_layer(self.cascades);
+        for (i, &(k, span)) in steps.iter().enumerate() {
             let at = k as f64 * foam::STEP;
-            let mut step = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ocean foam"),
-            });
-            if !self.foam.detail_made {
-                let mut pass = step.begin_compute_pass(&Default::default());
-                pass.set_pipeline(&self.foam.detail);
-                pass.set_bind_group(0, &self.foam.detail_group, &[]);
-                pass.dispatch_workgroups(N / 8, N / 8, 1);
-                self.foam.detail_made = true;
-            }
-            self.encode(queue, &mut step, at);
+            self.encode(encoder, &mut fft_ring, i, at);
             let u = foam::step_gpu(
                 snaps,
                 self.foam.last.map(|(_, s)| s),
@@ -442,18 +459,19 @@ impl FftOcean {
                 swell(at),
                 shore.1(at),
             );
-            queue.write_buffer(&self.foam.uniform, 0, bytemuck::bytes_of(&u));
+            let o = i * foam_stride as usize;
+            foam_ring[o..o + std::mem::size_of::<foam::FoamGpu>()]
+                .copy_from_slice(bytemuck::bytes_of(&u));
             {
-                let mut pass = step.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("ocean foam"),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.foam.update);
-                pass.set_bind_group(0, &group, &[]);
+                pass.set_bind_group(0, &group, &[o as u32]);
                 pass.dispatch_workgroups(foam::RES / 8, foam::RES / 8, 2);
             }
-            let first = foam_layer(self.cascades);
-            step.copy_texture_to_texture(
+            encoder.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: &self.fields,
                     mip_level: 0,
@@ -471,31 +489,42 @@ impl FftOcean {
                     depth_or_array_layers: 2,
                 },
             );
-            queue.submit([step.finish()]);
             self.foam.last = Some((k, snaps));
         }
-        self.encode(queue, encoder, seconds);
+        self.encode(encoder, &mut fft_ring, steps.len(), seconds);
+        queue.write_buffer(&self.uniform, 0, &fft_ring);
+        if !steps.is_empty() {
+            queue.write_buffer(&self.foam.uniform, 0, &foam_ring);
+        }
+        steps.len()
     }
 
     /// Records the fields at `seconds` of the scene's clock (its tick over
-    /// its rate) into `encoder`: rows, columns, then the mips (of every
-    /// layer, the foam's too).
-    fn encode(&self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, seconds: f64) {
+    /// its rate) into `encoder`, its uniforms into slot `slot` of `ring`:
+    /// rows, columns, then the mips (of every layer, the foam's too).
+    fn encode(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        ring: &mut [u8],
+        slot: usize,
+        seconds: f64,
+    ) {
         let u = FftGpu {
             tiles: [N, N.trailing_zeros(), self.cascades, 0],
             time: [phase(seconds) as f32, self.lambda, 0.0, 0.0],
             dk: self.dk,
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        let o = slot * ring_stride::<FftGpu>() as usize;
+        ring[o..o + std::mem::size_of::<FftGpu>()].copy_from_slice(bytemuck::bytes_of(&u));
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ocean fft"),
             timestamp_writes: None,
         });
         pass.set_pipeline(&self.rows);
-        pass.set_bind_group(0, &self.rows_group, &[]);
+        pass.set_bind_group(0, &self.rows_group, &[o as u32]);
         pass.dispatch_workgroups(N, 1, self.cascades);
         pass.set_pipeline(&self.columns);
-        pass.set_bind_group(0, &self.columns_group, &[]);
+        pass.set_bind_group(0, &self.columns_group, &[o as u32]);
         pass.dispatch_workgroups(N, 1, self.cascades);
         pass.set_pipeline(&self.mips);
         for (m, group) in self.mip_groups.iter().enumerate() {
@@ -508,6 +537,16 @@ impl FftOcean {
             );
         }
     }
+}
+
+/// The first slot of a uniform ring, as wide as one `T` (the dynamic offset
+/// picks the slot).
+fn ring_binding<T>(buffer: &wgpu::Buffer) -> wgpu::BindingResource<'_> {
+    wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+        buffer,
+        offset: 0,
+        size: wgpu::BufferSize::new(std::mem::size_of::<T>() as u64),
+    })
 }
 
 impl Foam {
@@ -527,7 +566,7 @@ impl Foam {
         let first = foam_layer(cascades);
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ocean foam"),
-            size: std::mem::size_of::<foam::FoamGpu>() as u64,
+            size: ring_stride::<foam::FoamGpu>() * foam::MAX_STEPS as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -683,7 +722,7 @@ impl Foam {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.uniform.as_entire_binding(),
+                    resource: ring_binding::<foam::FoamGpu>(&self.uniform),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,

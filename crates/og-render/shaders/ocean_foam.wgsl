@@ -7,6 +7,14 @@
 // the tick's Gerstner waves (og_core::ocean, faded at the tick's grid cell, water.wgsl ocean_displace) with the
 // cascades weighted where the tick leaves their band out; 256 texels a level, not 1024; the threshold from the wind's
 // whitecap cover at each level's resolution (water.rs foam_thresholds) rather than a slider.
+//
+// W4: the foam ages (b: the mean age of what a texel holds, s) and leaves a lace (a) that outlives the dense cover the
+// crest laid, as the bubbles of a whitecap burst within seconds and leave a thin, long-lived film (Monahan & Lu 1990's
+// stage A and B whitecaps; Dupuy & Bruneton 2012 keep the same two). The lace gathers into windrows along the wind:
+// Langmuir circulation's surface convergence (Langmuir 1938; Thorpe 2004, "Langmuir circulation", Annu. Rev. Fluid
+// Mech.), cells of a few metres to tens of metres whose lines of convergence lie along the wind, drawing in the
+// surface at about 1 % of the wind's speed. The drift backtracked here is the wind's plus that convergence, and the
+// lace is compressed by its divergence, so streaks form where the foam is carried, not drawn on top of it.
 
 fn pcg_hash(v: u32) -> u32 {
   let s = v * 747796405u + 2891336453u;
@@ -107,14 +115,15 @@ struct FoamParams {
   snap: array<vec4<i32>, 2>,
   // Per level: the frame xz of the corner of texel snap.xy, the texel (m), unused.
   base: array<vec4<f32>, 2>,
-  // x the step (s), y the foam's decay (1/s), z unused, w the injection's gain.
+  // x the step (s), y the foam's decay (1/s), z the windrows' convergence (m/s), w the injection's gain.
   p0: vec4<f32>,
   // x the growth of foam held by a fold, yz its drift downwind (m/s), w the cascades.
   p1: vec4<f32>,
   // xy the surface's centre (frame xz), z the tick's grid's even cell (m), w unused; then its half size (xy).
   tick: vec4<f32>,
   half: vec4<f32>,
-  // Per level the Jacobian, as that level resolves it, under which foam is injected (water.rs foam_thresholds).
+  // Per level the Jacobian, as that level resolves it, under which foam is injected (water.rs foam_thresholds); z the
+  // lace's decay (1/s), w unused.
   thresholds: vec4<f32>,
   // As water.wgsl's WaterUniform: per cascade 1 / tile, uv at the frame's origin, tile; each band's middle; the
   // tick's waves.
@@ -200,6 +209,29 @@ fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
   return (1.0 + jxx) * (1.0 + jzz) - jxz * jxz;
 }
 
+// The windrows' surface velocity across the wind at absolute point `pa` (world xz) and its divergence: two families of
+// cells (9 m and 31 m apart, the finer drawing in faster), each line meandering along the wind so the rows are not
+// ruled, every row's convergence at the phase's zero.
+fn windrows(pa: vec2<f32>, wd: vec2<f32>, speed: f32) -> vec3<f32> {
+  let perp = vec2<f32>(-wd.y, wd.x);
+  let across = dot(pa, perp);
+  let along = dot(pa, wd);
+  var v = vec2<f32>(0.0);
+  var div = 0.0;
+  var spacing = array<f32, 2>(9.0, 31.0);
+  var share = array<f32, 2>(1.0, 0.6);
+  for (var i = 0; i < 2; i++) {
+    let l = spacing[i];
+    let meander = pnoise(vec2<f32>(along / (4.0 * l), f32(i) * 7.3 + across / (16.0 * l)), 4096) * 0.8 * l;
+    let k = 6.2831853 / l;
+    let ph = (across + meander) * k;
+    let c = speed * share[i];
+    v -= perp * c * sin(ph);
+    div -= c * k * cos(ph);
+  }
+  return vec3<f32>(v, div);
+}
+
 fn wrap_index(i: i32, lo: i32) -> i32 {
   return lo + (((i - lo) % RES) + RES) % RES;
 }
@@ -216,10 +248,15 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   let p = foam.base[level].xy + (vec2<f32>(g - sn.xy) + 0.5) * ts;
   let j = jacobian(p, ts);
   let dt = foam.p0.x;
+  // The windrows at the texel's absolute centre (g is its absolute index).
+  let drift = foam.p1.yz;
+  let wd = drift / max(length(drift), 1e-6);
+  let rows = windrows((vec2<f32>(g) + 0.5) * ts, wd, foam.p0.z);
   var last = vec4<f32>(0.0);
   if (in_prev) {
-    // Semi-Lagrangian: the foam drifts downwind. (Texel g lies at index g mod RES in both steps: id.xy.)
-    let back = (vec2<f32>(id.xy) + 0.5 - foam.p1.yz * dt / ts) / f32(RES);
+    // Semi-Lagrangian: the foam drifts downwind and into the windrows. (Texel g lies at index g mod RES in both
+    // steps: id.xy.)
+    let back = (vec2<f32>(id.xy) + 0.5 - (drift + rows.xy) * dt / ts) / f32(RES);
     last = textureSampleLevel(prev, lin, back, level, 0.0);
   }
   let inject = clamp((foam.thresholds[level] - j) * foam.p0.w, 0.0, 1.0);
@@ -228,5 +265,11 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   f = min(f + inject * dt * foam.p1.x, 1.6);
   // g: how fresh it is, for the denser, brighter foam of a crest breaking now.
   let fresh = max(last.g * exp(-dt * 1.6), inject);
-  textureStore(foam_out, id.xy, level, vec4<f32>(f, fresh, j, 1.0));
+  // b: its age, the time since what it holds was laid, the new foam's share counted from now.
+  let age = mix(min(last.b + dt, 60.0), 0.0, clamp(inject / max(f, 1e-3), 0.0, 1.0));
+  // a: the lace the cover leaves, decaying slower, thickened where the windrows draw the surface in (and thinned
+  // where they part).
+  let squeeze = clamp(exp(-rows.z * dt), 0.5, 1.5);
+  let lace = min(max(last.a * exp(-dt * foam.thresholds.z) * squeeze, 0.7 * f), 1.2);
+  textureStore(foam_out, id.xy, level, vec4<f32>(f, fresh, age, lace));
 }

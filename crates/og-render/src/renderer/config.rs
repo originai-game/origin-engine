@@ -628,6 +628,12 @@ pub struct FrameStats {
     pub instance_upload_bytes: u64,
     /// Draws of the planar reflection pass (0: it did not run).
     pub reflection_draws: u32,
+    /// Command buffers the water submitted ahead of the frame (the sea's
+    /// fields, foam and caustics in one; one per rippling surface), and the
+    /// foam steps of the sea's history recorded among them: a restored or
+    /// first frame warms the foam up in some 170 steps, still in one submit.
+    pub water_submits: u32,
+    pub foam_steps: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
     /// Whether the GPU culled this frame ([`RenderDesc::culling`]).

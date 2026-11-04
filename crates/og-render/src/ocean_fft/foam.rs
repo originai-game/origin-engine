@@ -7,7 +7,8 @@
 //! layers after the cascades (so the water pass reads them through its one
 //! fields binding), with the foam's micro-structure in the layer after them.
 //! Each step injects foam where the drawn surface folds, decays it and
-//! drifts it downwind.
+//! drifts it downwind; W4: it ages, and leaves a longer-lived lace that the
+//! windrows gather into streaks along the wind.
 //!
 //! Driven by the tick's clock, never the wall's: a step is one
 //! [`STEP`] of tick time, its waves the FFT's and og_core's at that step's
@@ -27,9 +28,15 @@ pub const LEVEL_SIZE: [f64; 2] = [64.0, 512.0];
 pub const STEP: f64 = 1.0 / 30.0;
 /// The foam's decay (1/s; web-ocean's 0.22): τ about 4.5 s.
 pub const DECAY: f32 = 0.22;
-/// The warm-up after a restart: five τ, where what is left of the oldest
-/// foam is under 1 %.
-pub const WARM: f64 = 5.0 / DECAY as f64;
+/// The lace's decay (1/s, W4): the thin film a whitecap leaves once its
+/// bubbles burst, τ 10 s (ocean_foam.wgsl).
+pub const LACE_DECAY: f32 = 0.1;
+/// The windrows' convergence per metre a second of wind (W4: Langmuir
+/// circulation draws the surface in at about 1 % of the wind).
+pub const WINDROWS: f32 = 0.01;
+/// The warm-up after a restart: three of the lace's τ, where what is left
+/// of the oldest lace is 5 % (and of the cover under 0.2 %).
+pub const WARM: f64 = 3.0 / LACE_DECAY as f64;
 /// The warm-up's last seconds run every step; before them every
 /// [`COARSE`]th step (the older foam is a faint fraction of the newer).
 const FINE: i64 = 60;
@@ -40,6 +47,9 @@ pub const GAP: i64 = FINE;
 /// at the tick, under a tick of a 4 Hz game) keeps the history; further
 /// back (a restore) restarts it.
 pub const HOLD: i64 = 8;
+/// The most steps one frame records (a warm-up's, some 170): the uniform
+/// rings' slots (`FftOcean::advance`).
+pub const MAX_STEPS: usize = 192;
 
 /// The steps of a warm-up ending at step `now`: each the index of the
 /// [`STEP`] it arrives at and the steps it spans since the one before.
@@ -90,6 +100,9 @@ pub struct FoamSea {
     /// is injected, and the injection's gain.
     pub thresholds: [f32; 2],
     pub gain: f32,
+    /// How strongly the windrows gather the lace into streaks along the
+    /// wind (og.Water.foamStreaks; 0: none).
+    pub streaks: f32,
 }
 
 /// `FoamParams` in ocean_foam.wgsl.
@@ -149,11 +162,16 @@ pub(super) fn step_gpu(
     FoamGpu {
         snap,
         base,
-        p0: [dt, DECAY, 0.0, sea.gain],
+        p0: [
+            dt,
+            DECAY,
+            WINDROWS * sea.wind.length() * sea.streaks,
+            sea.gain,
+        ],
         p1: [1.0, drift.x, drift.y, cascades as f32],
         tick: sea.tick,
         half: sea.half,
-        thresholds: [sea.thresholds[0], sea.thresholds[1], 0.0, 0.0],
+        thresholds: [sea.thresholds[0], sea.thresholds[1], LACE_DECAY, 0.0],
         cascades: sea.cascades,
         bands: sea.bands,
         swell,
@@ -179,11 +197,12 @@ pub fn levels(origin: DVec2) -> [[f32; 4]; 2] {
 mod tests {
     use super::*;
 
-    /// The warm-up spans five τ of the tick's time before the frame, ends on
-    /// it with single steps, is the same for the same frame, and costs some
-    /// 140 steps rather than the 680 of stepping it all.
+    /// The warm-up spans three of the lace's τ of the tick's time before the
+    /// frame, ends on it with single steps, is the same for the same frame,
+    /// and costs some 170 steps rather than the 900 of stepping it all, all
+    /// recorded into the frame's encoder (`FftOcean::advance`).
     #[test]
-    fn the_warm_up_covers_five_decays_and_ends_on_the_frame() {
+    fn the_warm_up_covers_the_lace_and_ends_on_the_frame() {
         let now = 12_345;
         let s = warm_steps(now);
         assert_eq!(s, warm_steps(now));
@@ -196,17 +215,18 @@ mod tests {
             assert_eq!(w[0].0 + w[1].1, w[1].0);
             assert!(w[1].1 >= 1 && w[1].1 <= COARSE);
         }
-        assert!(s.len() < 150, "{} steps", s.len());
+        assert!(s.len() < 180, "{} steps", s.len());
+        assert!(s.len() <= MAX_STEPS && GAP as usize <= MAX_STEPS);
         // Negative times (a scene's first frame) too.
         let s0 = warm_steps(0);
         assert_eq!(*s0.last().unwrap(), (0, 1));
-        assert!(s0[0].0 < -600);
+        assert!(s0[0].0 < -880);
     }
 
     /// Frames between ticks (the sea's clock at the display's rate) step
     /// the history on; a capture at the tick between two of them steps it
     /// back under a tick, which holds it (the code before restarted the
-    /// warm-up, some 140 submits, on any step back); a restore further
+    /// warm-up, some 170 steps, on any step back); a restore further
     /// back restarts it.
     #[test]
     fn a_step_back_under_a_tick_holds_the_history() {
