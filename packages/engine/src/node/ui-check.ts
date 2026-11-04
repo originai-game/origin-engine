@@ -811,7 +811,8 @@ export function cellName(c: UiCell): string {
 export function mergeFindings(all: readonly UiFinding[]): UiFinding[] {
   const by = new Map<string, UiFinding>();
   for (const f of all) {
-    const k = `${f.rule}\u0000${f.paths.join("\u0000")}`;
+    // By severity too: a cell whose measure is a warning (3.62:1) is never listed under another cell's error (1:1).
+    const k = `${f.rule}\u0000${f.severity}\u0000${f.paths.join("\u0000")}`;
     const had = by.get(k);
     if (had) for (const c of f.cells) {
       if (!had.cells.includes(c)) had.cells.push(c);

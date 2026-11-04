@@ -366,6 +366,10 @@ test("paths come from the accessibility tree, else the parent chain; findings me
   const merged = mergeFindings([...a, ...b]);
   expect(merged.length).toBe(1);
   expect(merged[0]!.cells).toEqual(["s phonePortrait game locale", "s phonePortrait pseudo"]);
+  // A cell whose measure is only a warning stays a warning: never listed under another cell's error and its number.
+  const at = (severity: "error" | "warning", measured: string, c: string) => ({ rule: "contrast", severity, paths: ["Key"], measured, limit: "", prop: "", fix: "", cells: [c] });
+  const mixed = mergeFindings([at("error", "1:1", "phone"), at("warning", "3.62:1", "desktop"), at("error", "2.91:1", "phone 150 %")]);
+  expect(mixed.map((m) => [m.severity, m.cells])).toEqual([["error", ["phone", "phone 150 %"]], ["warning", ["desktop"]]]);
 });
 
 test("the default screens: the values a show command's usage lists, else each playtest screenshot reached by the steps before it", () => {
