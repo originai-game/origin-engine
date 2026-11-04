@@ -435,7 +435,8 @@ fn desert() -> RenderScene {
     ] {
         bx(&mut scene, size, at, sandstone);
     }
-    // A polished steel drum (lying), a glazed tile slab.
+    // A polished steel ball resting on the sand (the sphere's radius is
+    // 0.5), a glazed tile slab.
     let drum = scene.add_mesh(shapes::sphere(48, 32));
     put(
         &mut scene,
@@ -447,9 +448,9 @@ fn desert() -> RenderScene {
             ..Default::default()
         },
         Mat4::from_scale_rotation_translation(
-            Vec3::new(0.55, 0.55, 0.55),
+            Vec3::splat(1.1),
             Quat::IDENTITY,
-            Vec3::new(0.3, 0.55, -4.5),
+            Vec3::new(-1.6, 0.55, -2.6),
         ),
     );
     bx(
@@ -464,7 +465,7 @@ fn desert() -> RenderScene {
     );
     scene.surface_weather = Some(SurfaceWeather {
         dust: 0.8,
-        dust_color: Vec3::new(0.78, 0.6, 0.4),
+        dust_color: Vec3::new(0.86, 0.74, 0.56),
         ..SurfaceWeather::default()
     });
     scene.camera = Camera {
@@ -482,10 +483,13 @@ fn desert() -> RenderScene {
 fn drape(w: f32, h: f32) -> MeshData {
     let (nx, ny) = (96u32, 64u32);
     let at = |u: f32, v: f32| {
-        let depth = 0.04 + 0.12 * v;
+        // Broad, rounded folds a hand and a half apart, deepening towards
+        // the hem, with a slower swell across them (a hung curtain).
+        let depth = 0.05 + 0.06 * v;
         let x = (u - 0.5) * w;
-        let z = depth * (u * 7.0 * std::f32::consts::TAU).sin()
-            + 0.4 * depth * (u * 17.0 * std::f32::consts::TAU + v * 3.0).sin();
+        let z = depth * (u * 5.0 * std::f32::consts::TAU).sin()
+            + 0.3 * depth * (u * 9.0 * std::f32::consts::TAU + v * 2.0).sin()
+            + 0.06 * (u * 1.5 * std::f32::consts::TAU + 0.8).sin();
         Vec3::new(x * (1.0 - 0.06 * v), h * (1.0 - v), z)
     };
     let mut vertices = Vec::new();
@@ -516,12 +520,45 @@ fn drape(w: f32, h: f32) -> MeshData {
     MeshData { vertices, indices }
 }
 
+/// Crimson velvet: a dark, saturated base under a bright, soft sheen that
+/// glows where the folds turn away from the eye.
+pub fn velvet() -> StandardMaterial {
+    StandardMaterial {
+        color: Vec3::new(0.07, 0.004, 0.012),
+        roughness: 1.0,
+        sheen: 1.0,
+        sheenColor: Vec3::new(0.9, 0.5, 0.55),
+        sheenRoughness: 0.5,
+        side: 2,
+        ..Default::default()
+    }
+}
+
+/// Blue cotton: matte, a faint pale fuzz at its silhouette.
+pub fn cotton() -> StandardMaterial {
+    StandardMaterial {
+        color: Vec3::new(0.09, 0.15, 0.34),
+        roughness: 1.0,
+        sheen: 1.0,
+        sheenColor: Vec3::new(0.08, 0.1, 0.14),
+        sheenRoughness: 0.9,
+        side: 2,
+        ..Default::default()
+    }
+}
+
 /// Velvet and cotton under the afternoon sky: a crimson velvet drape and a
-/// blue cotton one hung side by side, a ball of each in front. Velvet's
-/// tight sheen lights the folds' edges and turned-away faces in a bright
-/// rim; cotton's rough sheen is a soft fuzz over the whole cloth, paler at
-/// grazing angles, never a highlight.
+/// blue cotton one hung side by side, a ball of each on the ground in
+/// front, the set turned so the sun comes from behind the camera and to
+/// its side. Velvet's tight sheen lights the folds' turned-away faces in a
+/// bright rim over a dark face; cotton's rough sheen is a faint fuzz at
+/// its silhouette over a matte cloth, never a highlight.
 fn cloth() -> RenderScene {
+    cloth_with(velvet(), cotton())
+}
+
+/// The cloth scene with its two materials (velvet's on the left).
+pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScene {
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 15.5, PhysicalAtmosphere::EARTH);
     scene.fog = None;
@@ -535,47 +572,34 @@ fn cloth() -> RenderScene {
             ..Default::default()
         },
     );
-    let velvet = StandardMaterial {
-        color: Vec3::new(0.16, 0.01, 0.025),
-        roughness: 1.0,
-        sheen: 1.0,
-        sheenColor: Vec3::new(1.0, 0.32, 0.38),
-        sheenRoughness: 0.35,
-        side: 2,
-        ..Default::default()
-    };
-    let cotton = StandardMaterial {
-        color: Vec3::new(0.13, 0.22, 0.42),
-        roughness: 1.0,
-        sheen: 1.0,
-        sheenColor: Vec3::new(0.26, 0.31, 0.42),
-        sheenRoughness: 0.9,
-        side: 2,
-        ..Default::default()
-    };
+    // The set's +z (towards the camera) turned 40 degrees off the sun's
+    // bearing: lit from over the viewer's shoulder.
+    let sun = scene.light.direction_to_light;
+    let turn = Quat::from_rotation_y(sun.x.atan2(sun.z) + 0.7);
     let sheet = scene.add_mesh(drape(2.2, 2.6));
     let ball = scene.add_mesh(shapes::sphere(64, 48));
-    for (x, m) in [(-1.3f32, velvet), (1.3, cotton)] {
+    for (x, m) in [(-1.3f32, left), (1.3, right)] {
         put(
             &mut scene,
             sheet,
             m,
-            Mat4::from_translation(Vec3::new(x, 0.1, -1.5)),
+            Mat4::from_rotation_translation(turn, turn * Vec3::new(x, 0.02, -1.5)),
         );
+        // (The sphere's radius is 0.5: scaled to 0.4, resting on the ground.)
         put(
             &mut scene,
             ball,
             m,
             Mat4::from_scale_rotation_translation(
-                Vec3::splat(0.5),
-                Quat::IDENTITY,
-                Vec3::new(x, 0.5, 0.2),
+                Vec3::splat(0.8),
+                turn,
+                turn * Vec3::new(x, 0.4, 0.2),
             ),
         );
     }
     scene.camera = Camera {
-        position: Vec3::new(0.0, 1.4, 4.2),
-        target: Vec3::new(0.0, 1.0, -1.0),
+        position: turn * Vec3::new(0.0, 1.4, 4.2),
+        target: turn * Vec3::new(0.0, 1.0, -1.0),
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };

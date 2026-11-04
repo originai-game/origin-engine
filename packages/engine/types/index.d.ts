@@ -6129,7 +6129,7 @@ export interface StandardMaterialDesc {
    */
   readonly clearcoatNormalScale?: Vector2;
   /**
-   * A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a dark base, a bright sheenColor, sheenRoughness 0.3 to 0.5; cotton and wool: a pale sheenColor at sheenRoughness 0.8 to 1). Its strength, times sheenColor; 0 is none.
+   * A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a very dark base, a bright desaturated sheenColor, sheenRoughness about 0.5; cotton and wool: a dim sheenColor at sheenRoughness 0.8 to 1; roughness 1 on both). Its strength, times sheenColor; 0 is none.
    *
    * @default 0
    * @range 0..1

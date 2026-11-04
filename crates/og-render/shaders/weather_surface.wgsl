@@ -120,31 +120,42 @@ fn shore_wetness(p: vec3<f32>) -> f32 {
   return s.z * (1.0 - smoothstep(0.55 * s.y, s.y, p.y - s.x + ragged));
 }
 
-// Rain running down a wall: thin rivulets along the fall, broken up along
-// their length, that flow while it rains and stay as dark stains once it
-// stops. 0..1. `geo` faces sideways; `t` the seconds while it rains.
-fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32) -> f32 {
+// Rain running down a wall: thin rivulets along the fall, each starting
+// at its own height (a ledge, a joint, a flaw) where it is darkest, just
+// under a soft top edge, and fading out over a metre or three below it,
+// a little uneven along its length. They flow while it rains and stay as
+// dark stains once it stops. 0..1. `geo` faces sideways; `t` the seconds
+// while it rains; `footprint` the metres a pixel covers there (a rivulet
+// thinner than a pixel widens and dims, so a far wall does not shimmer).
+fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 {
   // Across the wall: the horizontal direction in its plane.
   let side = normalize(vec2<f32>(-geo.z, geo.x) + vec2<f32>(1e-5, 0.0));
+  let across = dot(p.xz, side);
   // Rivulets meander a little as they run down.
-  let u = dot(p.xz, side) + (weather_noise(vec2<f32>(dot(p.xz, side) * 1.3, p.y * 0.9)) - 0.5) * 0.08;
-  // Rivulets a few centimetres wide, bunched where the wall sheds most
-  // (a broad band noise).
-  let lanes = weather_noise(vec2<f32>(u * 7.0, 3.1)) * 0.6 + weather_noise(vec2<f32>(u * 29.0, 9.7)) * 0.4;
-  let band = smoothstep(0.25, 0.6, weather_noise(vec2<f32>(u * 0.7, 17.0)));
-  // Each strip of wall a hand wide sheds its own runs: a run starts at a
-  // ledge or a flaw at its own height, is darkest there and thins out
-  // below it, and a gap follows before the next one (a third of the
-  // strips stay dry), so no rivulet spans the wall like a curtain.
-  let col = i32(floor(u * 4.0));
-  let period = 1.5 + 3.0 * lattice_hash(vec3<i32>(col, 0, 83));
-  let y = fract(p.y / period + lattice_hash(vec3<i32>(col, 0, 89)));
-  let reach = 0.35 + 0.55 * lattice_hash(vec3<i32>(col, 0, 97));
-  let run = smoothstep(1.0 - reach, 1.0 - reach * 0.4, y) * (1.0 - smoothstep(0.88, 1.0, y));
-  let present = step(0.33, lattice_hash(vec3<i32>(col, 0, 101)));
-  // The water itself is broken along its length, sliding down in the rain.
-  let along = weather_noise(vec2<f32>(u * 7.0 + 41.0, p.y * 0.35 + t * 0.9));
-  return smoothstep(0.45, 0.58, lanes) * band * run * present * smoothstep(0.1, 0.4, along);
+  let u = across + (weather_noise(vec2<f32>(across * 1.3, p.y * 0.9)) - 0.5) * 0.03;
+  // One possible rivulet per 8 cm strip, at its own place in the strip,
+  // 1.3 to 3.2 cm wide; seven strips in ten run.
+  let cell = 0.08;
+  let c = i32(floor(u / cell));
+  let f = u / cell - f32(c);
+  let centre = 0.25 + 0.5 * lattice_hash(vec3<i32>(c, 0, 83));
+  let half = 0.08 + 0.12 * lattice_hash(vec3<i32>(c, 0, 89));
+  let blur = max(half, 0.75 * footprint / cell);
+  // A dark core and, round it, the stone the water soaks a little wider.
+  let core = (1.0 - smoothstep(0.0, blur, abs(f - centre))) * min(half / blur, 1.0);
+  let profile = max(core, 0.5 * (1.0 - smoothstep(0.0, 0.5, abs(f - centre))));
+  let present = step(0.3, lattice_hash(vec3<i32>(c, 0, 101)));
+  // Its runs: one start every 3 to 8 m down the wall, each fading over
+  // 1.5 to 4.5 m below its start (`d`, metres under it).
+  let period = 3.0 + 5.0 * lattice_hash(vec3<i32>(c, 0, 97));
+  let d = fract(-p.y / period + lattice_hash(vec3<i32>(c, 0, 103))) * period;
+  let reach = 1.5 + 3.0 * lattice_hash(vec3<i32>(c, 0, 107));
+  let run = smoothstep(0.0, 0.05, d) * exp(-d / reach);
+  // Rivulets bunch where the wall sheds most (a broad band noise), and
+  // the water is uneven along each one, sliding down in the rain.
+  let band = mix(0.55, 1.0, smoothstep(0.3, 0.6, weather_noise(vec2<f32>(across * 0.7, 17.0))));
+  let along = 0.7 + 0.3 * weather_noise(vec2<f32>(across * 20.0 + 41.0, p.y * 3.0 + t * 0.9));
+  return min(profile * present * run * band * along * 1.8, 1.0);
 }
 
 // Drops hitting a wet surface: a crown of tiny splashes, one per cell at
@@ -180,7 +191,8 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // its position's across the pixel): standing water lies only on what is
   // flat over a puddle's width, not on a rock's crown or a ball's top.
   // (Taken here, in uniform control flow, before the masks branch.)
-  let bend = length(fwidth(geo)) / max(length(fwidth(p_frame)), 1e-5);
+  let footprint = length(fwidth(p_frame));
+  let bend = length(fwidth(geo)) / max(footprint, 1e-5);
   let surf_wet = shore_wetness(p_frame) * amount;
   if (max(max(max(w.x, w.y), w.z), max(dust, surf_wet)) <= 0.0) { return o; }
   // Under a roof: dry, no puddles, no snow (the drip line softened). Dust
@@ -199,17 +211,20 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   let low = 0.5 - cavity;  // > 0 in a hollow
 
   // Dust and sand settle on what faces up, in the low parts first; the
-  // wind leaves the crests bare. A dusty surface is matte and dull.
+  // wind leaves the crests bare. Lying sand covers the tops whole and
+  // thins out down steeper faces; a fine film reaches every face it can
+  // and dulls even polished metal (the grains scatter what the metal
+  // would mirror: rougher, its f0 dropping towards the sand's).
   if (dust > 0.0) {
-    // Lying sand on what faces up (reaching steeper faces as it deepens),
-    // over a fine film on every face it can reach that dulls even metal.
-    let settle = up + (cover - 0.5) * 0.6 + low * 0.8;
-    let lying = smoothstep(1.15 - dust, 1.35 - dust, settle) * min(dust * 2.5, 1.0);
-    let film = dust * mix(0.25, 0.45, cover) * (1.0 - 0.5 * max(-geo.y, 0.0));
+    let lying = smoothstep(0.42, 0.88, up + (cover - 0.5) * 0.5 + low * 0.6) * min(dust * 1.6, 1.0);
+    let film = dust * (0.45 + 0.4 * up) * mix(0.7, 1.3, cover) * (1.0 - 0.6 * max(-geo.y, 0.0));
     let d = max(lying, film);
-    o.s.albedo = mix(o.s.albedo, frame.weather_dust.rgb * (0.9 + 0.2 * cover), d * 0.92);
+    // The bare metal between the grains is scattered too: fully rough
+    // where a film lies, its share (metallic, f0) the grains' cover.
+    let dull = max(d, min(film * 3.0, 1.0));
+    o.s.albedo = mix(o.s.albedo, frame.weather_dust.rgb * (0.9 + 0.2 * cover), d);
     o.s.metallic = mix(o.s.metallic, 0.0, d);
-    o.s.roughness = mix(o.s.roughness, 0.97, d);
+    o.s.roughness = mix(o.s.roughness, 0.95, dull);
     o.s.f0 = mix(o.s.f0, vec3<f32>(0.04), d);
     o.n = normalize(mix(o.n, geo, d * 0.6));
   }
@@ -236,7 +251,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // Rain runs down what faces sideways in streaks, flowing while it rains.
   let wall = 1.0 - smoothstep(0.35, 0.75, abs(geo.y));
   if (wall > 0.0 && w.x > 0.0) {
-    let streak = weather_streaks(p, geo, frame.time.x * select(0.0, 1.0, raining)) * wall * w.x;
+    let streak = weather_streaks(p, geo, frame.time.x * select(0.0, 1.0, raining), footprint) * wall * w.x;
     // Between the rivulets the wall is only damp. A rivulet soaks into
     // porous stone (darker, barely glossier) and runs as a film down a
     // sealed one (paint, metal, glass: a gloss).
@@ -270,6 +285,15 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   o.s.albedo *= mix(1.0, 0.3, wet * porosity);
   o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.5, 0.1), wet * wet * (1.0 - porosity));
   o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.75, 0.4), wet * wet * porosity);
+  // In the rain the pores are full and a film of water runs over the
+  // level ground (Lagarde's flooded phase): it is nearly as smooth as the
+  // water, so each lamp stretches into a long streak down the street
+  // (GGX elongates a point light's reflection at grazing views). The film
+  // drains when the rain stops, leaving the pores' modest gloss.
+  if (raining) {
+    let sheet = wet * smoothstep(0.75, 0.95, up) * min(w.w * 1.5, 1.0);
+    o.s.roughness = mix(o.s.roughness, min(o.s.roughness, 0.2), sheet * sheet);
+  }
 
   // Drops splash on the wet level ground outside the puddles.
   if (raining && wet > 0.0 && standing > 0.0) {

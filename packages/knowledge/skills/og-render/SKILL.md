@@ -105,12 +105,16 @@ Every effect is off until the game turns it on, as data:
   `KHR_texture_transform`). A glTF with material variants
   (`KHR_materials_variants`) draws one per instance through
   `og.Model.variant`, an index into `GltfInfo.variants`. A non-uniform `scale` shades correctly. Set `sheenColor`
-  with `sheen` (black is no sheen). Cloth: velvet is a dark base with a
-  bright, tight sheen (`sheenRoughness` 0.3 to 0.5, `sheenColor` well above
-  the base, `roughness` 1) that lights the folds' edges; cotton, wool and
-  canvas a base near their colour with a pale, rough sheen
-  (`sheenRoughness` 0.8 to 1, `sheenColor` a little lighter than the base)
-  for a soft fuzz with no highlight; silk and satin are `anisotropy`, not
+  with `sheen` (black is no sheen). Cloth: velvet is a very dark,
+  saturated base (about a third of the cloth's colour) under a bright,
+  desaturated sheen (`sheenRoughness` about 0.5, `sheenColor` a pale tint
+  of the colour, `roughness` 1): a dark face and a soft glowing rim where
+  the folds turn away; cotton, wool and canvas a base near their colour
+  with a faint, rough sheen (`sheenRoughness` 0.8 to 1, `sheenColor` dim,
+  about a third of the base) for matte cloth with a pale edge at its
+  silhouette. Keep `roughness` 1 on cloth: the sheen is its only gloss,
+  and a lower one draws a plastic highlight. Folds wider than they are
+  deep read as cloth; deep, creased ones streak; silk and satin are `anisotropy`, not
   sheen. The sheen conserves energy (what it reflects is taken from the
   cloth under it), so a white sheen never makes cloth glow. `thickness` is in the mesh's units and
   `attenuationDistance` 0 absorbs nothing. A transmissive material refracts
