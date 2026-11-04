@@ -517,8 +517,12 @@ pub fn add_lightning(
                     }
                 })
                 .collect();
+            let mut points = strokeable(points);
+            if gain < 1.0 {
+                taper(&mut points);
+            }
             scene.ribbons.push(crate::Ribbon {
-                points: strokeable(points),
+                points,
                 texture: None,
                 uv: crate::RibbonUv::Stretch,
                 blend: ParticleBlend::Additive,
@@ -560,6 +564,33 @@ fn strokeable(points: Vec<crate::RibbonPoint>) -> Vec<crate::RibbonPoint> {
     }
     out
 }
+
+/// A branch's end fades out, width and brightness to nothing over the last
+/// [`TAPER`] of its length: it ended on a stub at an angle (its kept last
+/// point), which read as a kink rather than a channel dying out.
+fn taper(points: &mut [crate::RibbonPoint]) {
+    let lens: Vec<f32> = points
+        .windows(2)
+        .map(|w| w[0].position.distance(w[1].position))
+        .collect();
+    let total: f32 = lens.iter().sum();
+    if total <= 0.0 {
+        return;
+    }
+    let mut along = 0.0;
+    for (i, p) in points.iter_mut().enumerate() {
+        let t = ((along / total - (1.0 - TAPER)) / TAPER).clamp(0.0, 1.0);
+        let keep = 1.0 - t * t * (3.0 - 2.0 * t);
+        p.width *= keep;
+        for c in &mut p.color[..3] {
+            *c *= keep;
+        }
+        along += lens.get(i).copied().unwrap_or(0.0);
+    }
+}
+
+/// The share of a branch's length its end fades over ([`taper`]).
+const TAPER: f32 = 0.3;
 
 /// A drawn bolt's least segment, in its strip's widths ([`strokeable`]).
 const STROKE_STEP: f32 = 2.5;
@@ -729,6 +760,14 @@ mod lightning_tests {
             }
         }
         assert_eq!(core.points[0].position.y, 900.0);
+        // The branches (the strips after the main channel's two) fade out to
+        // nothing at their ends, from full width over their first 70 %.
+        for r in &scene.ribbons[2..] {
+            let last = r.points.last().unwrap();
+            assert_eq!(last.width, 0.0);
+            assert_eq!(last.color[..3], [0.0; 3]);
+            assert!(r.points[1].width > 0.5 * r.points[0].width);
+        }
         assert_eq!(core.points.last().unwrap().position, at);
     }
 
