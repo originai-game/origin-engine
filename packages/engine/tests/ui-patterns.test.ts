@@ -389,6 +389,17 @@ test("heroButton: a press is a click; disabled it is inert; a desktop shows its 
   expect(off).toBe(0);
 });
 
+test("heroButton: a label longer than its row wraps inside the button instead of running past the row", () => {
+  // Wrong: a one-line label sets the button's least width, so a narrow row (a phone at 150 %) is overrun.
+  const e = run(() => og.ui.column("Box", { width: { kind: "fixed", px: 150 } }, () => og.ui.heroButton("Go", "Reroll the rewards for fifty gold")), {});
+  const box = byPath(e, "Root/Box")!;
+  const go = byPath(e, "Box/Go")!;
+  const label = byPath(e, "Go/Label")!;
+  expect(go.x + go.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+  expect(label.x + label.width).toBeLessThanOrEqual(go.x + go.width + 0.5);
+  expect(label.text).toBe("Reroll the rewards for fifty gold");
+});
+
 test("inventoryGrid: right to left, columns count from the right edge", () => {
   // Wrong: a pointer's cell read from the left of a mirrored grid (the item lands in the mirror cell).
   const b = bag(true);

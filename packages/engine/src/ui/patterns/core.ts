@@ -923,8 +923,10 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     const step = st(size === "lg" ? 16 : size === "sm" ? 13 : 14);
     // On the premium gold the label is set bold: a regular face's thin strokes (a CJK face's most of all) blend into
     // the mid-light gold and read grey, short of the contrast floor, though the ink is near black.
-    if (label && v === "premium" && !d.disabled) kit.richText("Label", `[b]${label.replace(/\[/g, "[[")}[/b]`, { step, color: paint(ink), nowrap: true, font: "display" } as Api.RichTextDesc);
-    else if (label) text("Label", label, { step, color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display", onScene: scene });
+    // The label wraps, centred, where the row cannot give it one line (a phone at 150 %): a one-line label's width was
+    // the button's least, so a wrapping row could not shrink it and it ran off the screen.
+    if (label && v === "premium" && !d.disabled) kit.richText("Label", `[b]${label.replace(/\[/g, "[[")}[/b]`, { step, color: paint(ink), align: "center", font: "display" } as Api.RichTextDesc);
+    else if (label) text("Label", label, { step, color: d.disabled ? "inkFaint" : ink, align: "center", font: "display", onScene: scene });
     // The action's binding in a keycap after the label, where there are keys to press (not on a touch screen).
     if (d.key && !touch) {
       kit.open("Key", { direction: "row", align: "center", cross: "center", padding: xy(u(6), 0), height: px(u(size === "lg" ? 24 : 20)), radius: u(4), part: "Pattern.keycap", partClass: "badge" });
