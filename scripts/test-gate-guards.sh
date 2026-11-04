@@ -15,6 +15,14 @@ scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 failures=0
 
+mkdir -p "$scratch/bin"
+cat > "$scratch/bin/cargo" <<'EOF'
+#!/usr/bin/env bash
+echo "unexpected cargo invocation: $*" >&2
+exit 97
+EOF
+chmod +x "$scratch/bin/cargo"
+
 # layout NAME: a scratch target whose og-wasm is complete, then broken by NAME.
 layout() {
   local t="$scratch/$1" w
@@ -37,9 +45,11 @@ layout() {
 # and it ran no package's tests.
 expect_fail() {
   local t out rc
+  local args=("$2")
+  [ "${4:-}" != --only ] || args=(--only "$2")
   t="$(layout "$1")"
-  out="$(cd "$root" && CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" OG_GATE_JOBS=1 \
-    scripts/check.sh "$2" 2>&1)"; rc=$?
+  out="$(cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" OG_GATE_JOBS=1 \
+    scripts/check.sh "${args[@]}" 2>&1)"; rc=$?
   if [ "$rc" -eq 0 ]; then
     echo "FAIL $2 with $1: passed"; failures=$((failures + 1)); return
   fi
@@ -60,6 +70,21 @@ for step in bun-functional bun-test size-gate; do
   expect_fail no-opt "$step" "og-wasm/opt.txt (absent)"
   expect_fail module-gone "$step" "opt/og_host_web.wasm (named in"
 done
+
+expect_fail none bun-functional "og-wasm/opt-all.txt (absent)" --only
+expect_fail module-gone bun-functional "opt/og_host_web.wasm (named in" --only
+
+t="$(layout none)"
+out="$(cd "$root" && PATH="$scratch/bin:$PATH" CARGO_TARGET_DIR="$t" OG_GATE_MACHINE_DIR="$t/machine" OG_GATE_JOBS=2 \
+  scripts/check.sh --only bun-functional wasm-opt 2>&1)"; rc=$?
+if [ "$rc" -eq 0 ] || ! printf '%s' "$out" | grep -qF 'unexpected cargo invocation: build' \
+  || printf '%s' "$out" | grep -qF 'bun-functional started'; then
+  echo "FAIL explicitly selected wasm: bun-functional must wait for the refreshed module"
+  printf '%s\n' "$out" | tail -10
+  failures=$((failures + 1))
+else
+  echo "ok   explicitly selected wasm: bun-functional waits for the refreshed module"
+fi
 
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

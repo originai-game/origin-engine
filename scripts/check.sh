@@ -384,7 +384,7 @@ require_wasm() {
   local missing
   missing="$(wasm_missing)"
   [ -n "$missing" ] || return 0
-  og_err "$1: the web module is incomplete: no $missing; scripts/check.sh --only $1 builds the wasm first (wasm-build, wasm-opt)"
+  og_err "$1: the web module is incomplete: no $missing; scripts/check.sh --only wasm-opt builds the wasm (wasm-build, wasm-opt)"
   return 1
 }
 
@@ -947,9 +947,8 @@ step_needs() {
     wasm-opt) echo wasm-build ;;
     size-gate) echo wasm-opt ;;
     bun-test) echo wasm-opt ;;
-    # Only when wasm-opt is selected too (a machine with no wasm yet:
-    # `--only bun-functional`, CI's functional job); the lane reuses the last.
-    bun-functional) echo wasm-opt ;;
+    # Reuse the last wasm unless this run explicitly refreshes it.
+    bun-functional) case " $selected " in *" wasm-opt "*) echo wasm-opt ;; esac ;;
     ui-kit) echo ui-styles ;;
     wasm-export) echo wasm-opt ;;
     # The Windows lane's browser tiers take the Mac's wasm (build.sh, OG_GATE=1).
