@@ -109,6 +109,56 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   return s;
 }
 
+// The surface's roughness, translucency and metallic, blended as its
+// colour (G5): the cook's third atlas (`#impostor-material`, bound as the
+// material's roughness map: r roughness, g translucency, b metallic), or
+// the material's factors and no translucency without one.
+fn imp_material(c: ImpCoverage) -> vec3<f32> {
+  if (scatter.impostor_grid.w < 0.5) {
+    return vec3<f32>(material.mr.y, 0.0, material.mr.x);
+  }
+  let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
+  let m = textureSampleLevel(roughness_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
+    + textureSampleLevel(roughness_tex, material_sampler, c.a1, imp_level).rgb * c.wa.y
+    + textureSampleLevel(roughness_tex, material_sampler, c.a2, imp_level).rgb * c.wa.z;
+  return m / total;
+}
+
+// How much of the sun reaches the surface point `x` (about the centre, in
+// radii, the model's space) past the model itself (G5): the atlas frame
+// nearest the light's direction `l` (the model's space) is an
+// orthographic depth map of the model seen from the light, so a covered
+// texel whose depth stands nearer the light than the point, by more than
+// a few of its steps, is the model shading itself (Brucks, *Octahedral
+// Impostors*, 2018, its self-shadow from the depth atlas). Smooth over a
+// band, read a level coarser than the colour; a light below the horizon
+// (outside the hemisphere the frames cover) casts none.
+fn imp_self_shadow(x: vec3<f32>, l: vec3<f32>) -> f32 {
+  if (l.y <= 0.02) { return 1.0; }
+  let g = imp_grid();
+  let n = f32(g - 1u);
+  let at = clamp(round((imp_oct_encode(l) * 0.5 + 0.5) * n), vec2<f32>(0.0), vec2<f32>(n));
+  let f = u32(at.x) + u32(at.y) * g;
+  let uv = imp_frame_uv(x, f);
+  if (any(abs(uv) > vec2<f32>(1.0))) { return 1.0; }
+  let a = imp_atlas(f, uv);
+  let covered = textureSampleLevel(base_color_tex, material_sampler, a, imp_level + 1.0).a;
+  let depth = textureSampleLevel(normal_tex, material_sampler, a, imp_level + 1.0).a * 2.0 - 1.0;
+  let ahead = depth - dot(x, imp_frame_dir(f));
+  return 1.0 - smoothstep(0.08, 0.25, ahead) * smoothstep(0.3, 0.7, covered);
+}
+
+// The sunlight a foliage card passes through to the eye when lit from
+// behind, per unit of translucency (G5): half of it diffuse through the
+// leaf (its back face's cosine) and half scattered forward by the
+// Henyey-Greenstein phase (g 0.6), strongest looking into the sun.
+fn imp_backlight(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> f32 {
+  let g = 0.6;
+  let cos_theta = dot(-l, v);
+  let hg = (1.0 - g * g) / (4.0 * PI * pow(max(1.0 + g * g - 2.0 * g * cos_theta, 1e-4), 1.5));
+  return 0.5 * max(dot(-n, l), 0.0) / PI + 0.5 * hg;
+}
+
 // The surface's depth in the view (written, so the card stands where the
 // model's surface does).
 fn imp_depth(world: vec3<f32>) -> f32 {
@@ -148,9 +198,10 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
     o.color = vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), select(1.0, coverage, a2c));
     return o;
   }
+  let mat = imp_material(surface.coverage);
   var s: Surface;
-  s.metallic = clamp(material.mr.x, 0.0, 1.0);
-  s.roughness = clamp(material.mr.y, 0.04, 1.0);
+  s.metallic = clamp(mat.z, 0.0, 1.0);
+  s.roughness = clamp(mat.x, 0.04, 1.0);
   s.albedo = surface.albedo;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
@@ -170,8 +221,18 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let rel = surface.world - in.centre;
   let b = dot(rel, l);
   let leave = -b + sqrt(max(b * b - dot(rel, rel) + in.extent * in.extent, 0.0));
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.extent), n, n_dot_l); }
+  // Past the sphere the cascades shadow it; inside it its own depth atlas.
+  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
+  let x = transpose(m3) * rel / in.extent;
+  let own = imp_self_shadow(x, normalize(transpose(m3) * l));
+  var outside = 1.0;
+  if (frame.light_dir.w > 0.5) { outside = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.extent), n, max(n_dot_l, 0.05)); }
+  if (n_dot_l > 0.0) { shadow = outside * own; }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  // Lit from behind, foliage lets the sun through (G5).
+  if (mat.y > 0.0 && frame.light_dir.w > 0.5) {
+    color += s.albedo * frame.light_color.rgb * outside * mat.y * imp_backlight(n, v, l);
+  }
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
   color += surface_local_lights(in.clip.xy, s, surface.world, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);

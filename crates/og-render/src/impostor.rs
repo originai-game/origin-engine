@@ -61,6 +61,10 @@ pub struct Impostor {
     /// The bounding sphere the frames cover, in the model's space.
     pub center: Vec3,
     pub radius: f32,
+    /// Whether `material`'s roughness map is the cook's material atlas
+    /// (`#impostor-material`: r roughness, g translucency, b metallic),
+    /// which the cards are shaded by (G5); else its factors, opaque.
+    pub material_atlas: bool,
 }
 
 /// One impostor drawn this frame ([`crate::RenderScene::impostors`]).

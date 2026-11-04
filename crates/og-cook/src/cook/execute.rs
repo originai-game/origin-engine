@@ -126,27 +126,23 @@ pub(super) fn run(
                 )
             })
         }
-        Work::Impostor(s, b, normal) => {
+        Work::Impostor(s, b, kind) => {
             let g = s.gltf.as_ref().expect("loaded");
             let baked = g
                 .impostor(*b)
                 .map_err(|e| CookError(format!("{}: impostor: {e}", s.rel)))?;
-            let (img, k) = match normal {
-                false => (&baked.albedo, format::kind::COLOR),
-                true => (&baked.normal, format::kind::LINEAR),
+            let (img, k, what) = match kind {
+                0 => (&baked.albedo, format::kind::COLOR, "albedo"),
+                1 => (&baked.normal, format::kind::LINEAR, "normal and depth"),
+                _ => (
+                    &baked.material,
+                    format::kind::LINEAR,
+                    "roughness, translucency and metallic",
+                ),
             };
             let note = format!(
-                "{}: {}x{} impostor {} ({}×{} frames)",
-                p.id,
-                img.width,
-                img.height,
-                if *normal {
-                    "normal and depth"
-                } else {
-                    "albedo"
-                },
-                b.grid,
-                b.grid
+                "{}: {}x{} impostor {what} ({}×{} frames)",
+                p.id, img.width, img.height, b.grid, b.grid
             );
             texture::cook(img, k, &options.texture, p.stamp).map(|t| (t, vec![note]))
         }

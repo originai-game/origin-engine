@@ -97,6 +97,51 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
     }
 }
 
+/// Ways this could fail (G5): the material atlas never read (the card
+/// then as dark against the sun as a solid one), its translucency taken
+/// from the wrong channel (roughness, 0.85, would light even the opaque
+/// card), the backlight added on the sunlit side instead of the far one,
+/// or the card's roughness from the atlas differing from the material's
+/// (the atlas at translucency 0 then reading unlike no atlas).
+#[test]
+fn a_leaf_card_lets_the_sun_through_from_behind() {
+    let (leaf, _) = render(&is::impostor_backlit_scene(Some(0.8)));
+    keep("impostor-backlit", &leaf);
+    let (solid, _) = render(&is::impostor_backlit_scene(Some(0.0)));
+    let (plain, _) = render(&is::impostor_backlit_scene(None));
+    let scene = is::impostor_backlit_scene(None);
+    // The card's face towards the camera, away from the sun: points over
+    // both halves, inside its silhouette.
+    let points = [
+        (0.0, 0.0),
+        (0.5, 0.2),
+        (-0.5, 0.2),
+        (0.4, -0.4),
+        (-0.4, -0.4),
+        (0.0, 0.6),
+    ];
+    let mean = |img: &RgbaImage| {
+        points
+            .iter()
+            .map(|&(dx, dy)| {
+                let c = color_at(
+                    img,
+                    project(&scene.camera, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
+                );
+                assert!(ball_pixel(c), "the card covers ({dx}, {dy}): {c:?}");
+                luma(c)
+            })
+            .sum::<f32>()
+            / points.len() as f32
+    };
+    let (l, s, p) = (mean(&leaf), mean(&solid), mean(&plain));
+    assert!(l > s * 1.1, "backlit leaves {l} against a solid card {s}");
+    assert!(
+        (s - p).abs() < 0.05 * p.max(s),
+        "atlas at translucency 0 {s} against none {p}"
+    );
+}
+
 #[test]
 fn far_copies_draw_as_the_impostor() {
     let r = check("impostor-scatter");

@@ -174,6 +174,20 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **Better impostor bakes: a material atlas, backlight and self-shadow
+  (G5).** The cook bakes each impostor frame 4 × 4 supersampled with its
+  textures mip-filtered (a fine texture bakes to its average instead of
+  aliasing), and a third atlas, `#impostor-material` (roughness,
+  translucency, metallic; bundle table `impostor_materials`), beside the
+  colour and normal-depth ones. A model with a translucent material
+  (`KHR_materials_diffuse_transmission`, `KHR_materials_transmission`, or a
+  double-sided alpha-masked leaf) defaults to 12 × 12 frames, anything else
+  to 8 × 8, where `impostorGrid` does not say. The card reads the atlas:
+  its roughness and metallic per texel, the sun through the leaves when
+  lit from behind (diffuse plus a Henyey-Greenstein forward lobe), and the
+  model's shadow on itself from the depth atlas's frame nearest the light.
+  The model cook layout moves to version 3, so models re-cook; impostor
+  frames move.
 - **Grass shadows by default, self-shadowed canopy (G5).** Behaviour
   change: `Grass.castShadows` now defaults to true, and blades cast into
   the sun's first two cascades instead of one. Every blade is also
