@@ -350,3 +350,46 @@ fn crowd_cards_draw_the_far_members_and_only_them() {
         "the cards draw the far crowd (RMSE {to_meshes} from the meshes, {to_empty} from the empty avenue)"
     );
 }
+
+/// The crowd cull's GPU time is reported (the culling cost): on the GPU
+/// path its compute pass runs before any graph pass, and the frame's GPU
+/// timings list it as their first pass, "cull: crowds", with a time.
+#[test]
+fn the_crowd_cull_is_timed_as_the_frames_first_gpu_pass() {
+    let mut built = scenes::build("crowd-lods").expect("scene");
+    built.desc.culling = Culling::Gpu;
+    let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+    fn clock() -> f64 {
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        START
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_secs_f64()
+            * 1000.0
+    }
+    renderer.set_clock(Some(clock));
+    if let Some(why) = renderer.gpu_timing_absent() {
+        println!("no GPU pass timing ({why})");
+        return;
+    }
+    renderer.gpu_timings(true);
+    for _ in 0..4 {
+        renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .expect("render");
+    }
+    let frames = renderer.gpu_timings(true);
+    let last = frames.last().expect("a frame timed on the GPU");
+    let names: Vec<&str> = last.passes.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names.first(), Some(&"cull: crowds"), "passes: {names:?}");
+    let cull = &last.passes[0];
+    assert!(
+        cull.ms() > 0.0,
+        "the cull took GPU time: {:.4} ms",
+        cull.ms()
+    );
+    println!(
+        "cull: crowds {:.3} ms of the frame's passes {names:?}",
+        cull.ms()
+    );
+}

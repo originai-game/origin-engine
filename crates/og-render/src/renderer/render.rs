@@ -3835,7 +3835,11 @@ impl Renderer {
         // The crowds' cull, in the frame's (timed) encoder: after GPU
         // culling's commands and the pyramid's last build (the meshlets'
         // first phase draws into its depth), before any pass draws them.
+        // It opens no graph pass, so its queries are listed as their own
+        // pass ("cull: crowds", the first of the frame's GPU passes).
+        let mut crowd_cull_queries: Option<std::ops::Range<u32>> = None;
         if crowd_gpu {
+            let q0 = encoder.used();
             let gc = self.gpu_cull.as_ref().expect("made above");
             let (half_tan, ortho_height) = match scene.camera.projection {
                 Projection::Perspective { fov_y_degrees } => {
@@ -3867,6 +3871,9 @@ impl Renderer {
                 crowd_previous.map_or(0, |at| at + 1),
                 (&gc.args, gc.crowd_counts_word()),
             );
+            if encoder.timed() && encoder.used() > q0 {
+                crowd_cull_queries = Some(q0..encoder.used());
+            }
         }
         // GPU culling's counts' readback, after every cull that writes them.
         if gpu_cull && let Some(gc) = self.gpu_cull.as_mut() {
@@ -4515,7 +4522,10 @@ impl Renderer {
         // opened.
         let clock = self.clock;
         let mut pass_ms: Vec<PassTiming> = Vec::new();
-        let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = Vec::new();
+        let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = crowd_cull_queries
+            .map(|q| ("cull: crowds".to_string(), q))
+            .into_iter()
+            .collect();
         for &pass in self.graph.order() {
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
