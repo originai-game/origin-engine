@@ -119,3 +119,10 @@ Each GLB (~3.9k triangles) was baked rooted at its base, centred in x and z,
 to its height (daisy 0.34 m, bell 0.36 m, buttercup 0.30 m), for
 og.TerrainScatter's sway, then gltf-transform optimize (meshopt, WebP at
 512): about 250 KB each.
+
+Meshy bakes the daisy's white petals into its emissive map as well (mean 0.08,
+peak 0.92, at emissive factor 1), so the petals glowed: flat, overbright,
+unlit. Its emissive texture is removed and the factor set to 0 (glTF-Transform
+4: setEmissiveTexture(null), emissiveFactor 0, prune; 259 KB to 246 KB). The
+other models' emissive maps are black (peak at most 0.035, islandSmall a few
+speckles at 0.56) and are left as Meshy made them.

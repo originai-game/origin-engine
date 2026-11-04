@@ -92,6 +92,24 @@ function start(world: World): void {
   const meadow = must(world.spawn({ name: "meadow" }));
   must(world.insert(meadow, og.Terrain, { data: info.data }));
 
+  // The traveller at the edge, looking out (og.motion drives the Meshy rig
+  // through rigs/meshy.ogt). Spawned with its final first intent before the
+  // rest of the scene: og.motion's first inference starts once the agent
+  // and its goal exist, so it overlaps the loading of everything below while
+  // the page's cover is up (the cover lifts on og.motion.presentation).
+  const model = "models/traveller.glb";
+  const anim = must(og.load.animation(world, model));
+  const rig = must(og.load.rig(world, "rigs/meshy.ogt"));
+  const at = v3(TRAVELLER.x, ground(world, TRAVELLER.x, TRAVELLER.z), TRAVELLER.z);
+  const body = must(world.instantiate(must(og.load.gltf(world, model)), { name: "traveller", position: at }));
+  must(world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" }));
+  must(world.insert(body, og.MotionAgent, { rig, drive: true }));
+  // The cloak swings in the wind.
+  must(world.insert(body, og.Garment, CLOAK));
+  must(og.motion.face(world, body, { heading: Math.PI + 0.25, duration: 0.1 }));
+  must(og.motion.pose(world, body, { pose: "idle", duration: 600 }));
+  scene.traveller = body;
+
   // The meadow's grass: og.Grass grows blades on the GPU out to 150 m over
   // the grass layer and the flowered edge, sage at the root to straw-gold
   // tips, some clumps dried, gusts showing as a moving sheen.
@@ -125,19 +143,6 @@ function start(world: World): void {
     must(world.insert(e, og.TerrainScatter, { data: info.data, geometry: gi.geometries[0]!, material: gi.materials[0]!, layer: 1, density: 0.12, distance: 45, fade: 12, minScale: 0.75, maxScale: 1.2, align: 0.25, seed: 11 + k, sway: 0.7, impostor: model, impostorDistance: 12 }));
   });
 
-  // The traveller at the edge, looking out (og.motion drives the Meshy rig through rigs/meshy.ogt).
-  const model = "models/traveller.glb";
-  const anim = must(og.load.animation(world, model));
-  const rig = must(og.load.rig(world, "rigs/meshy.ogt"));
-  const at = v3(TRAVELLER.x, ground(world, TRAVELLER.x, TRAVELLER.z), TRAVELLER.z);
-  const body = must(world.instantiate(must(og.load.gltf(world, model)), { name: "traveller", position: at }));
-  must(world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" }));
-  must(world.insert(body, og.MotionAgent, { rig, drive: true }));
-  // The cloak swings in the wind.
-  must(world.insert(body, og.Garment, CLOAK));
-  must(og.motion.face(world, body, { heading: Math.PI + 0.25, duration: 0.1 }));
-  must(og.motion.pose(world, body, { pose: "idle", duration: 600 }));
-  scene.traveller = body;
 
   buildSky(world, v3(0, 901, 6));
 
