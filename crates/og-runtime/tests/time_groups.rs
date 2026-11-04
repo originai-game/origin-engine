@@ -187,7 +187,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// impostor fields, 18463832eea4312c after og.Model.sway, and
 /// 173949d34d97a0eb after R5 made og.Water lazy (gone from a world without water),
 /// 549687b62089e681 after og.Environment's blurriness, grounded dome and blend fields,
-/// and f632ac0f4ad4b88f after T5 made og.Terrain lazy (gone from a world without terrain).
+/// f632ac0f4ad4b88f after T5 made og.Terrain lazy (gone from a world without terrain),
+/// and 4bfa6723af539cfe after area 7's Stylise and MaterialStyle fields.
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -200,5 +201,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "f632ac0f4ad4b88f");
+    assert_eq!(hash(engine), "4bfa6723af539cfe");
 }

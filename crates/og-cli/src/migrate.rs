@@ -305,6 +305,7 @@ const STANDARD_FIELDS: &[&str] = &[
     "opacity",
     "outlineColor",
     "outlineWidth",
+    "paintDetail",
     "rimColor",
     "rimIntensity",
     "rimPower",
@@ -325,6 +326,7 @@ const STANDARD_FIELDS: &[&str] = &[
     "transparent",
     "unlit",
     "wireframe",
+    "wireframeAngle",
 ];
 
 /// Material fields that hold a colour: a hex number or `#rrggbb` becomes `color.fromHex`.
