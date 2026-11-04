@@ -183,6 +183,11 @@ fn cooked_action_and_look_compose_release_and_replay_on_tick_time() {
         looked,
         "authored motion must reach the palette"
     );
+    assert_eq!(
+        value(og_motion_presentation(w, e))["state"],
+        "loading",
+        "an authored fallback palette is not generated readiness"
+    );
     // Reconstruct the drawn joint transforms from the fixture's inverse binds.
     // This catches a contact composed before lookAt, or metre offsets wrongly
     // multiplied by the centimetre rig's 0.01 root scale.

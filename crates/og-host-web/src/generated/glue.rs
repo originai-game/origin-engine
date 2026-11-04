@@ -3228,6 +3228,11 @@ pub fn og_motion_capabilities(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_motion_presentation(world: u32, entity: f64) -> String {
+    <Host as MotionApi>::og_motion_presentation(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_motion_poses() -> String {
     <Host as MotionApi>::og_motion_poses(&Host)
 }

@@ -3865,6 +3865,12 @@ pub fn og_motion_capabilities(env: Env, world: u32) -> String {
     <Host as MotionApi>::og_motion_capabilities(&Host, world)
 }
 
+#[napi(js_name = "og_motion_presentation")]
+pub fn og_motion_presentation(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_presentation(&Host, world, entity)
+}
+
 #[napi(js_name = "og_motion_poses")]
 pub fn og_motion_poses(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

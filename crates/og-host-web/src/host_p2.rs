@@ -136,6 +136,9 @@ impl MotionApi for WebHost {
     fn og_motion_capabilities(&self, world: u32) -> String {
         rt::og_motion_capabilities(world)
     }
+    fn og_motion_presentation(&self, world: u32, entity: f64) -> String {
+        rt::og_motion_presentation(world, entity)
+    }
     fn og_motion_poses(&self) -> String {
         rt::og_motion_poses()
     }

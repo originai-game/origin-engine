@@ -446,6 +446,10 @@ pub struct Gpu {
     /// The device's measured rate, FLOP a millisecond.
     rate: f64,
     timer: Option<Timer>,
+    /// Native wall time in pipeline creation and weight/mask buffer creation.
+    /// Buffer creation is CPU upload submission, not a GPU completion fence.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub startup_ms: (f64, f64),
 }
 
 impl Gpu {
@@ -532,6 +536,8 @@ impl Gpu {
                 "the device allows {have} storage buffers a shader stage, and the kernels bind {STORAGE_BUFFERS}"
             )));
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        let compile_start = std::time::Instant::now();
         let pipelines = KERNELS
             .iter()
             .map(|(_, name, source)| {
@@ -562,6 +568,10 @@ impl Gpu {
                 })
             })
             .collect();
+        #[cfg(not(target_arch = "wasm32"))]
+        let compile_ms = compile_start.elapsed().as_secs_f64() * 1000.0;
+        #[cfg(not(target_arch = "wasm32"))]
+        let upload_start = std::time::Instant::now();
         let (mut weights, mut lengths, mut shapes) =
             (HashMap::new(), HashMap::new(), HashMap::new());
         let width = config.student.width;
@@ -597,6 +607,8 @@ impl Gpu {
             })
         };
         let (mask_count, mask_full) = (mask(&count, "mask count"), mask(&full, "mask full"));
+        #[cfg(not(target_arch = "wasm32"))]
+        let upload_ms = upload_start.elapsed().as_secs_f64() * 1000.0;
         let timer = device
             .features()
             .contains(wgpu::Features::TIMESTAMP_QUERY)
@@ -631,6 +643,8 @@ impl Gpu {
             budget: None,
             rate: FIRST_RATE,
             timer,
+            #[cfg(not(target_arch = "wasm32"))]
+            startup_ms: (compile_ms, upload_ms),
         })
     }
 

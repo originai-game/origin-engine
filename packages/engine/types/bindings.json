@@ -25583,6 +25583,28 @@
     {
       "id": 616,
       "kind": "fn",
+      "path": "og.motion.presentation",
+      "symbol": "og_motion_presentation",
+      "module": "motion",
+      "name": "presentation",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<MotionPresentationStatus>",
+      "publish": true
+    },
+    {
+      "id": 617,
+      "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
       "module": "motion",

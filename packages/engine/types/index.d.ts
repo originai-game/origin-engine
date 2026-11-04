@@ -51908,7 +51908,7 @@ export interface ArtCamera {
 // ── motion ──────────────────────────────────────────────────────
 // Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
 // **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
-// **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.
+// **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings.
 // **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
 
 /**
@@ -52231,6 +52231,23 @@ export interface MotionStatus {
 }
 
 /**
+ * Presentation progress, dependent on GPU timing, never simulation state.
+ * - `"loading"`: Waiting for the model or renderer.
+ * - `"warming"`: Weights are resident; this agent has no generated palette yet.
+ * - `"ready"`: Generated frames and their palette are ready for the current rendered frame; authored fallback never counts.
+ * - `"failed"`: Loading, inference or this agent's retarget failed; reason explains why.
+ */
+export type MotionPresentationState = "loading" | "warming" | "ready" | "failed";
+
+/** Visual readiness only, outside snapshots and hashes. */
+export interface MotionPresentationStatus {
+  /** The agent's presentation progress. */
+  readonly state: MotionPresentationState;
+  /** Why it is loading, warming or failed; empty when ready. */
+  readonly reason: string;
+}
+
+/**
  * Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it.
  */
 export interface MotionCapabilities {
@@ -52247,6 +52264,7 @@ export interface MotionCapabilities {
    */
   readonly modelBytes: number;
 }
+
 
 
 
@@ -58240,7 +58258,7 @@ export declare namespace og {
   /**
    * Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
    * **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
-   * **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.
+   * **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings.
    * **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
    */
   namespace motion {
@@ -58321,6 +58339,14 @@ export declare namespace og {
      * @returns Never refused.
      */
     function capabilities(world: World): MotionCapabilities;
+    /**
+     * Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @returns Refused for an entity without og.MotionAgent.
+     */
+    function presentation(world: World, entity: Entity): Result<MotionPresentationStatus>;
     /**
      * The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. Fixed by the engine's version, known before the weights are resident, so a goal's pose is checked the same everywhere.
      *

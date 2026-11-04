@@ -797,6 +797,19 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
     }
 }
 
+pub fn og_motion_presentation(world: u32, entity: f64) -> String {
+    let r = (|| {
+        let eng = engine(world)?;
+        let e = Entity::from_bits(entity as u64);
+        agent_of(&eng, e)?;
+        Ok::<_, String>(present::presentation(&eng, e.to_bits()))
+    })();
+    match r {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
 pub fn og_motion_capabilities(world: u32) -> String {
     match engine(world) {
         Ok(eng) => present::capabilities(&eng).to_string(),
@@ -812,13 +825,27 @@ pub fn og_motion_poses() -> String {
 /// what the model is doing for it (the presenter's: frames generated
 /// ahead, the batches, their timings).
 pub(crate) fn dump(engine_id: u32) -> Value {
+    let eng = match engine(engine_id) {
+        Ok(eng) => eng,
+        Err(e) => return json!({ "error": e }),
+    };
     let goals = lock(&shared(engine_id)).clone();
-    let agents: Vec<Value> = goals
-        .agents
-        .iter()
-        .map(|(e, a)| {
+    let entities = eng
+        .world()
+        .ok()
+        .and_then(|world| {
+            let state = eng.state.borrow();
+            let layout = state.layouts.get(AGENT)?;
+            Some(crate::extract::rows(world, layout))
+        })
+        .unwrap_or_default();
+    let agents: Vec<Value> = entities
+        .into_iter()
+        .map(|(e, _)| {
+            let a = goals.agents.get(&e).cloned().unwrap_or_default();
             json!({
-                "entity": *e as f64,
+                "entity": e as f64,
+                "presentation": present::presentation(&eng, e),
                 "goal": a.current.map_or("none", |c| KIND_NAMES[c.goal.kind as usize]),
                 "elapsed": a.current.map_or(0.0, |c| c.elapsed),
                 "queued": a.queue.len(),
@@ -827,10 +854,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
             })
         })
         .collect();
-    let model = match engine(engine_id) {
-        Ok(eng) => present::dump(&eng),
-        Err(e) => json!({ "error": e }),
-    };
+    let model = present::dump(&eng);
     json!({ "agents": agents, "model": model })
 }
 
