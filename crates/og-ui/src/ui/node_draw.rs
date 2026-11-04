@@ -65,8 +65,10 @@ impl Ui {
         if field_ring || n.ring || outline {
             // A ring, a gap of what is behind, then the control.
             let behind = self.behind(i);
+            // The style's focus stroke (`stroke { focus … }`): cartoon's
+            // 3 px ring stands clear of its 2 px outlines.
             let w = if field_ring || n.ring {
-                t.space.xxs
+                t.tokens.stroke(crate::tokens::StrokeWidth::Focus)
             } else {
                 1.0
             };

@@ -34,7 +34,7 @@ palette {
   sheen "#ffffff2e"
   success "#7cc265"
   warn "#e0a240"
-  danger "#f49482"
+  danger "#e84040"
   info "#78a6e0"
   health "#d55d51"
   mana "#4a8ae8"
@@ -414,4 +414,9 @@ dress "Chip.base[selected]" {
 dress "Slot.frame[selected]" {
   stroke 1.5 primary inside
   effect outerGlow 8 "#e8a33a59"
+}
+dress "Button.base[danger]" {
+  slice none
+  fill "#8a1a1a"
+  stroke 1 "#e84040" inside
 }

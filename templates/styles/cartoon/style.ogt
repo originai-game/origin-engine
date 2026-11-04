@@ -26,7 +26,7 @@ palette {
   onPrimary "#1e0f04"
   primarySoft "#f2862f40"
   highlight "#9b3a09"
-  focus "#2b1a4a"
+  focus "#e630b4"
   knob "#ffffff"
   hud "#fff4dcf5"
   scrim "#1a0f3ccc"
