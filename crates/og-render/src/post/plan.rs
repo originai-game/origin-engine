@@ -947,7 +947,12 @@ mod tests {
         for stylise in [false, true] {
             let mut passes = vec![FramePass::Main, FramePass::Tonemap];
             if stylise {
-                passes.push(FramePass::Quantize);
+                passes.extend([
+                    FramePass::Paint,
+                    FramePass::Lines,
+                    FramePass::Lens,
+                    FramePass::Quantize,
+                ]);
             }
             passes.extend([
                 FramePass::SmaaEdges,
@@ -962,9 +967,16 @@ mod tests {
             assert!(at("smaa-edges") < at("smaa-weights"));
             assert!(at("smaa-weights") < at("smaa-blend"));
             assert!(at("smaa-blend") < at("upscale"));
-            let source = plan.slot(&ldr_name(usize::from(stylise))).unwrap();
-            let edges = plan.slot("smaa.edges").unwrap();
-            let weights = plan.slot("smaa.weights").unwrap();
+            // These are the named slots FrameGraph realizes into views, not
+            // merely allocations that the binding lookup cannot reach.
+            let realized: HashMap<_, _> = plan.transients().collect();
+            let source = realized[ldr_name(if stylise { 4 } else { 0 }).as_str()];
+            let edges = realized["smaa.edges"];
+            let weights = realized["smaa.weights"];
+            if stylise {
+                assert!(realized.contains_key("ldr.5"));
+            }
+            assert!(!realized.contains_key("cascades"));
             assert_ne!(source, edges);
             assert_ne!(source, weights);
             assert_ne!(edges, weights);

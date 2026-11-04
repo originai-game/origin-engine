@@ -362,6 +362,14 @@ impl GraphPlan {
         self.slots[t]
     }
 
+    /// Named transient targets that need views, excluding imports and unused targets.
+    pub(crate) fn transients(&self) -> impl Iterator<Item = (&str, usize)> {
+        self.target_names
+            .iter()
+            .zip(&self.slots)
+            .filter_map(|(name, slot)| slot.map(|slot| (name.as_str(), slot)))
+    }
+
     /// The first and last position in [`GraphPlan::order`] that uses a
     /// transient target.
     pub fn lifetime(&self, target: &str) -> Option<(usize, usize)> {

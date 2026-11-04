@@ -156,10 +156,9 @@ impl FrameGraph {
             slot_views.push(self.pool[index].1.clone());
         }
         self.views.clear();
-        for name in transient_names(cfg) {
-            if let Some(slot) = plan.slot(&name) {
-                self.views.insert(name, slot_views[slot].clone());
-            }
+        for (name, slot) in plan.transients() {
+            self.views
+                .insert(name.to_string(), slot_views[slot].clone());
         }
         self.bindings = Some(self.bind(
             device,
@@ -783,64 +782,4 @@ pub(crate) fn reflection_target(k: u8, suffix: &str) -> &'static str {
         (_, "-depth") => "reflection.1-depth",
         _ => "reflection.1-msaa",
     }
-}
-
-/// Every transient target name a graph for `cfg` can declare.
-fn transient_names(cfg: &GraphConfig) -> Vec<String> {
-    let mut names: Vec<String> = [
-        "hdr",
-        "hdr-msaa",
-        "scene-copy",
-        "depth",
-        "pre-depth",
-        "gbuffer",
-        "lindepth",
-        "ao-depth",
-        "outline-id",
-        "object-space",
-        "ao.raw",
-        "ao.blur",
-        "ao",
-        "lightmap",
-        "lightdir",
-        "metaballs",
-        "metaballs.1",
-        "metaballs.2",
-        "metaballs.3",
-        "fluid.depth",
-        "fluid.zbuf",
-        "fluid.thick",
-        "fluid.blur",
-        "fluid.smooth",
-        "reflection",
-        "reflection-depth",
-        "reflection-msaa",
-        "reflection.1",
-        "reflection.1-depth",
-        "reflection.1-msaa",
-        "glow",
-        "ldr.0",
-        "ldr.1",
-        "ldr.2",
-        "ldr.3",
-        "ldr.4",
-        "hdr.bands",
-        "hdr.ssr",
-        "hdr.sharp",
-        "hdr.outline",
-        "hdr.dof",
-        "hdr.mb",
-        "hdr.blur",
-        "dof.coc",
-        "dof.blur",
-        "god.mask",
-        "god.blur",
-    ]
-    .iter()
-    .chain(CUSTOM_POST_NAMES.iter())
-    .map(|s| s.to_string())
-    .collect();
-    names.extend((0..meter_levels()).map(luminance_name));
-    names.extend((0..bloom_levels(cfg.post.0, cfg.post.1)).map(bloom_name));
-    names
 }
