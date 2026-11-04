@@ -417,6 +417,10 @@ pub(crate) struct Shared {
 /// seabed og.Water.seabed names, in the frame's xz, and the trains rolling
 /// in on it) the sea feels the depth ([`og_core::ocean::Ocean::surface_near`]):
 /// a body in the shallows rides the shoaled, broken sea the renderer draws.
+/// With a `river` (W5: og.Water.river, in the frame's xz) the water is the
+/// river's ribbon alone, at its level along the course, its current the
+/// water's velocity there, so a body drifts down it at the speed it is
+/// drawn flowing.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterBody {
     pub entity: u64,
@@ -426,6 +430,7 @@ pub struct WaterBody {
     pub sea: Option<og_core::ocean::Ocean>,
     pub zero: og_core::glam::DVec3,
     pub shore: Option<(Arc<og_core::ocean::Shore>, og_core::ocean::ShoreTrains)>,
+    pub river: Option<Arc<og_core::river::River>>,
 }
 
 impl WaterBody {
@@ -441,6 +446,14 @@ impl WaterBody {
     /// [`og_core::ocean::Ocean::surface_on_grid`]; still water without a
     /// sea).
     pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_core::ocean::SurfacePoint> {
+        if let Some(river) = &self.river {
+            let at = river.at(og_core::glam::Vec2::new(x as f32, z as f32))?;
+            return Some(og_core::ocean::SurfacePoint {
+                height: at.level - self.position.y,
+                velocity: Vec3::new(at.velocity.x, 0.0, at.velocity.y),
+                acceleration: Vec3::ZERO,
+            });
+        }
         let half = self.size * 0.5;
         let local = og_core::glam::Vec2::new(
             (x - f64::from(self.position.x)) as f32,

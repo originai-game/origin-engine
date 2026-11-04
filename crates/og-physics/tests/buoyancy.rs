@@ -35,6 +35,7 @@ fn lake() -> WaterBody {
         sea: None,
         zero: DVec3::ZERO,
         shore: None,
+        river: None,
     }
 }
 
@@ -458,4 +459,60 @@ fn a_sea_records_the_hulls_in_it_for_the_renderer() {
     boat(&mut w, 0.0);
     run(&mut w, 3);
     assert!(p.water_wakes(Entity::from_bits(1 << 40)).is_none());
+}
+
+/// W5: a body dropped mid-stream in a river (og.Water.river, 8 m wide,
+/// 2 m/s mid-stream) drifts down it with the current: over its fifth
+/// second it comes 90 % ± 10 % of the river's speed down the course, keeps
+/// to the middle of the stream and floats at the river's level (1.5 m up
+/// here, the water's entity at 0); a second run lands it in the same place
+/// to the bit. A flat lake's still water would leave it where it fell.
+#[test]
+fn a_floater_drifts_down_a_river_with_its_current() {
+    let river = og_core::river::River::new(
+        &[Vec3::new(-60.0, 1.5, 0.0), Vec3::new(60.0, 1.5, 0.0)],
+        8.0,
+        2.0,
+    )
+    .expect("a river");
+    let water = WaterBody {
+        river: Some(std::sync::Arc::new(river)),
+        ..lake()
+    };
+    let ride = || {
+        let (mut w, p) = support::world(Physics::default(), 5);
+        support::enable_lazy(&mut w);
+        p.set_waters(vec![water.clone()]);
+        let b = floater(
+            &mut w,
+            at(-40.0, 1.6, 0.3),
+            Vec3::splat(0.6),
+            0.5,
+            Buoyancy::default(),
+        );
+        run(&mut w, 240);
+        let fourth = transform(&w, b).position;
+        run(&mut w, 60);
+        (fourth, transform(&w, b).position)
+    };
+    let (fourth, fifth) = ride();
+    let speed = fifth.x - fourth.x;
+    println!("river: {speed} m/s over the fifth second, at {fifth}");
+    assert!(
+        (speed - 1.8).abs() <= 0.2,
+        "it drifts {speed} m/s in a 2 m/s current"
+    );
+    assert!(
+        fifth.z.abs() < 1.0,
+        "it left the middle of the stream: {fifth}"
+    );
+    assert!(
+        (fifth.y - 1.5).abs() < 0.3,
+        "it floats at {} m, the river at 1.5 m",
+        fifth.y
+    );
+    assert_eq!(
+        ride().1.to_array().map(f32::to_bits),
+        fifth.to_array().map(f32::to_bits)
+    );
 }

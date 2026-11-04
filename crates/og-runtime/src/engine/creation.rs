@@ -726,6 +726,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));
     render.borrow_mut().ui = Some(a.mounted.ui.clone());
+    render.borrow_mut().engine = engine_id;
     let engine = Rc::new(Engine {
         id: engine_id,
         world: UnsafeCell::new(a.world),

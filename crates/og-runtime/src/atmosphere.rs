@@ -244,6 +244,50 @@ pub(crate) fn derive(
 /// the instances it added (cloth), for per-object motion.
 // Rendering only: drawn lines and fluid volumes.
 #[allow(clippy::disallowed_methods)]
+/// An og.Water's river (og.Water.river: its path sampled every metre or so,
+/// riverWidth and riverSpeed), the one record the tick drifts floaters with
+/// and the renderer draws: made once per path, width and speed (the same
+/// `Arc` frame after frame, so the renderer keeps its ribbon). None without
+/// a live path.
+pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::River>> {
+    type Key = (u32, u64, u32, u32);
+    thread_local! {
+        static RIVERS: std::cell::RefCell<Vec<(Key, Arc<og_core::river::River>)>> =
+            const { std::cell::RefCell::new(Vec::new()) };
+    }
+    let handle = v["river"].as_f64().filter(|h| *h != 0.0)? as u64;
+    let (width, speed) = (
+        f(v, "riverWidth", 6.0).max(0.0),
+        f(v, "riverSpeed", 1.5).max(0.0),
+    );
+    let key = (engine, handle, width.to_bits(), speed.to_bits());
+    if let Some(r) = RIVERS.with(|c| {
+        c.borrow()
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, r)| r.clone())
+    }) {
+        return Some(r);
+    }
+    let path = super::timeline::path_of(engine, handle)?;
+    // A point every metre, at least the path's own segments, at most 2048.
+    let n = (path.length().ceil() as usize)
+        .max(path.segments() + 1)
+        .clamp(2, 2048);
+    let points: Vec<Vec3> = (0..n)
+        .map(|i| path.sample(i as f32 / (n - 1) as f32).position)
+        .collect();
+    let river = Arc::new(og_core::river::River::new(&points, width, speed)?);
+    RIVERS.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() >= 64 {
+            c.remove(0);
+        }
+        c.push((key, river.clone()));
+    });
+    Some(river)
+}
+
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     let mut keys = Vec::new();
     let RenderState {
@@ -564,6 +608,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 
     // Ragdolls blended into their models' palettes.
     super::physics_ext::draw_ragdolls(world, rs, &mut |e| h.world_of(e));
+    let engine = rs.engine;
     let RenderState {
         scene,
         draw,
@@ -636,6 +681,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             shallow: color(&v["shallow"], Vec3::new(0.55, 0.85, 0.82)),
             deep: color(&v["deep"], Vec3::new(0.02, 0.09, 0.14)),
             depth_fade: f(&v, "depthFade", 2.5),
+            absorption: color(&v["absorption"], Vec3::ZERO),
+            scattering: color(&v["scattering"], Vec3::ZERO),
             opacity: f(&v, "opacity", 0.92),
             foam: color(&v["foam"], Vec3::new(0.95, 0.97, 1.0)),
             foam_width: f(&v, "foamWidth", 0.35),
@@ -668,8 +715,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             wind: vec2(&v["wind"], Vec2::ZERO),
             swell: f(&v, "swell", 1.0),
             choppiness: f(&v, "choppiness", 0.6),
+            foam_streaks: f(&v, "foamStreaks", 1.0).max(0.0),
+            spray: f(&v, "spray", 1.0).max(0.0),
+            dynamic_waves: f(&v, "dynamicWaves", 1.0).max(0.0),
+            meniscus: f(&v, "meniscus", 2.0),
             endless: v["endless"].as_bool().unwrap_or(false),
             shore: seabed(world, terrain, terrain_layout, entity, &v, mesh.is_some()),
+            river: river_of(engine, &v),
         });
     }
     // 2D water over its spring line.

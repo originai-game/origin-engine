@@ -37,6 +37,7 @@ pub mod ocean;
 pub mod ogt;
 pub mod procgen;
 pub mod reflect;
+pub mod river;
 pub mod rng;
 pub mod shore;
 pub mod sort;

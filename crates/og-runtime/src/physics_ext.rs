@@ -425,6 +425,7 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 ),
                 sea,
                 zero,
+                river: super::atmosphere::river_of(eng.id, &v),
             })
         })
         .collect())

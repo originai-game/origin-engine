@@ -363,6 +363,9 @@ pub(crate) struct RenderState {
     pub runtime_fonts: IdMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
+    /// The engine this state draws (its id: the paths a river follows are
+    /// its own, `timeline::path_of`).
+    pub engine: u32,
     /// Each (font, character) a text drew, judged once a run: in the
     /// font, or warned of on the tick it was first drawn (`super::glyphs`).
     pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
@@ -412,6 +415,7 @@ pub(crate) struct RenderState {
 impl RenderState {
     pub fn new(options: Value) -> RenderState {
         RenderState {
+            engine: 0,
             scene: RenderScene::new(),
             backend: None,
             materials: Vec::new(),
