@@ -14,7 +14,7 @@
 // against (frames.ts `checkFrames`). A style pack's shots are compared with
 // their cells of kit-style-<pack>[-phone].png, box-filtered as styles.ts does.
 //
-//   bun tests/web/reference-ui.ts [--record] [--only a,b] [--chrome <path>]
+//   bun tests/web/reference-ui.ts [--record] [--only a,b] [--chrome <path> | --safari]
 //
 // Without --only it runs SET below (docs/ci.md §Browser reference tiers says
 // which frames that is and why). --record writes this tier's references.
@@ -38,8 +38,8 @@ const repo = join(pkg, "..", "..");
 const kit = join(repo, "templates", "ui-kit");
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
-const tier = "webgpu";
-const pass = args.filter((a, i) => a === "--record" || a === "--chrome" || args[i - 1] === "--chrome" || a === "--android" || (args[i - 1] === "--android" && !a.startsWith("--")));
+const tier = args.includes("--safari") ? "webgpu-safari" : "webgpu";
+const pass = args.filter((a, i) => a === "--record" || a === "--safari" || a === "--chrome" || args[i - 1] === "--chrome" || a === "--android" || (args[i - 1] === "--android" && !a.startsWith("--")));
 const work = join(pkg, "dist", "test-reference", "ui");
 
 /** The reference prefix each frames playtest checks its screenshots under (its `checkFrames` call). */

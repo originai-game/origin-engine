@@ -1,4 +1,4 @@
-//! `og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N]
+//! `og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N]
 //! [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>]
 //! [--cert <pem> --key <pem>] [--host <ip>] [--json]`
 //!
@@ -7,8 +7,8 @@
 //! `packages/engine/src/node/device.ts` serves it with COOP/COEP on
 //! 127.0.0.1 (for the iPhone on 0.0.0.0, at the LAN address it prints or
 //! `--host`), opens it in the target (local Chrome over the
-//! DevTools protocol, Chrome on Android over adb, Safari on an iPhone over
-//! safaridriver), passes the play gate with a real tap and times the first
+//! DevTools protocol, this Mac's Safari or Safari on an iPhone over
+//! safaridriver, Chrome on Android over adb), passes the play gate with a real tap and times the first
 //! frame and --seconds of played frames; the target's tools (Chrome, adb,
 //! safaridriver) are checked before the build. The report, og polish's shape, is
 //! `report.md` and `device.json` in `--out` (default

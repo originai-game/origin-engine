@@ -13,6 +13,8 @@
 //   chrome            this machine's Chrome (--chrome, $CHROME, $CHROME_PATH, the
 //                     agent-browser install, /Applications, PATH), headless unless
 //                     --headed, over the DevTools protocol at http://127.0.0.1:<port>/
+//   safari            this Mac's Safari over WebDriver (safaridriver), in a window
+//                     at http://127.0.0.1:<port>/
 //   android[:serial]  Chrome on a phone over adb: `adb reverse` serves the page at the
 //                     phone's own localhost (a secure context, so isolation holds) and
 //                     `adb forward ... localabstract:chrome_devtools_remote` reaches
@@ -22,8 +24,8 @@
 //                     names another); isolation and WebGPU need a secure context
 //                     there, so pass --cert/--key (mkcert) to serve HTTPS
 //
-// chrome and android open the page at localhost, already a secure context, so
-// --cert/--key (and --host) are the iPhone's only.
+// chrome, safari and android open the page at localhost, already a secure
+// context, so --cert/--key (and --host) are the iPhone's only.
 //
 // The page is opened cold (no-store, no sw.js served, and on a DevTools target
 // the origin's storage cleared first), the play gate passed with a real tap or click,
@@ -469,7 +471,7 @@ async function launchChrome(width: number, height: number): Promise<Driver> {
 }
 
 const NO_ADB = "no adb on PATH: install Android platform-tools (`brew install android-platform-tools`, or the SDK's platform-tools)";
-const NO_SAFARIDRIVER = "og run --device iphone needs macOS with safaridriver (it ships with Safari; run `safaridriver --enable` once)";
+const NO_SAFARIDRIVER = "og run --device safari and iphone need macOS with safaridriver (it ships with Safari; run `safaridriver --enable` once)";
 
 function adb(serial: string | null, ...args: string[]): string {
   const r = Bun.spawnSync(["adb", ...(serial ? ["-s", serial] : []), ...args], { stdout: "pipe", stderr: "pipe" });
@@ -515,9 +517,15 @@ async function connectAndroid(wanted: string | null, port: number, scheme: strin
 const ELEMENT = "element-6066-11e4-a52e-4f735466cecf";
 const IPHONE_FIX =
   "on the iPhone turn on Settings > Apps > Safari > Advanced > Web Inspector and Remote Automation; on the Mac turn on Safari > Develop > Allow Remote Automation, run `safaridriver --enable` once and pair the phone in Xcode (Window > Devices and Simulators)";
+const SAFARI_FIX = "run `sudo safaridriver --enable` once (or Safari > Develop > Allow Remote Automation), and close any other WebDriver session: Safari admits one at a time";
 
-/** Safari on an iPhone over WebDriver (safaridriver). */
-async function connectIphone(udid: string | null): Promise<Driver> {
+/**
+ * Safari over WebDriver (safaridriver): on an iPhone (`udid` names one), or
+ * this Mac's own (`mac`), in a window whose viewport is `size`.
+ */
+async function connectSafari(target: { mac: true; size: [number, number] } | { mac: false; udid: string | null }): Promise<Driver> {
+  const fix = target.mac ? SAFARI_FIX : IPHONE_FIX;
+  const where = target.mac ? "this Mac" : "the iPhone";
   if (process.platform !== "darwin" || !Bun.which("safaridriver")) refuse(NO_SAFARIDRIVER);
   const probe = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response("") });
   const port = probe.port;
@@ -558,12 +566,12 @@ async function connectIphone(udid: string | null): Promise<Driver> {
       await sleep(100);
     }
   }
-  if (!up) refuse(`safaridriver did not start: ${IPHONE_FIX}`);
+  if (!up) refuse(`safaridriver did not start: ${fix}`);
   try {
     const s = await call<{ sessionId: string }>(
       "POST",
       "/session",
-      { capabilities: { alwaysMatch: { browserName: "safari", platformName: "iOS", ...(udid ? { "safari:deviceUDID": udid } : {}) } } },
+      { capabilities: { alwaysMatch: target.mac ? { browserName: "safari", platformName: "mac" } : { browserName: "safari", platformName: "iOS", ...(target.udid ? { "safari:deviceUDID": target.udid } : {}) } } },
       120_000,
     );
     session = s.sessionId;
@@ -571,25 +579,39 @@ async function connectIphone(udid: string | null): Promise<Driver> {
     // The whole answer: safaridriver names the device it found and why it
     // could not use it on the lines after the first.
     const why = (e as Error).message.split("\n").map((l) => l.trim()).filter(Boolean).join("; ");
-    return refuse(`safaridriver could not open Safari on the iPhone (${why}): ${IPHONE_FIX}`);
+    return refuse(`safaridriver could not open Safari on ${where} (${why}): ${fix}`);
   }
   await call("POST", `/session/${session}/timeouts`, { script: 120_000, pageLoad: 120_000 });
+  const evalIn = async <T>(expression: string, ms = CALL_MS) => {
+    const r = await call<{ ok?: T; err?: string }>(
+      "POST",
+      `/session/${session}/execute/async`,
+      {
+        script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((v) => done({ ok: v }), (e) => done({ err: String(e && e.stack || e) }));`,
+        args: [],
+      },
+      ms,
+    );
+    if (r.err !== undefined) throw new Error(r.err);
+    return r.ok as T;
+  };
+  let version = "";
+  if (target.mac) {
+    // The window's outer size, then the viewport measured and the chrome around it added.
+    const [w, h] = target.size;
+    await call("POST", `/session/${session}/window/rect`, { x: 0, y: 0, width: w, height: h + 100 });
+    for (let i = 0; i < 3; i++) {
+      const inner = await evalIn<{ w: number; h: number; ua: string }>("({ w: innerWidth, h: innerHeight, ua: navigator.userAgent })");
+      version = /Version\/([\d.]+)/.exec(inner.ua)?.[1] ?? "";
+      if (inner.w === w && inner.h === h) break;
+      const rect = await call<{ width: number; height: number }>("GET", `/session/${session}/window/rect`);
+      await call("POST", `/session/${session}/window/rect`, { width: rect.width + w - inner.w, height: rect.height + h - inner.h });
+    }
+  }
   return {
-    name: `iphone${udid ? ` (${udid})` : ""}`,
+    name: target.mac ? `safari (Safari ${version}, macOS)` : `iphone${target.udid ? ` (${target.udid})` : ""}`,
     open: async (url) => void (await call("POST", `/session/${session}/url`, { url }, 130_000)),
-    eval: async <T>(expression: string, ms = CALL_MS) => {
-      const r = await call<{ ok?: T; err?: string }>(
-        "POST",
-        `/session/${session}/execute/async`,
-        {
-          script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((v) => done({ ok: v }), (e) => done({ err: String(e && e.stack || e) }));`,
-          args: [],
-        },
-        ms,
-      );
-      if (r.err !== undefined) throw new Error(r.err);
-      return r.ok as T;
-    },
+    eval: evalIn,
     tap: async (selector) => {
       const el = await call<Record<string, string>>("POST", `/session/${session}/element`, { using: "css selector", value: selector });
       await call("POST", `/session/${session}/element/${el[ELEMENT]}/click`, {});
@@ -755,8 +777,8 @@ interface Finding {
 /** 100 at `good`, 0 at `bad`, linear between (og polish's band). */
 const band = (x: number, good: number, bad: number) => Math.round(100 * Math.max(0, Math.min(1, (bad - x) / (bad - good))));
 
-/** The design's first-frame budgets (docs/design.md §7): mid-range Android on 4G 2.0 s, iPhone 13 1.5 s. */
-const BUDGET_MS: Record<string, number> = { chrome: 2000, android: 2000, iphone: 1500 };
+/** The design's first-frame budgets (docs/design.md §7): mid-range Android on 4G 2.0 s, iPhone 13 1.5 s; a desktop browser, Android's. */
+const BUDGET_MS: Record<string, number> = { chrome: 2000, safari: 2000, android: 2000, iphone: 1500 };
 
 function judge(kind: string, m: Measured, served: Served): { scores: { firstFrame: number; frameTime: number }; findings: Finding[] } {
   const budget = BUDGET_MS[kind]!;
@@ -855,10 +877,10 @@ async function main(): Promise<void> {
   const out = opt("--out");
   const preflight = flag("--preflight");
   if (!target || (!preflight && (!dist || !project || !out)))
-    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
+    refuse("usage: bun src/node/device.ts --dist <build> --project <root> --device chrome|safari|android[:serial]|iphone[:udid] --out <dir> [--seconds N] [--port P] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--size WxH] [--json] (--preflight: only check the options and the target's tools)");
   const [kindRaw, ...rest] = target!.split(":");
   const kind = kindRaw === "ios" ? "iphone" : kindRaw!;
-  if (!(kind in BUDGET_MS)) refuse(`--device ${target}: the targets are chrome, android[:serial] and iphone[:udid] (or ios[:udid])`);
+  if (!(kind in BUDGET_MS)) refuse(`--device ${target}: the targets are chrome, safari, android[:serial] and iphone[:udid] (or ios[:udid])`);
   const id = rest.join(":") || null;
   const seconds = Number(opt("--seconds") ?? 5);
   if (!(seconds > 0)) refuse(`--seconds ${opt("--seconds")}: a positive number of seconds`);
@@ -876,12 +898,13 @@ async function main(): Promise<void> {
   // The target's tools, before og spends a build on it.
   if (kind === "chrome") findChrome();
   else if (kind === "android" && !Bun.which("adb")) refuse(NO_ADB);
-  else if (kind === "iphone" && (process.platform !== "darwin" || !Bun.which("safaridriver"))) refuse(NO_SAFARIDRIVER);
+  else if ((kind === "iphone" || kind === "safari") && (process.platform !== "darwin" || !Bun.which("safaridriver"))) refuse(NO_SAFARIDRIVER);
   if (preflight) return;
   if (!existsSync(join(dist!, "index.html"))) refuse(`${dist} has no index.html: og run --device builds it with og build --publish`);
 
-  // Only the iPhone reaches the server over the network; chrome opens it at
-  // 127.0.0.1 and android at its own localhost, which adb reverse brings here.
+  // Only the iPhone reaches the server over the network; chrome and safari
+  // open it at 127.0.0.1 and android at its own localhost, which adb reverse
+  // brings here.
   const served = serveBuild(resolve(dist!), Number(opt("--port") ?? 0), tls, kind === "iphone" ? "0.0.0.0" : "127.0.0.1");
   onExit(() => served.stop());
   const lanFound = kind === "iphone" ? lanAddresses() : [];
@@ -891,6 +914,7 @@ async function main(): Promise<void> {
   try {
     let url = `${served.scheme}://127.0.0.1:${served.port}/`;
     if (kind === "chrome") driver = await launchChrome(w!, h!);
+    else if (kind === "safari") driver = await connectSafari({ mac: true, size: [w!, h!] });
     else if (kind === "android") {
       const a = await connectAndroid(id, served.port, served.scheme);
       driver = a.driver;
@@ -903,7 +927,7 @@ async function main(): Promise<void> {
         `og run --device: the iPhone opens ${url} (${host ? "--host" : `${lanFound[0]!.iface}; --host <ip> names another`})${tls ? `; the certificate has to name ${chosen}` : ""}\n`,
       );
       if (!tls) process.stderr.write("og run --device: an http LAN page is not a secure context on the iPhone (no isolation, and no WebGPU, which needs a secure context: the game will not start); --cert/--key serve HTTPS\n");
-      driver = await connectIphone(id);
+      driver = await connectSafari({ mac: false, udid: id });
     }
     const opened = driver;
     onExit(() => opened.close());

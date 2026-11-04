@@ -1,0 +1,3513 @@
+{
+  "tier": "webgpu",
+  "references": "webgpu-safari",
+  "browser": "Safari (webdriver.ts)",
+  "buildMs": 76388,
+  "scenes": {
+    "gltf-reference": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3755,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00206,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gltf-reference.png",
+      "outliers": 0.002,
+      "rmse": 0.00206,
+      "ok": true,
+      "ms": 4105
+    },
+    "spheres-20k": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33684,
+      "metal": {
+        "outliers": 99.025,
+        "rmse": 0.58552,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/spheres-20k.png",
+      "outliers": 99.025,
+      "rmse": 0.58552,
+      "ok": false,
+      "ms": 33906
+    },
+    "cascades-200m": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 57,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/cascades-200m.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 282
+    },
+    "point-spot-lights": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 4028,
+      "metal": {
+        "outliers": 0.332,
+        "rmse": 0.01613,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/point-spot-lights.png",
+      "outliers": 0.332,
+      "rmse": 0.01613,
+      "ok": false,
+      "ms": 4512
+    },
+    "taa": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 55,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00843,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taa.png",
+      "outliers": 0.001,
+      "rmse": 0.00843,
+      "ok": true,
+      "ms": 292
+    },
+    "bloom": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00258,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/bloom.png",
+      "outliers": 0,
+      "rmse": 0.00258,
+      "ok": true,
+      "ms": 482
+    },
+    "exposure": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 51,
+      "metal": {
+        "outliers": 0.009,
+        "rmse": 0.00461,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/exposure.png",
+      "outliers": 0.009,
+      "rmse": 0.00461,
+      "ok": true,
+      "ms": 236
+    },
+    "sprites-20k": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 209,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00229,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-20k.png",
+      "outliers": 0,
+      "rmse": 0.00229,
+      "ok": true,
+      "ms": 443
+    },
+    "text-msdf": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 51,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/text-msdf.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 257
+    },
+    "sky-only": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 33,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-only.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 253
+    },
+    "showcase": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 2054,
+      "metal": {
+        "outliers": 0.013,
+        "rmse": 0.00356,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/showcase.png",
+      "outliers": 0.013,
+      "rmse": 0.00356,
+      "ok": true,
+      "ms": 2476
+    },
+    "overlay": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 341,
+      "metal": {
+        "outliers": 0.01,
+        "rmse": 0.0033,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/overlay.png",
+      "outliers": 0.01,
+      "rmse": 0.0033,
+      "ok": true,
+      "ms": 766
+    },
+    "particles": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 120,
+      "renderMs": 489,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00049,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/particles.png",
+      "outliers": 0,
+      "rmse": 0.00049,
+      "ok": true,
+      "ms": 1144
+    },
+    "particles-cpu": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 120,
+      "renderMs": 492,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00049,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/particles-cpu.png",
+      "outliers": 0,
+      "rmse": 0.00049,
+      "ok": true,
+      "ms": 1150
+    },
+    "particles-lit": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 90,
+      "renderMs": 4265,
+      "metal": {
+        "outliers": 0.146,
+        "rmse": 0.00934,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/particles-lit.png",
+      "outliers": 0.146,
+      "rmse": 0.00934,
+      "ok": true,
+      "ms": 4813
+    },
+    "fx-2d": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 60,
+      "renderMs": 467,
+      "metal": {
+        "outliers": 0.02,
+        "rmse": 0.00422,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fx-2d.png",
+      "outliers": 0.02,
+      "rmse": 0.00422,
+      "ok": true,
+      "ms": 1163
+    },
+    "trails-beams": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 50,
+      "renderMs": 291,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00553,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/trails-beams.png",
+      "outliers": 0,
+      "rmse": 0.00553,
+      "ok": true,
+      "ms": 949
+    },
+    "decals": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1328,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.0044,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/decals.png",
+      "outliers": 0,
+      "rmse": 0.0044,
+      "ok": true,
+      "ms": 1874
+    },
+    "decals-many": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 465,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00319,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/decals-many.png",
+      "outliers": 0,
+      "rmse": 0.00319,
+      "ok": true,
+      "ms": 1069
+    },
+    "post-grade": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 399,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00226,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-grade.png",
+      "outliers": 0.004,
+      "rmse": 0.00226,
+      "ok": true,
+      "ms": 692
+    },
+    "post-agx": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 723,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00227,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-agx.png",
+      "outliers": 0,
+      "rmse": 0.00227,
+      "ok": true,
+      "ms": 1214
+    },
+    "environment-map": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 981,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/environment-map.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1817
+    },
+    "environment-blurry": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 326,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/environment-blurry.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1020
+    },
+    "environment-blend": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 134,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/environment-blend.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 1017
+    },
+    "environment-grounded": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 527,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/environment-grounded.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 896
+    },
+    "environment-uncooked": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 400,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00002,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/environment-uncooked.png",
+      "outliers": 0,
+      "rmse": 0.00002,
+      "ok": true,
+      "ms": 1063
+    },
+    "ao-gtao": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 690,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00291,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-gtao.png",
+      "outliers": 0.001,
+      "rmse": 0.00291,
+      "ok": true,
+      "ms": 925
+    },
+    "ao-ssao": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 767,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00143,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-ssao.png",
+      "outliers": 0,
+      "rmse": 0.00143,
+      "ok": true,
+      "ms": 1059
+    },
+    "gi-room": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 4,
+      "renderMs": 710,
+      "metal": {
+        "outliers": 0.069,
+        "rmse": 0.00571,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gi-room.png",
+      "outliers": 0.069,
+      "rmse": 0.00571,
+      "ok": true,
+      "ms": 1267
+    },
+    "gi-room-taa": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 32,
+      "renderMs": 441,
+      "metal": {
+        "outliers": 0.033,
+        "rmse": 0.0042,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gi-room-taa.png",
+      "outliers": 0.033,
+      "rmse": 0.0042,
+      "ok": true,
+      "ms": 982
+    },
+    "gi-room-probes": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 32,
+      "renderMs": 1459,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00078,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gi-room-probes.png",
+      "outliers": 0,
+      "rmse": 0.00078,
+      "ok": true,
+      "ms": 1675
+    },
+    "gi-shelter": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 32,
+      "renderMs": 786,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00006,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/gi-shelter.png",
+      "outliers": 0,
+      "rmse": 0.00006,
+      "ok": true,
+      "ms": 1099
+    },
+    "light-volume-room": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 48,
+      "renderMs": 2688,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00315,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/light-volume-room.png",
+      "outliers": 0.001,
+      "rmse": 0.00315,
+      "ok": true,
+      "ms": 3107
+    },
+    "light-volume-mirror": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 48,
+      "renderMs": 578,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00335,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/light-volume-mirror.png",
+      "outliers": 0.001,
+      "rmse": 0.00335,
+      "ok": true,
+      "ms": 1008
+    },
+    "light-volume-glossy": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 48,
+      "renderMs": 574,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00331,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/light-volume-glossy.png",
+      "outliers": 0.001,
+      "rmse": 0.00331,
+      "ok": true,
+      "ms": 1029
+    },
+    "light-volume-rough": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 48,
+      "renderMs": 542,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00335,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/light-volume-rough.png",
+      "outliers": 0.001,
+      "rmse": 0.00335,
+      "ok": true,
+      "ms": 979
+    },
+    "dof-low": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1553,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00173,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/dof-low.png",
+      "outliers": 0.003,
+      "rmse": 0.00173,
+      "ok": true,
+      "ms": 1920
+    },
+    "dof-high": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 628,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00168,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/dof-high.png",
+      "outliers": 0.003,
+      "rmse": 0.00168,
+      "ok": true,
+      "ms": 1011
+    },
+    "god-rays": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 616,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00242,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/god-rays.png",
+      "outliers": 0.001,
+      "rmse": 0.00242,
+      "ok": true,
+      "ms": 1270
+    },
+    "flare-noon": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 346,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00005,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/flare-noon.png",
+      "outliers": 0,
+      "rmse": 0.00005,
+      "ok": true,
+      "ms": 592
+    },
+    "flare-edge": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 750,
+      "metal": {
+        "outliers": 0.014,
+        "rmse": 0.00212,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/flare-edge.png",
+      "outliers": 0.014,
+      "rmse": 0.00212,
+      "ok": true,
+      "ms": 1163
+    },
+    "flare-lights": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 589,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00002,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/flare-lights.png",
+      "outliers": 0,
+      "rmse": 0.00002,
+      "ok": true,
+      "ms": 1078
+    },
+    "motion-blur": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 4,
+      "renderMs": 511,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00466,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/motion-blur.png",
+      "outliers": 0,
+      "rmse": 0.00466,
+      "ok": true,
+      "ms": 1085
+    },
+    "stylised": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 425,
+      "metal": {
+        "outliers": 0.031,
+        "rmse": 0.00313,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylised.png",
+      "outliers": 0.031,
+      "rmse": 0.00313,
+      "ok": true,
+      "ms": 610
+    },
+    "skinning": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 823,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00543,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/skinning.png",
+      "outliers": 0.002,
+      "rmse": 0.00543,
+      "ok": true,
+      "ms": 1573
+    },
+    "crowd-culling": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 3,
+      "renderMs": 2244,
+      "metal": {
+        "outliers": 0.01,
+        "rmse": 0.00266,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/crowd-culling.png",
+      "outliers": 0.01,
+      "rmse": 0.00266,
+      "ok": true,
+      "ms": 2965
+    },
+    "atmosphere-fog": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2269,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00165,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-fog.png",
+      "outliers": 0,
+      "rmse": 0.00165,
+      "ok": true,
+      "ms": 2813
+    },
+    "atmosphere-dusk": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 464,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00978,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-dusk.png",
+      "outliers": 0,
+      "rmse": 0.00978,
+      "ok": true,
+      "ms": 1031
+    },
+    "atmosphere-night": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 435,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00115,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-night.png",
+      "outliers": 0,
+      "rmse": 0.00115,
+      "ok": true,
+      "ms": 1029
+    },
+    "water-3d": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 416,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00194,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-3d.png",
+      "outliers": 0.003,
+      "rmse": 0.00194,
+      "ok": true,
+      "ms": 966
+    },
+    "water-2d": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 457,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00015,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-2d.png",
+      "outliers": 0,
+      "rmse": 0.00015,
+      "ok": true,
+      "ms": 1133
+    },
+    "fluid-2d": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 320,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fluid-2d.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 563
+    },
+    "fluid-groups": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 756,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fluid-groups.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 968
+    },
+    "fluid-3d": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 795,
+      "metal": {
+        "outliers": 0.054,
+        "rmse": 0.00486,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fluid-3d.png",
+      "outliers": 0.054,
+      "rmse": 0.00486,
+      "ok": true,
+      "ms": 1174
+    },
+    "shader-hooks": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3597,
+      "metal": {
+        "outliers": 0.049,
+        "rmse": 0.00859,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shader-hooks.png",
+      "outliers": 0.049,
+      "rmse": 0.00859,
+      "ok": true,
+      "ms": 4012
+    },
+    "weather-rain": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 240,
+      "renderMs": 2576,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00457,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-rain.png",
+      "outliers": 0,
+      "rmse": 0.00457,
+      "ok": true,
+      "ms": 3602
+    },
+    "weather-snow": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 240,
+      "renderMs": 982,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00449,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-snow.png",
+      "outliers": 0,
+      "rmse": 0.00449,
+      "ok": true,
+      "ms": 1882
+    },
+    "terrain-near": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1032,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.60023,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-near.png",
+      "outliers": 100,
+      "rmse": 0.60023,
+      "ok": false,
+      "ms": 1414
+    },
+    "terrain-mid": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 686,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.6196,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-mid.png",
+      "outliers": 100,
+      "rmse": 0.6196,
+      "ok": false,
+      "ms": 988
+    },
+    "terrain-far": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 692,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.73167,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-far.png",
+      "outliers": 100,
+      "rmse": 0.73167,
+      "ok": false,
+      "ms": 931
+    },
+    "water-planar": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 768,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.68974,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/water-planar.png",
+      "outliers": 100,
+      "rmse": 0.68974,
+      "ok": false,
+      "ms": 1066
+    },
+    "water-shadows": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 696,
+      "metal": {
+        "outliers": 99.998,
+        "rmse": 0.49131,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/water-shadows.png",
+      "outliers": 99.998,
+      "rmse": 0.49131,
+      "ok": false,
+      "ms": 988
+    },
+    "water-underwater": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 712,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.4735,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/water-underwater.png",
+      "outliers": 100,
+      "rmse": 0.4735,
+      "ok": false,
+      "ms": 972
+    },
+    "terrain-grass": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2737,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.60874,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-grass.png",
+      "outliers": 100,
+      "rmse": 0.60874,
+      "ok": false,
+      "ms": 2971
+    },
+    "lights-256": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 793,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00465,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/lights-256.png",
+      "outliers": 0,
+      "rmse": 0.00465,
+      "ok": true,
+      "ms": 1156
+    },
+    "atmosphere-moon": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 611,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00077,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/atmosphere-moon.png",
+      "outliers": 0,
+      "rmse": 0.00077,
+      "ok": true,
+      "ms": 1049
+    },
+    "materials": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 4585,
+      "metal": {
+        "outliers": 0.072,
+        "rmse": 0.00745,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials.png",
+      "outliers": 0.072,
+      "rmse": 0.00745,
+      "ok": true,
+      "ms": 4998
+    },
+    "skinned-hooks": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3565,
+      "metal": {
+        "outliers": 0.014,
+        "rmse": 0.00625,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/skinned-hooks.png",
+      "outliers": 0.014,
+      "rmse": 0.00625,
+      "ok": true,
+      "ms": 4604
+    },
+    "materials-physical": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1968,
+      "metal": {
+        "outliers": 0.041,
+        "rmse": 0.00345,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials-physical.png",
+      "outliers": 0.041,
+      "rmse": 0.00345,
+      "ok": true,
+      "ms": 2249
+    },
+    "shadows-soft": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 738,
+      "metal": {
+        "outliers": 0.08,
+        "rmse": 0.00714,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-soft.png",
+      "outliers": 0.08,
+      "rmse": 0.00714,
+      "ok": true,
+      "ms": 977
+    },
+    "point-shadows-paraboloid": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 757,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00248,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/point-shadows-paraboloid.png",
+      "outliers": 0.002,
+      "rmse": 0.00248,
+      "ok": true,
+      "ms": 1480
+    },
+    "shadows-local-8": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 275,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00161,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-local-8.png",
+      "outliers": 0.002,
+      "rmse": 0.00161,
+      "ok": true,
+      "ms": 1330
+    },
+    "shadows-local-contact": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 949,
+      "metal": {
+        "outliers": 0.158,
+        "rmse": 0.00885,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-local-contact.png",
+      "outliers": 0.158,
+      "rmse": 0.00885,
+      "ok": true,
+      "ms": 1426
+    },
+    "shadows-cascades-4": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 521,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-cascades-4.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 773
+    },
+    "fxaa": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Fxaa",
+      "frames": 1,
+      "renderMs": 746,
+      "metal": {
+        "outliers": 0.015,
+        "rmse": 0.00893,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/fxaa.png",
+      "outliers": 0.015,
+      "rmse": 0.00893,
+      "ok": true,
+      "ms": 993
+    },
+    "smaa": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Smaa",
+      "frames": 1,
+      "renderMs": 1142,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00004,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/smaa.png",
+      "outliers": 0,
+      "rmse": 0.00004,
+      "ok": true,
+      "ms": 2302
+    },
+    "smaa-t2x": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "SmaaT2x",
+      "frames": 2,
+      "renderMs": 1448,
+      "metal": {
+        "outliers": 0.01,
+        "rmse": 0.00343,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/smaa-t2x.png",
+      "outliers": 0.01,
+      "rmse": 0.00343,
+      "ok": true,
+      "ms": 2153
+    },
+    "smaa-t2x-moving": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "SmaaT2x",
+      "frames": 24,
+      "renderMs": 1292,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00329,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/smaa-t2x-moving.png",
+      "outliers": 0,
+      "rmse": 0.00329,
+      "ok": true,
+      "ms": 1780
+    },
+    "taa-sharp": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 1506,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00891,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taa-sharp.png",
+      "outliers": 0.002,
+      "rmse": 0.00891,
+      "ok": true,
+      "ms": 2048
+    },
+    "taau": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 64,
+      "renderMs": 472,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00983,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taau.png",
+      "outliers": 0,
+      "rmse": 0.00983,
+      "ok": true,
+      "ms": 788
+    },
+    "taau-moving": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 24,
+      "renderMs": 678,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00826,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/taau-moving.png",
+      "outliers": 0.002,
+      "rmse": 0.00826,
+      "ok": true,
+      "ms": 1055
+    },
+    "stylise-pixel": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1593,
+      "metal": {
+        "outliers": 3.099,
+        "rmse": 0.07039,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-pixel.png",
+      "outliers": 3.099,
+      "rmse": 0.07039,
+      "ok": false,
+      "ms": 1826
+    },
+    "stylise-palette": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 791,
+      "metal": {
+        "outliers": 2.687,
+        "rmse": 0.07117,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-palette.png",
+      "outliers": 2.687,
+      "rmse": 0.07117,
+      "ok": false,
+      "ms": 1027
+    },
+    "stylise-print": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 768,
+      "metal": {
+        "outliers": 3.404,
+        "rmse": 0.05772,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-print.png",
+      "outliers": 3.404,
+      "rmse": 0.05772,
+      "ok": false,
+      "ms": 1493
+    },
+    "stylise-halftone": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 262,
+      "metal": {
+        "outliers": 1.539,
+        "rmse": 0.07244,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-halftone.png",
+      "outliers": 1.539,
+      "rmse": 0.07244,
+      "ok": false,
+      "ms": 633
+    },
+    "stylise-paint": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1642,
+      "metal": {
+        "outliers": 0.03,
+        "rmse": 0.00363,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-paint.png",
+      "outliers": 0.03,
+      "rmse": 0.00363,
+      "ok": true,
+      "ms": 2300
+    },
+    "stylise-bands": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 335,
+      "metal": {
+        "outliers": 1.098,
+        "rmse": 0.0266,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-bands.png",
+      "outliers": 1.098,
+      "rmse": 0.0266,
+      "ok": false,
+      "ms": 551
+    },
+    "stylise-retro": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 795,
+      "metal": {
+        "outliers": 2.999,
+        "rmse": 0.04897,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-retro.png",
+      "outliers": 2.999,
+      "rmse": 0.04897,
+      "ok": false,
+      "ms": 1394
+    },
+    "stylise-material": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2394,
+      "metal": {
+        "outliers": 0.831,
+        "rmse": 0.02004,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-material.png",
+      "outliers": 0.831,
+      "rmse": 0.02004,
+      "ok": false,
+      "ms": 2783
+    },
+    "sprites-array": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2619,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-array.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 2872
+    },
+    "stylise-ink-depth": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 750,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-ink-depth.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 931
+    },
+    "sprites-shadow": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 822,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00508,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-shadow.png",
+      "outliers": 0.002,
+      "rmse": 0.00508,
+      "ok": true,
+      "ms": 1078
+    },
+    "sprites-billboard": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3736,
+      "metal": {
+        "outliers": 0.007,
+        "rmse": 0.00541,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-billboard.png",
+      "outliers": 0.007,
+      "rmse": 0.00541,
+      "ok": true,
+      "ms": 4003
+    },
+    "sprites-array-fx": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 60,
+      "renderMs": 733,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00002,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-array-fx.png",
+      "outliers": 0,
+      "rmse": 0.00002,
+      "ok": true,
+      "ms": 1169
+    },
+    "sprites-shadow-terrain": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 561,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.58905,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/sprites-shadow-terrain.png",
+      "outliers": 100,
+      "rmse": 0.58905,
+      "ok": false,
+      "ms": 784
+    },
+    "stylise-surface": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 786,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00145,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-surface.png",
+      "outliers": 0.003,
+      "rmse": 0.00145,
+      "ok": true,
+      "ms": 1345
+    },
+    "stylise-object": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 431,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00152,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-object.png",
+      "outliers": 0.003,
+      "rmse": 0.00152,
+      "ok": true,
+      "ms": 965
+    },
+    "stylise-halftone-surface": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 458,
+      "metal": {
+        "outliers": 2.323,
+        "rmse": 0.08991,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/stylise-halftone-surface.png",
+      "outliers": 2.323,
+      "rmse": 0.08991,
+      "ok": false,
+      "ms": 764
+    },
+    "materials-array": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 5705,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00155,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/materials-array.png",
+      "outliers": 0,
+      "rmse": 0.00155,
+      "ok": true,
+      "ms": 5981
+    },
+    "stylise-outline-voxels": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 726,
+      "metal": {
+        "outliers": 0.077,
+        "rmse": 0.00367,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-outline-voxels.png",
+      "outliers": 0.077,
+      "rmse": 0.00367,
+      "ok": true,
+      "ms": 929
+    },
+    "stylise-toon-physical": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 804,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00096,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-toon-physical.png",
+      "outliers": 0,
+      "rmse": 0.00096,
+      "ok": true,
+      "ms": 1020
+    },
+    "sprites-untonemapped": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Taa",
+      "frames": 16,
+      "renderMs": 1782,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00121,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sprites-untonemapped.png",
+      "outliers": 0,
+      "rmse": 0.00121,
+      "ok": true,
+      "ms": 2071
+    },
+    "stylise-bands-tint": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 705,
+      "metal": {
+        "outliers": 0.013,
+        "rmse": 0.00232,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-bands-tint.png",
+      "outliers": 0.013,
+      "rmse": 0.00232,
+      "ok": true,
+      "ms": 973
+    },
+    "tilemap-lit": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1738,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00454,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/tilemap-lit.png",
+      "outliers": 0,
+      "rmse": 0.00454,
+      "ok": true,
+      "ms": 2082
+    },
+    "model-flash": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 616,
+      "metal": {
+        "outliers": 0.011,
+        "rmse": 0.0028,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/model-flash.png",
+      "outliers": 0.011,
+      "rmse": 0.0028,
+      "ok": true,
+      "ms": 1634
+    },
+    "shadows-crypt": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1019,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadows-crypt.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1353
+    },
+    "shadow-flags": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 651,
+      "metal": {
+        "outliers": 0.036,
+        "rmse": 0.00442,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadow-flags.png",
+      "outliers": 0.036,
+      "rmse": 0.00442,
+      "ok": true,
+      "ms": 889
+    },
+    "ground-grid": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 783,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00075,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ground-grid.png",
+      "outliers": 0.001,
+      "rmse": 0.00075,
+      "ok": true,
+      "ms": 1053
+    },
+    "stylise-outline-ground": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 719,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00012,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/stylise-outline-ground.png",
+      "outliers": 0,
+      "rmse": 0.00012,
+      "ok": true,
+      "ms": 960
+    },
+    "geometry-procedural": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 764,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00778,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/geometry-procedural.png",
+      "outliers": 0.003,
+      "rmse": 0.00778,
+      "ok": true,
+      "ms": 1081
+    },
+    "lines": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 684,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00792,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/lines.png",
+      "outliers": 0,
+      "rmse": 0.00792,
+      "ok": true,
+      "ms": 953
+    },
+    "points": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 725,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00738,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/points.png",
+      "outliers": 0,
+      "rmse": 0.00738,
+      "ok": true,
+      "ms": 1070
+    },
+    "wireframe": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 654,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.00762,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/wireframe.png",
+      "outliers": 0.002,
+      "rmse": 0.00762,
+      "ok": true,
+      "ms": 1630
+    },
+    "debug-overlay": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1030,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00727,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/debug-overlay.png",
+      "outliers": 0,
+      "rmse": 0.00727,
+      "ok": true,
+      "ms": 1496
+    },
+    "views-monitor": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 531,
+      "metal": {
+        "outliers": 0.024,
+        "rmse": 0.00319,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/views-monitor.png",
+      "outliers": 0.024,
+      "rmse": 0.00319,
+      "ok": true,
+      "ms": 730
+    },
+    "views-mirror": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 809,
+      "metal": {
+        "outliers": 0.022,
+        "rmse": 0.0028,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/views-mirror.png",
+      "outliers": 0.022,
+      "rmse": 0.0028,
+      "ok": true,
+      "ms": 1012
+    },
+    "views-split": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 796,
+      "metal": {
+        "outliers": 0.03,
+        "rmse": 0.00338,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/views-split.png",
+      "outliers": 0.03,
+      "rmse": 0.00338,
+      "ok": true,
+      "ms": 1064
+    },
+    "views-layers": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3730,
+      "metal": {
+        "outliers": 0.022,
+        "rmse": 0.00296,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/views-layers.png",
+      "outliers": 0.022,
+      "rmse": 0.00296,
+      "ok": true,
+      "ms": 4012
+    },
+    "views-depth": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 717,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/views-depth.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 923
+    },
+    "shader-full-dissolve": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1792,
+      "metal": {
+        "outliers": 0.041,
+        "rmse": 0.00394,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shader-full-dissolve.png",
+      "outliers": 0.041,
+      "rmse": 0.00394,
+      "ok": true,
+      "ms": 2018
+    },
+    "post-crt": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 777,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00217,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-crt.png",
+      "outliers": 0.004,
+      "rmse": 0.00217,
+      "ok": true,
+      "ms": 1043
+    },
+    "rect-lights": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 731,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00002,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/rect-lights.png",
+      "outliers": 0,
+      "rmse": 0.00002,
+      "ok": true,
+      "ms": 1523
+    },
+    "light-cookies": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1205,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/light-cookies.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1521
+    },
+    "volumetric-fog": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2684,
+      "metal": {
+        "outliers": 0.021,
+        "rmse": 0.0032,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/volumetric-fog.png",
+      "outliers": 0.021,
+      "rmse": 0.0032,
+      "ok": true,
+      "ms": 3595
+    },
+    "geometry-shapes": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1002,
+      "metal": {
+        "outliers": 0.009,
+        "rmse": 0.00809,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/geometry-shapes.png",
+      "outliers": 0.009,
+      "rmse": 0.00809,
+      "ok": true,
+      "ms": 1307
+    },
+    "water-mesh": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 792,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00003,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-mesh.png",
+      "outliers": 0,
+      "rmse": 0.00003,
+      "ok": true,
+      "ms": 1023
+    },
+    "water-ripples": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 768,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00008,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ripples.png",
+      "outliers": 0,
+      "rmse": 0.00008,
+      "ok": true,
+      "ms": 1341
+    },
+    "water-fresnel": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 421,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00018,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-fresnel.png",
+      "outliers": 0,
+      "rmse": 0.00018,
+      "ok": true,
+      "ms": 632
+    },
+    "water-glint": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 792,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00014,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-glint.png",
+      "outliers": 0,
+      "rmse": 0.00014,
+      "ok": true,
+      "ms": 1033
+    },
+    "shadow-box": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 757,
+      "metal": {
+        "outliers": 0.014,
+        "rmse": 0.00292,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/shadow-box.png",
+      "outliers": 0.014,
+      "rmse": 0.00292,
+      "ok": true,
+      "ms": 939
+    },
+    "hemisphere-light": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 822,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/hemisphere-light.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 995
+    },
+    "ao-direct": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 825,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00233,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-direct.png",
+      "outliers": 0,
+      "rmse": 0.00233,
+      "ok": true,
+      "ms": 1060
+    },
+    "ao-screen-water": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2764,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00079,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ao-screen-water.png",
+      "outliers": 0,
+      "rmse": 0.00079,
+      "ok": true,
+      "ms": 3379
+    },
+    "post-sharpen": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 382,
+      "metal": {
+        "outliers": 0.324,
+        "rmse": 0.01494,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/post-sharpen.png",
+      "outliers": 0.324,
+      "rmse": 0.01494,
+      "ok": false,
+      "ms": 848
+    },
+    "bloom-unreal": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 533,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00255,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/bloom-unreal.png",
+      "outliers": 0,
+      "rmse": 0.00255,
+      "ok": true,
+      "ms": 1098
+    },
+    "alpha-to-coverage": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Msaa4",
+      "frames": 1,
+      "renderMs": 1434,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/alpha-to-coverage.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1608
+    },
+    "hooks-eye-front": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2834,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/hooks-eye-front.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 2975
+    },
+    "hooks-planar": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 6860,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/hooks-planar.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 7092
+    },
+    "hooks-screen-ao": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2763,
+      "metal": {
+        "outliers": 6.611,
+        "rmse": 0.03557,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/hooks-screen-ao.png",
+      "outliers": 6.611,
+      "rmse": 0.03557,
+      "ok": false,
+      "ms": 3285
+    },
+    "water-planar-two": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 480,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00177,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-planar-two.png",
+      "outliers": 0.003,
+      "rmse": 0.00177,
+      "ok": true,
+      "ms": 691
+    },
+    "terrain-hidden": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 790,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/terrain-hidden.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1018
+    },
+    "terrain-scatter-unshadowed": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 768,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.80595,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-scatter-unshadowed.png",
+      "outliers": 100,
+      "rmse": 0.80595,
+      "ok": false,
+      "ms": 986
+    },
+    "post-adjust": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 769,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00244,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-adjust.png",
+      "outliers": 0.003,
+      "rmse": 0.00244,
+      "ok": true,
+      "ms": 1045
+    },
+    "post-neutral": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 736,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00229,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-neutral.png",
+      "outliers": 0,
+      "rmse": 0.00229,
+      "ok": true,
+      "ms": 1190
+    },
+    "post-lens": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 527,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00177,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-lens.png",
+      "outliers": 0.004,
+      "rmse": 0.00177,
+      "ok": true,
+      "ms": 803
+    },
+    "terrain-grass-wind": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 718,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.60703,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-grass-wind.png",
+      "outliers": 100,
+      "rmse": 0.60703,
+      "ok": false,
+      "ms": 940
+    },
+    "terrain-holes": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1786,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.38798,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-holes.png",
+      "outliers": 100,
+      "rmse": 0.38798,
+      "ok": false,
+      "ms": 2056
+    },
+    "terrain-layers": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1620,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.37333,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-layers.png",
+      "outliers": 100,
+      "rmse": 0.37333,
+      "ok": false,
+      "ms": 1982
+    },
+    "terrain-tiling": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 763,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.65434,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-tiling.png",
+      "outliers": 100,
+      "rmse": 0.65434,
+      "ok": false,
+      "ms": 976
+    },
+    "terrain-steep": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 792,
+      "metal": {
+        "outliers": 51.388,
+        "rmse": 0.58589,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-steep.png",
+      "outliers": 51.388,
+      "rmse": 0.58589,
+      "ok": false,
+      "ms": 1454
+    },
+    "terrain-horizon": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1325,
+      "metal": {
+        "outliers": 95.972,
+        "rmse": 0.6647,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-horizon.png",
+      "outliers": 95.972,
+      "rmse": 0.6647,
+      "ok": false,
+      "ms": 1744
+    },
+    "terrain-cliff": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1587,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.60138,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-cliff.png",
+      "outliers": 100,
+      "rmse": 0.60138,
+      "ok": false,
+      "ms": 2057
+    },
+    "terrain-cliff-blend": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 532,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.59687,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/terrain-cliff-blend.png",
+      "outliers": 100,
+      "rmse": 0.59687,
+      "ok": false,
+      "ms": 1055
+    },
+    "impostors": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 3352,
+      "metal": {
+        "outliers": 0.003,
+        "rmse": 0.00194,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/impostors.png",
+      "outliers": 0.003,
+      "rmse": 0.00194,
+      "ok": true,
+      "ms": 3745
+    },
+    "impostor-scatter": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2604,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.73709,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/impostor-scatter.png",
+      "outliers": 100,
+      "rmse": 0.73709,
+      "ok": false,
+      "ms": 2989
+    },
+    "wind-models": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2746,
+      "metal": {
+        "outliers": 0.001,
+        "rmse": 0.00098,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/wind-models.png",
+      "outliers": 0.001,
+      "rmse": 0.00098,
+      "ok": true,
+      "ms": 2960
+    },
+    "grass-near": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 4761,
+      "metal": {
+        "outliers": 99.424,
+        "rmse": 0.63164,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/grass-near.png",
+      "outliers": 99.424,
+      "rmse": 0.63164,
+      "ok": false,
+      "ms": 5133
+    },
+    "grass-mid": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 621,
+      "metal": {
+        "outliers": 99.906,
+        "rmse": 0.57834,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/grass-mid.png",
+      "outliers": 99.906,
+      "rmse": 0.57834,
+      "ok": false,
+      "ms": 928
+    },
+    "grass-far": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 695,
+      "metal": {
+        "outliers": 100,
+        "rmse": 0.55315,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/grass-far.png",
+      "outliers": 100,
+      "rmse": 0.55315,
+      "ok": false,
+      "ms": 990
+    },
+    "grass-backlit": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 720,
+      "metal": {
+        "outliers": 97.618,
+        "rmse": 0.61663,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/grass-backlit.png",
+      "outliers": 97.618,
+      "rmse": 0.61663,
+      "ok": false,
+      "ms": 953
+    },
+    "grass-wind": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 764,
+      "metal": {
+        "outliers": 99.851,
+        "rmse": 0.63318,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/grass-wind.png",
+      "outliers": 99.851,
+      "rmse": 0.63318,
+      "ok": false,
+      "ms": 992
+    },
+    "post-blur": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 794,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00109,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/post-blur.png",
+      "outliers": 0,
+      "rmse": 0.00109,
+      "ok": true,
+      "ms": 1444
+    },
+    "ui-shapes": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 347,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-shapes.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 549
+    },
+    "ui-paints": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 804,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-paints.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 997
+    },
+    "ui-effects": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2805,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-effects.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 3533
+    },
+    "ui-layers": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2269,
+      "metal": {
+        "outliers": 2.159,
+        "rmse": 0.03904,
+        "ok": false
+      },
+      "against": "crates/og-tests/references/metal/ui-layers.png",
+      "outliers": 2.159,
+      "rmse": 0.03904,
+      "ok": false,
+      "ms": 2518
+    },
+    "ui-text-effects": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 754,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-text-effects.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 954
+    },
+    "ui-world": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 797,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.0058,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-world.png",
+      "outliers": 0,
+      "rmse": 0.0058,
+      "ok": true,
+      "ms": 989
+    },
+    "ui-panel": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 2,
+      "renderMs": 815,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.0041,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-panel.png",
+      "outliers": 0,
+      "rmse": 0.0041,
+      "ok": true,
+      "ms": 976
+    },
+    "ui-glass-bright": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 838,
+      "metal": {
+        "outliers": 0.194,
+        "rmse": 0.00806,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-glass-bright.png",
+      "outliers": 0.194,
+      "rmse": 0.00806,
+      "ok": true,
+      "ms": 1177
+    },
+    "ui-glass-dark": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 654,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00001,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-glass-dark.png",
+      "outliers": 0,
+      "rmse": 0.00001,
+      "ok": true,
+      "ms": 982
+    },
+    "ui-glass-busy": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 672,
+      "metal": {
+        "outliers": 0.186,
+        "rmse": 0.00756,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-glass-busy.png",
+      "outliers": 0.186,
+      "rmse": 0.00756,
+      "ok": true,
+      "ms": 906
+    },
+    "ui-glass-dialog": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 757,
+      "metal": {
+        "outliers": 0.022,
+        "rmse": 0.00217,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-glass-dialog.png",
+      "outliers": 0.022,
+      "rmse": 0.00217,
+      "ok": true,
+      "ms": 1162
+    },
+    "ui-glass-fallback": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 606,
+      "metal": {
+        "outliers": 0.191,
+        "rmse": 0.00732,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/ui-glass-fallback.png",
+      "outliers": 0.191,
+      "rmse": 0.00732,
+      "ok": true,
+      "ms": 968
+    },
+    "sky-physical-noon": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 610,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00693,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-physical-noon.png",
+      "outliers": 0.004,
+      "rmse": 0.00693,
+      "ok": true,
+      "ms": 1059
+    },
+    "sky-physical-sunset": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 561,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-physical-sunset.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 1129
+    },
+    "sky-physical-twilight": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 435,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00326,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-physical-twilight.png",
+      "outliers": 0,
+      "rmse": 0.00326,
+      "ok": true,
+      "ms": 928
+    },
+    "sky-physical-hazy": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 500,
+      "metal": {
+        "outliers": 0.006,
+        "rmse": 0.00719,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/sky-physical-hazy.png",
+      "outliers": 0.006,
+      "rmse": 0.00719,
+      "ok": true,
+      "ms": 972
+    },
+    "clouds-fair": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 527,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00042,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/clouds-fair.png",
+      "outliers": 0,
+      "rmse": 0.00042,
+      "ok": true,
+      "ms": 927
+    },
+    "clouds-overcast": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 605,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00054,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/clouds-overcast.png",
+      "outliers": 0,
+      "rmse": 0.00054,
+      "ok": true,
+      "ms": 923
+    },
+    "clouds-sunset": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 682,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00048,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/clouds-sunset.png",
+      "outliers": 0,
+      "rmse": 0.00048,
+      "ok": true,
+      "ms": 1269
+    },
+    "clouds-gradient": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 409,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00796,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/clouds-gradient.png",
+      "outliers": 0,
+      "rmse": 0.00796,
+      "ok": true,
+      "ms": 785
+    },
+    "weather-wet": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 627,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00048,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-wet.png",
+      "outliers": 0,
+      "rmse": 0.00048,
+      "ok": true,
+      "ms": 1083
+    },
+    "weather-snow-cover": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 543,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00043,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-snow-cover.png",
+      "outliers": 0,
+      "rmse": 0.00043,
+      "ok": true,
+      "ms": 946
+    },
+    "weather-lightning": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 597,
+      "metal": {
+        "outliers": 0.007,
+        "rmse": 0.00153,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-lightning.png",
+      "outliers": 0.007,
+      "rmse": 0.00153,
+      "ok": true,
+      "ms": 1181
+    },
+    "weather-shelter-snow": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 416,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00038,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-shelter-snow.png",
+      "outliers": 0,
+      "rmse": 0.00038,
+      "ok": true,
+      "ms": 829
+    },
+    "weather-shelter-rain": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 588,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00047,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-shelter-rain.png",
+      "outliers": 0,
+      "rmse": 0.00047,
+      "ok": true,
+      "ms": 1054
+    },
+    "weather-shelter-meshlet": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 2534,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00038,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/weather-shelter-meshlet.png",
+      "outliers": 0,
+      "rmse": 0.00038,
+      "ok": true,
+      "ms": 2980
+    },
+    "aurora-arcs": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1552,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00116,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/aurora-arcs.png",
+      "outliers": 0,
+      "rmse": 0.00116,
+      "ok": true,
+      "ms": 2219
+    },
+    "aurora-breakup": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 330,
+      "metal": {
+        "outliers": 0.004,
+        "rmse": 0.00593,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/aurora-breakup.png",
+      "outliers": 0.004,
+      "rmse": 0.00593,
+      "ok": true,
+      "ms": 921
+    },
+    "live-sky": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 434,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00043,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/live-sky.png",
+      "outliers": 0,
+      "rmse": 0.00043,
+      "ok": true,
+      "ms": 634
+    },
+    "water-ocean": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 1804,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.0045,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ocean.png",
+      "outliers": 0,
+      "rmse": 0.0045,
+      "ok": true,
+      "ms": 2111
+    },
+    "water-ocean-storm": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 690,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00048,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ocean-storm.png",
+      "outliers": 0,
+      "rmse": 0.00048,
+      "ok": true,
+      "ms": 1185
+    },
+    "water-ocean-sunset": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 495,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00019,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ocean-sunset.png",
+      "outliers": 0,
+      "rmse": 0.00019,
+      "ok": true,
+      "ms": 852
+    },
+    "water-flow-map": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 651,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00103,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-flow-map.png",
+      "outliers": 0,
+      "rmse": 0.00103,
+      "ok": true,
+      "ms": 984
+    },
+    "water-ocean-dusk-storm": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 660,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00036,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ocean-dusk-storm.png",
+      "outliers": 0,
+      "rmse": 0.00036,
+      "ok": true,
+      "ms": 1247
+    },
+    "water-ocean-night": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 418,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0.00157,
+        "ok": true
+      },
+      "against": "crates/og-tests/references/metal/water-ocean-night.png",
+      "outliers": 0,
+      "rmse": 0.00157,
+      "ok": true,
+      "ms": 938
+    },
+    "og-ui/sample-screen": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 445,
+      "metal": {
+        "outliers": 0.019,
+        "rmse": 0.00272,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/sample-screen.png",
+      "outliers": 0.019,
+      "rmse": 0.00272,
+      "ok": true,
+      "ms": 717
+    },
+    "og-ui/text-glow": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 760,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-glow.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 821
+    },
+    "og-ui/glass": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 937,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/glass.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 991
+    },
+    "og-ui/widget-set": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 937,
+      "metal": {
+        "outliers": 0.338,
+        "rmse": 0.00981,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/widget-set.png",
+      "outliers": 0.338,
+      "rmse": 0.00981,
+      "ok": true,
+      "ms": 1190
+    },
+    "og-ui/text-fields-2": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 756,
+      "metal": {
+        "outliers": 0,
+        "rmse": 0,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-fields-2.png",
+      "outliers": 0,
+      "rmse": 0,
+      "ok": true,
+      "ms": 860
+    },
+    "og-ui/text-bidi": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 857,
+      "metal": {
+        "outliers": 0.02,
+        "rmse": 0.00327,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-bidi.png",
+      "outliers": 0.02,
+      "rmse": 0.00327,
+      "ok": true,
+      "ms": 1018
+    },
+    "og-ui/text-kerning": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 872,
+      "metal": {
+        "outliers": 0.054,
+        "rmse": 0.00567,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-kerning.png",
+      "outliers": 0.054,
+      "rmse": 0.00567,
+      "ok": true,
+      "ms": 1012
+    },
+    "og-ui/text-edit": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 858,
+      "metal": {
+        "outliers": 0.002,
+        "rmse": 0.0011,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-edit.png",
+      "outliers": 0.002,
+      "rmse": 0.0011,
+      "ok": true,
+      "ms": 987
+    },
+    "og-ui/text-mixed-runs": {
+      "tier": "webgpu",
+      "adapter": "apple",
+      "antialias": "Off",
+      "frames": 1,
+      "renderMs": 860,
+      "metal": {
+        "outliers": 0.034,
+        "rmse": 0.00458,
+        "ok": true
+      },
+      "against": "crates/og-ui/references/metal/text-mixed-runs.png",
+      "outliers": 0.034,
+      "rmse": 0.00458,
+      "ok": true,
+      "ms": 1006
+    }
+  },
+  "adapter": "apple",
+  "ms": 341254,
+  "log": []
+}

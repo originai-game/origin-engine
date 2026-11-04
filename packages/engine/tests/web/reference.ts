@@ -63,7 +63,8 @@
 // phone with --android [<serial>] (cdp.ts Browser.android; its tier is
 // webgpu-android, judged against webgpu-android, else webgpu, else metal, a
 // webgpu-android frame recorded only for a legitimate difference:
-// tests/evidence/compat/android/).
+// tests/evidence/compat/android/), or Safari with --safari (webdriver.ts; its
+// tier is webgpu-safari, judged the same way: tests/evidence/compat/safari/).
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -73,6 +74,7 @@ import { bundleGame } from "../../src/node/build.ts";
 import { recordReference, type PlaytestDesc } from "../../src/playtest.ts";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
+import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 import { compareFrames as compare, decodePng, TOLERANCE, type Image } from "../support/png.ts";
@@ -91,7 +93,8 @@ const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const project = join(repo, opt("--project") ?? join("templates", "fx-showcase"));
 const android = androidOf(args);
-const tier = android ? "webgpu-android" : "webgpu";
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+const tier = android ? "webgpu-android" : safari ? "webgpu-safari" : "webgpu";
 const record = args.includes("--record");
 const looks = args.includes("--looks");
 const work = join(pkg, "dist", "test-reference");
@@ -161,7 +164,7 @@ if (args.includes("--print")) {
   process.exit(0);
 }
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
-const chrome = firefox || android ? "" : chromePath(args);
+const chrome = firefox || android || safari ? "" : chromePath(args);
 
 /** An n× box filter, rounded (templates/ui-kit/tests/styles.ts `shrink`). */
 function shrink(img: Image, n: number): Image {
@@ -204,13 +207,17 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>reference<
 <style>html,body{margin:0;background:#14161b}canvas{display:block;width:${WIDTH}px;height:${HEIGHT}px}</style></head>
 <body><canvas></canvas><script type="module" src="/game/reference-page.js"></script></body></html>`;
 const server = serve({ dist, isolate: true, extra: { "/reference.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.from(args, { chrome, width: WIDTH, height: HEIGHT, reverse: [server.port] });
+const browser = firefox
+  ? await Firefox.launch({ firefox, headless: false })
+  : safari
+    ? await Safari.launch({ driver: safari, width: WIDTH, height: HEIGHT })
+    : await Browser.from(args, { chrome, width: WIDTH, height: HEIGHT, reverse: [server.port] });
 const log: string[] = [];
 const dir = join(out, tier);
 mkdirSync(dir, { recursive: true });
 const own = join(refsRoot, tier);
 const metal = join(refsRoot, "metal");
-/** The reference a shot (or the sheet) is judged against: this tier's, else webgpu's (a phone's tier), else metal's. */
+/** The reference a shot (or the sheet) is judged against: this tier's, else webgpu's (a phone's or Safari's tier), else metal's. */
 const referenceOf = (file: string) =>
   record || existsSync(join(own, file))
     ? join(own, file)

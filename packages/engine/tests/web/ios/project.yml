@@ -1,0 +1,43 @@
+# The XCUITest that drives Safari in the iOS Simulator for tests/web/ios-sim.ts:
+# xcodegen makes the project in dist/test-ios/ (never committed). The Host app
+# only exists because a UI test bundle needs a target application; the test
+# drives com.apple.mobilesafari.
+name: OGSafariSim
+options:
+  bundleIdPrefix: ai.origingame.compat
+  deploymentTarget:
+    iOS: "27.0"
+settings:
+  base:
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    GENERATE_INFOPLIST_FILE: YES
+    SWIFT_VERSION: "6.0"
+targets:
+  Host:
+    type: application
+    platform: iOS
+    sources: [Host]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.origingame.compat.host
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  SafariUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Host
+    settings:
+      base:
+        TEST_TARGET_NAME: Host
+        PRODUCT_BUNDLE_IDENTIFIER: ai.origingame.compat.uitests
+schemes:
+  SafariUITests:
+    build:
+      targets:
+        Host: all
+        SafariUITests: [test]
+    test:
+      targets: [SafariUITests]

@@ -24,7 +24,7 @@
 // top-level dev page told its own origin answers calls its own window posts
 // (the Stage overlay drawn in the engine's document), and told another, not.
 //
-//   bun tests/web/wire.ts [--out <transcript.json>] [--chrome <path>]
+//   bun tests/web/wire.ts [--out <transcript.json>] [--chrome <path> | --safari]
 //
 // Exits 1 on the first failed assertion and prints it. Writes the transcript
 // (every call and answer, PNGs elided) to --out (default
@@ -34,7 +34,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webBuild, settingsOf } from "../../src/node/web-build.ts";
-import { androidOf, Browser, chromePath, type Page } from "./cdp.ts";
+import { androidOf, Browser, chromePath, type Page as CdpPage } from "./cdp.ts";
+import { Safari, safariDriverPath, type SafariPage } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { SETTLE_MS, SETTLE_TICKS } from "../../src/web/settle.ts";
 import { cookProject } from "../support/og-bin.ts";
@@ -47,7 +48,9 @@ const repo = join(pkg, "..", "..");
 const project = join(repo, "templates", "archetypes", "runner");
 const work = join(pkg, "dist", "test-wire");
 const outFile = resolve(opt("--out") ?? join(work, "transcript.json"));
-const chrome = androidOf(args) ? "" : chromePath(args);
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+const chrome = androidOf(args) || safari ? "" : chromePath(args);
+type Page = CdpPage | SafariPage;
 
 type Answer = { kind?: string; result?: unknown; code?: string; message?: string; silent?: true };
 const transcript: Array<Record<string, unknown>> = [];
@@ -110,7 +113,7 @@ window.hellos = hellos;
 window.foreign = () => foreign;
 </script></body></html>`;
 
-async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: Browser): Promise<void> {
+async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: Browser | Safari): Promise<void> {
   const label = `${kind}${isolate ? " isolated" : ""}${pipelines === "auto" ? "" : ` ${pipelines}`}`;
   let told: string | null = null;
   // One server, two host names: the parent at 127.0.0.1, the game at localhost (another origin).
@@ -304,7 +307,7 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
  * (origingame docs/game-pipeline.md §3.1 The Stage page) posts to the page's
  * own window. A page told its own origin answers it; told another, it does not.
  */
-async function inPage(browser: Browser): Promise<void> {
+async function inPage(browser: Browser | Safari): Promise<void> {
   const label = "dev in-page";
   let told: string | null = null;
   const live = serve({ dist: dists["dev auto"]!, isolate: false, told: () => told });
@@ -344,7 +347,7 @@ async function inPage(browser: Browser): Promise<void> {
   }
 }
 
-const browser = await Browser.from(args, { chrome, reverse: [] });
+const browser = safari ? await Safari.launch({ driver: safari }) : await Browser.from(args, { chrome, reverse: [] });
 try {
   for (const pipelines of ["auto", "async"] as const) for (const kind of ["dev", "publish"] as const) for (const isolate of [true, false]) await run(kind, isolate, pipelines, browser);
   for (const pipelines of ["sync", "prewarm"] as const) for (const isolate of [true, false]) await run("publish", isolate, pipelines, browser);
@@ -353,6 +356,6 @@ try {
   await browser.close();
 }
 mkdirSync(dirname(outFile), { recursive: true });
-writeFileSync(outFile, JSON.stringify({ chrome, failures, transcript }, null, 1) + "\n");
+writeFileSync(outFile, JSON.stringify({ browser: safari ? `Safari ${(browser as Safari).capabilities["browserVersion"]}` : chrome, failures, transcript }, null, 1) + "\n");
 console.log(`${failures === 0 ? "PASS" : "FAIL"} og-probe wire: ${transcript.filter((t) => "check" in t).length} checks, ${failures} failed; transcript ${outFile}`);
 process.exit(failures === 0 ? 0 : 1);

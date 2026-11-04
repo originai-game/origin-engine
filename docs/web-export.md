@@ -1165,7 +1165,7 @@ icons) is.
   the signal), whether its probe had been serving (`--port`: it stops
   answering), and its last stderr lines, and exits with the process's code
   (128 + the signal).
-- `og run --device chrome|android[:serial]|iphone[:udid] [project]
+- `og run --device chrome|safari|android[:serial]|iphone[:udid] [project]
   [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed]
   [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]`
   exports the publish build into `<project>/.og/device`, serves it with its
@@ -1177,7 +1177,9 @@ icons) is.
   origin's storage is cleared before the page opens. `chrome` is this
   machine's Chrome over the DevTools protocol (`--chrome`, `CHROME`,
   `CHROME_PATH`, the agent-browser install, /Applications, PATH; headless
-  unless `--headed`); `android` is Chrome on a phone over adb (`adb
+  unless `--headed`); `safari` is this Mac's Safari over WebDriver
+  (safaridriver; `sudo safaridriver --enable` once), in a window whose
+  viewport is `--size`; `android` is Chrome on a phone over adb (`adb
   reverse` puts the page at the phone's own localhost, a secure context,
   and `adb forward` reaches its DevTools);
   `iphone` (or `ios`) is Safari over safaridriver at the LAN URL, which is

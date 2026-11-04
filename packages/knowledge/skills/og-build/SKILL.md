@@ -324,7 +324,8 @@ the published build of its own games (its `tests/web/published.ts`: the
 boot, the title, a press, a typed name and a frame against the metal
 reference, with a clean console).
 `og run --device chrome .` plays that publish build in a real browser
-(`android[:serial]` over adb, `iphone[:udid]` over safaridriver), passes
+(`safari` on a Mac and `iphone[:udid]` over safaridriver, `android[:serial]`
+over adb), passes
 the play gate and writes `og-out/device/report.md`: the first frame against
 its budget (2.0 s, 1.5 s on an iPhone), the frame-time percentiles on the
 tier the device chose, the device itself, and a fix per finding (og-game

@@ -20,7 +20,7 @@
 // served beside the module and handed to it before any scene opens; that
 // needs the og a build put in packages/engine/native/ (or $OG_BIN).
 //
-//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>]]
+//   bun tests/web/reference-gfx.ts [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
 // First, every WGSL module the renderer compiles (og_gfx_shader_sources)
 // goes through the browser's own compiler; one it refuses fails the run.
@@ -43,7 +43,8 @@
 // Writes <out>/<tier>/<scene>.png, <scene>.diff.png on a mismatch and
 // reference-gfx-<tier>.json (default dist/test-gfx/out). Exits 1 when a
 // scene does not match or does not render. Needs Chrome (cdp.ts) or, with
-// --firefox, Firefox (bidi.ts),
+// --firefox, Firefox (bidi.ts), or with --safari, Safari (webdriver.ts; judged
+// as webgpu-safari, falling back to webgpu, then metal),
 // wasm-bindgen at the Cargo.lock version and the wasm32 target.
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -51,6 +52,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { androidOf, Browser, chromePath } from "./cdp.ts";
 import { Firefox, firefoxPath } from "./bidi.ts";
+import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookTextFonts } from "./text-fonts.ts";
 import { decodePng, encodePng, encodePngBest, type Image } from "../../src/node/png.ts";
@@ -69,12 +71,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
 const android = androidOf(args);
-const tier = android ? "webgpu-android" : "webgpu";
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+// A phone's frames (webgpu-android) and Safari's (webgpu-safari) are their own
+// reference tier, falling back to the browsers' webgpu and then metal; recorded
+// only for a legitimate implementation difference (tests/evidence/compat/).
+const tier = android ? "webgpu-android" : safari ? "webgpu-safari" : "webgpu";
 const record = args.includes("--record");
 const work = join(pkg, "dist", "test-gfx");
 const out = resolve(opt("--out") ?? join(work, "out"));
 const firefox = args.includes("--firefox") ? firefoxPath(args) : undefined;
-const chrome = firefox || android ? "" : chromePath(args);
+const chrome = firefox || android || safari ? "" : chromePath(args);
 const refs = join(repo, "crates", "og-tests", "references");
 /** Where a scene's references live: og-ui's under crates/og-ui/references. */
 function referencesOf(scene: string): { root: string; name: string } {
@@ -138,7 +144,11 @@ import init, * as gfx from "/game/pkg/og-tests.js";
 try { await init(); globalThis.__gfx = gfx; } catch (e) { globalThis.__gfx_error = String(e && e.stack || e); }
 </script></body></html>`;
 const server = serve({ dist, isolate: false, extra: { "/gfx.html": html } });
-const browser = firefox ? await Firefox.launch({ firefox, headless: false }) : await Browser.from(args, { chrome, width: 1280, height: 720, reverse: [server.port] });
+const browser = firefox
+  ? await Firefox.launch({ firefox, headless: false })
+  : safari
+    ? await Safari.launch({ driver: safari, width: 1280, height: 720 })
+    : await Browser.from(args, { chrome, width: 1280, height: 720, reverse: [server.port] });
 /** The phone a --android run draws on (model and serial), else null. */
 const device = browser instanceof Browser ? browser.device : null;
 const log: string[] = [];
@@ -280,7 +290,7 @@ try {
         console.log(`rec  ${scene} (${tier}) -> ${to.slice(repo.length + 1)}; against metal ${JSON.stringify(row["metal"] ?? "none")}`);
       } else {
         const own = join(where.root, tier, `${where.name}.png`);
-        // A phone's tier (webgpu-android) falls back to the browsers' webgpu, then metal.
+        // A phone's or Safari's tier falls back to the browsers' webgpu, then metal.
         const browsers = join(where.root, "webgpu", `${where.name}.png`);
         const against = existsSync(own) ? own : tier !== "webgpu" && existsSync(browsers) ? browsers : metal;
         if (!existsSync(against)) throw new Error(`no reference at ${own} or ${metal}; record one with --record --scene ${scene}`);
@@ -320,7 +330,7 @@ try {
         const perf = {
           scene,
           tier,
-          browser: firefox ? "Firefox (bidi.ts)" : device ? `Chrome on ${device} (cdp.ts)` : "Chrome for Testing (cdp.ts)",
+          browser: firefox ? "Firefox (bidi.ts)" : safari ? "Safari (webdriver.ts)" : device ? `Chrome on ${device} (cdp.ts)` : "Chrome for Testing (cdp.ts)",
           adapter: o.adapter,
           culling: cpuCulling ? "cpu" : "auto",
           last_frame: t.stats,
@@ -338,7 +348,7 @@ try {
         // the GPU's name too), or the phone's model, the adapter string stays in the file.
         const pdir = perfOut
           ? join(resolve(perfOut), `${tier}${cpuCulling ? "-cpu-culling" : ""}`)
-          : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : "chrome"}-${slug(device?.replace(/ \(.*$/, "") ?? cpus()[0]?.model ?? "") || "unknown"}`);
+          : join(repo, "crates", "og-tests", "perf", `${tier}-${firefox ? "firefox" : safari ? "safari" : "chrome"}-${slug(device?.replace(/ \(.*$/, "") ?? cpus()[0]?.model ?? "") || "unknown"}`);
         mkdirSync(pdir, { recursive: true });
         writeFileSync(join(pdir, `${scene}.json`), JSON.stringify(perf, null, 2) + "\n");
         row["frameMs"] = perf.frame_ms;
