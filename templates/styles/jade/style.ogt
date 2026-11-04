@@ -329,17 +329,6 @@ dress "Hud.frame" {
   slice 140 283 182 40 14 12 14 12 authored
   tone 0.008 0.024 0.021 0.99
 }
-corner 324 283 32 32 32 32 authored
-divider 182 325 192 8 192 8 authored
-flourish 116 325 64 13 64 13 authored
-dress "Slider.knob" {
-  slice 358 283 24 24 1 1 1 1 authored
-  tone 0.166 0.307 0.194 0.99
-}
-dress "Toggle.knob[off]" {
-  slice 410 283 24 24 1 1 1 1 authored
-  tone 0.422 0.424 0.378 0.99
-}
 dress "Button.base[secondary]" {
   slice 1 99 205 44 18 14 18 14 authored
   tone 0.009 0.032 0.026 0.99
@@ -368,7 +357,18 @@ dress "Button.base[primary][disabled]" {
   slice 210 237 207 44 18 14 18 14 authored
   tone 0.374 0.338 0.276 0.99
 }
+corner 324 283 32 32 32 32 authored
+divider 182 325 192 8 192 8 authored
+flourish 116 325 64 13 64 13 authored
+dress "Slider.knob" {
+  slice 358 283 24 24 1 1 1 1 authored
+  tone 0.166 0.307 0.194 0.99
+}
 dress "Toggle.knob[on]" {
   slice 384 283 24 24 1 1 1 1 authored
   tone 0.57 0.577 0.441 0.99
+}
+dress "Toggle.knob[off]" {
+  slice 410 283 24 24 1 1 1 1 authored
+  tone 0.422 0.424 0.378 0.99
 }

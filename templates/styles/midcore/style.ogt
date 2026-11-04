@@ -234,6 +234,7 @@ sounds {
 dress "Button.base" {
   press 1.06 0.9 3
   hover -3 1.04
+  fill linear 180 controlStrong control
   stroke 2 lineStrong inside
   effect innerShadow 2 2 0 0 "#ffffff4d"
   effect innerShadow -2 -2 0 0 "#0000004d"
@@ -287,6 +288,14 @@ dress "Slot.frame[rarity=mythic]" {
   effect outerGlow 12 "#ef444480"
   material hologram 0.5 2
 }
+dress "Card.frame" {
+  slice 99 1 96 96 20 20 20 20 authored
+  tone 0.025 0.034 0.05 1
+}
+dress "Tooltip.frame" {
+  slice 263 1 86 48 12 12 12 12 authored
+  tone 0.033 0.04 0.055 1
+}
 dress "Hud.frame" {
   slice 281 191 124 40 14 12 14 12 authored
   tone 0.025 0.032 0.047 0.99
@@ -319,23 +328,15 @@ dress "Button.base[primary][disabled]" {
   slice 1 191 141 44 18 14 18 14 authored
   tone 0.216 0.295 0.19 0.99
 }
-divider 27 237 192 7 192 7 authored
-dress "Toggle.knob[on]" {
-  slice 467 191 24 24 1 1 1 1 authored
-  tone 0.823 0.857 0.897 0.99
-}
-dress "Card.frame" {
-  slice 99 1 96 96 20 20 20 20 authored
-  tone 0.025 0.034 0.05 1
-}
-dress "Tooltip.frame" {
-  slice 263 1 86 48 12 12 12 12 authored
-  tone 0.033 0.04 0.055 1
-}
 corner 407 191 32 32 32 32 authored
+divider 27 237 192 7 192 7 authored
 dress "Slider.knob" {
   slice 441 191 24 24 1 1 1 1 authored
   tone 0.05 0.275 0.884 0.99
+}
+dress "Toggle.knob[on]" {
+  slice 467 191 24 24 1 1 1 1 authored
+  tone 0.823 0.857 0.897 0.99
 }
 dress "Toggle.knob[off]" {
   slice 1 237 24 24 1 1 1 1 authored
