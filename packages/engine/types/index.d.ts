@@ -50373,6 +50373,47 @@ export interface TerrainScatter {
    * @tunable
    */
   impostorDistance: number;
+  /**
+   * The size of the patches noiseThreshold gathers copies into.
+   *
+   * @default 8
+   * @range 0.1..1000
+   * @unit m (metres)
+   * @tunable
+   */
+  noiseScale: number;
+  /**
+   * Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere.
+   *
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  noiseThreshold: number;
+  /**
+   * How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none.
+   *
+   * @range 0..100
+   * @unit m (metres)
+   * @tunable
+   */
+  footprint: number;
+  /**
+   * Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order.
+   */
+  priority: number;
+  /**
+   * Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere.
+   *
+   * @range 0..100
+   * @unit m (metres)
+   * @tunable
+   */
+  avoidWater: number;
+  /**
+   * Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none.
+   */
+  densityMap: Texture;
 }
 
 /**
@@ -58474,7 +58515,7 @@ export declare namespace og {
   /**
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    */
-  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32"> }, TerrainScatter>;
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32">; readonly noiseScale: FieldSpec<"f32">; readonly noiseThreshold: FieldSpec<"f32">; readonly footprint: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly avoidWater: FieldSpec<"f32">; readonly densityMap: FieldSpec<"Texture"> }, TerrainScatter>;
   /**
    * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
    */

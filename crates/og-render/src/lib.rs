@@ -154,6 +154,7 @@ mod post_custom;
 mod ribbons;
 mod ribbons_gpu;
 mod scatter;
+mod scatter_cull;
 mod scene;
 mod shaders;
 pub use shaders::{ShaderSource, shader_sources};
@@ -247,7 +248,7 @@ pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};
 pub use quality::{QualityPreset, RenderQuality};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
-pub use scatter::{ScatterDraw, WIND_WAVELENGTH, Wind, wind_phases, wind_shader};
+pub use scatter::{ScatterContext, ScatterDraw, WIND_WAVELENGTH, Wind, wind_phases, wind_shader};
 /// The octahedral impostors' frame layout, shared with the cook's bake.
 pub mod impostors {
     pub use crate::impostor::{

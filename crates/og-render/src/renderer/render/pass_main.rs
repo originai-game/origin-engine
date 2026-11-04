@@ -311,6 +311,7 @@ impl Renderer {
             |c, r| view_frustum.intersects_sphere(c, r),
             Some(&mut probe_select::Binder::new(probe_binding)),
             Some(fx_group),
+            true,
         );
         if n > 0 {
             // The copies' group 2 is theirs: the effects' back for what follows.

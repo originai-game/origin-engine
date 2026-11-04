@@ -174,6 +174,15 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **Scatter placement rules and GPU culling (G4).** og.TerrainScatter
+  gains `noiseScale`/`noiseThreshold` (patches), `footprint` and
+  `priority` (later scatters keep clear of earlier ones' copies),
+  `avoidWater` (no copies within that height of an og.Water surface) and
+  `densityMap`. Placement stays one deterministic function on the CPU
+  (`Terrain::scatter_among`, what the renderer draws); the main camera's
+  copies are now culled one by one on the GPU (distance, frustum, the
+  frame's Hi-Z pyramid where it has one, the density map) and drawn
+  indirectly in the prepass and lit pass. New members, compatible.
 - **Several kinds of blade per grass field, painted maps, no popping
   (G4).** og.Grass gains `types` (up to three more og.GrassType kinds:
   height, width, curve, colours, share; each clump grows one), `typeMap`,

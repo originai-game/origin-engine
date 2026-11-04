@@ -83535,6 +83535,54 @@
           "maximum": 500,
           "x-og-unit": "m",
           "x-og-tunable": true
+        },
+        "noiseScale": {
+          "type": "number",
+          "description": "The size of the patches noiseThreshold gathers copies into.",
+          "default": 8,
+          "minimum": 0.1,
+          "maximum": 1000,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "noiseThreshold": {
+          "type": "number",
+          "description": "Gathers the copies into patches: a cell grows its copy only where a smooth noise of noiseScale patches (0 to 1, about half of it past 0.5) rises past this, the patches' edges thinning over a short band. 0: everywhere.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
+        "footprint": {
+          "type": "number",
+          "description": "How far, along x and z, this scatter's copies keep from the copies of every og.TerrainScatter placed before it over the same og.Terrain: the larger of the two footprints (trees placed first keep flowers from their trunks). 0: none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Scatters of a higher priority over the same og.Terrain are placed first, their footprints cleared in the ones after; equal priorities are placed in entity order.",
+          "default": 0
+        },
+        "avoidWater": {
+          "type": "number",
+          "description": "Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "densityMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "Thins the copies where its red channel is below 1, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear), each copy kept while its own value is below the map's: a path cleared through the flowers. Drawn only, where the renderer culls copies on the GPU (RenderCapabilities.compute): placement and footprints do not read it. 0: none.",
+          "default": 0
         }
       },
       "additionalProperties": false
