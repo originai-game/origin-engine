@@ -4,13 +4,16 @@
 // and 150 %. The kit is imported by its relative path, so the sheet always
 // shows the copy it ships with: bundled, or a game's edited install.
 //
-// Commands: style:<fantasy|scifi|cartoon|pixel>, page:<hud|arcade|garage>.
+// The results page mounts the kit's race-results document as og ui sheet
+// installs it, at ui-kits/racing/, with the document's own fixture.
+//
+// Commands: style:<fantasy|scifi|cartoon|pixel>, page:<hud|arcade|garage|results>.
 
 import { og, defineSystem, type World } from "@origingame/engine";
 import { racing } from "../../index.ts";
 import { checkpoint, garage, lap, standings, tach } from "../../fixtures/race.ts";
 
-const PAGES = ["hud", "arcade", "garage"] as const;
+const PAGES = ["hud", "arcade", "garage", "results"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "pixel"] as const;
 const state = { page: "hud" as (typeof PAGES)[number], shownAt: -1 };
 
@@ -56,6 +59,7 @@ const Sheet = defineSystem("Sheet", { reads: [og.Camera] }, () => {
     case "hud": hud(); break;
     case "arcade": arcade(); break;
     case "garage": ground(() => racing.garage("Garage", { ...garage(), title: "Garage" })); break;
+    case "results": og.ui.screen("race-results", null); break;
   }
 });
 
@@ -73,6 +77,8 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.08, g: 0.09, b: 0.11 };
     setStyle(world, "scifi");
+    const doc = og.load.document(world, "ui-kits/racing/race-results.ogt");
+    if (!doc.ok) throw new Error(doc.reason);
   },
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "scifi"),

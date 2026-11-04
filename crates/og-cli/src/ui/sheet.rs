@@ -70,6 +70,9 @@ fn sheet(args: &[&str]) -> Result<(), String> {
                     "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §17.3)"
                 ));
             }
+            // Installed as a game installs it, so its pages load the kit's documents from
+            // `ui-kits/<name>/` exactly as a game does.
+            extensions::install(extension, &demo)?;
             demo
         };
         let p = Project::open(&demo)?;

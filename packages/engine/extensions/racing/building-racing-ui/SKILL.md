@@ -28,6 +28,8 @@ The namespace is `racing`. Members, with their desc types in `types.ts`
 | `itemSlot(id, ItemSlotDesc)`, `driftScore(id, DriftScoreDesc)` | The arcade look's item roulette and drift chain |
 | `garage(id, GarageDesc)` | Categories, parts, performance card and livery layers; answers `GarageResult` |
 
+The race's results are a document, `race-results.ogt` (below).
+
 `fixtures/race.ts` has a whole race in these shapes: start from it.
 
 ## Use it
@@ -43,6 +45,33 @@ og.ui.anchor("Instrument", { anchor: "bottomRight", margin: 16 }, () =>
 Call them from the system that builds the game's UI each tick. Generic
 pieces stay in `og.ui`: the minimap (`og.ui.minimapView`, with `track` and
 `sectors`), timers (`og.ui.hudTimer`), meters and counters.
+
+## The results screen
+
+`race-results.ogt` is a `type screen` document, not a function: the
+place, the best lap and points, the classification and the rewards are
+its own elements, so a game edits the layout or adds a field in the text.
+
+```ts
+// start: load it from the installed kit (or ui/racing/race-results.ogt once ejected)
+og.load.document(world, "ui-kits/racing/race-results.ogt");
+// a system, while the results show:
+const r = og.ui.screen("race-results", { title: "Victory", place: 1, field: 8, bestLap: "1:32.418", points: 25, rows, rewards });
+for (const e of r.events) if (e.kind === "emit" && e.name === "continue") leaveResults();
+```
+
+Its `props` line lists the viewmodel: `rows` are `{ place, name, time,
+gap, points, player }`, `rewards` are `{ name, amount }`. It emits
+`continue`, `restart` and `replay`. The `Podium` slot takes the game's own
+podium: `if (og.ui.openSlot("race-results/Podium")) { …; og.ui.close(); }`.
+
+To show another figure, say each driver's car: add `car` to the rows the
+game passes, then one `label Car { text bind row.car … }` under
+`Classification/Row` and a heading under `Classification/Head`. The
+document's `fixture default` line is what previews and the sheet show:
+add the field there too. Without installing the kit,
+`og ui eject racing/race-results` copies the document to
+`assets/ui/racing/`, loaded as `ui/racing/race-results.ogt`.
 
 ## Change it
 

@@ -18,4 +18,6 @@ ui {
   screen "hud-pixel" "style:pixel;page:hud"
   screen "garage-scifi" "style:scifi;page:garage"
   screen "garage-cartoon" "style:cartoon;page:garage"
+  screen "results-fantasy" "style:fantasy;page:results"
+  screen "results-pixel" "style:pixel;page:results"
 }
