@@ -477,9 +477,12 @@ export async function transcodeBundle(
   const used: string[] = [];
   let transcoder: BasisTranscoder | null = null;
   let transcoded = 0;
-  const manifest = fetched.manifest;
+  // The wasm keeps the bundle it parsed last (og-host-web `bundle_of`, s58): the manifest's text
+  // crosses once, and "" names it in every later call.
+  let manifest = fetched.manifest;
   for (const [i, t] of fetched.textures.entries()) {
     const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
+    if (manifest !== null) manifest = "";
     if (ktx2.length > 0) {
       transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
       const target = engine === null ? "rgba8" : glue.og_web_texture_target(engine, manifest!, t.id, t.bytes);
