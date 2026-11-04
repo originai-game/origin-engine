@@ -114,6 +114,12 @@ example scenes, frames on Metal, frame times against three.js on WebGPU.
 
 After R, as the plan's final stage:
 
+- **HDR output on a real display (owner, 2026-11-04).** R8's HDR output
+  (feat/hdr-output) lands opt-in with its SDR frames unmoved; its
+  acceptance on a real HDR display (the og-tests `surface` driver on an
+  unlocked, visible XDR desktop, then the art director) runs here. Until
+  then HDR is not called accepted.
+
 - **Reach.** WebGPU only leaves roughly 15–25 % of mobile-web players unable
   to play (iOS below 26, Android below 12, Firefox for Android), an estimate
   from caniuse. The share is measured on the platform's real traffic and
