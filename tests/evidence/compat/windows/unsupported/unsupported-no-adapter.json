@@ -6,7 +6,7 @@
  ],
  "card": {
   "hidden": false,
-  "title": "This browser does not support WebGPU",
+  "title": "No graphics adapter for WebGPU",
   "text": "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again. (the browser found no WebGPU adapter)",
   "reload": false,
   "ink": "rgb(20, 22, 27)",
@@ -28,7 +28,7 @@
    "renderer": "none",
    "reason": "the browser found no WebGPU adapter",
    "engine": "0.7.7",
-   "build": "db66de9e7647b75b",
+   "build": "6663fed5c7acd7d5",
    "browser": {
     "name": "chrome",
     "major": 156,

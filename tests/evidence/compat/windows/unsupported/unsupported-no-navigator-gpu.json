@@ -25,7 +25,7 @@
    "renderer": "none",
    "reason": "navigator.gpu is missing",
    "engine": "0.7.7",
-   "build": "db66de9e7647b75b",
+   "build": "6663fed5c7acd7d5",
    "browser": {
     "name": "chrome",
     "major": 156,

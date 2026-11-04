@@ -60,9 +60,9 @@ const cases = [
   // A browser without WebGPU: Chrome without its WebGPU switches, and the page's Navigator without
   // `gpu` before its first script (Chrome 156 keeps navigator.gpu under --disable-features=WebGPU
   // and --disable-blink-features=WebGPU alike).
-  { name: "no-navigator-gpu", webgpu: false, flags: [], strip: true, reason: "navigator.gpu is missing", advice: "Open it in a current Chrome or Edge" },
+  { name: "no-navigator-gpu", webgpu: false, flags: [], strip: true, reason: "navigator.gpu is missing", title: "This browser does not support WebGPU", advice: "Open it in a current Chrome or Edge" },
   // No GPU and no software fallback: navigator.gpu is there, requestAdapter answers null.
-  { name: "no-adapter", webgpu: true, flags: ["--disable-gpu", "--disable-software-rasterizer"], strip: false, reason: "the browser found no WebGPU adapter", advice: "turn on hardware acceleration" },
+  { name: "no-adapter", webgpu: true, flags: ["--disable-gpu", "--disable-software-rasterizer"], strip: false, reason: "the browser found no WebGPU adapter", title: "No graphics adapter for WebGPU", advice: "turn on hardware acceleration" },
 ] as const;
 const STRIP_GPU = "delete Navigator.prototype.gpu; if (typeof WorkerNavigator !== 'undefined') delete WorkerNavigator.prototype.gpu;";
 
@@ -87,7 +87,7 @@ try {
           reload: !!r && !r.hidden && r.getClientRects().length > 0, ink: g.contentWindow.getComputedStyle(e).backgroundColor,
           canvas: !!g.contentWindow.__runtime_probe__ };
       })()`);
-      check(!card.hidden && card.title === "This browser does not support WebGPU", `${c.name}: the card is on screen with its title`, card);
+      check(!card.hidden && card.title === c.title, `${c.name}: the card is on screen with its title`, card);
       check(card.text.includes(c.advice) && card.text.includes(c.reason), `${c.name}: the card says why and what to do`, card.text);
       check(!card.reload, `${c.name}: no Reload button (a reload cannot help)`, card);
       check(card.ink !== "rgba(0, 0, 0, 0)" && card.ink !== "", `${c.name}: the card is drawn in the brand's ink, not over a bare canvas`, card.ink);

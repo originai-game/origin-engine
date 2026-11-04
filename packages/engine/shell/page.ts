@@ -153,8 +153,8 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
 
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
-  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU，而此浏览器没有。请用最新版的 Chrome 或 Edge（Windows、macOS、ChromeOS，或 Android 12 及以上）、Safari 26 及以上（macOS、iOS、iPadOS），或 Windows 与 macOS 上的 Firefox 打开。", noWebGpuAdapter: "此浏览器支持 WebGPU，但没有可用的显卡：请在浏览器设置中开启硬件加速，或更新显卡驱动后重新打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
-  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS.", noWebGpuAdapter: "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installOffer: "Install {name} to play offline", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
+  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU，而此浏览器没有。请用最新版的 Chrome 或 Edge（Windows、macOS、ChromeOS，或 Android 12 及以上）、Safari 26 及以上（macOS、iOS、iPadOS），或 Windows 与 macOS 上的 Firefox 打开。", noWebGpuAdapterTitle: "没有可供 WebGPU 使用的显卡", noWebGpuAdapter: "此浏览器支持 WebGPU，但没有可用的显卡：请在浏览器设置中开启硬件加速，或更新显卡驱动后重新打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
+  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS.", noWebGpuAdapterTitle: "No graphics adapter for WebGPU", noWebGpuAdapter: "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installOffer: "Install {name} to play offline", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
 
 export function readConfig(doc: Document = document): ShellConfig {
   const text = doc.getElementById("og-config")?.textContent ?? "{}";
@@ -538,8 +538,9 @@ export async function play(): Promise<PlayHandle> {
     // (no adapter to read), before the start failure that ends the session.
     if (context) player.sample({ phase: "unsupported", renderer: "none", reason: noWebGpu, ...context });
     // A browser with WebGPU but no adapter has it turned off (hardware acceleration, a blocked driver).
-    const detail = noWebGpu.includes("navigator.gpu is missing") ? T.noWebGpuDetail : T.noWebGpuAdapter;
-    await fail(T.noWebGpu, `${detail} (${noWebGpu})`, false, false);
+    const missing = noWebGpu.includes("navigator.gpu is missing");
+    const detail = missing ? T.noWebGpuDetail : T.noWebGpuAdapter;
+    await fail(missing ? T.noWebGpu : T.noWebGpuAdapterTitle, `${detail} (${noWebGpu})`, false, false);
     // play.ts catches it: the card is the page's answer.
     throw new Error(`this browser does not support WebGPU: ${noWebGpu}`);
   }
