@@ -206,11 +206,11 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       const tStep = tsFit(size >= 52 ? 20 : 17, corner0 ? Math.min(size * share, room * 0.85) : size * share, true);
       const { size: tSize, line: tLine } = stepSize(tStep);
       if ((size - tLine) / 2 >= keyBottom) {
-        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), nowrap: true, outline: 2.4 }, absolute({ centerX: true, centerY: true }));
+        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 2.4 }, absolute({ centerX: true, centerY: true }));
       } else {
         // Drawn down to the room's line, never under the smallest text the checks allow (as the key is).
         const tk = Math.min(1, Math.max(minText() / tSize, room / tLine));
-        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), nowrap: true, outline: 2.4 },
+        text("Time", shortTime(cooldown, true), { step: tStep, font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 2.4 },
           absolute({ centerX: true, top: keyBottom + Math.max(0, (room - tLine * tk) / 2) }, tk < 1 ? { transform: { scaleX: tk, scaleY: tk, pivotX: 0.5, pivotY: 0 } } : {}));
       }
     }
@@ -250,13 +250,13 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
           fills: [solid(lit(BLACK, 0.78))],
           strokes: [stroke(1, token("lineStrong", 0.9))],
         }, () => {
-          text("Charges", String(charges), { step: badgeStep, font: "display", color: token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
+          text("Charges", String(charges), { step: badgeStep, font: "display", color: token("ink"), onScene: true, nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
         }, absolute({ end: line + 1, bottom: line + 1 }));
       }
     }
     // A command card's key: printed in the cell's top-left corner, small, over a soft shadow (StarCraft II's grid keys).
     if (corner0) {
-      text("Key", corner0, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), nowrap: true, soft: true },
+      text("Key", corner0, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), onScene: true, nowrap: true, soft: true },
         absolute({ start: line + Math.max(2, u(3)), top: kTop }, kk < 1 ? { transform: { scaleX: kk, scaleY: kk, pivotX: 0, pivotY: 0 } } : {}));
     }
     // Active or an ultimate ready: a thin accent edge inside the frame, over the art.
@@ -310,7 +310,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       const keyStep = ts(10);
       // One neutral ink at full strength: quiet means small, not faint (it reads at 4.5:1 on a light scene with its shadow);
       // state lives on the slot (the tints, the glow), never on the key's label.
-      const capInk = token("ink");
+      const capInk = token("sceneInk");
       // At most about a quarter of the slot's height, so the key stays a quiet label and the art leads, but never
       // under the smallest text at the player's text size (§15.2): the slot's cap alone held 16 px at 150 %.
       const keyPx = Math.min(stepSize(keyStep).size, Math.max(size * 0.26, minText() * textScale()));
@@ -319,7 +319,7 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
         if (keyIcon) icon("Glyph", keyIcon, Math.round(keyPx * 1.1), capInk);
         else {
           // No outline (at 200 % one makes the letters look hollow): a soft shadow holds them on a bright scene.
-          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, soft: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k } } : {}));
+          text("Key", keyText, { step: keyStep, font: "display", color: token("ink"), onScene: true, nowrap: true, soft: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k } } : {}));
         }
       }, { overlaps: [path] });
     }
@@ -341,7 +341,7 @@ function pill(id: string, value: string, ink: Paint, size: number, line: number,
     fills: [solid(lit(BLACK, 0.68))],
   }, () => {
     if (glyphName) icon("Drop", glyphName, Math.round(fs * 0.9), glyphInk ?? ink);
-    text("Value", value, { step, font: "display", color: ink, nowrap: true, outline: 1.2 });
+    text("Value", value, { step, font: "display", color: ink, onScene: true, nowrap: true, outline: 1.2 });
   }, absolute({ centerX: true, bottom: line + Math.max(1, Math.round(size * 0.03)) + lift }, fit.transform ? { transform: fit.transform } : {}));
 }
 
@@ -424,7 +424,7 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}, target = f
           effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
         }, () => {
           socketRim("Rim", size - 2, Math.max(0, r - 1), undefined, 1, absolute({ start: 1, top: 1 }), 0.35);
-          text("Count", `+${more}`, { step: tsFit(11, size * 0.34), font: "display", color: token("ink"), nowrap: true, soft: true });
+          text("Count", `+${more}`, { step: tsFit(11, size * 0.34), font: "display", color: token("ink"), onScene: true, nowrap: true, soft: true });
         }, { a11y: a11y("text", `${more} more`) }));
       }
     }, { a11y: a11y("list", label) });
@@ -504,7 +504,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
       // Small in the bottom end corner (as a charge badge is): the art stays the tile's one large thing.
       const sStep = tsFit(10, size * 0.4, true);
       const sFit = shrunk(sStep, Math.max(size * 0.36, minText() * textScale()), stepSize(sStep).line);
-      text("Stacks", String(fx.stacks), { step: sStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * String(fx.stacks).length * stepSize(sStep).size * 0.3) } } : {}));
+      text("Stacks", String(fx.stacks), { step: sStep, font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * String(fx.stacks).length * stepSize(sStep).size * 0.3) } } : {}));
     }
     res = close({
       opacity: blink,
@@ -513,7 +513,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
     });
     if (timers && !lasting) {
       // One ink: expiring is said by the tile's blink, not by a second colour.
-      text("Time", timeText, { step: timeStep, font: "display", color: token("ink"), nowrap: true, soft: true }, absolute({ centerX: true, top: size + (timeH - stepSize(timeStep).line) / 2 }, timeFit.transform ? { transform: { scaleX: timeFit.k, scaleY: timeFit.k } } : {}));
+      text("Time", timeText, { step: timeStep, font: "display", color: token("ink"), onScene: true, nowrap: true, soft: true }, absolute({ centerX: true, top: size + (timeH - stepSize(timeStep).line) / 2 }, timeFit.transform ? { transform: { scaleX: timeFit.k, scaleY: timeFit.k } } : {}));
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);

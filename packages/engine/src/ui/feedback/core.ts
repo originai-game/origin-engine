@@ -266,15 +266,17 @@ export function arc(fraction: number, thickness: number, cap: Api.LineCap = "rou
 }
 
 /** The HUD's text treatment: an outline and a soft shadow in the style's shadow, so text reads over any game. */
-export function hudText(strength = 1): Api.TextEffectsDesc {
+export function hudText(strength = 1, scene = false): Api.TextEffectsDesc {
   // A solid outline, a drop and a soft halo round the glyphs, as a shipped
   // HUD's ink has: the outline holds the edges, the halo darkens the ground
   // between strokes, so small text reads at 4.5:1 on a bright or busy scene.
+  // Over the scene (onScene) they are the style's sceneShadow.
+  const dark: Api.ThemeColor = scene ? "sceneShadow" : "shadow";
   return {
-    outline: { width: Math.max(1.5, 2 * strength), color: token("shadow", 1), align: "outside" },
+    outline: { width: Math.max(1.5, 2 * strength), color: token(dark, 1), align: "outside" },
     shadows: [
-      { offset: { x: 0, y: 1.5 }, blur: 3, color: token("shadow", 0.7) },
-      { offset: { x: 0, y: 0 }, blur: 6 * Math.max(0.6, strength), color: token("shadow", 0.55) },
+      { offset: { x: 0, y: 1.5 }, blur: 3, color: token(dark, 0.7) },
+      { offset: { x: 0, y: 0 }, blur: 6 * Math.max(0.6, strength), color: token(dark, 0.55) },
     ],
   };
 }
@@ -284,11 +286,12 @@ export function hudText(strength = 1): Api.TextEffectsDesc {
  * names, hotkeys and durations, which an outline makes read hollow at 200 %
  * (the outline is for numerals over art). It holds 4.5:1 on a light scene.
  */
-export function softText(): Api.TextEffectsDesc {
+export function softText(scene = false): Api.TextEffectsDesc {
+  const dark: Api.ThemeColor = scene ? "sceneShadow" : "shadow";
   return {
     shadows: [
-      { offset: { x: 0, y: 1 }, blur: 3, color: token("shadow", 0.8) },
-      { offset: { x: 0, y: 0 }, blur: 6, color: token("shadow", 0.45) },
+      { offset: { x: 0, y: 1 }, blur: 3, color: token(dark, 0.8) },
+      { offset: { x: 0, y: 0 }, blur: 6, color: token(dark, 0.45) },
     ],
   };
 }
@@ -327,12 +330,28 @@ export interface TextDesc extends Api.LabelDesc {
 /** A label, optionally outlined for the HUD. */
 export function text(id: string, s: string, desc: TextDesc = {}, props?: Props): void {
   const { outline, soft, name, gradient, ...label } = desc;
+  // Over the scene (onScene, no plate behind it), an ink role is the style's sceneInk at that role's emphasis and the
+  // outline and halo its sceneShadow: a light style's dark ink and shadow vanished into a dark scene.
+  const scene = !!label.onScene;
+  if (scene) label.color = sceneInk(label.color);
   kit.label(id, s, label);
   if (outline || soft || name || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText() : {};
+    const fx = outline ? hudText(typeof outline === "number" ? outline : 1, scene) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText(scene) : {};
     kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
   }
   apply(props);
+}
+
+/** The ink roles at their emphasis, which text over the scene draws in sceneInk instead. */
+const INK_EMPHASIS: Readonly<Record<string, number>> = { ink: 1, inkMuted: 0.82, inkFaint: 0.68 };
+
+/** A text's paint over the scene: an ink role (or none) in sceneInk at its emphasis; any other paint as it is. */
+function sceneInk(color: Api.Paint | null | undefined): Api.Paint {
+  if (!color) return token("sceneInk");
+  const role = (color as { token?: string }).token;
+  const k = role === undefined ? undefined : INK_EMPHASIS[role];
+  if (k === undefined) return color;
+  return token("sceneInk", ((color as { alpha?: number }).alpha ?? 1) * k);
 }
 
 // ── sizes by the screen ───────────────────────────────────────────────────

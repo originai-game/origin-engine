@@ -361,10 +361,10 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
           const cardinal = d % 90 === 0;
           const named = d % 45 === 0;
           if (named) {
-            text(`P${d}`, names[d / 45]!, { step: cardinal ? ts(16) : ts(12), font: "display", color: d === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 },
+            text(`P${d}`, names[d / 45]!, { step: cardinal ? ts(16) : ts(12), font: "display", color: d === 0 ? lit(role("danger")) : token("ink"), onScene: true, nowrap: true, outline: 1 },
               fixed({ start: x, top: u(2) }, { transform: { x: -u(cardinal ? 6 : 9) }, opacity: clamp01(fade * 1.6) }));
           } else {
-            leaf(`T${d}`, { width: px(2), height: px(u(8)), part: sel("Compass", "tick", named ? "major" : null) }, { fills: [solid(token("ink", 0.7))] },
+            leaf(`T${d}`, { width: px(2), height: px(u(8)), part: sel("Compass", "tick", named ? "major" : null) }, { fills: [solid(token("sceneInk", 0.7))] },
               fixed({ start: x - 1, top: u(6) }, { opacity: clamp01(fade * 1.6) }));
           }
         }
@@ -391,15 +391,15 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
                 box("Plate", { padding: { left: u(3), right: u(3), top: 0, bottom: 0 }, part: sel("Compass", "distance"), partClass: "chip" }, chip(3, true), () => {
                   text("Distance", words, { step: ts(10), font: "mono", color: token("ink"), nowrap: true });
                 });
-              } else text("Distance", words, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
+              } else text("Distance", words, { step: ts(10), font: "mono", color: token("ink"), onScene: true, nowrap: true, outline: 1 });
             }
           }, fixed({ start: x - bw / 2, top: markTop }, { a11y: a11y("image", p.label ?? ""), ...(clamped ? { opacity: 0.8 } : {}) }));
         }
         // The notch at the centre.
         leaf("Notch", { width: px(u(12)), height: px(u(8)), part: sel("Compass", "notch") }, {
           shape: { kind: "polygon", sides: 3, rotation: Math.PI },
-          fills: [solid(token("ink"))],
-          strokes: [stroke(1, token("shadow", 0.8), "outside")],
+          fills: [solid(token("sceneInk"))],
+          strokes: [stroke(1, token("sceneShadow", 0.8), "outside")],
         }, fixed({ start: width / 2 - u(6), top: 0 }));
       });
       box("Bearing", { padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, part: sel("Compass", "bearing"), partClass: "chip" }, chip(3, true), () => {
@@ -434,7 +434,7 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
   hudPlace(id, anchor, () => {
     box(id, { direction: "column", gap: tk.md, width: px(width), padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm }, part: sel("ObjectiveTracker", "frame"), partClass: "hud" }, {
       // A soft scrim from the edge it sits on, so steps read over any scene.
-      fills: [vgrad([[0, token("shadow", 0)], [0.25, token("shadow", 0.42)], [1, token("shadow", 0.5)]], kit.frameDirection() === "rtl" ? -90 : 90)],
+      fills: [vgrad([[0, token("sceneShadow", 0)], [0.25, token("sceneShadow", 0.42)], [1, token("sceneShadow", 0.5)]], kit.frameDirection() === "rtl" ? -90 : 90)],
     }, () => {
       for (const q of quests) {
         const done = q.completedAt !== null && q.completedAt !== undefined;
@@ -448,10 +448,10 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
         }, undefined, () => {
           const meta = (): void => {
             if (q.timer !== null && q.timer !== undefined) {
-              text("Timer", countdown(q.timer, false), { step: ts(13), font: "mono", color: q.timer < 10 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1 });
+              text("Timer", countdown(q.timer, false), { step: ts(13), font: "mono", color: q.timer < 10 ? lit(role("danger")) : token("ink"), onScene: true, nowrap: true, outline: 1 });
             }
             if (q.distance !== null && q.distance !== undefined) {
-              text("Distance", `${Math.round(q.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), nowrap: true, outline: 1 });
+              text("Distance", `${Math.round(q.distance)}${desc.units ?? "m"}`, { step: ts(12), font: "mono", color: token("inkMuted"), onScene: true, nowrap: true, outline: 1 });
             }
           };
           // The timer and distance share the title's line only when both fit whole beside it (a measured guess:
@@ -464,7 +464,7 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
           kit.row("Head", { gap: tk.sm, cross: "center", width: pct(1) }, () => {
             if (q.focused) leaf("Mark", { width: px(u(3)), height: px(u(18)), part: sel("ObjectiveTracker", "focus") }, { fills: [solid(token("highlight"))] });
             if (q.icon) icon("Icon", q.icon, u(18), q.focused ? token("highlight") : lit(role("gold")));
-            text("Title", q.title ?? "", { step: ts(15), font: "display", color: q.focused ? token("highlight") : token("ink"), width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 1 });
+            text("Title", q.title ?? "", { step: ts(15), font: "display", color: q.focused ? token("highlight") : token("ink"), onScene: true, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 1 });
             if (!apart) meta();
           });
           // A narrow tracker (a phone's) gives the title the whole line and
@@ -472,14 +472,14 @@ export function objectiveTracker(id: string, desc: Api.ObjectiveTrackerDesc = {}
           if (apart && metaText.length > 0) kit.row("Meta", { gap: tk.md, cross: "center" }, meta);
           if (done) {
             const s = pop(since, 0.2, 400);
-            text("Complete", q.completeLabel ?? "Complete", { step: ts(14), font: "display", color: lit(role("success")), nowrap: true, outline: 1 }, { transform: { scaleX: s, scaleY: s, pivotX: 0 } });
+            text("Complete", q.completeLabel ?? "Complete", { step: ts(14), font: "display", color: lit(role("success")), onScene: true, nowrap: true, outline: 1 }, { transform: { scaleX: s, scaleY: s, pivotX: 0 } });
           }
           // Open steps first when the list is cut, so what is left to do shows.
           const all = q.steps ?? [];
           const cap = desc.maxSteps || (fold > 2 ? 1 : fold > 1 || (f.phone && textScale() >= 1.5) ? 2 : 0);
           const shown = cap > 0 && all.length > cap ? [...all.filter((st) => !st.done && !st.failed), ...all.filter((st) => st.done || st.failed)].slice(0, cap) : all;
           for (const st of all) if (shown.includes(st)) step(keyId(st.key ?? st.text ?? ""), st, tk);
-          if (shown.length < all.length) text("More", `+${all.length - shown.length} more`, { step: ts(12), color: token("inkMuted"), nowrap: true, outline: 0.8 });
+          if (shown.length < all.length) text("More", `+${all.length - shown.length} more`, { step: ts(12), color: token("inkMuted"), onScene: true, nowrap: true, outline: 0.8 });
         }, { opacity: 1 - leave, a11y: a11y("group", q.title ?? "") });
       }
     }, { a11y: a11y("list", "Objectives") });
@@ -514,9 +514,9 @@ function step(id: string, st: Api.ObjectiveStep, tk: ReturnType<typeof frame>["t
           }, absolute({ start: 0, top: 0 }));
         }
       }, { transform: { scaleX: s, scaleY: s } });
-      text("Text", st.optional ? `${isolate(st.text ?? "")} (Optional)` : (st.text ?? ""), { step: ts(13), color: ink, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 0.8 });
+      text("Text", st.optional ? `${isolate(st.text ?? "")} (Optional)` : (st.text ?? ""), { step: ts(13), color: ink, onScene: true, width: { kind: "grow" }, maxLines: 2, ellipsis: true, outline: 0.8 });
       if ((st.target ?? 0) > 0) {
-        text("Count", `${Math.min(st.count ?? 0, st.target ?? 0)}/${st.target}`, { step: ts(13), font: "mono", color: st.done ? token("inkFaint") : token("ink"), nowrap: true, outline: 0.8 },
+        text("Count", `${Math.min(st.count ?? 0, st.target ?? 0)}/${st.target}`, { step: ts(13), font: "mono", color: st.done ? token("inkFaint") : token("ink"), onScene: true, nowrap: true, outline: 0.8 },
           { transform: { scaleX: cs, scaleY: cs, pivotX: 1 } });
       }
     });

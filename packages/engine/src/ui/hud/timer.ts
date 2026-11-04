@@ -4,9 +4,7 @@
 // scores.ts unchanged when the genre HUDs moved into kits (docs/ui.md §17).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, clamp01, countdown, edge, frame, groups, hudPlace, kit, leaf, lit, msToTicks, pct, pop, pulse, px, role, sel, solid, sound, text, token, ts, u, type Rgba } from "./core.ts";
-
-const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
+import { a11y, absolute, anchorOf, box, chip, clamp01, countdown, edge, frame, groups, hudPlace, kit, leaf, lit, msToTicks, pct, pop, pulse, px, role, sel, solid, sound, text, token, ts, u } from "./core.ts";
 
 export function hudTimer(id: string, desc: Api.HudTimerDesc = {}): void {
   const tk = frame().t;
@@ -16,7 +14,8 @@ export function hudTimer(id: string, desc: Api.HudTimerDesc = {}): void {
   const down = mode === "countdown";
   const done = down && secs <= 0;
   const state = desc.paused ? "paused" : done ? "done" : down && secs <= warnAt / 3 ? "critical" : down && secs <= warnAt ? "warn" : "normal";
-  const ink = state === "critical" || state === "done" ? role("danger") : state === "warn" ? role("warn") : WHITE;
+  // On the HUD's plate: the plate's ink (a fixed white vanished into a light style's pale plate).
+  const ink = state === "critical" || state === "done" ? role("danger") : state === "warn" ? role("warn") : role("ink");
   const textNow = countdown(secs, desc.tenths !== false && down && secs < 10);
   hudPlace(id, anchorOf(desc, "top"), () => {
     box(id, { direction: "column", gap: 0, cross: "center", padding: { left: tk.md, right: tk.md, top: u(4), bottom: u(4) }, part: sel("HudTimer", "frame", state), partClass: "hud" }, chip(), () => {

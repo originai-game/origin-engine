@@ -90,10 +90,10 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
           } else icon("Icon", desc.icon, s, lit(ink), "");
         }
         // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
-        if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
+        if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), onScene: !plate, nowrap: true, outline: 1.2 });
         if (style === "pips") pips(desc, value, max, ink, h, radius);
         else track(path, desc, frac, level, ink, h, radius, style, inside ? { text: valueText, step: valueStep, critical: level === "critical" } : null);
-        if (desc.showValue && !inside) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 });
+        if (desc.showValue && !inside) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), onScene: !plate, nowrap: true, outline: 1.2 });
       });
     }, {
       a11y: a11y("meter", name, { value: valueText, valueMin: 0, valueMax: max, valueNow: value }),
@@ -185,7 +185,7 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
       fills: [vgrad([[0, lit(BLACK, 0)], [0.18, lit(BLACK, 0.62)], [0.85, lit(BLACK, 0.62)], [1, lit(BLACK, 0.2)]], desc.reverse ? 270 : 90)],
     }, absolute(desc.reverse ? { start: 0, top: 0 } : { end: 0, top: 0 }));
     box("Value", { width: pct(1), height: pct(1), direction: "row", align: desc.reverse ? "start" : "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
-      text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), nowrap: true, outline: 1 });
+      text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), onScene: true, nowrap: true, outline: 1 });
     }, absolute({ start: 0, top: 0 }));
   }
   // A slanted bar leans its whole track; its text sits outside it, upright.
@@ -284,11 +284,11 @@ export function orbMeter(id: string, desc: Api.OrbMeterDesc = {}): void {
           fills: [vgrad([[0, token("sheen", 0.55)], [1, token("sheen", 0)]])],
         }, absolute({ start: size * 0.2, top: size * 0.09 }, { transform: { rotate: -0.45 } }));
         if (desc.showValue !== false) {
-          text("Value", String(Math.round(value)), { step: ts(size >= 96 ? 20 : 15, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 },
+          text("Value", String(Math.round(value)), { step: ts(size >= 96 ? 20 : 15, true), font: "display", color: token("ink"), onScene: true, nowrap: true, outline: 1.2 },
             absolute({ centerX: true, centerY: true }));
         }
       });
-      if (desc.label) text("Label", desc.label, { step: ts(12), color: token("ink", 0.9), nowrap: true, outline: 1 });
+      if (desc.label) text("Label", desc.label, { step: ts(12), color: token("ink", 0.9), onScene: true, nowrap: true, outline: 1 });
     });
     apply({
       a11y: a11y("meter", name, { value: `${Math.round(value)} / ${Math.round(max)}`, valueMin: 0, valueMax: max, valueNow: value }),
