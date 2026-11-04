@@ -146,7 +146,7 @@ export const RULES: readonly UiRule[] = [
   { id: "text-truncated", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so its absence is reported as a warning until U3's dump_ui lists an element's tooltip" },
   { id: "offscreen", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
   { id: "pseudo-overflow", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above on text lengthened in process (og.i18n.t and the text arguments of og.ui's widgets)" },
-  { id: "text-scale", title: "overflow at 200 % text, and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
+  { id: "text-scale", title: "overflow at 150 % text (200 % deferred), and text that does not grow with the player's text size", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure) and runs every rule above; a text cut there is reported under this rule, and a text drawn at less than the scale times its size at 100 % (a fixed size the scale does not reach) too" },
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
@@ -288,6 +288,11 @@ export function neighbour(from: Rect4, cands: Array<[number, Rect4]>, dir: "up" 
       : dir === "up" ? [(fb > rb || from[1] >= rb) && from[1] > r[1], from[1] - rb, from[1] - r[1]]
       : dir === "right" ? [(from[0] < r[0] || fr <= r[0]) && fr < rr, r[0] - fr, rr - fr]
       : [(fr > rr || from[0] >= rr) && from[0] > r[0], from[0] - rr, from[0] - r[0]];
+    // A control inside the focus whose centre lies that way from the focus's (a row's own Remove button): the move
+    // steps into it at no distance.
+    const inside = r[0] >= from[0] - 0.5 && r[1] >= from[1] - 0.5 && rr <= fr + 0.5 && rb <= fb + 0.5
+      && (dir === "down" ? cy > fy + 0.5 : dir === "up" ? cy < fy - 0.5 : dir === "right" ? cx > fx + 0.5 : cx < fx - 0.5);
+    if (inside) return { beam: true, major: 0, far: 0, minor: horizontal ? Math.abs(cy - fy) : Math.abs(cx - fx) };
     if (!thatWay) return null;
     const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0) > 0.5;
     return {
@@ -322,10 +327,21 @@ export function neighbour(from: Rect4, cands: Array<[number, Rect4]>, dir: "up" 
   return best ? best[1] : null;
 }
 
-/** The focusable controls each pad direction leads to, from each: the graph pads walk. */
-export function padGraph(rects: Rect4[]): number[][] {
-  return rects.map((r, i) => {
-    const others = rects.map((o, j) => [j, o] as [number, Rect4]).filter(([j]) => j !== i);
+/**
+ * The focusable controls each pad direction leads to, from each: the graph pads walk. `views`, by control, its part
+ * in view and the scroll it sits in: as og-ui's `step_focus`, a control in a scroll is scored by its part in view (the
+ * focus as its candidates), and by its whole box only when it is wholly scrolled out.
+ */
+export function padGraph(rects: Rect4[], views?: Array<{ shown: Rect4 | null; scroller: string }>): number[][] {
+  const seen = (k: number): Rect4 | null => {
+    const v = views?.[k];
+    return v && v.scroller && v.shown && v.shown[2] > 0.5 && v.shown[3] > 0.5 ? v.shown : null;
+  };
+  return rects.map((r0, i) => {
+    const r = seen(i) ?? r0;
+    const others = rects
+      .map((o, j) => [j, seen(j) ?? o] as [number, Rect4])
+      .filter(([j]) => j !== i);
     const out = new Set<number>();
     for (const d of ["up", "down", "left", "right"] as const) {
       const n = neighbour(r, others, d);
@@ -601,7 +617,15 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   const nodes = !walked ? [] : order.map((p) => f.a11y.nodes.find((n) => n.path === p)).filter((n): n is NonNullable<typeof n> => !!n && !n.states.includes("offscreen"));
   if (nodes.length > 0) {
     const start = Math.max(0, nodes.findIndex((n) => n.path === f.a11y.focused));
-    for (const p of padFindings(padGraph(nodes.map((n) => n.rect)), start)) {
+    // Each control's part in view (its element's box, which a scroll cuts) and the scroll it sits in.
+    const scrolls = f.elements.map((e, k) => (e.kind === "scroll" ? paths[k]! : null)).filter((p): p is string => !!p);
+    const views = nodes.map((n) => {
+      const k = byPath.get(n.path);
+      const e = k === undefined ? undefined : f.elements[k];
+      const scroller = scrolls.filter((sp) => within(n.path, sp) && sp !== n.path).sort((a, b) => b.length - a.length)[0] ?? "";
+      return { shown: e ? ([e.x, e.y, e.width, e.height] as Rect4) : null, scroller };
+    });
+    for (const p of padFindings(padGraph(nodes.map((n) => n.rect), views), start)) {
       const n = nodes[p.index]!, from = nodes[start]!.path;
       if (p.rule === "focus-reach") add("focus-reach", {
         paths: [n.path, from],

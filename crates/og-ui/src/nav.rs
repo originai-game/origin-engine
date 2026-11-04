@@ -111,6 +111,32 @@ fn toward(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
                 from.x - r.x,
             ),
         };
+        // A control inside the focus (a row's own Remove button, a chat
+        // line's link) whose centre lies that way from the focus's: the move
+        // steps into it, at no distance. No edge of it lies past the focus,
+        // so nothing led to it at all.
+        let inside = r.x >= from.x - 0.5
+            && r.y >= from.y - 0.5
+            && r.right() <= from.right() + 0.5
+            && r.bottom() <= from.bottom() + 0.5
+            && match dir {
+                Nav::Down => cy > fy + 0.5,
+                Nav::Up => cy < fy - 0.5,
+                Nav::Right => cx > fx + 0.5,
+                _ => cx < fx - 0.5,
+            };
+        if inside {
+            return Some(Toward {
+                beam: true,
+                major: 0.0,
+                far: 0.0,
+                minor: if horizontal {
+                    (cy - fy).abs()
+                } else {
+                    (cx - fx).abs()
+                },
+            });
+        }
         that_way.then(|| Toward {
             beam: if horizontal {
                 overlap(from.y, from.bottom(), r.y, r.bottom())
@@ -222,12 +248,28 @@ impl Ui {
                 cands[(i + n - 1) % n].key
             });
         }
+        // A control in a scroll is scored by its part in view, the focus as
+        // its candidates: its whole box, past the scroll's edge, reached
+        // under a button floating over the scroll's foot (a tall shop tile
+        // under the Gallery button) and took every move meant for that
+        // button's neighbour. Wholly scrolled out, it keeps its whole box.
+        let placed = |h: &Hit| -> Rect {
+            if h.scroller != 0 && h.rect.width > 0.5 && h.rect.height > 0.5 {
+                h.rect
+            } else {
+                h.full
+            }
+        };
         let pick = |level: u64| -> Vec<(u64, Rect)> {
             cands
                 .iter()
                 .filter(|h| h.key != from.key && self.in_group(h.group, level))
-                .map(|h| (h.key, h.full))
+                .map(|h| (h.key, placed(h)))
                 .collect()
+        };
+        let from = Hit {
+            full: placed(&from),
+            ..from
         };
         if from.group == 0 {
             return neighbour(&from.full, &pick(0), nav)

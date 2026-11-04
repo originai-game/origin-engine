@@ -164,6 +164,123 @@ fn a_direction_prefers_the_control_in_its_row_measured_edge_to_edge() {
     );
 }
 
+/// A shop tile taller than its scroll's view, the view ending above two
+/// buttons in a row (the kit's Gallery and Next at a store's foot): the
+/// tile's whole box reaches past the view over both, and scored by it,
+/// Right from Gallery took the tile and nothing led to Next. Entered at its
+/// part in view, the tile stands above the row, and Right goes beside.
+#[test]
+fn a_control_past_its_scrolls_view_is_scored_by_its_part_in_view() {
+    #[derive(Default)]
+    struct S {
+        focus: Option<String>,
+    }
+    let want = std::cell::Cell::new(None::<&str>);
+    let mut b = |ui: &mut Ui, s: &mut S| {
+        s.focus = None;
+        ui.column("Page", Element::default(), |ui| {
+            ui.scroll(
+                "Shop",
+                ScrollDesc {
+                    width: Size::Fixed(300.0),
+                    height: Size::Fixed(200.0),
+                    padding: Insets {
+                        left: 20.0,
+                        ..Insets::default()
+                    },
+                    ..ScrollDesc::default()
+                },
+                |ui| {
+                    ui.open(
+                        "Tile",
+                        Element {
+                            interactive: true,
+                            focusable: true,
+                            width: Size::Fixed(260.0),
+                            height: Size::Fixed(500.0),
+                            ..Element::default()
+                        },
+                    );
+                    ui.close();
+                },
+            );
+            ui.row(
+                "Nav",
+                Element {
+                    gap: 40.0,
+                    ..Element::default()
+                },
+                |ui| {
+                    for id in ["Gallery", "Next"] {
+                        let desc = ButtonDesc {
+                            width: Some(Size::Fixed(100.0)),
+                            ..ButtonDesc::default()
+                        };
+                        if ui.button(id, id, desc).focused {
+                            s.focus = Some(id.to_string());
+                        }
+                    }
+                },
+            );
+        });
+        if let Some(p) = want.take() {
+            ui.set_focus(p);
+        }
+    };
+    let mut rig = Rig::new(S::default());
+    rig.idle(1, &mut b);
+    want.set(Some("Page/Nav/Gallery"));
+    rig.idle(2, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Gallery"));
+    rig.key(UiKey::Right, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(
+        rig.state.focus.as_deref(),
+        Some("Next"),
+        "right goes beside, not onto the tile's part past the view"
+    );
+}
+
+/// A focusable row with its own button at its end (a loadout's attachment
+/// and its Remove): Right from the row steps into the button. No edge of
+/// the button lies past the row's, so no move led to it.
+#[test]
+fn a_direction_steps_into_a_control_inside_the_focus() {
+    #[derive(Default)]
+    struct S {
+        focus: Option<String>,
+    }
+    let want = std::cell::Cell::new(None::<&str>);
+    let mut b = |ui: &mut Ui, s: &mut S| {
+        s.focus = None;
+        ui.open(
+            "Row",
+            Element {
+                interactive: true,
+                focusable: true,
+                width: Size::Fixed(400.0),
+                padding: Insets::all(8.0),
+                align: Align::End,
+                ..Element::row()
+            },
+        );
+        if ui.button("Remove", "Remove", ButtonDesc::default()).focused {
+            s.focus = Some("Remove".into());
+        }
+        ui.close();
+        if let Some(p) = want.take() {
+            ui.set_focus(p);
+        }
+    };
+    let mut rig = Rig::new(S::default());
+    rig.idle(1, &mut b);
+    want.set(Some("Row"));
+    rig.idle(2, &mut b);
+    rig.key(UiKey::Right, &mut b);
+    rig.idle(1, &mut b);
+    assert_eq!(rig.state.focus.as_deref(), Some("Remove"));
+}
+
 /// Two links inside a focusable row (a chat line and its item and player
 /// links): Right from the first link lands on the second, not on the row
 /// around both, which no edge of lies further that way. Measured edge to

@@ -209,6 +209,16 @@ test("pad reach: a control beside the focus in its row beats one diagonally belo
   // A link beside another inside the focusable row around both (a chat line): right goes to the link, not the row.
   const row: Rect4 = [38, 224, 1204, 38], who: Rect4 = [240, 227, 69, 32], ring: Rect4 = [415, 227, 146, 32];
   expect(neighbour(who, [[0, row], [2, ring]], "right")).toBe(2);
+  // A shop tile whose whole box runs past its scroll's view (ending at y 576) over Gallery and Next at the screen's
+  // foot: scored by the whole box, right from Gallery took the tile and nothing led to Next; by its part in view, the
+  // tile stands above them.
+  const tile: Rect4 = [24, 356, 482, 627], gal: Rect4 = [16, 608, 216, 96], nxt: Rect4 = [240, 608, 228, 96];
+  const shop = { shown: [24, 356, 482, 220] as Rect4, scroller: "Shop/Body/View" };
+  const chrome = { shown: null, scroller: "" };
+  expect(neighbour(gal, [[1, nxt], [2, tile]], "right")).toBe(2);
+  expect(neighbour(gal, [[1, nxt], [2, shop.shown]], "right")).toBe(1);
+  expect(padGraph([gal, nxt, tile], [chrome, chrome, shop])[0]).toContain(1);
+  expect(padFindings(padGraph([gal, nxt, tile], [chrome, chrome, shop]), 0)).toEqual([]);
 });
 
 test("pad reach: options inside a focusable listbox are reached through it; outside one they are not", () => {
