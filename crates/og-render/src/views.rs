@@ -1311,6 +1311,7 @@ impl crate::Renderer {
                         slot.light_buffers[2].as_entire_binding(),
                         self.lightmaps.probe_buffer.as_entire_binding(),
                         self.ltc.as_entire_binding(),
+                        self.caustic_grid.as_entire_binding(),
                     ],
                 );
                 let fx = crate::fx::fx_group(

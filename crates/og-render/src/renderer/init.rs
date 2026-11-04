@@ -311,6 +311,9 @@ impl Renderer {
             // (lightmap.rs, area.rs): buffers, as the light tables.
             lightmap::probe_layout_entry(),
             area::ltc_layout_entry(),
+            // A sea's caustics (W2, water.rs `Caustics`): a uniform, as the
+            // storage buffers a lit pipeline may bind are spent.
+            water::caustic_layout_entry(),
         ];
         let frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("frame"),
@@ -492,6 +495,7 @@ impl Renderer {
         });
         let light_buffers = clusters::buffers(&device);
         let ltc = area::ltc_buffer(&device, &queue);
+        let caustic_grid = water::caustic_buffer(&device);
         let volumetric = volumetric::Volumetric::new(&device, info.volumetric);
         // One set per planar reflection the renderer draws (none without
         // the 3D world).
@@ -1014,6 +1018,7 @@ impl Renderer {
             light_buffers,
             lightmaps,
             ltc,
+            caustic_grid,
             cookies: area::Cookies::default(),
             volumetric,
             clusters: clusters::ClusterBuilder::default(),
