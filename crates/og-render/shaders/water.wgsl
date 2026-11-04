@@ -874,7 +874,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Under a closed cloud deck the light reaches the sea as the deck's own radiance, from the whole sky above (its a:
   // how much of the sky it closes): the foam and the crests take it (below). The sun itself is hidden by the deck
   // for every surface at its source (Clouds::light). With live sky, amb_up/amb_n already carry the captured deck:
-  // do not replace that irradiance or add a second, unfogged deck light to the crests.
+  // do not replace that irradiance with the analytical, unfogged deck.
   var deck_up = vec4<f32>(0.0);
   if (frame.clouds[4].w < 0.5) { deck_up = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)); }
   let sun_e = frame.light_color.rgb * sun;
@@ -898,7 +898,12 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let l_deck = normalize(vec3<f32>(l.x, 1.0, l.z));
     let vn = max(dot(v, n), 0.0);
     let k_deck = crest * (0.8 * max(dot(n, l_deck), 0.0) + 0.6 * vn * vn) * exp(-dist / 600.0);
-    deep += SEA_SSS.rgb * deck_up.rgb * 1.4 * deck_up.a * k_deck;
+    // Crest transmission is distinct from the foam-dependent ambient terms
+    // above. Keep that lobe under a captured sky, using its irradiance over
+    // pi directly instead of the analytical deck's 1.4 radiance conversion.
+    let crest_light = select(deck_up.rgb * 1.4 * deck_up.a,
+      amb_up * cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a, frame.clouds[4].w > 0.5);
+    deep += SEA_SSS.rgb * crest_light * k_deck;
   }
   if (water_js) {
     // three.js Water's body, (sunColor · diffuse · 0.3 + scatter) · shadow: diffuse = max(L·N, 0) · sunColor · 0.5,
