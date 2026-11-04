@@ -411,11 +411,15 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   }
   // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
   // mean colour along this ray, the fallback's where the ray found little cloud).
-  // The legacy distance fade is only for looks without explicit fog.
+  // Fog controls atmospheric extinction, not the finite march's reach.
+  // Height fog can leave distant cloud visible: taper coverage to the
+  // fallback before the hard start>=far exit, with either fog setting.
+  let range_fade = 1.0 - smoothstep(far * 0.5, far, start);
   let fade = select(exp(-start / (far * 0.45)), 1.0, frame.fog_color.w > 0.5);
   let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
   let behind = mix(color, mean, deck_cover);
-  return mix(behind, color * transmittance + scattered, fade);
+  let marched = mix(behind, color * transmittance + scattered, fade);
+  return mix(mix(color, deck, deck_cover), marched, range_fade);
 }
 
 // ── the aurora (aurora.rs) ──────────────────────────────────────────

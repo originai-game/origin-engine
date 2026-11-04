@@ -760,6 +760,61 @@ fn cloud_volume_gets_view_fog_even_when_the_clear_sky_does_not() {
 }
 
 #[test]
+fn cloud_coverage_fades_before_the_march_limit_with_fog() {
+    let mut scene = solar_probe();
+    scene.environment.sky.look.as_mut().unwrap().sun_intensity = 0.0;
+    scene.camera.exposure = og_render::Exposure::Manual { ev: 0.0 };
+    scene.camera.projection = og_render::Projection::Perspective { fov_y_degrees: 1.0 };
+    // Aim at the ray whose cloud-base intersection is 60km away. The
+    // shell intersection is derived geometrically, independently of shading.
+    let radius = 6_360_000.0f64;
+    let base = 1500.0;
+    let distance = 60_000.0;
+    let y = ((radius + base).powi(2) - radius.powi(2) - distance * distance)
+        / (2.0 * radius * distance);
+    scene.camera.target = Vec3::new(0.0, y as f32, -(1.0 - y * y).sqrt() as f32);
+    scene.fog = Some(og_render::Fog {
+        color: Vec3::ONE,
+        sun_color: Vec3::ONE,
+        density: 0.02,
+        sky: 0.0,
+        ..Default::default()
+    });
+    scene.clouds = Some(og_render::Clouds {
+        coverage: 0.6, // no analytical overcast fallback
+        density: 0.1,
+        base: base as f32,
+        layer: 0.0,
+        detail: 0.0,
+        wind: Vec3::ZERO,
+        ..Default::default()
+    });
+    let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
+        width: 128,
+        height: 128,
+        antialias: og_render::Antialias::Off,
+        ..scenes::base_desc()
+    })
+    .unwrap();
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let image = renderer.read_offscreen().unwrap();
+    let band = |top, bottom| {
+        (top..bottom)
+            .flat_map(|y| (0..128).map(move |x| (x, y)))
+            .map(|(x, y)| luma(linear_pixel(&image, x, y)))
+            .sum::<f32>()
+            / (128 * (bottom - top)) as f32
+    };
+    let near = band(0, 8);
+    let edge = band(48, 58);
+    let beyond = band(90, 100);
+    println!("cloud range: near={near}, edge={edge}, beyond={beyond}");
+    assert!(near > 0.05, "the fixture contains visible cloud");
+    assert!(edge < near * 0.15, "coverage fades before the hard cutoff");
+    assert!(beyond < 0.001, "the ray is beyond the cloud march");
+}
+
+#[test]
 fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
     for (name, aa, scale) in [
         ("taa", og_render::Antialias::Taa, 1.0),
