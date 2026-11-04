@@ -260,8 +260,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   and pushes to main without rerunning what the author ran (one quick
   only when the rebase conflicted). Only breakage blocks on its own.
   Authors without a GPU (orbs) name the sheets and the art runner renders
-  them. GPU suites always take `scripts/lock.sh`; nobody runs the full
-  gate, `--all`, wasm builds or web-reference beside others. Long-running
+  them. GPU work takes a GPU slot (`og_gpu_acquire` in `scripts/lock.sh`,
+  three at once on macrunner by default, `OG_GPU_SLOTS`); frame-time and
+  perf measurements, wave-end and the full gate take every slot
+  (`og_gpu_acquire_all`); nobody runs the full gate, `--all`, wasm builds
+  or web-reference beside others. Long-running
   threads are retired and replaced by fresh ones before their context
   fills. macrunner carries two landing sessions
   (the owner, 2026-11-04, to speed landing): one for the UI side
