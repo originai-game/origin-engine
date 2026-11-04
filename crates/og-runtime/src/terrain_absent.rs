@@ -28,6 +28,9 @@ pub(crate) struct TerrainState {
     pub loaded: Vec<LoadedTerrain>,
     /// Read by captures as the full module's (nothing to settle).
     pub settle: bool,
+    /// Read by the probe's dump_entity as the full module's: no scatter,
+    /// no issue.
+    pub scatter_issues: std::collections::BTreeMap<u64, String>,
 }
 
 pub(crate) fn retire(_id: u32) {}
