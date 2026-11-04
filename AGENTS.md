@@ -191,7 +191,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   `["model:claude-opus-5-5", "effort:medium"]` (the owner, 2026-11-01;
   high before), the project ref
   `origingame/origin-engine`, and its base commit named in the prompt;
-  never Fable or another model, never a mode picked for the task.
+  never another model, never a mode picked for the task. One escalation
+  (the owner, 2026-11-04): a problem that has resisted several rounds of
+  fixes (its attempts and evidence recorded) goes to a new Claude Code
+  thread with features `["model:claude-fable-5-1", "effort:high"]`, briefed
+  with every failed attempt and its evidence; the original thread stops on
+  that problem.
   Claude Code is the default, not a rule for everything (the owner,
   2026-11-04): macrunner, hard logic and backend work, and splitting
   oversized source files may run in new Amp `high` threads. An Amp
