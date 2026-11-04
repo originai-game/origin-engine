@@ -1,7 +1,7 @@
 //! Real native surface acceptance, using the same scenes as the gfx harness.
 //! PNG output is only an SDR preview, never evidence of HDR luminance.
 
-use og_render::{RenderTarget, Renderer};
+use og_render::{RenderError, RenderTarget, Renderer};
 use og_tests::scenes::{self, GfxScene};
 use std::{path::PathBuf, sync::Arc};
 use winit::{
@@ -19,6 +19,7 @@ struct App {
     built: GfxScene,
     limit: u32,
     frame: u32,
+    occluded: bool,
     preview: Option<PathBuf>,
     renderer: Option<Renderer>,
     window: Option<Arc<Window>>,
@@ -74,6 +75,10 @@ impl App {
                 "HDR requested but surface resolved SDR; this run cannot validate HDR".into(),
             );
         }
+        if let Some(update) = self.built.update {
+            update(&mut self.built.scene, self.frame);
+        }
+        window.focus_window();
         window.request_redraw();
         self.renderer = Some(renderer);
         self.window = Some(window);
@@ -83,29 +88,36 @@ impl App {
     fn draw(&mut self) -> Result<bool, String> {
         let window = self.window.as_ref().expect("opened");
         let size = window.inner_size();
-        if size.width == 0 || size.height == 0 {
+        if self.occluded || size.width == 0 || size.height == 0 {
             return Ok(false);
         }
         let renderer = self.renderer.as_mut().expect("opened");
-        if let Some(update) = self.built.update {
-            update(&mut self.built.scene, self.frame);
-        }
         window.pre_present_notify();
-        renderer
-            .render(&self.built.scene, &RenderTarget::Surface)
-            .map_err(|e| e.to_string())?;
+        match renderer.render(&self.built.scene, &RenderTarget::Surface) {
+            Ok(_) => {}
+            Err(RenderError::SurfaceOccluded) => {
+                self.occluded = true;
+                println!("surface occluded; waiting for window visibility (no frame counted)");
+                return Ok(false);
+            }
+            Err(error) => return Err(error.to_string()),
+        }
         self.frame += 1;
         if self.limit != 0 && self.frame >= self.limit {
             return Ok(true);
+        }
+        if let Some(update) = self.built.update {
+            update(&mut self.built.scene, self.frame);
         }
         window.request_redraw();
         Ok(false)
     }
 
     fn finish(&mut self) -> Result<(), String> {
-        if self.frame > 0
-            && let Some(path) = &self.preview
-        {
+        if self.frame == 0 {
+            return Err("closed without presenting a surface frame; acceptance not run".into());
+        }
+        if let Some(path) = &self.preview {
             let image = self
                 .renderer
                 .as_ref()
@@ -137,6 +149,13 @@ impl ApplicationHandler for App {
         let result = match event {
             WindowEvent::CloseRequested => Ok(true),
             WindowEvent::RedrawRequested => self.draw(),
+            WindowEvent::Occluded(occluded) => {
+                self.occluded = occluded;
+                if !occluded {
+                    self.window.as_ref().expect("opened").request_redraw();
+                }
+                Ok(false)
+            }
             WindowEvent::Resized(size) => {
                 if size.width != 0 && size.height != 0 {
                     self.renderer
@@ -199,12 +218,22 @@ fn main() -> Result<(), String> {
         built,
         limit,
         frame: 0,
+        occluded: false,
         preview: args.get(5).map(PathBuf::from),
         renderer: None,
         window: None,
         error: None,
     };
-    EventLoop::new()
+    let mut event_loop = EventLoop::builder();
+    #[cfg(target_os = "macos")]
+    {
+        use winit::platform::macos::{ActivationPolicy, EventLoopBuilderExtMacOS};
+        event_loop
+            .with_activation_policy(ActivationPolicy::Regular)
+            .with_activate_ignoring_other_apps(true);
+    }
+    event_loop
+        .build()
         .map_err(|e| e.to_string())?
         .run_app(&mut app)
         .map_err(|e| e.to_string())?;

@@ -27,6 +27,9 @@ pub enum RenderError {
     NoDevice(String),
     /// The surface could not be configured or acquired.
     Surface(String),
+    /// No drawable while the native window is hidden or occluded. No frame
+    /// was presented; wait for visibility before retrying, without reconfiguring.
+    SurfaceOccluded,
     /// A handle in the scene points at nothing (it came from another scene).
     InvalidHandle(String),
     /// Reading a frame back failed.
@@ -48,6 +51,7 @@ impl std::fmt::Display for RenderError {
             RenderError::NoAdapter(m) => write!(f, "no GPU adapter: {m}"),
             RenderError::NoDevice(m) => write!(f, "no GPU device: {m}"),
             RenderError::Surface(m) => write!(f, "surface: {m}"),
+            RenderError::SurfaceOccluded => write!(f, "surface is occluded; no frame presented"),
             RenderError::InvalidHandle(m) => write!(f, "invalid handle: {m}"),
             RenderError::Readback(m) => write!(f, "readback: {m}"),
             RenderError::Unsupported(m) => write!(f, "unsupported: {m}"),

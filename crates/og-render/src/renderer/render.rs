@@ -2711,6 +2711,9 @@ impl Renderer {
                         });
                         Some((t, view, linear))
                     }
+                    wgpu::CurrentSurfaceTexture::Occluded => {
+                        return Err(RenderError::SurfaceOccluded);
+                    }
                     other => {
                         if let Some(reason) = self.lost() {
                             return Err(RenderError::DeviceLost(reason));

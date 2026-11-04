@@ -1172,8 +1172,9 @@ mod canvas {
                 Ok(s) => {
                     self.triangles = s.triangles;
                 }
-                // Lost while drawing: recovered from the next frame on.
-                Err(og_render::RenderError::DeviceLost(_)) => return Ok(()),
+                // Neither case submitted a frame: recover or wait for visibility.
+                Err(og_render::RenderError::DeviceLost(_))
+                | Err(og_render::RenderError::SurfaceOccluded) => return Ok(()),
                 Err(e) => return Err(e.to_string()),
             }
             self.drawn += 1;

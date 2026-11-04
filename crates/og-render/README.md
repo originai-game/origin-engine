@@ -736,6 +736,13 @@ instead of claiming HDR acceptance. There is no headless fallback. This
 example is outside the default gate and adds no window dependency to normal
 headless runs. Authors only compile it; macrunner runs it on the real display.
 
+Occlusion is not a failed swapchain: `RenderError::SurfaceOccluded` means no
+drawable was acquired and no frame was presented. The driver pauses until
+the window becomes visible, without reconfiguring or counting hidden frames.
+It activates/focuses the native app on macOS; if it remains occluded, reveal
+the window on the unlocked display. Closing before any successful present
+reports that acceptance did not run, rather than reporting a successful test.
+
 Observe highlights, paper white, translucent UI/glass and split-screen on the
 actual HDR display; `hdr_resolved=true` proves surface configuration, not
 physical luminance. The optional PNG exercises retained-frame capture but is
