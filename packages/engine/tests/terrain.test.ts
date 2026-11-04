@@ -476,6 +476,48 @@ test("describe and pick see the terrain as drawn: visible, occluding, transforme
   expect(p!.world[1]!).toBeCloseTo(ground(p!.world[0]! - 100_000, p!.world[2]! + 50_000), 0);
 }, 30_000);
 
+test("describe and pick see a grass field under its own entity, at field fidelity: half its blades over the ground it grows on", () => {
+  // The old pass drew no grass: the meadow was never described and pick answered the hill under it.
+  const { engine, info } = start();
+  const w = engine.world;
+  view(w, { x: 0, y: 6, z: 36 }, { x: 0, y: 3, z: 0 });
+  const meadow = must(w.spawn({ name: "meadow" }));
+  w.insert(meadow, og.Grass, { data: info.data as never, height: 0.6, distance: 150 });
+  expect(engine.advance(1).ok).toBeTrue();
+  let s = seen(engine);
+  const field = s.get("meadow")!;
+  expect(field.labels).toContain("grass");
+  expect(field.coverage).toBeGreaterThan(0.2);
+  // The field covers all of the hill it grows on (one layer, everywhere within its distance).
+  expect(s.get("hill")?.coverage ?? 0).toBeLessThan(0.01);
+  for (const [dx, dy] of [[0, 0], [-60, 20], [70, 40]]) {
+    const p = engine.probe.pick(field.point.x + dx!, field.point.y + dy!) as Picked;
+    expect(p?.entity).toBe("meadow");
+    // Its coverage stands half the tallest blade (0.6 m) over the surface: the stated fidelity, not per blade.
+    expect(p!.world[1]! - ground(p!.world[0]!, p!.world[2]!)).toBeCloseTo(0.3, 1);
+  }
+  // A box lower than half the blades is hidden in the meadow; one taller than them shows.
+  const grey = must(og.render.standardMaterial(w, { color: { r: 0.5, g: 0.5, b: 0.5 } }));
+  const pebble = must(og.render.boxGeometry(w, { width: 0.6, height: 0.16, depth: 0.6 }));
+  const low = must(w.spawn({ name: "low", position: { x: -8, y: ground(-8, 14) + 0.08, z: 14 } }));
+  w.insert(low, og.Mesh, { geometry: pebble, material: grey });
+  const pole = must(og.render.boxGeometry(w, { width: 0.5, height: 3, depth: 0.5 }));
+  const post = must(w.spawn({ name: "post", position: { x: 8, y: ground(8, 14) + 1.5, z: 14 } }));
+  w.insert(post, og.Mesh, { geometry: pole, material: grey });
+  expect(engine.advance(1).ok).toBeTrue();
+  s = seen(engine);
+  expect(s.has("low")).toBeFalse();
+  expect(s.get("post")!.coverage).toBeGreaterThan(0);
+  w.despawn(low);
+  w.despawn(post);
+  // Past its distance there is none: drawn to 5 m, from 36 m away the hill shows again.
+  w.set(meadow, og.Grass, { distance: 5 });
+  expect(engine.advance(1).ok).toBeTrue();
+  s = seen(engine);
+  expect(s.has("meadow")).toBeFalse();
+  expect(s.get("hill")!.coverage).toBeGreaterThan(0.2);
+}, 30_000);
+
 test("og.terrain refusals name the fix", () => {
   const { engine, info } = start();
   const w = engine.world;

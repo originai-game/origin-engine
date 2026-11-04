@@ -1981,7 +1981,7 @@ One entity the frame shows, from the entity-id pass (a CPU rasterisation of the 
 | `name` | `string \| null` | `null` | — | — | — | Its name. |
 | `order` | `number` | `0` | — | — | — | Its depth order: 0 is the nearest. |
 | `archetype` | `readonly string[]` | `[]` | — | — | — | Its components, by name. |
-| `labels` | `readonly string[]` | `[]` | — | — | — | What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`. |
+| `labels` | `readonly string[]` | `[]` | — | — | — | What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`. A `grass` field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it. |
 | `box` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | The box of its visible pixels. |
 | `drawn` | `ScreenBox` | `{ x: 0, y: 0, width: 0, height: 0 }` | — | — | — | The box of what it covers with nothing in front of it. |
 | `point` | `ScreenPoint` | `{ x: 0, y: 0 }` | — | — | — | A visible point nearest the box's centre: pick answers this entity there. |
@@ -1997,7 +1997,7 @@ struct DescribedEntity {
   field name Option.String "Its name."
   field order u32 "Its depth order: 0 is the nearest."
   field archetype List.String "Its components, by name."
-  field labels List.String "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`."
+  field labels List.String "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `grass`, `skinned`, `sprite`. A `grass` field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it."
   field box ScreenBox "The box of its visible pixels."
   field drawn ScreenBox "The box of what it covers with nothing in front of it."
   field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."

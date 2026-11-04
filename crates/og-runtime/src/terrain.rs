@@ -1323,6 +1323,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // og.Grass: fields over the drawn terrain of the same data, generated
     // and drawn by the renderer.
     rs.scene.grass.clear();
+    rs.ids.grass.clear();
     let layout = rs.draw.grass.clone();
     // og.GrassType: the kinds of blade fields list in `types`, by entity.
     let kinds: og_core::IdMap<u64, og_render::GrassType> = rows(world, rs.draw.grass_type.as_ref())
@@ -1399,6 +1400,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 height_map,
             },
         });
+        rs.ids.grass.push(e);
     }
     // og.GrassPusher: what presses the grass and scattered copies (the
     // renderer's trample map), placed by their entities' drawn transforms.
