@@ -17,8 +17,10 @@ struct ScatterUniform {
   trample: vec4<f32>,         // the trample map (trample.rs): min corner (x, z from the frame's origin), cell, cells a side (0: none)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
-// The blue-noise tile (blue_noise.rs): 64 x 64 thresholds, R8.
-@group(2) @binding(1) var scatter_blue_noise: texture_2d<f32>;
+// The blue-noise tile (blue_noise.rs): 64 x 64 byte thresholds, row by
+// row, four to a u32 (a uniform array, not a texture: the lit pass's
+// fragment stage has no sampled texture left).
+@group(2) @binding(1) var<uniform> scatter_blue_noise: array<vec4<u32>, 256>;
 // The frame's wind (wind.rs WindField) and the simulated field's lean
 // every vegetation tier reads (wind_field.rs; wind_common.wgsl wind_lean).
 @group(2) @binding(2) var<uniform> scatter_wind: WindField;
@@ -63,8 +65,10 @@ fn scatter_near(at: vec3<f32>) -> f32 {
 // so each frame is blue noise and each pixel's thresholds over frames are
 // evenly spread, which TAA resolves to the blend. In [0, 1).
 fn scatter_noise(pixel: vec2<f32>) -> f32 {
-  let p = vec2<i32>(vec2<u32>(max(pixel, vec2<f32>(0.0))) % vec2<u32>(64u));
-  let level = textureLoad(scatter_blue_noise, p, 0).r * (255.0 / 256.0) + (0.5 / 256.0);
+  let p = vec2<u32>(max(pixel, vec2<f32>(0.0))) % vec2<u32>(64u);
+  let i = p.y * 64u + p.x;
+  let byte = (scatter_blue_noise[i / 16u][(i / 4u) % 4u] >> ((i % 4u) * 8u)) & 0xffu;
+  let level = (f32(byte) + 0.5) / 256.0;
   return fract(level + scatter.fade.y);
 }
 

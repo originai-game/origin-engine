@@ -53,14 +53,15 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   o.clip = frame.view_proj * vec4<f32>(v.world, 1.0);
   o.world = v.world;
   o.normal = v.normal;
-  // Far off, a blade takes the field's average colour and lights as the
+  // Far off, a blade takes its kind's average colour and lights as the
   // ground under it (in `fs`), so the thinning survivors match the ground
   // they stand on rather than dot it (Ghost of Tsushima's far blades
   // take the terrain's normal).
   o.far = smoothstep(0.2, 0.8, distance(r.blade.root, grass.eye.xyz) / max(grass.variation.w, 1e-3));
-  let average = grass_far_color(grass.base_color.rgb, grass.tip_color.rgb);
+  let kind = r.blade.kind * 2u;
+  let average = grass_far_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb);
   o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
-  o.shading = vec3<f32>(grass_occlusion(v.t), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
+  o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
   o.above = max(v.world.y - r.blade.root.y, 0.0);
   o.cur_clip = grass.view_proj * vec4<f32>(v.world, 1.0);
   // Where the blade stood last frame: its last bend and flutter.
@@ -162,9 +163,14 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
     // shadows are finer than a texel, and the tent averaged them away (a
     // flat, bright meadow: grass-near 0.021 rmse off its reference).
     shadow = cascade_shadow_lookup(p, n, n_dot_l, false);
-    // Lit from behind, the light comes through the blades in the way.
-    if (backlit) { shadow = max(shadow, grass_transmittance(p)); }
-    shadow *= grass_canopy(in.above, l, in.far);
+  }
+  // The field's own canopy, with or without the cascades.
+  shadow *= grass_canopy(in.above, l, in.far);
+  // Lit from behind, the light comes through the blades in the way: the
+  // cascades' thickness of them, already the canopy's depth along the ray
+  // (so not dimmed by it a second time).
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0 && backlit) {
+    shadow = max(shadow, grass_transmittance(p));
   }
   var direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   var tinted = (1.0 - shadow) * n_dot_l;
@@ -184,7 +190,8 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
   var color = direct * select(vec3<f32>(1.0), through, backlit);
   color += surface_local_lights(in.clip.xy, s, p, n0, v);
-  var occlusion = in.shading.x;
+  // Far blades light as the ground (`far`), under the sky alike.
+  var occlusion = mix(in.shading.x, 1.0, in.far);
   if (grass_fx.ao.x > 0.5) {
     let ssao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
     occlusion *= mix(1.0, ssao, grass_fx.ao.y);

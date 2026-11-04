@@ -1389,7 +1389,13 @@ impl Renderer {
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
         let shadow_size = self.info.shadow_map_size;
-        let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast) || terrain_casters;
+        // Every kind of caster: grass and scattered copies on a terrain
+        // that casts nothing still need the cascades (their shadows, and
+        // the grass canopy's own shading, read them).
+        let has_casters = batches.iter().chain(&skinned_batches).any(|b| b.cast)
+            || terrain_casters
+            || grass_frame.casts()
+            || scatter_batches.casts();
         let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
