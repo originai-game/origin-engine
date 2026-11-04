@@ -300,6 +300,17 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.TerrainStamp",
         enable: |_, _| Ok(()),
     },
+    // Area 4: the scattered copies and the wind, read by extraction alone:
+    // a world without them keeps its type table and hash as they grow
+    // (G4's placement rules, G2's simulated field).
+    Lazy {
+        name: "og.TerrainScatter",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.Wind",
+        enable: |_, _| Ok(()),
+    },
     // Area 4 (G2, G3): the wind's motors and the grass's pushers, read by
     // extraction alone: a world without them keeps its type table and hash.
     Lazy {
