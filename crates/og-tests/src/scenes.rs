@@ -1420,8 +1420,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::terrain_scenes::horizon_scene(true);
             Ok(())
         },
-        // T4: a crest of cobbles 15 cm high (one layer's displacement)
-        // seen from knee height 16 m before it under a low side sun: the
+        // T4: a crest of cobbles 10 cm high in mortar joints (one layer's
+        // albedo, normal map and displacement) seen from knee height 4 m
+        // before it under a low side sun: the
         // skyline and the ground near it carry the cobbles' relief and
         // their shadows.
         "terrain-displaced" => |g, _| {

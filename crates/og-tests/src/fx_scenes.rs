@@ -50,7 +50,7 @@ pub(crate) fn smooth(e0: f32, e1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-fn hash2(x: i32, y: i32, seed: u32) -> f32 {
+pub(crate) fn hash2(x: i32, y: i32, seed: u32) -> f32 {
     let mut h = (x as u32).wrapping_mul(0x8da6_b343) ^ (y as u32).wrapping_mul(0xd816_3841) ^ seed;
     h = (h ^ (h >> 13)).wrapping_mul(0x85eb_ca6b);
     h ^= h >> 16;

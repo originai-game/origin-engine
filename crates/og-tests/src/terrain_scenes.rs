@@ -6,7 +6,7 @@
 //! water's planar reflection, its shadows and the view from under the
 //! lake. Everything is generated here.
 
-use crate::fx_scenes::{noise2, smooth, tiling_fbm};
+use crate::fx_scenes::{hash2, noise2, smooth, tiling_fbm};
 use crate::scenes::texture;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
@@ -1030,17 +1030,78 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
 pub const DISPLACED_CREST: f32 = -12.0;
 pub const DISPLACED_FALL: f32 = 0.04;
 /// The cobbles' displacement in `displaced_scene` (m).
-pub const DISPLACED_RELIEF: f32 = 0.15;
+pub const DISPLACED_RELIEF: f32 = 0.1;
 
 /// The ground's height in `displaced_scene` at z.
 pub fn displaced_height(z: f32) -> f32 {
     -DISPLACED_FALL * (z - DISPLACED_CREST) * (z - DISPLACED_CREST)
 }
 
+/// `displaced_scene`'s stones: metres per repeat of the texture, stones
+/// a side per repeat, texels a side, and the joint's width (in stones).
+const COBBLE_TILE: f32 = 1.0;
+const COBBLE_STONES: i32 = 4;
+const COBBLE_TEXELS: u32 = 512;
+const COBBLE_JOINT: f32 = 0.12;
+
+/// A point of the cobble texture: its height (0 in the joints, each
+/// stone rounded at its edge and nearly flat on top at its own height),
+/// how much of it is stone, its distance from the joint's middle and its
+/// stone's id (0 to 1).
+struct Cobble {
+    height: f32,
+    stone: f32,
+    edge: f32,
+    id: f32,
+}
+
+/// The cobbles at texture coordinates (u, v), repeating: a jittered
+/// Voronoi grid of stones whose edges are the distance to the cell's
+/// border (the second-nearest centre's distance minus the nearest's,
+/// Worley 1996), the joints between them where that is small.
+fn cobble(u: f32, v: f32) -> Cobble {
+    let n = COBBLE_STONES;
+    let (x, y) = (u * n as f32, v * n as f32);
+    let (cx, cy) = (x.floor() as i32, y.floor() as i32);
+    let (mut f1, mut f2, mut id) = (f32::MAX, f32::MAX, 0.0f32);
+    for dy in -2..=2 {
+        for dx in -2..=2 {
+            let (gx, gy) = (cx + dx, cy + dy);
+            let (wx, wy) = (gx.rem_euclid(n), gy.rem_euclid(n));
+            let jitter = |s: u32| 0.1 + 0.8 * hash2(wx, wy, s);
+            let d = Vec2::new(x - (gx as f32 + jitter(71)), y - (gy as f32 + jitter(73))).length();
+            if d < f1 {
+                (f2, f1) = (f1, d);
+                id = hash2(wx, wy, 79);
+            } else if d < f2 {
+                f2 = d;
+            }
+        }
+    }
+    let edge = (f2 - f1) * 0.5;
+    let stone = ((edge - COBBLE_JOINT * 0.5) / 0.03).clamp(0.0, 1.0);
+    // A rounded fillet over the stone's outer 0.2 (a quarter circle, two
+    // of the drawn grid's spacings at the eye), and
+    // a smooth crown from its middle (the nearest centre's distance): no
+    // ridge along the cell's medial axis.
+    let t = ((edge - COBBLE_JOINT * 0.5) / 0.2).clamp(0.0, 1.0);
+    let fillet = (1.0 - (1.0 - t) * (1.0 - t)).sqrt();
+    let crown = 1.0 - 0.35 * (f1 / 0.7).min(1.0).powi(2);
+    let top = 0.8 + 0.2 * id;
+    let profile = fillet * crown;
+    Cobble {
+        height: profile * top,
+        stone,
+        edge,
+        id,
+    }
+}
+
 /// T4: a 128 m terrain sampled every 50 cm, a gentle crest running along
 /// x at z -12 (the ground falls away from it on both sides), one layer of
-/// rounded cobbles about 50 cm across whose albedo's alpha is their
-/// height, `displacement` metres of it; seen from 4 m before the crest,
+/// cobbles about 25 cm across set in mortar joints (`cobble`): its albedo,
+/// its height in the albedo's alpha, `displacement` metres of it, and the
+/// normal map of that relief; seen from 4 m before the crest,
 /// 30 cm over the ground (34 cm under the crest), under a low sun from the
 /// side: the crest is the skyline, and the cobbles throw shadows towards
 /// the camera's right.
@@ -1063,42 +1124,50 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
         control: None,
         holes: None,
     });
-    // Four cobbles a side per 2 m tile on a jittered grid, each a dome:
-    // its height falls from its middle to the mortar between them.
-    let cells = 4i32;
-    let cobbles = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
-        let (x, y) = (u * cells as f32, v * cells as f32);
-        let (cx, cy) = (x.floor() as i32, y.floor() as i32);
-        let mut best = (f32::MAX, 0.0f32);
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let (gx, gy) = (cx + dx, cy + dy);
-                let (wx, wy) = (gx.rem_euclid(cells), gy.rem_euclid(cells));
-                let jitter = |s: u32| 0.25 + 0.5 * noise2(wx as f32 * 7.3, wy as f32 * 3.1, s);
-                let px = gx as f32 + jitter(71);
-                let py = gy as f32 + jitter(73);
-                let d = Vec2::new(x - px, y - py).length();
-                if d < best.0 {
-                    best = (d, noise2(wx as f32 * 5.7, wy as f32 * 9.3, 79));
-                }
-            }
-        }
-        let dome = (1.0 - (best.0 / 0.55).min(1.0)).powf(0.6);
-        let shade = 0.55 + 0.35 * best.1;
-        let g = (shade * (0.45 + 0.55 * dome) * 255.0) as u8;
+    let albedo = scene.add_texture(texture(COBBLE_TEXELS, ColorSpace::Srgb, |u, v| {
+        let c = cobble(u, v);
+        // Each stone its own grey-brown, with grain; the mortar a dark
+        // sandy grey, darker still deep in the joints.
+        let tone = [
+            Vec3::new(0.3, 0.24, 0.18),
+            Vec3::new(0.22, 0.21, 0.2),
+            Vec3::new(0.34, 0.27, 0.19),
+            Vec3::new(0.25, 0.21, 0.18),
+            Vec3::new(0.18, 0.18, 0.19),
+        ][(c.id * 5.0) as usize % 5];
+        let grain = 0.75 + 0.45 * tiling_fbm(u, v, 64, 83) + 0.2 * tiling_fbm(u, v, 16, 84);
+        let stone = tone * grain * (0.9 + 0.1 * c.height);
+        let joint = Vec3::new(0.09, 0.08, 0.07) * (0.6 + 0.4 * (c.edge / COBBLE_JOINT).min(1.0));
+        let col = joint.lerp(stone, c.stone);
+        let srgb = |x: f32| (x.max(0.0).powf(1.0 / 2.2) * 255.0).min(255.0) as u8;
         [
-            g,
-            (g as f32 * 0.93) as u8,
-            (g as f32 * 0.84) as u8,
-            (dome * 255.0) as u8,
+            srgb(col.x),
+            srgb(col.y),
+            srgb(col.z),
+            (c.height * 255.0) as u8,
+        ]
+    }));
+    // The same relief as the height in alpha, for `displacement` metres of it.
+    let normal = scene.add_texture(texture(COBBLE_TEXELS, ColorSpace::Linear, |u, v| {
+        let e = 1.0 / COBBLE_TEXELS as f32;
+        let per_metre = displacement.max(DISPLACED_RELIEF) / (2.0 * e * COBBLE_TILE);
+        let dx = (cobble(u + e, v).height - cobble(u - e, v).height) * per_metre;
+        let dy = (cobble(u, v + e).height - cobble(u, v - e).height) * per_metre;
+        let n = Vec3::new(-dx, -dy, 1.0).normalize();
+        [
+            ((n.x * 0.5 + 0.5) * 255.0) as u8,
+            ((n.y * 0.5 + 0.5) * 255.0) as u8,
+            ((n.z * 0.5 + 0.5) * 255.0) as u8,
+            255,
         ]
     }));
     scene.terrains.push(Terrain {
         layers: vec![TerrainLayer {
-            albedo: Some(cobbles),
+            albedo: Some(albedo),
+            normal: Some(normal),
             color: Vec3::ONE,
             roughness: 0.85,
-            tile: 2.0,
+            tile: COBBLE_TILE,
             displacement,
             ..Default::default()
         }],

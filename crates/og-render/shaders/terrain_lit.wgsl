@@ -21,6 +21,9 @@ struct TerrainOut {
   @location(2) prev_clip: vec4<f32>,
   // The point in the terrain's space (its maps are laid out there).
   @location(3) local: vec3<f32>,
+  // The displaced surface's slope (terrain_relief: xy its `slope`, zw
+  // its `bare` part), 0 where the ground is not displaced.
+  @location(4) relief: vec4<f32>,
 };
 
 @vertex
@@ -33,6 +36,11 @@ fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
   o.local = local;
   o.cur_clip = terrain.view_proj * vec4<f32>(p, 1.0);
   o.prev_clip = terrain.prev_view_proj * vec4<f32>(p, 1.0);
+  if (terrain.displace.x > 0.0) {
+    let c = (local.xz - terrain_min()) / level.camera.z;
+    let r = terrain_relief(c, c * level.camera.z / terrain_cell(), local.y, level.center.z, true);
+    o.relief = vec4<f32>(r.slope, r.bare);
+  }
   return o;
 }
 
@@ -40,16 +48,30 @@ fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
 // control map's channels, from the finest resident tile.
 struct TerrainPoint {
   normal: vec3<f32>,
+  // The same in the terrain's space (unit length).
+  local_normal: vec3<f32>,
   control: array<vec4<f32>, 4>,
   // The normal map's spread there (TerrainMaps.variance).
   variance: f32,
 };
 
+// World normal `n` turned by a displaced surface's `slope` (its height's
+// change along the terrain's x and z, per metre) on the ground of
+// `point`: the field's surface y = h(x, z) has the normal (-h_x, 1, -h_z)
+// up to scale, the displaced one (-h_x - d_x, 1, -h_z - d_z).
+fn terrain_tilt(point: TerrainPoint, n: vec3<f32>, slope: vec2<f32>) -> vec3<f32> {
+  if (all(slope == vec2<f32>(0.0))) { return n; }
+  let m = point.local_normal;
+  let shift = terrain.normal * (-m.y * vec3<f32>(slope.x, 0.0, slope.y));
+  return normalize(n + shift / max(length(terrain.normal * m), 1e-6));
+}
+
 fn terrain_point(local: vec3<f32>) -> TerrainPoint {
   let s = (local.xz - terrain_min()) / terrain_cell();
   let m = terrain_maps_at(s, dpdx(s), dpdy(s));
   var o: TerrainPoint;
-  o.normal = normalize(terrain.normal * m.normal);
+  o.local_normal = normalize(m.normal);
+  o.normal = normalize(terrain.normal * o.local_normal);
   o.control = m.control;
   o.variance = m.variance;
   return o;
@@ -323,7 +345,13 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
-  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, look.normal, roughness, n_geo, n_geo);
+  // A displaced ground: the shadow lookup is offset along the drawn
+  // surface (or its relief would shadow itself), and its shading takes the
+  // relief no normal map draws. Weathering keeps the field's normal: the
+  // drawn one is interpolated per vertex, and faceted there.
+  let n_drawn = terrain_tilt(point, n_geo, in.relief.xy);
+  let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, n_shade, roughness, n_geo, n_drawn);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -457,7 +485,7 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   // reflections (a terrain is never metal): their weights alone.
   let layers = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
   let roughness = toksvig_roughness(layers, point.variance);
-  return terrain_prepass_out(in.world, point.normal, roughness, in.cur_clip, in.prev_clip);
+  return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), roughness, in.cur_clip, in.prev_clip);
 }
 
 // ── Terrain stamps ──────────────────────────────────────────────────────

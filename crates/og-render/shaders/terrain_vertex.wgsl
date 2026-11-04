@@ -78,16 +78,33 @@ fn grid_height(c: vec2<f32>, step: f32) -> f32 {
 // a tessellator (WebGPU has none). Only drawn: collision,
 // og.terrain.sample and the id pass keep the field.
 
-// The displacement (the terrain's space) at clamped grid point `c`,
-// field coordinates `s`, over field height `h`, read for a level of
-// `step` grid units a quad.
+// The displacement at clamped grid point `c`, field coordinates `s`,
+// over field height `h`, read for a level of `step` grid units a quad
+// (`terrain_relief`'s `d`).
 fn terrain_displacement(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> f32 {
+  return terrain_relief(c, s, h, step, false).d;
+}
+
+// The displaced surface at a grid point (the terrain's space): `d` the
+// height it adds, `slope` d's change along x and z (per metre; with
+// `gradient`, else 0) and `bare` the part of `slope` from layers without
+// a normal map, whose relief the shading then has to draw itself. The
+// slope is the layers' heights differenced over the level's spacing (the
+// footprint their maps are read over), their weights held.
+struct Relief {
+  d: f32,
+  slope: vec2<f32>,
+  bare: vec2<f32>,
+};
+
+fn terrain_relief(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32, gradient: bool) -> Relief {
+  var out: Relief;
   let reach = terrain.displace.x;
-  if (reach <= 0.0) { return 0.0; }
+  if (reach <= 0.0) { return out; }
   let unit = level.camera.z;
   let dist = length(vec3<f32>((c.x - level.camera.x) * unit, (h - level.camera.w) * terrain.displace.z, (c.y - level.camera.y) * unit));
   let fade = 1.0 - smoothstep(0.6 * reach, reach, dist);
-  if (fade <= 0.0) { return 0.0; }
+  if (fade <= 0.0) { return out; }
   // The level's spacing along x and z, in field coordinates and in metres.
   let spacing = step * unit;
   let gx = vec2<f32>(spacing / terrain_cell().x, 0.0);
@@ -95,7 +112,7 @@ fn terrain_displacement(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> f32 {
   let maps = terrain_maps_at(s, gx, gy);
   let n = normalize(terrain.normal * maps.normal);
   let steep = smoothstep(0.5, 0.8, n.y);
-  if (steep <= 0.0) { return 0.0; }
+  if (steep <= 0.0) { return out; }
   let local = vec3<f32>(terrain_min().x + c.x * unit, h, terrain_min().y + c.y * unit);
   let p = terrain_world(local);
   let pick = pick_layers(p, n, maps.control);
@@ -103,7 +120,7 @@ fn terrain_displacement(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> f32 {
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && pick.w[k] > 0.0 && terrain.layers[pick.ids[k]].offset.w != 0.0) { any = true; }
   }
-  if (!any) { return 0.0; }
+  if (!any) { return out; }
   let dpx = (terrain.model * vec4<f32>(spacing, 0.0, 0.0, 0.0)).xyz;
   let dpy = (terrain.model * vec4<f32>(0.0, 0.0, spacing, 0.0)).xyz;
   // As the lit pass weighs them (a layer without a map stands at its
@@ -119,13 +136,21 @@ fn terrain_displacement(c: vec2<f32>, s: vec2<f32>, h: f32, step: f32) -> f32 {
     }
   }
   let w = blend_weights(pick, heights);
-  var d = 0.0;
+  let scale = fade * steep / max(terrain.displace.y, 1e-6);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && w[k] > 0.0) {
-      d += relief[k] * terrain.layers[pick.ids[k]].offset.w * w[k];
+      let l = terrain.layers[pick.ids[k]];
+      let amount = l.offset.w * w[k] * scale;
+      out.d += relief[k] * amount;
+      if (gradient && amount != 0.0 && (u32(l.mapping.w) & 1u) != 0u) {
+        let sx = (layer_height(pick.ids[k], p + dpx, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
+        let sz = (layer_height(pick.ids[k], p + dpy, n, dpx, dpy) - 0.5 - relief[k]) * amount / spacing;
+        out.slope += vec2<f32>(sx, sz);
+        if ((u32(l.mapping.w) & 2u) == 0u) { out.bare += vec2<f32>(sx, sz); }
+      }
     }
   }
-  return d / max(terrain.displace.y, 1e-6) * fade * steep;
+  return out;
 }
 
 // How far a point (grid units, unclamped) has morphed: 0 inside the

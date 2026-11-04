@@ -48,7 +48,7 @@ fn skyline_roughness(img: &RgbaImage) -> f32 {
 }
 
 /// The crest 4 m out is the skyline. Undisplaced it is a straight line
-/// (the ground is the same all along x); with 15 cm of cobbles it rises
+/// (the ground is the same all along x); with 10 cm of cobbles it rises
 /// and falls over each cobble, several pixels at that distance.
 #[test]
 fn displacement_roughens_the_skyline() {
