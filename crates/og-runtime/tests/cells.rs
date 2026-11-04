@@ -371,10 +371,11 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// and (-> ca6127b0d0a9c62d) og.Model.sway, and (-> ebd3b59c00e9e91f)
 /// R5's lazy og.Water, gone from a world without water, and
 /// (-> 80dc1920a87f2785) og.Environment's background blurriness, grounded
-/// dome and blend fields (R2's environment maps).
+/// dome and blend fields (R2's environment maps), and (-> 990dc6751ebad9f6)
+/// T5's lazy og.Terrain, gone from a world without terrain.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "80dc1920a87f2785";
+const END_HASH: &str = "990dc6751ebad9f6";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

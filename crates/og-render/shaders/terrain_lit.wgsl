@@ -712,14 +712,17 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
   let roughness = toksvig_roughness(look.roughness, point.variance);
-  return terrain_shade(in.clip.xy, p, albedo, look.normal, roughness, n_geo);
+  return terrain_shade(in.clip.xy, p, in.local, 1.0, albedo, look.normal, roughness, n_geo);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
 // its stamps): its layers' albedo, shading normal and roughness under
 // the sun's cascades, the local lights and image-based light, caustics
 // and fog, with the frame's diagnostic views.
-fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>) -> vec4<f32> {
+// `local`: the point of the ground whose horizon it reads (the terrain's
+// space); `ground`: how much of the fragment is that ground (1 for the
+// terrain; a stamp's blend share, its own face not being one).
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, local: vec3<f32>, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
   s.albedo = albedo;
@@ -741,6 +744,30 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, albedo: vec3<f32>, normal: vec3<
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(p, n_geo, n_dot_l); }
+  // Past the cascades (and with none) the horizon map shades the ground:
+  // the sun behind a ridge (soft over 1.5°: the sun's disc and the bake's
+  // reads), and the sky its horizon hides.
+  var sky = 1.0;
+  if (terrain.params.w > 0.5) {
+    let h = terrain_horizon((local.xz - terrain_min()) / terrain_cell());
+    if (h.ok) {
+      // World to the terrain's space: the inverse of its linear part, the
+      // transpose of the normal matrix.
+      let sl = transpose(terrain.normal) * l;
+      let elevation = atan2(sl.y, length(sl.xz));
+      let edge = horizon_towards(h, atan2(sl.z, sl.x));
+      let sun = smoothstep(edge - 0.013, edge + 0.013, elevation);
+      var far = 1.0;
+      let count = u32(frame.light_dir.w);
+      if (count > 0u) {
+        let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
+        let last = frame.cascade_bias[count - 1u].z;
+        far = smoothstep(0.9 * last, last, depth);
+      }
+      shadow *= mix(1.0, sun, far);
+      sky = mix(1.0, horizon_occlusion(h), ground);
+    }
+  }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   // og.MaterialStyle's shadow tint: the sunlight a cast shadow takes moves towards the tint, as on a lit material.
   var tinted = (1.0 - shadow) * n_dot_l;
@@ -775,8 +802,8 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, albedo: vec3<f32>, normal: vec3<
   let r = reflect(-v, n);
   let prefiltered = reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x;
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let diffuse_ibl = kd_ibl * irradiance * s.albedo;
-  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y);
+  let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky;
+  let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * sky;
   let view = u32(frame.light_color.w);
   if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
   if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }
@@ -863,6 +890,8 @@ struct StampGround {
   control: array<vec4<f32>, 4>,
   ground: f32,
   local: vec3<f32>,
+  // The ground's point it reads (the terrain's space).
+  reads: vec3<f32>,
 };
 
 // The ground it meets is read a cell and a half outwards along the mesh's
@@ -882,6 +911,7 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
   o.normal = normalize(mix(n_mesh, normalize(terrain.normal * m.normal), o.ground));
   o.control = m.control;
   o.local = local;
+  o.reads = vec3<f32>(local.x + out.x, local.y, local.z + out.y);
   return o;
 }
 
@@ -893,7 +923,7 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.control, dpx, dpy);
   let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
-  return terrain_shade(in.clip.xy, p, albedo, look.normal, look.roughness, g.normal);
+  return terrain_shade(in.clip.xy, p, g.reads, g.ground, albedo, look.normal, look.roughness, g.normal);
 }
 
 @fragment

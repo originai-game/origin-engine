@@ -41,7 +41,7 @@ struct TerrainUniform {
   normal: mat3x3<f32>,  // normals from the terrain's space to the world (inverse transpose)
   origin: vec4<f32>,    // xyz: the terrain's centre in the world, w: layers
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
-  params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes
+  params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes, w: 1 with horizon shadows
   tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels, w: control pages (four layers each)
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
@@ -313,6 +313,78 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
   }
   m.normal = normalize(m.normal);
   return m;
+}
+
+// The horizon (terrain_tiles.rs HeightPyramid::horizon): per tile, every
+// HORIZON_SPACING-th sample of its level, the elevation of the highest
+// ground in 8 azimuths (k · 45° from +x towards +z), 12 bits each over
+// -90° to 90°, two to a word, the words stored as numbers in the rows
+// under the tile's heights.
+const HORIZON_SPACING: f32 = 8.0;
+const HORIZON_WORDS: u32 = 4u;
+
+// One horizon texel's 8 elevations (radians) in a resident tile's slot.
+fn horizon_texel(r: TileRef, i: vec2<u32>) -> array<f32, 8> {
+  let t = u32(terrain.tiles.x);
+  let hs = t + 3u;
+  let side = (t + 7u) / 8u + 1u;
+  let first = ((min(i.y, side - 1u) * side) + min(i.x, side - 1u)) * HORIZON_WORDS;
+  var out: array<f32, 8>;
+  for (var w = 0u; w < HORIZON_WORDS; w++) {
+    let k = first + w;
+    let v = u32(textureLoad(heights, vec2<i32>(i32(k % hs), i32(hs + k / hs)), i32(r.slot), 0).r);
+    for (var b = 0u; b < 2u; b++) {
+      out[w * 2u + b] = (f32((v >> (12u * b)) & 4095u) / 4095.0 * 2.0 - 1.0) * 1.5707963;
+    }
+  }
+  return out;
+}
+
+struct Horizon {
+  // The elevations, bilinear between the four texels around the point.
+  angles: array<f32, 8>,
+  ok: bool,
+};
+
+// The horizon at field coordinates `s`, from the finest resident tile.
+fn terrain_horizon(s: vec2<f32>) -> Horizon {
+  var h: Horizon;
+  let o = resident_from(0u, s);
+  if (o.r.slot < 0.0) { return h; }
+  let t = terrain.tiles.x;
+  let side = ceil(t / HORIZON_SPACING) + 1.0;
+  let g = clamp((o.u - o.r.tile * t) / t * (side - 1.0), vec2<f32>(0.0), vec2<f32>(side - 1.0));
+  let i = vec2<u32>(floor(g));
+  let f = g - floor(g);
+  let a = horizon_texel(o.r, i);
+  let b = horizon_texel(o.r, i + vec2<u32>(1u, 0u));
+  let c = horizon_texel(o.r, i + vec2<u32>(0u, 1u));
+  let d = horizon_texel(o.r, i + vec2<u32>(1u, 1u));
+  for (var k = 0u; k < 8u; k++) {
+    h.angles[k] = mix(mix(a[k], b[k], f.x), mix(c[k], d[k], f.x), f.y);
+  }
+  h.ok = true;
+  return h;
+}
+
+// The horizon's elevation (radians) towards azimuth `phi` (radians from
+// +x towards +z), between its two nearest azimuths.
+fn horizon_towards(h: Horizon, phi: f32) -> f32 {
+  let a = fract(phi / 6.2831853) * 8.0;
+  let k = u32(floor(a)) % 8u;
+  return mix(h.angles[k], h.angles[(k + 1u) % 8u], fract(a));
+}
+
+// The sky a point with an up-facing ground sees past its horizon, cosine
+// weighted (each azimuth's slice open from its horizon up: cos² of the
+// horizon's elevation above the plane), the mean of the 8 slices.
+fn horizon_occlusion(h: Horizon) -> f32 {
+  var open = 0.0;
+  for (var k = 0u; k < 8u; k++) {
+    let e = max(h.angles[k], 0.0);
+    open += cos(e) * cos(e);
+  }
+  return open / 8.0;
 }
 
 // A roughness widened by the normals' spread under a texel (Toksvig 2005,

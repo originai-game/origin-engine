@@ -511,6 +511,9 @@ pub struct Terrain {
     /// Drawn (colour, prepass, shadows); `false` keeps it only as the
     /// ground its og.TerrainScatter copies stand on.
     pub visible: bool,
+    /// Its horizon map shades it: the sun hidden behind its ridges past
+    /// the shadow cascades, and the sky its valleys do not see.
+    pub horizon_shadows: bool,
 }
 
 impl Terrain {
@@ -525,6 +528,7 @@ impl Terrain {
             lod: TerrainLod::default(),
             fade_in: true,
             visible: true,
+            horizon_shadows: true,
         }
     }
 

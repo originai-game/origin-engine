@@ -878,6 +878,63 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     scene
 }
 
+/// `horizon_scene`'s ridge: where it stands along x, its height and
+/// half-width (m), and the sun's elevation (degrees) from +x behind it.
+pub const HORIZON_RIDGE: f32 = 2000.0;
+pub const HORIZON_RIDGE_HEIGHT: f32 = 300.0;
+pub const HORIZON_RIDGE_WIDTH: f32 = 160.0;
+pub const HORIZON_SUN: f32 = 8.0;
+
+/// T5: an 8 km plain with one ridge 300 m high running along z at x 2 km,
+/// the sun 8° up behind it (from +x), so the plain in front of it lies in
+/// its shade for about 2 km; seen from 1.5 km west of the origin, 120 m up,
+/// all of it far past the sun's 200 m of shadow cascades. With the
+/// terrain's horizon shadows the shade shows; without them only the
+/// cascades shade, and the far plain is lit to the ridge's foot.
+pub fn horizon_scene(horizon: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let (n, size) = (1025u32, 8192.0f32);
+    let cell = size / (n - 1) as f32;
+    let mut heights = Vec::with_capacity((n * n) as usize);
+    for _ in 0..n {
+        for c in 0..n {
+            let x = c as f32 * cell - size * 0.5;
+            let d = (x - HORIZON_RIDGE) / HORIZON_RIDGE_WIDTH;
+            heights.push(HORIZON_RIDGE_HEIGHT * (-d * d).exp());
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::new(0.32, 0.36, 0.22),
+            roughness: 0.95,
+            ..Default::default()
+        }],
+        horizon_shadows: horizon,
+        ..Terrain::new(handle)
+    });
+    plain_light(&mut scene);
+    let e = HORIZON_SUN.to_radians();
+    let sun = Vec3::new(e.cos(), e.sin(), 0.0);
+    scene.light.direction_to_light = sun;
+    // A clear evening: the sun carries the plain's light.
+    scene.light.intensity = 7.0;
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.25;
+    scene.camera = camera_at(
+        Vec3::new(-1500.0, 120.0, 0.0),
+        Vec3::new(HORIZON_RIDGE, 0.0, 0.0),
+    );
+    scene
+}
+
 /// `cliff_scene`'s cliff: its height, the rock's half-width along x (its
 /// face towards +x at x = CLIFF_ROCK) and half-length along z.
 pub const CLIFF_HEIGHT: f32 = 300.0;

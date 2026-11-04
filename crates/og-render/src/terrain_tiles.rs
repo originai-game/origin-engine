@@ -45,6 +45,14 @@ pub const MAX_TERRAIN_PYRAMID: u32 = 16;
 pub const HORIZON_AZIMUTHS: usize = 8;
 /// A tile's level samples between two of its horizon texels.
 pub const HORIZON_SPACING: u32 = 8;
+/// Bits per horizon angle: 12 (a 0.044° step; 8 bits' 0.7° stepped a low
+/// sun's terminator into visible bands).
+pub const HORIZON_BITS: u32 = 12;
+/// Words per horizon texel: two angles to a word, so each word is an
+/// integer an f32 holds exactly (`terrain.wgsl` reads them from the
+/// R32Float heights texture as numbers, never as bits a GPU may flush or
+/// canonicalise).
+pub const HORIZON_WORDS: u32 = (HORIZON_AZIMUTHS as u32).div_ceil(2);
 
 /// How a terrain is cut into tiles: shared by the cook (which stores them),
 /// the runtime (which streams them) and the renderer (which draws them).
@@ -218,13 +226,15 @@ impl TerrainLayout {
         self.tile.div_ceil(HORIZON_SPACING) + 1
     }
 
-    /// A tile's horizon words: two per texel ([`HeightPyramid::horizon`]).
+    /// A tile's horizon words: [`HORIZON_WORDS`] per texel
+    /// ([`HeightPyramid::horizon`]).
     pub fn horizon_words(&self) -> u32 {
-        self.horizon_side() * self.horizon_side() * 2
+        self.horizon_side() * self.horizon_side() * HORIZON_WORDS
     }
 
     /// Rows of a tile's height texture: its `heights_side()` rows of
-    /// heights, then its horizon words (as f32 bits) row after row.
+    /// heights, then its horizon words (each as the f32 of its value,
+    /// exact under 2^24) row after row.
     pub fn heights_rows(&self) -> u32 {
         self.heights_side() + self.horizon_words().div_ceil(self.heights_side())
     }
@@ -773,31 +783,77 @@ impl TerrainData {
 }
 
 /// A field's coarser levels (1 up): each level's samples, the finer
-/// level's under a centred tent filter, clamped at the field's edges.
+/// level's under a centred tent filter, clamped at the field's edges; and
+/// beside them the highest field height under each sample's footprint
+/// (the same 3 × 3 of the finer level), which the horizon reads.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HeightPyramid {
     /// Level k + 1's samples along x and z and its heights, row-major.
     pub levels: Vec<(u32, u32, Vec<f32>)>,
+    /// Level k + 1's maxima, laid out as its heights.
+    pub maxima: Vec<Vec<f32>>,
 }
 
 impl HeightPyramid {
     /// The pyramid of a field read as `field(column, row)`, for `layout`.
     pub fn new(layout: &TerrainLayout, field: impl Fn(u32, u32) -> f32) -> HeightPyramid {
         let mut levels: Vec<(u32, u32, Vec<f32>)> = Vec::new();
+        let mut maxima: Vec<Vec<f32>> = Vec::new();
         let (mut fx, mut fz) = (layout.columns as i64, layout.rows as i64);
         for k in 1..layout.levels {
             let (sx, sz) = layout.samples(k);
+            let samples = (0..sz as i64).flat_map(|z| (0..sx as i64).map(move |x| (x, z)));
             let out = {
                 let at = Self::reader(&field, levels.last(), fx, fz);
-                (0..sz as i64)
-                    .flat_map(|z| (0..sx as i64).map(move |x| (x, z)))
+                samples
+                    .clone()
                     .map(|(x, z)| Self::tent(&at, fx, fz, x, z))
                     .collect()
             };
+            let peaks = {
+                let finer = levels
+                    .last()
+                    .map(|(w, h, _)| (*w, *h, maxima.last().expect("beside")));
+                let at = Self::max_reader(&field, finer, fx, fz);
+                samples
+                    .map(|(x, z)| Self::peak(&at, fx, fz, x, z))
+                    .collect()
+            };
             levels.push((sx, sz, out));
+            maxima.push(peaks);
             (fx, fz) = (sx as i64, sz as i64);
         }
-        HeightPyramid { levels }
+        HeightPyramid { levels, maxima }
+    }
+
+    /// A finer level's maxima (the field's heights when `finer` is
+    /// `None`), clamped at its edges.
+    fn max_reader<'a>(
+        field: &'a impl Fn(u32, u32) -> f32,
+        finer: Option<(u32, u32, &'a Vec<f32>)>,
+        fx: i64,
+        fz: i64,
+    ) -> impl Fn(i64, i64) -> f32 + 'a {
+        move |i: i64, j: i64| {
+            let (i, j) = (i.clamp(0, fx - 1), j.clamp(0, fz - 1));
+            match finer {
+                None => field(i as u32, j as u32),
+                Some((w, _, h)) => h[(j * w as i64 + i) as usize],
+            }
+        }
+    }
+
+    /// The highest of the finer samples a coarser one's tent covers.
+    fn peak(at: &impl Fn(i64, i64) -> f32, fx: i64, fz: i64, x: i64, z: i64) -> f32 {
+        let ci = (2 * x).min(fx - 1);
+        let cj = (2 * z).min(fz - 1);
+        let mut v = f32::NEG_INFINITY;
+        for b in -1..=1 {
+            for a in -1..=1 {
+                v = v.max(at(ci + a, cj + b));
+            }
+        }
+        v
     }
 
     /// A finer level's heights (`fx` × `fz`; the field's when `finer` is
@@ -850,6 +906,12 @@ impl HeightPyramid {
             let (sx, sz, out) = &mut rest[0];
             let (sx, sz) = (*sx as i64, *sz as i64);
             let at = Self::reader(&field, done.last(), fx, fz);
+            let (peaks_done, peaks_rest) = self.maxima.split_at_mut(k - 1);
+            let finer = done
+                .last()
+                .map(|(w, h, _)| (*w, *h, peaks_done.last().expect("beside")));
+            let at_max = Self::max_reader(&field, finer, fx, fz);
+            let peaks = &mut peaks_rest[0];
             // The samples whose tent (2x - 1 to 2x + 1 of the finer level,
             // the last one's clamped) reads a changed finer one.
             let reach = |a: i64, b: i64, n: i64| {
@@ -863,6 +925,7 @@ impl HeightPyramid {
             for z in z0..=z1 {
                 for x in x0..=x1 {
                     out[(z * sx + x) as usize] = Self::tent(&at, fx, fz, x, z);
+                    peaks[(z * sx + x) as usize] = Self::peak(&at_max, fx, fz, x, z);
                 }
             }
             (lo, hi, fx, fz) = ((x0, z0), (x1, z1), sx, sz);
@@ -916,25 +979,66 @@ impl HeightPyramid {
         a + (b - a) * f.y
     }
 
+    /// The highest ground near field coordinates `s` on level `k`: the
+    /// largest of the four samples around `s` (past level 0, of their
+    /// maxima: each the highest of the field a sample's spacing either
+    /// side of it), so a peak between two reads is never lowered.
+    fn max_at(
+        &self,
+        field: &impl Fn(u32, u32) -> f32,
+        layout: &TerrainLayout,
+        k: u32,
+        s: Vec2,
+    ) -> f32 {
+        if k == 0 {
+            let (x, z) = (s.x.floor() as i64, s.y.floor() as i64);
+            let at = |x: i64, z: i64| self.at(field, layout, 0, x, z);
+            return at(x, z)
+                .max(at(x + 1, z))
+                .max(at(x, z + 1))
+                .max(at(x + 1, z + 1));
+        }
+        let step = layout.step(k) as f32;
+        let quads = Vec2::new((layout.columns - 1) as f32, (layout.rows - 1) as f32);
+        let (sx, sz) = layout.samples(k);
+        let n = Vec2::new(sx as f32, sz as f32);
+        let last = (n - 2.0) * step;
+        let span = (quads - last).max(Vec2::splat(1e-6));
+        let u = Vec2::select(s.cmpgt(last), n - 2.0 + (s - last) / span, s / step)
+            .clamp(Vec2::ZERO, n - 1.0);
+        let (x, z) = (u.x.floor() as i64, u.y.floor() as i64);
+        let peaks = &self.maxima[k as usize - 1];
+        let at = |x: i64, z: i64| {
+            let (x, z) = (x.clamp(0, sx as i64 - 1), z.clamp(0, sz as i64 - 1));
+            peaks[(z * sx as i64 + x) as usize]
+        };
+        at(x, z)
+            .max(at(x + 1, z))
+            .max(at(x, z + 1))
+            .max(at(x + 1, z + 1))
+    }
+
     /// A tile's horizon: at each of its `horizon_side()²` texels (every
     /// [`HORIZON_SPACING`]-th sample of its level and the last), the
     /// highest elevation of the ground seen from that point in each of
     /// [`HORIZON_AZIMUTHS`] directions (k · 45° from +x towards +z), out to
     /// the terrain's edge: a horizon map (Max, "Horizon mapping", 1988),
-    /// marched at distances growing by a quarter per step, each read on the
-    /// pyramid level whose spacing is an eighth of the distance (the
+    /// marched at distances growing by 1/32 per step, each read on the
+    /// pyramid's maxima at the level that covers the gap to the next (the
     /// far-field reads of Timonen and Westerholm, "Scalable Height Field
     /// Self-Shadowing", 2010, without their sweep's shared hull). Each
-    /// angle is a byte over -90° to 90° (0 a horizon straight down, 255
-    /// straight up), four to a word, azimuths 0 to 3 then 4 to 7, texel by
-    /// texel row-major. Seen in the terrain's own space (its metres, before
-    /// its transform).
+    /// angle is [`HORIZON_BITS`] over -90° to 90° (0 a horizon straight
+    /// down, all ones straight up), two to a word from its low bits
+    /// ([`HORIZON_WORDS`] words per texel), texel by texel row-major. Seen in the terrain's
+    /// own space (its metres, before its transform).
     pub fn horizon(
         &self,
         layout: &TerrainLayout,
         index: u32,
         field: impl Fn(u32, u32) -> f32,
     ) -> Vec<u32> {
+        // The march's steps grow by 1/GROWTH of the distance.
+        const GROWTH: f32 = 32.0;
         let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
         let side = layout.horizon_side();
         let t = layout.tile as f32;
@@ -948,7 +1052,8 @@ impl HeightPyramid {
         });
         let quantise = |tan: f32| {
             let angle = tan.atan() / std::f32::consts::FRAC_PI_2;
-            ((angle * 0.5 + 0.5) * 255.0).round().clamp(0.0, 255.0) as u32
+            let top = ((1 << HORIZON_BITS) - 1) as f32;
+            ((angle * 0.5 + 0.5) * top).round().clamp(0.0, top) as u32
         };
         let mut out = Vec::with_capacity(layout.horizon_words() as usize);
         for j in 0..side {
@@ -970,16 +1075,26 @@ impl HeightPyramid {
                         if q.x < 0.0 || q.y < 0.0 || q.x > quads.x || q.y > quads.y {
                             break;
                         }
-                        let lv =
-                            ((d / 8.0).log2().floor().max(0.0) as u32).clamp(k, layout.levels - 1);
-                        let h = self.height_at(&field, layout, lv, q);
-                        best = best.max((h - h0) / (d * metres));
-                        d = (d * 1.25).max(d + step);
+                        // The finest level whose maxima (each a sample's
+                        // spacing either side) cover the gap to the next
+                        // step: a peak is never stepped over, and is seen
+                        // at most an eighth of `d` nearer than it stands
+                        // (below), so the horizon errs a little high.
+                        let lv = ((d / (2.0 * GROWTH)).log2().ceil().max(0.0) as u32)
+                            .min(layout.levels - 1);
+                        let h = self.max_at(&field, layout, lv, q);
+                        // As if at the nearest the read may have found it
+                        // (its four samples' footprint), so a peak is never
+                        // seen lower than it stands.
+                        let near = (d - 2.0 * layout.step(lv) as f32).max(step.min(d));
+                        best = best.max((h - h0) / (near * metres));
+                        d = (d * (1.0 + 1.0 / GROWTH)).max(d + step);
                     }
                     bytes[a] = quantise(best);
                 }
-                out.push(bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24);
-                out.push(bytes[4] | bytes[5] << 8 | bytes[6] << 16 | bytes[7] << 24);
+                for word in bytes.chunks(2) {
+                    out.push(word.iter().rev().fold(0, |w, b| w << HORIZON_BITS | b));
+                }
             }
         }
         out
@@ -1187,7 +1302,11 @@ pub fn terrain_tiles_wanted(
 
 /// Calls `f` with every tile an edit of the field inside `lo`..`hi` (the
 /// terrain's space) changes: on every level, those whose samples, border,
-/// height filter or control texels reach into it.
+/// height filter or control texels reach into it. Their horizons are baked
+/// again with them; a tile further off keeps the horizon it had, which an
+/// edit moves by at most its height change over its distance (the horizon
+/// shades only the far field past the sun's cascades) until it is built
+/// again.
 pub fn edited_tiles(layout: &TerrainLayout, lo: Vec2, hi: Vec2, mut f: impl FnMut(u32)) {
     // A level-k sample's tent reads 2^k - 1 field cells out, a tile's
     // heights one sample (2^k cells) before it and two after; its control
@@ -1321,7 +1440,13 @@ mod tests {
             2.0 * (x * std::f32::consts::FRAC_PI_4).sin() + 0.2 * x
         };
         let p = HeightPyramid::new(&l, field);
-        let tile = TerrainTile::build(&l, 0, p.tile_heights(&l, 0, field), None);
+        let tile = TerrainTile::build(
+            &l,
+            0,
+            p.tile_heights(&l, 0, field),
+            vec![0; l.horizon_words() as usize],
+            None,
+        );
         let ns = l.normals_side() as usize;
         let (base, top) = (&tile.normals[..ns * ns], *tile.normals.last().unwrap());
         // The mean of level 0's unit normals the halvings reach (129 halves
@@ -1346,9 +1471,56 @@ mod tests {
         // A plane's mips are its normal, at full length.
         let plane = |c: u32, r: u32| 0.3 * c as f32 + 0.1 * r as f32;
         let p = HeightPyramid::new(&l, plane);
-        let flat = TerrainTile::build(&l, 0, p.tile_heights(&l, 0, plane), None);
+        let flat = TerrainTile::build(
+            &l,
+            0,
+            p.tile_heights(&l, 0, plane),
+            vec![0; l.horizon_words() as usize],
+            None,
+        );
         let (d, len) = unpack_normal(*flat.normals.last().unwrap());
         assert!(len > 0.998 && d.angle_between(Vec3::new(-0.3, 1.0, -0.1).normalize()) < 0.01);
+    }
+
+    /// Behind a ridge 40 m high the horizon towards it (+x) stands at the
+    /// ridge's elevation seen from the texel or a little over it, on level
+    /// 0 and on a coarse level (read from the maxima, not the mean, which
+    /// would flatten a one-sample ridge); away from it (-x)
+    /// the flat ground's horizon is level.
+    #[test]
+    fn a_ridge_raises_the_horizon_towards_it() {
+        let l = layout();
+        let ridge = 200u32;
+        let field = |c: u32, _: u32| if c == ridge { 40.0 } else { 0.0 };
+        let p = HeightPyramid::new(&l, field);
+        let angle = |words: &[u32], texel: usize, a: usize| {
+            let top = (1u32 << HORIZON_BITS) - 1;
+            let w = words[texel * HORIZON_WORDS as usize + a / 2];
+            let b = (w >> (HORIZON_BITS * (a as u32 % 2))) & top;
+            (b as f32 / top as f32 * 2.0 - 1.0) * 90.0
+        };
+        let step: f32 = 180.0 / 4095.0;
+        for k in [0u32, 2] {
+            let tile = l.index(k, 0, 0);
+            let h = p.horizon(&l, tile, field);
+            assert_eq!(h.len(), l.horizon_words() as usize);
+            let side = l.horizon_side() as usize;
+            // Texel (2, 2): field column 16 · 2^k (metres too: 1 m cells).
+            let x = (2 * HORIZON_SPACING * l.step(k)) as f32;
+            let texel = 2 * side + 2;
+            let d = ridge as f32 - x;
+            let want = (40.0 / d).atan().to_degrees();
+            // Conservative: never under it, and over it by no more than
+            // the ridge an eighth nearer.
+            let most = (40.0 / (d * 0.875)).atan().to_degrees();
+            let step = step.max(0.05);
+            let got = angle(&h, texel, 0);
+            assert!(
+                got >= want - step && got <= most + step,
+                "level {k}: towards the ridge {got}°, not {want}° to {most}°"
+            );
+            assert!(angle(&h, texel, 4).abs() <= step, "level {k}: away");
+        }
     }
 
     /// An edit's pyramids, updated where it reaches, are the edited field's
@@ -1386,8 +1558,13 @@ mod tests {
                 ControlPyramid::new(&l, d.control.as_ref().unwrap()),
                 d.hole_counts(),
             );
+            // The surface only: a horizon sees the whole terrain, so an
+            // edit moves every tile's a little ([`edited_tiles`]).
             (0..l.tile_count())
-                .map(|t| d.tile(&l, t, &h, c.as_ref(), o.as_ref()))
+                .map(|t| TerrainTile {
+                    horizon: Arc::from([]),
+                    ..d.tile(&l, t, &h, c.as_ref(), o.as_ref())
+                })
                 .collect::<Vec<_>>()
         };
         let old = all(&before);

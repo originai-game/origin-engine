@@ -39,6 +39,9 @@ module terrain {
     field castShadows bool "Cast the directional and local lights' shadows (it always receives them)." {
       default true
     }
+    field horizonShadows bool "Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less." {
+      default true
+    }
     field lodSpacing f32 "The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing)." {
       min 0
       max 64

@@ -123,7 +123,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// (`influences`, to d09658f91e092780) and R6's og.TerrainScatter impostor fields
 /// (to 418646f663e539b4) and og.Model.sway (to 93d5097782334060) and R5's lazy og.Water
 /// (to 8a66396f924b22ba, gone from a world without water) and og.Environment's blurriness,
-/// grounded dome and blend fields (to 82ae1d6124a13be2), each of which moves every raw world hash.
+/// grounded dome and blend fields (to 82ae1d6124a13be2) and T5's lazy og.Terrain (to
+/// 5017615dce8e0194, gone from a world without terrain), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -134,7 +135,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "82ae1d6124a13be2");
+    assert_eq!(hash(engine), "5017615dce8e0194");
 }
 
 #[test]

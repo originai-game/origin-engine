@@ -482,6 +482,38 @@ fn an_edit_changes_the_drawn_surface() {
     );
 }
 
+/// T5: past the shadow cascades the ridge's horizon shades the plain in
+/// front of it: 1 km from the ridge, in its shade, the ground is darker
+/// than 0.6 of the same plain lit 2.8 km off (where the ridge stands 6°
+/// up, under the sun's 8°), both far past the cascades; without horizon
+/// shadows the two read the same.
+#[test]
+fn a_ridge_shades_the_plain_past_the_cascades() {
+    let ground = |x: f32| {
+        let d = (x - ts::HORIZON_RIDGE) / ts::HORIZON_RIDGE_WIDTH;
+        Vec3::new(x, ts::HORIZON_RIDGE_HEIGHT * (-d * d).exp(), 0.0)
+    };
+    let ratio = |horizon: bool, name: &str| {
+        let scene = ts::horizon_scene(horizon);
+        let (img, _) = render(&scene);
+        keep(name, &img);
+        let at = |p: Vec3| {
+            let (x, y) = project(&scene.camera, p);
+            mean(&img, x - 6, y - 2, x + 6, y + 2)
+        };
+        at(ground(ts::HORIZON_RIDGE - 1000.0)) / at(ground(-800.0))
+    };
+    let check = check("terrain-horizon");
+    assert!(check.stats.terrain_draws > 0);
+    let off = ratio(false, "horizon-off");
+    let on = ratio(true, "horizon-on");
+    assert!(
+        off > 0.85,
+        "without the horizon the shade does not show: {off}"
+    );
+    assert!(on < 0.6, "the ridge's shade: {on} of the lit plain");
+}
+
 /// R6's holes: the pit's centre shows the orange cave floor below it; a point of the meadow 6 m outside the pit is ground
 /// (greener than red). With the hole map gone the pit's centre is ground
 /// again: the hole is the map's.

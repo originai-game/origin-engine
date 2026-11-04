@@ -1196,6 +1196,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             },
             fade_in: !settle,
             visible: on(&v, "visible", true),
+            horizon_shadows: on(&v, "horizonShadows", true),
         });
         rs.ids.terrains.push(e);
         if !t.edited {

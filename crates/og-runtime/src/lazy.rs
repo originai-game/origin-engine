@@ -287,6 +287,13 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Grass",
         enable: |_, _| Ok(()),
     },
+    // The terrain component, read by extraction (and describe) alone: a
+    // world without a terrain keeps its type table and hash as it grows
+    // fields (T5's horizonShadows).
+    Lazy {
+        name: "og.Terrain",
+        enable: |_, _| Ok(()),
+    },
     // T3: terrain stamps, read by extraction alone: a world without one
     // keeps its type table and hash.
     Lazy {

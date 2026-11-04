@@ -452,11 +452,13 @@ impl TerrainRenderer {
             row(hs, 4),
             size(hs),
         );
-        // The horizon words in the rows under the heights, the last row
-        // padded.
+        // The horizon words in the rows under the heights as numbers (exact:
+        // each under 2^24), the last row padded.
         let rows = gpu.layout.heights_rows() - hs;
-        let mut words = vec![0u32; (rows * hs) as usize];
-        words[..tile.horizon.len()].copy_from_slice(&tile.horizon);
+        let mut words = vec![0f32; (rows * hs) as usize];
+        for (w, v) in words.iter_mut().zip(tile.horizon.iter()) {
+            *w = *v as f32;
+        }
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 origin: wgpu::Origin3d {
@@ -949,7 +951,7 @@ impl TerrainRenderer {
                     t.height_blend.max(0.0),
                     f32::from(lay.control > 0),
                     f32::from(lay.holes),
-                    0.0,
+                    f32::from(t.horizon_shadows),
                 ],
                 tiles: [
                     lay.tile as f32,

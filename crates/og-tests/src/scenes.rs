@@ -178,6 +178,7 @@ pub const SCENES: &[&str] = &[
     "terrain-layers",
     "terrain-tiling",
     "terrain-steep",
+    "terrain-horizon",
     "terrain-cliff",
     "terrain-cliff-blend",
     "impostors",
@@ -1384,6 +1385,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // 45): square cells on the face, not vertical streaks.
         "terrain-steep" => |g, _| {
             g.scene = crate::terrain_scenes::steep_scene(45.0);
+            Ok(())
+        },
+        // T5: a 300 m ridge with the sun 8° up behind it, its shade on the
+        // plain in front far past the cascades, drawn from the horizon map.
+        "terrain-horizon" => |g, _| {
+            g.scene = crate::terrain_scenes::horizon_scene(true);
             Ok(())
         },
         // T3: a 300 m cliff the height field cannot make, drawn by a block
