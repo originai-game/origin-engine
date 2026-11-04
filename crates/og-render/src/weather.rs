@@ -500,24 +500,25 @@ pub fn add_lightning(
         // base as at the ground), so the bloom spreads it into the glow.
         let height = (top - at.y).max(1.0);
         let mut strip = |pts: &[(Vec3, f32)], gain: f32, halo: bool, c: [f32; 4]| {
+            let points: Vec<crate::RibbonPoint> = pts
+                .iter()
+                .map(|&(position, width)| {
+                    let up = ((position.y - at.y) / height).clamp(0.0, 1.0);
+                    let (scale, lift) = if halo {
+                        (4.0 + 4.0 * up, 1.0 + 0.5 * up)
+                    } else {
+                        (1.0, 1.0)
+                    };
+                    let g = gain * lift;
+                    crate::RibbonPoint {
+                        position,
+                        width: width.max(span * position.distance(eye)) * scale,
+                        color: [c[0] * g, c[1] * g, c[2] * g, 1.0],
+                    }
+                })
+                .collect();
             scene.ribbons.push(crate::Ribbon {
-                points: pts
-                    .iter()
-                    .map(|&(position, width)| {
-                        let up = ((position.y - at.y) / height).clamp(0.0, 1.0);
-                        let (scale, lift) = if halo {
-                            (4.0 + 4.0 * up, 1.0 + 0.5 * up)
-                        } else {
-                            (1.0, 1.0)
-                        };
-                        let g = gain * lift;
-                        crate::RibbonPoint {
-                            position,
-                            width: width.max(span * position.distance(eye)) * scale,
-                            color: [c[0] * g, c[1] * g, c[2] * g, 1.0],
-                        }
-                    })
-                    .collect(),
+                points: strokeable(points),
                 texture: None,
                 uv: crate::RibbonUv::Stretch,
                 blend: ParticleBlend::Additive,
@@ -531,6 +532,37 @@ pub fn add_lightning(
         }
     }
 }
+
+/// A strip's points with none closer to the last kept than [`STROKE_STEP`]
+/// times its width: a camera-facing strip folds over itself where its
+/// segments are shorter than it is wide (each point's edge is across the
+/// tangent through its neighbours, which swings at every jag), and the
+/// folds drew a bolt's core and halo as short ticks across the stroke, a
+/// fishbone. Jags finer than the stroke cannot show anyway. The last point
+/// is kept (in place of the one before it when that is too near).
+fn strokeable(points: Vec<crate::RibbonPoint>) -> Vec<crate::RibbonPoint> {
+    let mut out: Vec<crate::RibbonPoint> = Vec::with_capacity(points.len());
+    let n = points.len();
+    for (i, p) in points.into_iter().enumerate() {
+        match out.last() {
+            None => out.push(p),
+            Some(last) if last.position.distance(p.position) >= STROKE_STEP * last.width => {
+                out.push(p)
+            }
+            Some(_) if i + 1 == n => {
+                if out.len() > 1 {
+                    out.pop();
+                }
+                out.push(p);
+            }
+            Some(_) => {}
+        }
+    }
+    out
+}
+
+/// A drawn bolt's least segment, in its strip's widths ([`strokeable`]).
+const STROKE_STEP: f32 = 2.5;
 
 /// The least width of a bolt's white core, as a share of the view's height
 /// (3 pixels of 720): [`add_lightning`].
@@ -633,6 +665,8 @@ mod lightning_tests {
         assert!((1..=2).contains(&b.len()));
         for br in &b {
             assert!(a.iter().any(|p| p.0 == br[0].0));
+            // At least 8 % of the parent's height: no stub.
+            assert!(br[0].0.y - br.last().unwrap().0.y >= 0.08 * 600.0);
             let (start, end) = (br[0].0, br.last().unwrap().0);
             assert!(end.y < start.y - 600.0 * 0.24, "{start} {end}");
             // Jagged: its path at least 15 % longer than its chord.
@@ -667,13 +701,35 @@ mod lightning_tests {
             * 720.0;
         assert!((2.9..4.0).contains(&px), "{px} px");
         // Four times the core at the ground, eight at the deck.
-        let ratio = |i: usize| halo.points[i].width / core.points[i].width;
+        // (Both strips keep the bolt's two ends.)
+        let ground = halo.points.last().unwrap().width / core.points.last().unwrap().width;
+        let deck = halo.points[0].width / core.points[0].width;
         assert!(
-            (ratio(core.points.len() - 1) - 4.0).abs() < 1e-3,
-            "{}",
-            ratio(core.points.len() - 1)
+            (ground - 4.0).abs() < 1e-3 && (deck - 8.0).abs() < 1e-3,
+            "{ground} {deck}"
         );
-        assert!((ratio(0) - 8.0).abs() < 1e-3, "{}", ratio(0));
+        println!(
+            "points: core {}, halo {}",
+            core.points.len(),
+            halo.points.len()
+        );
+        // No strip folds: every segment of every strip (core, halo, branches)
+        // is at least STROKE_STEP of its width long, save a strip's last,
+        // and still runs from the cloud to the ground.
+        for r in &scene.ribbons {
+            let p = &r.points;
+            assert!(p.len() >= 3, "{}", p.len());
+            for w in p[..p.len() - 1].windows(2) {
+                let len = w[0].position.distance(w[1].position);
+                assert!(
+                    len >= STROKE_STEP * w[0].width - 1e-3,
+                    "{len} vs {}",
+                    w[0].width
+                );
+            }
+        }
+        assert_eq!(core.points[0].position.y, 900.0);
+        assert_eq!(core.points.last().unwrap().position, at);
     }
 
     /// The shelter view moves by whole cells only, looks along the fall,
