@@ -18,6 +18,17 @@ the tone mapper owns display mapping. The final sky pass only bounds the
 sum to finite RGBA16F storage. This is a composition adaptation, not a port
 of the demo's arbitrary solar brightness or the proprietary UE code.
 
+## Aerial perspective
+
+`sky_scatter.wgsl` `air_path` integrates the same single-scattering and
+multiple-scattering (Ψ_ms) terms as the sky's march along the segment from
+the eye to a cloud, as the paper's aerial-perspective volume does (§5.5,
+`Resources/RenderSkyRayMarching.hlsl` `IntegrateScatteredLuminance` with a
+finite `tMax`). Origin evaluates it per cloud pixel at the cloud's
+transmittance-weighted depth instead of storing a froxel volume: only
+clouds take it (meshes keep the authored `Fog`), so a per-pixel segment of
+12 samples costs less than the volume and needs no new binding.
+
 ## Reference implementation licence
 
 MIT License

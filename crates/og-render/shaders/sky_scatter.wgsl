@@ -88,6 +88,69 @@ fn scatter_ms(h: f32, mu: f32) -> vec3<f32> {
   return mix(lo, hi, clamp(h / 8.0, 0.0, 1.0));
 }
 
+// The Rayleigh and Mie (Cornette–Shanks) phase functions for the cosine
+// `nu` between the view and the sun.
+fn scatter_phases(nu: f32) -> vec2<f32> {
+  let g = SCATTER[2].w;
+  let g2 = g * g;
+  let pr = 3.0 / (16.0 * SCATTER_PI) * (1.0 + nu * nu);
+  let pm = 3.0 / (8.0 * SCATTER_PI) * (1.0 - g2) * (1.0 + nu * nu)
+    / ((2.0 + g2) * pow(max(1.0 + g2 - 2.0 * g * nu, 1e-6), 1.5));
+  return vec2<f32>(pr, pm);
+}
+
+// One sample of the air at `p` (km, planet-centred), the sun along unit
+// `sun`, `phases` scatter_phases: the light it scatters towards the eye
+// per km, of the sun (single scattering) and of the sky (Hillaire's
+// multiple scattering), and its extinction per km.
+struct ScatterSample { sun: vec3<f32>, sky: vec3<f32>, ext: vec3<f32> };
+
+fn scatter_at(p: vec3<f32>, sun: vec3<f32>, phases: vec2<f32>) -> ScatterSample {
+  let bottom = SCATTER[3].x;
+  let r = length(p);
+  // Never below the ground: the flat world's surfaces sit above the curved
+  // planet's, and the sea floor's a little below it.
+  let h = max(r - bottom, 0.0);
+  let mu = dot(p, sun) / r;
+  let sr = SCATTER[0].rgb * exp(-h * SCATTER[1].z);
+  let dm = exp(-h * SCATTER[1].w);
+  let sm = SCATTER[1].x * dm;
+  let oz = max(1.0 - abs(h - 25.0) / 15.0, 0.0);
+  var o: ScatterSample;
+  o.ext = max(sr + vec3<f32>(SCATTER[1].y * dm) + SCATTER[2].rgb * oz, vec3<f32>(1e-7));
+  o.sun = (sr * phases.x + vec3<f32>(sm * phases.y)) * scatter_sun_transmittance(max(r, bottom), mu);
+  o.sky = (sr + vec3<f32>(sm)) * scatter_ms(h, mu);
+  return o;
+}
+
+// The air between the eye `h0` km up and a point `t` km along unit `d`
+// (Hillaire 2020 §5.5, aerial perspective): the light it scatters towards
+// the eye (the sun along unit `sun` with illuminance 1, in the engine's
+// units, as physical_sky), of the sun and of the sky apart (clouds shade
+// them differently), and what it lets through from behind.
+struct AirPath { sun: vec3<f32>, sky: vec3<f32>, through: vec3<f32> };
+
+fn air_path(d: vec3<f32>, sun: vec3<f32>, h0: f32, t: f32, steps: u32) -> AirPath {
+  let o = vec3<f32>(0.0, SCATTER[3].x + max(h0, 0.001), 0.0);
+  let phases = scatter_phases(dot(d, sun));
+  let dt = max(t, 0.0) / f32(steps);
+  var out: AirPath;
+  out.sun = vec3<f32>(0.0);
+  out.sky = vec3<f32>(0.0);
+  out.through = vec3<f32>(1.0);
+  for (var i = 0u; i < steps; i++) {
+    let x = scatter_at(o + d * (dt * (f32(i) + 0.5)), sun, phases);
+    let seg = exp(-x.ext * dt);
+    let k = out.through * (1.0 - seg) / x.ext;
+    out.sun += k * x.sun;
+    out.sky += k * x.sky;
+    out.through *= seg;
+  }
+  out.sun *= SCATTER[3].w;
+  out.sky *= SCATTER[3].w;
+  return out;
+}
+
 // The sky's radiance along unit `d` from `h0` km up, the sun along unit
 // `sun` with illuminance 1, in the engine's units, at `steps` samples:
 // single and multiple scattering and the lit ground (no sun disc).
@@ -101,12 +164,7 @@ fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> 
   let start = max(top.x, 0.0);
   let end = select(top.y, ground.x, hits);
   if (end <= start) { return vec3<f32>(0.0); }
-  let nu = dot(d, sun);
-  let g = SCATTER[2].w;
-  let g2 = g * g;
-  let pr = 3.0 / (16.0 * SCATTER_PI) * (1.0 + nu * nu);
-  let pm = 3.0 / (8.0 * SCATTER_PI) * (1.0 - g2) * (1.0 + nu * nu)
-    / ((2.0 + g2) * pow(max(1.0 + g2 - 2.0 * g * nu, 1e-6), 1.5));
+  let phases = scatter_phases(dot(d, sun));
   let len = end - start;
   let n = f32(steps);
   var l = vec3<f32>(0.0);
@@ -115,19 +173,9 @@ fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> 
     let a = f32(i) / n;
     let b = f32(i + 1u) / n;
     let dt = (b * b - a * a) * len;
-    let p = o + d * (start + (a * a + b * b) * 0.5 * len);
-    let r = length(p);
-    let h = r - bottom;
-    let mu = dot(p, sun) / r;
-    let sr = SCATTER[0].rgb * exp(-h * SCATTER[1].z);
-    let dm = exp(-h * SCATTER[1].w);
-    let sm = SCATTER[1].x * dm;
-    let oz = max(1.0 - abs(h - 25.0) / 15.0, 0.0);
-    let ext = max(sr + vec3<f32>(SCATTER[1].y * dm) + SCATTER[2].rgb * oz, vec3<f32>(1e-7));
-    let s = (sr * pr + vec3<f32>(sm * pm)) * scatter_sun_transmittance(r, mu)
-      + (sr + vec3<f32>(sm)) * scatter_ms(h, mu);
-    let seg = exp(-ext * dt);
-    l += t * (s - s * seg) / ext;
+    let x = scatter_at(o + d * (start + (a * a + b * b) * 0.5 * len), sun, phases);
+    let seg = exp(-x.ext * dt);
+    l += t * (x.sun + x.sky) * (1.0 - seg) / x.ext;
     t *= seg;
   }
   if (hits) {

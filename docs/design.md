@@ -1102,9 +1102,25 @@ S6).
   saturated-colour shoulder; the sun reaches bloom and the tonemapper in
   scene-linear HDR (`third_party/hillaire-sky.md`). The sky output is
   bounded to finite RGBA16F storage; the HDR output mapper bounds it to
-  the display peak. Cloud scattering samples receive the same view fog
-  as meshes at their distance. `Fog.sky` affects the distant background
-  before cloud composition, not the finite-distance cloud volume.
+  the display peak. Cloud scattering samples receive the same distance
+  fog as meshes at their distance; the height fog's column, which a
+  cloud above it shares with the sky beside it, they take by `Fog.sky`'s
+  share as the sky does.
+- **Aerial perspective and far clouds.** Under the physical sky the air
+  between the eye and a cloud is integrated with the sky's own
+  scattering (Hillaire 2020 §5.5, `sky_scatter.wgsl` `air_path`, at the
+  cloud's transmittance-weighted depth): the cloud's light is seen
+  through the air's transmittance and the air's in-scattered light it
+  hides behind it is replaced by the same air's in front, with the sun
+  shaded by the cover (`Clouds::light`) and, under a closed deck, the
+  sky's light by the deck's base. Past the march's reach (30 km of
+  marching from the layer's entry, 60 km to the entry at most) the layer
+  is drawn as its mean: a ray meets cloud with probability
+  `1 - (1 - cover)^(path / cell)`, lit by the same sun, multiple
+  scattering and ambient as the march, behind the marched part and
+  instead of it past 60 km, so horizon cloud banks continue to the
+  horizon under the same fog and air. The gradient sky keeps its 27 km
+  fade (it has no air to integrate).
 - **Realtime light volumes (R3).** The lazy component
   `og.RealtimeLightVolume` (`updatesPerFrame`, `intensity`) beside an
   `og.LightVolume` relights that box's probes while the game runs

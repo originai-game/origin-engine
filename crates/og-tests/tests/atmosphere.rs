@@ -718,14 +718,7 @@ fn cloud_volume_gets_view_fog_even_when_the_clear_sky_does_not() {
     scene.environment.sky.look.as_mut().unwrap().sun_intensity = 0.0;
     scene.camera.exposure = og_render::Exposure::Manual { ev: 0.0 };
     let color = Vec3::new(0.2, 0.05, 0.1);
-    scene.fog = Some(og_render::Fog {
-        color,
-        sun_color: color,
-        density: 0.02,
-        sky: 0.0,
-        ..Default::default()
-    });
-    scene.clouds = Some(og_render::Clouds {
+    let clouds = og_render::Clouds {
         coverage: 1.0,
         density: 0.1,
         base: 1000.0,
@@ -733,6 +726,17 @@ fn cloud_volume_gets_view_fog_even_when_the_clear_sky_does_not() {
         layer: 0.0,
         detail: 0.0,
         wind: Vec3::ZERO,
+        ..Default::default()
+    };
+    // Lit as every clouded scene is (the sun under the deck dimmed), then
+    // the fog, so its colour is the one asked for.
+    clouds.light_scene(&mut scene);
+    scene.clouds = Some(clouds);
+    scene.fog = Some(og_render::Fog {
+        color,
+        sun_color: color,
+        density: 0.02,
+        sky: 0.0,
         ..Default::default()
     });
     let mut renderer = Renderer::new_blocking(&og_render::RenderDesc {
@@ -760,7 +764,7 @@ fn cloud_volume_gets_view_fog_even_when_the_clear_sky_does_not() {
 }
 
 #[test]
-fn cloud_coverage_fades_before_the_march_limit_with_fog() {
+fn cloud_layer_continues_past_the_march_limit_with_fog() {
     let mut scene = solar_probe();
     scene.environment.sky.look.as_mut().unwrap().sun_intensity = 0.0;
     scene.camera.exposure = og_render::Exposure::Manual { ev: 0.0 };
@@ -808,10 +812,23 @@ fn cloud_coverage_fades_before_the_march_limit_with_fog() {
     let near = band(0, 8);
     let edge = band(48, 58);
     let beyond = band(90, 100);
-    println!("cloud range: near={near}, edge={edge}, beyond={beyond}");
+    // The largest change between neighbouring rows across the march's
+    // limit (the middle row): the marched layer hands over to the far
+    // layer's mean there with no step, where it once ended in a hard edge
+    // and then faded to the clear sky behind.
+    let step = (30..110)
+        .map(|y| (band(y, y + 1) - band(y + 1, y + 2)).abs())
+        .fold(0.0f32, f32::max);
+    println!("cloud range: near={near}, edge={edge}, beyond={beyond}, largest row step={step}");
     assert!(near > 0.05, "the fixture contains visible cloud");
-    assert!(edge < near * 0.15, "coverage fades before the hard cutoff");
-    assert!(beyond < 0.001, "the ray is beyond the cloud march");
+    assert!(
+        beyond > near * 0.3,
+        "past the march the layer is still drawn (its far mean), not the clear sky"
+    );
+    assert!(
+        step < near * 0.05,
+        "no step where the march hands over to the far layer"
+    );
 }
 
 #[test]

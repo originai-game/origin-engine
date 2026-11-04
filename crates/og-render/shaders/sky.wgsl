@@ -263,10 +263,92 @@ fn deck_along(background: vec3<f32>, d: vec3<f32>, e: f32) -> vec3<f32> {
 }
 
 // A cloud is a finite-distance participating surface, not the sky at
-// infinity: the same integrated view fog as meshes, independent of Fog.sky.
-// Scale its light before fog, just as the background/probe capture does.
+// infinity: the distance fog to it as meshes take it, independent of
+// Fog.sky. Height fog is different: a cloud above it lies behind the same
+// finite column as the sky beside it, so it takes that column as the sky
+// does (Fog.sky's share): a hazed cloud against an unhazed sky drew a
+// bright flat band of washed-out cloud at the horizon. Scale its light
+// before fog, just as the background/probe capture does.
 fn cloud_view_fog(color: vec3<f32>, d: vec3<f32>, distance: f32) -> vec3<f32> {
-  return apply_fog(color * (1.0 - frame.view_up.w), frame.view_pos.xyz + d * distance);
+  let lit = color * (1.0 - frame.view_up.w);
+  if (frame.fog_color.w < 0.5) { return lit; }
+  let f = fog_amount_scaled(frame.view_pos.xyz + d * distance, frame.fog_height.w);
+  return mix(lit, f.rgb, f.a);
+}
+
+// Cloud light seen through the air in front of it (Hillaire 2020 §5.5,
+// aerial perspective, under the physical sky): `color` the background
+// along `d` (already holding that air's light), `scattered` and
+// `transmittance` what the cloud adds and lets through, `at` metres the
+// depth its light comes from. The cloud adds its light through the air,
+// and the air's light it hides behind it is replaced by the same air's in
+// front (no distance heuristic). The clouds shade that air (as UE's cloud
+// shadow does its aerial perspective): the sun reaches it as it reaches
+// the ground (Clouds::light, [4].y), and under a closed deck its sky is
+// the deck, lighting it from the upper half of its directions only, so it
+// scatters half the deck's radiance as much as it hides what is behind
+// it, spectrally: a deck seen far off stays the deck's grey, darker than
+// overhead as an overcast's horizon is.
+fn cloud_air(color: vec3<f32>, scattered: vec3<f32>, transmittance: f32, at: f32, d: vec3<f32>, to_light: vec3<f32>) -> vec3<f32> {
+  let c = frame.clouds;
+  let air = air_path(d, to_light, sky_viewer_km(), at * 0.001, 12u);
+  // The deck's base as cloud_deck lights it (the clear sky's low light,
+  // a fiftieth of the sun), its sun the one above the air that lights the
+  // clouds (cloud_sun), not the scene's light: that is the clouds' own
+  // dimming of it only where the scene was lit by Clouds::light_scene,
+  // and a lightning flash turns it towards the bolt.
+  let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
+  let sky_scale = frame.params.x / max(c[4].z, 0.05);
+  let sun_dir = normalize(frame.sky_sun_dir.xyz);
+  let sun_side = clear_sky_light(normalize(vec3<f32>(sun_dir.x, 0.0, sun_dir.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let above = 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(frame.sky_scatter[3].x + c[0].z * 0.001, sun_dir.y);
+  let base = vec3<f32>(dot(sun_side, luma) * sky_scale * 0.21 + dot(above, luma) * 0.02) * c[2].rgb * 2.0;
+  let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
+  let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
+  let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
+  let air_light = air.sun * scale * min(c[4].y, 1.0) + mix(air.sky * scale, under, cover);
+  return color * transmittance + scattered * air.through + air_light * (1.0 - transmittance) * (1.0 - frame.view_up.w);
+}
+
+// The volumetric layer between `a` and `b` metres along `d`, past where
+// the march reaches: its cells are below a pixel there, so the layer is
+// drawn as what it is on average (the far-cloud representation of
+// horizon cloud banks): a ray through `len` of a layer whose cells cover
+// a fraction `pc` of it meets one with probability 1 - (1 - pc)^(len /
+// cell), lit as the march lights a cloud (its sun through the mean
+// self-shadow of a cell, three octaves of multiple scattering, the sky's
+// ambient at mid-layer) and seen through the same fog and air.
+fn far_clouds(color: vec3<f32>, d: vec3<f32>, a: f32, b: f32, o: vec3<f32>, to_light: vec3<f32>, light: vec3<f32>, physical: bool, phase: f32, sky_top: vec3<f32>, sky_side: vec3<f32>) -> vec3<f32> {
+  let c = frame.clouds;
+  let len = b - a;
+  if (len <= 0.0 || c[0].x <= 0.0) { return color; }
+  let radius = c[4].x;
+  // cloud_density: a fraction pow(coverage, 1.25) at the base, thinning to
+  // the tops (about 0.6 of it over the layer).
+  let pc = clamp(pow(c[0].x, 1.25) * 0.6, 0.0, 0.999);
+  let cell = c[1].w * 0.25;
+  let opacity = 1.0 - pow(1.0 - pc, len / cell);
+  if (opacity <= 1e-4) { return color; }
+  let at = a + min(0.5 * len, cell / max(pc, 0.05));
+  let p = o + d * at;
+  let sun_here = cloud_sun(p, radius, to_light, light, physical);
+  // The mean of exp(-sigma x) over a half cell's depth towards the sun.
+  let depth = c[0].y * 0.5 * c[0].w * 0.5;
+  var sun = vec3<f32>(0.0);
+  var k = 1.0;
+  var e = 1.0;
+  for (var m = 0u; m < 3u; m++) {
+    let od = depth * e;
+    sun += sun_here * k * (1.0 - exp(-od)) / max(od, 1e-4) * mix(phase, 0.0795775, 1.0 - k);
+    k *= 0.6;
+    e *= 0.3;
+  }
+  var ambient = mix(sky_side * 0.6, sky_top, 0.5) * 0.675;
+  ambient = mix(ambient, vec3<f32>(dot(ambient, vec3<f32>(0.2126, 0.7152, 0.0722))), c[0].x * 0.7);
+  let lit = cloud_view_fog((sun + ambient) * c[2].rgb, d, at);
+  if (physical) { return cloud_air(color, lit * opacity, 1.0 - opacity, at, d, to_light); }
+  // The gradient sky has no air to integrate: fade into it over 27 km.
+  return mix(color, lit, opacity * exp(-a / 27000.0));
 }
 
 // The high layer, then the volumetric layer, faded into the sky with distance.
@@ -345,8 +427,12 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
     end = inner.x;
   }
   let far = 60000.0;
-  if (start >= far) { return mix(color, deck, deck_cover); }
+  let fallback = mix(far_clouds(color, d, start, end, o, to_light, light, physical, phase, sky_top, sky_side), deck, deck_cover);
+  if (start >= far) { return fallback; }
+  // What lies past the march's reach is the far layer, behind the march.
+  let full = end;
   end = min(end, start + far * 0.5);
+  let behind_far = far_clouds(color, d, end, full, o, to_light, light, physical, phase, sky_top, sky_side);
   // Up to twice the steps towards the horizon, where the path is longest.
   let steps = u32(c[3].z * (2.0 - abs(d.y)));
   let dt = (end - start) / f32(steps);
@@ -360,6 +446,7 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   var t = start + dt * ign;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
+  var depth = 0.0;
   let light_step = c[0].w * 0.12;
   // A lightning strike's flash, a point in the cloud over the bolt's root
   // (frame coordinates in [5].xyz, made planet-centred about the viewer).
@@ -404,6 +491,8 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
       let s = cloud_view_fog((sun + ambient) * c[2].rgb, d, t) * sigma;
       let seg = exp(-sigma * dt);
       scattered += transmittance * (s - s * seg) / sigma;
+      // The depth the cloud's light comes from, weighted by what it adds.
+      depth += t * transmittance * (1.0 - seg);
       transmittance *= seg;
       if (transmittance < 0.01) { break; }
     }
@@ -415,14 +504,16 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   // Height fog can leave distant cloud visible: taper coverage to the
   // fallback before the hard start>=far exit, with either fog setting.
   let range_fade = 1.0 - smoothstep(far * 0.5, far, start);
-  // Interim clear-air aerial perspective, independent of the local Fog
-  // layer. Area 2 (atmosphere/clouds) replaces this existing 27km heuristic
-  // with Hillaire 2020's aerial-perspective LUT; do not retune it here.
-  let fade = exp(-start / (far * 0.45));
-  let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
-  let behind = mix(color, mean, deck_cover);
-  let marched = mix(behind, color * transmittance + scattered, fade);
-  return mix(mix(color, deck, deck_cover), marched, range_fade);
+  var marched = behind_far * transmittance + scattered;
+  if (physical) {
+    marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light);
+  } else {
+    // The gradient sky has no air to integrate: fade into it over 27 km.
+    let fade = exp(-start / (far * 0.45));
+    let mean = mix(deck, scattered / max(1.0 - transmittance, 1e-3), smoothstep(0.05, 0.5, 1.0 - transmittance));
+    marched = mix(mix(behind_far, mean, deck_cover), marched, fade);
+  }
+  return mix(fallback, marched, range_fade);
 }
 
 // ── the aurora (aurora.rs) ──────────────────────────────────────────

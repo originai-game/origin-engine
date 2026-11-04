@@ -186,6 +186,12 @@ fn reflectivity_bits(roughness: f32, metalness: f32) -> f32 {
 // fog colour, which turns towards the sun's scattering colour looking into
 // the sun. Off (fog_color.w 0): the colour is returned as it came.
 fn fog_amount(p: vec3<f32>) -> vec4<f32> {
+  return fog_amount_scaled(p, 1.0);
+}
+
+// `fog_amount` with the height fog's column scaled by `height` (the clouds
+// take it as the sky does, sky.wgsl cloud_view_fog).
+fn fog_amount_scaled(p: vec3<f32>, height: f32) -> vec4<f32> {
   let ortho = frame.view_pos.w > 0.5;
   // The ray's origin: the eye, or the pixel's own point on the near plane (orthographic).
   var origin = frame.view_pos.xyz;
@@ -203,7 +209,7 @@ fn fog_amount(p: vec3<f32>) -> vec4<f32> {
     let dy = to.y;
     var column = fh.z * exp(-k * y0) * d;
     if (abs(k * dy) > 1e-4) { column = fh.z * exp(-k * y0) * (1.0 - exp(-k * dy)) / (k * dy) * d; }
-    clear *= exp(-max(column, 0.0));
+    clear *= exp(-max(column, 0.0) * height);
   }
   let amount = min(1.0 - clear, fd.w);
   let sun = pow(max(dot(dir, normalize(frame.light_dir.xyz)), 0.0), max(frame.fog_sun.w, 1e-3));
