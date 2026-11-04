@@ -364,7 +364,7 @@ export function mark(id: string, kind: "tick" | "cross" | "plus" | "minus" | "do
 }
 
 /** A label in a role colour: the common call, shorter. */
-export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number } = {}): void {
+export function text(id: string, value: string, d: { step?: Api.TypeStepName; color?: Api.ThemeColor | Rgba; nowrap?: boolean; ellipsis?: boolean; width?: Api.Size; align?: Api.TextAlign; font?: Api.FontRole; heading?: boolean; maxLines?: number; fitMin?: Api.TypeStepName } = {}): void {
   const color = d.color === undefined ? token("ink") : typeof d.color === "string" ? token(d.color) : paint(d.color);
   kit.label(id, value, {
     step: d.step ?? "body",
@@ -376,6 +376,7 @@ export function text(id: string, value: string, d: { step?: Api.TypeStepName; co
     heading: d.heading ?? false,
     ...(d.width ? { width: d.width } : {}),
     ...(d.maxLines ? { maxLines: d.maxLines } : {}),
+    ...(d.fitMin ? { fitMin: d.fitMin } : {}),
   });
 }
 

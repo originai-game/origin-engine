@@ -141,7 +141,12 @@ export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): 
     kit.open("Hidden", { width: px(Math.max(0, hides - Math.round(pad * 1.2))), height: px(1) });
     kit.close();
   }
-  text("Text", c.name ?? "", { step: nameStep, maxLines: covered ? 1 : 2, nowrap: covered, width: grow(), align: covered ? "start" : "center", font: "display", heading: true });
+  // Uncovered, the name wraps between words at its own step and the engine steps it down (by the real glyphs) only
+  // where one word is wider than the banner: a guess of 0.6 em a letter shrank "Owl Familiar" to the caption in a
+  // pixel face beside a "Strike" at 24, two sizes in one grid.
+  text("Text", c.name ?? "", covered
+    ? { step: nameStep, maxLines: 1, nowrap: true, width: grow(), align: "start", font: "display", heading: true }
+    : { step: st(base), fitMin: sizeOf(fitted) < sizeOf(st(base)) ? fitted : st(base), maxLines: 2, width: grow(), align: "center", font: "display", heading: true });
   kit.close();
   if (o.rules) {
     kit.row("Type", { width: grow(), gap: u(6), cross: "center", align: "center", part: "Card.type", partClass: "panel" }, () => {
