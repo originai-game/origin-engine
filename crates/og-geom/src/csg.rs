@@ -51,6 +51,8 @@ struct Corner {
 struct Solid {
     tris: Vec<[u32; 3]>,
     corners: Vec<[Corner; 3]>,
+    /// The input triangle each one is (degenerate ones are dropped).
+    source: Vec<u32>,
     min: DVec3,
     max: DVec3,
 }
@@ -565,7 +567,7 @@ impl Csg {
 
 /// The winding number of a closed mesh round `p` (solid angles, Van
 /// Oosterom and Strackee): 1 inside, 0 outside.
-fn winding(points: &[DVec3], tris: &[[u32; 3]], p: DVec3) -> f64 {
+pub(crate) fn winding(points: &[DVec3], tris: &[[u32; 3]], p: DVec3) -> f64 {
     let mut sum = 0.0;
     for t in tris {
         let a = points[t[0] as usize] - p;
@@ -611,13 +613,15 @@ fn weld(
     }
     let mut tris = Vec::new();
     let mut corners = Vec::new();
+    let mut source = Vec::new();
     let (mut min, mut max) = (DVec3::INFINITY, DVec3::NEG_INFINITY);
-    for t in placed.indices.as_chunks::<3>().0.iter() {
+    for (ti, t) in placed.indices.as_chunks::<3>().0.iter().enumerate() {
         let w = [ids[t[0] as usize], ids[t[1] as usize], ids[t[2] as usize]];
         if w[0] == w[1] || w[1] == w[2] || w[0] == w[2] {
             continue;
         }
         tris.push(w);
+        source.push(ti as u32);
         corners.push([0, 1, 2].map(|k| {
             let i = t[k] as usize;
             Corner {
@@ -634,6 +638,7 @@ fn weld(
     Ok(Solid {
         tris,
         corners,
+        source,
         min,
         max,
     })
@@ -651,6 +656,19 @@ fn overlap(a: (DVec3, DVec3), b: (DVec3, DVec3)) -> bool {
 /// `a op b`, each placed first. Refused for a singular placement or a
 /// position that is not finite.
 pub fn csg(a: &Mesh, pa: Placement, b: &Mesh, pb: Placement, op: CsgOp) -> Result<Mesh, String> {
+    csg_traced(a, pa, b, pb, op).map(|(m, _)| m)
+}
+
+/// [`csg`], with where each output triangle came from: `(0, t)` a piece of
+/// triangle `t` of `a`, `(1, t)` of `b` (one entry per output triangle, in
+/// order). A fracture tells its outer faces from its cut faces by it.
+pub fn csg_traced(
+    a: &Mesh,
+    pa: Placement,
+    b: &Mesh,
+    pb: Placement,
+    op: CsgOp,
+) -> Result<(Mesh, Vec<(u8, u32)>), String> {
     let mut points = Vec::new();
     let mut at = HashMap::new();
     let sa = weld(a, pa, &mut points, &mut at).map_err(|e| format!("a: {e}"))?;
@@ -767,6 +785,7 @@ pub fn csg(a: &Mesh, pa: Placement, b: &Mesh, pb: Placement, op: CsgOp) -> Resul
     // 4. What the operation keeps.
     let colors = !a.colors.is_empty() || !b.colors.is_empty();
     let mut out = Mesh::default();
+    let mut origins: Vec<(u8, u32)> = Vec::new();
     let mut vertex_at: HashMap<Vec<u32>, u32> = HashMap::new();
     for (pi, p) in pieces.iter().enumerate() {
         let r = find(&mut parent, pi);
@@ -791,6 +810,7 @@ pub fn csg(a: &Mesh, pa: Placement, b: &Mesh, pb: Placement, op: CsgOp) -> Resul
             continue;
         }
         let solid = &c.solids[p.mesh as usize];
+        origins.push((p.mesh, solid.source[p.tri as usize]));
         let t = solid.tris[p.tri as usize];
         let corners = &solid.corners[p.tri as usize];
         let axis = drop_axis(c.tri_normal(t));
@@ -848,5 +868,5 @@ pub fn csg(a: &Mesh, pa: Placement, b: &Mesh, pb: Placement, op: CsgOp) -> Resul
             out.indices.push(index);
         }
     }
-    Ok(out)
+    Ok((out, origins))
 }

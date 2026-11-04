@@ -1,0 +1,12 @@
+[package]
+name = "og-destruct"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine destruction: the prefractured asset (chunks, bonds, hierarchy), Blast's stress solver ported to Rust, radial damage and the support graph's islands, deterministic on every host, with no ECS or physics dependency"
+
+[dependencies]
+glam = { workspace = true, features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+bincode = "1.3.3"

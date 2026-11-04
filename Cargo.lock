@@ -2474,6 +2474,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-destruct"
+version = "0.7.7"
+dependencies = [
+ "bincode",
+ "glam 0.34.1",
+ "serde",
+]
+
+[[package]]
 name = "og-ecs"
 version = "0.7.7"
 dependencies = [

@@ -17,6 +17,7 @@
 pub mod csg;
 pub mod earcut;
 pub mod extrude;
+pub mod fracture;
 pub mod frames;
 pub mod lathe;
 pub mod merge;
@@ -26,7 +27,7 @@ pub mod shape;
 pub mod sweep;
 pub mod trig;
 
-pub use csg::{CsgOp, csg};
+pub use csg::{CsgOp, csg, csg_traced};
 pub use extrude::{Extrude, extrude};
 pub use frames::{Frame, frenet_frames};
 pub use lathe::{Lathe, lathe};
