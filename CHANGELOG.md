@@ -66,6 +66,15 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrain far field (T2).** A terrain's coarser tile levels hold the
+  mean of the ground under each sample (a centred tent over the finer
+  level) instead of one decimated sample, so far silhouettes no longer
+  shimmer as the camera moves; collision and `og.terrain.sample` are
+  unchanged. Its normal mips average the unit normals and keep their
+  spread (Toksvig), which widens the far specular instead of the slopes
+  flattening and shining. Each clipmap level is culled in 4 × 4 blocks:
+  looking out from a terrain's edge draws under half the triangles.
+  Terrain blobs move to tile row v3 (`og cook` redoes them).
 - **Terrains in describe and pick.** The probe's entity-id pass draws each
   og.Terrain as its clipmap draws it (levels, morph, adaptive diagonal,
   holes cut per pixel, its placement) and each og.TerrainStamp's mesh, so

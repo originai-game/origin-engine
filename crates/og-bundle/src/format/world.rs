@@ -524,7 +524,9 @@ row!(
     /// One tile of the pyramid (in TerrainLayout's index order): its
     /// level and place, the range of its heights, its zlib'd 16-bit
     /// heights in `heights` and its zlib'd control texels in `control`.
-    TerrainTileRow, "og.Terrain.tile", 2 {
+    /// v3: a level past 0 holds its finer level's heights under a centred
+    /// tent filter (og-render's `HeightPyramid`), no longer decimated.
+    TerrainTileRow, "og.Terrain.tile", 3 {
         index: u32,
         level: u32,
         x: u32,

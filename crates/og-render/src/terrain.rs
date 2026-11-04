@@ -648,14 +648,34 @@ struct LevelGpu {
 
 const LEVEL_STRIDE: u64 = 256;
 
-/// One clipmap level to draw: its uniform slot, which of the index
-/// buffer's ranges, and its bounds (culling per pass).
+/// One clipmap level to draw: its uniform slot, its bounds and its
+/// blocks' index ranges with their bounds (culled per pass: a block out
+/// of the pass's view is not drawn; neighbours in view draw as one range).
 #[derive(Clone, Debug)]
 pub(crate) struct LevelDraw {
     pub offset: u32,
-    pub indices: std::ops::Range<u32>,
     pub center: Vec3,
     pub radius: f32,
+    pub blocks: Vec<(std::ops::Range<u32>, Vec3, f32)>,
+}
+
+/// The index ranges of `blocks` that `visible` admits, neighbours in the
+/// buffer merged into one range.
+pub(crate) fn visible_ranges(
+    blocks: &[(std::ops::Range<u32>, Vec3, f32)],
+    visible: impl Fn(Vec3, f32) -> bool,
+) -> Vec<std::ops::Range<u32>> {
+    let mut out: Vec<std::ops::Range<u32>> = Vec::new();
+    for (r, c, radius) in blocks {
+        if r.is_empty() || !visible(*c, *radius) {
+            continue;
+        }
+        match out.last_mut() {
+            Some(last) if last.end == r.start => last.end = r.end,
+            _ => out.push(r.clone()),
+        }
+    }
+    out
 }
 
 /// One terrain ready to draw in this frame's passes.
@@ -772,40 +792,91 @@ pub(crate) fn levels(camera: Vec2, extent: Vec2, ring: u32, far: f64) -> Vec<Ter
     out
 }
 
+/// Blocks per side of a level, each culled on its own (`BLOCKS`² per
+/// level: Far Cry 5's per-patch culling on the CPU, with no readback).
+pub(crate) const BLOCKS: u32 = 4;
+
+/// One ring variant's index range and, within it, each block's (row by
+/// row, `BLOCKS` to a row; a block the hole leaves empty is empty).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct RingRange {
+    pub all: std::ops::Range<u32>,
+    pub blocks: [std::ops::Range<u32>; (BLOCKS * BLOCKS) as usize],
+}
+
 /// The index buffer of one ring size: the full grid, then the ring with
-/// the hole at each of its four offsets. Returns the indices and the
-/// ranges.
-fn ring_indices(n: u32) -> (Vec<u32>, [std::ops::Range<u32>; 5]) {
+/// the hole at each of its four offsets, each laid out block by block
+/// (`n / BLOCKS` quads a side) so a block's quads are one range. Returns
+/// the indices and the ranges.
+fn ring_indices(n: u32) -> (Vec<u32>, [RingRange; 5]) {
     let mut idx = Vec::new();
-    let mut ranges: Vec<std::ops::Range<u32>> = Vec::new();
-    let quad = |idx: &mut Vec<u32>, x: u32, z: u32| {
-        // Six corners per cell: the shader chooses their diagonal from
-        // the heights. Shared grid vertices cannot encode both splits.
-        let first = (z * n + x) * 6;
-        idx.extend(first..first + 6);
-    };
-    let start = idx.len() as u32;
-    for z in 0..n {
-        for x in 0..n {
-            quad(&mut idx, x, z);
-        }
-    }
-    ranges.push(start..idx.len() as u32);
-    for (ox, oz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+    let mut ranges: Vec<RingRange> = Vec::new();
+    let q = n / BLOCKS;
+    for hole in [None, Some((0, 0)), Some((1, 0)), Some((0, 1)), Some((1, 1))] {
         let start = idx.len() as u32;
-        let (x0, z0) = (n / 4 + ox, n / 4 + oz);
-        let (x1, z1) = (3 * n / 4 + ox, 3 * n / 4 + oz);
-        for z in 0..n {
-            for x in 0..n {
-                if !(x >= x0 && x < x1 && z >= z0 && z < z1) {
-                    quad(&mut idx, x, z);
+        let mut blocks: Vec<std::ops::Range<u32>> = Vec::new();
+        for bz in 0..BLOCKS {
+            for bx in 0..BLOCKS {
+                let b = idx.len() as u32;
+                for z in bz * q..(bz + 1) * q {
+                    for x in bx * q..(bx + 1) * q {
+                        let cut = hole.is_some_and(|(ox, oz)| {
+                            let (x0, z0) = (n / 4 + ox, n / 4 + oz);
+                            let (x1, z1) = (3 * n / 4 + ox, 3 * n / 4 + oz);
+                            x >= x0 && x < x1 && z >= z0 && z < z1
+                        });
+                        if !cut {
+                            // Six corners per cell: the shader chooses their
+                            // diagonal from the heights. Shared grid vertices
+                            // cannot encode both splits.
+                            let first = (z * n + x) * 6;
+                            idx.extend(first..first + 6);
+                        }
+                    }
                 }
+                blocks.push(b..idx.len() as u32);
             }
         }
-        ranges.push(start..idx.len() as u32);
+        ranges.push(RingRange {
+            all: start..idx.len() as u32,
+            blocks: blocks.try_into().expect("BLOCKS² blocks"),
+        });
     }
-    let ranges: [std::ops::Range<u32>; 5] = ranges.try_into().expect("five ranges");
+    let ranges: [RingRange; 5] = ranges.try_into().expect("five ranges");
     (idx, ranges)
+}
+
+/// Each block of a clipmap level of `n` quads a side ([`ring_indices`]'s
+/// order): its box in the terrain's space, its xz the block's square on
+/// the terrain grown by one quad towards -x and -z (the morph moves
+/// vertices that far), clamped to the terrain, its y the height range.
+pub(crate) fn level_blocks(
+    level: &TerrainLevel,
+    n: u32,
+    unit: f32,
+    size: Vec2,
+    (hmin, hmax): (f32, f32),
+) -> Vec<(Vec3, Vec3)> {
+    let q = (n / BLOCKS) as f64;
+    let lo = -size * 0.5;
+    let mut out = Vec::with_capacity((BLOCKS * BLOCKS) as usize);
+    for bz in 0..BLOCKS {
+        for bx in 0..BLOCKS {
+            let corner = |i: usize, b: u32, grow: f64| {
+                let g = b as f64 * q - n as f64 * 0.5;
+                let c = level.center[i] + g * level.step + grow * level.step;
+                let ext = if i == 0 { size.x } else { size.y } as f64;
+                ((c * unit as f64).clamp(0.0, ext)) as f32
+            };
+            let a = Vec2::new(corner(0, bx, -1.0), corner(1, bz, -1.0));
+            let b = Vec2::new(corner(0, bx + 1, 0.0), corner(1, bz + 1, 0.0));
+            out.push((
+                Vec3::new(lo.x + a.x, hmin, lo.y + a.y),
+                Vec3::new(lo.x + b.x, hmax, lo.y + b.y),
+            ));
+        }
+    }
+    out
 }
 
 /// Where a terrain's tiles come from: a whole field in memory (its tiles
@@ -879,6 +950,8 @@ struct GpuData {
     pyramid: Option<ControlPyramid>,
     /// A field in memory's hole counts (its tiles' hole flags).
     holes: Option<crate::terrain_tiles::HoleCounts>,
+    /// A field in memory's coarser levels (its tiles past level 0).
+    height_pyramid: Option<crate::terrain_tiles::HeightPyramid>,
     range: (f32, f32),
     streamed: bool,
     /// Drawn in an earlier frame: tiles arriving now fade in.
@@ -926,7 +999,7 @@ pub(crate) struct TerrainRenderer {
     flat_normal: wgpu::TextureView,
     /// A white array for terrains without a control map.
     white_array: wgpu::TextureView,
-    indices: Option<(u32, wgpu::Buffer, [std::ops::Range<u32>; 5])>,
+    indices: Option<(u32, wgpu::Buffer, [RingRange; 5])>,
     scene: u64,
     datas: Vec<Option<GpuData>>,
     slots: Vec<Slot>,
@@ -953,7 +1026,7 @@ struct StampMesh {
     bounds: (Vec3, Vec3),
 }
 
-pub(crate) const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+pub(crate) const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgb10a2Unorm;
 
 /// The tile table's size: one f32 per tile, four to a vector.
 const TABLE_BYTES: u64 = MAX_TERRAIN_TILES as u64 * 4;
@@ -1473,7 +1546,12 @@ mod tests {
         let module = lit_module();
         let prepass = reached(&module, "fs_prepass");
         let lit = reached(&module, "fs");
-        for f in ["blended_roughness", "blend_weights", "pick_layers"] {
+        for f in [
+            "blended_roughness",
+            "blend_weights",
+            "pick_layers",
+            "toksvig_roughness",
+        ] {
             assert!(prepass.contains(f) && lit.contains(f), "{f}");
         }
         for f in [
@@ -1598,6 +1676,102 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Each ring variant's blocks cover its range in order, every quad in
+    /// the block whose square holds it, and the hole's quads in none.
+    #[test]
+    fn a_rings_blocks_partition_its_quads_by_square() {
+        let n = 64u32;
+        let (idx, ranges) = ring_indices(n);
+        let q = n / BLOCKS;
+        for (v, r) in ranges.iter().enumerate() {
+            assert_eq!(r.blocks[0].start, r.all.start);
+            assert_eq!(r.blocks.last().unwrap().end, r.all.end);
+            for w in r.blocks.windows(2) {
+                assert_eq!(w[0].end, w[1].start);
+            }
+            let quads = r.all.len() as u32 / 6;
+            assert_eq!(quads, if v == 0 { n * n } else { n * n - n * n / 4 });
+            for (b, br) in r.blocks.iter().enumerate() {
+                let (bx, bz) = (b as u32 % BLOCKS, b as u32 / BLOCKS);
+                for &i in &idx[br.start as usize..br.end as usize] {
+                    let cell = i / 6;
+                    let (x, z) = (cell % n, cell / n);
+                    assert!(
+                        x / q == bx && z / q == bz,
+                        "variant {v}: quad ({x}, {z}) in block {b}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// From the terrain's edge looking out over it from above, culling
+    /// each level's blocks draws less than half the triangles culling
+    /// whole levels does (every level holds the camera, so whole-level
+    /// culling draws them all).
+    #[test]
+    fn blocks_out_of_view_are_not_drawn() {
+        let size = Vec2::splat(2048.0);
+        let layout = TerrainLayout::new(size, 1025, 1025, 128, None).unwrap();
+        let t = Terrain::new(
+            crate::RenderScene::new().add_terrain(TerrainData::flat(size, 1025, 1025)),
+        );
+        let eye = Vec3::new(1000.0, 40.0, 0.0);
+        let camera = crate::Camera {
+            position: eye,
+            target: Vec3::new(1400.0, 0.0, 30.0),
+            near: 0.3,
+            far: 3000.0,
+            ..Default::default()
+        };
+        let f = crate::frame::camera_frame(&camera, 16.0 / 9.0, Vec2::ZERO);
+        let m = f.view_proj;
+        let planes = [
+            m.row(3) + m.row(0),
+            m.row(3) - m.row(0),
+            m.row(3) + m.row(1),
+            m.row(3) - m.row(1),
+            m.row(2),
+            m.row(3) - m.row(2),
+        ]
+        .map(|p| p / p.truncate().length());
+        let visible = |c: Vec3, r: f32| planes.iter().all(|p| p.truncate().dot(c) + p.w >= -r);
+        let clipmap = t.clipmap(layout, eye, camera.far);
+        let (_, ranges) = ring_indices(clipmap.ring);
+        let (mut levels, mut blocks) = (0usize, 0usize);
+        for l in &clipmap.levels {
+            let ring = match l.hole {
+                None => &ranges[0],
+                Some((ox, oz)) => &ranges[1 + (ox + 2 * oz) as usize],
+            };
+            let boxes = level_blocks(l, clipmap.ring, clipmap.unit, size, (0.0, 10.0));
+            let lo = boxes.iter().fold(Vec3::MAX, |a, b| a.min(b.0));
+            let hi = boxes.iter().fold(Vec3::MIN, |a, b| a.max(b.1));
+            let (c, r) = renderer::world_sphere(t.transform, lo, hi);
+            if !visible(c, r) {
+                continue;
+            }
+            levels += ring.all.len() / 3;
+            let spheres: Vec<_> = boxes
+                .iter()
+                .zip(&ring.blocks)
+                .map(|((a, b), range)| {
+                    let (c, r) = renderer::world_sphere(t.transform, *a, *b);
+                    (range.clone(), c, r)
+                })
+                .collect();
+            blocks += visible_ranges(&spheres, visible)
+                .iter()
+                .map(|r| r.len() / 3)
+                .sum::<usize>();
+        }
+        assert!(levels > 0 && blocks > 0, "{levels} {blocks}");
+        assert!(
+            blocks * 2 <= levels,
+            "blocks draw {blocks} triangles, whole levels {levels}"
+        );
     }
 
     /// Every level's hole (the ring variant its index range draws) is

@@ -412,6 +412,7 @@ impl TerrainRenderer {
             by_tile: Default::default(),
             pyramid: None,
             holes: None,
+            height_pyramid: None,
             range,
             streamed,
             drawn: false,
@@ -454,7 +455,7 @@ impl TerrainRenderer {
             .into_iter()
             .enumerate()
         {
-            let n = (side * side * 2) as usize;
+            let n = (side * side) as usize;
             if let Some(texels) = tile.normals.get(at..at + n) {
                 queue.write_texture(
                     layer(&gpu.normals, mip as u32, slot),
@@ -559,6 +560,7 @@ impl TerrainRenderer {
                     g.by_tile.clear();
                     g.pyramid = None;
                     g.holes = None;
+                    g.height_pyramid = None;
                     g.range = source.range();
                     g.streamed = streamed;
                     g
@@ -598,9 +600,13 @@ impl TerrainRenderer {
                             if gpu.holes.is_none() {
                                 gpu.holes = d.hole_counts();
                             }
+                            let heights = gpu
+                                .height_pyramid
+                                .get_or_insert_with(|| d.height_pyramid(&layout));
                             Arc::new(d.tile(
                                 &layout,
                                 tile,
+                                heights,
                                 gpu.pyramid.as_ref(),
                                 gpu.holes.as_ref(),
                             ))
@@ -933,10 +939,18 @@ impl TerrainRenderer {
                 let at = k * LEVEL_STRIDE as usize;
                 level_bytes[at..at + std::mem::size_of::<LevelGpu>()]
                     .copy_from_slice(bytemuck::bytes_of(&g));
-                let indices = match l.hole {
-                    None => ranges[0].clone(),
-                    Some((ox, oz)) => ranges[1 + (ox + 2 * oz) as usize].clone(),
+                let ring = match l.hole {
+                    None => &ranges[0],
+                    Some((ox, oz)) => &ranges[1 + (ox + 2 * oz) as usize],
                 };
+                let blocks = level_blocks(l, n, unit, lay.size, (hmin, hmax))
+                    .into_iter()
+                    .zip(&ring.blocks)
+                    .map(|((a, b), r)| {
+                        let (c, radius) = world_sphere(model, a, b);
+                        (r.clone(), c, radius)
+                    })
+                    .collect();
                 // Bounds: the level's square on the terrain, its height range.
                 let half = n as f64 * 0.5 * l.step;
                 let a = Vec2::new(
@@ -952,9 +966,9 @@ impl TerrainRenderer {
                 let (center, radius) = world_sphere(model, box_min, box_max);
                 out.push(LevelDraw {
                     offset: (k as u64 * LEVEL_STRIDE) as u32,
-                    indices,
                     center,
                     radius,
+                    blocks,
                 });
             }
             queue.write_buffer(&slot.levels, 0, &level_bytes);
@@ -1268,13 +1282,19 @@ pub(crate) fn draw_levels(
             if !visible(l.center, l.radius) {
                 continue;
             }
+            let runs = visible_ranges(&l.blocks, &visible);
+            if runs.is_empty() {
+                continue;
+            }
             if let Some(b) = probes.as_deref_mut() {
                 b.at(pass, l.center, l.radius);
             }
             pass.set_bind_group(1, &d.group, &[l.offset]);
-            pass.draw_indexed(l.indices.clone(), 0, 0..1);
-            calls += 1;
-            triangles += (l.indices.len() / 3) as u64;
+            for r in runs {
+                triangles += (r.len() / 3) as u64;
+                pass.draw_indexed(r, 0, 0..1);
+                calls += 1;
+            }
         }
         // Its stamps, with its group (the level slot unread) and theirs.
         let Some(stamp_group) = &d.stamp_group else {

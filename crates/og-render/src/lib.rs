@@ -269,9 +269,9 @@ pub use terrain::{
     TerrainLayerArrays, TerrainLevel, TerrainLod, TerrainSampler, TerrainScatter, TerrainStampDraw,
 };
 pub use terrain_tiles::{
-    ControlPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES, TERRAIN_TILE,
-    TerrainLayout, TerrainTile, TerrainView, hole_bit, mark_holes, terrain_tiles_wanted,
-    tile_heights, with_hole_bit,
+    ControlPyramid, HeightPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES,
+    TERRAIN_TILE, TerrainLayout, TerrainTile, TerrainView, hole_bit, mark_holes,
+    terrain_tiles_wanted, with_hole_bit,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};

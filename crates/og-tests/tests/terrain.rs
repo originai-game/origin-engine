@@ -188,6 +188,28 @@ fn the_clipmap_leaves_no_cracks() {
     }
 }
 
+/// Each level's blocks are culled on their own (T2): standing at the
+/// island's edge, looking out to sea draws less than half the terrain
+/// triangles looking back over the island does. Culling whole levels drew
+/// the same number both ways (every level holds the camera).
+#[test]
+fn looking_out_from_the_edge_draws_few_terrain_triangles() {
+    let mut scene = ts::island_view("near");
+    let edge = ts::ISLAND_SIZE * 0.5 - 20.0;
+    scene.camera.position = Vec3::new(edge, 60.0, 0.0);
+    scene.camera.target = Vec3::new(edge + 400.0, 0.0, 10.0);
+    let (_, out) = render(&scene);
+    scene.camera.target = Vec3::new(edge - 400.0, 0.0, 10.0);
+    let (_, back) = render(&scene);
+    assert!(out.terrain_triangles > 0, "{out:?}");
+    assert!(
+        out.terrain_triangles * 2 <= back.terrain_triangles,
+        "out {} triangles, back {}",
+        out.terrain_triangles,
+        back.terrain_triangles
+    );
+}
+
 /// Close to the ground the finest levels are drawn; from 4 km above the
 /// island its whole extent fits in a few coarse levels.
 #[test]

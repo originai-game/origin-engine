@@ -248,6 +248,9 @@ fn terrain_world(local: vec3<f32>) -> vec3<f32> {
 
 struct TerrainMaps {
   normal: vec3<f32>,    // in the terrain's space
+  // The spread of the normals under the texel read (Toksvig: 1 / |mean|
+  // - 1, 0 for one sample), which widens the specular lobe.
+  variance: f32,
   // The layers' channels, four to a page (1 without a control map, or past its pages).
   control: array<vec4<f32>, 4>,
 };
@@ -263,9 +266,12 @@ fn tile_maps(lvl: u32, r: TileRef, u: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -
   let step = f32(1u << lvl);
   let l = u - r.tile * t;
   let k = 1.0 / (step * (t + 1.0));
-  let xz = textureSampleGrad(terrain_normals, map_sampler, (l + 0.5) / (t + 1.0), i32(r.slot), gx * k, gy * k).rg;
+  // terrain_tiles.rs pack_normal: x and z of the mean's direction, its length.
+  let texel = textureSampleGrad(terrain_normals, map_sampler, (l + 0.5) / (t + 1.0), i32(r.slot), gx * k, gy * k);
+  let xz = texel.rg * 2.0 - 1.0;
   var m: TerrainMaps;
   m.normal = vec3<f32>(xz.x, sqrt(max(1.0 - dot(xz, xz), 0.0)), xz.y);
+  m.variance = 1.0 / max(texel.b, 1e-3) - 1.0;
   m.control = no_control();
   if (terrain.params.y > 0.5) {
     let c = terrain.tiles.y;
@@ -289,6 +295,7 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
   if (o.r.slot < 0.0) {
     var none: TerrainMaps;
     none.normal = vec3<f32>(0.0, 1.0, 0.0);
+    none.variance = 0.0;
     none.control = no_control();
     return none;
   }
@@ -298,6 +305,7 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
     if (p.r.slot >= 0.0) {
       let q = tile_maps(p.lvl, p.r, p.u, gx, gy);
       m.normal = mix(q.normal, m.normal, o.r.fade);
+      m.variance = mix(q.variance, m.variance, o.r.fade);
       for (var p = 0u; p < 4u; p++) {
         m.control[p] = mix(q.control[p], m.control[p], o.r.fade);
       }
@@ -305,6 +313,14 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
   }
   m.normal = normalize(m.normal);
   return m;
+}
+
+// A roughness widened by the normals' spread under a texel (Toksvig 2005,
+// for GGX as in Filament's specular anti-aliasing): alpha² grows by the
+// variance, bounded so a far field never reads rougher than fully rough.
+fn toksvig_roughness(roughness: f32, variance: f32) -> f32 {
+  let a = roughness * roughness;
+  return sqrt(sqrt(clamp(a * a + min(variance, 0.18), 0.0, 1.0)));
 }
 
 // The pipelines of a terrain with holes (terrain.rs terrain_passes);

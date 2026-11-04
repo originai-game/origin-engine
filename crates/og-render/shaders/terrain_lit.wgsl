@@ -41,6 +41,8 @@ fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
 struct TerrainPoint {
   normal: vec3<f32>,
   control: array<vec4<f32>, 4>,
+  // The normal map's spread there (TerrainMaps.variance).
+  variance: f32,
 };
 
 fn terrain_point(local: vec3<f32>) -> TerrainPoint {
@@ -49,6 +51,7 @@ fn terrain_point(local: vec3<f32>) -> TerrainPoint {
   var o: TerrainPoint;
   o.normal = normalize(terrain.normal * m.normal);
   o.control = m.control;
+  o.variance = m.variance;
   return o;
 }
 
@@ -708,7 +711,8 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   let n_geo = point.normal;
   let look = terrain_look(p, n_geo, point.control, dpx, dpy);
   let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
-  return terrain_shade(in.clip.xy, p, albedo, look.normal, look.roughness, n_geo);
+  let roughness = toksvig_roughness(look.roughness, point.variance);
+  return terrain_shade(in.clip.xy, p, albedo, look.normal, roughness, n_geo);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -809,7 +813,8 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   let point = terrain_point(in.local);
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
-  let roughness = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
+  let layers = terrain_roughness(in.world, point.normal, point.control, dpdx(in.world), dpdy(in.world));
+  let roughness = toksvig_roughness(layers, point.variance);
   return terrain_prepass_out(in.world, point.normal, roughness, in.cur_clip, in.prev_clip);
 }
 

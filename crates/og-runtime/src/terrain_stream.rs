@@ -119,7 +119,7 @@ pub(crate) struct Drawn<'a> {
 }
 
 fn tile_bytes(t: &TerrainTile) -> u64 {
-    (t.heights.len() * 4 + t.normals.len() * 2 + t.control.as_ref().map_or(0, |c| c.len())) as u64
+    (t.heights.len() * 4 + t.normals.len() * 4 + t.control.as_ref().map_or(0, |c| c.len())) as u64
 }
 
 impl Streamer {

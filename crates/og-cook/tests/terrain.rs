@@ -183,16 +183,40 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
         })
         .fold(0.0f32, f32::max);
     assert!(worst <= step, "the worst sample is off by {worst}");
-    // Every tile decodes on its own, its heights the field's under its
-    // level's samples (level 1 every second one).
+    // Every tile decodes on its own, its heights its level's samples of
+    // the field's pyramid (within a step: the cook filtered the source
+    // before quantising, this filters the quantised field).
+    let pyramid = data.height_pyramid(&t.layout);
     for index in [0, 4, t.layout.index(1, 1, 0), t.layout.index(2, 0, 0)] {
         let tile = t.tile_heights(index).unwrap();
-        assert_eq!(tile, data.tile_heights(&t.layout, index), "tile {index}");
+        let want = data.tile_heights(&t.layout, index, &pyramid);
+        let off = tile
+            .iter()
+            .zip(&want)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
+        assert!(off <= step * 1.01, "tile {index} is off by {off}");
     }
-    let tile = t.tile(t.layout.index(1, 0, 0)).unwrap();
-    assert_eq!(
-        tile.heights[(1 + 3) * 131 + 1 + 5],
-        data.heights[6 * 300 + 10]
+    // A level-1 sample is the mean of the source under it, a centred tent
+    // over its 3 × 3 finest samples: at (298, 26) the source wraps from
+    // its top to its bottom (decimation kept the one sample there).
+    let tile = t.tile(t.layout.index(1, 1, 0)).unwrap();
+    let source = |x: u32, y: u32| -10.0 + sample(x, y) as f32 / 65535.0 * 100.0;
+    let mut mean = 0.0;
+    for (dy, wy) in [(0, 0.25), (1, 0.5), (2, 0.25)] {
+        for (dx, wx) in [(0, 0.25), (1, 0.5), (2, 0.25)] {
+            mean += wx * wy * source(297 + dx, 25 + dy);
+        }
+    }
+    // Level 1's sample (149, 13) is tile (1, 0)'s (21, 13), past its border.
+    let got = tile.heights[(13 + 1) * 131 + 21 + 1];
+    assert!(
+        (got - mean).abs() <= step,
+        "level 1 at (149, 13): {got}, the mean {mean}"
+    );
+    assert!(
+        (source(298, 26) - mean).abs() > 10.0,
+        "the mean is not the sample"
     );
     // The control map, resampled for the tiles: what the renderer reads
     // anywhere is the source's within a step or two.

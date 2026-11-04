@@ -10,9 +10,15 @@
 //! edge), the normal map of its `tile + 1` samples with its mips, and,
 //! with a control map, `(control + 2)²` texels of it (the map resampled to
 //! `control` texels per tile at level 0 and halved per level) with mips.
-//! Every level's samples are the field's own (decimated, never averaged),
-//! so two levels agree exactly where their grids meet: a clipmap level
-//! reading a coarser tile than its neighbour leaves no crack.
+//! Level 0's samples are the field's own; each coarser level's are its
+//! finer level's filtered by a centred tent (weights 1, 2, 1 along each
+//! axis over the three finer samples around it: [`HeightPyramid`]), so a
+//! far ring reads the ground's mean height instead of whichever sample
+//! decimation kept, and its silhouette does not shimmer as the camera
+//! moves (Losasso & Hoppe 2004's prefiltered clipmap). Every clipmap
+//! vertex reads the one height function at its point (the finest
+//! resident level there), so neighbouring vertices agree whatever tile
+//! each reads: no crack. Collision, `sample` and level 0 are untouched.
 //!
 //! **Residency.** [`terrain_tiles_wanted`] answers the tiles a frame needs,
 //! best first: for each clipmap level, the tiles of the pyramid level whose
@@ -329,7 +335,7 @@ pub fn hole_bit(height: f32) -> bool {
     height.to_bits() & 1 != 0
 }
 
-/// Marks a tile's `(tile + 3)²` heights ([`tile_heights`]) with the hole
+/// Marks a tile's `(tile + 3)²` heights ([`HeightPyramid::tile_heights`]) with the hole
 /// flags of the cells at their samples on its level.
 pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes: &HoleCounts) {
     let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
@@ -346,55 +352,33 @@ pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes
 }
 
 /// One tile ready to draw: its heights (metres, `(tile + 3)²`, the border
-/// included), its normal map's x and z as half floats (`(tile + 1)²` and
-/// every mip after it), its control texels (per page, `(control + 2)²`
-/// RGBA8 and its mips) and the range of its heights.
+/// included), its normal map (`(tile + 1)²` and every mip after it, each
+/// texel [`pack_normal`]'s RGB10A2), its control texels (per page,
+/// `(control + 2)²` RGBA8 and its mips) and the range of its heights.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainTile {
     pub heights: Arc<[f32]>,
-    pub normals: Arc<[u16]>,
+    pub normals: Arc<[u32]>,
     pub control: Option<Arc<[u8]>>,
     pub range: (f32, f32),
 }
 
-/// An f32 as the nearest half float's bits.
-pub(crate) fn half(v: f32) -> u16 {
-    let b = v.to_bits();
-    let sign = ((b >> 16) & 0x8000) as u16;
-    let exp = ((b >> 23) & 0xff) as i32 - 127 + 15;
-    let mant = b & 0x7f_ffff;
-    if exp >= 31 {
-        return sign | 0x7c00;
-    }
-    if exp <= 0 {
-        if exp < -10 {
-            return sign;
-        }
-        let m = mant | 0x80_0000;
-        let shift = (14 - exp) as u32;
-        let h = m >> shift;
-        let rem = m & ((1 << shift) - 1);
-        let round = 1 << (shift - 1);
-        let h = if rem > round || (rem == round && h & 1 == 1) {
-            h + 1
-        } else {
-            h
-        };
-        return sign | h as u16;
-    }
-    let h = ((exp as u32) << 10) | (mant >> 13);
-    let rem = mant & 0x1fff;
-    let h = if rem > 0x1000 || (rem == 0x1000 && h & 1 == 1) {
-        h + 1
-    } else {
-        h
-    };
-    sign | h as u16
+/// A normal-map texel (Rgb10a2Unorm, `terrain.wgsl` `tile_maps`): the
+/// mean normal `m` of the samples under it, its direction's x and z in
+/// red and green (from -1..1) and its length in blue (1 for one sample;
+/// shorter where the normals under it disagree: Toksvig's measure of
+/// their spread, which widens the specular lobe so a far slope of bumps
+/// does not shine as a flat one).
+pub fn pack_normal(m: Vec3) -> u32 {
+    let len = m.length().clamp(1e-6, 1.0);
+    let n = m / m.length().max(1e-12);
+    let q = |v: f32| ((v.clamp(0.0, 1.0) * 1023.0).round() as u32) & 1023;
+    q(n.x * 0.5 + 0.5) | (q(n.z * 0.5 + 0.5) << 10) | (q(len) << 20)
 }
 
 impl TerrainTile {
     /// Whether the tile's arrays have the lengths `layout` uploads: heights
-    /// `heights_side()²`, normals two halves per texel of every mip of
+    /// `heights_side()²`, normals one packed texel per texel of every mip of
     /// `normals_side()`, and a control map (when the layout has one and the
     /// tile carries it) four bytes per texel of every mip of `control_side()`.
     pub(crate) fn fits(&self, layout: &TerrainLayout) -> bool {
@@ -406,7 +390,7 @@ impl TerrainTile {
             _ => true,
         };
         self.heights.len() as u64 == h * h
-            && self.normals.len() as u64 == mip_texels(layout.normals_side()) * 2
+            && self.normals.len() as u64 == mip_texels(layout.normals_side())
             && control_ok
     }
 
@@ -427,7 +411,7 @@ impl TerrainTile {
         let (sx, sz) = layout.samples(k);
         let cell = layout.cell();
         let h = |i: i64, j: i64| heights[(j + 1) as usize * side + (i + 1) as usize];
-        let mut xz = vec![[0.0f32; 2]; ns * ns];
+        let mut xz = vec![Vec3::Y; ns * ns];
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         for j in 0..ns as i64 {
             for i in 0..ns as i64 {
@@ -451,30 +435,30 @@ impl TerrainTile {
                     (h(local(x1, bx), local(gz, bz)) - h(local(x0, bx), local(gz, bz))) / span_x;
                 let hz =
                     (h(local(gx, bx), local(z1, bz)) - h(local(gx, bx), local(z0, bz))) / span_z;
-                let n = Vec3::new(-hx, 1.0, -hz).normalize();
-                xz[j as usize * ns + i as usize] = [n.x, n.z];
+                xz[j as usize * ns + i as usize] = Vec3::new(-hx, 1.0, -hz).normalize();
                 let v = h(i, j);
                 lo = lo.min(v);
                 hi = hi.max(v);
             }
         }
+        // Each mip: the mean of the unit normals under it (not of their x
+        // and z alone, whose reconstructed y flattened far slopes), kept
+        // unnormalised so its length carries their spread.
         let mut normals = Vec::new();
         let mut level = xz;
         let mut s = ns;
         loop {
-            normals.extend(level.iter().flat_map(|p| [half(p[0]), half(p[1])]));
+            normals.extend(level.iter().map(|m| pack_normal(*m)));
             if s == 1 {
                 break;
             }
             let d = (s / 2).max(1);
-            let mut next = vec![[0.0f32; 2]; d * d];
+            let mut next = vec![Vec3::ZERO; d * d];
             for y in 0..d {
                 for x in 0..d {
-                    let mut acc = [0.0f32; 2];
+                    let mut acc = Vec3::ZERO;
                     for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                        let p = level[(2 * y + oy).min(s - 1) * s + (2 * x + ox).min(s - 1)];
-                        acc[0] += p[0] * 0.25;
-                        acc[1] += p[1] * 0.25;
+                        acc += level[(2 * y + oy).min(s - 1) * s + (2 * x + ox).min(s - 1)] * 0.25;
                     }
                     next[y * d + x] = acc;
                 }
@@ -646,24 +630,36 @@ impl TerrainData {
         self.holes.as_ref().map(|h| HoleCounts::new(cx, cz, h))
     }
 
-    /// A tile's `(tile + 3)²` heights: the field's samples under its
-    /// level's samples, clamped at the edge.
-    pub fn tile_heights(&self, layout: &TerrainLayout, index: u32) -> Vec<f32> {
-        tile_heights(layout, index, |c, r| {
+    /// Its coarser levels for `layout` ([`HeightPyramid`]).
+    pub fn height_pyramid(&self, layout: &TerrainLayout) -> HeightPyramid {
+        HeightPyramid::new(layout, |c, r| self.heights[(r * self.columns + c) as usize])
+    }
+
+    /// A tile's `(tile + 3)²` heights: its level's samples of `pyramid`
+    /// (this field's: [`Self::height_pyramid`]), clamped at the edge.
+    pub fn tile_heights(
+        &self,
+        layout: &TerrainLayout,
+        index: u32,
+        pyramid: &HeightPyramid,
+    ) -> Vec<f32> {
+        pyramid.tile_heights(layout, index, |c, r| {
             self.heights[(r * self.columns + c) as usize]
         })
     }
 
-    /// A tile ready to draw (`control`: this field's control pyramid;
-    /// `holes`: its hole counts, which mark the heights).
+    /// A tile ready to draw (`pyramid`: this field's height pyramid;
+    /// `control`: its control pyramid; `holes`: its hole counts, which
+    /// mark the heights).
     pub fn tile(
         &self,
         layout: &TerrainLayout,
         index: u32,
+        pyramid: &HeightPyramid,
         control: Option<&ControlPyramid>,
         holes: Option<&HoleCounts>,
     ) -> TerrainTile {
-        let mut heights = self.tile_heights(layout, index);
+        let mut heights = self.tile_heights(layout, index, pyramid);
         if let Some(h) = holes {
             mark_holes(layout, index, &mut heights, h);
         }
@@ -676,26 +672,102 @@ impl TerrainData {
     }
 }
 
-/// A tile's `(tile + 3)²` heights from a field read as `field(column, row)`.
-pub fn tile_heights(
-    layout: &TerrainLayout,
-    index: u32,
-    field: impl Fn(u32, u32) -> f32,
-) -> Vec<f32> {
-    let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
-    let t = layout.tile as i64;
-    let (sx, sz) = layout.samples(k);
-    let side = layout.heights_side() as i64;
-    let mut out = Vec::with_capacity((side * side) as usize);
-    for j in 0..side {
-        let gz = (tz as i64 * t + j - 1).clamp(0, sz as i64 - 1);
-        let r = layout.fine(k, gz, layout.rows);
-        for i in 0..side {
-            let gx = (tx as i64 * t + i - 1).clamp(0, sx as i64 - 1);
-            out.push(field(layout.fine(k, gx, layout.columns), r));
+/// A field's coarser levels (1 up): each level's samples, the finer
+/// level's under a centred tent filter, clamped at the field's edges.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeightPyramid {
+    /// Level k + 1's samples along x and z and its heights, row-major.
+    pub levels: Vec<(u32, u32, Vec<f32>)>,
+}
+
+impl HeightPyramid {
+    /// The pyramid of a field read as `field(column, row)`, for `layout`.
+    pub fn new(layout: &TerrainLayout, field: impl Fn(u32, u32) -> f32) -> HeightPyramid {
+        let (cols, rows) = (layout.columns, layout.rows);
+        let base: Vec<f32> = (0..rows)
+            .flat_map(|r| (0..cols).map(move |c| (r, c)))
+            .map(|(r, c)| field(c, r))
+            .collect();
+        let mut levels: Vec<(u32, u32, Vec<f32>)> = Vec::new();
+        let mut finer = (cols, rows, base);
+        for k in 1..layout.levels {
+            let (fx, fz, ref h) = finer;
+            let (sx, sz) = layout.samples(k);
+            let at = |i: i64, j: i64| {
+                let i = i.clamp(0, fx as i64 - 1) as u32;
+                let j = j.clamp(0, fz as i64 - 1) as u32;
+                h[(j * fx + i) as usize]
+            };
+            const W: [f32; 3] = [0.25, 0.5, 0.25];
+            let mut out = Vec::with_capacity((sx * sz) as usize);
+            for z in 0..sz as i64 {
+                for x in 0..sx as i64 {
+                    // The finer sample under this one: every second, and
+                    // the last at the last.
+                    let ci = (2 * x).min(fx as i64 - 1);
+                    let cj = (2 * z).min(fz as i64 - 1);
+                    let mut v = 0.0;
+                    for (b, wz) in W.iter().enumerate() {
+                        for (a, wx) in W.iter().enumerate() {
+                            v += wx * wz * at(ci + a as i64 - 1, cj + b as i64 - 1);
+                        }
+                    }
+                    out.push(v);
+                }
+            }
+            levels.push((sx, sz, out));
+            finer = levels.last().expect("pushed").clone();
         }
+        HeightPyramid { levels }
     }
-    out
+
+    /// Level `k`'s height at its sample (`x`, `z`), clamped; level 0 is
+    /// `field`'s.
+    fn at(
+        &self,
+        field: &impl Fn(u32, u32) -> f32,
+        layout: &TerrainLayout,
+        k: u32,
+        x: i64,
+        z: i64,
+    ) -> f32 {
+        if k == 0 {
+            let c = x.clamp(0, layout.columns as i64 - 1) as u32;
+            let r = z.clamp(0, layout.rows as i64 - 1) as u32;
+            return field(c, r);
+        }
+        let (sx, sz, h) = &self.levels[k as usize - 1];
+        let (x, z) = (x.clamp(0, *sx as i64 - 1), z.clamp(0, *sz as i64 - 1));
+        h[(z * *sx as i64 + x) as usize]
+    }
+
+    /// A tile's `(tile + 3)²` heights: its level's samples (the field's at
+    /// level 0), the border clamped at the terrain's edge.
+    pub fn tile_heights(
+        &self,
+        layout: &TerrainLayout,
+        index: u32,
+        field: impl Fn(u32, u32) -> f32,
+    ) -> Vec<f32> {
+        let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
+        let t = layout.tile as i64;
+        let side = layout.heights_side() as i64;
+        let mut out = Vec::with_capacity((side * side) as usize);
+        for j in 0..side {
+            for i in 0..side {
+                let (gx, gz) = (tx as i64 * t + i - 1, tz as i64 * t + j - 1);
+                out.push(if k == 0 {
+                    let (sx, sz) = layout.samples(0);
+                    let c = layout.fine(0, gx.clamp(0, sx as i64 - 1), layout.columns);
+                    let r = layout.fine(0, gz.clamp(0, sz as i64 - 1), layout.rows);
+                    field(c, r)
+                } else {
+                    self.at(&field, layout, k, gx, gz)
+                });
+            }
+        }
+        out
+    }
 }
 
 /// Where a terrain is seen from, for [`terrain_tiles_wanted`].
@@ -885,5 +957,118 @@ fn cover(layout: &TerrainLayout, level: u32, a: Vec2, b: Vec2, mut f: impl FnMut
         for x in x0..x1 {
             f(layout.index(level, x, z));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// [`pack_normal`]'s direction and length back.
+    fn unpack_normal(t: u32) -> (Vec3, f32) {
+        let f = |s: u32| ((t >> s) & 1023) as f32 / 1023.0;
+        let (x, z) = (f(0) * 2.0 - 1.0, f(10) * 2.0 - 1.0);
+        let y = (1.0 - x * x - z * z).max(0.0).sqrt();
+        (Vec3::new(x, y, z), f(20))
+    }
+
+    /// A 257 × 257 field over 256 m in tiles of 16: five levels.
+    fn layout() -> TerrainLayout {
+        TerrainLayout::new(Vec2::splat(256.0), 257, 257, 16, None).expect("layout")
+    }
+
+    #[test]
+    fn a_coarse_level_holds_its_finer_levels_mean_not_one_sample() {
+        let l = layout();
+        // A checker of ±1 one sample wide: decimation keeps +1 at every
+        // even sample; the mean under each coarse sample is 0.
+        let checker = |c: u32, r: u32| if (c + r).is_multiple_of(2) { 1.0 } else { -1.0 };
+        let p = HeightPyramid::new(&l, checker);
+        let (sx, sz, h) = &p.levels[0];
+        assert_eq!((*sx, *sz), l.samples(1));
+        for z in 1..sz - 1 {
+            for x in 1..sx - 1 {
+                assert_eq!(h[(z * sx + x) as usize], 0.0, "level 1 at ({x}, {z})");
+            }
+        }
+        // A ramp keeps its height everywhere off the edges, at every level.
+        let ramp = |c: u32, r: u32| 0.5 * c as f32 - 0.25 * r as f32;
+        let p = HeightPyramid::new(&l, ramp);
+        for k in 1..l.levels {
+            let (sx, sz, h) = &p.levels[k as usize - 1];
+            let step = l.step(k);
+            for z in 1..sz - 1 {
+                for x in 1..sx - 1 {
+                    let want = ramp(x * step, z * step);
+                    let got = h[(z * sx + x) as usize];
+                    assert!(
+                        (got - want).abs() < 1e-4,
+                        "level {k} ({x}, {z}): {got}, not {want}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_coarse_tile_reads_its_levels_samples_with_their_border() {
+        let l = layout();
+        let field = |c: u32, r: u32| ((c * 7 + r * 13) % 11) as f32;
+        let p = HeightPyramid::new(&l, field);
+        let (sx, _, h1) = &p.levels[0];
+        // Level 1's tile (1, 0): its samples from x 16 and z 0, its border
+        // one sample further out (clamped at z -1).
+        let tile = p.tile_heights(&l, l.index(1, 1, 0), field);
+        let side = l.heights_side();
+        for j in 0..side {
+            for i in 0..side {
+                let (gx, gz) = (16 + i as i64 - 1, (j as i64 - 1).max(0));
+                let want = h1[(gz as u32 * sx + gx as u32) as usize];
+                assert_eq!(tile[(j * side + i) as usize], want, "({i}, {j})");
+            }
+        }
+        // Level 0 is the field's own.
+        let t0 = p.tile_heights(&l, l.index(0, 2, 3), field);
+        assert_eq!(t0[side as usize + 1], field(32, 48));
+    }
+
+    #[test]
+    fn a_normal_mip_keeps_the_mean_direction_and_the_spread() {
+        // Level 0's tile 0 over ridges 8 m apart (slopes to 57°) on a
+        // gentle rise towards +x.
+        let l = layout();
+        let field = |c: u32, _: u32| -> f32 {
+            let x = c as f32;
+            2.0 * (x * std::f32::consts::FRAC_PI_4).sin() + 0.2 * x
+        };
+        let p = HeightPyramid::new(&l, field);
+        let tile = TerrainTile::build(&l, 0, p.tile_heights(&l, 0, field), None);
+        let ns = l.normals_side() as usize;
+        let (base, top) = (&tile.normals[..ns * ns], *tile.normals.last().unwrap());
+        // The mean of level 0's unit normals the halvings reach (129 halves
+        // to 64 over the first 128), straight from them.
+        let m = ns - 1;
+        let mean = (0..m * m)
+            .map(|k| unpack_normal(base[(k / m) * ns + k % m]).0)
+            .sum::<Vec3>()
+            / (m * m) as f32;
+        let (dir, len) = unpack_normal(top);
+        assert!(
+            dir.angle_between(mean.normalize()) < 0.01,
+            "{dir} against {}",
+            mean.normalize()
+        );
+        assert!(
+            (len - mean.length()).abs() < 0.01,
+            "length {len}, the mean's {}",
+            mean.length()
+        );
+        assert!(len < 0.95, "the ridges' spread shows: {len}");
+        // A plane's mips are its normal, at full length.
+        let plane = |c: u32, r: u32| 0.3 * c as f32 + 0.1 * r as f32;
+        let p = HeightPyramid::new(&l, plane);
+        let flat = TerrainTile::build(&l, 0, p.tile_heights(&l, 0, plane), None);
+        let (d, len) = unpack_normal(*flat.normals.last().unwrap());
+        assert!(len > 0.998 && d.angle_between(Vec3::new(-0.3, 1.0, -0.1).normalize()) < 0.01);
     }
 }

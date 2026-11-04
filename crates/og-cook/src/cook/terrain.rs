@@ -771,6 +771,7 @@ pub(super) fn cook_terrain(
         .as_ref()
         .and_then(|c| og_render::ControlPyramid::new(&layout, c));
     let holes = field.hole_counts();
+    let heights = field.height_pyramid(&layout);
     // Every tile of every level: its heights quantised over the terrain's
     // range (with holes, the lowest bit its sample's cell's hole flag),
     // its control texels, each zlib'd on its own.
@@ -779,13 +780,13 @@ pub(super) fn cook_terrain(
     let mut control_packed = Vec::new();
     for index in 0..layout.tile_count() {
         let (level, x, z) = layout.locate(index).expect("in the layout");
-        let mut heights = field.tile_heights(&layout, index);
+        let mut tile = field.tile_heights(&layout, index, &heights);
         if let Some(h) = &holes {
-            og_render::mark_holes(&layout, index, &mut heights, h);
+            og_render::mark_holes(&layout, index, &mut tile, h);
         }
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
-        let mut q = Vec::with_capacity(heights.len() * 2);
-        for v in &heights {
+        let mut q = Vec::with_capacity(tile.len() * 2);
+        for v in &tile {
             lo = lo.min(*v);
             hi = hi.max(*v);
             let mut n = (((v - lo_all) / span) * 65535.0)
