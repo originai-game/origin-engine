@@ -52,31 +52,34 @@ fn pcf(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, sl
 }
 
 // A wider PCF for the sun's shadows on lit surfaces (the local lights'
-// take [`local_wide`]): the 3x3 bilinear PCFs one texel apart summed, as
-// one pass over the 4x4 texels around uv with separable tent weights
-// (1 - f, 1, 1, f) / 3 per axis (Castaño's filter for The Witness, as Unity's
-// SampleShadow_ComputeSamples_Tent_5x5). Edges come out soft over about
-// three texels and straight instead of stepping texel by texel; the
-// receiver plane (`slope`, as pcf's) keeps the wider kernel off the
-// surface's own depth.
+// take [`local_wide`]): two bilinear PCFs half a texel either side of uv
+// per axis, summed, as one pass over the 3x3 texels around it with
+// separable tent weights (1 - f, 1, f) / 2 per axis (Castaño's filter for
+// The Witness at its smallest, as Unity's
+// SampleShadow_ComputeSamples_Tent_3x3). Edges ramp over two texels and
+// run straight instead of stepping texel by texel, while a caster a texel
+// thin (a wire, a character's arm) keeps its shadow: the 4x4 tent's three
+// PCFs a texel apart averaged those to a faint haze (Metal: smaa's wire
+// grid, gltf-reference's figures). The receiver plane (`slope`, as pcf's)
+// keeps the kernel off the surface's own depth.
 fn pcf_tent(map: texture_2d_array<f32>, uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f32 {
   let size = vec2<i32>(textureDimensions(map));
-  let p = uv * vec2<f32>(size) - 0.5;
-  let base = vec2<i32>(floor(p)) - 1;
+  let p = uv * vec2<f32>(size) - 1.0;
+  let base = vec2<i32>(floor(p));
   let f = fract(p);
-  let wx = array<f32, 4>(1.0 - f.x, 1.0, 1.0, f.x);
-  let wy = array<f32, 4>(1.0 - f.y, 1.0, 1.0, f.y);
+  let wx = array<f32, 3>(1.0 - f.x, 1.0, f.x);
+  let wy = array<f32, 3>(1.0 - f.y, 1.0, f.y);
   var lit = 0.0;
-  for (var j = 0; j < 4; j++) {
+  for (var j = 0; j < 3; j++) {
     var row = 0.0;
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 3; i++) {
       let at = clamp(base + vec2<i32>(i, j), vec2<i32>(0), size - 1);
-      let r = ref_depth + dot(slope, vec2<f32>(f32(i - 1), f32(j - 1)) - f);
+      let r = ref_depth + dot(slope, vec2<f32>(f32(i), f32(j)) - 0.5 - f);
       row += wx[i] * select(0.0, 1.0, r <= textureLoad(map, at, i32(layer), 0).r);
     }
     lit += wy[j] * row;
   }
-  return lit / 9.0;
+  return lit / 4.0;
 }
 
 // Receiver-plane depth bias (Isidoro, "Shadow Mapping: GPU-based Tips and
@@ -208,14 +211,14 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   let blocker = sum / blockers;
   // The light's penumbra (its disc's radius in texels) convolved with the
   // hard sun's own filter, as a soft shadow is the hard one blurred by the
-  // light: their variances add. pcf_tent averages three bilinear PCFs a
-  // texel apart per axis (variance 2/3 beyond the bilinear each tap here
-  // already takes), the disc of radius r has r² / 4, so the disc that
-  // carries both has r² + 8/3. A soft sun is then never sharper than the
-  // hard one at contact (1.63 texels there) and every edge is the light's
+  // light: their variances add. pcf_tent averages two bilinear PCFs half
+  // a texel either side per axis (variance 1/4 beyond the bilinear each
+  // tap here already takes), the disc of radius r has r² / 4, so the disc
+  // that carries both has r² + 1. A soft sun is then never sharper than
+  // the hard one at contact (a texel there) and every edge is the light's
   // width on top of the map's filter, not the larger of the two.
   let disc = softness * (ref_depth - blocker) * depth_range / texel;
-  let penumbra = min(sqrt(disc * disc + 8.0 / 3.0), PCSS_MAX_TEXELS);
+  let penumbra = min(sqrt(disc * disc + 1.0), PCSS_MAX_TEXELS);
   var lit = 0.0;
   for (var i = 0; i < PCSS_TAPS; i++) {
     let o = vogel(i, PCSS_TAPS, penumbra, turn);
