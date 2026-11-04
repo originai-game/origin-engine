@@ -1366,7 +1366,7 @@ impl GrassRenderer {
                 eye: generator.eye,
                 forward: view.frame.forward.extend(per_pixel).to_array(),
                 origin,
-                limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, 0.55],
+                limits: [HEIGHT_RANGE, MIN_WIDTH_PX, TURN_TO_EYE, 0.0],
                 sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
                 shape: [
                     g.tallest(),

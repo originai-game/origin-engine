@@ -21,7 +21,7 @@ struct GrassUniform {
   eye: vec4<f32>,       // xyz: the camera (frame coordinates), w: 1 orthographic
   forward: vec4<f32>,   // xyz: its forward, w: metres a pixel covers per unit of clip w
   origin: vec4<f32>,    // xyz: where blade positions are stored from, w: their extent either side (m)
-  limits: vec4<f32>,    // x: the height range roots are stored over (m either side), y: the narrowest a blade draws (px), z: how far an edge-on blade turns to the eye, w: the root's occlusion
+  limits: vec4<f32>,    // x: the height range roots are stored over (m either side), y: the narrowest a blade draws (px), z: how far an edge-on blade turns to the eye, w: unused
   sun: vec4<f32>,       // xyz: towards the sun, w: 1 with one
   shape: vec4<f32>,     // x: the tallest blade (m), y: its root width (m), z: curve (droop), w: flutter
   base_color: vec4<f32>,  // rgb: the roots' colour (linear), w: translucency
@@ -147,7 +147,17 @@ fn grass_color(b: GrassBlade, t: f32) -> vec3<f32> {
   return c;
 }
 
-// The neighbours' shade on a blade at `t`: darkest at the root.
-fn grass_occlusion(t: f32) -> f32 {
-  return mix(1.0 - grass.limits.w, 1.0, smoothstep(0.0, 0.6, t));
+// The share of the sky a point `above` metres over its root sees through
+// the field's canopy (grass_canopy's slab, its extinction k per metre of
+// a level ray): the neighbours' shade, darkest at the root. Blades stand
+// upright, so a ray at θ from the zenith crosses k·deep·tan θ of them;
+// over a uniform sky that is 2∫exp(-k·deep·tan θ) cos θ sin θ dθ, which
+// 1 / (1 + 0.6 k·deep)² fits within 0.03 (Monsi and Saeki's canopy, lit
+// by diffuse light: Campbell and Norman, *An Introduction to
+// Environmental Biophysics*, 1998, §15.4). A sparse field barely shades
+// its roots; a dense one darkens towards them.
+fn grass_occlusion(above: f32) -> f32 {
+  let a = grass.canopy.x * max(grass.canopy.y - above, 0.0);
+  let d = 1.0 + 0.6 * a;
+  return 1.0 / (d * d);
 }

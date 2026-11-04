@@ -887,6 +887,14 @@ pub(crate) struct ScatterBatches {
     pub impostors: Vec<ImpostorBatch>,
 }
 
+impl ScatterBatches {
+    /// Whether any copy or model impostor this frame casts a shadow.
+    pub(crate) fn casts(&self) -> bool {
+        self.scatters.iter().any(|b| b.cast_shadows)
+            || self.impostors.iter().any(|b| b.cast_shadows)
+    }
+}
+
 /// Which pass a scatter draws into.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScatterPass {
@@ -906,9 +914,6 @@ pub(crate) struct ScatterPipelines<'a> {
     pub lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     pub shadow_wgsl: String,
     pub samples: u32,
-    /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
-    /// crossfade thresholds its pixels by.
-    pub blue_noise: wgpu::TextureView,
     /// The wind field's lean (`wind_field.rs`) the copies and cards sway by.
     pub wind_field: wgpu::TextureView,
     /// The trample map (`trample.rs`) they part by.
@@ -933,7 +938,11 @@ pub(crate) struct ScatterRenderer {
     pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
-    blue_noise: wgpu::TextureView,
+    /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
+    /// crossfade thresholds its pixels by, its bytes packed into a uniform
+    /// array (group 2 binding 1): a texture there would take the lit pass's
+    /// fragment stage past its 16 sampled textures.
+    blue_noise: wgpu::Buffer,
     slots: u64,
     group: wgpu::BindGroup,
     chunks: HashMap<ChunkKey, Chunk>,
@@ -987,10 +996,12 @@ impl ScatterRenderer {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(
+                            crate::blue_noise::BLUE_NOISE.len() as u64,
+                        ),
                     },
                     count: None,
                 },
@@ -1067,11 +1078,19 @@ impl ScatterRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let blue_noise = {
+            use wgpu::util::DeviceExt;
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("scatter blue noise"),
+                contents: crate::blue_noise::BLUE_NOISE,
+                usage: wgpu::BufferUsages::UNIFORM,
+            })
+        };
         let (uniform, group) = Self::slots(
             device,
             &uniform_layout,
-            [&p.blue_noise, &p.wind_field, &p.trample],
-            &wind_uniform,
+            [&blue_noise, &wind_uniform],
+            [&p.wind_field, &p.trample],
             4,
         );
         ScatterRenderer {
@@ -1086,7 +1105,7 @@ impl ScatterRenderer {
             pipelines: HashMap::new(),
             uniform_layout,
             uniform,
-            blue_noise: p.blue_noise,
+            blue_noise,
             slots: 4,
             group,
             chunks: HashMap::new(),
@@ -1107,8 +1126,8 @@ impl ScatterRenderer {
     fn slots(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-        [blue_noise, wind_field, trample]: [&wgpu::TextureView; 3],
-        wind: &wgpu::Buffer,
+        [blue_noise, wind]: [&wgpu::Buffer; 2],
+        [wind_field, trample]: [&wgpu::TextureView; 2],
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -1131,7 +1150,7 @@ impl ScatterRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(blue_noise),
+                    resource: blue_noise.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -1496,8 +1515,8 @@ impl ScatterRenderer {
             let (u, g) = Self::slots(
                 device,
                 &self.uniform_layout,
-                [&self.blue_noise, &self.wind_field, &self.trample],
-                &self.wind_uniform,
+                [&self.blue_noise, &self.wind_uniform],
+                [&self.wind_field, &self.trample],
                 self.slots,
             );
             self.uniform = u;

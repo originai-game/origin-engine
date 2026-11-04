@@ -882,13 +882,6 @@ impl Renderer {
                 lit_wgsl: Box::new(scatter_lit_source),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
-                blue_noise: post::texture_with_data(
-                    &device,
-                    &queue,
-                    crate::blue_noise::BLUE_NOISE_SIZE,
-                    wgpu::TextureFormat::R8Unorm,
-                    crate::blue_noise::BLUE_NOISE,
-                ),
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
                 compute: vegetation_compute,
