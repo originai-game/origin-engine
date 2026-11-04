@@ -114,7 +114,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     const list = desc.figures ?? [];
     if (list.length === 0) return;
     const gap = u(phone ? 8 : 12);
-    const cols = portrait ? 2 : list.length;
+    // Two a row on a phone, one at a large text size: a seven-digit treasury in a wide face does not fit half of it.
+    const cols = portrait ? (ts > 1.2 ? 1 : 2) : list.length;
     const tileW = Math.floor((W - gap * (cols - 1)) / cols);
     kit.row("Figures", { width: grow(), gap, wrap: portrait }, () => {
       for (const f of list) {
@@ -156,6 +157,19 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   const stacked = portrait || H < u(520) * ts;
   const funded = lines.some((l) => (l.funding ?? -1) >= 0);
   const inlineFunding = !portrait && funded;
+  // A row's amount and change: two columns beside the name on a desktop; on a phone one column, the change under the
+  // amount, so the name keeps the row's width (at 150 % the two columns left "Police" two letters).
+  const figuresOf = (amt: () => void, change: () => void): void => {
+    if (portrait) {
+      kit.column("Figures", { width: fit(colAmount), gap: 0, cross: "end" }, () => {
+        amt();
+        change();
+      });
+      return;
+    }
+    amt();
+    kit.row("Change", { width: px(colChange), align: "end", cross: "center" }, change);
+  };
 
   const heading = (key: string, label: string, w: Api.Size, end: boolean): void => {
     const on = sort === key;
@@ -172,7 +186,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
       radius: Math.max(4, t.small),
       semantics: { role: "columnheader", name: `${label}${on ? (down ? ", sorted high to low" : ", sorted low to high") : ""}`, selected: on },
     }, () => {
-      text("Text", label.toLocaleUpperCase(), { step: "caption", font: "display", nowrap: true, ellipsis: true, color: on ? "ink" : "inkMuted" });
+      text("Text", label.toLocaleUpperCase(), { step: "caption", font: "display", nowrap: true, ellipsis: !portrait, color: on ? "ink" : "inkMuted" });
       if (on) chevron("Sort", down ? "down" : "up", u(10), role("ink"), 0, 2);
     });
     if (r.clicked) {
@@ -225,14 +239,14 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
         const z = u(phone ? 32 : 40);
         artSlot("Art", "Ledger.lineArt", { texture: l.image ?? null, kind: "item", width: px(z), height: px(z), radius: Math.max(4, t.small) });
         kit.column("Name", { width: grow(), gap: 0 }, () => {
-          text("Text", l.name ?? k, { step: st(phone ? 14 : 16), nowrap: true, ellipsis: true, width: grow() });
-          if (warn) kit.row("Warning", { width: grow(), gap: u(4), cross: "center" }, () => {
+          // The name and its warning wrap: a row grows a line rather than cutting either.
+          text("Text", l.name ?? k, { step: st(phone ? 14 : 16), width: grow() });
+          if (warn) kit.row("Warning", { width: grow(), gap: u(4), cross: "start" }, () => {
             symbol("Mark", "bolt", u(12), role("warn"));
-            text("Text", l.warning!, { step: st(12), color: "warn", nowrap: true, ellipsis: true, width: grow() });
+            text("Text", l.warning!, { step: st(12), color: "warn", width: grow() });
           });
         });
-        amount("Amount", money(l.amount ?? 0));
-        kit.row("Change", { width: px(colChange), align: "end", cross: "center" }, () => {
+        figuresOf(() => amount("Amount", money(l.amount ?? 0)), () => {
           if (ch !== null && Math.abs(ch) >= 0.0005) delta("Delta", signedPct(ch), ch > 0, good, phone ? 12 : 13);
           else text("None", "\u2014", { step: st(13), color: "inkFaint", nowrap: true });
         });
@@ -255,9 +269,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     const ch = prev > 0 ? (tot - prev) / prev : null;
     kit.row(s.key ?? "", { width: grow(), gap: u(12), cross: "center", padding: xy(u(8), u(phone ? 6 : 8)), part: "Ledger.section", partClass: "listItem" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("ink", 0.05) }] });
-      text("Name", (s.name ?? s.key ?? "").toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
-      amount("Total", `${s.expense ? "\u2212" : ""}${money(tot)}`, s.expense ? "danger" : "success");
-      kit.row("Change", { width: px(colChange), align: "end", cross: "center" }, () => {
+      text("Name", (s.name ?? s.key ?? "").toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", heading: true, width: grow() });
+      figuresOf(() => amount("Total", `${s.expense ? "\u2212" : ""}${money(tot)}`, s.expense ? "danger" : "success"), () => {
         if (ch !== null && Math.abs(ch) >= 0.0005) delta("Delta", signedPct(ch), ch > 0, (ch > 0) !== !!s.expense, phone ? 12 : 13);
       });
       if (inlineFunding) blank("NoBudget", colFunding);
@@ -266,6 +279,15 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   };
 
   const header = (): void => {
+    // On a phone the rows stack their figures, so the sort headings are a wrapping row of their own words.
+    if (portrait) {
+      kit.row("Header", { width: grow(), gap: u(8), cross: "center", wrap: true, padding: xy(u(8), 0), part: "Ledger.header", partClass: "panel" }, () => {
+        heading("name", desc.nameLabel ?? "Name", fit(0), false);
+        heading("amount", desc.amountLabel ?? "Amount", fit(0), false);
+        heading("change", desc.changeLabel ?? "Change", fit(0), false);
+      });
+      return;
+    }
     kit.row("Header", { width: grow(), gap: u(12), cross: "center", padding: xy(u(8), 0), part: "Ledger.header", partClass: "panel" }, () => {
       blank("Art", u(phone ? 32 : 40));
       heading("name", desc.nameLabel ?? "Name", grow(), false);
@@ -328,7 +350,13 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     for (let i = 0; i < rows.length; i++) at.push(at[i]! + (hs[i]! || mean) + gap);
     const port = kit.scrollState(scroll ? listPath : page);
     const portBox = kit.bounds(scroll ? listPath : page);
-    const top = scroll ? 0 : kit.memory(`~le.top.${id}`, -1);
+    // The list's top in the page, from a row seen with its top in view; before one has been, and while the list stands
+    // wholly below the view (a phone at 150 %, the figures one a row above it), its top is at least the view's end:
+    // only the rows within half a view of it can come into view at once, not a view and a half of them.
+    const seen = scroll ? 0 : kit.memory(`~le.top.${id}`, -1);
+    const listBox = scroll ? null : kit.bounds(listPath);
+    const below = !scroll && seen < 0 && port !== null && port.viewHeight > 0 && (!listBox || listBox.height <= 0);
+    const top = below ? port!.offsetY + port!.viewHeight : seen;
     let first = 0;
     let last = rows.length;
     if (port && port.viewHeight > 0) {

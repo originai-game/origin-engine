@@ -194,7 +194,9 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
           });
         }
       });
-      box("ScoreBox", { width: px(ut(46)), height: pct(1), align: "center", cross: "center", part: sel("Scorebug", "score") }, {
+      // Folded all the way (a phone at 150 % in a wide face), the score's box is square, as tall as the bar: its
+      // numeral keeps its step and the clock keeps its room.
+      box("ScoreBox", { width: px(fit >= 4 ? h : ut(46)), height: pct(1), align: "center", cross: "center", part: sel("Scorebug", "score") }, {
         fills: [solid(token("hud", 0.96)), ...(flash > 0 ? [solid(lit(c, 0.6 * flash))] : [])],
       }, () => {
         const s = (t.score ?? 0) > e.prev ? pop(e.since, 0.25, 420) : 1;
@@ -204,9 +206,13 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
     });
   };
   hudPlace(id, anchorOf(desc, "topLeft"), (inAnchor) => {
-    // Too wide for the band (a phone at 200 %): the period goes first, then the added time joins the clock's text,
-    // then the crests (the short names stay).
-    fit = fitLevel(inAnchor ? `${id}Hud/${id}` : [kit.openPath(), id].filter(Boolean).join("/"), hudRoom(), 3);
+    // Too wide for the band (a phone at 150 %): the period goes first, then the added time joins the clock's text,
+    // then the crests (the short names stay), then the score boxes square up.
+    // In a panel (a match-facts board) its room is the panel's: the row squeezes to it rather than growing past
+    // it, so a bar as wide as the panel has run out of room too.
+    const parent = inAnchor ? "" : kit.openPath();
+    const inner = parent ? kit.bounds(parent)?.width ?? 0 : 0;
+    fit = fitLevel(inAnchor ? `${id}Hud/${id}` : [parent, id].filter(Boolean).join("/"), inner > 0 ? Math.min(hudRoom(), inner - 1) : hudRoom(), 4);
     kit.column(id, { gap: 0, cross: "start" }, () => {
       box("Bar", { direction: "row", gap: 0, cross: "center", part: sel("Scorebug", "frame"), partClass: "hud" }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },

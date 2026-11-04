@@ -7,13 +7,13 @@
 import type * as Api from "@origingame/engine";
 import {
   firstRoom,
-  artSlot, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
+  artSlot, clamp, eyebrow, fit, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, priceTag, px, rarityColor,
   rememberRoom, role, safeWidth, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
 import { chevron, rtl } from "../containers/base.ts";
 
 /** A figure's row: its name, a bar (the attachments' gain lit at its end, or the loss shown past it), the value and the change. */
-function statRow(s: Api.LoadoutStat, compact: boolean): void {
+function statRow(s: Api.LoadoutStat, compact: boolean, labelW: number): void {
   const max = (s.max ?? 0) > 0 ? s.max! : 100;
   const v = s.value ?? 0;
   const d = s.delta ?? 0;
@@ -21,7 +21,8 @@ function statRow(s: Api.LoadoutStat, compact: boolean): void {
   const base = clamp((v - d) / max, 0, 1);
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
   kit.row(s.key ?? "", { width: grow(), gap: u(compact ? 8 : 12), cross: "center", part: "Loadout.stat", partClass: "badge" }, () => {
-    text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(compact ? 12 : 13), font: "display", color: "inkMuted", nowrap: true, ellipsis: true, width: px(u(compact ? 92 : 110) * Math.min(1.4, Math.max(1, frame().theme.textScale ?? 1))) });
+    // The label wraps between its words in the figures' shared label column (a fit box grows past it to a long word).
+    text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(compact ? 12 : 13), font: "display", color: "inkMuted", width: fit(labelW, labelW) });
     const h = Math.max(4, u(compact ? 6 : 8));
     kit.open("Bar", { direction: "row", width: grow(), height: px(h) });
     kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: token("ink", 0.12) }], clip: "shape" } as Api.DrawDesc);
@@ -167,9 +168,10 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
       });
       if (tile) art();
       kit.column("Words", { width: grow(), gap: u(2) }, () => {
-        text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", nowrap: true, ellipsis: true, width: grow(), color: on ? "primary" : "inkMuted" });
-        text("Name", empty ? desc.emptyLabel ?? "Empty" : (s.name ?? "").toLocaleUpperCase(), { step: st(tile ? 14 : 17), font: "display", nowrap: true, ellipsis: true, width: grow(), color: empty || s.locked ? "inkMuted" : "ink" });
-        if (s.detail && !tile) text("Detail", s.detail.toLocaleUpperCase(), { step: st(11), font: "mono", color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+        // The words wrap: a slot grows a line rather than cutting its item's name.
+        text("Label", (s.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", width: grow(), color: on ? "primary" : "inkMuted" });
+        text("Name", empty ? desc.emptyLabel ?? "Empty" : (s.name ?? "").toLocaleUpperCase(), { step: st(tile ? 14 : 17), font: "display", width: grow(), color: empty || s.locked ? "inkMuted" : "ink" });
+        if (s.detail && !tile) text("Detail", s.detail.toLocaleUpperCase(), { step: st(11), font: "mono", color: "inkMuted", width: grow() });
       });
       if (!tile) art();
     });
@@ -219,7 +221,9 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
     const shown = callouts ? atts : [];
     const top = shown.filter((a) => (a.y ?? 0.5) < 0.5);
     const bottom = shown.filter((a) => (a.y ?? 0.5) >= 0.5);
-    const band = Math.round(u(84) * Math.min(1.5, ts));
+    // A callout is as tall as its words need (last tick's tallest), and its band holds it.
+    const ch = Math.max(Math.round(u(60) * Math.min(1.5, ts)), kit.memory(`~lo.ch.${id}`, 0));
+    const band = Math.max(Math.round(u(84) * Math.min(1.5, ts)), ch + u(8));
     let artRect: Api.UiRect | null = null;
     kit.column("Stage", { width: w, height: h, gap: 0, padding: xy(u(phone ? 14 : 28), u(phone ? 12 : 22)), part: "Loadout.stage", partClass: "panel" }, () => {
       const rr = Math.max(8, t.panel);
@@ -258,7 +262,9 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
         };
         const xsTop = lay(top);
         const xsBottom = lay(bottom);
-        const ch = Math.round(u(60) * Math.min(1.5, ts));
+        // The art tile only where it leaves the words their room: in a narrow callout the words take its width.
+        const tile = cw >= u(180);
+        let tallest = 0;
         kit.column("Callouts", { width: grow(), height: grow() }, () => {
           for (const a of shown) {
             const k = a.key ?? "";
@@ -291,20 +297,22 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
               gap: u(10),
               cross: "center",
               width: px(cw),
-              height: px(ch),
+              height: fit(ch),
+              // Laid over the stage with its states kept: a later og.ui.props would drop them (no hover or press).
+              layer: { insets: { start: rtl() ? SW - x - cw : x, top: y } },
               padding: xy(u(6), u(6)),
               radius: Math.max(4, t.small),
               semantics: { role: "button", name: [a.label ?? "", a.name || desc.emptyLabel || "Empty"].join(": "), selected: on },
             }, () => {
               const ix = lastInteraction(k);
               kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("shadow", 0.72) }], strokes: [line(on ? u(2) : 1, on ? token("focus") : ix.hovered || ix.focused ? token("ink", 0.45) : rimC ? { ...rimC, a: 0.55 } as never : token("primary", 0.45))], effects: on ? [glow(u(8), token("focus", 0.4), 0)] : [] });
-              artSlot("Art", "Loadout.calloutArt", { texture: a.image ?? null, kind: "item", rarity: a.rarity, width: px(ch - u(12)), height: px(ch - u(12)), radius: Math.max(3, t.small - 2), label: "" });
+              if (tile) artSlot("Art", "Loadout.calloutArt", { texture: a.image ?? null, kind: "item", rarity: a.rarity, width: px(u(48)), height: px(u(48)), radius: Math.max(3, t.small - 2), label: "" });
               kit.column("Words", { width: grow(), gap: u(2) }, () => {
-                text("Label", (a.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", nowrap: true, ellipsis: true, width: grow() });
-                text("Name", a.name || desc.emptyLabel || "Empty", { step: st(12), color: "inkMuted", nowrap: true, ellipsis: true, width: grow() });
+                text("Label", (a.label ?? "").toLocaleUpperCase(), { step: st(12), font: "display", width: grow() });
+                text("Name", a.name || desc.emptyLabel || "Empty", { step: st(12), color: "inkMuted", width: grow() });
               });
+              tallest = Math.max(tallest, (kit.bounds(`${kit.openPath()}/Words`)?.height ?? 0) + 2 * u(6));
             });
-            over({ insets: { start: rtl() ? SW - x - cw : x, top: y } });
             if (r.clicked) {
               out.attachment = k;
               kit.feedback("select", -1);
@@ -312,6 +320,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
           }
         });
         over({ insets: { start: 0, top: 0, end: 0, bottom: 0 } });
+        kit.remember(`~lo.ch.${id}`, Math.ceil(tallest));
       }
     });
     const sr = kit.bounds(kit.lastPath());
@@ -339,7 +348,15 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
     kit.column("Stats", { width: grow(), gap: u(compact ? 8 : 12), padding: xy(u(16), u(compact ? 12 : 16)), part: "Loadout.stats", partClass: "panel" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.9) }], strokes: [line(1, token("ink", 0.1))], effects: [shadow(u(6), u(20), 0.45)] });
       eyebrow("Title", desc.statsLabel ?? "Weapon stats");
-      for (const s of desc.stats ?? []) statRow(s, compact);
+      // Every row's label as wide as the widest one drew last tick (at this room and text size), so the bars line up
+      // when a long word in a wide face ("MOBILITY" in pixel at 150 %) grows its box past the design width.
+      const base = Math.round(u(compact ? 92 : 110) * Math.min(1.4, ts));
+      const key = `~lo.lw.${id}.${Math.round(W)}.${Math.round(ts * 100)}`;
+      const labelW = Math.max(base, kit.memory(key, 0));
+      const path = kit.openPath();
+      for (const s of desc.stats ?? []) statRow(s, compact, labelW);
+      const widest = Math.max(0, ...(desc.stats ?? []).map((s) => kit.bounds(`${path}/${s.key ?? ""}/Label`)?.width ?? 0));
+      if (widest > 0) kit.remember(key, Math.ceil(widest));
     });
   };
 
@@ -366,7 +383,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
       const z = u(phone ? 48 : 52);
       artSlot("Art", "Loadout.attachmentArt", { texture: a.image ?? null, kind: "item", rarity: a.rarity, width: px(z), height: px(z), radius: Math.max(3, t.small - 2), label: "" });
       kit.column("Words", { width: grow(), gap: u(4) }, () => {
-        text("Name", a.name ?? "", { step: st(15), nowrap: true, ellipsis: true, width: grow() });
+        text("Name", a.name ?? "", { step: st(15), width: grow() });
         if (a.rarityLabel) kit.row("Band", { gap: 0, padding: xy(u(8), u(2)), width: grow() }, () => {
           kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [vgrad([[0, { ...tier, a: 0.55 } as never], [1, { ...tier, a: 0 } as never]], 90)] });
           text("Tier", a.rarityLabel!.toLocaleUpperCase(), { step: st(11), font: "display", nowrap: true, color: mix(tier, role("ink"), 0.35) });

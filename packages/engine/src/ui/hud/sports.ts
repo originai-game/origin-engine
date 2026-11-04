@@ -123,7 +123,8 @@ export function goalTimeline(id: string, desc: Api.GoalTimelineDesc = {}): void 
   const events = desc.events ?? [];
   const nameStep = ts(13, true);
   const markSide = Math.round(stepSize(nameStep).size * 0.95);
-  const minW = Math.ceil(stepSize(nameStep).size * 2.6);
+  // The minutes' column: two digits and the mark in the mono face, growing to a longer one ("90+3'").
+  const minW = Math.ceil(stepSize(nameStep).size * 1.8);
   hudPlace(id, anchorOf(desc, null), (inAnchor) => {
     box(id, {
       direction: "row", gap: tk.lg, cross: "stretch", width: inAnchor ? px(ut(560)) : pct(1),
@@ -135,9 +136,12 @@ export function goalTimeline(id: string, desc: Api.GoalTimelineDesc = {}): void 
         // The home column reads into the rule (name, minute, mark); the away one out of it (mark, minute, name).
         kit.column(sid, { gap: u(6), cross: team === 0 ? "end" : "start", width: { kind: "grow" }, part: sel("GoalTimeline", "side", sid.toLowerCase()) }, () => {
           for (const ev of events.filter((e) => (e.team ?? 0) === team)) {
-            kit.row(keyId(ev.key ?? `${ev.name}${ev.minute}`), { gap: u(10), cross: "center", part: sel("GoalTimeline", "event") }, () => {
-              const name = () => text("Name", ev.note ? `${ev.name ?? ""} (${ev.note})` : ev.name ?? "", { step: nameStep, font: "display", color: token("ink"), nowrap: true });
-              const minute = () => text("Minute", ev.minute ?? "", { step: nameStep, font: "mono", color: lit(mix(teamColor(team), { r: 1, g: 1, b: 1, a: 1 }, 0.35)), nowrap: true, align: team === 0 ? "end" : "start", width: px(minW) });
+            // Where its side is narrow (a phone at 150 %) the event wraps: the name over its minute and mark.
+            kit.row(keyId(ev.key ?? `${ev.name}${ev.minute}`), { gap: u(10), cross: "center", align: team === 0 ? "end" : "start", wrap: true, part: sel("GoalTimeline", "event") }, () => {
+              // The name wraps between its words where its column is narrow (a phone at 150 %); the minute's column
+              // grows to its text (a wide face's "51'" is wider than 2.6 em of the design's).
+              const name = () => text("Name", ev.note ? `${ev.name ?? ""} (${ev.note})` : ev.name ?? "", { step: nameStep, font: "display", color: token("ink"), align: team === 0 ? "end" : "start" });
+              const minute = () => text("Minute", ev.minute ?? "", { step: nameStep, font: "mono", color: lit(mix(teamColor(team), { r: 1, g: 1, b: 1, a: 1 }, 0.35)), nowrap: true, align: team === 0 ? "end" : "start", width: { kind: "fit", min: minW } });
               if (team === 0) { name(); minute(); mark(ev, markSide); } else { mark(ev, markSide); minute(); name(); }
             });
             kit.semantics(a11y("text", ev.name ?? "", { value: `${ev.minute ?? ""} ${team === 0 ? "home" : "away"}` }));
