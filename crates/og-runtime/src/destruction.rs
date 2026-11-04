@@ -351,6 +351,7 @@ struct Settings {
     anchored: bool,
     dust: u64,
     sparks: u64,
+    debris: u64,
 }
 
 impl Settings {
@@ -366,6 +367,7 @@ impl Settings {
             anchored: v["anchored"].as_bool().unwrap_or(true),
             dust: bits(v, "dust"),
             sparks: bits(v, "sparks"),
+            debris: bits(v, "debris"),
         }
     }
 }
@@ -441,6 +443,7 @@ fn run(
     let dt = time.dt.max(1e-6);
     let ticks_of = |s: f32| -> u64 { (s.max(0.0) / dt).ceil() as u64 };
     let res = l.resource.1.decode(&ctx.resource_bytes(l.resource.0)?);
+    let debris_volume = num(&res, "debrisVolume", 0.004);
     let gravity = v3(&l.physics.1.decode(&ctx.resource_bytes(l.physics.0)?)["gravity"]);
     let assets = lock(assets).clone();
     let mut guard = lock(state);
@@ -595,7 +598,21 @@ fn run(
     for ev in ctx.events_bytes(l.collision.0)? {
         let v = l.collision.1.decode(&ev);
         let point = v3(&v["point"]);
-        let impulse = num(&v, "impulse", 0.0);
+        // The solver's impulse is that of the step that made the contact,
+        // which for a fast body is a speculative one (rapier opens it
+        // before they touch, and that step barely pushes): the hit is at
+        // least its closing speed times the pair's reduced mass.
+        let (ea, eb) = (bits(&v, "a"), bits(&v, "b"));
+        let closing = v3(&v["relativeVelocity"]).dot(v3(&v["normal"])).max(0.0);
+        let reduced = match (
+            mass_of(ctx, l, &st.props, &assets, &settings, ea),
+            mass_of(ctx, l, &st.props, &assets, &settings, eb),
+        ) {
+            (Mass::Finite(a), Mass::Finite(b)) => a * b / (a + b),
+            (Mass::Finite(m), Mass::Infinite) | (Mass::Infinite, Mass::Finite(m)) => m,
+            _ => 0.0,
+        };
+        let impulse = num(&v, "impulse", 0.0).max(closing * reduced);
         let mut seen = None;
         for side in ["a", "b"] {
             let Some(&k) = owner.get(&bits(&v, side)) else {
@@ -944,25 +961,36 @@ fn run(
             let (first, count) = ch.children;
             let mut volume = 0.0;
             let mut body = 0;
+            let mut fine = 0;
             for i in first..first + count {
                 let kid = &a.chunks[i as usize];
+                let v = kid.volume * scale * scale * scale;
+                volume += v;
+                // Pieces below debrisVolume, given a debris emitter, are
+                // its burst on the GPU: never bodies.
+                if s.debris != 0 && v < debris_volume {
+                    fine += 1;
+                    continue;
+                }
                 let kp = (place_on(&cp, ch.centroid, kid.centroid), cp.1, cp.2);
                 let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, Role::Root, 0, tick)?;
                 body = if body == 0 { ke } else { body };
-                volume += kid.volume * scale * scale * scale;
                 made.insert(ke, (lin + ang.cross(kp.0 - cp.0), ang));
                 fresh_bodies.push(ke);
             }
             events.push(l.fractured.1.enc(
                 None,
                 Some(&json!({
-                    "entity": k as f64, "body": body as f64, "chunks": count,
+                    "entity": k as f64, "body": body as f64, "chunks": count - fine,
                     "point": jv(cp.0), "volume": volume,
                     "mass": volume * s.mat.density, "cause": CAUSE_SHATTER,
                 })),
             )?);
             if s.dust != 0 {
                 bursts.push((s.dust, cp.0));
+            }
+            if fine > 0 {
+                bursts.push((s.debris, cp.0));
             }
         }
     }
@@ -1042,7 +1070,7 @@ fn run(
     // Budgets: loose islands (a body and its children) by when they broke
     // loose; debris past its lifetime, then the oldest past maxChunks.
     let max = res["maxChunks"].as_u64().unwrap_or(256) as usize;
-    let debris = num(&res, "debrisVolume", 0.004);
+
     let lifetime = num(&res, "debrisLifetime", 8.0);
     struct Loose {
         tick: u64,
@@ -1080,7 +1108,8 @@ fn run(
     let mut total: usize = order.iter().map(|x| x.chunks.len()).sum();
     let life = ticks_of(lifetime);
     for isl in &order {
-        let old = lifetime > 0.0 && isl.volume < debris && tick >= isl.tick.saturating_add(life);
+        let old =
+            lifetime > 0.0 && isl.volume < debris_volume && tick >= isl.tick.saturating_add(life);
         if !old && total <= max {
             continue;
         }
@@ -1139,6 +1168,91 @@ fn run(
         st.fx.push((e.to_bits(), tick + fx_life));
     }
     Ok(())
+}
+
+/// A body's mass as a hit weighs it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Mass {
+    Finite(f32),
+    /// Static, kinematic or no body: it does not give.
+    Infinite,
+    /// A shape whose volume is not known here (a mesh): the hit is the
+    /// solver's impulse alone.
+    Unknown,
+}
+
+/// The mass of the body entity `bits` belongs to: a chunk's island, an
+/// unbroken prop's chunks, or another body from its og.RigidBody.mass or
+/// its og.Collider's shape and density.
+fn mass_of(
+    ctx: &SystemContext<'_>,
+    l: &Ls,
+    props: &BTreeMap<u64, Prop>,
+    assets: &Assets,
+    settings: &BTreeMap<u64, Settings>,
+    bits_: u64,
+) -> Mass {
+    let e = Entity::from_bits(bits_);
+    let scale_of = |p: &Prop| uniform(pose_of_frame(&p.frame).2);
+    for (k, p) in props {
+        let Some(a) = assets.get(&p.asset) else {
+            continue;
+        };
+        let density = settings.get(k).map_or(1000.0, |s| s.mat.density);
+        let s3 = {
+            let k = scale_of(p);
+            k * k * k
+        };
+        if let Some(c) = p.entities.iter().position(|&x| x == bits_) {
+            let body = p.body[c];
+            if body == 0 {
+                return Mass::Infinite;
+            }
+            let v: f32 = (0..p.entities.len())
+                .filter(|&i| p.entities[i] != 0 && p.body[i] == body)
+                .map(|i| a.chunks[i].volume)
+                .sum();
+            return Mass::Finite(v * s3 * density);
+        }
+        if *k == bits_ && !p.placed {
+            let v: f32 = a.chunks[..a.support as usize]
+                .iter()
+                .map(|c| c.volume)
+                .sum();
+            return Mass::Finite(v * s3 * density);
+        }
+    }
+    let Ok(rb) = ctx.get_bytes(e, l.rigid.0) else {
+        return Mass::Infinite;
+    };
+    let rb = l.rigid.1.decode(&rb);
+    if bits(&rb, "kind") != 0 {
+        return Mass::Infinite;
+    }
+    let m = num(&rb, "mass", 0.0);
+    if m > 0.0 {
+        return Mass::Finite(m);
+    }
+    let Ok(cb) = ctx.get_bytes(e, l.collider.0) else {
+        return Mass::Unknown;
+    };
+    let c = l.collider.1.decode(&cb);
+    let s = world_pose(ctx, l, e).map_or(Vec3::ONE, |p| p.2.abs());
+    let (r, h) = (num(&c, "radius", 0.5), num(&c, "height", 1.0));
+    let pi = std::f32::consts::PI;
+    let volume = match bits(&c, "shape") as u32 {
+        og_physics::SHAPE_BOX => {
+            let z = v3(&c["size"]);
+            z.x * z.y * z.z * s.x * s.y * s.z
+        }
+        og_physics::SHAPE_SPHERE => 4.0 / 3.0 * pi * r * r * r * s.x * s.y * s.z,
+        og_physics::SHAPE_CAPSULE => {
+            (pi * r * r * h + 4.0 / 3.0 * pi * r * r * r) * s.x * s.y * s.z
+        }
+        og_physics::SHAPE_CYLINDER => pi * r * r * h * s.x * s.y * s.z,
+        _ => return Mass::Unknown,
+    };
+    Mass::Finite(volume * num(&c, "density", 1000.0).max(0.0))
 }
 
 fn set_transform(ctx: &mut SystemContext<'_>, l: &Ls, e: Entity, p: &Pose) -> og_core::Result<()> {
@@ -1500,6 +1614,10 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
     }
 }
 
-pub fn og_destruction_capabilities(_world: u32) -> String {
-    json!({ "visualDebris": false }).to_string()
+pub fn og_destruction_capabilities(world: u32) -> String {
+    // og.Destructible.debris is a GPU particle burst: drawn where a
+    // renderer runs compute passes (every renderer the engine makes:
+    // og.render.capabilities' compute).
+    let compute = engine(world).is_ok_and(|e| e.render.borrow().backend.is_some());
+    json!({ "visualDebris": compute }).to_string()
 }

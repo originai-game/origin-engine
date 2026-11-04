@@ -1553,6 +1553,24 @@ later.
   mesh, primitive, probe and zero-based source triangle IDs. No weights,
   animations, cooked geometry or world state change; these are fixed stress
   probes, not a proof that every possible animation is free of stretching.
+- **Destruction** (`og.destruction`): props are prefractured in the cook,
+  never at run time. A `fracture { }` block cuts a model into Voronoi
+  cells clipped by exact CSG (og-geom `fracture`, cut faces tagged with
+  their neighbour and given the interior material), with optional
+  children per chunk; `<model>#fracture` holds the chunks' hulls,
+  hierarchy, the support graph's bonds and the anchor faces
+  (og-destruct `FractureAsset`). In the tick, before og.physics, damage
+  wears bond health (Blast's model of health as effective area), the
+  support graph splits into islands, and Blast's stress solver (CGNR over
+  the anchored islands, ported to f32 with fixed orders, the world a
+  static node mirrored through each anchor face) damages what is past its
+  elastic limits. An island whose membership changed is rebuilt as one
+  body: static colliders while anchored, else a dynamic og.RigidBody on
+  its first chunk with the rest as compound children. Bond health, chunk
+  entities and queued calls are a state block. Fine debris is visual
+  only: a GPU mesh-particle burst replaces pieces below
+  og.Destruction.debrisVolume, which never become bodies, so the
+  simulation is the same on every device.
 - **Motion generation** (planned, the owner's direction of 2026-11-01;
   researched before it is built, `tests/evidence/motionbricks/NOTES.md`):
   a humanoid is animated by intent instead of hand-authored clips and

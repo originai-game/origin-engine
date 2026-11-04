@@ -7732,6 +7732,11 @@
           "default": 0
         },
         {
+          "name": "debris",
+          "column": "ParticleEmitter",
+          "default": 0
+        },
+        {
           "name": "fractured",
           "column": "bool",
           "default": false,

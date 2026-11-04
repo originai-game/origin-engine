@@ -48259,6 +48259,10 @@ export interface Destructible {
    */
   sparks: ParticleEmitter;
   /**
+   * Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body.
+   */
+  debris: ParticleEmitter;
+  /**
    * Written: true from its first break (the model hidden, its chunks drawn).
    *
    * @readonly written by the engine
@@ -48512,7 +48516,7 @@ export interface DestructibleInfo {
 /** What destruction does on this device. */
 export interface DestructionCapabilities {
   /**
-   * Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it).
+   * Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it.
    */
   readonly visualDebris: boolean;
 }
@@ -54343,7 +54347,7 @@ export declare namespace og {
    * Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. A prop that stands (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (the hull of its piece) on an entity with og.Chunk, and the entity's own og.Collider and og.RigidBody are removed, so hits land on the chunks. A prop that moves (a dynamic or kinematic og.RigidBody) collides as itself until its first break, when its chunks take its place, moving as it moved, and it loses its og.Collider, og.RigidBody and og.Velocity. Until the first break the model is drawn whole; from it the model is hidden and each chunk draws its piece of it (with og.Model's tint, variant and shadows). Anchored islands stay static, the rest fall.
    * Scale it uniformly: a chunk's collider and mass follow og.Transform.scale's mean.
    */
-  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
+  const Destructible: ComponentType<{ readonly toughness: FieldSpec<"f32">; readonly strength: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly impactThreshold: FieldSpec<"f32">; readonly impactRadius: FieldSpec<"f32">; readonly anchored: FieldSpec<"bool">; readonly dust: FieldSpec<"ParticleEmitter">; readonly sparks: FieldSpec<"ParticleEmitter">; readonly debris: FieldSpec<"ParticleEmitter">; readonly fractured: FieldSpec<"bool">; readonly broken: FieldSpec<"u32">; readonly loose: FieldSpec<"u32"> }, Destructible>;
   /**
    * One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away.
    */

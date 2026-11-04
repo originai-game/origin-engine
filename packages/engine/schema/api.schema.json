@@ -80044,6 +80044,11 @@
           "description": "An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none.",
           "default": 0
         },
+        "debris": {
+          "$ref": "#/$defs/ParticleEmitter",
+          "description": "Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body.",
+          "default": 0
+        },
         "fractured": {
           "type": "boolean",
           "description": "Written: true from its first break (the model hidden, its chunks drawn).",
@@ -80374,7 +80379,7 @@
       "properties": {
         "visualDebris": {
           "type": "boolean",
-          "description": "Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it)."
+          "description": "Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it."
         }
       },
       "required": [

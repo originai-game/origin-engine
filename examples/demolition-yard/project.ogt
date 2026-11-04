@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# Destructible props (docs/design.md §2.7): a brick wall, a wooden crate, a
+# concrete pillar and a glass pane, each a `type model` with a `fracture`
+# block, broken by an explosion, a fall, a blow and a thrown ball.
+name "Demolition yard"
+id "demolition-yard"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

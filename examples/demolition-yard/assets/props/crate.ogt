@@ -1,0 +1,27 @@
+type model
+version 1
+---
+# A wooden crate, 0.8 m: a dynamic body that splinters where it lands hard.
+material "wood" {
+  color 0.52 0.34 0.18
+  roughness 0.8
+}
+part "box" {
+  material "wood"
+  position 0 0 0
+  boxGeometry {
+    width 0.8
+    height 0.8
+    depth 0.8
+  }
+}
+fracture {
+  chunks 10
+  seed 2
+  children 0
+  anchor none
+  interior {
+    color 0.78 0.62 0.4
+    roughness 0.9
+  }
+}

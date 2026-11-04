@@ -41,6 +41,22 @@ is one line here, written at the merge that changes
   cotton draw differently from before; materials without sheen are unchanged.
   `og.StandardMaterial` reflects at version 11.
 
+- **Destruction (og.destruction).** A `fracture { }` block in a `type model`
+  or a glTF's import settings makes the cook cut the model into Voronoi
+  chunks (`chunks`, `seed`, `children`, `pattern volume|slab|auto`,
+  `impact`, `anchor`, `interiorScale`, `interior`), written as
+  `<model>#fracture` (`og.Fracture`). New `og.Destructible` (toughness,
+  strength, density, impactThreshold, impactRadius, anchored, dust, sparks,
+  debris; written fractured, broken, loose), `og.Chunk`, the event
+  `og.Fractured`, the resource `og.Destruction` (maxChunks, debrisVolume,
+  debrisLifetime, fxLifetime, stressIterations), `DamageDesc`,
+  `ExplosionDesc`, `DestructibleInfo`, `DestructionCapabilities`,
+  `CAUSE_*`, and `og.destruction.damage`, `explode`, `fracture`, `info`,
+  `capabilities`. Prelude units `m3`, `pascal`, `newtonSecondPerM2`. The
+  stress solver is NVIDIA Blast's (BSD-3). Lazy: a world without
+  destructibles keeps its hash. The skill `og-destruction`; the example
+  `examples/demolition-yard`.
+
 - **UI phase 0 grammar, typography and sheets (breaking; next minor).**
   `typography` drives every legacy ramp alias, including weight and tracking;
   `hero` adds the top step and `case upper` uses locale-aware Unicode casing.

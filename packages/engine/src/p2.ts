@@ -1,4 +1,4 @@
-// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`, `destruction`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -66,6 +66,15 @@ export const timeline = Object.freeze({
 /** og.video: how streams play on this host (the module's other calls are og.load.video and og.VideoPlayer). */
 export const video = Object.freeze({
   capabilities: (world: W) => parse(abi().og_video_capabilities(world.id)),
+});
+
+// og.destruction (IDL `destruction`): props that break into their prefractured chunks.
+export const destruction = Object.freeze({
+  damage: (world: W, entity: number, desc?: unknown) => parse(abi().og_destruction_damage(world.id, entity, json(desc))),
+  explode: (world: W, desc?: unknown) => parse(abi().og_destruction_explode(world.id, json(desc))),
+  fracture: (world: W, entity: number) => parse(abi().og_destruction_fracture(world.id, entity)),
+  info: (world: W, entity: number) => parse(abi().og_destruction_info(world.id, entity)),
+  capabilities: (world: W) => parse(abi().og_destruction_capabilities(world.id)),
 });
 
 // og.motion (IDL `motion`): goals for humanoids; the model draws them.

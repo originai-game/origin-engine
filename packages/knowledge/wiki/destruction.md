@@ -78,7 +78,7 @@ fn damage {
 }
 ```
 
-<sub>`api.ogt` line 28619</sub>
+<sub>`api.ogt` line 28620</sub>
 
 <a id="fn-explode"></a>
 
@@ -108,7 +108,7 @@ fn explode {
 }
 ```
 
-<sub>`api.ogt` line 28627</sub>
+<sub>`api.ogt` line 28628</sub>
 
 <a id="fn-fracture"></a>
 
@@ -138,7 +138,7 @@ fn fracture {
 }
 ```
 
-<sub>`api.ogt` line 28634</sub>
+<sub>`api.ogt` line 28635</sub>
 
 <a id="fn-info"></a>
 
@@ -168,7 +168,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 28641</sub>
+<sub>`api.ogt` line 28642</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -196,7 +196,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 28648</sub>
+<sub>`api.ogt` line 28649</sub>
 
 ## Components, resources and events
 
@@ -220,6 +220,7 @@ Token `og.Destructible`, registered under the schema name `og.Destructible`; its
 | `anchored` | `boolean` | `true` | — | — | — | Whether its anchors (the chunks on its floor) hold it to the world; false, every island falls. |
 | `dust` | `ParticleEmitter` | `0` | — | — | — | An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none. |
 | `sparks` | `ParticleEmitter` | `0` | — | — | — | An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none. |
+| `debris` | `ParticleEmitter` | `0` | — | — | — | Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body. |
 | `fractured` | `boolean` | `false` | — | — | read only | Written: true from its first break (the model hidden, its chunks drawn). |
 | `broken` | `number` | `0` | — | — | read only | Written: its bonds broken so far. |
 | `loose` | `number` | `0` | — | — | read only | Written: its chunks that have broken loose and still exist. |
@@ -263,6 +264,7 @@ component Destructible {
   }
   field dust ParticleEmitter "An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none."
   field sparks ParticleEmitter "An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none."
+  field debris ParticleEmitter "Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body."
   field fractured bool "Written: true from its first break (the model hidden, its chunks drawn)." {
     readonly true
   }
@@ -315,7 +317,7 @@ component Chunk {
 }
 ```
 
-<sub>`api.ogt` line 28479</sub>
+<sub>`api.ogt` line 28480</sub>
 
 <a id="record-Fractured"></a>
 
@@ -355,7 +357,7 @@ event Fractured {
 }
 ```
 
-<sub>`api.ogt` line 28499</sub>
+<sub>`api.ogt` line 28500</sub>
 
 <a id="record-Destruction"></a>
 
@@ -407,7 +409,7 @@ resource Destruction {
 }
 ```
 
-<sub>`api.ogt` line 28517</sub>
+<sub>`api.ogt` line 28518</sub>
 
 ## Types
 
@@ -451,7 +453,7 @@ struct DamageDesc {
 }
 ```
 
-<sub>`api.ogt` line 28549</sub>
+<sub>`api.ogt` line 28550</sub>
 
 <a id="type-ExplosionDesc"></a>
 
@@ -499,7 +501,7 @@ struct ExplosionDesc {
 }
 ```
 
-<sub>`api.ogt` line 28572</sub>
+<sub>`api.ogt` line 28573</sub>
 
 <a id="type-DestructibleInfo"></a>
 
@@ -533,7 +535,7 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>`api.ogt` line 28600</sub>
+<sub>`api.ogt` line 28601</sub>
 
 <a id="type-DestructionCapabilities"></a>
 
@@ -543,16 +545,16 @@ What destruction does on this device.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `visualDebris` | `boolean` | `false` | — | — | — | Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it). |
+| `visualDebris` | `boolean` | `false` | — | — | — | Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it. |
 
 ```ogt
 struct DestructionCapabilities {
   doc "What destruction does on this device."
-  field visualDebris bool "Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it)."
+  field visualDebris bool "Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it."
 }
 ```
 
-<sub>`api.ogt` line 28614</sub>
+<sub>`api.ogt` line 28615</sub>
 
 ## Constants
 

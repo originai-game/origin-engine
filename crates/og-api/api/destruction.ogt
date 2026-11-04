@@ -50,6 +50,7 @@ module destruction {
     }
     field dust ParticleEmitter "An emitter (og.load.emitter, `looping false`) burst where each island breaks loose, at its broken faces: dust, splinters, glass grit. 0 none."
     field sparks ParticleEmitter "An emitter burst at each hit that damages it (sparks off metal, chips off stone). 0 none."
+    field debris ParticleEmitter "Fine debris, as visuals only: a mesh-particle emitter (`render mesh`, best with `collision` and `lit true`) burst where a chunk shatters, in place of its pieces smaller than og.Destruction.debrisVolume, which then never become bodies. It is simulated and drawn on the GPU (og.destruction.capabilities' visualDebris) and never touches the simulation, so the world is the same on every device. 0: every piece is a body."
     field fractured bool "Written: true from its first break (the model hidden, its chunks drawn)." {
       readonly true
     }
@@ -198,7 +199,7 @@ module destruction {
 
   struct DestructionCapabilities {
     doc "What destruction does on this device."
-    field visualDebris bool "Whether the smallest debris is simulated on the GPU as visuals only (no physics bodies); false draws none of it (the physics chunks are unchanged either way, so a game never depends on it)."
+    field visualDebris bool "Whether og.Destructible.debris bursts are simulated and drawn on the GPU here (a renderer with compute passes: og.render.capabilities' compute); false draws none of them. The bodies are the same either way: pieces given to `debris` are never bodies, on any device, so a game never depends on it."
   }
 
   fn damage {

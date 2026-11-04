@@ -1,0 +1,29 @@
+type model
+version 1
+---
+# A concrete pillar, 0.5 m across and 3 m tall: a blow at its middle takes
+# it away and what stood on it comes down.
+material "concrete" {
+  color 0.58 0.57 0.54
+  roughness 0.85
+}
+part "shaft" {
+  material "concrete"
+  position 0 1.5 0
+  cylinderGeometry {
+    radiusTop 0.25
+    radiusBottom 0.25
+    height 3
+    radialSegments 20
+  }
+}
+fracture {
+  chunks 14
+  seed 5
+  children 4
+  pattern volume
+  interior {
+    color 0.66 0.65 0.62
+    roughness 1
+  }
+}

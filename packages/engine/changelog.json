@@ -147,6 +147,10 @@
         "summary": "Each takes disabled and dresses as a disc. Each keeps the finger that went down on it; the joystick's vector rises from 0 past its dead zone; the d-pad reads eight ways by angle."
       },
       {
+        "member": "og.destruction (og.Destructible, og.Chunk, og.Fractured, og.Destruction, damage, explode, fracture, info, capabilities)",
+        "summary": "Destructible props. A model's fracture { } block (type model or import settings) is cut by the cook into Voronoi chunks with an interior material, optional children and anchors, written beside it as <model>#fracture (og.Fracture). og.Destructible breaks it in the tick from impacts, og.destruction.damage, explode and fracture; NVIDIA Blast's stress solver (BSD-3, third_party/blast) brings down what loses its support; loose islands become rigid bodies, og.Fractured reports each break, dust, sparks and GPU-only debris burst through particle emitters, and og.Destruction budgets loose chunks. Deterministic and in snapshots; lazy, so a world without destructibles keeps its hash."
+      },
+      {
         "member": "UI kits: documents and open tiers",
         "summary": "The racing kit ships race-results.ogt, a type screen document (place, best lap and points, the classification as a for block, rewards, a Podium slot; emits continue, restart and replay) that a game edits as text. Gacha featured units and pull items take a tier { label, rank, color } over Rarity for a game's own tiers. og ui sheet installs a kit into its sheet's working copy, so pages load the kit's documents as a game does."
       },

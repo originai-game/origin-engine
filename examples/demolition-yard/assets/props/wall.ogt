@@ -1,0 +1,29 @@
+type model
+version 1
+---
+# A brick wall, 4 × 2.4 × 0.3 m, standing on its foot: 28 support chunks
+# anchored where they touch the ground, each with 5 pieces it shatters into.
+material "brick" {
+  color 0.55 0.24 0.16
+  roughness 0.92
+}
+part "wall" {
+  material "brick"
+  position 0 1.2 0
+  boxGeometry {
+    width 4
+    height 2.4
+    depth 0.3
+    uvRepeat 4 2.4
+  }
+}
+fracture {
+  chunks 28
+  seed 11
+  children 5
+  pattern volume
+  interior {
+    color 0.62 0.42 0.34
+    roughness 0.98
+  }
+}

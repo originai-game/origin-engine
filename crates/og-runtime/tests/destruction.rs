@@ -11,10 +11,11 @@
 //! replay diverges); the budget counts the wrong chunks or none.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_destruction_damage, og_destruction_info, og_engine_create,
-    og_engine_frame, og_engine_probe_dump, og_engine_write_resource, og_game_game,
-    og_host_begin_bundle, og_load_gltf, og_world_events, og_world_get, og_world_insert,
-    og_world_instantiate, og_world_restore, og_world_snapshot, set_hooks,
+    Dispatch, Fetch, Hooks, og_destruction_capabilities, og_destruction_damage,
+    og_destruction_info, og_engine_create, og_engine_frame, og_engine_probe_dump,
+    og_engine_write_resource, og_game_game, og_host_begin_bundle, og_load_emitter, og_load_gltf,
+    og_world_events, og_world_get, og_world_insert, og_world_instantiate, og_world_restore,
+    og_world_snapshot, set_hooks,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
@@ -43,6 +44,26 @@ fracture {
 }
 "#;
 
+/// Fine debris: tumbling mesh chips, a one-shot burst.
+const CHIPS: &str = r#"type particles
+version 1
+---
+maxParticles 256
+shape sphere 0.2
+spread 180
+rate 0
+burst 0 40
+duration 0.5
+looping false
+lifetime 2 3
+speed 1 3
+size 0.04 0.08
+gravity 0 -9.8 0
+render mesh box
+lit true
+collision 0.3 0.6
+"#;
+
 fn value(text: String) -> Value {
     let v: Value = serde_json::from_str(&text).expect("wire JSON");
     assert_eq!(v["ok"], json!(true), "{text}");
@@ -58,6 +79,8 @@ fn project() -> &'static std::path::Path {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("assets/props")).unwrap();
         std::fs::write(root.join("assets/props/wall.ogt"), WALL).unwrap();
+        std::fs::create_dir_all(root.join("assets/fx")).unwrap();
+        std::fs::write(root.join("assets/fx/chips.ogt"), CHIPS).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -212,4 +235,105 @@ fn the_chunk_budget_despawns_the_oldest_loose_chunks() {
     assert_eq!(d["fractured"], true);
     let loose = d["loose"].as_u64().unwrap();
     assert!(loose <= 3, "at most maxChunks loose chunks remain: {d}");
+}
+
+#[test]
+fn pieces_given_to_debris_are_never_bodies() {
+    let (w, wall) = start();
+    let chips = value(og_load_emitter(w, "fx/chips.ogt".into()))
+        .as_f64()
+        .unwrap();
+    value(og_world_insert(
+        w,
+        wall,
+        "og.Destructible".into(),
+        Some(json!({ "toughness": 400, "strength": 4000, "debris": chips }).to_string()),
+    ));
+    // Every piece of a shattered chunk is debris here.
+    value(og_engine_write_resource(
+        w,
+        "og.Destruction".into(),
+        json!({ "debrisVolume": 1.0 }).to_string(),
+    ));
+    frames(w, 2);
+    shoot_foot(w, wall);
+    frames(w, 1);
+    let events: Value = serde_json::from_str(&og_world_events(w, "og.Fractured".into())).unwrap();
+    let shattered: Vec<&Value> = events
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["cause"] == 4)
+        .collect();
+    assert!(!shattered.is_empty(), "the shot shatters chunks: {events}");
+    for e in shattered {
+        assert_eq!(e["chunks"], 0, "no piece became a body: {e}");
+        assert_eq!(e["body"], 0);
+        assert!(e["volume"].as_f64().unwrap() > 0.0);
+    }
+    // No renderer here: the bursts are not drawn, the world is the same.
+    let caps: Value = serde_json::from_str(&og_destruction_capabilities(w)).unwrap();
+    assert_eq!(caps["visualDebris"], false);
+}
+
+#[test]
+fn a_prop_dropped_on_the_ground_breaks_where_it_lands() {
+    // A fast body's contact opens speculatively, so the event's impulse is
+    // a few N·s; the hit is weighed by its closing speed and mass instead.
+    let (w, _wall) = start();
+    let g = value(og_runtime::og_world_spawn(
+        w,
+        Some(json!({ "position": { "x": 10, "y": -0.25, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        g,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 1 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        g,
+        "og.Collider".into(),
+        Some(json!({ "shape": 0, "size": { "x": 6, "y": 0.5, "z": 6 } }).to_string()),
+    ));
+    let asset = value(og_load_gltf(w, "props/wall.ogt".into(), None))
+        .as_f64()
+        .unwrap();
+    let c = value(og_world_instantiate(
+        w,
+        asset,
+        Some(json!({ "position": { "x": 10, "y": 4, "z": 0 } }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        w,
+        c,
+        "og.Destructible".into(),
+        Some(json!({ "toughness": 300, "anchored": false, "impactThreshold": 40 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        c,
+        "og.RigidBody".into(),
+        Some(json!({ "kind": 0 }).to_string()),
+    ));
+    value(og_world_insert(
+        w,
+        c,
+        "og.Collider".into(),
+        Some(json!({ "shape": 0, "size": { "x": 4, "y": 2, "z": 0.3 }, "offset": { "x": 0, "y": 1, "z": 0 } }).to_string()),
+    ));
+    let mut impact = false;
+    for _ in 0..80 {
+        frames(w, 1);
+        let ev: Value = serde_json::from_str(&og_world_events(w, "og.Fractured".into())).unwrap();
+        impact |= ev.as_array().unwrap().iter().any(|e| e["cause"] == 0);
+    }
+    let d = destructible(w, c);
+    assert_eq!(d["fractured"], true, "a 4 m fall breaks it: {d}");
+    assert!(impact, "broken by its impact");
 }
