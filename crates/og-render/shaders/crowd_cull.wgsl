@@ -14,6 +14,8 @@
 //   scan_blocks scans the workgroup sums (one workgroup per row)
 //   prefix      turns the one-hots into the exclusive prefix (N + 1 entries)
 //   scatter     writes the visible members' records and the draws
+//   totals      sums the frame's counts for its stats (cull_gpu.rs
+//               `CROWD_COUNT_WORDS`) after the draws
 
 const WG: u32 = 256u;
 
@@ -75,18 +77,21 @@ struct ClipGpu {
 @group(0) @binding(4) var<storage, read> draws: array<u32>;
 @group(0) @binding(5) var<storage, read> rows: array<Row>;
 @group(0) @binding(6) var pyramid: texture_2d<f32>;
-// Per row: N + 1 prefix entries, then `blocks` workgroup sums.
+// Per row: N + 1 prefix entries, then `blocks` workgroup sums, then
+// `blocks` workgroup counts of the hidden (`visibility`'s `hidden`).
 @group(0) @binding(7) var<storage, read_write> scan: array<vec4<u32>>;
 // Row r's records from r * N.
 @group(0) @binding(8) var<storage, read_write> records: array<f32>;
-// Per (row, draw) five words of DrawIndexedIndirect.
+// Per (row, draw) five words of DrawIndexedIndirect, then the frame's
+// counts (`totals`).
 @group(0) @binding(9) var<storage, read_write> args: array<u32>;
 
 var<workgroup> shared_sum: array<vec4<u32>, 256>;
 
 fn n_members() -> u32 { return params.counts.x; }
-fn prefix_at(r: u32) -> u32 { return r * (n_members() + 1u + params.sizes.x); }
+fn prefix_at(r: u32) -> u32 { return r * (n_members() + 1u + 2u * params.sizes.x); }
 fn blocks_at(r: u32) -> u32 { return prefix_at(r) + n_members() + 1u; }
+fn hidden_at(r: u32) -> u32 { return blocks_at(r) + params.sizes.x; }
 
 fn member_matrix(k: u32) -> mat4x4<f32> {
   let a = k * MEMBER_FLOATS;
@@ -145,6 +150,10 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
   let r = wid.y;
   let k = gid.x;
   var v = vec4<u32>(0u);
+  // The camera row's hidden records, as GPU culling counts its instances
+  // (cull_gpu.rs `GpuCounts`): outside its planes, occluded, and the
+  // occluded ones' triangles.
+  var hidden = vec4<u32>(0u);
   if (k < n_members()) {
     let c = crowds[crowd_of(k)];
     let row = rows[r];
@@ -153,19 +162,29 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     let clip = clips[c.info.w + u32(members[k * MEMBER_FLOATS + 12u])];
     let center = (clip.lo.xyz + clip.hi.xyz) * 0.5;
     let extent = max(clip.hi.xyz - clip.lo.xyz, vec3<f32>(0.0)) * 0.5;
-    var inside = kind != OCCLUDERS && (row.info.z & c.layers.x) != 0u
-      && (kind != SHADOW || c.info.y != 0u);
+    let on_layers = (row.info.z & c.layers.x) != 0u;
+    var inside = kind != OCCLUDERS && on_layers && (kind != SHADOW || c.info.y != 0u);
+    // The world box around the member's (skin.rs `moved_box`), as the CPU
+    // path culls its records (Frustum::intersects_box): the two paths cull
+    // the same members.
     let wc = (m * vec4<f32>(center, 1.0)).xyz;
+    let we = abs(m[0].xyz) * extent.x + abs(m[1].xyz) * extent.y + abs(m[2].xyz) * extent.z;
     for (var p = 0u; p < row.info.y && inside; p++) {
       let plane = row.planes[p];
-      // The box's corner farthest inside the plane (Frustum::intersects_box).
-      let reach = (abs(dot(plane.xyz, m[0].xyz)) * extent.x
-        + abs(dot(plane.xyz, m[1].xyz)) * extent.y
-        + abs(dot(plane.xyz, m[2].xyz)) * extent.z) * (1.0 + 1e-5);
+      // The box's corner farthest inside the plane.
+      let reach = dot(abs(plane.xyz), we) * (1.0 + 1e-5);
       inside = dot(plane.xyz, wc) + plane.w >= -reach;
     }
-    if (inside && kind == MAIN && params.sizes.y > 0u && c.info.z != 0u) {
-      inside = !occluded(m, center, extent * (1.0 + 1e-5) + vec3<f32>(1e-6));
+    let parts = c.info.x;
+    if (kind == MAIN && on_layers && !inside) { hidden.x = parts; }
+    if (inside && kind == MAIN && params.sizes.y > 0u && c.info.z != 0u
+        && occluded(m, center, extent * (1.0 + 1e-5) + vec3<f32>(1e-6))) {
+      inside = false;
+      hidden.y = parts;
+      let l = member_level(c, m);
+      for (var p = 0u; p < parts; p++) {
+        hidden.z += draws[c.members.w + l * parts + p] / 3u;
+      }
     }
     if (inside) { v = one_hot(member_level(c, m)); }
     scan[prefix_at(r) + k] = v;
@@ -177,6 +196,14 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     workgroupBarrier();
   }
   if (li == 0u) { scan[blocks_at(r) + wid.x] = shared_sum[0]; }
+  workgroupBarrier();
+  shared_sum[li] = hidden;
+  workgroupBarrier();
+  for (var s = WG / 2u; s > 0u; s >>= 1u) {
+    if (li < s) { shared_sum[li] += shared_sum[li + s]; }
+    workgroupBarrier();
+  }
+  if (li == 0u) { scan[hidden_at(r) + wid.x] = shared_sum[0]; }
 }
 
 // An inclusive scan of `shared_sum` (Hillis-Steele).
@@ -292,4 +319,33 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
       }
     }
   }
+}
+
+// The frame's counts after `scatter`, at the words after the draws: the
+// camera row's records outside its planes, occluded and the occluded ones'
+// triangles, its drawn triangles, and the shadow rows' drawn records. One
+// invocation: the rows' draws and the camera row's workgroup counts are
+// few. Read back with GPU culling's (cull_gpu.rs `CROWD_COUNT_WORDS`).
+@compute @workgroup_size(1)
+fn totals() {
+  var out = array<u32, 5>(0u, 0u, 0u, 0u, 0u);
+  let d = params.counts.w;
+  for (var r = 0u; r < params.counts.z; r++) {
+    let kind = rows[r].info.x;
+    if (kind == MAIN) {
+      for (var b = 0u; b < params.sizes.x; b++) {
+        let h = scan[hidden_at(r) + b];
+        out[0] += h.x;
+        out[1] += h.y;
+        out[2] += h.z;
+      }
+    }
+    for (var i = 0u; i < d; i++) {
+      let count = args[(r * d + i) * 5u + 1u];
+      if (kind == MAIN) { out[3] += count * (draws[i] / 3u); }
+      if (kind == SHADOW) { out[4] += count; }
+    }
+  }
+  let at = params.counts.z * d * 5u;
+  for (var j = 0u; j < 5u; j++) { args[at + j] = out[j]; }
 }

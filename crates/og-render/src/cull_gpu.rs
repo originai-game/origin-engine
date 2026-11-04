@@ -195,6 +195,14 @@ pub(crate) struct GpuCounts {
     pub shadow_casters: u32,
 }
 
+/// The words after the draws and counters that the crowd cull
+/// (`crowd_cull.wgsl` `counts`) adds its own counts into: the members'
+/// records outside the camera's planes, inside them but occluded, the
+/// occluded ones' triangles, the camera's drawn triangles and the shadow
+/// passes' records. Zeroed by [`GpuCulling::encode`]; a frame without
+/// crowds leaves them so.
+pub(crate) const CROWD_COUNT_WORDS: u64 = 8;
+
 /// What a readback's words mean.
 #[derive(Clone)]
 struct CountLayout {
@@ -210,8 +218,14 @@ struct CountLayout {
 
 impl CountLayout {
     /// The words of the draws buffer the counts are read from: per (pass,
-    /// batch) a draw, per pass its inside count, per batch its hidden count.
+    /// batch) a draw, per pass its inside count, per batch its hidden count,
+    /// then the crowds' counts ([`CROWD_COUNT_WORDS`]).
     fn words(passes: usize, batches: u32) -> u64 {
+        Self::crowd_word(passes, batches) + CROWD_COUNT_WORDS
+    }
+
+    /// The first of the crowds' count words.
+    fn crowd_word(passes: usize, batches: u32) -> u64 {
         passes as u64 * (batches as u64 * 5 + 1) + batches as u64
     }
 
@@ -247,6 +261,12 @@ impl CountLayout {
                 PassKind::Reflection | PassKind::Occluders => {}
             }
         }
+        let crowd = &words[Self::crowd_word(p, self.batches) as usize..];
+        c.culled += crowd[0];
+        c.occluded += crowd[1];
+        c.occluded_triangles += crowd[2] as u64;
+        c.triangles += crowd[3] as u64;
+        c.shadow_casters += crowd[4];
         c
     }
 }
@@ -332,6 +352,9 @@ pub(crate) struct GpuCulling {
     /// The last encoded frame's layout and given counts (`finish` copies
     /// its counts late when it found no readback free).
     last: Option<(CountLayout, GpuCounts)>,
+    /// Whether the last frame encoded asked for its counts
+    /// ([`Self::copy_counts`] takes it).
+    copy: bool,
     max_binding: u64,
     /// This frame's layout: instances, batches, passes.
     pub n: u32,
@@ -594,6 +617,7 @@ impl GpuCulling {
             readbacks,
             latest: None,
             last: None,
+            copy: false,
             max_binding,
             n: 0,
             b: 0,
@@ -1371,11 +1395,11 @@ impl GpuCulling {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cull"),
         });
-        // The inside and hidden counters start at zero.
+        // The inside and hidden counters and the crowds' start at zero.
         encoder.clear_buffer(
             &self.args,
             p as u64 * b as u64 * 20,
-            Some((p as u64 + b as u64) * 4),
+            Some((p as u64 + b as u64 + CROWD_COUNT_WORDS) * 4),
         );
         let run = |pass: &mut wgpu::ComputePass, group: &wgpu::BindGroup, stage_passes: u32| {
             pass.set_bind_group(0, group, &[]);
@@ -1499,18 +1523,40 @@ impl GpuCulling {
                 .map(|(_, x)| x.count)
                 .sum(),
         };
-        if let Some(r) = self.readbacks.iter_mut().find(|r| {
-            copy_counts
-                && r.layout.is_none()
-                && r.buffer.size() >= count_bytes
-                && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false)
-        }) {
-            encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, count_bytes);
-            r.layout = Some(layout.clone());
-            r.unmapped = true;
-            r.applied = stats_given;
-        }
+        self.copy = copy_counts;
         self.last = Some((layout, stats_given));
         (encoder.finish(), occluder_draws)
+    }
+
+    /// The word of [`Self::args`] the crowd cull adds its counts from
+    /// ([`CROWD_COUNT_WORDS`]), for the frame [`Self::encode`] encoded.
+    pub fn crowd_counts_word(&self) -> u32 {
+        self.last.as_ref().map_or(0, |(l, _)| {
+            CountLayout::crowd_word(l.kinds.len(), l.batches) as u32
+        })
+    }
+
+    /// Copies the frame's counts to a free readback, when `encode` was
+    /// asked for them and one is free: encoded after every cull that adds
+    /// to them (the crowds').
+    pub fn copy_counts(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        if !std::mem::take(&mut self.copy) {
+            return;
+        }
+        let Some((layout, given)) = self.last.clone() else {
+            return;
+        };
+        let bytes = CountLayout::words(layout.kinds.len(), layout.batches) * 4;
+        let Some(r) = self.readbacks.iter_mut().find(|r| {
+            r.layout.is_none()
+                && r.buffer.size() >= bytes
+                && r.mapped.lock().map(|m| m.is_none()).unwrap_or(false)
+        }) else {
+            return;
+        };
+        encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, bytes);
+        r.layout = Some(layout);
+        r.unmapped = true;
+        r.applied = given;
     }
 }

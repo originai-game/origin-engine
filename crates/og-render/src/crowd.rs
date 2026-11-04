@@ -564,7 +564,7 @@ mod tests {
     fn crowd_of(members: Vec<CrowdMember>, levels: usize) -> Crowd {
         Crowd {
             parts: vec![CrowdPart {
-                levels: (0..levels).map(|l| MeshHandle::from_index(l)).collect(),
+                levels: (0..levels).map(MeshHandle::from_index).collect(),
                 material: MaterialHandle::from_index(0),
             }],
             errors: [0.0, 0.02, 0.08][..levels].to_vec(),

@@ -2050,40 +2050,6 @@ impl Renderer {
                     );
                 }
             }
-            // The crowds, after the pyramid's last build (the meshlets'
-            // first phase draws into its depth).
-            if crowd_gpu {
-                let gc = self.gpu_cull.as_ref().expect("made above");
-                let (half_tan, ortho_height) = match scene.camera.projection {
-                    Projection::Perspective { fov_y_degrees } => {
-                        (Some((fov_y_degrees.to_radians() * 0.5).tan()), 0.0)
-                    }
-                    Projection::Orthographic { height } => (None, height),
-                };
-                let index_counts: Vec<u32> =
-                    crowd_frame.draws.iter().map(|d| d.index_count).collect();
-                let cc = self
-                    .crowd_gpu
-                    .as_mut()
-                    .expect("made when crowd_gpu was decided");
-                commands.push(cc.encode(
-                    &self.device,
-                    &self.queue,
-                    &crowd_frame,
-                    &index_counts,
-                    &cull_passes,
-                    &crowd_gpu::CrowdView {
-                        position: camera.position,
-                        half_tan,
-                        ortho_height,
-                        view_height: self.height as f32,
-                        view_proj: cam.jittered_view_proj,
-                        size: (self.width, self.height),
-                        pyramid: gc.pyramid(),
-                    },
-                    crowd_previous.map_or(0, |at| at + 1),
-                ));
-            }
             commands
         } else {
             if let Some(m) = self.meshlet.as_mut() {
@@ -3810,6 +3776,46 @@ impl Renderer {
                 }),
             gpu_set,
         );
+        // The crowds' cull, in the frame's (timed) encoder: after GPU
+        // culling's commands and the pyramid's last build (the meshlets'
+        // first phase draws into its depth), before any pass draws them.
+        if crowd_gpu {
+            let gc = self.gpu_cull.as_ref().expect("made above");
+            let (half_tan, ortho_height) = match scene.camera.projection {
+                Projection::Perspective { fov_y_degrees } => {
+                    (Some((fov_y_degrees.to_radians() * 0.5).tan()), 0.0)
+                }
+                Projection::Orthographic { height } => (None, height),
+            };
+            let index_counts: Vec<u32> = crowd_frame.draws.iter().map(|d| d.index_count).collect();
+            let cc = self
+                .crowd_gpu
+                .as_mut()
+                .expect("made when crowd_gpu was decided");
+            cc.encode(
+                &mut encoder,
+                &self.device,
+                &self.queue,
+                &crowd_frame,
+                &index_counts,
+                &cull_passes,
+                &crowd_gpu::CrowdView {
+                    position: camera.position,
+                    half_tan,
+                    ortho_height,
+                    view_height: self.height as f32,
+                    view_proj: cam.jittered_view_proj,
+                    size: (self.width, self.height),
+                    pyramid: gc.pyramid(),
+                },
+                crowd_previous.map_or(0, |at| at + 1),
+                (&gc.args, gc.crowd_counts_word()),
+            );
+        }
+        // GPU culling's counts' readback, after every cull that writes them.
+        if gpu_cull && let Some(gc) = self.gpu_cull.as_mut() {
+            gc.copy_counts(&mut encoder);
+        }
         // The wind field and the trample map step before any pass reads them.
         self.wind_field.encode(&mut encoder);
         self.trample.encode(&mut encoder);

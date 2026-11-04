@@ -5,10 +5,13 @@
 //! row the visible members' skinned records and each (crowd, part, level)'s
 //! indexed indirect draw. It runs after GPU culling's encode, so the
 //! camera's row tests the depth pyramid that frame's occluders built
-//! (cull_gpu.rs); without one it tests the frustum alone.
+//! (cull_gpu.rs); without one it tests the frustum alone. Its counts (the
+//! camera's hidden and drawn records, the shadow passes' records) join GPU
+//! culling's in the frame's stats: written after the draws and copied into
+//! GPU culling's count words before their readback.
 
 use crate::crowd::{CROWD_CULL_WGSL, CrowdFrame};
-use crate::cull_gpu::{CullPass, PassKind};
+use crate::cull_gpu::{CROWD_COUNT_WORDS, CullPass, PassKind};
 use crate::skin::SKINNED_INSTANCE_STRIDE;
 use glam::{Mat4, Vec3};
 
@@ -53,6 +56,7 @@ pub(crate) struct CrowdCulling {
     scan_blocks: wgpu::ComputePipeline,
     prefix: wgpu::ComputePipeline,
     scatter: wgpu::ComputePipeline,
+    totals: wgpu::ComputePipeline,
     params: wgpu::Buffer,
     members: wgpu::Buffer,
     crowds: wgpu::Buffer,
@@ -63,7 +67,8 @@ pub(crate) struct CrowdCulling {
     /// Row r's visible members' records from r × `n` (vertex buffer 1 of
     /// the skinned draws).
     pub records: wgpu::Buffer,
-    /// Per (row, draw) five words of DrawIndexedIndirect.
+    /// Per (row, draw) five words of DrawIndexedIndirect, then the frame's
+    /// counts ([`CROWD_COUNT_WORDS`]).
     pub args: wgpu::Buffer,
     no_pyramid: wgpu::TextureView,
     max_binding: u64,
@@ -177,6 +182,7 @@ impl CrowdCulling {
             scan_blocks: compute("scan_blocks"),
             prefix: compute("prefix"),
             scatter: compute("scatter"),
+            totals: compute("totals"),
             params: buffer(
                 device,
                 "crowd cull params",
@@ -199,7 +205,9 @@ impl CrowdCulling {
                 device,
                 "crowd draws (indirect)",
                 16,
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
+                wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::INDIRECT
+                    | wgpu::BufferUsages::COPY_SRC,
             ),
             layout,
             no_pyramid,
@@ -218,7 +226,7 @@ impl CrowdCulling {
     }
 
     fn scan_words(n: u32, rows: usize) -> u64 {
-        rows as u64 * (n as u64 + 1 + n.div_ceil(WORKGROUP) as u64)
+        rows as u64 * (n as u64 + 1 + 2 * n.div_ceil(WORKGROUP) as u64)
     }
 
     /// Where row `row`'s records start in [`Self::records`], in bytes.
@@ -245,13 +253,17 @@ impl CrowdCulling {
         true
     }
 
-    /// Encodes the crowd cull of `frame` for the frame's GPU culling
+    /// Encodes into the frame's `encoder` (its pass timed as
+    /// "cull: crowds") the crowd cull of `frame` for the frame's GPU culling
     /// `passes` (a row each, except the occluders' pass, which draws no
     /// crowd). `previous_base`: the palette slot of the first member's
-    /// previous transform, plus one (0: no motion vectors).
+    /// previous transform, plus one (0: no motion vectors). `counts`: the
+    /// buffer and word its counts are copied to (GPU culling's `args` at
+    /// `crowd_counts_word`).
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &mut self,
+        encoder: &mut crate::timing::Encoder,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         frame: &CrowdFrame,
@@ -259,7 +271,8 @@ impl CrowdCulling {
         passes: &[CullPass],
         view: &CrowdView<'_>,
         previous_base: u32,
-    ) -> wgpu::CommandBuffer {
+        counts: (&wgpu::Buffer, u32),
+    ) {
         let n = frame.len();
         let d = frame.draws.len() as u32;
         self.rows_of = passes
@@ -321,7 +334,7 @@ impl CrowdCulling {
             device,
             &mut self.args,
             "crowd draws (indirect)",
-            r as u64 * d as u64 * 20,
+            (r as u64 * d as u64 * 5 + CROWD_COUNT_WORDS) * 4,
         );
         queue.write_buffer(&self.members, 0, members);
         queue.write_buffer(&self.crowds, 0, crowds);
@@ -395,9 +408,6 @@ impl CrowdCulling {
                 },
             ],
         });
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("crowd cull"),
-        });
         if n > 0 && r > 0 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("cull: crowds"),
@@ -412,7 +422,16 @@ impl CrowdCulling {
             pass.dispatch_workgroups(blocks, r, 1);
             pass.set_pipeline(&self.scatter);
             pass.dispatch_workgroups(blocks, r, 1);
+            pass.set_pipeline(&self.totals);
+            pass.dispatch_workgroups(1, 1, 1);
+            drop(pass);
+            encoder.copy_buffer_to_buffer(
+                &self.args,
+                r as u64 * d as u64 * 20,
+                counts.0,
+                counts.1 as u64 * 4,
+                CROWD_COUNT_WORDS * 4,
+            );
         }
-        encoder.finish()
     }
 }
