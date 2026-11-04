@@ -10,7 +10,9 @@
 // traveller on the right.
 //
 // Commands (dev builds): `shot:<n>` picks the view (0 the hero framing,
-// 1 a step further back).
+// 1 a step further back, 2 close on the traveller), `brace:<seconds>`
+// has the traveller brace against the wind, a hand on the hood
+// (og.motion.react with actions/brace.ogt).
 //
 //   og run examples/site-hero --size 1920x1080 --commands "6:screenshot:frame0.png;6.1:quit"
 
@@ -24,7 +26,7 @@ const HOUR = 17.115;
 const AZIMUTH = -122;
 
 export const View = defineResource("View", {
-  shot: u32(0, { max: 1, doc: "The view: 0 the hero framing, 1 a step further back." }),
+  shot: u32(0, { max: 2, doc: "The view: 0 the hero framing, 1 a step further back, 2 close on the traveller." }),
 });
 
 const scene = { terrain: 0 as unknown as TerrainData, traveller: 0 as unknown as Entity };
@@ -51,6 +53,10 @@ const SHOTS = [
   { x: -3, z: 14, up: 2.6, yaw: 12, pitch: -7, fov: 44 },
 ];
 const TRAVELLER = { x: 4, z: -3.2 };
+/** The close view: the eye beside the traveller on the meadow side, in front of his left shoulder, looking at his chest. */
+const CLOSE = { dx: 2.8, dz: -2.1, up: 1.4, aim: 1.0, fov: 36 };
+/** Where the gusts come from (og.Wind blows along +x, +z): the brace faces it. */
+const WIND_FROM = { x: -0.8, y: 0, z: -0.6 };
 
 function start(world: World): void {
   const sun = must(world.spawn({ name: "sun" }));
@@ -134,9 +140,19 @@ function start(world: World): void {
   must(world.resource(og.RenderSettings)).sky = true;
 }
 
-const Frame = defineSystem("Frame", { reads: [View], writes: [og.Camera] }, (_q, _time, world) => {
-  const s = SHOTS[must(world.resource(View)).shot] ?? SHOTS[0]!;
+const Frame = defineSystem("Frame", { reads: [View, og.Transform], writes: [og.Camera] }, (_q, _time, world) => {
+  const n = must(world.resource(View)).shot;
   const cam = must(world.resource(og.Camera));
+  if (n === 2) {
+    const t = must(world.get(scene.traveller, og.Transform)).position;
+    const x = t.x + CLOSE.dx;
+    const z = t.z + CLOSE.dz;
+    cam.position = { x, y: Math.max(ground(world, x, z), t.y) + CLOSE.up, z };
+    cam.quaternion = og.transform.lookAt(cam.position, { x: t.x, y: t.y + CLOSE.aim, z: t.z });
+    cam.fov = CLOSE.fov;
+    return;
+  }
+  const s = SHOTS[n] ?? SHOTS[0]!;
   cam.position = { x: s.x, y: ground(world, s.x, s.z) + s.up, z: s.z };
   const yaw = og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, -s.yaw * DEG);
   const pitch = og.transform.fromAxisAngle({ x: 1, y: 0, z: 0 }, s.pitch * DEG);
@@ -146,8 +162,14 @@ const Frame = defineSystem("Frame", { reads: [View], writes: [og.Camera] }, (_q,
 
 function shot(world: World, args: readonly string[]): void {
   const n = Number(args[0]);
-  if (!Number.isInteger(n) || n < 0 || n >= SHOTS.length) throw new Error(`write shot:<0..${SHOTS.length - 1}>`);
+  if (!Number.isInteger(n) || n < 0 || n > SHOTS.length) throw new Error(`write shot:<0..${SHOTS.length}>`);
   must(world.resource(View)).shot = n;
+}
+
+function brace(world: World, args: readonly string[]): void {
+  const seconds = args.length ? Number(args[0]) : 1.5;
+  if (!(seconds >= 0)) throw new Error("write brace:<seconds held>");
+  must(og.motion.react(world, scene.traveller, { action: "actions/brace.ogt", direction: WIND_FROM, strength: 1, duration: seconds, blend: 0.25 }));
 }
 
 export default og.game({
@@ -157,8 +179,11 @@ export default og.game({
   resources: [View],
   systems: [Frame],
   start,
-  commands: { shot },
-  commandHelp: { shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back)." } },
+  commands: { shot, brace },
+  commandHelp: {
+    shot: { usage: "<n>", doc: "Pick the view (0 the hero framing, 1 a step further back, 2 close on the traveller)." },
+    brace: { usage: "<seconds>", doc: "Brace against the wind, a hand on the hood, held this long (1.5 s if omitted)." },
+  },
   facts: (world) => {
     const t = world.get(scene.traveller, og.Transform);
     return t.ok ? { traveller: t.value.position } : null;
