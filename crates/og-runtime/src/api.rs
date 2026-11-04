@@ -506,7 +506,9 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
                 Ok(unsafe { f.ctx() }.is_alive(e))
             })?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
-            let bytes = layout.encode(None, Some(&parse(value.as_deref())?))?;
+            let value = parse(value.as_deref())?;
+            let bytes = layout.encode(None, Some(&value))?;
+            layout.check_ranges(&value)?;
             queued_structural();
             // SAFETY: the frame is published while its system runs.
             unsafe { f.ctx() }.insert_bytes(e, id, &bytes).map_err(err)
@@ -520,6 +522,7 @@ pub fn og_world_insert(world: u32, entity_id: f64, comp: String, value: Option<S
         let (layout, id) = component(&eng, &comp)?;
         let value = parse(value.as_deref())?;
         let bytes = layout.encode(None, Some(&value))?;
+        layout.check_ranges(&value)?;
         before_structural(&eng);
         eng.world()?.insert_bytes(e, id, &bytes).map_err(err)
     })())

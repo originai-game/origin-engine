@@ -690,7 +690,7 @@ fn has {
 
 #### `World.insert`
 
-Add a component to an entity, or overwrite it when present. A structural change.
+Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value.
 
 ```ts
 World.insert<C extends AnyComponent>(entity: Entity, component: C, value?: Partial<Value<C>>): Result<void>
@@ -702,20 +702,20 @@ World.insert<C extends AnyComponent>(entity: Entity, component: C, value?: Parti
 | `component` | `C` | no | The component token. |
 | `value` | `Partial<Value<C>>` | yes | Field values; omitted fields take their defaults. |
 
-**Returns** `Result<void>`: Refused for a dead entity or an unregistered component.
+**Returns** `Result<void>`: Refused for a dead entity, an unregistered component or a field outside its reflected range.
 
 Binding symbol `og_world_insert` · publish builds: kept
 
 ```ogt
 fn insert {
-  doc "Add a component to an entity, or overwrite it when present. A structural change."
+  doc "Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value."
   generic C AnyComponent
   param entity Entity "The entity."
   param component C "The component token."
   param value Partial.Value.C "Field values; omitted fields take their defaults." {
     optional true
   }
-  returns Result.Void "Refused for a dead entity or an unregistered component."
+  returns Result.Void "Refused for a dead entity, an unregistered component or a field outside its reflected range."
 }
 ```
 

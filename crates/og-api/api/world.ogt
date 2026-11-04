@@ -262,14 +262,14 @@ module world {
     }
 
     fn insert {
-      doc "Add a component to an entity, or overwrite it when present. A structural change."
+      doc "Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value."
       generic C AnyComponent
       param entity Entity "The entity."
       param component C "The component token."
       param value Partial.Value.C "Field values; omitted fields take their defaults." {
         optional true
       }
-      returns Result.Void "Refused for a dead entity or an unregistered component."
+      returns Result.Void "Refused for a dead entity, an unregistered component or a field outside its reflected range."
     }
 
     fn remove {

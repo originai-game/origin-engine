@@ -1071,7 +1071,7 @@ export declare const math: ScalarMath;
 // A handle (an og.load answer, a texture, a sound, a geometry, a material, an entity) is a 64-bit number: keep it in a field of its own kind (`Asset()`, `Texture()`, `Sound()`, `Font()`, `Style()`, `Geometry()`, `Material()`, `Entity()`: every handle type of the API has its factory, named as the type), never cast to another kind, in a component or a resource. A `u32` field refuses one (handles pass 2^32: `4294967298 is not a u32`); an `f64` holds the number but loses its type.
 
 /**
- * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.
+ * Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: world.insert and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. Game code's other writes (world.set, a resource field, a column) are stored as given.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -1705,12 +1705,12 @@ export interface World {
    */
   has<C extends AnyComponent>(entity: Entity, component: C): boolean;
   /**
-   * Add a component to an entity, or overwrite it when present. A structural change.
+   * Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value.
    *
    * @param entity The entity.
    * @param component The component token.
    * @param value Field values; omitted fields take their defaults.
-   * @returns Refused for a dead entity or an unregistered component.
+   * @returns Refused for a dead entity, an unregistered component or a field outside its reflected range.
    */
   insert<C extends AnyComponent>(entity: Entity, component: C, value?: Partial<Value<C>>): Result<void>;
   /**

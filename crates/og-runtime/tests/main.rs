@@ -21,6 +21,7 @@ mod display;
 mod drop_shadows;
 mod garment;
 mod geometry_uv_repeat;
+mod insert_ranges;
 #[cfg(not(feature = "publish"))]
 mod inspector;
 mod material_arrays;

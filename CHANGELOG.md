@@ -15,6 +15,9 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: insert ranges.** `world.insert` now refuses values outside
+  reflected min/max on both hosts, before mutation or deferred insertion.
+  Fix out-of-range component initializers; ordinary field writes are unchanged.
 - **Terrain projection diagnostics.** `terrainProjection` shows the dominant
   raw layer's unobscured XYZ weights; `terrainDensity` shows its per-axis
   vertical albedo texel footprints. Entity dumps document their units.
