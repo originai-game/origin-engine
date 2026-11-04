@@ -2440,6 +2440,9 @@ pub fn seeds() -> Vec<StyleChoices> {
                     "ObjectiveTracker.frame",
                     &["fill hud", "stroke 1 line inside"],
                 ),
+                // The compass on the HUD's plate, so a clamped marker's
+                // distance reads over a sunset sky (220m was 2.44:1).
+                ("Compass.strip", &["fill hud", "stroke 1 line inside"]),
             ]),
             ..seed(
                 "foundry",

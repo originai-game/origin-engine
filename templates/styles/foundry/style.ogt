@@ -341,6 +341,10 @@ dress "ObjectiveTracker.frame" {
   fill hud
   stroke 1 line inside
 }
+dress "Compass.strip" {
+  fill hud
+  stroke 1 line inside
+}
 dress "Inventory.item" {
   stroke 2 lineStrong inside
   effect innerShadow 0 3 0 0 "#0000001f"
