@@ -289,6 +289,47 @@ module terrain {
       unit s
       tunable true
     }
+    field types List.Entity.3 "Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped."
+    field typeMap Texture "Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share."
+    field densityMap Texture "Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none."
+    field heightMap Texture "Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none."
+  }
+
+  component GrassType {
+    doc "Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is the field's."
+    field height f32 "The tallest blade of this kind." {
+      default 0.45
+      min 0
+      max 4
+      unit m
+      tunable true
+    }
+    field width f32 "A blade's width at its root." {
+      default 0.012
+      min 0
+      max 0.5
+      unit m
+      tunable true
+    }
+    field curve f32 "How far its blades droop along their length: 0 straight, 1 arching over." {
+      default 0.5
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
+    field baseColor Color "The roots' colour (linear)." {
+      default 0.04 0.085 0.024
+    }
+    field tipColor Color "The tips' colour (linear): a flower's petals." {
+      default 0.235 0.39 0.11
+    }
+    field share f32 "How many clumps grow this kind for each one of the field's own, where no typeMap says." {
+      default 1
+      min 0
+      max 100
+      tunable true
+    }
   }
 
   component GrassPusher {

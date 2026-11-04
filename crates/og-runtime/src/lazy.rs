@@ -310,6 +310,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.GrassPusher",
         enable: |_, _| Ok(()),
     },
+    // G4: the kinds of blade og.Grass fields list.
+    Lazy {
+        name: "og.GrassType",
+        enable: |_, _| Ok(()),
+    },
     // R4: the weather's simulated state and its strikes; og.weather writes
     // and sends them. Naming either registers both.
     Lazy {

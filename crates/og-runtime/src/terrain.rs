@@ -1317,6 +1317,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // and drawn by the renderer.
     rs.scene.grass.clear();
     let layout = rs.draw.grass.clone();
+    // og.GrassType: the kinds of blade fields list in `types`, by entity.
+    let kinds: og_core::IdMap<u64, og_render::GrassType> = rows(world, rs.draw.grass_type.as_ref())
+        .into_iter()
+        .map(|(e, v)| {
+            let d = og_render::GrassType::default();
+            let kind = og_render::GrassType {
+                height: f(&v, "height", d.height),
+                width: f(&v, "width", d.width),
+                curve: f(&v, "curve", d.curve),
+                base_color: color(&v["baseColor"], d.base_color),
+                tip_color: color(&v["tipColor"], d.tip_color),
+                share: f(&v, "share", d.share),
+            };
+            (e, kind)
+        })
+        .collect();
+    let texture = |v: &Value| super::fx::handle_index(v).and_then(|i| rs.textures.get(i).copied());
     for (e, v) in rows(world, layout.as_ref()) {
         let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
             continue;
@@ -1330,6 +1347,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             continue;
         };
         let d = og_render::Grass::default();
+        let listed = v["types"].as_array().map_or(&[][..], Vec::as_slice);
+        let mut types = listed
+            .iter()
+            .filter_map(|t| kinds.get(&(t.as_f64().unwrap_or(0.0) as u64)).copied());
+        let types = [types.next(), types.next(), types.next()];
+        let (type_map, density_map, height_map) = (
+            texture(&v["typeMap"]),
+            texture(&v["densityMap"]),
+            texture(&v["heightMap"]),
+        );
         rs.scene.grass.push(og_render::GrassDraw {
             terrain,
             grass: og_render::Grass {
@@ -1359,6 +1386,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 cast_shadows: on(&v, "castShadows", d.cast_shadows),
                 seed: u(&v, "seed", d.seed),
                 recovery: f(&v, "recovery", d.recovery),
+                types,
+                type_map,
+                density_map,
+                height_map,
             },
         });
     }

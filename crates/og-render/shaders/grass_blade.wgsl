@@ -29,6 +29,9 @@ struct GrassUniform {
   dry_color: vec4<f32>,   // rgb: dry grass, w: roughness
   variation: vec4<f32>,   // x: colour variation, y: dryness, z: patch size (m), w: the field's distance (m)
   rows: vec4<u32>,      // rows of each level of detail
+  // Per kind of blade, the field's own first (grass.rs Grass::kinds):
+  // [2k] rgb its roots' colour, w its curve; [2k + 1] rgb its tips'.
+  kinds: array<vec4<f32>, 8>,
   wind: WindField,
 };
 
@@ -98,12 +101,11 @@ fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
   let across = vec3<f32>(face.y, 0.0, -face.x);
 
   // Tall blades droop the most, each its own amount.
-  let droop = grass.shape.z * grass_random(b, 0x7c2u) * (0.5 + 0.5 * b.height);
+  let droop = grass.kinds[b.kind * 2u].w * grass_random(b, 0x7c2u) * (0.5 + 0.5 * b.height);
   let bend = select(b.bend, b.previous_bend, eye.previous);
   let curve = grass_curve(height, bend, droop);
-  let u = 1.0 - t;
-  var point = curve[0] * (u * u) + curve[1] * (2.0 * u * t) + curve[2] * (t * t);
-  let tangent = normalize((curve[1] - curve[0]) * (2.0 * u) + (curve[2] - curve[1]) * (2.0 * t) + vec3<f32>(0.0, 1e-5, 0.0));
+  var point = grass_curve_point(curve, t);
+  let tangent = normalize(grass_curve_tangent(curve, t) + vec3<f32>(0.0, 1e-5, 0.0));
   if (r.lod == 0u) {
     point += across * grass_flutter(grass.wind, grass.shape.w, b.seed, t, height, eye.previous);
   }
@@ -129,7 +131,7 @@ fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
 fn grass_color(b: GrassBlade, t: f32) -> vec3<f32> {
   let v = grass.variation.x;
   let shade = mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, b.clump) * (1.0 + v * (0.2 * b.seed - 0.1));
-  var c = mix(grass.base_color.rgb, grass.tip_color.rgb, pow(t, 0.7)) * shade;
+  var c = mix(grass.kinds[b.kind * 2u].rgb, grass.kinds[b.kind * 2u + 1u].rgb, pow(t, 0.7)) * shade;
   // Patches: the noise, turned so its lattice does not run along the world's axes.
   let at = (b.root.xz + grass.wind.time.zw) / max(grass.variation.z, 0.1);
   let patch_uv = vec2<f32>(at.x * 0.83 - at.y * 0.56, at.x * 0.56 + at.y * 0.83);

@@ -174,6 +174,13 @@ is one line here, written at the merge that changes
     carries the painterly detail byte above its 16 bits (ssr.wgsl reads
     the low bits).
 
+- **Several kinds of blade per grass field, painted maps, no popping
+  (G4).** og.Grass gains `types` (up to three more og.GrassType kinds:
+  height, width, curve, colours, share; each clump grows one), `typeMap`,
+  `densityMap` and `heightMap` over the terrain's extent. Blades are now
+  cubic Bezier curves (Ghost of Tsushima's stem, midpoint and tip), and a
+  blade about to be thinned out shrinks to nothing first instead of
+  popping. New members, compatible; grass frames move slightly.
 - **Grass trample (G3).** Where compute runs, a camera-centred 64 m
   trample map (0.25 m cells) records where `og.GrassPusher` capsules
   stand; grass blades under them are pressed down and away, and

@@ -256,3 +256,200 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
         "recovered: {back} of {untouched}"
     );
 }
+
+/// G4's map field: blades 0.3 m tall over the meadow's dark ground, seen
+/// from 2.5 m up looking down the field, under a sun from above, so the
+/// frame's left and right halves are the terrain's two sides of x = 0.
+fn map_scene(own: Vec3) -> RenderScene {
+    let mut scene = trample_scene();
+    let g = &mut scene.grass[0].grass;
+    g.distance = 6.0;
+    g.height = 0.3;
+    g.width = 0.02;
+    g.density = 200.0;
+    g.base_color = own;
+    g.tip_color = own;
+    scene.light.direction_to_light = Vec3::new(0.0, 1.0, 0.0);
+    scene.camera.position = Vec3::new(0.0, 2.5, -1.0);
+    scene.camera.target = Vec3::new(0.0, 0.0, 2.0);
+    scene
+}
+
+/// A map over the 64 m terrain: its left half (u < 0.5, the terrain's -x
+/// side) `left`, the rest `right`.
+fn half_map(scene: &mut RenderScene, left: [u8; 4], right: [u8; 4]) -> og_render::TextureHandle {
+    let rgba = (0..4)
+        .flat_map(|_| (0..64).flat_map(move |x| if x < 32 { left } else { right }))
+        .collect();
+    scene.add_texture(og_render::TextureData {
+        width: 64,
+        height: 4,
+        rgba,
+        color_space: og_render::ColorSpace::Linear,
+        mips: og_render::Mips::None,
+    })
+}
+
+/// Pixels of each screen half (leaving out the middle tenth) that `is`
+/// accepts: (left, right).
+fn halves(img: &RgbaImage, is: impl Fn([f32; 3]) -> bool) -> (usize, usize) {
+    let (mut l, mut r) = (0, 0);
+    for y in 0..img.height {
+        for x in 0..img.width {
+            let f = x as f32 / img.width as f32;
+            if (0.45..0.55).contains(&f) || !is(px(img, x, y)) {
+                continue;
+            }
+            if f < 0.5 { l += 1 } else { r += 1 }
+        }
+    }
+    (l, r)
+}
+
+fn red(p: [f32; 3]) -> bool {
+    p[0] > 20.0 && p[0] > 2.5 * p[1].max(p[2])
+}
+
+fn blue(p: [f32; 3]) -> bool {
+    p[2] > 20.0 && p[2] > 2.5 * p[0].max(p[1])
+}
+
+/// G4: a densityMap black over one half of the terrain grows no blades
+/// there and the full field over the other. Before G4 the field had no
+/// densityMap: both halves grew alike.
+#[test]
+fn a_density_map_clears_the_meadow_where_it_is_black() {
+    let mut scene = map_scene(Vec3::new(0.9, 0.05, 0.05));
+    let map = half_map(&mut scene, [0, 0, 0, 255], [255; 4]);
+    let (before, _) = render(&scene);
+    scene.grass[0].grass.density_map = Some(map);
+    let (img, _) = render(&scene);
+    keep("grass-density-map", &img);
+    let (l0, r0) = halves(&before, red);
+    let (l, r) = halves(&img, red);
+    println!("red pixels: without the map {l0} | {r0}, with it {l} | {r}");
+    assert!(
+        l0 > 2000 && r0 > 2000,
+        "the meadow covers both halves: {l0} | {r0}"
+    );
+    // One half bare (the map's black side, whichever the camera shows on
+    // the left), the other as full as without the map.
+    let (bare, full, full0) = if l < r { (l, r, r0) } else { (r, l, l0) };
+    assert!(
+        bare * 50 < full0,
+        "the black half keeps {bare} of {full0} blade pixels"
+    );
+    assert!(
+        full as f32 > 0.8 * full0 as f32,
+        "the white half keeps {full} of {full0}"
+    );
+}
+
+/// G4: a second kind of blade (og.GrassType, blue) grows where the
+/// typeMap's red channel says, the field's own kind (red) elsewhere; with
+/// no typeMap both kinds grow everywhere, by their shares. Before G4 a
+/// field had one kind: no blue blade anywhere.
+#[test]
+fn a_type_map_grows_each_kind_where_it_says() {
+    let mut scene = map_scene(Vec3::new(0.9, 0.05, 0.05));
+    let blue_kind = og_render::GrassType {
+        height: 0.3,
+        width: 0.02,
+        base_color: Vec3::new(0.05, 0.05, 0.9),
+        tip_color: Vec3::new(0.05, 0.05, 0.9),
+        ..Default::default()
+    };
+    scene.grass[0].grass.types[0] = Some(blue_kind);
+    let (mixed, _) = render(&scene);
+    keep("grass-types-mixed", &mixed);
+    let map = half_map(&mut scene, [255, 0, 0, 255], [0, 0, 0, 255]);
+    scene.grass[0].grass.type_map = Some(map);
+    let (img, _) = render(&scene);
+    keep("grass-types-mapped", &img);
+    let ((rl0, rr0), (bl0, br0)) = (halves(&mixed, red), halves(&mixed, blue));
+    let ((rl, rr), (bl, br)) = (halves(&img, red), halves(&img, blue));
+    println!(
+        "mixed: red {rl0} | {rr0}, blue {bl0} | {br0}; mapped: red {rl} | {rr}, blue {bl} | {br}"
+    );
+    // By their shares (1 : 1), each kind on both halves.
+    for (n, what) in [
+        (rl0, "red left"),
+        (rr0, "red right"),
+        (bl0, "blue left"),
+        (br0, "blue right"),
+    ] {
+        assert!(n > 500, "unmapped, {what} covers {n} pixels");
+    }
+    // Mapped: each half one kind (the map's red side blue).
+    let (blue_side, red_side) = if bl > br {
+        ((bl, rl), (rr, br))
+    } else {
+        ((br, rr), (rl, bl))
+    };
+    assert!(
+        blue_side.0 > 20 * blue_side.1 && red_side.0 > 20 * red_side.1,
+        "mapped halves: blue side {blue_side:?} (blue, red), red side {red_side:?} (red, blue)"
+    );
+}
+
+/// The longest vertical run of pixels that differ by more than 40 between
+/// `a` and `b`.
+fn longest_changed_run(a: &RgbaImage, b: &RgbaImage) -> u32 {
+    let mut best = 0;
+    for x in 0..a.width {
+        let mut run = 0;
+        for y in 0..a.height {
+            let (p, q) = (px(a, x, y), px(b, x, y));
+            if (0..3).any(|k| (p[k] - q[k]).abs() > 40.0) {
+                run += 1;
+                best = best.max(run);
+            } else {
+                run = 0;
+            }
+        }
+    }
+    best
+}
+
+/// The longest vertical run of red pixels: the tallest blade on screen.
+fn longest_red_run(img: &RgbaImage) -> u32 {
+    let mut best = 0;
+    for x in 0..img.width {
+        let mut run = 0;
+        for y in 0..img.height {
+            if red(px(img, x, y)) {
+                run += 1;
+                best = best.max(run);
+            } else {
+                run = 0;
+            }
+        }
+    }
+    best
+}
+
+/// G4: a blade about to be thinned out has already shrunk to nothing, so
+/// a field thinned a little (density 40 to 39 blades per square metre:
+/// the same blue-noise layout, 2.5 % of its candidates over their keep
+/// threshold) changes only the tips of the blades near it. Before G4 those
+/// blades vanished whole: a full blade's height of changed pixels.
+#[test]
+fn a_thinned_field_shrinks_blades_rather_than_popping_them() {
+    let mut scene = trample_scene();
+    let g = &mut scene.grass[0].grass;
+    g.distance = 6.0;
+    g.density = 40.0;
+    g.width = 0.03;
+    let (a, _) = render(&scene);
+    scene.grass[0].grass.density = 39.0;
+    let (b, _) = render(&scene);
+    keep("grass-thinned", &b);
+    let tallest = longest_red_run(&a);
+    let changed = longest_changed_run(&a, &b);
+    println!("tallest blade {tallest} px, longest changed run {changed} px");
+    assert!(tallest > 60, "the nearest blades stand {tallest} px tall");
+    assert!(
+        (changed as f32) < 0.3 * tallest as f32,
+        "a thinned blade changed {changed} px of a {tallest} px blade"
+    );
+}
