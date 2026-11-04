@@ -592,7 +592,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     // eye, not gated (disabled and decorative text textBoxes leaves out).
     const high = cell.highContrast || v.highContrast || f.contrast === "high";
     const bar = high ? 7 : 3;
-    for (const b of textBoxes(opts.image, scaled)) {
+    for (const b of textBoxes(opts.image, scaled, new Set(), (n) => laidInk(f, f.elements[n]!))) {
       if (b.contrast >= (high ? 7 : 4.5)) continue;
       const i = scaled.elements.findIndex((e) => e.id === b.id && e.text === b.text);
       if (i >= 0 && !gated(f, f.elements[i]!)) continue;
@@ -918,8 +918,26 @@ export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">,
   return true;
 }
 
-function readsAsText(e: UiElementDump, byId: Map<string, UiElementDump>): boolean {
-  if (PICTURES.has(e.kind ?? "") || e.clipped) return false;
+/**
+ * Whether the layout draws an element's text at full ink where it can be
+ * read: a run of it drawn at half its colour's alpha or more (not faded out,
+ * not mid-fade) with at least 60 % of its line's height and 6 px of its width
+ * in view. Such text is measured even when a scroll cuts its element, and
+ * when it shows no ink at all it reads 1:1: the most invisible line is the
+ * one that most needs reporting ("Inventory" in navy on indigo).
+ */
+function laidInk(f: Pick<UiFrameSnapshot, "texts">, e: UiElementDump): boolean {
+  return f.texts.some((t) => {
+    if ((t.color[3] ?? 1) < 0.5) return false;
+    const [bx, by, bw, bh] = t.bounds;
+    const x0 = Math.max(bx, t.clip[0], e.x - 1), y0 = Math.max(by, t.clip[1], e.y - 1);
+    const x1 = Math.min(bx + bw, t.clip[0] + t.clip[2], e.x + e.width + 1), y1 = Math.min(by + bh, t.clip[1] + t.clip[3], e.y + e.height + 1);
+    return y1 - y0 >= 0.6 * bh && x1 - x0 >= 6;
+  });
+}
+
+function readsAsText(e: UiElementDump, byId: Map<string, UiElementDump>, laid = false): boolean {
+  if (PICTURES.has(e.kind ?? "") || (e.clipped && !laid)) return false;
   for (let at: UiElementDump | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) {
     if (at.disabled) return false;
   }
@@ -963,14 +981,17 @@ function behindScrim(ui: UiDump): Set<number> {
  * (kestrel-stair FINDINGS #20: "You" on a 356 px row) reads what its
  * letters show, not its antialiased edges diluted by the empty rest. A
  * rectangle with no ink is not drawn (covered by a transition, faded out)
- * and is left out. `moving` (indices) are mid-transition and left out too.
+ * and is left out, unless `laid` says the layout draws it at full ink: then
+ * it is measured cut by a scroll too, and no ink reads 1:1. `moving`
+ * (indices) are mid-transition and left out too.
  */
-export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set()): TextBox[] {
+export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(), laid: (n: number) => boolean = () => false): TextBox[] {
   const out: TextBox[] = [];
   const byId = new Map(ui.elements.map((e) => [e.id, e]));
   const dimmed = behindScrim(ui);
   for (const [n, e] of ui.elements.entries()) {
-    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId) || e.width < 6 || e.height < 6) continue;
+    const drawn = laid(n);
+    if (dimmed.has(n) || moving.has(n) || !/[\p{L}\p{N}]/u.test(e.text) || !readsAsText(e, byId, drawn) || e.width < 6 || e.height < 6) continue;
     // A pill's rounded ends show what is behind it: inset a wide element's ends.
     const ix = e.width > 3 * e.height ? Math.min(e.height / 2, 12) : 0, iy = e.height * 0.12;
     const x0 = Math.max(0, Math.floor(e.x + ix)), y0 = Math.max(0, Math.floor(e.y + iy));
@@ -988,7 +1009,10 @@ export function textBoxes(img: Image, ui: UiDump, moving: Set<number> = new Set(
     // stray pixel does not set it), then the glyphs: every pixel at least
     // half-way to it, on the side most of them are.
     const peak = pct(dev, 0.998);
-    if (peak < 0.01) continue;
+    if (peak < 0.01) {
+      if (drawn) out.push({ id: e.id, text: e.text, contrast: 1, ink: 0 });
+      continue;
+    }
     let up = 0, down = 0;
     for (let k = 0; k < lum.length; k++) {
       if (dev[k]! < peak / 2) continue;

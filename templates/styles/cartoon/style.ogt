@@ -7,8 +7,8 @@ scheme light
 atlas "atlas.png" 512 518 2 3
 scale 1
 palette {
-  backdrop "#2a1d5c"
-  well "#33246e"
+  backdrop "#f9dca4"
+  well "#ecd6a8"
   panel "#fff4dc"
   panelHover "#ffe9bd"
   panelRaised "#fff4dc"

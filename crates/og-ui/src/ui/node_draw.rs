@@ -33,7 +33,19 @@ impl Ui {
         let p = &t.palette;
         let n = &self.nodes[i];
         let rect = n.rect;
-        let clip = n.clip;
+        // A ring sits outside its control, so a scroll that clips the
+        // control to its box cut the ring of a row as wide as the scroll
+        // to its top and bottom: the ring takes the scroll's clip widened
+        // by its reach, still inside what clips the scroll itself.
+        let pads = if n.pad_rings != 0 { 8.0 } else { 0.0 };
+        let reach = (t.space.xxs * pads)
+            .max(t.tokens.stroke(crate::tokens::StrokeWidth::Focus) + t.space.xxs);
+        let clip = match n.clip_src {
+            src if src != NONE && self.drawing.is_identity() => {
+                n.clip.outset(reach).intersect(&self.nodes[src].clip)
+            }
+            _ => n.clip,
+        };
         let alpha = n.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,

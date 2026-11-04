@@ -1184,3 +1184,75 @@ fn every_packs_bag_cell_takes_its_slots_selected_and_tier_marks() {
     }
     assert!(packs >= 12, "{packs} packs");
 }
+
+/// A focus ring sits outside its control: a row as wide as its scroll had
+/// the ring cut to the scroll's box, so only its top and bottom showed
+/// (cartoon's gallery rows). The ring's clip now reaches past the row's
+/// sides, still inside what clips the scroll.
+#[test]
+fn a_focus_ring_in_a_scroll_keeps_its_sides() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let build = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.open(
+            "Page",
+            Element {
+                padding: Insets::all(40.0),
+                ..Element::column()
+            },
+        );
+        ui.open(
+            "List",
+            Element {
+                width: Size::Fixed(200.0),
+                height: Size::Fixed(300.0),
+                scroll: true,
+                ..Element::column()
+            },
+        );
+        ui.open(
+            "Row",
+            Element {
+                width: Size::grow(),
+                height: Size::Fixed(40.0),
+                interactive: true,
+                focusable: true,
+                background: Some(Srgba::rgb(40, 40, 40)),
+                ..Element::row()
+            },
+        );
+        ui.close();
+        ui.close();
+        ui.close();
+        ui.end();
+    };
+    for _ in 0..3 {
+        build(&mut ui, InputFrame::default());
+    }
+    build(
+        &mut ui,
+        InputFrame {
+            keys: vec![UiKey::Tab],
+            ..InputFrame::default()
+        },
+    );
+    build(&mut ui, InputFrame::default());
+    let row = ui.frame().element("Row").unwrap().clone();
+    let (rx, rw) = (row.x, row.width);
+    let rings: Vec<(Rect, Rect)> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|it| match &it.cmd {
+            DrawCmd::Quad { rect, clip, .. } if rect.width > rw + 0.5 => Some((*rect, *clip)),
+            _ => None,
+        })
+        .collect();
+    assert!(!rings.is_empty(), "the ring is drawn");
+    for (r, clip) in rings {
+        assert!(
+            clip.x < rx - 1.0 && clip.x + clip.width > rx + rw + 1.0,
+            "the ring {r:?} keeps its sides: clip {clip:?}, row x {rx} width {rw}"
+        );
+    }
+}

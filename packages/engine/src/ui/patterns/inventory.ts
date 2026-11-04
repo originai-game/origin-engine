@@ -120,7 +120,11 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
       { kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(base, tier ? 0.42 : 0.12) }, { offset: 1, color: paint(base, tier ? 0.08 : 0.02) }] },
       ...(it.unusable ? [{ kind: "solid", color: paint(role("danger"), 0.22) } as Api.Fill] : []),
     ],
-    strokes: [line(rarityPips(it.rarity) >= 4 ? 2 : 1, paint(tier ? mix(base, role("ink"), 0.1) : role("line"), opts.dim ? 0.4 : 0.95))],
+    // Selected, the edge is lit in the focus ink with a halo fading outward, in place of the tier's edge: one
+    // stroke per cell, and a style's `Inventory.item[selected]` replaces it (the pips keep the tier).
+    strokes: opts.selected
+      ? [line(2, token("focus")), line(2, token("focus", 0.45), "outside"), line(6, token("focus", 0.14), "outside")]
+      : [line(rarityPips(it.rarity) >= 4 ? 2 : 1, paint(tier ? mix(base, role("ink"), 0.1) : role("line"), opts.dim ? 0.4 : 0.95))],
     ...(opts.raised ? { effects: [shadow(u(10), u(18), 0.55)] } : opts.selected ? { effects: [shadow(u(4), u(10), 0.6)] } : {}),
   });
   // The art, turned with the item when it lies turned: it is laid out unturned and rotated a quarter.
@@ -178,14 +182,6 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
     kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [line(2, token("highlight"))], effects: [{ kind: "innerGlow", blur: 10, spread: 0, color: token("highlight", 0.45) }] });
     kit.close();
     over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 2 });
-  }
-  if (opts.selected) {
-    // Selected: an edge lit in the focus ink with a halo fading outward, the art left clear (the tile also lifts on
-    // its shadow, above).
-    kit.open("Selected", { width: grow(), height: grow(), part: "Inventory.selected", partClass: "slot" });
-    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [line(2, token("focus")), line(2, token("focus", 0.45), "outside"), line(6, token("focus", 0.14), "outside")] });
-    kit.close();
-    over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
   }
   if (opts.lifted) {
     kit.open("Lifted", { width: grow(), height: grow() });
@@ -463,6 +459,8 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
     height: px(H),
     interactive: true,
     focusable: true,
+    // Its focus is the cursor on the cell (below), never a second ring around the whole grid.
+    ownRing: true,
     arrows,
     part: `Inventory.grid${flags(gridFocused && "focused", carrying && "carrying")}`,
     partClass: "slot",
@@ -579,11 +577,15 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
     // The cursor of keys and pads: a ring in the focus ink around the item or cell it is on.
     if (gridFocused && !(carrying && byFocus)) {
       const b = cursorBox;
-      kit.open("Cursor", { width: px(b.w * cs), height: px(b.h * cs), part: "Inventory.cursor", partClass: "slot" });
-      // A ring and a soft halo outside it, both strokes: a glow effect on a shape with no fill floods the item under it.
-      kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, strokes: [line(3, token("focus"), "inside"), line(3, token("focus", 0.35), "outside"), line(7, token("focus", 0.12), "outside")] });
+      // The style's focus ring (its `stroke { focus }`, 3 px in cartoon) outside a gap of what is behind, as og-ui
+      // rings a control: the cell's own rim (a tier's, a selection's) stays clear of it. A soft halo beyond it, a
+      // stroke too: a glow effect on a shape with no fill floods the item under it.
+      const fw = (frame().theme.tokens as { stroke?: Record<string, number> } | null)?.stroke?.focus ?? 3;
+      const g = Math.max(2, Math.round(frame().t.xxs));
+      kit.open("Cursor", { width: px(b.w * cs + 2 * g), height: px(b.h * cs + 2 * g), part: "Inventory.cursor", partClass: "slot" });
+      kit.setDraw({ shape: { kind: "rect", radii: [4 + g, 4 + g, 4 + g, 4 + g] }, strokes: [line(fw, token("focus"), "outside"), line(fw + 5, token("focus", 0.12), "outside")] });
       kit.close();
-      kit.props(overProps({ insets: { start: b.x * cs, top: b.y * cs }, inert: true, z: 30, layoutMotion: { kind: "token", token: "ui" } }));
+      kit.props(overProps({ insets: { start: b.x * cs - g, top: b.y * cs - g }, inert: true, z: 30, layoutMotion: { kind: "token", token: "ui" } }));
     }
   } finally {
     grid = kit.close() as Api.Response;
@@ -1005,12 +1007,15 @@ export function statLine(id: string, s: Api.PaperdollStat, compare: boolean): vo
   const d = s.delta ?? 0;
   const good = s.lowerIsBetter ? d < 0 : d > 0;
   const tone: Api.ThemeColor = d === 0 ? "inkMuted" : good ? "success" : "danger";
-  kit.row(id, { width: grow(), gap: u(8), cross: "center", padding: xy(0, u(3)), part: "Paperdoll.stat", partClass: "panel" }, () => {
+  // The change keeps about an em of its type from the value at any text size: its column grows past
+  // its 64 when the number needs it (at 150 % "−0.4 s" overran it onto the value).
+  const em = frame().theme.typeRamp[st(13)]?.size ?? 13;
+  kit.row(id, { width: grow(), gap: Math.max(u(8), em), cross: "center", padding: xy(0, u(3)), part: "Paperdoll.stat", partClass: "panel" }, () => {
     // At 200 % text a long label wraps to a second line rather than losing its end.
     text("Label", s.label ?? "", { step: st(14), color: "inkMuted", maxLines: 2, ellipsis: true, width: grow() });
     text("Value", s.value ?? "", { step: st(14), font: "mono", nowrap: true });
     if (compare) {
-      kit.row("Delta", { width: px(u(64)), gap: 0, cross: "center", align: "end", part: `Paperdoll.delta${flags(d > 0 ? "up" : d < 0 ? "down" : "")}`, partClass: "badge" }, () => {
+      kit.row("Delta", { width: { kind: "fit", min: u(64) }, gap: 0, cross: "center", align: "end", part: `Paperdoll.delta${flags(d > 0 ? "up" : d < 0 ? "down" : "")}`, partClass: "badge" }, () => {
         if (d === 0) return;
         // A signed number is one left-to-right run in every script (+48, −6 %): its sign (the real minus,
         // U+2212) before its digits, built the other way round right to left so the mirrored row still

@@ -163,6 +163,24 @@ test("contrast is measured on pixels: live text is an error under 3:1 and a warn
   expect(contrast(overScene, textImage(90, 150))).not.toBeDefined();
 });
 
+test("text the layout draws at full ink that shows none fails at 1:1; text faded out, or a sliver a scroll cuts, is left out", () => {
+  const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
+  type R4 = [number, number, number, number];
+  const run = (alpha: number, clip: R4 = [0, 0, 120, 40]) => [{ text: "Inventory", size: 16, bounds: [10, 12, 100, 16] as R4, clip, color: [0.1, 0.1, 0.2, alpha] }];
+  const at = (r: R4, clipped = false) => [el("Title", "", "label", "text", r, { text: "Inventory", clipped })];
+  const contrast = (fr: ReturnType<typeof frame>, img: ReturnType<typeof textImage>) => checkFrame(fr, cell, { image: img }).find((x) => x.rule === "contrast");
+  // Navy on indigo, as the pixels show it: the same value as the ground, no ink at all.
+  const blank = textImage(60, 60);
+  const laid = contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(1), grounds: [[0, 0, 120, 40]] }, vp), blank);
+  expect(laid?.severity).toBe("error");
+  expect(laid?.measured).toContain("1:1");
+  // Faded out (a transition, opacity 0): not drawn, not measured.
+  expect(contrast(frame({ elements: at([0, 0, 120, 40]), texts: run(0), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
+  // A scroll cuts it: most of its line in view is measured (its element is the part in view), a sliver is not.
+  expect(contrast(frame({ elements: at([0, 0, 120, 40], true), texts: run(1, [0, 0, 60, 40]), grounds: [[0, 0, 120, 40]] }, vp), textImage(90, 150))?.severity).toBe("error");
+  expect(contrast(frame({ elements: at([0, 0, 120, 14], true), texts: run(1, [0, 0, 120, 14]), grounds: [[0, 0, 120, 40]] }, vp), blank)).not.toBeDefined();
+});
+
 test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", () => {
   const t = (size: number) => [{ text: "Small", size, bounds: [10, 100, 40, 14] as [number, number, number, number], clip: [0, 0, 1920, 1080] as [number, number, number, number], color: [1, 1, 1, 1] }];
   const els = [el("Small", "", "label", "text", [10, 100, 40, 14], { text: "Small" })];
