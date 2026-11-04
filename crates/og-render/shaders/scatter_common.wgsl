@@ -12,7 +12,7 @@ struct ScatterUniform {
   wind: vec4<f32>,            // xy: og.Wind's horizontal direction (x, z), z: the scatter's sway (0: still), w: the trample's recovery (s)
   wind_shape: vec4<f32>,      // x: unused, y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
   impostor: vec4<f32>,        // the impostor's sphere in the model's space (impostor.rs): xyz its centre, w its radius
-  impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never)
+  impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never), z: 1 with alpha to coverage, w: 1 when its material's roughness map is the material atlas (impostor.wgsl imp_material)
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it)
   trample: vec4<f32>,         // the trample map (trample.rs): min corner (x, z from the frame's origin), cell, cells a side (0: none)
 };

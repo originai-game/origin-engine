@@ -484,8 +484,14 @@ pub fn cook(
     // The impostor: its atlases' ids and the sphere they cover (the
     // bounds', as og-runtime's levels use), its error an atlas texel.
     let mut impostors = Vec::new();
-    if let Some(b) = opts.impostor.filter(|_| !proxy) {
-        let [albedo, normal] = impostor_ids(id);
+    let mut impostor_materials = Vec::new();
+    if let Some(b) = opts.impostor.filter(|_| !proxy).map(|b| b.resolved(src)) {
+        let [albedo, normal, material] = impostor_ids(id);
+        let (material_offset, material_len) = strings.add(&material);
+        impostor_materials.push(ImpostorMaterialRow {
+            material_offset,
+            material_len,
+        });
         let (albedo_offset, albedo_len) = strings.add(&albedo);
         let (normal_offset, normal_len) = strings.add(&normal);
         let center = (lo + hi) * 0.5;
@@ -558,6 +564,14 @@ pub fn cook(
             row_hash::<VariantMappingRow>(),
         )
         .table("impostors", &impostors, row_hash::<ImpostorRow>());
+    // Only a model baked with the material atlas (G5) has the table.
+    if !impostor_materials.is_empty() {
+        w.table(
+            "impostor_materials",
+            &impostor_materials,
+            row_hash::<ImpostorMaterialRow>(),
+        );
+    }
     if !skin_binds.is_empty() {
         w.table("skin_binds", &skin_binds, row_hash::<NodeBindRow>());
     }
@@ -735,6 +749,10 @@ pub(super) fn scene_bounds(
 
 /// The asset ids of model `id`'s impostor atlases: the albedo, then the
 /// normal and depth.
-pub fn impostor_ids(id: &str) -> [String; 2] {
-    [format!("{id}#impostor"), format!("{id}#impostor-normal")]
+pub fn impostor_ids(id: &str) -> [String; 3] {
+    [
+        format!("{id}#impostor"),
+        format!("{id}#impostor-normal"),
+        format!("{id}#impostor-material"),
+    ]
 }

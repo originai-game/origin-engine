@@ -782,6 +782,7 @@ mod tests {
             grid: 8,
             center: Vec3::ZERO,
             radius: 1.0,
+            material_atlas: false,
         };
         let lods = ModelLods {
             // One part with levels 3 cm and 12 cm off, another with one.

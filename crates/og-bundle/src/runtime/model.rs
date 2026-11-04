@@ -257,6 +257,9 @@ pub struct CookedImpostor {
     /// The atlases' `og.Texture` ids: albedo and coverage, normal and depth.
     pub albedo: String,
     pub normal: String,
+    /// The material atlas's id (roughness, translucency, metallic), when
+    /// the cook baked one (G5).
+    pub material: Option<String>,
     pub grid: u32,
     pub frame: u32,
     pub center: Vec3,
@@ -313,6 +316,8 @@ impl CookedModel {
         let mapping_rows = table::<VariantMappingRow>(blob, "variant_mappings")?;
         // Optional: a model cooked before impostors has no table.
         let impostor_rows = table::<ImpostorRow>(blob, "impostors").unwrap_or_default();
+        let impostor_materials =
+            table::<ImpostorMaterialRow>(blob, "impostor_materials").unwrap_or_default();
         // Optional: only a model with a skinned mesh has them.
         let bind_rows = table::<NodeBindRow>(blob, "skin_binds").unwrap_or_default();
         // Optional: only a model with foliage has them.
@@ -740,6 +745,10 @@ impl CookedModel {
             Some(i) => Some(CookedImpostor {
                 albedo: s(i.albedo_offset, i.albedo_len)?,
                 normal: s(i.normal_offset, i.normal_len)?,
+                material: match impostor_materials.first() {
+                    Some(m) => Some(s(m.material_offset, m.material_len)?),
+                    None => None,
+                },
                 grid: i.grid,
                 frame: i.frame,
                 center: Vec3::new(i.center_x, i.center_y, i.center_z),

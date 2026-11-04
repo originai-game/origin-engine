@@ -495,8 +495,13 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         }
         // The impostor's atlases: a model whose atlases are missing draws
         // its meshes at every distance.
+        // The material atlas (G5) is optional: a model cooked before it
+        // shades its cards by the material's factors.
         let impostor = match &model.impostor {
-            Some(i) => Some([texture(&i.albedo)?, texture(&i.normal)?]),
+            Some(i) => Some((
+                [texture(&i.albedo)?, texture(&i.normal)?],
+                i.material.as_deref().and_then(|m| texture(m).ok()),
+            )),
             None => None,
         };
         (model, textures, impostor)
@@ -557,7 +562,8 @@ fn scatter_meshes(
 /// index. A cooked model is `registered` under its path (og.load.gltf of it
 /// answers this asset, a hot reload refreshes it); an uncooked one
 /// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
-/// `impostor` holds its impostor's two atlases (albedo, normal), when it
+/// `impostor` holds its impostor's atlases (albedo, normal, and the
+/// material atlas when it was baked), when it
 /// has one. Answers the asset index and the model's textures in the scene.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn insert_model(
@@ -566,7 +572,10 @@ pub(crate) fn insert_model(
     group: Option<String>,
     model: og_bundle::runtime::CookedModel,
     textures: &[og_render::TextureSource],
-    impostor: Option<[og_render::TextureSource; 2]>,
+    impostor: Option<(
+        [og_render::TextureSource; 2],
+        Option<og_render::TextureSource>,
+    )>,
     into: Option<usize>,
     registered: bool,
 ) -> Result<(usize, Vec<og_render::TextureHandle>), String> {
@@ -629,14 +638,17 @@ pub(crate) fn insert_model(
                 .collect();
             // The impostor: the model's last level, a card drawn from
             // its atlases as a StandardMaterial (`map` the albedo,
-            // `normalMap` the normal and depth; og-render's `impostor`).
+            // `normalMap` the normal and depth, `roughnessMap` the
+            // material atlas; og-render's `impostor`).
             let impostor = match (impostor, &model.impostor) {
-                (Some([albedo, normal]), Some(i)) => {
+                (Some(([albedo, normal], atlas)), Some(i)) => {
                     let albedo = rs.scene.add_texture_source(albedo);
                     let normal = rs.scene.add_texture_source(normal);
+                    let atlas = atlas.map(|a| rs.scene.add_texture_source(a));
                     let material = rs.scene.add_standard_material(og_render::StandardMaterial {
                         map: albedo.slot(),
                         normalMap: normal.slot(),
+                        roughnessMap: atlas.map_or(0, |a| a.slot()),
                         alphaTest: 0.5,
                         side: 2,
                         roughness: 0.85,
@@ -649,6 +661,7 @@ pub(crate) fn insert_model(
                             grid,
                             center: i.center,
                             radius: i.radius,
+                            material_atlas: atlas.is_some(),
                         },
                         i.error,
                     ))

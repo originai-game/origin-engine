@@ -786,7 +786,12 @@ struct ScatterGpu {
 impl ScatterGpu {
     fn impostor(&mut self, i: &crate::Impostor, distance: f32, light: Vec3, msaa: bool) {
         self.impostor = i.center.extend(i.radius).to_array();
-        self.impostor_grid = [i.grid as f32, distance, f32::from(u8::from(msaa)), 0.0];
+        self.impostor_grid = [
+            i.grid as f32,
+            distance,
+            f32::from(u8::from(msaa)),
+            f32::from(u8::from(i.material_atlas)),
+        ];
         self.impostor_light = light.extend(0.0).to_array();
     }
 }

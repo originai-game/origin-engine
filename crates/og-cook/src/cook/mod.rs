@@ -253,8 +253,9 @@ enum Work<'a> {
     Model(&'a Source, Vec<String>),
     /// A streaming group's glTF stand-in: its coarsest LOD, no textures.
     Proxy(&'a Source),
-    /// A model's impostor atlas: the albedo, or (true) the normal and depth.
-    Impostor(&'a Source, model::ImpostorBake, bool),
+    /// A model's impostor atlas: 0 the albedo, 1 the normal and depth, 2
+    /// the material (roughness, translucency, metallic).
+    Impostor(&'a Source, model::ImpostorBake, u8),
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32, Split),
     Texture(&'a Source, u32, Split),
@@ -880,18 +881,23 @@ pub fn cook_project_with_texture_cache(
                         Work::Proxy(s),
                     ));
                 }
-                // The impostor's two atlases (`model { impostor true }`),
+                // The impostor's three atlases (`model { impostor true }`),
                 // baked from the model's source.
-                if let Some(b) = mesh_for(s, options).ok().and_then(|m| m.impostor) {
+                if let Some(b) = mesh_for(s, options)
+                    .ok()
+                    .and_then(|m| m.impostor)
+                    .map(|b| b.resolved(g))
+                {
                     let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
-                    for (normal, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
-                        // `2`: the atlas's layout version (2, the
-                        // hemi-octahedron), so an atlas baked by an older
-                        // layout is baked again.
+                    for (kind, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
+                        // `3`: the atlas's layout version (2, the
+                        // hemi-octahedron; 3, 16 samples a texel, filtered
+                        // textures and the material atlas), so an atlas
+                        // baked by an older layout is baked again.
                         let st = with(
                             &[
                                 b"impostor",
-                                &[2, normal as u8],
+                                &[3, kind as u8],
                                 &size,
                                 tex_desc.as_bytes(),
                                 &hash,
@@ -903,7 +909,7 @@ pub fn cook_project_with_texture_cache(
                             id,
                             format::Texture::NAME,
                             st,
-                            Work::Impostor(s, b, normal == 1),
+                            Work::Impostor(s, b, kind as u8),
                         ));
                     }
                 }
