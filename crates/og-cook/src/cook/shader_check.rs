@@ -129,7 +129,14 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
                 .map_err(|e| format!("overrides: {e}"))?;
             naga::back::spv::write_vec(&module, &info, &Default::default(), None)
                 .map_err(|e| format!("SPIR-V: {e}"))?;
-            naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
+            // MSL 2.4, what wgpu asks of Metal: the order-independent
+            // transparency's entry points write the arena (group 0 binding
+            // 12) from the fragment stage, which MSL before 1.2 refuses.
+            let msl = naga::back::msl::Options {
+                lang_version: (2, 4),
+                ..Default::default()
+            };
+            naga::back::msl::write_string(&module, &info, &msl, &Default::default())
                 .map_err(|e| format!("MSL: {e}"))?;
         }
     }
