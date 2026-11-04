@@ -499,7 +499,7 @@ fn one_texel(
 }
 
 /// A square `size` × `size` texture of `bytes`, sampled only.
-fn texture_with_data(
+pub(crate) fn texture_with_data(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     size: u32,

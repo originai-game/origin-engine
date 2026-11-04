@@ -83269,7 +83269,7 @@
     "TerrainScatter": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Copies keep their size and thin out (dithered) over the outer `fade` of `distance`. The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.",
+      "description": "Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, so each copy keeps its place, size and turn as the camera moves, every cell growing one with the probability of the layer's weight there (its control-map channel times its slope and altitude rules, over all the layers' weights). Over the outer `fade` of `distance` copies shrink and thin out, each shrinking to nothing over its own part of the fade (no dither, so no grain under TAA). The renderer places them itself, a chunk of the grid at a time, once, and draws the chunks in range: copies cost about nothing per frame while the camera stays. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.",
       "type": "object",
       "properties": {
         "data": {
@@ -83314,7 +83314,7 @@
         },
         "fade": {
           "type": "number",
-          "description": "The outer part of `distance` over which copies thin out to nothing.",
+          "description": "The outer part of `distance` over which copies shrink and thin out to nothing.",
           "default": 0.3,
           "minimum": 0,
           "maximum": 1,
@@ -83366,7 +83366,7 @@
         },
         "impostor": {
           "$ref": "#/$defs/Asset",
-          "description": "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.",
+          "description": "A glTF (og.load.gltf) of the same complete mesh, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, cross-dithered over the last tenth before it by a blue-noise pattern that changes every frame, which temporal antialiasing resolves to a smooth blend. Mesh and impostor bounds must agree in model space; a mismatch skips the scatter and reports render.scatterIssue in its entity dump and a runtime warning. None: the supplied geometry at every distance, without model placement.",
           "default": 0
         },
         "impostorDistance": {

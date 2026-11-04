@@ -147,3 +147,104 @@ fn copies_inside_the_impostor_band_draw_without_holes() {
         "enabling far impostors must not change near copies"
     );
 }
+
+/// Draws `scene` `frames` times at one tick with TAA (a 640 × 360 target),
+/// returning the last frame, or `None` where the adapter has no TAA.
+fn taa_frames(scene: &RenderScene, frames: usize) -> Option<RgbaImage> {
+    let desc = og_render::RenderDesc {
+        width: 640,
+        height: 360,
+        antialias: og_render::Antialias::Taa,
+        ..scenes::base_desc()
+    };
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    if r.info().antialias != og_render::Antialias::Taa {
+        return None;
+    }
+    for _ in 0..frames {
+        r.render(scene, &RenderTarget::Offscreen).expect("render");
+    }
+    assert_eq!(r.history().1, frames as u64, "TAA held every frame");
+    Some(r.read_offscreen().expect("capture"))
+}
+
+/// The mean absolute 3 × 3 Laplacian of the luma over rows `y0..y1`: the
+/// frame's 1 px grain.
+fn grain(img: &RgbaImage, y0: u32, y1: u32) -> f32 {
+    let (mut sum, mut n) = (0.0f32, 0u32);
+    for y in y0.max(1)..y1.min(img.height - 1) {
+        for x in 1..img.width - 1 {
+            let c = luma(px(img, x, y));
+            let around = luma(px(img, x - 1, y))
+                + luma(px(img, x + 1, y))
+                + luma(px(img, x, y - 1))
+                + luma(px(img, x, y + 1));
+            sum += (4.0 * c - around).abs();
+            n += 1;
+        }
+    }
+    sum / n.max(1) as f32
+}
+
+/// The scene of the crossfade tests: copies 36 to 40 m out (the rows above
+/// the frame's middle) between their mesh and their card.
+fn crossfade_scene() -> RenderScene {
+    let mut scene = is::impostor_scatter_scene(40.0);
+    scene.light.cast_shadows = false;
+    scene
+}
+
+/// The mesh-to-impostor crossfade thresholds its pixels by blue noise
+/// turned every render frame, so at one tick two frames drop different
+/// pixels (TAA integrates them into the blend). Broken before by the
+/// static interleaved-gradient threshold, which dropped the same pixels
+/// every frame: grain TAA could not resolve.
+#[test]
+fn the_crossfade_turns_its_noise_every_render_frame() {
+    let mut scene = crossfade_scene();
+    scene.debug = og_render::DebugView::Albedo;
+    scene.post = Default::default();
+    scene.post.tonemap = Tonemap::None;
+    scene.camera.exposure = Exposure::linear(1.0);
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    r.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let first = r.read_offscreen().unwrap();
+    r.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let second = r.read_offscreen().unwrap();
+    let coverage = |image: &RgbaImage| {
+        image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| ball_pixel([p[0] as f32, p[1] as f32, p[2] as f32]))
+            .collect::<Vec<_>>()
+    };
+    assert!(
+        coverage(&first) != coverage(&second),
+        "the crossfade's pixels change between render frames at one tick"
+    );
+}
+
+/// Under TAA the crossfade resolves to a blend: after 16 frames at one
+/// tick the far half of the frame (the copies in the crossfade) holds no
+/// more 1 px grain than the same field drawn all as meshes, within 15 %.
+/// The static threshold left every crossfading copy dotted (the site's
+/// midground grain).
+#[test]
+fn taa_resolves_the_crossfade_without_grain() {
+    let scene = crossfade_scene();
+    let Some(crossfade) = taa_frames(&scene, 16) else {
+        println!("skipped: TAA is not available on this adapter");
+        return;
+    };
+    let meshes = taa_frames(&is::impostor_scatter_scene(0.0), 16).expect("TAA");
+    keep("impostor-crossfade-taa", &crossfade);
+    keep("impostor-crossfade-taa-meshes", &meshes);
+    let (g, m) = (grain(&crossfade, 0, 180), grain(&meshes, 0, 180));
+    println!("far-half grain: crossfade {g:.3}, meshes {m:.3}");
+    assert!(
+        g < 1.15 * m + 0.05,
+        "crossfade grain {g:.3} vs meshes {m:.3}"
+    );
+}

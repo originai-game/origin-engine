@@ -24,14 +24,16 @@ struct ImpostorShadowOut {
 
 @vertex
 fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorShadowOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  let size = imp_scale(i.m3);
+  // Kept invertible when gone (the card is culled then).
+  let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));
   let local = shadow_pass.light.w > 0.0;
   let toward = select(scatter.impostor_light.xyz, shadow_pass.light.xyz, local);
   let card = imp_card(model, vertex, toward, !local);
   let centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   var o: ImpostorShadowOut;
   o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, shadow_project(card.world, mul_point(shadow_pass.view_proj, card.world)), o.fade.y > o.fade.x);
+  o.clip = select(SCATTER_GONE, shadow_project(card.world, mul_point(shadow_pass.view_proj, card.world)), size > 0.0 && o.fade.y > o.fade.x);
   o.world = card.world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;

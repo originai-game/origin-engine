@@ -15,8 +15,14 @@
 //! an instance buffer of its own and kept while it is in use. Each frame
 //! costs a cull of the chunks against every pass's volume and one instanced
 //! draw per chunk; the vertex shader drops copies past the distance and
-//! the fragment shader thins them out over the fade with a dither, at full
-//! size (`shaders/scatter*.wgsl`). A streamed terrain's chunks are built
+//! shrinks and thins them out over the fade: each copy shrinks to nothing
+//! over its own part of the fade, chosen by a hash of its place, so the
+//! field thins as grass does (`shaders/scatter*.wgsl`). No pixel of the
+//! distance fade is dithered: a static dither left grain TAA cannot
+//! resolve. Only the crossfade from a copy's mesh to its impostor
+//! thresholds pixels, by the blue-noise tile turned each render frame
+//! ([`crossfade_noise_offset`]), the same in the lit, prepass and shadow
+//! passes. A streamed terrain's chunks are built
 //! once the level-0 tiles under them have arrived.
 //!
 //! **Wind.** [`crate::RenderScene::wind`] sways the copies in the vertex
@@ -61,7 +67,7 @@ pub struct TerrainScatter {
     pub density: f32,
     /// How far from the camera (along x and z) instances are drawn.
     pub distance: f32,
-    /// The outer part of `distance` over which they fade out (0..1).
+    /// The outer part of `distance` over which they shrink and thin out (0..1).
     pub fade: f32,
     /// The range of their uniform scale.
     pub scale: [f32; 2],
@@ -575,6 +581,18 @@ impl ScatterGpu {
     }
 }
 
+/// How far the crossfade's blue-noise thresholds turn on render frame
+/// `frame_index` (`ScatterUniform.fade.y`): the golden ratio's multiples,
+/// so each pixel's thresholds over consecutive frames are a low-
+/// discrepancy sequence TAA integrates, while every frame's pattern stays
+/// the tile's blue noise (Wolfe, Morrical, Akenine-Möller, Ramamoorthi,
+/// *Spatiotemporal Blue Noise Masks*, EGSR 2022, §2; Peters, *Free blue
+/// noise textures*, 2016). Reduced in f64, so it does not drift.
+fn crossfade_noise_offset(frame_index: u64) -> f32 {
+    const GOLDEN: f64 = 0.618_033_988_749_894_8;
+    ((frame_index as f64 * GOLDEN).fract()) as f32
+}
+
 const SLOT: u64 = 256;
 /// The pipelines' kinds past a [`ScatterPass`]'s: its impostor's.
 const IMPOSTOR_KIND: u8 = 3;
@@ -662,6 +680,9 @@ pub(crate) struct ScatterPipelines<'a> {
     pub lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     pub shadow_wgsl: String,
     pub samples: u32,
+    /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
+    /// crossfade thresholds its pixels by.
+    pub blue_noise: wgpu::TextureView,
 }
 
 /// Draws [`ScatterDraw`]s from cached chunks.
@@ -680,6 +701,7 @@ pub(crate) struct ScatterRenderer {
     pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
+    blue_noise: wgpu::TextureView,
     slots: u64,
     group: wgpu::BindGroup,
     chunks: HashMap<ChunkKey, Chunk>,
@@ -706,18 +728,30 @@ impl ScatterRenderer {
     pub(crate) fn new(device: &wgpu::Device, p: ScatterPipelines) -> ScatterRenderer {
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scatter"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: true,
-                    min_binding_size: wgpu::BufferSize::new(
-                        std::mem::size_of::<ScatterGpu>() as u64
-                    ),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(
+                            std::mem::size_of::<ScatterGpu>() as u64
+                        ),
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ],
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -752,7 +786,7 @@ impl ScatterRenderer {
             label: Some("scatter shadow"),
             source: wgpu::ShaderSource::Wgsl(p.shadow_wgsl.into()),
         });
-        let (uniform, group) = Self::slots(device, &uniform_layout, 4);
+        let (uniform, group) = Self::slots(device, &uniform_layout, &p.blue_noise, 4);
         ScatterRenderer {
             lit_layout,
             lit_fx_layout,
@@ -765,6 +799,7 @@ impl ScatterRenderer {
             pipelines: HashMap::new(),
             uniform_layout,
             uniform,
+            blue_noise: p.blue_noise,
             slots: 4,
             group,
             chunks: HashMap::new(),
@@ -778,6 +813,7 @@ impl ScatterRenderer {
     fn slots(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
+        blue_noise: &wgpu::TextureView,
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -789,14 +825,20 @@ impl ScatterRenderer {
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("scatter"),
             layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: &buffer,
-                    offset: 0,
-                    size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
-                }),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &buffer,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(blue_noise),
+                },
+            ],
         });
         (buffer, group)
     }
@@ -1098,6 +1140,7 @@ impl ScatterRenderer {
         camera: Vec3,
         view_proj: Mat4,
         prev_view_proj: Mat4,
+        frame_index: u64,
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
@@ -1106,6 +1149,7 @@ impl ScatterRenderer {
         use wgpu::util::DeviceExt;
         self.frame += 1;
         self.built = 0;
+        let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
         let wind = scene.wind.filter(|w| w.strength > 0.0);
         let phase = wind.map(|w| wind_phases(&w, scene.tick, scene.tick_rate));
@@ -1122,7 +1166,7 @@ impl ScatterRenderer {
         let slots = (scene.scatters.len() + groups.len()) as u64;
         if self.slots < slots {
             self.slots = slots.next_power_of_two();
-            let (u, g) = Self::slots(device, &self.uniform_layout, self.slots);
+            let (u, g) = Self::slots(device, &self.uniform_layout, &self.blue_noise, self.slots);
             self.uniform = u;
             self.group = g;
         }
@@ -1130,7 +1174,7 @@ impl ScatterRenderer {
         // decides), never faded or swayed.
         let base = ScatterGpu {
             camera: camera.extend(f32::MAX).to_array(),
-            fade: [f32::MAX, 0.0, 0.0, 0.0],
+            fade: [f32::MAX, noise, 0.0, 0.0],
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
@@ -1368,7 +1412,7 @@ impl ScatterRenderer {
             let now = phase.unwrap_or_default();
             let mut gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
-                fade: [s.fade_from(), 0.0, 0.0, 0.0],
+                fade: [s.fade_from(), noise, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,

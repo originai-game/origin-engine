@@ -35,11 +35,13 @@ struct ImpostorOut {
 
 @vertex
 fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  let size = imp_scale(i.m3);
+  // Kept invertible when gone (the card is culled then).
+  let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));
   let card = imp_card(model, vertex, frame.view_pos.xyz, false);
   var o: ImpostorOut;
   o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, card.world), o.fade.y > o.fade.x);
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, card.world), size > 0.0 && o.fade.y > o.fade.x);
   o.world = card.world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;

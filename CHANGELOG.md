@@ -138,6 +138,13 @@ is one line here, written at the merge that changes
   terrain file takes the same keys per layer. All default to 0: a terrain
   that does not set them draws as before. The terrain prepass now reads only
   the layers' weights and heights for its roughness, never their normal maps.
+- **Scatter fades without grain.** TerrainScatter's `fade` now shrinks and
+  thins copies out (each copy shrinks over its own part of the fade) instead
+  of dithering their pixels, and the mesh-to-impostor crossfade thresholds by
+  blue noise turned every frame, which TAA resolves. Lit, depth and shadow
+  passes agree. Doc changes only on `TerrainScatter.fade` and `impostor`;
+  frames with fading scatter move. `dump_render` adds `antialias`,
+  `frameIndex` and `taaHistoryFrames`.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements

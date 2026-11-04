@@ -1320,6 +1320,7 @@ impl Renderer {
                 camera.position,
                 cam.view_proj,
                 prev_view_proj,
+                self.frame_index,
                 |m| materials.get(m).map(|g| g.side),
                 |m| {
                     meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
