@@ -109,9 +109,20 @@ fn main(
     nearest = min(nearest, dist);
     if (dist < abs(best[c].x)) {
       let side = select(-1.0, 1.0, ab.x * off.y - ab.y * off.x >= 0.0);
-      best[c] = vec4<f32>(dist * side, mix(a.z, b.z, h), mix(a.w, b.w, h), 0.0);
+      best[c] = vec4<f32>(dist * side, mix(a.z, b.z, h), mix(a.w, b.w, h), atan2(ab.y, ab.x));
     }
   }
+  // The texel's extent in the world (km): radially 2|q|R per texel of the
+  // warp, round the viewer |q|R. The strip is read over it (gradients for
+  // its mips): a sheet thinner than the texel then adds its column to the
+  // texel it crosses, wherever it crosses it.
+  let qc = (vec2<f32>(gid.xy) + 0.5) * to_q - 1.0;
+  let radial = normalize(x + vec2<f32>(1e-6, 0.0));
+  let e_r = radial * (2.0 * length(qc) * params.head.y * to_q);
+  let e_t = vec2<f32>(-radial.y, radial.x) * (length(qc) * params.head.y * to_q);
+  // The strip's period along the curtain (km): its cells are square
+  // (aurora.rs: 2 hw times STRIP_X / STRIP_Y).
+  let period = hw * 2.0 * 8.0;
   // The strip's snapshots blended by activity: r smooth .. a turbulent.
   let snap = params.look.x;
   let weights = max(vec4<f32>(1.0) - abs(vec4<f32>(snap) - vec4<f32>(0.0, 1.0, 2.0, 3.0)), vec4<f32>(0.0));
@@ -124,7 +135,12 @@ fn main(
     if (abs(s) >= reach) { continue; }
     if (abs(s) < hw) {
       let across = s / hw * 0.5 + 0.5;
-      let dye = dot(textureSampleLevel(strip, strip_sampler, vec2<f32>(best[c].y, across), 0.0), weights);
+      let t = vec2<f32>(cos(best[c].w), sin(best[c].w));
+      let side_dir = vec2<f32>(-t.y, t.x);
+      let k = vec2<f32>(1.0 / period, 0.5 / hw);
+      let gx = vec2<f32>(dot(e_r, t), dot(e_r, side_dir)) * k;
+      let gy = vec2<f32>(dot(e_t, t), dot(e_t, side_dir)) * k;
+      let dye = dot(textureSampleGrad(strip, strip_sampler, vec2<f32>(best[c].y, across), gx, gy), weights);
       let f = dye * best[c].z;
       flux += f;
       energy += f * params.curtain[c].x;

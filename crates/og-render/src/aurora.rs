@@ -62,9 +62,15 @@ const TABLE_TOP: f64 = 400.0;
 /// between rows in octaves.
 const TABLE_E0: f64 = 0.5;
 const TABLE_OCTAVES: f64 = 0.67;
+/// The soft electrons' share of the energy flux and their characteristic
+/// energy (keV), beside the primaries ([`emission_rows_of`]).
+const SOFT_SHARE: f64 = 0.1;
+const SOFT_E0: f64 = 0.25;
 /// The strip's cells along and across the curtain.
 const STRIP_X: usize = 256;
 const STRIP_Y: usize = 32;
+/// The strip's mip levels, 256 × 32 down to 1 × 1.
+const STRIP_MIPS: u32 = 9;
 
 /// An aurora over the scene. See the module documentation.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -406,12 +412,26 @@ fn energies() -> impl Iterator<Item = (f64, f64)> {
 /// the k-th energy of [`energies`].
 fn emission_rows_of(e0: f64, heights: &[f64], deposits: &[Vec<f64>]) -> Vec<[f64; 3]> {
     let dz = (TABLE_TOP - TABLE_BOTTOM) / heights.len() as f64;
+    // The spectrum: the primaries' Maxwellian at `e0` and, with a tenth of
+    // the energy flux, the soft electrons that come down with every
+    // discrete arc (secondaries and degraded primaries returning from the
+    // ionosphere below, trapped and reflected above the accelerating
+    // region: Evans, J. Geophys. Res. 79, 1974), a Maxwellian of 0.25 keV.
+    // They deposit high, where the red line glows: an arc's top fades from
+    // green into a faint red even when its primaries are hard.
+    let maxwellian = |e: f64, k: f64| e * (-e / k).exp();
+    let flux = |k: f64| -> f64 { energies().map(|(e, de)| maxwellian(e, k) * e * de).sum() };
+    let (primary, soft) = (flux(e0), flux(SOFT_E0));
     let deposit: Vec<f64> = deposits
         .iter()
         .map(|row| {
             energies()
                 .zip(row)
-                .map(|((e, de), a)| e * (-e / e0).exp() * a * de)
+                .map(|((e, de), a)| {
+                    let n = (1.0 - SOFT_SHARE) * maxwellian(e, e0) / primary
+                        + SOFT_SHARE * maxwellian(e, SOFT_E0) / soft;
+                    n * a * de
+                })
                 .sum()
         })
         .collect();
@@ -563,6 +583,40 @@ pub(crate) fn kh_strip(seed: u32) -> Vec<[u8; 4]> {
         }
     }
     out
+}
+
+/// The strip's mip levels (width, height, texels), 2×2 box averages down
+/// to one texel, the first the strip itself. The footprint samples the
+/// level of its texel's size: the sheet is far thinner than a footprint
+/// texel away from the viewer (half a kilometre against a few), and read
+/// at one point per texel it shows only where it crosses a texel's
+/// centre, an even comb of false rays. The averages keep each texel's
+/// flux, the sheet's column, at every distance.
+fn strip_mips(strip: &[[u8; 4]]) -> Vec<(usize, usize, Vec<[u8; 4]>)> {
+    let mut levels = vec![(STRIP_X, STRIP_Y, strip.to_vec())];
+    while levels.len() < STRIP_MIPS as usize {
+        let (w, h, last) = levels.last().expect("the strip itself");
+        let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
+        let mut next = vec![[0u8; 4]; nw * nh];
+        for y in 0..nh {
+            for x in 0..nw {
+                let mut sum = [0u32; 4];
+                let (ys, xs) = ((h / nh).max(1), w / nw);
+                for dy in 0..ys {
+                    for dx in 0..xs {
+                        let t = last[(y * ys + dy) * w + x * xs + dx];
+                        for c in 0..4 {
+                            sum[c] += u32::from(t[c]);
+                        }
+                    }
+                }
+                let n = (ys * xs) as u32;
+                next[y * nw + x] = sum.map(|v| ((v + n / 2) / n) as u8);
+            }
+        }
+        levels.push((nw, nh, next));
+    }
+    levels
 }
 
 /// Bilinear sample of a strip field, periodic along x, clamped across y.
@@ -820,28 +874,34 @@ impl AuroraMap {
                 height: STRIP_Y as u32,
                 depth_or_array_layers: 1,
             },
-            mip_level_count: 1,
+            mip_level_count: STRIP_MIPS,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-        let strip = kh_strip(seed);
-        queue.write_texture(
-            strip_texture.as_image_copy(),
-            bytemuck::cast_slice(&strip),
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(STRIP_X as u32 * 4),
-                rows_per_image: Some(STRIP_Y as u32),
-            },
-            wgpu::Extent3d {
-                width: STRIP_X as u32,
-                height: STRIP_Y as u32,
-                depth_or_array_layers: 1,
-            },
-        );
+        for (level, (w, h, texels)) in strip_mips(&kh_strip(seed)).iter().enumerate() {
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &strip_texture,
+                    mip_level: level as u32,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(texels),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(*w as u32 * 4),
+                    rows_per_image: Some(*h as u32),
+                },
+                wgpu::Extent3d {
+                    width: *w as u32,
+                    height: *h as u32,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
         let strip = strip_texture.create_view(&Default::default());
         if let Some(pass) = &mut self.pass {
             pass.group = footprint_group(
@@ -935,6 +995,8 @@ impl AuroraMap {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            anisotropy_clamp: 8,
             ..Default::default()
         });
         let group = footprint_group(device, &layout, &uniform, &strip, &sampler, &view);
@@ -1048,9 +1110,13 @@ mod tests {
         assert!(peak(10.0, 1) < green - 5.0, "hard {}", peak(10.0, 1));
         let red = peak(0.5, 2);
         assert!(red > 195.0, "red {red}");
+        // The soft electrons that come with every arc keep a little red
+        // over hard aurora too (Evans 1974), a fifth of the green's light
+        // at most at 8 keV (the 630.0 nm line's efficiency counted).
         let soft = column(0.5, 2) / column(0.5, 1);
         let hard = column(8.0, 2) / column(8.0, 1);
-        assert!(soft > 8.0 * hard, "red/green soft {soft} hard {hard}");
+        assert!(soft > 3.0 * hard, "red/green soft {soft} hard {hard}");
+        assert!(hard * f64::from(EFFICIENCY_6300) < 0.25, "hard {hard}");
         // Below 95 km the green is quenched and the nitrogen bands (the
         // pink-violet lower border) outshine it relative to the peak.
         let rows = emission_rows(10.0, 640);
