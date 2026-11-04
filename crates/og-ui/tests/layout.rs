@@ -303,3 +303,40 @@ fn a_screen_placed_element_bleeds_under_the_safe_area() {
     assert_eq!(r("Loading/Scrim"), (0.0, 47.0, 390.0, 763.0));
     assert_eq!(r("Loading/Corner"), (340.0, 824.0, 50.0, 20.0));
 }
+
+#[test]
+fn a_wrapping_row_keeps_children_on_one_line_that_fit_within_rounding() {
+    // Wrong: a fit row snapped a fraction under its children's sum (a hint
+    // bar, 118.3 + 16 + 115 in 249) breaking its last child onto a second
+    // line; or the tolerance swallowing a child that is really over.
+    let tops = |total: f32| {
+        let mut ui = support::ui_with_font(support::test_font_metrics());
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.row(
+                "Row",
+                Element {
+                    width: Size::Fixed(249.0),
+                    gap: 16.0,
+                    wrap: true,
+                    ..Element::default()
+                },
+                |ui| {
+                    image(
+                        ui,
+                        "A",
+                        Size::Fixed(total - 16.0 - 115.0),
+                        Size::Fixed(20.0),
+                    );
+                    image(ui, "B", Size::Fixed(115.0), Size::Fixed(20.0));
+                },
+            );
+            ui.end();
+        }
+        (rect(&ui, "Row/A")[1], rect(&ui, "Row/B")[1])
+    };
+    let (a, b) = tops(249.3);
+    assert_eq!(a, b, "0.3 px over is rounding: one line");
+    let (a, b) = tops(251.0);
+    assert!(b > a, "2 px over wraps");
+}

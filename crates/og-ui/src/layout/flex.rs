@@ -409,7 +409,10 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
             let mut start = 0;
             let mut used = 0.0f32;
             for (k, &b) in base.iter().enumerate() {
-                if k > start && used + el.gap + b > inner {
+                // Half a pixel of slack, as text wrapping has: a fit row
+                // snapped a fraction under its children's sum keeps them
+                // on one line, over by less than half a pixel.
+                if k > start && used + el.gap + b > inner + 0.5 {
                     rows.push((start, k));
                     start = k;
                     used = b;
