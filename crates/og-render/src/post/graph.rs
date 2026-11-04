@@ -6,6 +6,7 @@ use super::*;
 /// in pairs are per TAA history slot.
 struct Bindings {
     taa: Option<[wgpu::BindGroup; 2]>,
+    smaa_resolve: Option<[wgpu::BindGroup; 2]>,
     taa_sharpen: Option<[wgpu::BindGroup; 2]>,
     /// The passes after the tonemap, each reading its LDR target.
     chain: HashMap<FramePass, wgpu::BindGroup>,
@@ -224,24 +225,28 @@ impl FrameGraph {
         // objects with (placeholders without a prepass: `TaaUniform::still.y` 0).
         let taa_velocity = self.try_view("gbuffer").unwrap_or(&passes.black);
         let taa_depth = self.try_view("lindepth").unwrap_or(&passes.far_depth);
-        let taa_groups = history.map(|h| {
-            [0usize, 1].map(|slot| {
-                group(
-                    "taa",
-                    &passes.taa_layout,
-                    &[
-                        tex(self.view(names.main)),
-                        tex(&h[1 - slot]),
-                        tex(self.view("depth")),
-                        sampler.clone(),
-                        passes.taa_buffer.as_entire_binding(),
-                        wgpu::BindingResource::Sampler(&passes.nearest_sampler),
-                        tex(taa_velocity),
-                        tex(taa_depth),
-                    ],
-                )
-            })
-        });
+        let temporal_group = |current: &wgpu::TextureView, previous: &wgpu::TextureView| {
+            group(
+                "temporal resolve",
+                &passes.taa_layout,
+                &[
+                    tex(current),
+                    tex(previous),
+                    tex(self.view("depth")),
+                    sampler.clone(),
+                    passes.taa_buffer.as_entire_binding(),
+                    wgpu::BindingResource::Sampler(&passes.nearest_sampler),
+                    tex(taa_velocity),
+                    tex(taa_depth),
+                ],
+            )
+        };
+        let taa_groups = history
+            .map(|h| [0usize, 1].map(|slot| temporal_group(self.view(names.main), &h[1 - slot])));
+        let smaa_resolve = persistent
+            .smaa_history
+            .as_ref()
+            .map(|h| [0usize, 1].map(|slot| temporal_group(&h[slot], &h[1 - slot])));
         // The sharpening reads what TAA wrote this frame (as both images).
         let taa_sharpen = history.filter(|_| has(FramePass::TaaSharpen)).map(|h| {
             [0usize, 1].map(|slot| {
@@ -288,7 +293,7 @@ impl FrameGraph {
                     &passes.source_layout,
                     &[tex(source), sampler.clone()],
                 )
-            } else if p == FramePass::SmaaBlend {
+            } else if matches!(p, FramePass::SmaaBlend | FramePass::SmaaResolve) {
                 let smaa = passes.smaa.as_ref().expect("SMAA renderer");
                 chain.insert(
                     FramePass::SmaaEdges,
@@ -308,14 +313,20 @@ impl FrameGraph {
                             sampler.clone(),
                             tex(&smaa.area),
                             tex(&smaa.search),
+                            passes.taa_buffer.as_entire_binding(),
                         ],
                     ),
                 );
-                group(
+                let blend = group(
                     "smaa blend",
                     &smaa.blend_layout,
                     &[tex(source), sampler.clone(), tex(self.view("smaa.weights"))],
-                )
+                );
+                if p == FramePass::SmaaResolve {
+                    chain.insert(FramePass::SmaaBlend, blend);
+                    continue;
+                }
+                blend
             } else {
                 group(
                     &p.name(),
@@ -518,6 +529,7 @@ impl FrameGraph {
         }
         Bindings {
             taa: taa_groups,
+            smaa_resolve,
             taa_sharpen,
             chain,
             meter,
@@ -709,17 +721,39 @@ impl FrameGraph {
                 );
                 1
             }
+            FramePass::SmaaBlend if persistent.smaa_history.is_some() => {
+                let temporal = passes
+                    .smaa
+                    .as_ref()
+                    .and_then(|s| s.temporal.as_ref())
+                    .expect("T2x renderer");
+                fullscreen_pass(
+                    encoder,
+                    "smaa history",
+                    &persistent.smaa_history.as_ref().unwrap()[slot],
+                    clear,
+                    &temporal.blend,
+                    &b.chain[&pass],
+                );
+                1
+            }
             FramePass::Paint
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize
             | FramePass::Fxaa
             | FramePass::SmaaBlend
+            | FramePass::SmaaResolve
             | FramePass::Upscale => {
                 let chain = chain_passes(&self.passes);
                 let i = chain.iter().position(|&p| p == pass).expect("in the chain");
                 let last = i + 1 == chain.len();
-                match (passes.chain.get(&pass), b.chain.get(&pass)) {
+                let group = if pass == FramePass::SmaaResolve {
+                    b.smaa_resolve.as_ref().map(|g| &g[slot])
+                } else {
+                    b.chain.get(&pass)
+                };
+                match (passes.chain.get(&pass), group) {
                     (Some((to_ldr, to_output)), Some(group)) => {
                         let (target, pipeline) = if last {
                             (output, to_output)

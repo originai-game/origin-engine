@@ -120,7 +120,7 @@ impl Backend {
 
 /// Antialiasing. [`RenderInfo::antialias`] reports what a renderer resolved
 /// it to (never `Tier`). Every backend (WebGPU, Metal, Vulkan, DX12) has
-/// all five methods.
+/// all antialiasing methods.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Antialias {
     /// None: every pixel is one sample.
@@ -142,6 +142,15 @@ pub enum Antialias {
     /// SMAA 1x high preset: perceptual luma edges, area/search weights,
     /// neighbourhood blending before the overlay. No jitter or history.
     Smaa,
+    /// SMAA temporal 2x: two morphologically filtered, jittered frames,
+    /// reprojected with TAA's motion vectors. Exclusive of TAA/TAAU.
+    SmaaT2x,
+}
+
+impl Antialias {
+    pub(crate) fn temporal(self) -> bool {
+        matches!(self, Self::Taa | Self::SmaaT2x)
+    }
 }
 
 /// How TAA reads its history ([`RenderDesc::taa_history`]).
@@ -314,7 +323,7 @@ pub struct RenderInfo {
     pub hdr_supported: bool,
     /// The surface was configured for HDR. False without a surface.
     pub hdr: bool,
-    /// The antialiasing in use: `Off`, `Msaa4`, `Taa`, `Fxaa` or `Smaa`.
+    /// The resolved antialiasing method (never `Tier`).
     pub antialias: Antialias,
     /// The samples per pixel the device multisamples the scene at:
     /// [`MSAA_SAMPLES`] where the antialiasing resolved to

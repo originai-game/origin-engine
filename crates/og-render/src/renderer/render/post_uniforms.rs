@@ -234,7 +234,16 @@ impl Renderer {
                     jitter.x,
                     jitter.y,
                 ],
-                upscale: [hw as f32, hh as f32, self.taau as u32 as f32, 0.0],
+                upscale: [
+                    hw as f32,
+                    hh as f32,
+                    self.taau as u32 as f32,
+                    if self.info.antialias == Antialias::SmaaT2x {
+                        frame::smaa_sample(self.frame_index).1
+                    } else {
+                        0.0
+                    },
+                ],
             };
             self.queue
                 .write_buffer(&self.post.taa_buffer, 0, bytemuck::bytes_of(&taa_uniform));

@@ -390,8 +390,14 @@ fn fxaa_matches_its_reference() {
 
 #[test]
 fn smaa_matches_its_reference() {
-    let report = check("smaa");
-    assert_eq!(report.info.antialias, Antialias::Smaa);
+    for (scene, antialias) in [
+        ("smaa", Antialias::Smaa),
+        ("smaa-t2x", Antialias::SmaaT2x),
+        ("smaa-t2x-moving", Antialias::SmaaT2x),
+    ] {
+        let report = check(scene);
+        assert_eq!(report.info.antialias, antialias);
+    }
 }
 
 #[test]

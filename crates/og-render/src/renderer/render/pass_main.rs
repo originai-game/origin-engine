@@ -210,7 +210,7 @@ impl Renderer {
                             } else {
                                 wgpu::LoadOp::Load
                             },
-                            // TAA reads the depth to reproject the history.
+                            // TAA and T2x reproject through the depth.
                             store: if taa || (first && split) {
                                 wgpu::StoreOp::Store
                             } else {

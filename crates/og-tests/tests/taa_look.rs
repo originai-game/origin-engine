@@ -128,3 +128,64 @@ fn a_camera_cut_resets_the_taa_history() {
         "the frame after the cut blends"
     );
 }
+
+#[test]
+fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
+    let desc = RenderDesc {
+        antialias: Antialias::SmaaT2x,
+        ..desc()
+    };
+    let mut a = Renderer::new_blocking(&desc).expect("renderer");
+    let mut b = Renderer::new_blocking(&desc).expect("renderer");
+    let mut scene = scenes::thin_geometry();
+    let camera = scene.camera;
+    let shift = Vec3::new(0.6, 0.2, 0.0);
+    draw(&mut a, &scene);
+    scene.camera.position += shift;
+    scene.camera.target += shift;
+    draw(&mut b, &scene);
+    scene.camera = camera;
+    draw(&mut a, &scene);
+    draw(&mut b, &scene);
+    let first = draw(&mut a, &scene).0;
+    let second = draw(&mut b, &scene).0;
+    assert!(
+        first.pixels == second.pixels,
+        "history older than two frames must not survive"
+    );
+    // The scene flag and explicit reset agree at the same jitter phase.
+    scene.camera.position += shift;
+    scene.camera.target += shift;
+    scene.camera_cut = true;
+    let cut = draw(&mut a, &scene).0;
+    scene.camera_cut = false;
+    b.reset_history();
+    assert!(cut.pixels == draw(&mut b, &scene).0.pixels);
+    // Render scale uses the spatial upscale, not a second temporal AA.
+    a.set_render_scale(0.5);
+    b.set_render_scale(0.5);
+    b.reset_history();
+    assert!(draw(&mut a, &scene).0.pixels == draw(&mut b, &scene).0.pixels);
+    let names = a.frame_graph().unwrap().ordered_names();
+    assert!(names.contains(&"smaa-resolve") && names.contains(&"upscale"));
+    assert!(!names.contains(&"taa"));
+    // A float destination alone is not HDR: history must still match the
+    // SDR chain's blend pipeline, including after a render-size change.
+    let mut float = Renderer::new_blocking(&RenderDesc {
+        output_format: Some(og_render::wgpu::TextureFormat::Rgba16Float),
+        ..desc
+    })
+    .expect("float renderer");
+    assert!(!float.info().hdr);
+    for scale in [1.0, 0.5] {
+        float.set_render_scale(scale);
+        float
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("float destination with SDR history");
+        let graph = float.frame_graph().unwrap();
+        assert_eq!(
+            graph.physical()[graph.slot("ldr.0").unwrap()].format,
+            og_render::wgpu::TextureFormat::Rgba8UnormSrgb
+        );
+    }
+}

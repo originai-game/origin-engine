@@ -4,6 +4,7 @@
 @group(0) @binding(1) var linear_sampler: sampler;
 @group(0) @binding(2) var area: texture_2d<f32>;
 @group(0) @binding(3) var search: texture_2d<f32>;
+@group(0) @binding(4) var<uniform> taa: Taa;
 
 @fragment
 fn fs(v: VsOut) -> @location(0) vec4f {
@@ -12,5 +13,5 @@ fn fs(v: VsOut) -> @location(0) vec4f {
   let offsets = smaaBlendingWeightCalculationOffsets(v.uv, texel);
   return smaaBlendingWeightCalculation(edges, linear_sampler, area, linear_sampler,
     search, linear_sampler, size, texel, v.uv, v.uv * size,
-    offsets[0], offsets[1], offsets[2], vec4f(0.0));
+    offsets[0], offsets[1], offsets[2], vec4f(vec3f(taa.upscale.w), 0.0));
 }

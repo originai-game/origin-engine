@@ -166,6 +166,7 @@ impl Renderer {
             Antialias::Taa => Antialias::Taa,
             Antialias::Fxaa => Antialias::Fxaa,
             Antialias::Smaa => Antialias::Smaa,
+            Antialias::SmaaT2x => Antialias::SmaaT2x,
             Antialias::Tier => Antialias::Taa,
             Antialias::Msaa4 if msaa_ok => Antialias::Msaa4,
             // No multisampled HDR target: the post-process instead.
@@ -900,6 +901,7 @@ impl Renderer {
             output_format,
             offscreen_linear,
             antialias,
+            post.chain_format,
         );
         let surface_linear = surface
             .as_ref()

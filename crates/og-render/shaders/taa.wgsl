@@ -17,16 +17,6 @@
 // weights, the history's clamped to the neighbourhood's range as the
 // colour is, so it follows a moving sprite without a trail. Prepended by
 // fullscreen.wgsl.
-struct Taa {
-  // current frame (jittered) clip -> world
-  inv_view_proj: mat4x4<f32>,
-  // world -> current clip without jitter, and the previous frame's
-  cur_view_proj: mat4x4<f32>,
-  prev_view_proj: mat4x4<f32>,
-  params: vec4<f32>,  // x: current frame weight (1 = no history), yz: the scene's size, w: sharpening (0..1)
-  still: vec4<f32>,   // x: 1 when the camera is where the history's frame had it (decided on the CPU), y: 1 with the prepass's velocity bound, zw: the jitter (scene px, y down)
-  upscale: vec4<f32>, // xy: the history's size (the output's under TAAU), z: 1 under TAAU
-};
 @group(0) @binding(0) var current: texture_2d<f32>;
 @group(0) @binding(1) var history: texture_2d<f32>;
 // The depth buffer (Depth32Float) read as an unfilterable float texture:
@@ -84,15 +74,32 @@ fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
-  return resolve(in, false);
+  return resolve(in, false, false);
 }
 
 @fragment
 fn fs_catmull_rom(in: VsOut) -> @location(0) vec4<f32> {
-  return resolve(in, true);
+  return resolve(in, true, false);
 }
 
-fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
+// SMAA T2x's two-frame mean (Jimenez et al., MIT:
+// third_party/smaa/LICENSE.txt), using the engine's existing reprojection
+// and neighbourhood rejection instead of storing velocity in opacity.
+// Both inputs are raw SMAA frames; the result never feeds the history.
+@fragment
+fn fs_smaa(in: VsOut) -> @location(0) vec4<f32> {
+  return resolve(in, false, true);
+}
+
+@fragment
+fn fs_smaa_srgb(in: VsOut) -> @location(0) vec4<f32> {
+  let c = resolve(in, false, true);
+  return vec4<f32>(select(c.rgb * 12.92,
+    1.055 * pow(max(c.rgb, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055,
+    c.rgb > vec3<f32>(0.0031308)), c.a);
+}
+
+fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let size = vec2<i32>(taa.params.yz);
   let out_size = taa.upscale.xy;
   let upscale = taa.upscale.z > 0.5;
@@ -202,6 +209,7 @@ fn resolve(in: VsOut, catmull_rom: bool) -> vec4<f32> {
   let hist = from_ycocg(mix(clamp(to_ycocg(hist4.rgb), lo, hi), to_ycocg(hist4.rgb), relax));
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
+  if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5); }
   let a = taa.params.x * near;
   let wc = a / (1.0 + dot(cur, LUMA));
   let wh = (1.0 - a) / (1.0 + dot(hist, LUMA));

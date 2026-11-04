@@ -100,12 +100,15 @@ pub(crate) enum FramePass {
     SmaaEdges,
     SmaaWeights,
     SmaaBlend,
+    SmaaResolve,
     Upscale,
 }
 
 /// The passes after the tonemap that `passes` holds, in the order they run.
 pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
+    let temporal = passes.contains(&FramePass::SmaaResolve);
     [
+        FramePass::SmaaResolve,
         FramePass::Paint,
         FramePass::Lines,
         FramePass::Lens,
@@ -115,7 +118,7 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
         FramePass::Upscale,
     ]
     .into_iter()
-    .filter(|p| passes.contains(p))
+    .filter(|p| passes.contains(p) && !(temporal && *p == FramePass::SmaaBlend))
     .collect()
 }
 
@@ -154,6 +157,7 @@ impl FramePass {
                 | FramePass::SmaaEdges
                 | FramePass::SmaaWeights
                 | FramePass::SmaaBlend
+                | FramePass::SmaaResolve
                 | FramePass::Upscale
         )
     }
@@ -207,6 +211,7 @@ impl FramePass {
             FramePass::SmaaEdges => "smaa-edges".into(),
             FramePass::SmaaWeights => "smaa-weights".into(),
             FramePass::SmaaBlend => "smaa-blend".into(),
+            FramePass::SmaaResolve => "smaa-resolve".into(),
             FramePass::Upscale => "upscale".into(),
         }
     }
@@ -430,7 +435,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
         );
     }
-    let depth_usage = if cfg.taa && !msaa {
+    let smaa_t2x = passes.contains(&FramePass::SmaaResolve);
+    let depth_usage = if (cfg.taa || smaa_t2x) && !msaa {
         attach_bind
     } else {
         wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -438,6 +444,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
     if cfg.taa {
         g.import("history-read").import("history-write");
+    }
+    if smaa_t2x {
+        g.import("smaa-read").import("smaa-write");
     }
     // The GI's own copy of the lit image when there is no TAA history.
     let gi_copy = cfg.gi && !cfg.taa;
@@ -878,11 +887,22 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::SmaaEdges => {
                 let i = chain
                     .iter()
-                    .position(|&c| c == FramePass::SmaaBlend)
+                    .position(|&c| c == FramePass::SmaaBlend || c == FramePass::SmaaResolve)
                     .expect("SMAA in chain");
                 g.pass(name, &[&ldr_name(i)], &["smaa.edges"])
             }
             FramePass::SmaaWeights => g.pass(name, &["smaa.edges"], &["smaa.weights"]),
+            FramePass::SmaaBlend if smaa_t2x => {
+                g.pass(name, &["ldr.0", "smaa.weights"], &["smaa-write"])
+            }
+            FramePass::SmaaResolve => {
+                let mut reads = vec!["smaa-write", "smaa-read", "depth"];
+                if prepass {
+                    reads.extend(["gbuffer", "lindepth"]);
+                }
+                let write = if chain.len() == 1 { "output" } else { "ldr.1" };
+                g.pass(name, &reads, &[write])
+            }
             FramePass::Paint
             | FramePass::Lines
             | FramePass::Lens
@@ -991,6 +1011,63 @@ mod tests {
                     AO_FORMAT
                 };
                 assert_eq!(format, want, "taa {taa} gi {gi}");
+            }
+        }
+    }
+
+    #[test]
+    fn smaa_t2x_keeps_reprojection_inputs_until_resolve() {
+        for (velocity, chain_format) in [
+            (false, LDR_FORMAT),
+            (true, LDR_FORMAT),
+            (false, HDR_FORMAT),
+            (true, HDR_FORMAT),
+        ] {
+            let mut passes = Vec::new();
+            if velocity {
+                passes.extend([
+                    FramePass::Prepass,
+                    FramePass::Ao,
+                    FramePass::AoBlur,
+                    FramePass::AoUpsample,
+                ]);
+            }
+            passes.extend([
+                FramePass::Main,
+                FramePass::Tonemap,
+                FramePass::SmaaEdges,
+                FramePass::SmaaWeights,
+                FramePass::SmaaBlend,
+                FramePass::SmaaResolve,
+                FramePass::Lens,
+                FramePass::Upscale,
+            ]);
+            let config = GraphConfig {
+                chain_format,
+                ..cfg(false, velocity)
+            };
+            let plan = build_graph(&passes, &config).compile().unwrap();
+            assert_eq!(
+                plan.physical()[plan.slot("ldr.0").unwrap()].format,
+                chain_format
+            );
+            let names = plan.ordered_names();
+            let at = |name| names.iter().position(|&n| n == name).unwrap();
+            assert!(at("tonemap") < at("smaa-edges"));
+            assert!(at("smaa-weights") < at("smaa-blend"));
+            assert!(at("smaa-blend") < at("smaa-resolve"));
+            assert!(at("smaa-resolve") < at("lens"));
+            assert!(at("lens") < at("upscale"));
+            assert_eq!(plan.lifetime("depth").unwrap().1, at("smaa-resolve"));
+            assert_eq!(plan.lifetime("ldr.0").unwrap().1, at("smaa-blend"));
+            assert!(!names.contains(&"taa"));
+            if velocity {
+                for name in ["gbuffer", "lindepth"] {
+                    assert_eq!(plan.lifetime(name).unwrap().1, at("smaa-resolve"));
+                }
+                // GI retains scene radiance, not the display-mapped SMAA frame.
+                let hdr = &plan.physical()[plan.slot("hdr").unwrap()];
+                assert!(hdr.usage.contains(wgpu::TextureUsages::COPY_SRC));
             }
         }
     }

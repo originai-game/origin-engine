@@ -98,6 +98,8 @@ pub const SCENES: &[&str] = &[
     "shadows-cascades-4",
     "fxaa",
     "smaa",
+    "smaa-t2x",
+    "smaa-t2x-moving",
     "taa-sharp",
     "taau",
     "taau-moving",
@@ -348,6 +350,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "smaa" => |g, _| {
             g.scene = thin_geometry();
             g.desc.antialias = Antialias::Smaa;
+            Ok(())
+        },
+        "smaa-t2x" => |g, _| {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::SmaaT2x;
+            g.frames = 2;
+            Ok(())
+        },
+        "smaa-t2x-moving" => |g, _| {
+            g.scene = thin_geometry();
+            g.desc.antialias = Antialias::SmaaT2x;
+            g.render_scale = 0.5;
+            g.frames = 24;
+            g.update = Some(crate::shadow_scenes::pan_and_roll_sphere);
             Ok(())
         },
         // The same geometry under TAA with the camera sliding sideways:

@@ -12,6 +12,9 @@ pub(crate) struct Persistent {
     pub offscreen_linear: Option<wgpu::TextureView>,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
     pub history: Option<[wgpu::TextureView; 2]>,
+    /// T2x stores the two raw, spatially filtered display frames, never
+    /// the temporal resolve. sRGB in SDR; float for resolved HDR output.
+    pub smaa_history: Option<[wgpu::TextureView; 2]>,
     /// Screen-space GI's copy of the lit image without TAA (`ssgi.rs`),
     /// with its size: frame `n` copies into `gi[n % 2]` and reads the
     /// other. Made by [`Persistent::ensure_gi`] on the first such frame.
@@ -26,6 +29,7 @@ impl Persistent {
         output_format: wgpu::TextureFormat,
         linear_format: Option<wgpu::TextureFormat>,
         antialias: Antialias,
+        chain_format: wgpu::TextureFormat,
     ) -> Persistent {
         let attach_bind =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
@@ -68,6 +72,7 @@ impl Persistent {
             offscreen_view,
             offscreen_linear,
             history,
+            smaa_history: smaa_history(device, width, height, chain_format, antialias),
             gi: None,
         }
     }
@@ -103,6 +108,7 @@ impl Persistent {
         width: u32,
         height: u32,
         antialias: Antialias,
+        chain_format: wgpu::TextureFormat,
     ) {
         let attach_bind =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
@@ -119,7 +125,30 @@ impl Persistent {
                 .create_view(&Default::default())
             })
         });
+        self.smaa_history = smaa_history(device, width, height, chain_format, antialias);
     }
+}
+
+fn smaa_history(
+    device: &wgpu::Device,
+    width: u32,
+    height: u32,
+    format: wgpu::TextureFormat,
+    antialias: Antialias,
+) -> Option<[wgpu::TextureView; 2]> {
+    (antialias == Antialias::SmaaT2x).then(|| {
+        [0, 1].map(|_| {
+            target_texture(
+                device,
+                "smaa history",
+                width,
+                height,
+                format,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            )
+            .create_view(&Default::default())
+        })
+    })
 }
 
 /// A `width` × `height` texture of `format` from its RGBA8 texels.

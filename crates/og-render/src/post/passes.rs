@@ -399,6 +399,17 @@ impl PostPasses {
             wgpu::TextureFormat::R8Unorm,
             crate::blue_noise::BLUE_NOISE,
         );
+        let chain_format = if hdr[0] > 0.0 { HDR_FORMAT } else { LDR_FORMAT };
+        let smaa = matches!(antialias, Antialias::Smaa | Antialias::SmaaT2x).then(|| {
+            smaa::Smaa::new(
+                device,
+                queue,
+                &source_pl,
+                &taa_layout,
+                antialias == Antialias::SmaaT2x,
+                chain_format,
+            )
+        });
         PostPasses {
             blue_noise,
             identity_lut,
@@ -430,8 +441,7 @@ impl PostPasses {
             chain: HashMap::new(),
             stylise_layout,
             stylise_pl,
-            smaa: (antialias == Antialias::Smaa)
-                .then(|| smaa::Smaa::new(device, queue, &source_pl)),
+            smaa,
             source_pl,
             post_pl,
             post_shader,
@@ -439,7 +449,7 @@ impl PostPasses {
             fxaa_shader: None,
             output_format,
             hdr,
-            chain_format: if hdr[0] > 0.0 { HDR_FORMAT } else { LDR_FORMAT },
+            chain_format,
             stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
             repeat_sampler,
             sampler,
@@ -477,6 +487,7 @@ impl PostPasses {
             }
             let entry: &str = match pass {
                 FramePass::Fxaa | FramePass::SmaaBlend => "fs",
+                FramePass::SmaaResolve => "fs_smaa",
                 FramePass::Paint => "fs_paint",
                 FramePass::Lines => "fs_lines",
                 FramePass::Lens => "fs_lens",
@@ -501,6 +512,13 @@ impl PostPasses {
             } else if pass == FramePass::SmaaBlend {
                 let smaa = self.smaa.as_ref().expect("SMAA renderer");
                 (&smaa.blend_shader, &smaa.blend_pl)
+            } else if pass == FramePass::SmaaResolve {
+                let temporal = self
+                    .smaa
+                    .as_ref()
+                    .and_then(|s| s.temporal.as_ref())
+                    .expect("T2x renderer");
+                (&temporal.shader, &temporal.layout)
             } else {
                 let shader = self.stylise_shader.get_or_insert_with(|| {
                     device.create_shader_module(wgpu::ShaderModuleDescriptor {

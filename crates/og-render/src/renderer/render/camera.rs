@@ -7,6 +7,9 @@ impl Renderer {
     /// image moves by it), over more phases under TAAU
     /// ([`frame::jitter_phases`]).
     pub(super) fn taa_jitter(&self) -> Vec2 {
+        if self.info.antialias == Antialias::SmaaT2x {
+            return frame::smaa_sample(self.frame_index).0;
+        }
         let phases = frame::jitter_phases((self.width, self.height), self.history_size());
         frame::halton_jitter(self.frame_index, phases)
     }
@@ -17,7 +20,7 @@ impl Renderer {
     ) -> (f32, bool, Camera, frame::CameraFrame, Frustum) {
         // Camera (with the shake), jitter, culling.
         let aspect = self.width as f32 / self.height as f32;
-        let taa = self.info.antialias == Antialias::Taa;
+        let taa = self.info.antialias.temporal();
         let jitter = if taa {
             let px = self.taa_jitter();
             Vec2::new(

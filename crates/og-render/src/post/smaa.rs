@@ -1,4 +1,4 @@
-//! SMAA 1x, high preset. Reference and WGSL port: MIT; see
+//! SMAA 1x/T2x, high preset. Reference and WGSL port: MIT; see
 //! third_party/smaa/LICENSE{,-wgsl}.txt, including the lookup textures.
 
 use super::*;
@@ -8,6 +8,7 @@ pub(super) const EDGES: &str = concat!(
     wgsl!("smaa_edges.wgsl")
 );
 pub(super) const WEIGHTS: &str = concat!(
+    wgsl!("taa_uniform.wgsl"),
     include_str!("../../../../third_party/smaa/weights.wgsl"),
     wgsl!("smaa_weights.wgsl")
 );
@@ -26,6 +27,13 @@ pub(super) struct Smaa {
     pub blend_shader: wgpu::ShaderModule,
     pub area: wgpu::TextureView,
     pub search: wgpu::TextureView,
+    pub temporal: Option<Temporal>,
+}
+
+pub(super) struct Temporal {
+    pub blend: wgpu::RenderPipeline,
+    pub shader: wgpu::ShaderModule,
+    pub layout: wgpu::PipelineLayout,
 }
 
 impl Smaa {
@@ -33,6 +41,9 @@ impl Smaa {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source_pl: &wgpu::PipelineLayout,
+        taa_layout: &wgpu::BindGroupLayout,
+        temporal: bool,
+        chain_format: wgpu::TextureFormat,
     ) -> Self {
         use wgpu::util::DeviceExt;
         let layout = |label, count| {
@@ -42,6 +53,8 @@ impl Smaa {
                         i,
                         if i == 1 {
                             wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                        } else if i == 4 {
+                            UNIFORM
                         } else {
                             float_texture(true)
                         },
@@ -66,7 +79,7 @@ impl Smaa {
                 source: wgpu::ShaderSource::Wgsl(fullscreen_source(body).into()),
             })
         };
-        let weights_layout = layout("smaa weights", 4);
+        let weights_layout = layout("smaa weights", 5);
         let blend_layout = layout("smaa blend", 3);
         let edges = fullscreen_pipeline(
             device,
@@ -109,13 +122,29 @@ impl Smaa {
                 )
                 .create_view(&Default::default())
         };
+        let blend_pl = pl(&blend_layout);
+        let blend_shader = shader("smaa blend", BLEND);
+        let temporal = temporal.then(|| Temporal {
+            blend: fullscreen_pipeline(
+                device,
+                "smaa history",
+                &blend_shader,
+                "fs",
+                &blend_pl,
+                chain_format,
+                None,
+            ),
+            shader: shader("smaa resolve", TAA_WGSL),
+            layout: pl(taa_layout),
+        });
         Self {
             edges,
             weights,
             weights_layout,
-            blend_pl: pl(&blend_layout),
+            blend_pl,
             blend_layout,
-            blend_shader: shader("smaa blend", BLEND),
+            blend_shader,
+            temporal,
             area: lookup(
                 "smaa area",
                 160,

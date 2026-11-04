@@ -178,6 +178,16 @@ pub(crate) fn halton_jitter(index: u64, phases: u64) -> Vec2 {
     Vec2::new(halton(i, 2) - 0.5, halton(i, 3) - 0.5)
 }
 
+/// SMAA T2x's reference jitter and area layer, in image pixels (y down).
+/// Jimenez et al., MIT, third_party/smaa/LICENSE.txt, @SUBSAMPLE_INDICES.
+pub(crate) fn smaa_sample(index: u64) -> (Vec2, f32) {
+    if index.is_multiple_of(2) {
+        (Vec2::splat(0.25), 1.0)
+    } else {
+        (Vec2::splat(-0.25), 2.0)
+    }
+}
+
 /// The six planes of a view-projection with depth 0..1 (Gribb and
 /// Hartmann), normalized, `n · p + d >= 0` inside.
 fn frustum_planes(m: Mat4) -> [Vec4; 6] {
@@ -901,6 +911,12 @@ mod tests {
     /// always had (frame for frame), and supersampling never goes under 8.
     #[test]
     fn the_jitter_cycles_longer_as_the_scene_shrinks() {
+        // T2x uses the reference diagonal in top-down image coordinates,
+        // and the matching area layer, independent of render scale.
+        for n in [0, 2, 32, 1024] {
+            assert_eq!(smaa_sample(n), (Vec2::new(0.25, 0.25), 1.0));
+            assert_eq!(smaa_sample(n + 1), (Vec2::new(-0.25, -0.25), 2.0));
+        }
         assert_eq!(jitter_phases((1920, 1080), (1920, 1080)), 8);
         assert_eq!(jitter_phases((960, 540), (1920, 1080)), 32);
         assert_eq!(jitter_phases((1344, 756), (1920, 1080)), 16);

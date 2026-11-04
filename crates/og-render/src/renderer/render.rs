@@ -88,7 +88,9 @@ impl Renderer {
         // not built in (WORLD_3D).
         let scene_water: &[Water] = if WORLD_3D { &scene.water } else { &[] };
 
-        let (aspect, taa, camera, cam, view_frustum) = self.prepare_frame_camera(scene);
+        let (aspect, temporal, camera, cam, view_frustum) = self.prepare_frame_camera(scene);
+        let taa = self.info.antialias == Antialias::Taa;
+        let smaa_t2x = self.info.antialias == Antialias::SmaaT2x;
         let (volumetric_fog, frame_fog, reflections) = self.prepare_frame_reflections(
             scene,
             scene_water,
@@ -111,7 +113,7 @@ impl Renderer {
         // TAA's skinned motion vectors: the previous frame's joints and
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
-        let taa_on = self.info.antialias == Antialias::Taa;
+        let taa_on = temporal;
         let skinned_motion = if taa_on || scene.post.motion_blur.is_some() {
             skin::append_previous(
                 &scene.joint_palettes,
@@ -858,7 +860,7 @@ impl Renderer {
         if !gpu_cull {
             meshlet_taken.clear();
         }
-        let object_motion = previous_valid && (blur_motion || taa);
+        let object_motion = previous_valid && (blur_motion || temporal);
         // Foliage's auxiliary record carries current sway as well as history,
         // including array materials whose current layer word is occupied.
         let foliage_instances = batches.iter().any(|b| b.foliage);
@@ -2360,7 +2362,7 @@ impl Renderer {
         });
         let slot = (self.frame_index % 2) as usize;
         let taa_blend = taa && self.taa_history.is_some();
-        self.write_frame_taa_uniform(taa, prepass, &cam);
+        self.write_frame_taa_uniform(temporal, prepass, &cam);
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same).
         let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
@@ -2474,6 +2476,16 @@ impl Renderer {
             passes.extend((0..levels - 1).rev().map(FramePass::BloomUp));
         }
         passes.push(FramePass::Tonemap);
+        // Temporal resolve precedes distortion: motion and depth remain in
+        // scene coordinates. The overlay never enters either history slot.
+        if smaa_t2x {
+            passes.extend([
+                FramePass::SmaaEdges,
+                FramePass::SmaaWeights,
+                FramePass::SmaaBlend,
+                FramePass::SmaaResolve,
+            ]);
+        }
         // The stylisation chain (post.rs `chain_passes`), then FXAA, then
         // the pixel grid scaled up to the output.
         let st = &scene.stylise;
@@ -4010,7 +4022,7 @@ impl Renderer {
                         water_draws: &water_draws,
                         fluid_frame: &fluid_frame,
                         transmission_view,
-                        taa,
+                        taa: temporal,
                         encoder: &mut encoder,
                         frame_bind_group,
                         fx_group,
@@ -4326,7 +4338,7 @@ impl Renderer {
         if let Some((frame, ..)) = surface_frame {
             self.queue.present(frame);
         }
-        if taa {
+        if temporal {
             self.taa_history = Some(cam.view_proj);
         }
         // The main pass copied its lit image for the next frame's GI.

@@ -288,6 +288,7 @@ impl Renderer {
                 .persistent
                 .history
                 .iter()
+                .chain(self.persistent.smaa_history.iter())
                 .flatten()
                 .map(view_bytes)
                 .sum::<u64>();

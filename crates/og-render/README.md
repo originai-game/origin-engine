@@ -427,9 +427,27 @@ after tonemapping and stylisation, before pixel-grid upscale and the
 overlay. Edges use sRGB-encoded luma; neighbourhood blending uses linear
 colour. No jitter or history: this replaces rather than stacks with TAA,
 and TAAU remains exclusive to TAA. Dedicated edge/weight/blend layouts
-use 2/4/3 bindings, with no extra lit bindings. Reference and WGSL-port
+use 2/5/3 bindings (weights read the shared temporal uniform), with no extra
+lit bindings. Reference and WGSL-port
 licences, provenance and texture dimensions: `third_party/smaa/`.
 The `smaa` thin-geometry reference scene is for Metal capture by macrunner.
+
+**SMAA T2x** (`Antialias::SmaaT2x`, TypeScript `antialias: "smaaT2x"`)
+uses the reference's alternating quarter-pixel diagonal jitter and area
+layers 1/2. It reuses TAA's camera/object velocity, reprojection, cut/reset
+validity and neighbourhood clamp, but stores two raw SMAA frames in its
+own sRGB history pair (float under resolved HDR), not an accumulated result.
+The two-frame mean is linear, including alpha; the first frame after a cut,
+resize, scene or stylisation switch uses only the current frame. T2x runs
+after tonemapping but before stylisation, lens distortion, upscale and UI,
+so motion coordinates match and the overlay never enters history.
+It is exclusive of TAA, TAAU and MSAA; render scale uses spatial upscaling,
+and `taaHistory`/`taaSharpen` apply only to TAA. Antialias mode is selected
+when creating the renderer: changing between TAA and T2x creates fresh
+resources and history. GI retains its own scene-linear history.
+The resolve reuses the eight-binding TAA layout; no lit bindings change.
+`smaa-t2x` and `smaa-t2x-moving` are the static and half-scale camera/object
+motion acceptance scenes. S2x remains deferred to the compatibility phase.
 
 **Bloom follows the antialiasing.** Bloom's prefilter reads the lit
 image after antialiasing, so the method decides how much of a

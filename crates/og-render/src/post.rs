@@ -28,7 +28,7 @@ const POST_WGSL: &str = concat!(
     wgsl!("post.wgsl"),
     wgsl!("bloom_chain.wgsl")
 );
-const TAA_WGSL: &str = wgsl!("taa.wgsl");
+const TAA_WGSL: &str = concat!(wgsl!("taa_uniform.wgsl"), wgsl!("taa.wgsl"));
 const LUMINANCE_WGSL: &str = wgsl!("luminance.wgsl");
 const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
 // Screen-space reflections (ssr.rs) and global illumination (ssgi.rs) are
@@ -242,7 +242,7 @@ pub(crate) struct TaaUniform {
     pub still: [f32; 4],
     /// xy: the history's size (the output's under TAAU, else the scene's),
     /// z: 1 under TAAU (the scene drawn smaller or larger than the output
-    /// and resolved up to it here).
+    /// and resolved up to it here). w: SMAA area layer (0 for 1x, 1/2 for T2x).
     pub upscale: [f32; 4],
 }
 

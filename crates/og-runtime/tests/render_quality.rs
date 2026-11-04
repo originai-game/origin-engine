@@ -25,16 +25,21 @@ use std::rc::Rc;
 struct NoAssets;
 
 #[test]
-fn smaa_render_option_reaches_both_hosts_without_temporal_aa() {
-    og_host_begin_bundle();
-    let game = og_game_game(Some(json!({"render": {"antialias": "smaa"}}).to_string()));
-    let engine = answer(og_engine_create(game, "{}".into()))["value"]
-        .as_u64()
-        .unwrap() as u32;
-    let desc = og_runtime::render_desc(engine, og_render::RenderDesc::default());
-    assert_eq!(desc.antialias, og_render::Antialias::Smaa);
-    assert_eq!(og_runtime::antialias_name(desc.antialias), "smaa");
-    assert!(og_runtime::og_engine_destroy(engine));
+fn smaa_render_options_reach_both_hosts() {
+    for (name, mode) in [
+        ("smaa", og_render::Antialias::Smaa),
+        ("smaaT2x", og_render::Antialias::SmaaT2x),
+    ] {
+        og_host_begin_bundle();
+        let game = og_game_game(Some(json!({"render": {"antialias": name}}).to_string()));
+        let engine = answer(og_engine_create(game, "{}".into()))["value"]
+            .as_u64()
+            .unwrap() as u32;
+        let desc = og_runtime::render_desc(engine, og_render::RenderDesc::default());
+        assert_eq!(desc.antialias, mode);
+        assert_eq!(og_runtime::antialias_name(desc.antialias), name);
+        assert!(og_runtime::og_engine_destroy(engine));
+    }
 }
 
 #[test]

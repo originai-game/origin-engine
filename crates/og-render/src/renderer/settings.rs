@@ -52,6 +52,7 @@ impl Renderer {
             self.output_format,
             self.offscreen_linear,
             self.info.antialias,
+            self.post.chain_format,
         );
         self.graph.invalidate();
         self.taa_history = None;
@@ -210,8 +211,13 @@ impl Renderer {
             return;
         }
         let (hw, hh) = self.history_size();
-        self.persistent
-            .resize_history(&self.device, hw, hh, self.info.antialias);
+        self.persistent.resize_history(
+            &self.device,
+            hw,
+            hh,
+            self.info.antialias,
+            self.post.chain_format,
+        );
         self.taa_history = None;
         self.gi_history = None;
     }
