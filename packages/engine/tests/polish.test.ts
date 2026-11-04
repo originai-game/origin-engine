@@ -360,6 +360,43 @@ export default og.game({
   expect(existsSync(join(p, "og-out", "polish", "ui-check", "check.txt"))).toBeTrue();
 }, 600_000);
 
+test("og ui check runs each cell from a fresh game: module state of one cell never reaches the next", () => {
+  // Wrong: one import of the bundle shared by every cell, so a toggle kept in a module-level `let` opens the shop in the
+  // first cell and closes it in the second, which is then measured as passing (the kit's dialogue was an empty frame).
+  const p = join(evidence, "ui-fresh");
+  rmSync(p, { recursive: true, force: true });
+  for (const d of ["src", "assets/fonts"]) mkdirSync(join(p, d), { recursive: true });
+  copyFileSync(join(repo, "templates", "game", "assets", "fonts", "NotoSansSC-Regular-subset.ttf"), join(p, "assets", "fonts", "NotoSansSC-Regular-subset.ttf"));
+  writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Toggle"\nid "toggle"\nengine "0.7.7"\nentry "src/main.ts"\n');
+  writeFileSync(
+    join(p, "src", "main.ts"),
+    `import { og, defineSystem } from "@origingame/engine";
+let open = false;
+const Draw = defineSystem("Draw", {}, () => {
+  if (!open) return;
+  og.ui.anchor("Price", { anchor: "center" }, () => og.ui.label("Cost", "120 gold", { step: "title" }));
+  og.ui.anchor("Stock", { anchor: "center" }, () => og.ui.label("Left", "3 in stock", { step: "title" }));
+});
+export default og.game({
+  tick: 60,
+  systems: [Draw],
+  commands: { shop: () => { open = !open; } },
+  start: (world) => {
+    const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
+    if (font.ok) og.ui.configure(world, { font: font.value });
+  },
+});
+`,
+  );
+  const out = join(p, "og-out", "check");
+  const r = run([ogBin(), "ui", "check", p, "--screen", "shop=0:shop", "--breakpoints", "desktop,tablet,phonePortrait", "--locales", "game", "--scales", "100", "--out", out, "--json"]);
+  if (!existsSync(join(out, "check.json"))) throw new Error(r.out);
+  const report = JSON.parse(readFileSync(join(out, "check.json"), "utf8")) as { cells: number; findings: Array<{ rule: string; cells: string[] }> };
+  expect(report.cells).toBe(3);
+  // The two placed groups overlap in every cell, not in every other one.
+  expect(report.findings.find((f) => f.rule === "overlap")?.cells.length).toBe(3);
+}, 600_000);
+
 test("og polish reads a phone's UI at its device pixels and measures text, not disabled controls", () => {
   const p = join(evidence, "phone-ui");
   rmSync(p, { recursive: true, force: true });

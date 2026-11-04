@@ -20,7 +20,7 @@
 // pseudo-locale by lengthening text in process (og.i18n.t and the text of
 // og.ui's widgets), the other locales by the engine's locale.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
@@ -121,14 +121,35 @@ async function main(): Promise<void> {
   loadNativeHost();
   const extras = native() as unknown as { og_node_ui_frame(id: number): string };
   if (typeof extras.og_node_ui_frame !== "function") fail("this native addon has no og_node_ui_frame: rebuild it (packages/engine/scripts/build.sh)");
-  const game = ((await import(pathToFileURL(resolve(entry!)).href)) as { default?: GameToken }).default;
-  if (!game) fail(`${entry} has no default export`);
+  // Each cell runs a fresh copy of the bundle: bun keys file:// modules by path and ignores a query, so one import
+  // shared by every cell carried the game's module state over (a kit's dialogue handle from the last cell's engine
+  // left every later cell of the screen an empty conversation, measured as passing).
+  let copies = 0;
+  const leftovers: string[] = [];
+  process.on("exit", () => {
+    for (const f of leftovers) rmSync(f, { force: true });
+  });
+  const freshGame = async (): Promise<GameToken> => {
+    const from = resolve(entry!);
+    const copy = from.replace(/(\.[cm]?[jt]s)?$/, (ext) => `.cell-${copies++}${ext || ".js"}`);
+    copyFileSync(from, copy);
+    leftovers.push(copy);
+    // bun reads `<module>.map` when a stack is formed: kept until exit, so a cell's errors still name the .ts lines.
+    if (existsSync(`${from}.map`)) {
+      copyFileSync(`${from}.map`, `${copy}.map`);
+      leftovers.push(`${copy}.map`);
+    }
+    const g = ((await import(pathToFileURL(copy).href)) as { default?: GameToken }).default;
+    if (!g) fail(`${entry} has no default export`);
+    return g!;
+  };
 
   /** One run: an engine of its own, the script, then its UI frame and the frames it captured. */
-  const runCell = (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): { frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] } => {
+  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] }> => {
+    const game = await freshGame();
     const vp = BREAKPOINTS[bp]!;
     const restore = pseudoAbi(locale === "pseudo");
-    const created = createEngine(game!, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
+    const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale && locale !== "pseudo" ? { locale } : {}) });
     if (!created.ok) {
       restore();
       fail(created.reason);
@@ -168,8 +189,8 @@ async function main(): Promise<void> {
   };
 
   /** The probe's `help` text (every action with its usage), from a fresh engine. */
-  const runHelp = (): string => {
-    const created = createEngine(game!, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}) });
+  const runHelp = (game: GameToken): string => {
+    const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}) });
     if (!created.ok) fail(created.reason);
     const engine = created.value;
     try {
@@ -191,7 +212,8 @@ async function main(): Promise<void> {
   // show command's enumerated values, else the playtests' screenshots, else
   // the start screen. A bare check sees every screen the project has.
   if (screens.length === 0) {
-    const found = await defaultScreens(runHelp, show, opts("--playtest"));
+    const helpGame = await freshGame();
+    const found = await defaultScreens(() => runHelp(helpGame), show, opts("--playtest"));
     screens.push(...found.screens);
     process.stderr.write(`og ui ${mode}: ${screens.length} screen(s) from ${found.from}\n`);
   }
@@ -205,7 +227,7 @@ async function main(): Promise<void> {
     const base = [...(styles[0] ? timed(styleCmd.replaceAll("{style}", styles[0])) : []), ...timed(screen.commands)];
     const start = Math.max(settle, 0);
     const steps = [...base, ...timed(film, start)];
-    const r = runCell(bp, locales[0] ?? "", steps, at.map((t, i) => ({ at: Number((start + t).toFixed(4)), name: `film-${i}` })));
+    const r = await runCell(bp, locales[0] ?? "", steps, at.map((t, i) => ({ at: Number((start + t).toFixed(4)), name: `film-${i}` })));
     const rate = 60;
     const cells: SheetCell[] = at.map((t, i) => ({ image: r.images.get(`film-${i}`) ?? null, lines: [`+${t}S`, `TICK ${Math.round((start + t) * rate)}`] }));
     const img = sheet(cells, at.length, 260, `FILM ${screen.name} ${bp}: ${film}`.slice(0, 120));
@@ -232,7 +254,7 @@ async function main(): Promise<void> {
         const index = cells.length;
         const uiFrame = join("cells", `${index}.uiframe.json`);
         const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
-        const r = runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
+        const r = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
         const img = r.images.get("cell") ?? null;
         let frame: string | null = null;
         if (img) {
