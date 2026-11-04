@@ -77,10 +77,10 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
     if (selected) ring("Selected");
   };
   const part = `Card.frame${flags(selected && "selected", variant)}`;
-  // A fixed width is the card at 100 % text: it grows with the player's text size, and past it to
-  // its longest word (a fit box never splits a word), so a title never breaks mid-word.
-  const fixed = desc.width?.kind === "fixed" ? byText(desc.width.px ?? 0) : 0;
-  const width = fixed > 0 ? fit(fixed, fixed) : desc.width ?? null;
+  // A fixed width is the card at 100 % text: it grows with the player's text size, as far as the room it
+  // is given (a card in a slot of its own 100 % width stays in the slot, its words wrapping inside it).
+  const base = desc.width?.kind === "fixed" ? desc.width.px ?? 0 : 0;
+  const width = base > 0 ? grow(base, Math.max(base, byText(base))) : desc.width ?? null;
   if (desc.interactive) {
     const r = surface(id, {
       part: "Card.frame",

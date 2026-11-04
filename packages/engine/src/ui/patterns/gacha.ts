@@ -104,8 +104,9 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         fill: null,
         selected: on,
         direction: portrait ? "column" : "row",
-        // On a phone in portrait three tabs share the row; at large text each takes its own.
-        width: portrait ? (big ? grow() : px(Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - u(24) - u(8) * (tabs.length - 1)) / tabs.length))) : px(u(short ? 160 : 200)),
+        // On a phone in portrait three tabs share the row; at large text each takes its own. The rail's tabs grow with
+        // the text, so a banner's one-word name never runs past its tab.
+        width: portrait ? (big ? grow() : px(Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - u(24) - u(8) * (tabs.length - 1)) / tabs.length))) : px(Math.round(u(short ? 160 : 200) * Math.max(1, frame().theme.textScale ?? 1))),
         padding: xy(u(10), u(touch ? 12 : 8)),
         gap: u(10),
         radius: t.control,
@@ -174,9 +175,15 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   // them: the column stands on the frame's foot (no gap between the rate line and the pity meter).
   kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 8 : 18), align: portrait ? "end" : short ? "start" : "center" });
   // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the purchase block never leaves it.
-  if (portrait) tabsBlock();
-  kit.openScroll("Info", { width: grow(), height: short || (portrait && big) ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
+  // At large text in portrait the tabs, a row each, scroll with the words: above them they took the room the
+  // purchase block needs and pushed it off the screen's foot.
+  if (portrait && !big) tabsBlock();
+  // At large text the words take the room the purchase block leaves and scroll in it, on a desktop too (fit, they
+  // pushed the pulls past the screen's foot).
+  const large = (frame().theme.textScale ?? 1) >= 1.5;
+  kit.openScroll("Info", { width: grow(), height: short || large ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
   {
+    if (portrait && big) tabsBlock();
     if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
     text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
@@ -310,7 +317,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
       }
       kit.close();
     });
-    kit.row("Bar", { gap: u(8), cross: "center" }, () => {
+    kit.row("Bar", { gap: u(8), cross: "center", wrap: true }, () => {
       if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details" }).clicked) out.details = true;
       if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history" }).clicked) out.history = true;
     });

@@ -138,8 +138,10 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
       m.author && !m.system ? `${m.authorKey ? `[link=U${m.authorKey}]` : ""}[b][color=${ink}]${esc(m.author)}[/color][/b]${m.authorKey ? "[/link]" : ""}: ` : "",
     ].join("");
     const markup = m.system ? `${head}[color=inkMuted]${words}[/color]` : `${head}${m.channel && ch?.color && !m.author ? `[color=${ink}]${words}[/color]` : words}`;
-    // Each line a focus stop (what og.ui.scrollIntoView reaches, and how keys and a pad read back).
-    kit.open(k, { direction: "row", width: grow(), gap: u(8), cross: "start", padding: xy(u(mentionsMe ? 8 : 4), u(hud ? 2 : 3)), interactive: true, focusable: true, radius: t.small, part: `Chat.line${flags(mentionsMe && "mention", m.own && "own", m.system && "system")}`, partClass: "listItem" });
+    // Each line a focus stop (what og.ui.scrollIntoView reaches, and how keys and a pad read back); a line with links
+    // or a named author stops on those instead: inside the line's box, a pad could never move from the line onto them.
+    const linked = markup.includes("[link=");
+    kit.open(k, { direction: "row", width: grow(), gap: u(8), cross: "start", padding: xy(u(mentionsMe ? 8 : 4), u(hud ? 2 : 3)), interactive: true, focusable: !linked, radius: t.small, part: `Chat.line${flags(mentionsMe && "mention", m.own && "own", m.system && "system")}`, partClass: "listItem" });
     if (mentionsMe) {
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("highlight", 0.12) }] });
       kit.open("Edge", { width: px(u(3)), height: grow(), radius: 2, background: token("highlight") });

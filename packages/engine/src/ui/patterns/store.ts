@@ -37,8 +37,9 @@ function wallet(desc: Api.StoreFrontDesc, out: Mut<Api.StoreFrontResult>): void 
         part: "Store.topUp",
         cls: "badge",
         fill: mix(role("panelRaised"), role("ink"), 0.16),
-        width: px(u(26)),
-        height: px(u(26)),
+        // A whole touch target under a finger (26 px was a third short of one).
+        width: px(Math.max(u(26), frame().touch ? 44 : 0)),
+        height: px(Math.max(u(26), frame().touch ? 44 : 0)),
         align: "center",
         cross: "center",
         radius: 999,
@@ -139,8 +140,10 @@ export function storeFront(id: string, desc: Api.StoreFrontDesc): Api.StoreFront
         fill: null,
         direction: "column",
         width: px(w),
-        // A featured tile on a phone spans the row: as tall as it is wide, so its contents and price stay inside it.
-        height: px(o.featured && small ? Math.round(w * 0.92) : tileH),
+        // A featured tile on a phone spans the row: as tall as it is wide, so its contents and price stay inside it. A
+        // tile whose words need more (a bundle's contents, large text) grows to them rather than pushing its price
+        // strip out under the next section.
+        height: { kind: "fit", min: o.featured && small ? Math.round(w * 0.92) : tileH },
         padding: xy(0, 0),
         radius: t.panel,
         lift: av === "soldOut" ? 0 : -u(6),

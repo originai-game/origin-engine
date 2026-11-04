@@ -111,14 +111,20 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
   kit.open(id, { width: px(s), height: px(s), direction: "column", align: "center", cross: "center" });
   switch (kind) {
     case "lock": {
-      // A shackle (an arc's upper half) over a body.
-      kit.open("Shackle", { width: px(s * 0.56), height: px(s * 0.56) });
-      kit.setDraw({ shape: { kind: "arc", start: Math.PI, sweep: Math.PI, thickness: Math.max(1.5, s * 0.11), cap: "butt" }, fills: fill });
+      // A shackle (a half ring, its own box no taller than it) standing on a body: laid out one over the other, never
+      // moved onto each other.
+      const th = Math.max(1.5, s * 0.11);
+      const r = s * 0.28 - th / 2;
+      const half = Array.from({ length: 13 }, (_, k) => {
+        const a = Math.PI + (Math.PI * k) / 12;
+        return { x: s * 0.28 + Math.cos(a) * r, y: s * 0.3 + Math.sin(a) * r };
+      });
+      kit.open("Shackle", { width: px(s * 0.56), height: px(s * 0.3) });
+      kit.setDraw({ shape: { kind: "path", points: half, width: th, cap: "butt", join: "round", closed: false } as Api.DrawShape, fills: fill });
       kit.close();
       kit.open("Body", { width: px(s * 0.72), height: px(s * 0.46), radius: s * 0.08 });
       kit.setDraw({ shape: { kind: "rect" }, fills: fill });
       kit.close();
-      kit.props({ transform: { y: -s * 0.22 } });
       break;
     }
     case "star":

@@ -564,6 +564,9 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
       return hit;
     });
   }
+  let inHole = true;
+  let centre: { value: string; label: string; step: Api.TypeStepName } | null = null;
+  const em = kit.memory(`${cx.key}~em`, 0.62);
   kit.open("Body", { direction: stack ? "column" : "row", width: grow(), gap: t.lg, cross: "center" });
   kit.open("Plot", { width: px(D), height: px(D), interactive: true });
   {
@@ -591,11 +594,16 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
       const side = Math.floor((2 * R * hole - 12) * 0.7071);
       const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
       const big: Api.TypeStepName = phone ? "lg" : "xl";
-      kit.column("Centre", { width: px(2 * R * hole - 12), height: px(2 * R * hole - 12), align: "center", cross: "center", gap: 0 }, () => {
-        text("Value", k >= 0 ? pct(v[k]!) : cx.fmt(total), { step: big, font: "display", nowrap: true, align: "center" });
-        wholeWords("Label", k >= 0 ? (cx.cats[k] ?? "") : desc.totalLabel || "Total", { width: side, height: side - (ramp[big]?.lineHeight ?? 28), maxLines: 2, steps: ["caption", "meta", "xs"], color: "inkMuted" });
+      // The figure's width from last tick's (per em of its step), else a guess: one too wide for the hole (a small
+      // donut, large text, a wide face) stands over the legend instead, never cut by the hole's box.
+      const value = k >= 0 ? pct(v[k]!) : cx.fmt(total);
+      inHole = [...value].length * em * (ramp[big]?.size ?? 24) <= side;
+      centre = { value, label: k >= 0 ? (cx.cats[k] ?? "") : desc.totalLabel || "Total", step: big };
+      if (inHole) kit.column("Centre", { width: px(2 * R * hole - 12), height: px(2 * R * hole - 12), align: "center", cross: "center", gap: 0 }, () => {
+        text("Value", value, { step: big, font: "display", nowrap: true, align: "center" });
+        wholeWords("Label", centre!.label, { width: side, height: side - (ramp[big]?.lineHeight ?? 28), maxLines: 2, steps: ["caption", "meta", "xs"], color: "inkMuted" });
       });
-      over({ insets: { start: c - R * hole + 6, top: c - R * hole + 6 }, inert: true, z: 3 });
+      if (inHole) over({ insets: { start: c - R * hole + 6, top: c - R * hole + 6 }, inert: true, z: 3 });
     }
   }
   const plot = kit.close() as Api.Response;
@@ -604,6 +612,13 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
   if (plot.clicked && under >= 0) clicked = under;
   // The legend: every wedge's swatch, name, value and share; each row a target keys and pads walk.
   kit.column("Legend", { width: stack ? grow() : grow(), gap: 0, cross: "stretch", part: "Chart.legend", partClass: "panel" }, () => {
+    if (centre && !inHole) {
+      const c = centre;
+      kit.row("Centre", { width: grow(), gap: t.sm, cross: "center", wrap: true, padding: xy(t.sm, 0) }, () => {
+        text("Value", c.value, { step: c.step, font: "display", nowrap: true });
+        text("Label", c.label, { step: "caption", color: "inkMuted", maxLines: 2, width: grow() });
+      });
+    }
     v.forEach((val, k) => {
       const on = k === hot;
       const r = surface(kit.idi("Row", k), {
@@ -628,6 +643,13 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
     });
   });
   kit.close();
+  if (centre) {
+    // The figure's drawn width per em, wherever it stood last tick (in the hole or over the legend).
+    const body = kit.lastPath();
+    const at = kit.bounds(`${body}/Plot/Centre/Value`) ?? kit.bounds(`${body}/Legend/Centre/Value`);
+    const size = (frame().theme.typeRamp as Record<string, Api.TypeStep>)[centre.step]?.size ?? 24;
+    if (at && at.width > 0 && [...centre.value].length > 0) kit.remember(`${cx.key}~em`, at.width / size / [...centre.value].length);
+  }
   const b = kit.bounds(kit.lastPath());
   kit.remember("~w", b ? b.width : 0);
   return { hovered, clicked };

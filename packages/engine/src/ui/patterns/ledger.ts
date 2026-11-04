@@ -11,7 +11,7 @@
 import type * as Api from "@origingame/engine";
 import {
   firstRoom,
-  artSlot, clamp, eyebrow, flags, frame, glow, grouped, grow, hex, kit, line, mix, paint, parentOf, px, rememberRoom, role, rtl, safeHeight,
+  artSlot, clamp, eyebrow, fit, flags, frame, glow, grouped, grow, hex, kit, line, mix, paint, parentOf, px, rememberRoom, role, rtl, safeHeight,
   safeWidth, shadow, st, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
 import { chevron } from "../containers/base.ts";
@@ -74,7 +74,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
       if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "xl5", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow() });
       else kit.spacer("Gap", grow());
       if (tabs.length > 0) {
-        kit.row("Tabs", { gap: u(4), cross: "center", padding: xy(u(4), u(4)), part: "Ledger.tabs", partClass: "panel" }, () => {
+        // At large text on a phone the tabs take a second line rather than running off the screen's edge.
+        kit.row("Tabs", { gap: u(4), cross: "center", wrap: true, padding: xy(u(4), u(4)), part: "Ledger.tabs", partClass: "panel" }, () => {
           kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.5) }], strokes: [line(1, token("ink", 0.08))] });
           for (const tb of tabs) {
             const k = tb.key ?? "";
@@ -86,6 +87,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
               selected: on,
               selectedFill: mix(role("panelRaised"), role("ink"), 0.12),
               padding: xy(u(phone ? 12 : 16), u(phone ? 6 : 8)),
+              // A whole touch target under a finger (the phone's tabs laid out 30 px tall).
+              height: { kind: "fit", min: frame().touch ? 44 : 0 },
               radius: 999,
               semantics: { role: "tab", name: tb.label ?? k, selected: on },
             }, () => text("Text", tb.label ?? k, { step: st(phone ? 13 : 15), font: "display", nowrap: true, color: on ? "ink" : "inkMuted" }));
@@ -138,7 +141,14 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   };
 
   // The ledger's columns: the amount, the change and the budget at fixed widths, the name taking the rest.
-  const colAmount = Math.round(u(phone ? 84 : 120) * Math.min(1.5, ts));
+  // The amount column is as wide as the widest amount it drew last tick, at least its design width: a long total in a
+  // wide face ("−$98,100" in pixel) is never cut, and every row's amount still ends on one line.
+  const colAmount = Math.max(Math.round(u(phone ? 84 : 120) * Math.min(1.5, ts)), kit.memory(`~le.amt.${id}`, 0));
+  const amounts: string[] = [];
+  const amount = (aid: string, value: string, color?: Api.ThemeColor): void => {
+    amounts.push(`${kit.openPath()}/${aid}`);
+    text(aid, value, { step: st(phone ? 14 : 16), font: "mono", nowrap: true, align: "end", width: fit(colAmount), ...(color ? { color } : {}) });
+  };
   const colChange = Math.round(u(phone ? 64 : 90) * Math.min(1.5, ts));
   const colFunding = Math.round(u(210) * Math.min(1.3, ts));
   // Short of room for its text (a laptop at 200 %), the desktop stacks like a phone and the page scrolls, so the
@@ -221,7 +231,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
             text("Text", l.warning!, { step: st(12), color: "warn", nowrap: true, ellipsis: true, width: grow() });
           });
         });
-        text("Amount", money(l.amount ?? 0), { step: st(phone ? 14 : 16), font: "mono", nowrap: true, align: "end", width: px(colAmount) });
+        amount("Amount", money(l.amount ?? 0));
         kit.row("Change", { width: px(colChange), align: "end", cross: "center" }, () => {
           if (ch !== null && Math.abs(ch) >= 0.0005) delta("Delta", signedPct(ch), ch > 0, good, phone ? 12 : 13);
           else text("None", "\u2014", { step: st(13), color: "inkFaint", nowrap: true });
@@ -246,7 +256,7 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     kit.row(s.key ?? "", { width: grow(), gap: u(12), cross: "center", padding: xy(u(8), u(phone ? 6 : 8)), part: "Ledger.section", partClass: "listItem" }, () => {
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("ink", 0.05) }] });
       text("Name", (s.name ?? s.key ?? "").toLocaleUpperCase(), { step: st(phone ? 13 : 15), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
-      text("Total", `${s.expense ? "\u2212" : ""}${money(tot)}`, { step: st(phone ? 14 : 16), font: "mono", nowrap: true, align: "end", width: px(colAmount), color: s.expense ? "danger" : "success" });
+      amount("Total", `${s.expense ? "\u2212" : ""}${money(tot)}`, s.expense ? "danger" : "success");
       kit.row("Change", { width: px(colChange), align: "end", cross: "center" }, () => {
         if (ch !== null && Math.abs(ch) >= 0.0005) delta("Delta", signedPct(ch), ch > 0, (ch > 0) !== !!s.expense, phone ? 12 : 13);
       });
@@ -275,15 +285,17 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
     kit.semantics({ role: "status", name: `${desc.netLabel ?? "Net"} ${good ? "+" : ""}${money(net)}` });
   };
 
-  const ledgerList = (scroll: boolean): void => {
+  const ledgerList = (scroll: boolean, page = ""): void => {
+    let room: Api.UiRect | null = null;
+    let prev = 0;
     if (scroll) {
       // Whole rows only: the list is cut at the last row that fits the room above Net (from last tick's layout), so no
       // row stands half under it; the rest scroll.
       // Rows is the table's next child after its header (built just before, so lastPath names it).
       const rowsPath = `${parentOf(kit.lastPath())}/Rows`;
       kit.open("Rows", { direction: "column", width: grow(), height: grow() });
-      const room = kit.bounds(rowsPath);
-      const prev = kit.memory(`~le.rows.${id}`, 0);
+      room = kit.bounds(rowsPath);
+      prev = kit.memory(`~le.rows.${id}`, 0);
       // og.ui.bounds gives the part in view, so each row's height is kept from a tick it was seen whole (ending clear of
       // the room's edge); the list then holds the rows from the top whose heights add up within the room.
       if (room && room.height > 0) {
@@ -301,13 +313,58 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
         }
         kit.remember(`~le.rows.${id}`, fit > 0 ? Math.ceil(fit) : prev);
       } else kit.remember(`~le.rows.${id}`, prev);
-      kit.openScroll("List", { width: grow(), height: prev > 0 && room && room.height > 0 ? px(Math.min(prev, room.height)) : grow(), gap: u(2), padding: xy(0, 0), fade: 28, fadeInto: "shadow" } as never);
-    } else kit.open("List", { direction: "column", width: grow(), gap: u(2) });
-    for (const s of sections) {
-      sectionHead(s);
-      for (const l of sorted(s)) lineRow(l, s);
     }
+    // Only the rows the view crosses (and half a view either side) are built, the rest held by fillers of their
+    // heights, as og.ui.openList does: a dozen funded lines built whole took the screen past its element budget. The
+    // view is the list's own scroll, or on a phone the page's (`page`), where the list's top is found from a row seen
+    // with its top in view.
+    const listPath = `${kit.openPath()}/List`;
+    const gap = u(2);
+    const rows = sections.flatMap((s) => [{ key: s.key ?? "", build: () => sectionHead(s) }, ...sorted(s).map((l) => ({ key: l.key ?? "", build: () => lineRow(l, s) }))]);
+    const hs = rows.map((r) => kit.memory(`~le.h.${id}.${r.key}`, 0));
+    const known = hs.filter((h) => h > 0);
+    const mean = known.length > 0 ? known.reduce((a, h) => a + h, 0) / known.length : u(phone ? 52 : 60);
+    const at = [0];
+    for (let i = 0; i < rows.length; i++) at.push(at[i]! + (hs[i]! || mean) + gap);
+    const port = kit.scrollState(scroll ? listPath : page);
+    const portBox = kit.bounds(scroll ? listPath : page);
+    const top = scroll ? 0 : kit.memory(`~le.top.${id}`, -1);
+    let first = 0;
+    let last = rows.length;
+    if (port && port.viewHeight > 0) {
+      // Before a row has shown where the list starts in the page (it starts below the fold at large text), its top is
+      // at least 0: the rows past the view from there are out of it either way.
+      const lo = port.offsetY - port.viewHeight / 2 - top;
+      const hi = port.offsetY + port.viewHeight * 1.5 - Math.max(0, top);
+      if (top >= 0) while (first < rows.length - 1 && at[first + 1]! - gap <= lo) first++;
+      last = Math.min(rows.length, first + 1);
+      while (last < rows.length && at[last]! < hi) last++;
+    }
+    const filler = (fid: string, h: number): void => {
+      kit.open(fid, { height: px(Math.max(0, h)) });
+      kit.close();
+    };
+    if (scroll) kit.openScroll("List", { width: grow(), height: prev > 0 && room && room.height > 0 ? px(Math.min(prev, room.height)) : grow(), gap, padding: xy(0, 0), fade: 28, fadeInto: "shadow" } as never);
+    else kit.open("List", { direction: "column", width: grow(), gap });
+    if (first > 0) filler("Lead", at[first]! - gap);
+    for (let i = first; i < last; i++) rows[i]!.build();
+    if (last < rows.length) filler("Rest", at[rows.length]! - at[last]! - gap);
     kit.close();
+    // Each built row's height, and on a phone the list's top in the page, from where they stood last tick: a row cut by
+    // the view's edge is short, so only a whole one is kept.
+    if (portBox && port) {
+      let anchored = false;
+      for (let i = first; i < last; i++) {
+        const b = kit.bounds(`${listPath}/${rows[i]!.key}`);
+        if (!b || b.height <= 0) continue;
+        const topIn = b.y > portBox.y + 0.5;
+        if (topIn && b.y + b.height < portBox.y + portBox.height - 0.5) kit.remember(`~le.h.${id}.${rows[i]!.key}`, Math.round(b.height));
+        if (!scroll && topIn && !anchored) {
+          kit.remember(`~le.top.${id}`, Math.max(0, Math.round(b.y - portBox.y + port.offsetY - at[i]!)));
+          anchored = true;
+        }
+      }
+    }
     kit.semantics({ role: "table", name: desc.title || "Ledger" });
     if (scroll) kit.close();
   };
@@ -358,11 +415,12 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
   };
 
   if (stacked) {
+    const page = `${kit.openPath()}/Body`;
     kit.openScroll("Body", { width: grow(), height: grow(), gap: u(10), padding: xy(0, 0), fade: 36, fadeInto: "shadow" } as never);
     figures();
     kit.column("Ledger", { width: grow(), gap: u(4), part: "Ledger.table", partClass: "panel" }, () => {
       header();
-      ledgerList(false);
+      ledgerList(false, page);
     });
     graphs(grow(), Math.round(clamp(H * 0.22, 140, u(220)) * Math.min(1.8, ts)));
     kit.close();
@@ -382,6 +440,8 @@ export function ledger(id: string, desc: Api.LedgerDesc): Api.LedgerResult {
       kit.close();
     });
   }
+  const widest = Math.max(0, ...amounts.map((a) => kit.bounds(a)?.width ?? 0));
+  if (widest > 0) kit.remember(`~le.amt.${id}`, Math.ceil(widest));
   kit.close();
   rememberRoom("le", id);
   return out;

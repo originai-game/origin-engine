@@ -50,7 +50,7 @@ stack Menu {
     bottom 0
   }
   column Menu {
-    width grow 0 420
+    width fit 420
     height grow
     padding 48
     gap 12

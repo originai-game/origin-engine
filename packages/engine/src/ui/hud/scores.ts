@@ -194,11 +194,11 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
           });
         }
       });
-      box("ScoreBox", { width: px(u(46)), height: pct(1), align: "center", cross: "center", part: sel("Scorebug", "score") }, {
+      box("ScoreBox", { width: px(ut(46)), height: pct(1), align: "center", cross: "center", part: sel("Scorebug", "score") }, {
         fills: [solid(token("hud", 0.96)), ...(flash > 0 ? [solid(lit(c, 0.6 * flash))] : [])],
       }, () => {
         const s = (t.score ?? 0) > e.prev ? pop(e.since, 0.25, 420) : 1;
-        text("Score", String(t.score ?? 0), { step: tsFit(22, Math.min(h * 0.75, u(46) * 0.45), true), font: "display", color: token("ink"), nowrap: true }, { transform: { scaleX: s, scaleY: s } });
+        text("Score", String(t.score ?? 0), { step: tsFit(22, Math.min(h * 0.75, ut(46) * 0.45), true), font: "display", color: token("ink"), nowrap: true }, { transform: { scaleX: s, scaleY: s } });
         if (t.possession) leaf("Possession", { width: px(u(6)), height: px(u(6)), part: sel("Scorebug", "possession") }, { shape: ellipseShape(), fills: [solid(lit(role("gold")))] }, absolute({ end: u(3), top: u(3) }));
       });
     });

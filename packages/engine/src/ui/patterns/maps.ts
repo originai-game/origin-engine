@@ -234,6 +234,8 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       cross: "center",
       width: phone ? null : grow(),
       padding: xy(u(phone ? 10 : 8), u(phone ? 6 : 7)),
+      // A whole touch target under a finger (the phone's chips laid out 36 px tall).
+      height: { kind: "fit", min: frame().touch ? 44 : 0 },
       radius: phone ? 999 : u(8),
       semantics: { role: "switch", name: word(desc.kindLabels, k), checked: on },
       props: { states: [{ name: "shown", states: [vstate("on"), vstate("off")], transitions: [] }], state: [{ group: "shown", state: on ? "on" : "off" }] },

@@ -184,10 +184,12 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
     if (ix.focused) kit.remember(`~lo.f.${id}`, keyHash(k));
   };
 
-  // The item's words: its name in the display face, the subtitle divided by rules, its line.
+  // The item's words: its name in the display face, the subtitle divided by rules, its line. Their sizes go by the
+  // screen (a phone's are smaller), never by `compact`, which large text sets too: a name the large text made compact
+  // stepped down to 22 and so failed to grow with it.
   const info = (compact: boolean): void => {
     kit.column("Info", { width: grow(), gap: u(compact ? 4 : 8) }, () => {
-      text("Name", (desc.name ?? "").toLocaleUpperCase(), { step: st(compact ? 22 : 34), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
+      text("Name", (desc.name ?? "").toLocaleUpperCase(), { step: st(phone ? 22 : 34), font: "display", heading: true, maxLines: 2, ellipsis: true, width: grow() });
       const words = desc.subtitle ?? [];
       if (words.length > 0) kit.row("Subtitle", { gap: u(10), cross: "center", wrap: true, width: grow() } as never, () => {
         const tier = rarityColor(desc.rarity);
@@ -198,7 +200,7 @@ export function loadout(id: string, desc: Api.LoadoutDesc): Api.LoadoutResult {
             kit.close();
           }
           const isTier = i === (desc.rarityWord ?? -1) && tier;
-          text(kit.idi("Word", i), w.toLocaleUpperCase(), { step: st(compact ? 12 : 14), font: "display", nowrap: true, color: isTier ? mix(tier!, role("ink"), 0.2) : "inkMuted" });
+          text(kit.idi("Word", i), w.toLocaleUpperCase(), { step: st(phone ? 12 : 14), font: "display", nowrap: true, color: isTier ? mix(tier!, role("ink"), 0.2) : "inkMuted" });
         });
       });
       if (desc.description && !compact) text("Description", desc.description, { step: st(15), color: "inkMuted", width: grow(), maxLines: 2 });
