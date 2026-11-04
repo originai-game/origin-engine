@@ -9,7 +9,7 @@ import type * as Api from "@origingame/engine";
 import {
   firstRoom,
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, pct, pointer, px, rarityColor, rememberRoom,
-  role, safeWidth, shadow, st, still, stFill, surface, symbol, text, token, u, vgrad, xy, type Mut,
+  coinFill, inkFor, role, safeWidth, shadow, st, still, surface, symbol, text, token, u, vgrad, xy, type Mut,
 } from "./core.ts";
 import { rtl } from "../containers/base.ts";
 import { cardFace } from "./cards.ts";
@@ -218,10 +218,10 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         over({ insets: { start: 0, top: 0 }, inert: true, z: 7 });
       }
       if (n > 0) {
-        const g = Math.round(Math.max(22, cw * 0.17) * Math.min(1.4, ts));
+        const { g, step: inStep } = coinFill(Math.round(Math.max(22, u(portrait ? 104 : 150) * 0.17)));
         kit.open("InDeck", { width: px(g), height: px(g), align: "center", cross: "center", part: "DeckBuilder.inDeck", partClass: "badge" });
         kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("primary") }], strokes: [line(Math.max(1.5, u(2)), token("shadow", 0.7), "outside")], effects: [glow(u(6), token("primary", 0.5), 0)] });
-        text("Value", String(n), { step: stFill(Math.round(g * 0.62)), font: "display", nowrap: true, color: "onPrimary" });
+        text("Value", String(n), { step: inStep, font: "display", nowrap: true, color: "onPrimary" });
         kit.close();
         over({ insets: { end: Math.max(3, Math.round(pad * 0.5)), top: Math.max(3, Math.round(pad * 0.5)) }, inert: true, z: 8 });
       }
@@ -338,10 +338,11 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { ...tier, a: 0.9 } as never }] });
       kit.close();
       over({ insets: { start: 0, top: 0, bottom: 0 }, inert: true });
-      const g = Math.round(u(26) * Math.min(1.4, ts));
+      const { g, step: costStep } = coinFill(u(26));
       kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: "DeckBuilder.cost", partClass: "badge" });
       kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "gradient", type: "radial", from: { x: 0.36, y: 0.3 }, to: { x: 0.62, y: 0.62 }, stops: [{ offset: 0, color: token("highlight") }, { offset: 1, color: { ...mix(role("highlight"), role("well"), 0.55) } as never }] }], strokes: [line(1, token("shadow", 0.7), "outside")] } as Api.DrawDesc);
-      text("Value", c.cost != null ? String(c.cost) : "–", { step: stFill(Math.round(g * 0.62)), font: "display", nowrap: true });
+      // The ink that reads on the coin's own gold (cream on a light coin was 1.1:1).
+      text("Value", c.cost != null ? String(c.cost) : "–", { step: costStep, font: "display", nowrap: true, color: inkFor(mix(role("highlight"), role("well"), 0.3)) });
       kit.close();
       symbol("Tier", "gem", u(12), tier);
       text("Name", c.name ?? k, big ? { step: st(15), maxLines: 2, ellipsis: true, width: grow() } : { step: st(15), nowrap: true, ellipsis: true, width: grow() });

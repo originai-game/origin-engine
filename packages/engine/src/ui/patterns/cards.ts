@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, hex, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
-  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, stFill, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
+  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, coinFill, inkFor, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 
 // ── the hand's state ────────────────────────────────────────────────────
@@ -160,8 +160,8 @@ export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): 
   // at all (a status, a curse) has no number: its gem carries a cross.
   const hasCost = c.cost !== undefined && c.cost !== null;
   if (hasCost || !o.playable) {
-    // It grows with the player's text size (to half again), so its number stays inside it.
-    const g = Math.round(Math.max(26, cw * 0.22) * Math.min(1.5, Math.max(1, frame().theme.textScale ?? 1)));
+    // Its numeral grows with the player's text size, and the gem with it (half again, and further where the numeral needs).
+    const { g, step: costStep } = coinFill(u(o.big ? 44 : 28), 1.5);
     const never = !hasCost;
     const tone: Api.ThemeColor = never || !o.playable || c.costUp ? "danger" : c.costDown ? "success" : "ink";
     kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: `Card.cost${flags(c.costUp && "up", c.costDown && "down", hasCost && !o.playable && "unaffordable", never && "unplayable")}`, partClass: "badge" });
@@ -177,7 +177,9 @@ export function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): 
       effects: [shadow(2, 5, 0.6)],
     });
     if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
-    else text("Value", `${c.cost}`, { step: stFill(Math.round(g * 0.62)), color: tone, font: "display", nowrap: true });
+    // The plain cost in the ink that reads on the gem's middle (cream on mid-gold was 2:1); a changed cost keeps its
+    // green or red on the darker gem.
+    else text("Value", `${c.cost}`, { step: costStep, color: tone === "ink" ? inkFor(mix(gem, role("well"), 0.38)) : tone, font: "display", nowrap: true });
     kit.close();
     // Seated inside the card's corner, so the frame's line never runs through it.
     const seat = Math.max(3, Math.round(pad * 0.5));

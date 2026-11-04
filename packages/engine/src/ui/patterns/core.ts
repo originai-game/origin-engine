@@ -709,25 +709,32 @@ export function st(px0: number): Api.TypeStepName {
 }
 
 /**
+ * A coin's or a gem's diameter and its numeral's step, from the coin's size at 100 % text (`g`: never one taken from
+ * a card that grew with the text, whose numeral then grew twice) and how far the coin may grow with the player's text
+ * size (`grow`, at most the text scale). The step is the largest within 62 % of the coin at 100 % (where a coarse
+ * ramp, a pixel grid's 12, 24, 36, leaves that under half the coin, the next step up), so the numeral grows exactly
+ * with the text; the coin grows by `grow`, and further where its numeral needs, holding it at 62 % (a 12 px cost sat
+ * in a 34 px gem, and at 200 % the numeral stayed at its 100 % size).
+ */
+export function coinFill(g: number, grow = 1.4): { g: number; step: Api.TypeStepName } {
+  const th = frame().theme;
+  const k = Math.max(1, th.textScale ?? 1);
+  const at100 = (s: Api.TypeStepName) => (th.typeRamp[s]?.size ?? 0) / k;
+  let step: Api.TypeStepName = "xs";
+  for (const s of STEPS) if (at100(s) <= g * 0.62 && at100(s) > at100(step)) step = s;
+  if (at100(step) < g * 0.5) {
+    let up: Api.TypeStepName | null = null;
+    for (const s of STEPS) if (at100(s) > at100(step) && (up === null || at100(s) < at100(up))) up = s;
+    if (up) step = up;
+  }
+  return { g: Math.max(Math.round(g * Math.min(grow, k)), Math.ceil((th.typeRamp[step]?.size ?? 0) / 0.62)), step };
+}
+
+/**
  * `px0`'s step (st), or the largest smaller one no taller than `box` CSS px:
  * a number inside a badge that grows less than the text does (a cost gem at
  * 200 % text keeps its digits inside it).
  */
-/** The largest step of the ramp no larger than `box` px: a numeral that fills its coin or gem, whatever the ramp. */
-export function stFill(box: number): Api.TypeStepName {
-  const ramp = frame().theme.typeRamp;
-  let best: Api.TypeStepName = "xs";
-  let bestSize = 0;
-  for (const s of STEPS) {
-    const size = ramp[s]?.size ?? 0;
-    if (size <= box && size > bestSize) {
-      best = s;
-      bestSize = size;
-    }
-  }
-  return best;
-}
-
 export function stIn(px0: number, box: number): Api.TypeStepName {
   const ramp = frame().theme.typeRamp;
   const want = st(px0);
@@ -783,9 +790,25 @@ export function accent(): Rgba {
 
 /** Dark or light ink, whichever reads on `c` (its relative luminance). */
 export function inkOn(c: Rgba): Rgba {
+  return luminance(c) > 0.28 ? hex("#0b1220") : hex("#ffffff");
+}
+
+/** A colour's relative luminance (WCAG). */
+function luminance(c: Rgba): number {
   const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-  const l = 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
-  return l > 0.28 ? hex("#0b1220") : hex("#ffffff");
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+}
+
+/** The contrast ratio of two colours (WCAG, 1 to 21). */
+export function contrast(a: Rgba, b: Rgba): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** The style's ink or its inverse, whichever reads better on `ground`: a numeral on a coin, a gem or a badge's own fill. */
+export function inkFor(ground: Rgba): Rgba {
+  const ink = role("ink"), inverse = role("inkInverse");
+  return contrast(ink, ground) >= contrast(inverse, ground) ? ink : inverse;
 }
 
 /** A colour at full opacity. */
