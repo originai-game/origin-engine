@@ -59,6 +59,15 @@ fn layer_albedo(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32
   }
 }
 
+fn layer_dimensions(i: u32) -> vec2<f32> {
+  switch i {
+    case 0u: { return vec2<f32>(textureDimensions(albedo0)); }
+    case 1u: { return vec2<f32>(textureDimensions(albedo1)); }
+    case 2u: { return vec2<f32>(textureDimensions(albedo2)); }
+    default: { return vec2<f32>(textureDimensions(albedo3)); }
+  }
+}
+
 fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
   var t: vec4<f32>;
   switch i {
@@ -300,6 +309,23 @@ fn terrain_debug_color(i: u32) -> vec3<f32> {
 }
 
 fn terrain_debug(in: TerrainOut, point: TerrainPoint) -> vec3<f32> {
+  let vertical = dpdy(in.world);
+  if (frame.light_color.w > 9.5) {
+    let pick = pick_layers(in.world, point.normal, point.control);
+    let layer = terrain.layers[pick.ids.x];
+    if (frame.light_color.w > 10.5) {
+      if ((u32(layer.mapping.w) & 1u) == 0u) { return debug_unsupported(in.clip.xy).rgb; }
+      let dy = vertical * layer.mapping.x;
+      let size = layer_dimensions(pick.ids.x);
+      let density = vec3<f32>(length(dy.zy * size), length(dy.xz * size), length(dy.xy * size));
+      // Linear RGB = d/(1+d): black 0, half intensity 1 texel per
+      // screen pixel, approaching white as the footprint grows.
+      return density / (vec3<f32>(1.0) + density);
+    }
+    if (layer.mapping.y < 0.5) { return vec3<f32>(0.0, 1.0, 0.0); }
+    let weights = pow(abs(point.normal), vec3<f32>(4.0));
+    return weights / max(dot(weights, vec3<f32>(1.0)), 1e-5);
+  }
   let samples = (in.local.xz - terrain_min()) / terrain_cell();
   let gx = dpdx(samples);
   let gy = dpdy(samples);

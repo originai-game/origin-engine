@@ -31,7 +31,7 @@ use super::{modules, timeline};
 pub use build::*;
 
 /// The debug views (`render.DebugView`), by variant index.
-const VIEWS: [&str; 16] = [
+const VIEWS: [&str; 18] = [
     "none",
     "physics",
     "nav",
@@ -48,6 +48,8 @@ const VIEWS: [&str; 16] = [
     "terrain",
     "terrainLayers",
     "terrainMip",
+    "terrainProjection",
+    "terrainDensity",
 ];
 
 /// The renderer's own view for a debug view drawn in place of the lit
@@ -66,6 +68,8 @@ fn render_view(view: &str) -> og_render::DebugView {
         "terrain" => V::Terrain,
         "terrainLayers" => V::TerrainLayers,
         "terrainMip" => V::TerrainMip,
+        "terrainProjection" => V::TerrainProjection,
+        "terrainDensity" => V::TerrainDensity,
         _ => V::None,
     }
 }
@@ -78,7 +82,9 @@ pub(crate) fn debug_coverage(view: &str) -> serde_json::Value {
         "nav" => &["navigation"],
         "bounds" => &["mesh instances"],
         "lod" => &["og.Model"],
-        "terrain" | "terrainLayers" | "terrainMip" => &["terrain"],
+        "terrain" | "terrainLayers" | "terrainMip" | "terrainProjection" | "terrainDensity" => {
+            &["terrain"]
+        }
         "albedo" => &[
             "standard",
             "physical",
@@ -967,8 +973,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "debug",
         og_probe::CommandDesc {
-            usage: "debug:on|off|none|physics|nav|bounds|lod|cascades|ao|albedo|iblDiffuse|iblSpecular|direct|aoDepth|aoRaw|terrain|terrainLayers|terrainMip".into(),
-            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), lod (every model tinted by its level of detail), cascades (the shadow cascade per pixel), ao (the ambient occlusion term), albedo, iblDiffuse, iblSpecular, direct (the lit materials' lighting terms), aoDepth (the AO pass's depth), aoRaw (the AO before its blur), terrain (projection weights and clipmap cells), terrainLayers (strongest raw layer), terrainMip (normal-map mip footprint), none".into(),
+            usage: "debug:on|off|none|physics|nav|bounds|lod|cascades|ao|albedo|iblDiffuse|iblSpecular|direct|aoDepth|aoRaw|terrain|terrainLayers|terrainMip|terrainProjection|terrainDensity".into(),
+            doc: "show or hide the debug overlay (og.debug's draws), or pick its view: physics (colliders, joints, contacts), nav (grids, navmeshes, agents' paths), bounds (every drawn mesh's box), lod (every model tinted by its level of detail), cascades (the shadow cascade per pixel), ao (the ambient occlusion term), albedo, iblDiffuse, iblSpecular, direct (the lit materials' lighting terms), aoDepth (the AO pass's depth), aoRaw (the AO before its blur), terrain (projection weights and clipmap cells), terrainLayers (strongest raw layer), terrainMip (normal-map mip footprint), terrainProjection (unobscured XYZ projection weights), terrainDensity (XYZ vertical albedo texel density encoded as d/(1+d)), none".into(),
         },
         move |_world, args| {
             let arg = args.first().map(String::as_str).unwrap_or("on");

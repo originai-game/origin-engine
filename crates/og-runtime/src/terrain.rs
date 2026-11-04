@@ -1055,8 +1055,11 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
             "slope": l.slope, "slopeFade": l.slope_fade,
             "altitude": l.altitude, "altitudeFade": l.altitude_fade,
         })).collect::<Vec<_>>(),
-        "projectionWeights": {"view": "terrain", "rgb": ["X", "Y", "Z"],
+        "projectionWeights": {"view": "terrainProjection", "rgb": ["X", "Y", "Z"],
             "normal": "filtered height-field normal", "exponent": 4},
+        "verticalTexelDensity": {"view": "terrainDensity", "rgb": ["X", "Y", "Z"],
+            "layer": "dominant raw layer", "units": "base-level albedo texels per vertical screen pixel",
+            "encoding": "linear RGB d/(1+d), before projection weighting"},
         "normalMip": {"view": "terrainMip", "measurement": "isotropic derivative estimate",
             "colors": ["green", "yellow", "red", "cyan", "purple", "orange"]},
     }))

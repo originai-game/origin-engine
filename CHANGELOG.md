@@ -15,6 +15,9 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Terrain projection diagnostics.** `terrainProjection` shows the dominant
+  raw layer's unobscured XYZ weights; `terrainDensity` shows its per-axis
+  vertical albedo texel footprints. Entity dumps document their units.
 - **Debug shading coverage.** Terrain and grass now expose albedo and
   separated lighting terms. Unsupported 3D shading diagnostics draw a
   magenta/black checker instead of beauty shading or an unrelated term.

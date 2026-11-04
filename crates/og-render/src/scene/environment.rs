@@ -649,6 +649,10 @@ pub enum DebugView {
     TerrainLayers,
     /// Terrain normal-map mip footprint, one colour band per level.
     TerrainMip,
+    /// Dominant raw terrain layer's XYZ projection weights, without overlays.
+    TerrainProjection,
+    /// Dominant raw layer's XYZ vertical texel densities, encoded as d/(1+d).
+    TerrainDensity,
 }
 
 impl DebugView {
@@ -667,6 +671,8 @@ impl DebugView {
             DebugView::Terrain => 7.0,
             DebugView::TerrainLayers => 8.0,
             DebugView::TerrainMip => 9.0,
+            DebugView::TerrainProjection => 10.0,
+            DebugView::TerrainDensity => 11.0,
         }
     }
 

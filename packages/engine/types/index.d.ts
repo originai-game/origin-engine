@@ -5698,8 +5698,10 @@ export type TaaHistory = "bilinear" | "catmullRom";
  * - `"terrain"`: Terrain projection weights: XYZ as RGB (green is planar XZ). Dark lines show clipmap cells and white marks the outer morph band. dump_entity reports the clipmap regions and their triangle spacing.
  * - `"terrainLayers"`: Terrain's strongest raw layer (control times slope and altitude), coloured by index; magenta means the first-layer fallback. Brightness shows its share before height blending.
  * - `"terrainMip"`: Terrain normal-map mip footprint: one colour per estimated isotropic mip, darkening between levels. This is a derivative-based estimate, not the hardware anisotropic mip selection.
+ * - `"terrainProjection"`: Dominant raw terrain layer's actual projection weights, XYZ as RGB, without cell or morph overlays. Planar layers are green (top-down Y projection).
+ * - `"terrainDensity"`: Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB. Each linear channel is d/(1+d), where d is base-level texels per vertical screen pixel; 0.5 means one texel per pixel. Density is measured before projection weighting; a missing albedo shows the unsupported checker.
  */
-export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw" | "terrain" | "terrainLayers" | "terrainMip";
+export type DebugView = "none" | "physics" | "nav" | "bounds" | "lod" | "cascades" | "ao" | "albedo" | "iblDiffuse" | "iblSpecular" | "direct" | "aoDepth" | "aoRaw" | "terrain" | "terrainLayers" | "terrainMip" | "terrainProjection" | "terrainDensity";
 
 /**
  * How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer.

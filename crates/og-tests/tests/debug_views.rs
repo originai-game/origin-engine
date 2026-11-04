@@ -7,7 +7,7 @@ use og_render::{
 };
 use og_tests::scenes;
 
-const VIEWS: [DebugView; 11] = [
+const VIEWS: [DebugView; 13] = [
     DebugView::Cascades,
     DebugView::AmbientOcclusion,
     DebugView::Albedo,
@@ -19,6 +19,8 @@ const VIEWS: [DebugView; 11] = [
     DebugView::Terrain,
     DebugView::TerrainLayers,
     DebugView::TerrainMip,
+    DebugView::TerrainProjection,
+    DebugView::TerrainDensity,
 ];
 
 fn scene(name: &str, remove: bool) -> RenderScene {
@@ -154,6 +156,8 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                         | DebugView::Terrain
                         | DebugView::TerrainLayers
                         | DebugView::TerrainMip
+                        | DebugView::TerrainProjection
+                        | DebugView::TerrainDensity
                 ),
                 "terrain-grass" => !matches!(
                     view,
@@ -168,7 +172,11 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                 ),
                 _ => matches!(
                     view,
-                    DebugView::Terrain | DebugView::TerrainLayers | DebugView::TerrainMip
+                    DebugView::Terrain
+                        | DebugView::TerrainLayers
+                        | DebugView::TerrainMip
+                        | DebugView::TerrainProjection
+                        | DebugView::TerrainDensity
                 ),
             };
             if unsupported {
@@ -208,4 +216,95 @@ fn terrain_albedo_is_independent_of_direct_light() {
         dark.pixels, lit.pixels,
         "albedo must not include direct light"
     );
+}
+
+#[test]
+fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
+    use glam::{Mat4, Vec2};
+    use og_render::{
+        Camera, ColorSpace, Mips, Projection, Terrain, TerrainData, TerrainLayer, TextureData,
+    };
+    let desc = og_render::RenderDesc {
+        width: 64,
+        height: 64,
+        ..scenes::base_desc()
+    };
+    let mut r = Renderer::new_blocking(&desc).unwrap();
+    let mut s = RenderScene::new();
+    let texture = s.add_texture(TextureData {
+        width: 64,
+        height: 32,
+        rgba: vec![255; 64 * 32 * 4],
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    });
+    let h = s.add_terrain(TerrainData {
+        size: Vec2::splat(16.0),
+        columns: 17,
+        rows: 17,
+        heights: vec![0.0; 17 * 17].into(),
+        control: None,
+        holes: None,
+    });
+    s.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(texture),
+            tile: 2.0,
+            triplanar: true,
+            ..Default::default()
+        }],
+        ..Terrain::new(h)
+    });
+    s.post.tonemap = Tonemap::None;
+    s.camera = Camera {
+        position: Vec3::new(0.0, 10.0, 0.0),
+        target: Vec3::ZERO,
+        up: Vec3::Z,
+        projection: Projection::Orthographic { height: 8.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    for wall in [false, true] {
+        if wall {
+            s.terrains[0].transform = Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
+            s.camera.position = Vec3::new(0.0, 0.0, 10.0);
+            s.camera.up = Vec3::Y;
+        }
+        // 8m / 64 pixels / 2m per repeat: 4 texels along the texture's
+        // 64-wide U axis, 2 along its 32-high V axis. A collapsed axis is 0.
+        for (view, expected) in [
+            (
+                DebugView::TerrainProjection,
+                if wall {
+                    [0.0, 0.0, 1.0]
+                } else {
+                    [0.0, 1.0, 0.0]
+                },
+            ),
+            (
+                DebugView::TerrainDensity,
+                if wall {
+                    [2.0 / 3.0, 0.0, 2.0 / 3.0]
+                } else {
+                    [0.8, 2.0 / 3.0, 0.0]
+                },
+            ),
+        ] {
+            s.debug = view;
+            let image = capture(&mut r, &s);
+            let at = (32 * 64 + 32) * 4;
+            for (channel, want) in expected.into_iter().enumerate() {
+                let srgb = image.pixels[at + channel] as f32 / 255.0;
+                let linear = if srgb <= 0.04045 {
+                    srgb / 12.92
+                } else {
+                    ((srgb + 0.055) / 1.055).powf(2.4)
+                };
+                assert!(
+                    (linear - want).abs() < 0.025,
+                    "wall={wall}/{view:?} channel={channel}: {linear} expected {want}"
+                );
+            }
+        }
+    }
 }

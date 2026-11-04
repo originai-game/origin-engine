@@ -292,6 +292,8 @@ fn a_terrain_samples_its_layer_arrays() {
         ("terrain", og_render::DebugView::Terrain),
         ("terrainLayers", og_render::DebugView::TerrainLayers),
         ("terrainMip", og_render::DebugView::TerrainMip),
+        ("terrainProjection", og_render::DebugView::TerrainProjection),
+        ("terrainDensity", og_render::DebugView::TerrainDensity),
     ] {
         let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
             engine,

@@ -1079,6 +1079,10 @@ pub(crate) fn terrain_lit_array_source(standard: &str) -> String {
   return textureSampleGrad(albedo_array, layer_sampler, uv, i32(terrain.layers[i].slope.w), dx, dy);
 }
 
+fn layer_dimensions(i: u32) -> vec2<f32> {
+  return vec2<f32>(textureDimensions(albedo_array));
+}
+
 fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec3<f32> {
   let t = textureSampleGrad(normal_array, layer_sampler, uv, i32(terrain.layers[i].altitude.w), dx, dy);
   return t.xyz * 2.0 - 1.0;
