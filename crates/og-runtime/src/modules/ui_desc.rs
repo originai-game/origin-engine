@@ -144,6 +144,7 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         wrap: d["wrap"].as_bool().unwrap_or(false),
         scroll: d["scroll"].as_bool().unwrap_or(false),
         scroll_x: d["scrollX"].as_bool().unwrap_or(false),
+        hide_bars: false,
         interactive: d["interactive"].as_bool().unwrap_or(false),
         focusable: d["focusable"].as_bool().unwrap_or(false),
         adjustable: d["adjustable"].as_bool().unwrap_or(false),

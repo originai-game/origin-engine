@@ -594,3 +594,49 @@ fn a_mirrored_label_keeps_its_mirror_for_the_glyphs() {
         "the mirror reaches the overlay with the text: {mirrored:?}"
     );
 }
+
+/// A label in a scroll view takes the style's drop across: a figure at the end of a row
+/// in a scroll view kept its last font pixel of drop past its box, where the
+/// view's edge cut it (pixel's results screen).
+#[test]
+fn a_label_holds_its_style_drop_inside_its_box() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut theme = *ui.theme();
+    theme.art.text_shadows[0] = Some(og_ui::style_file::Shadow {
+        dx: 2.0,
+        dy: 2.0,
+        blur: 0.0,
+        spread: 0.0,
+        color: Srgba::BLACK,
+    });
+    ui.set_theme(theme);
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.scroll(
+            "Page",
+            ScrollDesc {
+                width: Size::Fixed(300.0),
+                height: Size::Fixed(200.0),
+                ..ScrollDesc::default()
+            },
+            |ui| ui.label("Value", "48,210", LabelDesc::default()),
+        );
+        ui.end();
+    }
+    let e = ui.frame().element("Page/Value").expect("the label");
+    let right = e.x + e.width;
+    let texts: Vec<Rect> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text { bounds, .. } => Some(*bounds),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(texts.len(), 2, "the drop and the text: {texts:?}");
+    for b in texts {
+        assert!(b.x + b.width <= right + 0.01, "{b:?} inside {right}");
+    }
+}

@@ -291,6 +291,10 @@ pub struct Element {
     pub scroll: bool,
     /// Scrolls its content horizontally and clips it (with `scroll`: both ways).
     pub scroll_x: bool,
+    /// A scroll container that draws no scrollbars (a row of chips or tabs
+    /// that shows its overflow by its cut edge, where a resting thumb read
+    /// as a selection underline).
+    pub hide_bars: bool,
     /// Reports hover, press and click through `Ui::close`.
     pub interactive: bool,
     /// An interactive container keys and pads reach (a card, a menu item,

@@ -727,7 +727,10 @@ meaning; a game brings every other colour in its own style.
   103).
 - **Type**: a scale of display, title, heading, body, label, caption and
   numeric steps per breakpoint, with tracking, weight and line height;
-  fonts per role, with CJK and fallback faces as today.
+  fonts per role, with CJK and fallback faces as today. An optional
+  button step sets a button's words apart from label (the label step
+  when left out): a pixel face keeps label at a HUD's 12 and sets
+  buttons at body.
 - **Space, size and radius** scales; **elevation** (shadow sets per level);
   stroke widths; **shape language** (corner shape and radius per element
   class: squircle, notch, bevel, round, square).

@@ -257,9 +257,12 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
         }
         scale.steps[role.index()] = at;
     }
+    if !seen.contains(&TypeRole::Button) {
+        scale.steps[TypeRole::Button.index()] = scale.steps[TypeRole::Label.index()];
+    }
     let missing: Vec<String> = TypeRole::ALL
         .iter()
-        .filter(|r| !seen.contains(r))
+        .filter(|r| **r != TypeRole::Button && !seen.contains(r))
         .map(|r| r.name().to_string())
         .collect();
     missing_err(p, &missing, "a style sets every type step")?;

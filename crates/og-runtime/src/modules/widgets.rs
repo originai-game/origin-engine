@@ -43,6 +43,7 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
                 Some("both") => og_ui::ScrollAxes::Both,
                 _ => og_ui::ScrollAxes::Vertical,
             },
+            hide_bars: d["hideBars"].as_bool().unwrap_or(false),
         };
         ui.open_scroll(id.as_str(), s)
     });

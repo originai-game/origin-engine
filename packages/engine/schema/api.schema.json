@@ -47035,6 +47035,11 @@
           "$ref": "#/$defs/ScrollAxes",
           "description": "Which ways it scrolls.",
           "default": "vertical"
+        },
+        "hideBars": {
+          "type": "boolean",
+          "description": "Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -48102,7 +48107,7 @@
           "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
         },
         "tokens": {
-          "description": "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+          "description": "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
         }
       },
       "required": [

@@ -44,17 +44,50 @@ impl Ui {
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();
         n.heading = desc.heading;
+        // Room across for the style's drop inside a scroll view, whose edge
+        // clips it (pixel's results figures lost their last font pixel of
+        // drop to the view's edge); elsewhere a drop draws past its box, and
+        // reserving room there would change the layout of every large label.
+        let grid = match &self.nodes[i].content {
+            Content::Text(tc) => tc.metrics(&self.fonts).pixel_grid(),
+            _ => 0,
+        };
+        let scrolled = self
+            .stack
+            .iter()
+            .any(|&p| self.nodes[p].el.scroll || self.nodes[p].el.scroll_x);
+        let in_control = self
+            .stack
+            .last()
+            .is_some_and(|&p| self.nodes[p].el.interactive);
+        if let Some((dx, _, blur, _)) = self
+            .text_drop(desc.font.effect_index(), step.size, grid)
+            .filter(|_| scrolled && !in_control)
+        {
+            let reach = (dx.abs() + blur / 2.0).ceil();
+            let pad = &mut self.nodes[i].el.padding;
+            if dx > 0.0 {
+                pad.right = pad.right.max(reach);
+            } else if dx < 0.0 {
+                pad.left = pad.left.max(reach);
+            }
+        }
     }
 
     /// A capsule button with a label. `clicked` is a press and a release inside it.
     pub fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
         let t = self.theme;
         let sizes = self.sizes();
+        // Never shorter than its words with an inset above and below: a
+        // style whose button step outgrows its control size (pixel's 24
+        // on a 32 control) grows the plate rather than filling it edge to edge.
+        let words = self.type_step(crate::tokens::TypeRole::Button).line_height + 2.0 * t.space.xs;
         let h = match desc.size {
             ControlSize::Small => sizes.control_sm,
             ControlSize::Medium => sizes.control_md,
             ControlSize::Large => sizes.control_lg,
-        };
+        }
+        .max(words);
         let pad = if desc.size == ControlSize::Small {
             t.space.md
         } else {
@@ -215,7 +248,7 @@ impl Ui {
             }
             _ => (bg, fg),
         };
-        let mut content = self.role_text(text, crate::tokens::TypeRole::Label, fg);
+        let mut content = self.role_text(text, crate::tokens::TypeRole::Button, fg);
         content.align = TextAlign::Center;
         let press = self.button_motion(i, r, refused);
         if r.clicked && desc.variant == ButtonVariant::Primary {

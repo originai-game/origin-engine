@@ -1,6 +1,29 @@
 use super::*;
 
 impl Ui {
+    /// The style's drop under text of font role `role` (`FontRole::effect_index`)
+    /// at `size`: its offset, blur and colour. No more than 6 % of the size
+    /// off (at least a device pixel), so a badge's x3 keeps a tight shadow,
+    /// not a second print; under a pixel font (`grid` > 0) one of its pixels,
+    /// hard, so the cells keep their edges.
+    pub(crate) fn text_drop(
+        &self,
+        role: usize,
+        size: f32,
+        grid: u32,
+    ) -> Option<(f32, f32, f32, crate::Srgba)> {
+        let sh = self.theme.art.text_shadows[role]?;
+        if grid > 0 {
+            let cell = size / grid as f32;
+            let step = |v: f32| cell * v.signum() * f32::from(v != 0.0);
+            return Some((step(sh.dx), step(sh.dy), 0.0, sh.color));
+        }
+        let reach = sh.dx.hypot(sh.dy);
+        let most = (size * 0.06).max(1.0 / self.viewport.dpr());
+        let k = if reach > most { most / reach } else { 1.0 };
+        Some((sh.dx * k, sh.dy * k, sh.blur * k, sh.color))
+    }
+
     /// An element's focus rings (pads 1 to 3, the focus ring or the
     /// style's outline), each cut from the control by what is behind it.
     /// Drawn under the element's fills: before a draw's (a game's or a
@@ -347,22 +370,19 @@ impl Ui {
                             .get(&i)
                             .or_else(|| self.part_draws.get(&i))
                             .is_some_and(|d| d.text.is_some());
-                        if let Some(sh) = t.art.text_shadows[role].filter(|_| !own) {
-                            let c = sh.color.fade(tc.color.alpha);
-                            let reach = sh.dx.hypot(sh.dy);
-                            let most = (size * 0.06).max(1.0 / dpr);
-                            let k = if reach > most { most / reach } else { 1.0 };
-                            let (mut dx, mut dy, mut blur) = (sh.dx * k, sh.dy * k, sh.blur * k);
-                            // A pixel font's drop: one of its pixels, hard,
-                            // so the cells keep their edges.
-                            if m.pixel_grid() > 0 {
-                                let cell = size / m.pixel_grid() as f32;
-                                (dx, dy, blur) = (
-                                    cell * sh.dx.signum() * f32::from(sh.dx != 0.0),
-                                    cell * sh.dy.signum() * f32::from(sh.dy != 0.0),
-                                    0.0,
-                                );
-                            }
+                        // A pixel face on a control's plate (a button, a tab,
+                        // a chip) takes no drop: a whole font pixel of it
+                        // filled the counters of CJK strokes (pixel r2, note
+                        // 3). Over the scene it keeps its hard drop.
+                        let parent = n.parent;
+                        let plated = m.pixel_grid() > 0
+                            && (n.el.interactive
+                                || (parent != NONE && self.nodes[parent].el.interactive));
+                        if let Some((dx, dy, blur, sc)) = self
+                            .text_drop(role, size, m.pixel_grid())
+                            .filter(|_| !own && !plated)
+                        {
+                            let c = sc.fade(tc.color.alpha);
                             text(dx, dy, c, None, cmds);
                             if blur > 0.0 {
                                 text(dx + blur / 2.0, dy + blur / 2.0, c.fade(0.5), None, cmds);

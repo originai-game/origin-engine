@@ -872,6 +872,8 @@ pub struct ScrollDesc {
     pub gap: f32,
     /// Which ways it scrolls (vertical by default).
     pub axes: ScrollAxes,
+    /// Draws no scrollbars.
+    pub hide_bars: bool,
 }
 
 /// Which ways a scroll container scrolls.

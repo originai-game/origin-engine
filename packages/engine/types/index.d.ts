@@ -23122,6 +23122,12 @@ export interface ScrollDesc {
    * @default "vertical"
    */
   readonly axes?: ScrollAxes;
+  /**
+   * Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus.
+   *
+   * @default false
+   */
+  readonly hideBars?: boolean;
 }
 
 /**
@@ -23816,7 +23822,7 @@ export interface UiTheme {
    */
   readonly reducedTransparency: boolean;
   /**
-   * The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
+   * The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
    */
   readonly tokens: unknown;
 }

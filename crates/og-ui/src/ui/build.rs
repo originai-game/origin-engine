@@ -349,6 +349,7 @@ impl Ui {
                 gap: desc.gap,
                 scroll: desc.axes != ScrollAxes::Horizontal,
                 scroll_x: desc.axes != ScrollAxes::Vertical,
+                hide_bars: desc.hide_bars,
                 ..Element::default()
             },
         );

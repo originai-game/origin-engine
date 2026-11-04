@@ -756,3 +756,48 @@ fn a_component_scrolls_its_container_to_a_control() {
         "the least scroll that shows it: {first:?} in {view:?}"
     );
 }
+
+/// A sideways row that hides its bars draws no thumb under its chips (a
+/// resting thumb read as a selection underline), and still scrolls.
+#[test]
+fn a_scroller_that_hides_its_bars_draws_no_thumb() {
+    let mut ui = Ui::new(UiDesc::default());
+    let build = |ui: &mut Ui, hide_bars: bool| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.scroll(
+            "Chips",
+            ScrollDesc {
+                width: Size::Fixed(200.0),
+                height: Size::Fixed(40.0),
+                axes: ScrollAxes::Horizontal,
+                hide_bars,
+                ..ScrollDesc::default()
+            },
+            |ui| {
+                ui.container(
+                    "Row",
+                    Element {
+                        width: Size::Fixed(600.0),
+                        height: Size::Fixed(40.0),
+                        ..Element::default()
+                    },
+                    |_| {},
+                );
+            },
+        );
+        ui.end();
+    };
+    let thumbs = |ui: &Ui| {
+        ui.frame()
+            .items
+            .iter()
+            .filter(|i| matches!(&i.cmd, DrawCmd::Quad { rect, .. } if rect.height < 10.0 && rect.width > 20.0))
+            .count()
+    };
+    build(&mut ui, false);
+    build(&mut ui, false);
+    assert_eq!(thumbs(&ui), 1, "a resting thumb by default");
+    build(&mut ui, true);
+    build(&mut ui, true);
+    assert_eq!(thumbs(&ui), 0, "none with hide_bars");
+}

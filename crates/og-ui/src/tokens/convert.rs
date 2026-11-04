@@ -131,6 +131,7 @@ impl StyleTokens {
                 step(r.body, 600, FontRole::Body, 1.0),
                 step(r.caption, 400, FontRole::Body, 1.0),
                 step(r.lg, 600, FontRole::Mono, 1.0),
+                step(r.body, 600, FontRole::Body, 1.0),
             ],
         };
         let s = t.space;
@@ -404,6 +405,10 @@ impl StyleTokens {
         let mut typo = Vec::new();
         for r in TypeRole::ALL {
             let at = self.typography.steps[r.index()];
+            // A button at its label's step is the default: written only when it differs.
+            if *r == TypeRole::Button && at == self.typography.steps[TypeRole::Label.index()] {
+                continue;
+            }
             let base = at[Breakpoint::Desktop as usize];
             let font = match base.font {
                 FontRole::Body => "body",

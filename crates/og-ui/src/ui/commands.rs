@@ -276,7 +276,7 @@ impl Ui {
                         self.ghost_commands(ghost, &mut cmds);
                     }
                 }
-                if self.nodes[j].scrolls() {
+                if self.nodes[j].scrolls() && !self.nodes[j].el.hide_bars {
                     let mut bars = Vec::new();
                     self.scroll_bar_commands(j, &mut bars);
                     let w = self.nodes[j].world;

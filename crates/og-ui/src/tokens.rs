@@ -137,12 +137,15 @@ names! {
         Heading "heading",
         /// Running text.
         Body "body",
-        /// Buttons, tabs, fields' labels.
+        /// Tabs, fields' labels, a HUD's dense labels and key hints.
         Label "label",
         /// Hints, metadata, footnotes.
         Caption "caption",
         /// Scores, timers, prices, counters.
         Numeric "numeric",
+        /// A button's words; the `label` step when a style leaves it out
+        /// (a pixel face sets it at body, where `label` is a HUD's 12).
+        Button "button",
     }
 }
 
