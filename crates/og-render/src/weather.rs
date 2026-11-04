@@ -366,8 +366,9 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
 
 /// The side branches of strike number `strike`'s bolt ([`lightning_bolt`]):
 /// one or two channels leaving the main one in its upper two thirds,
-/// heading down and outwards for a sixth to a quarter of the bolt's height,
-/// each jagged by midpoint displacement and thinning to its tip, as
+/// heading down and outwards for 25 to 40 % of the bolt's height, each
+/// jagged by midpoint displacement as the main channel is (its jag the
+/// same share of its length, six levels) and thinning to its tip, as
 /// (point, width) pairs (the same strike, the same branches).
 pub fn lightning_branches(at: Vec3, top: f32, strike: u32) -> Vec<Vec<(Vec3, f32)>> {
     let main = lightning_bolt(at, top, strike);
@@ -385,11 +386,11 @@ pub fn lightning_branches(at: Vec3, top: f32, strike: u32) -> Vec<Vec<(Vec3, f32
             let i = ((0.12 + 0.5 * unit()) * (main.len() - 1) as f32) as usize;
             let (from, width) = main[i];
             let angle = unit() * std::f32::consts::TAU;
-            let reach = height * (0.16 + 0.09 * unit());
+            let reach = height * (0.25 + 0.15 * unit());
             let to = from + Vec3::new(angle.cos() * reach * 0.6, -reach, angle.sin() * reach * 0.6);
             let mut pts = vec![from, to];
-            let mut jag = reach * 0.25;
-            for _ in 0..4 {
+            let mut jag = reach * 0.18;
+            for _ in 0..6 {
                 let mut next = Vec::with_capacity(pts.len() * 2);
                 for pair in pts.windows(2) {
                     let d = Vec3::new(unit() * 2.0 - 1.0, 0.0, unit() * 2.0 - 1.0) * jag;
@@ -442,7 +443,17 @@ pub fn add_lightning(
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
     if let Some(c) = scene.clouds.as_mut() {
-        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(12.0 * flash);
+        // In the cloud's underside over the bolt's top, a little towards the
+        // camera, so the glow lights the base from inside where the channel
+        // enters it rather than a ball in the deck's middle.
+        let toward_eye = Vec3::new(
+            scene.camera.position.x - at.x,
+            0.0,
+            scene.camera.position.z - at.z,
+        )
+        .normalize_or(Vec3::ZERO);
+        let root = lightning_bolt(at, top, strike)[0].0;
+        c.flash = (root + Vec3::Y * 40.0 + toward_eye * 60.0).extend(12.0 * flash);
     }
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {
@@ -484,14 +495,27 @@ pub fn add_lightning(
             0.5 + 0.9 * flash,
             1.0,
         ];
-        let mut strip = |pts: &[(Vec3, f32)], gain: f32, scale: f32, c: [f32; 4]| {
+        // The halo widens and brightens towards the deck, where the channel
+        // enters the lit cloud (twice as wide and half again as bright at the
+        // base as at the ground), so the bloom spreads it into the glow.
+        let height = (top - at.y).max(1.0);
+        let mut strip = |pts: &[(Vec3, f32)], gain: f32, halo: bool, c: [f32; 4]| {
             scene.ribbons.push(crate::Ribbon {
                 points: pts
                     .iter()
-                    .map(|&(position, width)| crate::RibbonPoint {
-                        position,
-                        width: width.max(span * position.distance(eye)) * scale,
-                        color: [c[0] * gain, c[1] * gain, c[2] * gain, 1.0],
+                    .map(|&(position, width)| {
+                        let up = ((position.y - at.y) / height).clamp(0.0, 1.0);
+                        let (scale, lift) = if halo {
+                            (4.0 + 4.0 * up, 1.0 + 0.5 * up)
+                        } else {
+                            (1.0, 1.0)
+                        };
+                        let g = gain * lift;
+                        crate::RibbonPoint {
+                            position,
+                            width: width.max(span * position.distance(eye)) * scale,
+                            color: [c[0] * g, c[1] * g, c[2] * g, 1.0],
+                        }
                     })
                     .collect(),
                 texture: None,
@@ -502,8 +526,8 @@ pub fn add_lightning(
         let main = lightning_bolt(at, top, strike);
         let branches = lightning_branches(at, top, strike);
         for (pts, gain) in std::iter::once((&main, 1.0)).chain(branches.iter().map(|b| (b, 0.6))) {
-            strip(pts, gain, 4.0, halo);
-            strip(pts, gain, 1.0, core);
+            strip(pts, gain, true, halo);
+            strip(pts, gain, false, core);
         }
     }
 }
@@ -610,7 +634,14 @@ mod lightning_tests {
         for br in &b {
             assert!(a.iter().any(|p| p.0 == br[0].0));
             let (start, end) = (br[0].0, br.last().unwrap().0);
-            assert!(end.y < start.y - 600.0 * 0.15, "{start} {end}");
+            assert!(end.y < start.y - 600.0 * 0.24, "{start} {end}");
+            // Jagged: its path at least 15 % longer than its chord.
+            let path: f32 = br.windows(2).map(|w| w[0].0.distance(w[1].0)).sum();
+            assert!(
+                path > 1.15 * start.distance(end),
+                "{path} vs {}",
+                start.distance(end)
+            );
             assert!(end.y > at.y);
         }
         assert_eq!(b, lightning_branches(at, 602.0, 3));
@@ -635,7 +666,14 @@ mod lightning_tests {
             / (2.0 * (30f32).to_radians().tan() * p.position.distance(scene.camera.position))
             * 720.0;
         assert!((2.9..4.0).contains(&px), "{px} px");
-        assert!((halo.points[0].width / core.points[0].width - 4.0).abs() < 1e-4);
+        // Four times the core at the ground, eight at the deck.
+        let ratio = |i: usize| halo.points[i].width / core.points[i].width;
+        assert!(
+            (ratio(core.points.len() - 1) - 4.0).abs() < 1e-3,
+            "{}",
+            ratio(core.points.len() - 1)
+        );
+        assert!((ratio(0) - 8.0).abs() < 1e-3, "{}", ratio(0));
     }
 
     /// The shelter view moves by whole cells only, looks along the fall,
