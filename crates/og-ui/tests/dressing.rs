@@ -925,3 +925,60 @@ fn a_pixel_fonts_effects_are_whole_pixels() {
     assert_eq!(fx.shadows[0].offset, og_core::glam::Vec2::new(4.0, 2.0));
     assert_eq!(fx.shadows[0].blur, 0.0);
 }
+
+/// A pixel face keeps its hard drop over the scene and drops none on a shape
+/// its parent fills (a cost coin, a gem): the drop haloed a dark cost on a
+/// light coin (pixel r3).
+#[test]
+fn a_pixel_face_on_a_filled_shape_takes_no_drop() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    let file =
+        parse_style(&std::fs::read_to_string(dir.join("cartoon").join("style.ogt")).unwrap())
+            .unwrap();
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut fonts = ui.fonts().clone();
+    for f in [&mut fonts.body].into_iter().chain(fonts.display.as_mut()) {
+        f.metrics = f.metrics.clone().with_pixel(12);
+    }
+    fonts.link();
+    ui.set_fonts(fonts);
+    ui.set_theme(file.theme(None, [0; 6]));
+    let label = LabelDesc {
+        font: FontRole::Display,
+        ..LabelDesc::default()
+    };
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+    ui.label("Scene", "3", label);
+    ui.column("Coin", Element::default(), |ui| {
+        ui.set_draw(og_ui::paint::ElementDraw {
+            shape: og_ui::paint::ShapeKind::Ellipse,
+            fills: vec![og_ui::paint::Paint::Solid(og_ui::paint::ColorRef::token(
+                "highlight",
+            ))],
+            ..Default::default()
+        });
+        ui.label("Value", "3", label);
+    });
+    ui.end();
+    let texts_in = |path: &str| {
+        let e = ui.frame().element(path).expect(path);
+        // The text commands whose centre lies in the element's box.
+        ui.frame()
+            .items
+            .iter()
+            .filter(|i| match &i.cmd {
+                DrawCmd::Text { bounds: b, .. } => {
+                    let (cx, cy) = (b.x + b.width / 2.0, b.y + b.height / 2.0);
+                    cx >= e.x && cx <= e.x + e.width && cy >= e.y && cy <= e.y + e.height
+                }
+                _ => false,
+            })
+            .count()
+    };
+    assert_eq!(
+        texts_in("Scene"),
+        2,
+        "over the scene: the drop and the glyph"
+    );
+    assert_eq!(texts_in("Coin/Value"), 1, "on the coin: the glyph alone");
+}

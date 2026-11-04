@@ -371,13 +371,20 @@ impl Ui {
                             .or_else(|| self.part_draws.get(&i))
                             .is_some_and(|d| d.text.is_some());
                         // A pixel face on a control's plate (a button, a tab,
-                        // a chip) takes no drop: a whole font pixel of it
+                        // a chip) or on a shape its parent fills itself (a
+                        // coin, a gem) takes no drop: a whole font pixel of it
                         // filled the counters of CJK strokes (pixel r2, note
-                        // 3). Over the scene it keeps its hard drop.
+                        // 3) and haloed a cost on a light coin. Over the scene
+                        // it keeps its hard drop.
                         let parent = n.parent;
                         let plated = m.pixel_grid() > 0
                             && (n.el.interactive
-                                || (parent != NONE && self.nodes[parent].el.interactive));
+                                || (parent != NONE
+                                    && (self.nodes[parent].el.interactive
+                                        || self
+                                            .draws
+                                            .get(&parent)
+                                            .is_some_and(|d| !d.fills.is_empty()))));
                         if let Some((dx, dy, blur, sc)) = self
                             .text_drop(role, size, m.pixel_grid())
                             .filter(|_| !own && !plated)
