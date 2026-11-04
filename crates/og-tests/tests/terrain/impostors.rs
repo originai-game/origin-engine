@@ -111,14 +111,15 @@ fn a_leaf_card_lets_the_sun_through_from_behind() {
     let (plain, _) = render(&is::impostor_backlit_scene(None));
     let scene = is::impostor_backlit_scene(None);
     // The card's face towards the camera, away from the sun: points over
-    // both halves, inside its silhouette.
+    // both halves, inside its silhouette and off the seam between them
+    // (x = 0, where a pixel mixes the two colours).
     let points = [
-        (0.0, 0.0),
+        (0.2, 0.0),
         (0.5, 0.2),
         (-0.5, 0.2),
         (0.4, -0.4),
         (-0.4, -0.4),
-        (0.0, 0.6),
+        (-0.2, 0.6),
     ];
     let mean = |img: &RgbaImage| {
         points

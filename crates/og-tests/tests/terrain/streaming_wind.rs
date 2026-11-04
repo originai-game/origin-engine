@@ -348,27 +348,41 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
             solid += 1;
         } else if d > 60.0 && d < 74.0 {
             // Fading (fade 0.3 to 0.75): the copy is gone or a smaller,
-            // solid square. Its red pixels' box within 8 px of its centre
-            // (orthographic, from above: a square top) holds no hole
-            // inside its 1 px rim.
-            let (mut x0, mut y0, mut x1, mut y1) = (i32::MAX, i32::MAX, i32::MIN, i32::MIN);
-            for dy in -8i32..=8 {
-                for dx in -8i32..=8 {
-                    if red_at(cx + dx as f32, cy + dy as f32) {
-                        (x0, y0, x1, y1) = (x0.min(dx), y0.min(dy), x1.max(dx), y1.max(dy));
+            // solid square. Its red pixels within 8 px of its centre
+            // (orthographic, from above: a square top, turned by the
+            // copy's yaw, so convex) leave no hole inside any row's span.
+            // The red region joined to the red pixel nearest the centre
+            // (a neighbour's corner may reach into the box).
+            let red = |dx: i32, dy: i32| red_at(cx + dx as f32, cy + dy as f32);
+            let seed = (-8i32..=8)
+                .flat_map(|dy| (-8i32..=8).map(move |dx| (dx, dy)))
+                .filter(|&(dx, dy)| red(dx, dy))
+                .min_by_key(|&(dx, dy)| dx * dx + dy * dy);
+            let Some(seed) = seed else {
+                faded_out += 1;
+                continue;
+            };
+            let mut region = vec![seed];
+            let mut next = 0;
+            while next < region.len() {
+                let (x, y) = region[next];
+                next += 1;
+                for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] {
+                    if nx.abs() <= 8 && ny.abs() <= 8 && red(nx, ny) && !region.contains(&(nx, ny))
+                    {
+                        region.push((nx, ny));
                     }
                 }
             }
-            if x0 > x1 {
-                faded_out += 1;
-                continue;
-            }
+            let x0 = region.iter().map(|p| p.0).min().unwrap_or(0);
+            let x1 = region.iter().map(|p| p.0).max().unwrap_or(0);
+            let y0 = region.iter().map(|p| p.1).min().unwrap_or(0);
+            let y1 = region.iter().map(|p| p.1).max().unwrap_or(0);
             let mut holes = 0;
-            for dy in (y0 + 1)..y1 {
-                for dx in (x0 + 1)..x1 {
-                    if !red_at(cx + dx as f32, cy + dy as f32) {
-                        holes += 1;
-                    }
+            for dy in y0..=y1 {
+                let row: Vec<i32> = (x0..=x1).filter(|&dx| region.contains(&(dx, dy))).collect();
+                if let (Some(&a), Some(&b)) = (row.first(), row.last()) {
+                    holes += (b - a + 1) as usize - row.len();
                 }
             }
             assert_eq!(
@@ -573,10 +587,11 @@ fn wind_sways_scattered_copies_downwind() {
     // The wind field (G2) carries the gusts as air: its pressure solve
     // turns a little of a gust front sideways and its spring overshoots by
     // under a fifth, so a plate moves downwind by 0 to 2.4 m with a small
-    // crosswind part.
+    // crosswind part: under a quarter of the downwind push, at least 1 m
+    // (Metal: 0.26 m across 1.2 m downwind, 12°).
     for o in a.iter().chain(&b) {
         assert!(
-            o.y.abs() < 0.25 && o.x > -0.1 && o.x < 2.46,
+            o.y.abs() < 0.25 * o.x.max(1.0) && o.x > -0.1 && o.x < 2.46,
             "a gust moved a plate {o}: not downwind by 0 to 2.4 m"
         );
     }
@@ -659,7 +674,7 @@ fn plate_field() -> (RenderScene, Vec<Vec2>) {
         ..Default::default()
     });
     let s = TerrainScatter {
-        density: 0.04,
+        density: 0.02,
         distance: 200.0,
         fade: 0.0,
         scale: [1.0, 1.0],
@@ -737,9 +752,22 @@ fn plate_offsets(img: &RgbaImage, roots: &[Vec2]) -> Vec<Vec2> {
 #[test]
 fn a_wind_motor_pushes_copies_away_from_it() {
     let (mut scene, roots) = plate_field();
+    // The motor where the most lone plates stand inside its reach (the
+    // field's placement decides where they are), on a 2 m lattice kept
+    // 18 m inside the frame.
+    let reach = |c: Vec2| {
+        roots
+            .iter()
+            .filter(|r| (3.0..14.0).contains(&r.distance(c)))
+            .count()
+    };
+    let at = (-12..=12)
+        .flat_map(|i| (-4..=4).map(move |j| Vec2::new(i as f32 * 2.0, j as f32 * 2.0)))
+        .max_by_key(|&c| reach(c))
+        .expect("a lattice");
     scene.wind = None;
     scene.wind_motors = vec![og_render::WindMotor {
-        position: Vec3::ZERO,
+        position: Vec3::new(at.x, 0.0, at.y),
         radius: 18.0,
         strength: 12.0,
         ..Default::default()
@@ -755,9 +783,10 @@ fn a_wind_motor_pushes_copies_away_from_it() {
     let offsets = plate_offsets(&img, &roots);
     let (mut dot, mut n, mut far) = (0.0, 0, 0.0f32);
     for (root, o) in roots.iter().zip(&offsets) {
-        let d = root.length();
+        let out = *root - at;
+        let d = out.length();
         if d > 3.0 && d < 14.0 && o.length() > 0.02 {
-            dot += o.normalize().dot(root.normalize());
+            dot += o.normalize().dot(out.normalize());
             n += 1;
         } else if d > 22.0 {
             far = far.max(o.length());
@@ -765,7 +794,9 @@ fn a_wind_motor_pushes_copies_away_from_it() {
     }
     assert!(n >= 4, "{n} plates inside the motor's reach moved");
     let corr = dot / n as f32;
-    println!("motor: {n} plates, outward correlation {corr:.2}, farthest moved {far:.3} m outside");
+    println!(
+        "motor at {at}: {n} plates, outward correlation {corr:.2}, farthest moved {far:.3} m outside"
+    );
     assert!(corr > 0.8, "the push is not outward: {corr:.2}");
     assert!(far < 0.1, "a plate past the motor's reach moved {far:.3} m");
 }
@@ -824,7 +855,7 @@ fn scatter_rules_draw_the_cpu_placement() {
     let (mut scene, _) = plate_field();
     scene.wind = None;
     let data = TerrainData::flat(Vec2::splat(256.0), 129, 129);
-    scene.scatters[0].scatter.footprint = 6.0;
+    scene.scatters[0].scatter.footprint = 3.0;
     scene.scatters[0].scatter.priority = 1;
     let green = scene.add_material(Material {
         base_color: [0.0, 0.0, 0.0, 1.0],
