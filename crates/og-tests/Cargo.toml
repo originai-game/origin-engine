@@ -8,6 +8,10 @@ description = "Origin Engine tests: the gfx reference harness (scenes rendered h
 publish = false
 autotests = false
 
+[features]
+# Real-window acceptance only; never part of headless reference runs or wasm.
+surface = ["dep:winit", "dep:pollster"]
+
 [dependencies]
 og-render = { path = "../og-render", features = ["gltf", "bake"] }
 og-core = { path = "../og-core" }
@@ -21,6 +25,12 @@ image = { workspace = true, features = ["hdr"] }
 og-anim = { path = "../og-anim" }
 # light_scenes: the Cornell box baked by og-bake as the scene is built.
 og-bake = { path = "../og-bake" }
+pollster = { workspace = true, optional = true }
+winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
+
+[[example]]
+name = "surface"
+required-features = ["surface"]
 
 [[test]]
 name = "tests"

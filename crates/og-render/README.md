@@ -714,6 +714,34 @@ native host (`og-host-node`) links when the variable is set.
 
 ## Testing
 
+Native HDR acceptance needs a real surface: neither `og run`'s shared-frame
+preview nor the headless reference harness configures an HDR swapchain.
+The opt-in `og-tests` surface example opens a native window and calls
+`Renderer::with_surface`, then presents each frame through `RenderTarget::Surface`:
+
+```sh
+cargo build -p og-tests --example surface --features surface
+OG_GFX_BACKEND=metal target/debug/examples/surface bloom hdr 203 1000 120 /tmp/hdr-sdr-preview.png
+OG_GFX_BACKEND=metal target/debug/examples/surface bloom sdr 203 1000 120 /tmp/sdr-preview.png
+OG_GFX_BACKEND=metal target/debug/examples/surface ui-glass-bright hdr
+OG_GFX_BACKEND=metal target/debug/examples/surface views-split hdr
+```
+
+Arguments are scene, `hdr|sdr`, paper-white nits, peak nits, frame count
+(0/default: until the window closes), and optional preview PNG. Named scenes
+and their per-frame updates are the same as the reference harness. Resize
+reconfigures the surface. The log reports monitor, adapter, requested HDR,
+supported/resolved HDR and settings; an HDR request resolving to SDR fails
+instead of claiming HDR acceptance. There is no headless fallback. This
+example is outside the default gate and adds no window dependency to normal
+headless runs. Authors only compile it; macrunner runs it on the real display.
+
+Observe highlights, paper white, translucent UI/glass and split-screen on the
+actual HDR display; `hdr_resolved=true` proves surface configuration, not
+physical luminance. The optional PNG exercises retained-frame capture but is
+an explicitly clipped SDR preview, never HDR evidence or a reference replacement.
+Paper-white/peak changes require another run (renderer-creation settings).
+
 `crates/og-tests` is the gfx reference harness. Each named scene renders
 headless at 1280×720 (after its warm-up frames, with its per-frame update)
 and is compared with `crates/og-tests/references/<backend-tier>/<scene>.png`:
