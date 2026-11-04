@@ -1952,6 +1952,21 @@ Each off by default on `Water` (every earlier water frame is unchanged):
   cross-faded, so the fronts bend where the map turns the flow (without a
   map, a `flow` alone now carries them too). Binding 9 of the water group.
 
+**The tick's sea and the drawn sea (W7 deferred, 2026-11-04).** The drawn
+sea adds render-only FFT cascades (`ocean_cascades` in `water.wgsl`) to
+the Gerstner waves the tick reads, so it lies off `og.physics.waterHeight`:
+0.159 m RMS (0.454 m at most) in `water-ocean`, 0.164 m (0.546 m) in
+`water-ocean-storm`, 0.111 m (0.303 m) in `water-shore` and 0.095 m
+(0.310 m) in `water-ocean-dusk-storm`, measured over the frames' near sea.
+Under a hull the gap is about 0: `hull_calm` fades the FFT chop over each
+floater's footprint, so a floater sits in the sea that is drawn
+(`shallow_floaters_sit_in_the_drawn_shoaled_sea`). The cost is calmer fine
+chop under each hull. W7, a deterministic CPU FFT band the tick reads too
+(Tessendorf's method, or Crest's CPU queries, MIT), would remove that
+calming. It was deferred because floaters already sit in the drawn sea.
+Revisit it if the calmed chop shows, or if something other than a hull (a
+swimmer, spray against a rock) needs the drawn height.
+
 og.Water is lazy from R5 (`og-runtime/src/lazy.rs`): a world without water
 keeps its type table and hash as the surface grows.
 
