@@ -13,7 +13,7 @@ export function goalChips(id: string, desc: GoalChipsDesc): void {
   const compact = !!desc.compact;
   const tick = kit.tick();
   const moving = !still();
-  kit.open(id, { direction: "row", gap: u(compact ? 8 : 12), cross: "center", wrap: !compact, part: `Goals.frame${compact ? "[compact]" : ""}`, partClass: "panel" });
+  kit.open(id, { direction: "row", gap: u(compact ? 8 : 12), cross: "center", wrap: true, part: `Goals.frame${compact ? "[compact]" : ""}`, partClass: "panel" });
   goals.forEach((gl, i) => {
     const key = gl.key || `g${i}`;
     const need = Math.max(1, gl.need ?? 1);
