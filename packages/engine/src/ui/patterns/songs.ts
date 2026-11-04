@@ -305,7 +305,7 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
     const key = s.key ?? `s${k}`;
     const sel = off === 0;
     const h = sel ? big : rowH;
-    const y = Math.round(wh / 2 + (off === 0 ? -big / 2 : off > 0 ? big / 2 + gap + (off - 1) * (rowH + gap) : -big / 2 - gap - (-off) * (rowH + gap) + 0));
+    const y = Math.round(wh / 2 + (off === 0 ? -big / 2 : off > 0 ? big / 2 + gap + (off - 1) * (rowH + gap) : -big / 2 - (-off) * (rowH + gap)));
     const lean = portrait ? 0 : Math.round(Math.pow(Math.abs(off), 1.25) * u(18));
     const w = ww - lean - (sel ? 0 : u(12));
     const ix = lastInteraction(key);
