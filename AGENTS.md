@@ -243,7 +243,12 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   lands the branch (reading only the ones that fail tolerance) and sends
   the moved frames of visual work to the art director, whose notes fold
   into the author's next round. Only macrunner runs `scripts/check.sh`,
-  wasm builds and references. No contact sheets or films unless the
+  wasm builds and references. macrunner carries two landing sessions
+  (the owner, 2026-11-04, to speed landing): one for the UI side
+  (og-ui, kits, style packs) and one for the render side (rendering,
+  terrain, motion frames), the second in a lane worktree. They share
+  the machine-wide gate lock, so their gates still queue, and each
+  rebases onto origin/main right before it pushes. No contact sheets or films unless the
   coordinator asks for one. No `references/vulkan-cpu/` frame is recorded.
 - **Fix at the root; port the state of the art (the owner, 2026-11-03).**
   A problem found anywhere (a scene, a kit, the site, a test) is fixed in
