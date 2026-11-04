@@ -16,10 +16,10 @@ export function banner(): GachaBannerDesc {
     ],
     current: "event", title: "Moonlit Tide", subtitle: "Event wish · Limited",
     featured: [{ name: "Nerissa", title: "Tide Oracle", stars: 5, rarity: "legendary" }, { name: "Kai", stars: 4, rarity: "epic" }, { name: "Lumi", stars: 4, rarity: "epic" }],
-    rateText: "5-star 0.6% · 4-star 5.1%", endsIn: 3 * 86_400 + 5 * 3600, pity: 62, pityMax: 90, pityLabel: "Guaranteed in {n}",
+    rateText: "5-star 0.6% · 4-star 5.1%", endsIn: 3 * 86_400 + 5 * 3600, pity: 62, pityMax: 90, pityLabel: "Guaranteed in {left}",
     currency: "Crystals", balance: 2400, single: 160, multi: 1600, multiCount: 10,
     singleLabel: "Wish ×1", multiLabel: "Wish ×10", shortLabel: "Not enough", detailsLabel: "Details", historyLabel: "History",
-    daysLabel: "d", hoursLabel: "h", minutesLabel: "m",
+    daysLabel: "{d}d {h}h", hoursLabel: "{h}h {m}m", minutesLabel: "{m}m",
   };
 }
 
