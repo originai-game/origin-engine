@@ -580,7 +580,12 @@ export function horrorHud(world: World): void {
     og.ui.label("Caption", L("sc.horror.objective"), { step: "sm", font: "display", color: { token: "inkMuted" }, nowrap: true });
     og.ui.label("Text", L("sc.horror.find"), { step: small ? "base" : "lg", nowrap: true });
   });
-  og.ui.anchor("Light", { anchor: "bottomLeft", margin: m, direction: "row", gap: t.space.xs, cross: "center" }, () => {
+  // Under a finger the d-pad takes the bottom start corner: the battery stands above it, a small gap clear (as laid last
+  // tick).
+  const pad = touch ? og.ui.bounds("Move") : null;
+  const vpL = og.ui.frameViewport();
+  const lift = pad ? Math.round(vpL.height - vpL.safeArea.bottom - m - pad.y + t.space.sm) : 0;
+  og.ui.anchor("Light", { anchor: "bottomLeft", margin: m, offsetY: -lift, direction: "row", gap: t.space.xs, cross: "center" }, () => {
     og.ui.icon("Icon", "bolt", { size: Math.round(18 * k), tint: { token: "warn" } } as never);
     og.ui.statBar("Battery", { value: 2, max: 5, kind: "primary", segment: 1, low: 1, width: px(90 * k), thickness: 8, name: L("sc.horror.battery"), anchor: null });
   });
