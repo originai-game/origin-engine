@@ -42,28 +42,32 @@ fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
   return textureSample(t, material_sampler, at);
 }
 
-// toon_aa for a fragment whose N·L towards the sun is `n_dot_l`: called in
-// uniform control flow (screen derivatives); with ANALYTIC (the visibility
-// buffer's resolve, whose neighbours are other triangles) a fixed hundredth
-// per pixel.
-// A toon metal's reflection as bands (toon_metal, pbr.wgsl): the
-// environment along the reflected ray at the roughness's level, its
-// brightness against the flat colour (toon ambient's: the reflection
-// straight up at the roughest level) through the material's ramp, scaled
-// so the sky's brightness lies in the top band (1) and the darker ground
-// it reflects one or two bands lower. A metal is its reflection: in its own colour
-// alone, chrome drew as a white ball and gold as cream; with it the sky
-// side reads light and the ground side dark, a band between, as cel-shaded
-// metals are drawn (a metal matcap's stepped reflection; Guilty Gear Xrd's
-// stepped speculars). 1 where the environment is black (nothing to reflect).
+// A toon metal's reflection as bands: the environment along the reflected
+// ray at the roughness's level, its brightness k against the flat colour
+// (toon ambient's: the reflection straight up at the roughest level),
+// stepped by the material's ramp at 0.45 k²: the sky (k about 1 and over)
+// in the top band, the horizon in the middle one and the ground it
+// reflects (k under about 0.4) in the darkest, scaled so the top band is
+// 1. A cel-shaded metal is shaded as a matte surface whose colour is f0
+// times those steps (toon_metal_lit), lit by the same ramp and flat
+// ambient: only the reflection's brightness is stepped, so gold keeps its
+// hue and saturation in every band, and the ground's dark band sits under
+// the sky's (a metal matcap's grey bands times the base colour; Guilty
+// Gear Xrd's and Genshin's stepped metals). Lit as a surface in f0 alone,
+// chrome drew as a white ball and gold as cream. 1 where the environment
+// is black: nothing to reflect.
 fn toon_metal_bands(s: Surface, n: vec3<f32>, v: vec3<f32>, p: vec3<f32>) -> f32 {
   let w = vec3<f32>(0.2126, 0.7152, 0.0722);
   let flat_env = dot(reflected_light(vec3<f32>(0.0, 1.0, 0.0), p, frame.params.y), w);
   if (flat_env < 1e-3) { return 1.0; }
-  let along = dot(reflected_light(reflect(-v, n), p, s.roughness * frame.params.y), w);
-  return toon_ramp(0.5 * along / flat_env) / max(toon_ramp(1.0), 1e-3);
+  let k = dot(reflected_light(reflect(-v, n), p, s.roughness * frame.params.y), w) / flat_env;
+  return toon_ramp(0.45 * k * k) / max(toon_ramp(1.0), 1e-3);
 }
 
+// toon_aa for a fragment whose N·L towards the sun is `n_dot_l`: called in
+// uniform control flow (screen derivatives); with ANALYTIC (the visibility
+// buffer's resolve, whose neighbours are other triangles) a fixed hundredth
+// per pixel.
 fn toon_edges(n_dot_l: f32) {
   let px = frame.toon.x;
   if (ANALYTIC) {
@@ -328,7 +332,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (EFFECTS && material.toon.x > 0.5) {
     toon_edges(dot(n, l));
     if (s.metallic > 0.0) {
-      toon_metal = toon_metal_bands(s, n, v, in.world_pos);
+      toon_metal_lit = toon_metal_bands(s, n, v, in.world_pos);
     }
   }
   var color: vec3<f32>;
@@ -403,8 +407,13 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       ambient_irradiance(ambient_light_level(up, in.world_pos), in.world_pos, up) + ambient_irradiance(ambient_light_level(-up, in.world_pos), in.world_pos, -up));
     let flat_hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
     let flat_diffuse = (flat_irradiance * frame.params.x + flat_hemi) * s.albedo;
-    // A metal's reflection keeps its bands (toon_metal), flat between them.
-    let flat_specular = reflected_light(up, in.world_pos, frame.params.y) * s.f0 * mix(1.0, toon_metal, s.metallic) * frame.params.x;
+    // A metal takes the flat ambient as a matte surface in f0 times its
+    // reflection's bands (toon_metal_bands), not the reflection's colour:
+    // the ambient's colour and brightness, the metal's hue.
+    let flat_specular = mix(
+      reflected_light(up, in.world_pos, frame.params.y) * s.f0 * frame.params.x,
+      (flat_irradiance * frame.params.x + flat_hemi) * s.f0 * toon_metal_lit,
+      s.metallic);
     diffuse_ibl = mix(flat_diffuse, diffuse_ibl, frame.toon.y);
     specular_ibl = mix(flat_specular, specular_ibl, frame.toon.y);
   }
