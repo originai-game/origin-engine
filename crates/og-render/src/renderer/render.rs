@@ -107,7 +107,7 @@ impl Renderer {
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
         let mut joint_matrices = std::mem::take(&mut skinned.matrices);
-        let joints_drawn = joint_matrices.len() as u32;
+        let joints_drawn = (joint_matrices.len() + self.palette.baked_len()) as u32;
         // TAA's skinned motion vectors: the previous frame's joints and
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
@@ -390,7 +390,10 @@ impl Renderer {
         };
         // The ranges the builds below take for the 2D particles simulated
         // in compute (`expand_sprites` writes them in the particles pass).
-        let mut gpu_sprites = sprites::GpuSprites::default();
+        let mut gpu_sprites = sprites::GpuSprites {
+            tiles: self.tiles_gpu_supported.then(Vec::new),
+            ..Default::default()
+        };
         let mut sprite_frame = sprites::build(
             scene,
             font,
@@ -463,6 +466,7 @@ impl Renderer {
                     r.source,
                     RunSource::Strip(..)
                         | RunSource::Mesh(_)
+                        | RunSource::Tiles(_)
                         | RunSource::Metaballs(_)
                         | RunSource::Particles(_)
                 )
@@ -530,6 +534,7 @@ impl Renderer {
                                 r.source,
                                 RunSource::Strip(..)
                                     | RunSource::Mesh(_)
+                                    | RunSource::Tiles(_)
                                     | RunSource::Metaballs(_)
                                     | RunSource::Particles(_)
                             ) {
@@ -561,6 +566,14 @@ impl Renderer {
             // A 2D particle system simulated in compute: as its source.
             let source = match run.source {
                 RunSource::Particles(k) => gpu_sprites.ranges[k as usize].source,
+                RunSource::Tiles(k) => RunSource::Sprite(
+                    SpriteBlend::Alpha,
+                    Some(
+                        scene.tile_layers
+                            [gpu_sprites.tiles.as_ref().expect("GPU tiles")[k as usize].layer]
+                            .texture,
+                    ),
+                ),
                 source => source,
             };
             match source {
@@ -580,6 +593,31 @@ impl Renderer {
                 }
                 _ => {}
             }
+        }
+        if let Some(draws) = &gpu_sprites.tiles
+            && (!draws.is_empty() || self.tiles_gpu.is_some())
+        {
+            let tiles = self.tiles_gpu.get_or_insert_with(|| {
+                tiles_gpu::Tiles::new(
+                    &self.device,
+                    [
+                        &self.frame_layout,
+                        &self.sprite_layout,
+                        &self.sprite_fx_layout,
+                    ],
+                    self.samples,
+                )
+            });
+            tiles.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                draws,
+                self.sprite_normals
+                    .as_ref()
+                    .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
+                self.samples,
+            );
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite_meshes.is_empty() {

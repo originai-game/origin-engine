@@ -94,6 +94,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("sprite array", crate::sprite_array::source());
     add("sprite mesh", crate::sprite_mesh::source());
     add("sprite skin", crate::sprite_skin::source());
+    add("tiles", crate::tiles_gpu::source());
     add(
         "ribbon",
         format!("{}{}", crate::FRAME_WGSL, crate::RIBBON_WGSL),

@@ -42,8 +42,8 @@
 //!
 //! **Baked clips (crowds, [`SkinnedInstance::baked`]).** Each
 //! [`crate::RenderScene::baked_clips`] entry a frame's instances use (now
-//! or the frame before) is appended to the current section once, with the
-//! other per-instance slots in draw order: its frames one after another,
+//! or the frame before) lives in the persistent baked buffer (binding 2):
+//! its frames one after another,
 //! `joints` slots each, shared by every instance that plays it. A baked
 //! instance's `palette.x` is the first slot of the frame before its time,
 //! `palette.y` the clip's joints, and `palette.w` is `-1 - t` (below
@@ -51,8 +51,8 @@
 //! of that frame with joint `j` of the next, `joints` slots on, at `t`.
 //! Under TAA it also has one slot of its own, its previous transform; `morph1` is (that slot plus one, the first slot of its previous frame,
 //! that frame's `t`, 0), read in the current section, so its motion
-//! vectors need no previous palette. The previous section, when there is
-//! one, copies these slots unchanged, keeping the two sections aligned.
+//! vectors need no previous baked palette. Only the transform slot is
+//! copied into the dynamic previous section, keeping it aligned.
 //!
 //! Both sections together hold at most [`MAX_JOINTS`] slots.
 //!
@@ -237,9 +237,10 @@ pub(crate) fn weight_slots(weights: &[f32], targets: usize) -> Vec<[[f32; 4]; 4]
 /// after another, `joints` matrices each (model space, as a
 /// [`JointPalette`]), evenly spaced in time; at least two. A clip that
 /// loops ends on a copy of its first frame. Kept by the scene and shared
-/// by every instance that plays it; each frame it is drawn costs
-/// `frames.len()` × 64 bytes of the palette buffer, once (twice under TAA,
-/// which also takes 64 bytes an instance for its previous transform).
+/// by every instance that plays it. It occupies `frames.len()` × 64 bytes
+/// in the persistent baked buffer, uploaded when the active bakes change,
+/// not when their playback advances. TAA takes only a dynamic previous
+/// transform per instance, not a second copy of the clip.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BakedClip {
     pub joints: u32,
@@ -370,7 +371,7 @@ pub(crate) fn palette_wgsl(group: u32) -> String {
 }
 
 /// The palette group's layout: the joint palette (binding 0) and the morph
-/// deltas (binding 1), read by the vertex shader.
+/// deltas (binding 1) and immutable bakes (binding 2), read by the vertex shader.
 pub(crate) fn palette_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     let entry = |binding| wgpu::BindGroupLayoutEntry {
         binding,
@@ -384,7 +385,7 @@ pub(crate) fn palette_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     };
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("joint palette"),
-        entries: &[entry(0), entry(1)],
+        entries: &[entry(0), entry(1), entry(2)],
     })
 }
 
@@ -443,11 +444,49 @@ impl Vec4Array {
     }
 }
 
-/// The frame's joint palette and the scene's morph deltas on the GPU, in
-/// two storage buffers, and the bind group that reads them.
+/// Active bakes and their stable offsets until the set or its contents change.
+#[derive(Default)]
+struct BakeCache {
+    clips: Vec<(u32, BakedClip)>,
+    offsets: std::collections::BTreeMap<u32, usize>,
+    len: usize,
+}
+
+impl BakeCache {
+    fn update(
+        &mut self,
+        clips: &[BakedClip],
+        used: &std::collections::BTreeSet<u32>,
+    ) -> Option<Vec<Mat4>> {
+        if self.clips.len() == used.len()
+            && self
+                .clips
+                .iter()
+                .zip(used)
+                .all(|((id, clip), next)| id == next && clip == &clips[*next as usize])
+        {
+            return None;
+        }
+        self.clips.clear();
+        self.offsets.clear();
+        let mut matrices = Vec::new();
+        for &id in used {
+            let clip = &clips[id as usize];
+            self.offsets.insert(id, matrices.len());
+            matrices.extend_from_slice(&clip.frames);
+            self.clips.push((id, clip.clone()));
+        }
+        self.len = matrices.len();
+        Some(matrices)
+    }
+}
+
+/// Dynamic joints, morph deltas and persistent baked clips on the GPU.
 pub(crate) struct GpuPalette {
     palette: Vec4Array,
     morphs: Vec4Array,
+    baked: Vec4Array,
+    bakes: BakeCache,
     pub bind_group: Option<wgpu::BindGroup>,
 }
 
@@ -456,8 +495,38 @@ impl GpuPalette {
         GpuPalette {
             palette: Vec4Array::new(),
             morphs: Vec4Array::new(),
+            baked: Vec4Array::new(),
+            bakes: BakeCache::default(),
             bind_group: None,
         }
+    }
+
+    /// Upload immutable data only when its active set changes. Recreated
+    /// storage invalidates the group, which `write` binds with the dynamic data.
+    pub fn prepare_bakes(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        clips: &[BakedClip],
+        used: &std::collections::BTreeSet<u32>,
+    ) {
+        if let Some(matrices) = self.bakes.update(clips, used) {
+            if self.baked.reserve(device, matrices.len() * 4) {
+                self.bind_group = None;
+            }
+            self.baked.upload(queue, bytemuck::cast_slice(&matrices));
+        }
+        if self.baked.reserve(device, 0) {
+            self.bind_group = None;
+        }
+    }
+
+    pub fn baked_offset(&self, clip: u32) -> usize {
+        self.bakes.offsets[&clip]
+    }
+
+    pub fn baked_len(&self) -> usize {
+        self.bakes.len
     }
 
     /// Uploads the joint matrices (four columns each) and, when
@@ -492,6 +561,10 @@ impl GpuPalette {
                     wgpu::BindGroupEntry {
                         binding: 1,
                         resource: self.morphs.resource(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.baked.resource(),
                     },
                 ],
             }));
@@ -553,6 +626,43 @@ pub(crate) fn append_previous(
 mod motion_tests {
     use super::*;
     use crate::scene::{MaterialHandle, MeshHandle};
+
+    #[test]
+    fn bakes_survive_playback_but_replacements_and_clip_switches_refresh_them() {
+        let mut clips = vec![
+            BakedClip {
+                joints: 1,
+                frames: vec![Mat4::IDENTITY, Mat4::from_translation(Vec3::Y)],
+            },
+            BakedClip {
+                joints: 1,
+                frames: vec![Mat4::from_translation(Vec3::X); 3],
+            },
+        ];
+        let used = [0, 1].into();
+        let mut cache = BakeCache::default();
+        let bytes = cache.update(&clips, &used).unwrap();
+        assert_eq!(bytes.len(), 5);
+        assert_eq!(cache.offsets[&1], 2);
+        // Playback selects different offsets into the same resident bytes.
+        for at in [0.0, 0.25, 1.0, 0.0] {
+            let (frame, _) = clips[0].at(at);
+            assert_eq!(bytes[cache.offsets[&0] + frame], clips[0].frames[frame]);
+            assert!(cache.update(&clips, &used).is_none());
+        }
+        clips[0].frames[1] = Mat4::from_translation(Vec3::Z);
+        assert_eq!(cache.update(&clips, &used).unwrap()[1], clips[0].frames[1]);
+        assert!(cache.update(&clips, &used).is_none());
+        assert_eq!(cache.update(&clips, &[1].into()).unwrap(), clips[1].frames);
+        assert_eq!(cache.offsets[&1], 0);
+        assert!(cache.update(&clips, &[1].into()).is_none());
+        assert!(
+            cache
+                .update(&clips, &Default::default())
+                .unwrap()
+                .is_empty()
+        );
+    }
 
     fn palette(m: &[Mat4]) -> JointPalette {
         JointPalette::from(m.to_vec())

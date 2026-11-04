@@ -612,7 +612,7 @@ impl Renderer {
     /// instance buffer, their instance data, and the frame's joint matrices.
     #[allow(clippy::type_complexity)]
     pub(crate) fn build_skinned(
-        &self,
+        &mut self,
         scene: &RenderScene,
         probes: &[(Vec3, Vec3)],
     ) -> Result<SkinnedFrame, RenderError> {
@@ -672,6 +672,24 @@ impl Renderer {
                 None => {}
             }
         }
+        let used: std::collections::BTreeSet<u32> = scene
+            .skinned_instances
+            .iter()
+            .filter_map(|s| s.baked)
+            .flat_map(|b| [b.clip, b.previous_clip])
+            .collect();
+        let baked_joints: usize = used
+            .iter()
+            .map(|&i| scene.baked_clips[i as usize].frames.len())
+            .sum();
+        if baked_joints + matrices.len() > MAX_JOINTS {
+            return Err(RenderError::InvalidData(format!(
+                "{} joints in the frame's palettes and bakes (at most {MAX_JOINTS})",
+                baked_joints + matrices.len()
+            )));
+        }
+        self.palette
+            .prepare_bakes(&self.device, &self.queue, &scene.baked_clips, &used);
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
         // Each instance's reflection probe: the one holding the centre of
         // its posed bounds, its joints' boxes moved by its palette
@@ -719,8 +737,6 @@ impl Renderer {
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
         let mut previous_slots = Vec::new();
-        // Each baked clip's first slot, once it is in the section.
-        let mut clips: std::collections::BTreeMap<u32, usize> = Default::default();
         let mut baked_moved = false;
         let taa = self.info.antialias == Antialias::Taa;
         for &i in &order {
@@ -783,26 +799,14 @@ impl Renderer {
             });
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
             if let Some(b) = s.baked {
-                // Its clips' frames, once a frame (shared), then under TAA
-                // its previous transform (`skin.rs`, the layout).
-                let mut first_of = |c: u32| {
-                    *clips.entry(c).or_insert_with(|| {
-                        let at = matrices.len();
-                        let frames = scene.baked_clips[c as usize]
-                            .frames
-                            .iter()
-                            .map(Mat4::to_cols_array_2d);
-                        matrices.extend(frames.clone());
-                        previous_slots.extend(frames);
-                        at
-                    })
-                };
+                // Bakes stay in their own buffer; only the previous
+                // transform belongs to the frame's dynamic palette.
                 let clip = &scene.baked_clips[b.clip as usize];
                 let (k, t) = clip.at(b.frame);
-                let now = first_of(b.clip) + k * clip.joints as usize;
+                let now = self.palette.baked_offset(b.clip) + k * clip.joints as usize;
                 let before = &scene.baked_clips[b.previous_clip as usize];
                 let (pk, pt) = before.at(b.previous_frame);
-                let then = first_of(b.previous_clip) + pk * before.joints as usize;
+                let then = self.palette.baked_offset(b.previous_clip) + pk * before.joints as usize;
                 // Only TAA reads it: without, a crowd costs its clips alone.
                 let mut transform_at = 0;
                 if taa {
@@ -896,10 +900,10 @@ impl Renderer {
                 },
             });
         }
-        if matrices.len() > MAX_JOINTS {
+        if matrices.len() + baked_joints > MAX_JOINTS {
             return Err(RenderError::InvalidData(format!(
                 "{} joints, blendshape weight and deformed vertex slots in the frame's palette (at most {MAX_JOINTS})",
-                matrices.len()
+                matrices.len() + baked_joints
             )));
         }
         Ok(SkinnedFrame {

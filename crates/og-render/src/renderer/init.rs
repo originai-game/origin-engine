@@ -1044,6 +1044,10 @@ impl Renderer {
                 adapter.get_downlevel_capabilities().flags,
             ),
             sprite_normals: None,
+            tiles_gpu: None,
+            tiles_gpu_supported: tiles_gpu::Tiles::supported(
+                adapter.get_downlevel_capabilities().flags,
+            ),
         })
     }
 }

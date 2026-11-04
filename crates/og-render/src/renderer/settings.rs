@@ -155,6 +155,7 @@ impl Renderer {
         self.forget_lit_pipelines();
         self.sprite_meshes = None;
         self.sprite_normals = None;
+        self.tiles_gpu = None;
     }
 
     /// Forgets the lit pipelines, which batches make again as they need

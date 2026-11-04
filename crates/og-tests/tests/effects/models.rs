@@ -323,6 +323,27 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
     let (a, _) = frame(&desc, &one(Err(0.0)));
     let (b, _) = frame(&desc, &one(Err(2.0)));
     assert!(differing(&a, &b, 8.0) > 1_500);
+    // Playback and a same-index replacement must both use the current bake
+    // when drawing repeatedly through one renderer's persistent cache.
+    let mut resident = one(Err(0.0));
+    let mut cached = Renderer::new_blocking(&desc).expect("renderer");
+    for at in [0.0, 1.5, 2.0, 0.0] {
+        resident.skinned_instances[0].baked.as_mut().unwrap().frame = at;
+        cached.render(&resident, &RenderTarget::Offscreen).unwrap();
+        let baked = cached.read_offscreen().unwrap();
+        let (posed, _) = frame(&desc, &one(Ok(JointPalette::from(clip.palette(at)))));
+        assert!(differing(&baked, &posed, 4.0) < 40, "cached frame {at}");
+    }
+    resident.baked_clips[0].frames = [0.5, 0.25, 0.0]
+        .iter()
+        .flat_map(|&b| fx::bend_palette(b, 0.0).matrices)
+        .collect();
+    cached.render(&resident, &RenderTarget::Offscreen).unwrap();
+    let (posed, _) = frame(&desc, &one(Ok(fx::bend_palette(0.5, 0.0))));
+    assert!(
+        differing(&cached.read_offscreen().unwrap(), &posed, 4.0) < 40,
+        "replaced bake"
+    );
     // A clip that is not in the scene is refused.
     let mut bad = one(Err(1.0));
     bad.baked_clips.clear();

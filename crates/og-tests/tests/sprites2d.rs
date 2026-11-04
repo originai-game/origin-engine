@@ -224,6 +224,40 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     let (img, _) = frame(&animated, 1);
     assert_eq!(at(&img, 0.5, 4.5), [0, 0, 255], "the animated quad");
     assert_eq!(at(&img, 1.5, 4.5), [255, 0, 0], "its neighbour");
+
+    // The same resident chunk advances, wraps and seeks backwards without
+    // a geometry upload; a copy-on-write edit must replace its GPU data.
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    for (time, expected) in [
+        (0.0, [255, 0, 0]),
+        (0.249, [255, 0, 0]),
+        (0.25, [0, 0, 255]),
+        (0.5, [255, 0, 0]),
+        (-0.125, [0, 0, 255]),
+    ] {
+        animated.tile_layers[0].time = time;
+        let stats = renderer
+            .render(&animated, &RenderTarget::Offscreen)
+            .unwrap();
+        assert_eq!((stats.tiles, stats.tile_chunks), (512, 2));
+        assert_eq!(
+            at(&renderer.read_offscreen().unwrap(), 0.5, 4.5),
+            expected,
+            "time {time}"
+        );
+    }
+    let layer = &mut animated.tile_layers[0];
+    layer.time = 0.25;
+    Arc::make_mut(&mut layer.chunks)[0].animated[0].uvs =
+        Arc::from(vec![[0.5, 0.0, 1.0, 1.0], [0.0, 0.0, 0.5, 1.0]]);
+    renderer
+        .render(&animated, &RenderTarget::Offscreen)
+        .unwrap();
+    assert_eq!(
+        at(&renderer.read_offscreen().unwrap(), 0.5, 4.5),
+        [255, 0, 0],
+        "edited animation replaces cached UVs"
+    );
 }
 
 /// FINDINGS #9 of examples/hollowbell: 2D lighting covers the tile layers

@@ -53,6 +53,24 @@ impl Renderer {
                 current = None;
                 continue;
             }
+            if let RunSource::Tiles(i) = source {
+                let tiles = self.tiles_gpu.as_ref().expect("prepared before draw");
+                let texture = tiles.textures[i as usize];
+                let normal = self.normal_group(scene, Some(texture));
+                pass.set_bind_group(
+                    1,
+                    normal.unwrap_or_else(|| {
+                        self.cache.sprite_groups[texture.index()]
+                            .as_ref()
+                            .expect("prepared")
+                    }),
+                    &[],
+                );
+                tiles.draw(pass, i, run.count, normal.is_some());
+                draws += 1;
+                current = None;
+                continue;
+            }
             if let RunSource::Mesh(i) = source {
                 let mesh = &scene.sprite_meshes[i as usize];
                 if let Some(group) = self.normal_group(scene, mesh.texture) {
@@ -133,6 +151,7 @@ impl Renderer {
                 RunSource::Strip(..)
                 | RunSource::Metaballs(_)
                 | RunSource::Mesh(_)
+                | RunSource::Tiles(_)
                 | RunSource::Array(..)
                 | RunSource::Particles(_) => {
                     unreachable!("drawn above")

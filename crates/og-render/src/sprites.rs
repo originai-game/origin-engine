@@ -176,6 +176,8 @@ pub(crate) enum RunSource {
     /// [`RenderScene::sprite_meshes`]' mesh `n`: `first`/`count` are
     /// corners of the mesh buffer (crate::sprite_mesh).
     Mesh(u32),
+    /// A persistent tile chunk and its per-view placement.
+    Tiles(u32),
 }
 
 /// A ribbon run drawn in the sprite order at `layer` (a 2D trail, a 2D
@@ -196,6 +198,9 @@ pub(crate) struct GpuSprites {
     pub ranges: Vec<GpuSpriteRange>,
     /// Instances in all of them.
     pub total: u32,
+    /// GPU tile draws across the main frame, views and probe faces.
+    /// None retains CPU tile instances on devices without vertex storage.
+    pub tiles: Option<Vec<crate::tiles_gpu::TileDraw>>,
 }
 
 /// One range of [`GpuSprites`].
@@ -530,6 +535,7 @@ fn tile_instances(
     view: Option<ViewRect>,
     lit: f32,
     out: &mut Vec<SpriteInstance>,
+    mut gpu: Option<(usize, &mut Vec<crate::tiles_gpu::TileDraw>)>,
 ) -> (u32, u32) {
     let origin = layer.origin.truncate();
     let mut offsets: Vec<Vec2> = vec![Vec2::ZERO];
@@ -561,7 +567,7 @@ fn tile_instances(
     let (mut quads, mut chunks) = (0u32, 0u32);
     for off in offsets {
         let at = origin + off;
-        for c in layer.chunks.iter() {
+        for (chunk, c) in layer.chunks.iter().enumerate() {
             if let Some(v) = view
                 && (at.x + c.max.x < v.min.x
                     || at.x + c.min.x > v.max.x
@@ -571,6 +577,16 @@ fn tile_instances(
                 continue;
             }
             chunks += 1;
+            if let Some((layer, draws)) = &mut gpu {
+                draws.push(crate::tiles_gpu::TileDraw {
+                    layer: *layer,
+                    chunk,
+                    offset: off,
+                    lit,
+                });
+                quads += c.quads.len() as u32;
+                continue;
+            }
             let first = out.len();
             for q in &c.quads {
                 out.push(SpriteInstance {
@@ -1059,6 +1075,7 @@ pub(crate) fn build<'a>(
             if kind == 0 {
                 let layer = &scene.tile_layers[i];
                 let first = instances.len() as u32;
+                let gpu_first = gpu_sprites.tiles.as_ref().map_or(0, |t| t.len());
                 // Lit as the sprites of its layer are, unless it opts out.
                 let (q, c) = tile_instances(
                     layer,
@@ -1069,16 +1086,29 @@ pub(crate) fn build<'a>(
                         0.0
                     },
                     instances,
+                    gpu_sprites.tiles.as_mut().map(|t| (i, t)),
                 );
                 tiles += q;
                 tile_chunks += c;
-                push(
-                    runs,
-                    RunSource::Sprite(SpriteBlend::Alpha, Some(layer.texture)),
-                    true,
-                    first,
-                    q,
-                );
+                if let Some(draws) = &gpu_sprites.tiles {
+                    for (k, draw) in draws.iter().enumerate().skip(gpu_first) {
+                        push(
+                            runs,
+                            RunSource::Tiles(k as u32),
+                            true,
+                            0,
+                            layer.chunks[draw.chunk].quads.len() as u32,
+                        );
+                    }
+                } else {
+                    push(
+                        runs,
+                        RunSource::Sprite(SpriteBlend::Alpha, Some(layer.texture)),
+                        true,
+                        first,
+                        q,
+                    );
+                }
             } else {
                 let s = &strips[i];
                 push(runs, s.source, true, s.first, s.count);

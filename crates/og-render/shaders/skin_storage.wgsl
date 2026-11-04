@@ -2,6 +2,7 @@
 // Metal, Vulkan).
 @group(SKIN_GROUP) @binding(0) var<storage, read> joint_palette: array<mat4x4<f32>>;
 @group(SKIN_GROUP) @binding(1) var<storage, read> morph_deltas: array<vec4<f32>>;
+@group(SKIN_GROUP) @binding(2) var<storage, read> baked_palette: array<mat4x4<f32>>;
 
 fn joint_matrix(i: u32) -> mat4x4<f32> {
   return joint_palette[i];
@@ -17,7 +18,7 @@ fn palette_joint(palette: vec4<f32>, j: u32) -> mat4x4<f32> {
   let k = min(j, count - 1u);
   if (palette.w < -0.5) {
     let t = -palette.w - 1.0;
-    return joint_palette[base + k] * (1.0 - t) + joint_palette[base + count + k] * t;
+    return baked_palette[base + k] * (1.0 - t) + baked_palette[base + count + k] * t;
   }
   return joint_palette[base + k];
 }
