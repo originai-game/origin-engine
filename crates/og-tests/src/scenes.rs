@@ -353,7 +353,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // walkers playing one baked walk, every one moving and stepping
         // each frame, under TAA and a shadowing sun. Perf only.
         // Crowds' levels and occlusion (fx_scenes/crowds.rs): an avenue
-        // of 4,800 walkers from 4 m to 160 m, a gate across it.
+        // of about 2,100 people in twelve outfits from 4 m to 160 m, a
+        // gate across it.
         "crowd-lods" => |g, _| {
             g.scene = fx::crowd_lods_scene();
             g.desc.antialias = Antialias::Tier;

@@ -60,12 +60,20 @@ fn walker_rest() -> [Vec3; 11] {
 /// sides and `rings` rings, coloured by its vertex colours, weighted wholly
 /// to its joint. `sides` 16 and `rings` 4: about 1,900 triangles.
 pub fn walker_mesh(sides: u32, rings: u32) -> (MeshData, SkinData) {
+    walker_parts(sides, rings, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], false)
+}
+
+/// The walker's parts `parts` (indices into its eleven) alone, white when
+/// `white` (their material colours them: an outfit, [`crowd_lods_scene`]).
+pub fn walker_parts(sides: u32, rings: u32, parts: &[usize], white: bool) -> (MeshData, SkinData) {
     let rest = walker_rest();
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     let mut joints = Vec::new();
     let mut weights = Vec::new();
-    for &(joint, length, radius, color) in &WALKER_PARTS {
+    for &part in parts {
+        let (joint, length, radius, color) = WALKER_PARTS[part];
+        let color = if white { [1.0; 4] } else { color };
         let base = rest[joint as usize];
         let push = |vertices: &mut Vec<Vertex>, p: Vec3, n: Vec3, uv: [f32; 2]| {
             vertices.push(Vertex {
@@ -320,7 +328,8 @@ pub fn walk_crowd(scene: &mut RenderScene, frame: u32) {
     }
 }
 
-/// The crowd reference frame (`crowd-lods`): 2,400 walkers down a 160 m
+/// The crowd reference frame (`crowd-lods`): about 2,100 people in twelve
+/// outfits (crowds, sharing one impostor atlas) down a 160 m
 /// avenue seen from 7 m up, from 4 m away to the far end, so the full
 /// mesh, both coarser levels and the occlusion test are in one frame:
 /// buildings line both sides and a gate crosses the avenue at 60 m (its
@@ -329,18 +338,83 @@ pub fn walk_crowd(scene: &mut RenderScene, frame: u32) {
 pub fn crowd_lods_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 400.0);
-    let levels: Vec<og_render::MeshHandle> = [(16, 4), (8, 2), (4, 1)]
+    // The walker in three pieces (trousers: hips and legs; shirt: chest
+    // and upper arms; skin: head and forearms), each at three levels, so
+    // an outfit colours them by its materials.
+    let pieces: [&[usize]; 3] = [&[0, 3, 4, 5, 6], &[1, 7, 9], &[2, 8, 10]];
+    let pieces: Vec<Vec<og_render::MeshHandle>> = pieces
         .iter()
-        .map(|&(sides, rings)| {
-            let (mesh, skin) = walker_mesh(sides, rings);
-            scene.add_skinned_mesh(mesh, skin)
+        .map(|parts| {
+            [(16, 4), (8, 2), (4, 1)]
+                .iter()
+                .map(|&(sides, rings)| {
+                    let (mesh, skin) = walker_parts(sides, rings, parts, true);
+                    scene.add_skinned_mesh(mesh, skin)
+                })
+                .collect()
         })
         .collect();
-    let cloth = scene.add_material(Material {
-        roughness: 0.7,
-        ..Default::default()
-    });
     scene.baked_clips.push(walker_clip(CROWD_FRAMES));
+    let cloth = |scene: &mut RenderScene, c: [f32; 3], roughness: f32| {
+        scene.add_material(Material {
+            base_color: [c[0], c[1], c[2], 1.0],
+            roughness,
+            ..Default::default()
+        })
+    };
+    // Six outfits (shirt, trousers) from a small palette of muted cloth;
+    // skin in two tones.
+    let shirts = [
+        [0.62, 0.22, 0.16],
+        [0.18, 0.32, 0.55],
+        [0.78, 0.72, 0.58],
+        [0.22, 0.42, 0.26],
+        [0.55, 0.45, 0.18],
+        [0.30, 0.30, 0.34],
+    ];
+    let trousers = [
+        [0.16, 0.18, 0.28],
+        [0.30, 0.24, 0.18],
+        [0.12, 0.12, 0.13],
+        [0.45, 0.42, 0.36],
+        [0.20, 0.26, 0.40],
+        [0.26, 0.22, 0.20],
+    ];
+    let skins = [[0.86, 0.66, 0.52], [0.52, 0.36, 0.26]];
+    let skin: Vec<_> = skins.iter().map(|&c| cloth(&mut scene, c, 0.6)).collect();
+    let outfits: Vec<og_render::Crowd> = (0..shirts.len() * skins.len())
+        .map(|k| {
+            let (o, t) = (k % shirts.len(), k / shirts.len());
+            let materials = [
+                cloth(&mut scene, trousers[o], 0.85),
+                cloth(&mut scene, shirts[o], 0.75),
+                skin[t],
+            ];
+            og_render::Crowd {
+                parts: pieces
+                    .iter()
+                    .zip(materials)
+                    .map(|(levels, material)| og_render::CrowdPart {
+                        levels: levels.clone(),
+                        material,
+                    })
+                    .collect(),
+                errors: vec![0.0, 0.02, 0.06],
+                center: Vec3::new(0.0, 0.9, 0.0),
+                radius: 0.95,
+                // Past about 37 m (the coarsest mesh's error under a
+                // pixel), cards baked from the full mesh walking, seen
+                // from 8 degrees up: the crowd's far end through the gate.
+                impostor: Some(og_render::CrowdImpostor {
+                    clip: 0,
+                    elevation: 8.0,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }
+        })
+        .collect();
+    scene.crowds = outfits;
     let stone = scene.add_material(Material {
         base_color: [0.62, 0.58, 0.52, 1.0],
         roughness: 0.85,
@@ -368,40 +442,42 @@ pub fn crowd_lods_scene() -> RenderScene {
         stone,
         Mat4::from_translation(Vec3::new(0.0, 13.5, -60.0)),
     );
+    // People on a loose grid with gaps: a cell in eight empty, each off
+    // its cell's centre by up to 0.45 of a cell. Most walk along the
+    // avenue (either way, within 25 degrees of it), the rest anyhow; each
+    // its own size (±8 %), shade of its outfit and place in the walk.
     let (cols, rows) = (24u32, 100u32);
-    let members = (0..cols * rows)
-        .map(|i| {
-            let (x, z) = ((i % cols) as f32, (i / cols) as f32);
-            let at = Vec3::new(
-                (x - (cols - 1) as f32 * 0.5 + (unit(i, 1) - 0.5) * 0.7) * 1.3,
-                0.0,
-                -4.0 - (z + (unit(i, 2) - 0.5) * 0.7) * 1.6,
-            );
-            let heading = unit(i, 3) * std::f32::consts::TAU;
-            let scale = 0.9 + unit(i, 5) * 0.2;
-            let m = Mat4::from_translation(at)
-                * Mat4::from_rotation_y(heading)
-                * Mat4::from_scale(Vec3::splat(scale));
-            let mut member =
-                og_render::CrowdMember::new(m, 0, unit(i, 6) * (CROWD_FRAMES - 1) as f32);
-            // Every eighth member in a shirt of its own (the tint).
-            if i % 8 == 0 {
-                member.fx.tint = Vec3::new(0.55 + unit(i, 7) * 0.45, 0.8, 0.55 + unit(i, 8) * 0.45);
-            }
-            member
-        })
-        .collect();
-    scene.crowds.push(og_render::Crowd {
-        parts: vec![og_render::CrowdPart {
-            levels,
-            material: cloth,
-        }],
-        errors: vec![0.0, 0.02, 0.06],
-        center: Vec3::new(0.0, 0.9, 0.0),
-        radius: 0.95,
-        members,
-        ..Default::default()
-    });
+    let outfits = scene.crowds.len() as u32;
+    for i in 0..cols * rows {
+        if unit(i, 9) < 0.125 {
+            continue;
+        }
+        let (x, z) = ((i % cols) as f32, (i / cols) as f32);
+        let at = Vec3::new(
+            (x - (cols - 1) as f32 * 0.5 + (unit(i, 1) - 0.5) * 0.9) * 1.3,
+            0.0,
+            -4.0 - (z + (unit(i, 2) - 0.5) * 0.9) * 1.6,
+        );
+        let heading = if unit(i, 4) < 0.7 {
+            let way = if unit(i, 10) < 0.5 {
+                0.0
+            } else {
+                std::f32::consts::PI
+            };
+            way + (unit(i, 3) - 0.5) * 50f32.to_radians()
+        } else {
+            unit(i, 3) * std::f32::consts::TAU
+        };
+        let scale = 0.92 + unit(i, 5) * 0.16;
+        let m = Mat4::from_translation(at)
+            * Mat4::from_rotation_y(heading)
+            * Mat4::from_scale(Vec3::splat(scale));
+        let mut member = og_render::CrowdMember::new(m, 0, unit(i, 6) * (CROWD_FRAMES - 1) as f32);
+        let shade = 0.78 + unit(i, 7) * 0.22;
+        member.fx.tint = Vec3::new(shade, shade * (0.97 + unit(i, 8) * 0.03), shade);
+        let outfit = ((unit(i, 11) * outfits as f32) as u32).min(outfits - 1);
+        scene.crowds[outfit as usize].members.push(member);
+    }
     scene.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
     scene.light.cast_shadows = true;
     scene.camera = Camera {
