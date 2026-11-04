@@ -119,7 +119,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     // figure shrunk to fit at any text size; never so small its figure falls under the smallest text the checks allow
     // (§15.2: a small party frame's 12 px badge drew its level at 6.7 px).
     const chars = Math.max(2, (desc.level ?? "").length);
-    const badgeH = Math.max(Math.round(Math.min(pd * 0.4, Math.max(16, pd * 0.32) * textScale())), Math.ceil(Math.max(minText() / LEVEL_FILL, (minText() * chars * 0.6) / 0.78)));
+    // Sized as at 100 % text (the portrait grows only half as fast as the text), then grown with the text: its figure
+    // doubles at 200 % rather than staying at the smallest size.
+    const pd0 = pd / (1 + (Math.min(2, textScale()) - 1) / 2);
+    const badge0 = Math.max(Math.round(Math.min(pd0 * 0.4, Math.max(16, pd0 * 0.32))), Math.ceil(Math.max(minText() / LEVEL_FILL, (minText() * chars * 0.6) / 0.78)));
+    const badgeH = Math.round(badge0 * textScale());
     const badgeHang = Math.max(0, Math.round(badgeH / 2 - pd * 0.146));
     const frameW = Math.min(u(m.width) + pd, shared ? (hudRoom() - tk.sm) / 2 : hudRoom());
     // The buffs under the bars in as many columns as fit the bars' width, so they never widen the frame.
@@ -194,8 +198,9 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         effects: [drop(1, 3, lit(BLACK, 0.6))],
       }, () => {
         // A step at least the smallest text, drawn down to the badge's room.
-        const step = tsFit(11, Math.max(minText(), Math.min(badgeH * LEVEL_FILL, (badgeH * 0.78) / (chars * 0.6))), true);
-        const fit = shrunk(step, Math.min(badgeH * LEVEL_FILL, (badgeH * 0.78) / (chars * 0.6)), stepSize(step).line);
+        const room = Math.max(minText(), Math.min(badge0 * LEVEL_FILL, (badge0 * 0.78) / (chars * 0.6))) * textScale();
+        const step = tsFit(11, room, true);
+        const fit = shrunk(step, room, stepSize(step).line);
         text("Text", desc.level ?? "", { step, font: "display", color: hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
       }, absolute(desc.reverse ? { start: at, bottom: at } : { end: at, bottom: at }, { z: 2, overlaps: [portraitPath] }));
     }

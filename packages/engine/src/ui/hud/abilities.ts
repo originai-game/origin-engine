@@ -233,9 +233,13 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       // Charges in a small badge at the bottom right corner, sized by its numeral so it stays a badge at any text size.
       // With none left the slot is cooling and its seconds say so: a "0" beside them would be a second numeral.
       if (charges > 0) {
-        const badgeStep = tsFit(9, size * 0.2, true);
+        // Sized as at 100 % text (the slot grows only half as fast as the text), then grown with the text, so its
+        // numeral doubles at 200 % instead of being shrunk back into a badge sized from the slot.
+        const k = textScale();
+        const size0 = size / (1 + (Math.min(2, k) - 1) / 2);
+        const badgeStep = tsFit(9, size0 * 0.2 * k, true);
         // Large enough that its numeral is never under the smallest text the checks allow (§15.2).
-        const badge = Math.round(Math.max(16, size * 0.28, Math.ceil(minText() / 0.66)));
+        const badge = Math.round(Math.max(16, size0 * 0.28, Math.ceil(minText() / 0.66)) * k);
         const fit = shrunk(badgeStep, badge * 0.66, stepSize(badgeStep).line);
         box("ChargeBadge", { width: px(badge), height: px(badge), part: sel("AbilitySlot", "charges") }, {
           shape: { kind: "ellipse" },
