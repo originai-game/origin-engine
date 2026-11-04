@@ -312,12 +312,34 @@ fn touches(p: &mut og_input::Pointers, at: [Vec2; 2]) -> InputFrame {
 #[test]
 fn the_materials_frame_matches_its_reference() {
     let (set, body) = cooked();
+    // The cook names exactly the icons the set declares (each `icon "<name>" ["<svg>"]` line), no more and no fewer:
+    // the set grows with the kit, so the count is read from it rather than fixed here.
+    let declared: Vec<String> = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/ui-kit/assets/icons/iconoir.ogt"),
+    )
+    .expect("the kit's set")
+    .lines()
+    .filter_map(|l| {
+        l.strip_prefix("icon \"")?
+            .split('"')
+            .next()
+            .map(str::to_owned)
+    })
+    .collect();
+    let mut cooked_names = set.names.clone();
+    cooked_names.sort();
+    let mut want = declared;
+    want.sort();
     assert_eq!(
-        set.names.len(),
-        81,
-        "the kit's set names 72 iconoir icons and 9 of them again by the kit's names"
+        cooked_names, want,
+        "the cooked set names every icon the set declares"
     );
-    // Every name the kit's screens draw (its old PNG grid's 32) is in the set.
+    // Every name the kit's screens draw (its old PNG grid's 32) is in the set, and the phone chrome's grid.
+    assert!(
+        set.names.iter().any(|n| n == "view-grid"),
+        "view-grid is in the set"
+    );
     for name in [
         "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem",
         "key", "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play", "back",
