@@ -107,6 +107,8 @@ pub struct Grass {
     /// Blades cast shadows into the first cascade.
     pub cast_shadows: bool,
     pub seed: u32,
+    /// Seconds trampled blades take to stand again (`trample.rs`).
+    pub recovery: f32,
 }
 
 impl Default for Grass {
@@ -137,6 +139,7 @@ impl Default for Grass {
             flutter: 0.3,
             cast_shadows: false,
             seed: 1,
+            recovery: 4.0,
         }
     }
 }
@@ -515,6 +518,7 @@ struct GenGpu {
     shadow: [f32; 4],
     motion: [f32; 4],
     counts: [u32; 4],
+    trample: [f32; 4],
     wind: WindFieldGpu,
 }
 
@@ -671,6 +675,8 @@ pub(crate) struct GrassPipelines<'a> {
     pub samples: u32,
     /// The simulated wind field's lean (`wind_field.rs`), read by the generation.
     pub wind_field: wgpu::TextureView,
+    /// The trample map (`trample.rs`), read by the generation.
+    pub trample: wgpu::TextureView,
 }
 
 /// What a frame's grass is prepared for: the main camera.
@@ -681,14 +687,17 @@ pub(crate) struct GrassView<'a> {
     pub height: u32,
     /// The simulated wind field's grid this frame (`wind_field.rs`).
     pub wind_grid: crate::wind_field::WindGrid,
+    /// The trample map this frame (`trample.rs` `Trample::grid`).
+    pub trample: [f32; 4],
 }
 
 /// Generates and draws [`GrassDraw`]s.
 pub(crate) struct GrassRenderer {
     gen_layout: wgpu::BindGroupLayout,
     draw_layout: wgpu::BindGroupLayout,
-    /// The simulated wind field's lean (`wind_field.rs`).
+    /// The simulated wind field's lean (`wind_field.rs`) and the trample map.
     wind_field: wgpu::TextureView,
+    trample: wgpu::TextureView,
     lit_layout: wgpu::PipelineLayout,
     prepass_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
@@ -744,6 +753,15 @@ impl GrassRenderer {
                         multisampled: false,
                     },
                 ),
+                entry(
+                    8,
+                    cs,
+                    wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                ),
             ],
         });
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -777,6 +795,7 @@ impl GrassRenderer {
             gen_layout,
             draw_layout,
             wind_field: p.wind_field,
+            trample: p.trample,
             samples: p.samples,
             pipelines: None,
             generate: [None, None],
@@ -1000,6 +1019,10 @@ impl GrassRenderer {
             binding: 7,
             resource: wgpu::BindingResource::TextureView(&self.wind_field),
         });
+        gen_entries.push(wgpu::BindGroupEntry {
+            binding: 8,
+            resource: wgpu::BindingResource::TextureView(&self.trample),
+        });
         let gen_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("grass generate"),
             layout: &self.gen_layout,
@@ -1139,7 +1162,13 @@ impl GrassRenderer {
                     g.width,
                 ],
                 shadow: reach.extend(f32::from(u8::from(cast))).to_array(),
-                motion: [g.sway.max(0.0), g.stiffness.clamp(0.0, 1.0), density, 0.0],
+                motion: [
+                    g.sway.max(0.0),
+                    g.stiffness.clamp(0.0, 1.0),
+                    density,
+                    g.recovery.max(0.0),
+                ],
+                trample: view.trample,
                 counts: [
                     slices.len() as u32,
                     f.blade_cap,
@@ -1470,7 +1499,7 @@ mod tests {
             &generate_source(false),
             "GrassGen",
             fields!(GenGpu: planes, eye, origin, lod, lod_density, field, chunk, shape, clump,
-                shadow, motion, counts, wind),
+                shadow, motion, counts, trample, wind),
             size_of::<GenGpu>(),
         );
         check(

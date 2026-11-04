@@ -673,6 +673,9 @@ pub(crate) struct DrawLayouts {
     pub grass: Option<Layout>,
     #[cfg(not(feature = "profile2d"))]
     pub stamp: Option<Layout>,
+    /// og.GrassPusher (`super::terrain`, the trample map).
+    #[cfg(not(feature = "profile2d"))]
+    pub grass_pusher: Option<Layout>,
     /// og.Collider: what CPU-simulated particles bounce off.
     pub collider: Option<Layout>,
     /// og.Lines and og.Points (`super::geometry`).

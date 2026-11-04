@@ -53,6 +53,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("shadow", crate::shadow_source(&hooks));
     // The vegetation's simulated wind field (G2).
     add("wind field", crate::wind_field::source());
+    add("grass trample", crate::trample::source());
     // Wind on placed models (R6): the lit and shadow modules with its hook.
     let wind = crate::wind_shader().hooks_wgsl();
     add("wind", crate::lit_source_with(&wind, false));

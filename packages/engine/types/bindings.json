@@ -7104,11 +7104,43 @@
           "name": "seed",
           "column": "u32",
           "default": 1
+        },
+        {
+          "name": "recovery",
+          "column": "f32",
+          "default": 4,
+          "tunable": true
         }
       ]
     },
     {
       "id": 89,
+      "name": "GrassPusher",
+      "schema": "og.GrassPusher",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "height",
+          "column": "f32",
+          "default": 1.8,
+          "tunable": true
+        },
+        {
+          "name": "strength",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 90,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -7161,7 +7193,7 @@
       ]
     },
     {
-      "id": 90,
+      "id": 91,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -7179,7 +7211,7 @@
       ]
     },
     {
-      "id": 91,
+      "id": 92,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -7193,7 +7225,7 @@
       ]
     },
     {
-      "id": 92,
+      "id": 93,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -7245,7 +7277,7 @@
       ]
     },
     {
-      "id": 93,
+      "id": 94,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -7299,7 +7331,7 @@
       ]
     },
     {
-      "id": 94,
+      "id": 95,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -7333,7 +7365,7 @@
       ]
     },
     {
-      "id": 95,
+      "id": 96,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -7377,7 +7409,7 @@
       ]
     },
     {
-      "id": 96,
+      "id": 97,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",

@@ -142,3 +142,117 @@ fn the_wind_bends_the_blades_and_the_same_tick_draws_the_same() {
     assert!(changed_below(&first, &later) > 0.05, "a second later");
     assert!(changed_below(&first, &calm) > 0.1, "against no wind");
 }
+
+/// G3's meadow: red blades 0.6 m tall over a dark flat terrain to 2.5 m
+/// from a camera at ankle height (0.12 m) looking along +x, against a
+/// black sky, so every red pixel above the frame's middle row is a blade
+/// part above the ankle.
+fn trample_scene() -> RenderScene {
+    let data = TerrainData::flat(Vec2::splat(64.0), 129, 129);
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(data);
+    scene.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.02),
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+    scene.grass.push(og_render::GrassDraw {
+        terrain: 0,
+        grass: og_render::Grass {
+            distance: 2.5,
+            height: 0.6,
+            height_variation: 0.0,
+            lean: 0.0,
+            clump_lean: 0.0,
+            base_color: Vec3::new(0.9, 0.05, 0.05),
+            tip_color: Vec3::new(0.9, 0.05, 0.05),
+            far_tint: false,
+            cast_shadows: false,
+            recovery: 1.0,
+            ..Default::default()
+        },
+    });
+    scene.fog = None;
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.light.cast_shadows = false;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 0.12, 0.0),
+        target: Vec3::new(1.0, 0.12, 0.0),
+        near: 0.02,
+        far: 50.0,
+        projection: Projection::Perspective {
+            fov_y_degrees: 60.0,
+        },
+        ..Default::default()
+    };
+    scene
+}
+
+/// Red pixels above the frame's middle row: blade parts above the ankle.
+fn blade_pixels_above(img: &RgbaImage) -> usize {
+    (0..img.height / 2 - 2)
+        .flat_map(|y| (0..img.width).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(img, x, y);
+            p[0] > 30.0 && p[0] > 2.5 * p[1]
+        })
+        .count()
+}
+
+/// G3: an og.GrassPusher standing over the meadow presses its blades away
+/// and down: above ankle height fewer than 30 % of the blade pixels stay;
+/// once it leaves they stand again within the field's recovery (1 s) and
+/// half a second, to at least 80 % of the untouched field. Before G3
+/// nothing read a pusher: the blades stood as tall under it.
+#[test]
+fn a_grass_pusher_tramples_the_blades_and_they_recover() {
+    let mut scene = trample_scene();
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |scene: &mut RenderScene, tick: u64| {
+        scene.tick = tick;
+        r.render(scene, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    let untouched = blade_pixels_above(&draw(&mut scene, 0));
+    // The pusher covers every drawn blade near its centre (radius 6 m,
+    // the field 2.5 m: pressed at least 97 %).
+    scene.grass_pushers = vec![og_render::GrassPusher {
+        position: Vec3::new(0.0, 0.0, 0.0),
+        radius: 6.0,
+        height: 1.8,
+        strength: 1.0,
+    }];
+    let mut pressed = draw(&mut scene, 1);
+    for tick in 2..=10 {
+        pressed = draw(&mut scene, tick);
+    }
+    keep("grass-trample", &pressed);
+    let under = blade_pixels_above(&pressed);
+    scene.grass_pushers.clear();
+    // 1.5 s later (the recovery and half a second), drawn every 4 ticks.
+    let mut after = pressed.clone();
+    for tick in (14..=100).step_by(4) {
+        after = draw(&mut scene, tick);
+    }
+    keep("grass-trample-recovered", &after);
+    let back = blade_pixels_above(&after);
+    println!(
+        "blade pixels above the ankle: untouched {untouched}, pressed {under}, recovered {back}"
+    );
+    assert!(
+        untouched > 2000,
+        "the meadow shows {untouched} blade pixels"
+    );
+    assert!(
+        (under as f32) < 0.3 * untouched as f32,
+        "pressed: {under} of {untouched} still stand"
+    );
+    assert!(
+        back as f32 > 0.8 * untouched as f32,
+        "recovered: {back} of {untouched}"
+    );
+}

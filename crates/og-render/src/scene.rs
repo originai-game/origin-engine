@@ -266,6 +266,9 @@ pub struct RenderScene {
     /// Local pushes on the simulated wind field (og.WindMotor,
     /// `wind_field.rs`): the nearest [`crate::wind_field::MAX_MOTORS`] drive it.
     pub wind_motors: Vec<crate::WindMotor>,
+    /// What presses the grass and scattered copies (og.GrassPusher,
+    /// `trample.rs`): the nearest [`crate::trample::MAX_PUSHERS`] press.
+    pub grass_pushers: Vec<crate::GrassPusher>,
     /// Side-on 2D water bodies, drawn in the sprite order.
     pub water_2d: Vec<crate::Water2d>,
     /// 2D fluids drawn as metaballs in the sprite order (the first

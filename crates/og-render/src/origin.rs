@@ -27,7 +27,7 @@ impl RenderScene {
     /// draws (instances, the camera and secondary cameras, lights, sprites,
     /// text, particle systems, trails, ribbons, beams, lines and points,
     /// decals, probes and light volumes, water, terrains, fog heights, 2D
-    /// lights and fluids, wind motors) and adds it to [`RenderScene::origin`]. Screen
+    /// lights and fluids, wind motors, grass pushers) and adds it to [`RenderScene::origin`]. Screen
     /// lines, screen points and the overlay are screen space and stay.
     /// `origin` should lie on a grid coarse enough that `p - origin` is
     /// exact for the positions near it (og-runtime uses 4096 m).
@@ -61,6 +61,9 @@ impl RenderScene {
         }
         for m in &mut self.wind_motors {
             m.position -= origin;
+        }
+        for p in &mut self.grass_pushers {
+            p.position -= origin;
         }
         for l in &mut self.lights {
             l.position += d;
