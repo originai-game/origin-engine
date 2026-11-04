@@ -423,7 +423,7 @@ module probe {
     field name Option.String "Its name."
     field order u32 "Its depth order: 0 is the nearest."
     field archetype List.String "Its components, by name."
-    field labels List.String "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+    field labels List.String "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`."
     field box ScreenBox "The box of its visible pixels."
     field drawn ScreenBox "The box of what it covers with nothing in front of it."
     field point ScreenPoint "A visible point nearest the box's centre: pick answers this entity there."

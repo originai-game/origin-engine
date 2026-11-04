@@ -66,6 +66,14 @@ is one line here, written at the merge that changes
   shadows past its own depth, so the floor along a box's shadowed base
   is no longer lit through the box's bottom face (a grey 1 px line). No
   IDL change; render-only, no simulation pins move.
+- **Terrains in describe and pick.** The probe's entity-id pass draws each
+  og.Terrain as its clipmap draws it (levels, morph, adaptive diagonal,
+  holes cut per pixel, its placement) and each og.TerrainStamp's mesh, so
+  `describe` lists them (labels `terrain`, `terrainStamp`) with depth,
+  coverage and occlusion, and they hide what stands behind them. `pick`
+  now answers its point in the world's coordinates far from the zero (it
+  answered the render origin's). A clipmap of `lodRing` 16 no longer
+  morphs its inner edge off the finer level (cracks of up to half a quad).
 - **Terrain stamps.** `og.TerrainStamp { data, geometry, blend }` draws a
   mesh (a cliff, arch or overhang) as part of a terrain: shaded with the
   terrain's layers by its own normal, its lowest `blend` metres taking the

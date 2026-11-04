@@ -35,6 +35,11 @@ pub(crate) struct TerrainState {
 
 pub(crate) fn retire(_id: u32) {}
 
+/// The id pass's heights: no terrain is drawn here.
+pub(crate) fn id_heights(_rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<f32> {
+    |_, _, _| None
+}
+
 pub(crate) fn dump_render(_rs: &RenderState, _entity: u64) -> Option<Value> {
     None
 }

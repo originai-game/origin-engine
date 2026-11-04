@@ -82507,7 +82507,7 @@
           "items": {
             "type": "string"
           },
-          "description": "What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`."
+          "description": "What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`."
         },
         "box": {
           "$ref": "#/$defs/ScreenBox",

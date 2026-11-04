@@ -49590,7 +49590,9 @@ export interface DescribedEntity {
   readonly order: number;
   /** Its components, by name. */
   readonly archetype: readonly string[];
-  /** What draws it: `model` with its asset path, `mesh`, `skinned`, `sprite`. */
+  /**
+   * What draws it: `model` with its asset path, `mesh`, `terrain`, `terrainStamp`, `skinned`, `sprite`.
+   */
   readonly labels: readonly string[];
   /** The box of its visible pixels. */
   readonly box: ScreenBox;

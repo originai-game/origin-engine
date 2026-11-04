@@ -540,7 +540,11 @@ impl Terrain {
         let local = self.transform.inverse().transform_point3(camera);
         let camera = (Vec2::new(local.x, local.z) + layout.size * 0.5) / unit;
         let ring = self.lod.ring_quads();
-        let morph_width = (ring / 8).max(2) as f32;
+        // A level's inner edge, where the finer level meets it, lies under
+        // ring / 4 + 1 of its quads from the camera; the morph starts past
+        // it, or that edge's odd vertices would slide off the finer level's
+        // collapsed ones and open cracks (ring 16 did, by up to half a quad).
+        let morph_width = (ring / 8).max(2).min(ring / 4 - 3) as f32;
         TerrainClipmap {
             unit,
             camera,

@@ -390,6 +390,92 @@ test("a stamp carves the ground under its mesh for sample, physics and the hash;
   if (!miss.ok) expect(miss.reason).toContain("misses the terrain");
 }, 30_000);
 
+type Seen = { id: string; labels: string[]; point: { x: number; y: number }; depth: number; coverage: number; occlusion: number };
+type Picked = { entity: string; world: number[] } | null;
+
+/** Points the camera from `eye` at `target` (the sun `view` made stays). */
+function aim(w: World, eye: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }): void {
+  const cam = must(w.resource(og.Camera));
+  cam.position = eye;
+  cam.quaternion = og.transform.lookAt(eye, target);
+}
+
+/** The probe's describe of the current frame, by entity id. */
+function seen(engine: Engine): Map<string, Seen> {
+  const d = engine.probe.describe() as { entities: Seen[] };
+  return new Map(d.entities.map((e) => [e.id, e]));
+}
+
+test("describe and pick see the terrain as drawn: visible, occluding, transformed, through holes, far from the zero", () => {
+  // Visible: the hill fills the lower frame, labelled, picked on its surface.
+  const { engine, info, terrain } = start();
+  const w = engine.world;
+  const data = info.data as never;
+  view(w, { x: 0, y: 4, z: 40 }, { x: 0, y: 4, z: 0 });
+  // A box behind the hill, on the line of sight over its top: hidden.
+  const box = must(og.render.boxGeometry(w, { width: 2, height: 2, depth: 2 }));
+  const grey = must(og.render.standardMaterial(w, { color: { r: 0.5, g: 0.5, b: 0.5 } }));
+  const behind = must(w.spawn({ name: "behind", position: { x: 0, y: 3, z: -20 } }));
+  w.insert(behind, og.Mesh, { geometry: box, material: grey });
+  expect(engine.advance(1).ok).toBeTrue();
+  let s = seen(engine);
+  const hill = s.get("hill")!;
+  expect(hill.labels).toContain("terrain");
+  expect(hill.coverage).toBeGreaterThan(0.2);
+  expect(s.has("behind")).toBeFalse(); // the hill hides it (the old pass drew no terrain: it showed)
+  const at = engine.probe.pick(hill.point.x, hill.point.y) as Picked;
+  expect(at?.entity).toBe("hill");
+  expect(at!.world[1]!).toBeCloseTo(ground(at!.world[0]!, at!.world[2]!), 1);
+  // Its nearest visible point: along the view, on the surface (not a box's corner).
+  expect(hill.depth).toBeGreaterThan(5);
+  // A box in front of it occludes part of it.
+  const front = must(w.spawn({ name: "front", position: { x: 0, y: 3, z: 30 } }));
+  w.insert(front, og.Mesh, { geometry: box, material: grey });
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(seen(engine).get("hill")!.occlusion).toBeGreaterThan(0.01);
+  w.despawn(front);
+  w.despawn(behind);
+
+  // Holes: from above, a box under the ground shows only through a hole cut over it.
+  aim(w, { x: 20, y: 30, z: 36 }, { x: 20, y: 0, z: 20 });
+  const under = must(w.spawn({ name: "under", position: { x: 20, y: ground(20, 20) - 4, z: 20 } }));
+  w.insert(under, og.Mesh, { geometry: box, material: grey });
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(seen(engine).has("under")).toBeFalse();
+  must(og.terrain.edit(w, data, { mode: "hole" as never, center: { x: 20, y: 0, z: 20 }, radius: 3, falloff: 0 }));
+  expect(engine.advance(1).ok).toBeTrue();
+  s = seen(engine);
+  const through = s.get("under")!;
+  expect(through.occlusion).toBeGreaterThan(0.02); // the ground around the hole hides some of it
+  expect((engine.probe.pick(through.point.x, through.point.y) as Picked)?.entity).toBe("under");
+  w.despawn(under);
+
+  // Transformed: turned and scaled, picked points lie on og.terrain.sample's surface.
+  const quaternion = { x: 0, y: Math.sin(0.4), z: 0, w: Math.cos(0.4) };
+  const scale = { x: 1.5, y: 2, z: 1.5 };
+  w.set(terrain, og.Transform, { quaternion, scale });
+  aim(w, { x: 0, y: 20, z: 60 }, { x: 0, y: 4, z: 0 });
+  expect(engine.advance(1).ok).toBeTrue();
+  const turned = seen(engine).get("hill")!;
+  for (const [dx, dy] of [[0, 0], [-80, 30], [90, 60]]) {
+    const p = engine.probe.pick(turned.point.x + dx!, turned.point.y + dy!) as Picked;
+    expect(p?.entity).toBe("hill");
+    const h = must(og.terrain.sample(w, { data, origin: { x: 0, y: 0, z: 0 }, quaternion, scale, x: p!.world[0]!, z: p!.world[2]! })).height;
+    expect(p!.world[1]!).toBeCloseTo(h, 0);
+  }
+
+  // Far from the zero: 100 km out the frame is drawn from a render origin;
+  // the hill is seen and picked at its place in the world.
+  const far = start({ x: 100_000, y: 0, z: -50_000 });
+  view(far.engine.world, { x: 100_000, y: 4, z: -49_960 }, { x: 100_000, y: 4, z: -50_000 });
+  expect(far.engine.advance(1).ok).toBeTrue();
+  const away = seen(far.engine).get("hill")!;
+  expect(away.coverage).toBeCloseTo(hill.coverage, 1);
+  const p = far.engine.probe.pick(away.point.x, away.point.y) as Picked;
+  expect(p?.entity).toBe("hill");
+  expect(p!.world[1]!).toBeCloseTo(ground(p!.world[0]! - 100_000, p!.world[2]! + 50_000), 0);
+}, 30_000);
+
 test("og.terrain refusals name the fix", () => {
   const { engine, info } = start();
   const w = engine.world;

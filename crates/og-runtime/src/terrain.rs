@@ -1056,6 +1056,25 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
 
 /// Presentation-only diagnostics of the extracted terrain, from the same
 /// clipmap layout the renderer uploads. Never stored in the ECS.
+/// The heights the id pass draws this frame's streamed terrains with
+/// (`og_render::IdHeights`): each one's level-0 samples, hole bits and
+/// all, decoded from its cooked tiles as they are read (the tiles
+/// og.terrain.sample reads). A terrain whose field is in memory is read
+/// from the scene.
+pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<f32> + '_ {
+    type Sample<'a> = Box<dyn Fn(u32, u32) -> f32 + 'a>;
+    let samplers: Vec<Option<Sample>> = rs
+        .scene
+        .terrains
+        .iter()
+        .map(|d| {
+            let t = rs.terrain.loaded.iter().find(|t| t.render == d.terrain)?;
+            Some(Box::new(t.tile_sampler().sample) as Sample)
+        })
+        .collect();
+    move |k, c, r| Some(samplers.get(k)?.as_ref()?(c, r))
+}
+
 pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
     let i = rs.ids.terrains.iter().position(|&e| e == entity)?;
     let t = rs.scene.terrains.get(i)?;
@@ -1238,6 +1257,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // og.TerrainStamp: meshes drawn with the drawn terrain of the same
     // data, in its material and blended into its ground.
     rs.scene.terrain_stamps.clear();
+    rs.ids.stamps.clear();
     let layout = rs.draw.stamp.clone();
     for (e, v) in rows(world, layout.as_ref()) {
         if !on(&v, "visible", true) {
@@ -1265,6 +1285,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             blend: f(&v, "blend", 1.0),
             cast_shadows: on(&v, "castShadows", true),
         });
+        rs.ids.stamps.push(e);
     }
     // og.Grass: fields over the drawn terrain of the same data, generated
     // and drawn by the renderer.

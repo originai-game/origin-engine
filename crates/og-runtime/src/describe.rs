@@ -31,6 +31,9 @@ pub(crate) struct DrawIds {
     /// Per `scene.terrains`.
     #[cfg(not(feature = "profile2d"))]
     pub terrains: Vec<u64>,
+    /// Per `scene.terrain_stamps`.
+    #[cfg(not(feature = "profile2d"))]
+    pub stamps: Vec<u64>,
 }
 
 pub(crate) struct RuntimeView {
@@ -47,6 +50,9 @@ struct Pass {
     entities: Vec<u64>,
     scale: (f32, f32),
     camera: serde_json::Value,
+    /// The render origin less the world's zero: what takes a point of the
+    /// pass (drawn from the render origin) back into the world.
+    back: glam::Vec3,
     /// Each secondary camera's pass: its entity, whether a mirror, the
     /// image's pixels and its id frame (ids as `entities`').
     views: Vec<(u64, bool, (u32, u32), og_render::IdFrame)>,
@@ -102,7 +108,13 @@ impl RuntimeView {
                 *slot = id_of(e);
             }
         }
-        let frame = og_render::render_ids(scene, &sources, pw, ph);
+        #[cfg(not(feature = "profile2d"))]
+        {
+            sources.terrains = rs.ids.terrains.iter().map(|&e| id_of(e)).collect();
+            sources.stamps = rs.ids.stamps.iter().map(|&e| id_of(e)).collect();
+        }
+        let heights = super::terrain::id_heights(&rs);
+        let frame = og_render::render_ids(scene, &sources, &heights, pw, ph);
         // Each view from its own camera on its own layers, at a quarter of
         // its image's pixels as the main pass.
         let views = (if describe {
@@ -115,16 +127,16 @@ impl RuntimeView {
             let e = *rs.views.entities.get(i)?;
             let mirror = scene.views[i].mirror.is_some();
             let (vw, vh) = og_render::id_pass_size(w, h);
-            let f = og_render::render_ids_from(scene, &sources, vw, vh, &camera);
+            let f = og_render::render_ids_from(scene, &sources, &heights, vw, vh, &camera);
             Some((e, mirror, (w, h), f))
         })
         .collect();
         let c = &scene.camera;
+        // In the world: the frame is drawn from its render origin.
+        let back = scene.origin - rs.zero;
         let camera = if !describe {
             serde_json::Value::Null
         } else {
-            // In the world: the frame is drawn from its render origin.
-            let back = scene.origin - rs.zero;
             let (position, target) = (c.position + back, c.target + back);
             json!({
             "position": [position.x, position.y, position.z],
@@ -142,6 +154,7 @@ impl RuntimeView {
             entities,
             scale: (css_w / pw as f32, css_h / ph as f32),
             camera,
+            back,
             views,
         })
     }
@@ -190,7 +203,7 @@ impl RuntimeView {
 
     #[cfg(not(feature = "publish"))]
     /// What draws an entity: `model` (and its asset's path), `mesh`,
-    /// `skinned`, `sprite`.
+    /// `terrain`, `terrainStamp`, `skinned`, `sprite`.
     fn labels(&self, world: &World, e: u64) -> Vec<String> {
         let entity = Entity::from_bits(e);
         let mut labels = Vec::new();
@@ -220,6 +233,12 @@ impl RuntimeView {
         }
         if has("og.Mesh") {
             labels.push("mesh".into());
+        }
+        if has("og.Terrain") {
+            labels.push("terrain".into());
+        }
+        if has("og.TerrainStamp") {
+            labels.push("terrainStamp".into());
         }
         if self
             .render
@@ -289,6 +308,7 @@ impl SceneView for RuntimeView {
         let pass = self.pass(world, false)?;
         let (id, at) = pass.frame.at(x / pass.scale.0, y / pass.scale.1)?;
         let e = *pass.entities.get(id as usize - 1)?;
+        let at = at + pass.back;
         Some(Pick {
             entity: Entity::from_bits(e),
             world: vec![at.x, at.y, at.z],
