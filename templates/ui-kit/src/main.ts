@@ -474,60 +474,107 @@ function applyTheme(world: World, d: DemoState): void {
   });
 }
 
-/** The gallery rows' height (the tallest row text measured) and whether the subtitle is clamped, for one style, locale,
- * text size and viewport. */
-const rowNeed = { key: "", px: 0, tight: false };
+/**
+ * The gallery's rows as last measured, for one style, locale, text size and viewport: each row's height (read where it
+ * stood whole in the view, since bounds are cut to it), the subtitle's, and the row under the pointer or the focus and
+ * the one held.
+ */
+const rows = { key: "", heights: [] as number[], head: 0, hot: -1, held: -1 };
 
-/** The gallery: the list of screens. */
+/**
+ * The gallery: the title over one scroll of the subtitle and a row per screen. Each row is as tall as its name and
+ * blurb, both wrapped whole at any text size and in any style, with one gap between rows. The panel keeps its inset
+ * from the screen's edges and the content scrolls inside it, fading at an edge where more lies beyond. Only the rows
+ * the view crosses (and half a view each side) are built; fillers hold the rest of the scroll, a row not yet measured
+ * counting as the mean of those that were (og.ui.scrollState gives the offset).
+ */
 function gallery(d: DemoState): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
   const t = og.ui.frameTheme();
+  const ts = Math.max(1, t.textScale ?? 1);
+  const grow = { kind: "grow" } as const;
+  const n = SHOWCASES.length;
+  const count = n + SCREENS.length - 1;
+  const gap = t.space.sm;
+  const key = `${d.style}|${d.language}|${ts}|${vp.width}|${vp.height}`;
+  if (rows.key !== key) Object.assign(rows, { key, heights: [], head: 0, hot: -1, held: -1 });
+  // Last tick's layout: what stood whole in the view gives its height.
+  const view = "Gallery/Screens/View";
+  const vb = og.ui.bounds(view);
+  const whole = (b: { y: number; height: number } | null): b is { y: number; height: number } => !!vb && !!b && b.height > 0 && b.y > vb.y + 0.5 && b.y + b.height < vb.y + vb.height - 0.5;
+  const sb = og.ui.bounds(`${view}/Content/Subtitle`);
+  if (whole(sb)) rows.head = sb.height;
+  for (let i = 0; i < count; i++) {
+    const b = og.ui.bounds(`${view}/Content/Row#${i}`);
+    if (whole(b)) rows.heights[i] = b.height;
+  }
+  const line = t.typeRamp["base"]?.lineHeight ?? 24 * ts;
+  const known = rows.heights.filter((x) => x > 0);
+  const est = known.length > 0 ? known.reduce((x, y) => x + y, 0) / known.length : line * 3 + 2 * t.space.sm;
+  const h = (i: number): number => rows.heights[i] ?? est;
+  // Where each row starts in the content: the subtitle, then the rows, one gap between each.
+  const head = rows.head || line * 2;
+  const pos: number[] = [];
+  let y = head + gap;
+  for (let i = 0; i < count; i++) {
+    pos[i] = y;
+    y += h(i) + gap;
+  }
+  const sv = og.ui.scrollState(view);
+  const span = sv?.viewHeight || vp.height;
+  const off = sv?.offsetY ?? 0;
+  const near = (i: number): boolean => pos[i]! + h(i) >= off - span / 2 && pos[i]! <= off + span * 1.5;
+  let first = 0;
+  while (first < count - 1 && !near(first)) first++;
+  let last = count - 1;
+  while (last > first && !near(last)) last--;
+  const filler = (id: string, px: number): void => {
+    if (px <= 0) return;
+    og.ui.open(id, { width: grow, height: { kind: "fixed", px } });
+    og.ui.close();
+  };
+  const sa = vp.safeArea;
+  const room = vp.height - sa.top - sa.bottom - 2 * (phone ? t.space.md : t.space.xl);
   og.ui.anchor("Gallery", {
     anchor: "center",
     direction: "column",
     gap: t.space.md,
-    width: phone ? { kind: "grow" } : { kind: "fixed", px: 560 },
+    width: phone ? grow : { kind: "fixed", px: 560 },
+    height: { kind: "fixed", px: phone ? room : Math.min(room, Math.round(640 * ts)) },
     padding: { left: t.space.xl, top: t.space.xl, right: t.space.xl, bottom: t.space.lg },
     background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
     og.ui.label("Title", "UI kit", { step: "displayMd", font: "display" });
-    // Where the title and subtitle leave the list less than a row (a large body at a large text size on a phone), the
-    // subtitle keeps two lines for the rest of that look.
-    const ts = Math.max(1, t.textScale ?? 1);
-    const key = `${d.style}|${d.language}|${ts}|${vp.width}|${vp.height}`;
-    if (rowNeed.key !== key) Object.assign(rowNeed, { key, px: 0, tight: false });
-    og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, ...(rowNeed.tight ? { maxLines: 2, ellipsis: true } : {}) } as never);
-    // Rows at least as tall as a name over a blurb of two lines (three at a large text size, where a longer blurb ends
-    // in an ellipsis; whole otherwise), at the player's text size (16 px text at 1080p), and as tall as the tallest
-    // row's text last tick: a style whose body is larger than the default's wraps a name to a second line, and the
-    // rows grow to hold it rather than cut it.
-    const floor = Math.round((t.typeRamp["base"]?.lineHeight ?? 24 * ts) * (ts > 1.25 ? 4 : 3) + 8 * ts + 8);
-    for (let i = 0; i < SHOWCASES.length + SCREENS.length - 1; i++) {
-      const b = og.ui.bounds(`Gallery/Screens/Row#${i}/Text`);
-      if (b) rowNeed.px = Math.max(rowNeed.px, Math.ceil(b.height) + 8);
-    }
-    const rowHeight = Math.max(floor, rowNeed.px);
-    const g = og.ui.bounds("Gallery");
-    const list = og.ui.bounds("Gallery/Screens");
-    const above = g && list ? list.y - g.y : 200 * ts;
-    // The panel keeps its inset from the screen's edges (the safe area's on a phone, the panel padding's on a
-    // desktop): the list takes what the title and subtitle leave inside it, two rows where they fit, and scrolls.
-    const inset = phone ? t.space.md : t.space.xl;
-    const room = vp.height - vp.safeArea.top - vp.safeArea.bottom - 2 * inset - above - t.space.lg;
-    if (g && list && room < rowHeight) rowNeed.tight = true;
-    const height = Math.max(0, Math.min(room, Math.max(rowHeight * 2, phone ? room : 460 * ts)));
-    // The genre showcases first (each opens on its first page), then every screen of the kit.
-    const n = SHOWCASES.length;
-    const r = og.ui.list("Screens", { count: n + SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
-      const row = i < n ? showcaseRow(SHOWCASES[i]!) : { name: SCREENS[i - n + 1]!, blurb: BLURBS[SCREENS[i - n + 1]!] };
-      og.ui.column("Text", { width: { kind: "grow" }, gap: 0, padding: { left: 0, top: 4, right: 0, bottom: 4 } }, () => {
-        og.ui.label("Name", row.name, { step: "base", width: { kind: "grow" }, font: i < n ? "display" : "body" } as never);
-        og.ui.label("Blurb", row.blurb, { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, ...(ts > 1.25 ? { maxLines: 3, ellipsis: true } : {}) } as never);
-      });
+    og.ui.scrollArea("Screens", { width: grow, height: grow, gap, fade: Math.round(24 * ts), padding: { left: 0, top: 0, right: 0, bottom: 0 } }, () => {
+      og.ui.label("Subtitle", "Templates and widgets for game screens, themed by the platform tokens.", { step: "base", color: { token: "inkMuted" }, width: grow });
+      filler("Lead", first > 0 ? pos[first]! - head - 2 * gap : 0);
+      // The genre showcases first (each opens on its first page), then every screen of the kit.
+      for (let i = first; i <= last; i++) {
+        const row = i < n ? showcaseRow(SHOWCASES[i]!) : { name: SCREENS[i - n + 1]!, blurb: BLURBS[SCREENS[i - n + 1]!] };
+        // A list row's look: clear at rest, control under the pointer and the focus, controlStrong held.
+        const fill = rows.held === i ? "controlStrong" : rows.hot === i ? "control" : null;
+        og.ui.open(og.ui.idi("Row", i), {
+          direction: "column",
+          width: grow,
+          padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm },
+          interactive: true,
+          focusable: true,
+          radius: t.radius.control,
+          background: fill ? { token: fill } : null,
+        });
+        og.ui.label("Name", row.name, { step: "base", width: grow, font: i < n ? "display" : "body" });
+        og.ui.label("Blurb", row.blurb, { step: "base", color: { token: "inkMuted" }, width: grow });
+        const r = og.ui.close();
+        if (r.hovered || r.focused) rows.hot = i;
+        else if (rows.hot === i) rows.hot = -1;
+        if (r.pressed) rows.held = i;
+        else if (rows.held === i) rows.held = -1;
+        if (r.clicked) d.screen = i < n ? screenIndex(SHOWCASES[i]!.pages[0]!.screen) : i - n + 1;
+      }
+      filler("Rest", last < count - 1 ? pos[count - 1]! + h(count - 1) - pos[last]! - h(last) - gap : 0);
     });
-    if (r.clicked !== null) d.screen = r.clicked < n ? screenIndex(SHOWCASES[r.clicked]!.pages[0]!.screen) : r.clicked - n + 1;
   });
 }
 
