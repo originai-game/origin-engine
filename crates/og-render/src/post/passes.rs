@@ -397,6 +397,7 @@ impl PostPasses {
             bytemuck::bytes_of(&[FAR_DEPTH, 0.0]),
         );
         let white = one_texel(device, queue, AO_FORMAT, &[255]);
+        let no_reactive = one_texel(device, queue, wgpu::TextureFormat::Rg8Unorm, &[255, 255]);
         let no_object = one_texel(
             device,
             queue,
@@ -427,6 +428,7 @@ impl PostPasses {
             adjusted_lut: None,
             far_depth,
             white,
+            no_reactive,
             no_object,
             fx_layout,
             fx_buffer: uniform("fx post", std::mem::size_of::<FxPostUniform>()),

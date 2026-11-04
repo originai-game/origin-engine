@@ -425,6 +425,10 @@ pub(crate) struct PostPasses {
     /// The object pass's "no instance" texel, bound where a frame has none.
     pub no_object: wgpu::TextureView,
     pub white: wgpu::TextureView,
+    /// TAA's reactive mask without OIT: both revealages 1 (`oit.reveal`
+    /// is two channels, tail and front; the one-channel `white` reads 0
+    /// in the second and would drop the history).
+    pub no_reactive: wgpu::TextureView,
     post_buffer: wgpu::Buffer,
     pub taa_buffer: wgpu::Buffer,
     fx_layout: wgpu::BindGroupLayout,

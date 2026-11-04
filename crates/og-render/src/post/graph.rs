@@ -232,7 +232,7 @@ impl FrameGraph {
         let reveal = self
             .try_view("oit.reveal")
             .filter(|_| taa)
-            .unwrap_or(&passes.white);
+            .unwrap_or(&passes.no_reactive);
         let temporal_group = |current: &wgpu::TextureView,
                               previous: &wgpu::TextureView,
                               reactive: &wgpu::TextureView| {
@@ -255,10 +255,9 @@ impl FrameGraph {
         let taa_groups = history.map(|h| {
             [0usize, 1].map(|slot| temporal_group(self.view(names.main), &h[1 - slot], reveal))
         });
-        let smaa_resolve = persistent
-            .smaa_history
-            .as_ref()
-            .map(|h| [0usize, 1].map(|slot| temporal_group(&h[slot], &h[1 - slot], &passes.white)));
+        let smaa_resolve = persistent.smaa_history.as_ref().map(|h| {
+            [0usize, 1].map(|slot| temporal_group(&h[slot], &h[1 - slot], &passes.no_reactive))
+        });
         // The sharpening reads what TAA wrote this frame (as both images).
         let taa_sharpen = history.filter(|_| has(FramePass::TaaSharpen)).map(|h| {
             [0usize, 1].map(|slot| {
@@ -274,7 +273,7 @@ impl FrameGraph {
                         wgpu::BindingResource::Sampler(&passes.nearest_sampler),
                         tex(taa_velocity),
                         tex(taa_depth),
-                        tex(&passes.white),
+                        tex(&passes.no_reactive),
                     ],
                 )
             })
