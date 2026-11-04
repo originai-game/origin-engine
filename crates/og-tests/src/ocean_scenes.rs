@@ -50,13 +50,18 @@ fn sea(wind: Vec2, choppiness: f32) -> Water {
 const SEA: f32 = 6000.0;
 
 /// Haze that thickens to the horizon colour by the sea's edge, so its rim
-/// does not show against the sky: gradually, half of it by 1.2 km.
+/// does not show against the sky: gradually, half of it by about 1.2 km
+/// near sea level. Its density decreases through the marine boundary layer.
 fn sea_haze(scene: &mut RenderScene) {
     if let Some(f) = scene.fog.as_mut() {
-        f.density = 3.5 / SEA;
-        // Replace the colonnade's ground haze, rather than adding to it.
-        f.height_density = 0.0;
-        f.start = 20.0;
+        // Lenain & Melville 2017, doi:10.1175/JPO-D-16-0058.1, reports
+        // marine aerosol layers hundreds of metres deep. A 300m exponential
+        // scale is this fixture's approximation, not a measured profile fit.
+        f.density = 0.0;
+        f.height_density = 3.5 / SEA;
+        f.height = 0.0;
+        f.falloff = 1.0 / 300.0;
+        f.start = 0.0;
         f.max_opacity = 1.0;
     }
 }
