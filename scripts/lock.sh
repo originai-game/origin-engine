@@ -120,14 +120,20 @@ og_gpu_try() { # og_gpu_try N WHAT: take slot N now or fail
 }
 
 og_gpu_acquire() {
-  mkdir -p "$og_gpu_root" || return 1
+  mkdir -p "$og_gpu_root/gpu-wait" || return 1
   og_gpu_said=""
+  # A waiting mark, so an og_gpu_acquire_all that starts after us lets us in
+  # first instead of re-taking every slot the moment it frees them.
+  : > "$og_gpu_root/gpu-wait/$$"
   while :; do
     # An exclusive holder (og_gpu_acquire_all) blocks new single slots, so it is not starved.
     if [ ! -d "$og_gpu_root/gpu-all.lock" ] || [ "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null)" = "$$" ]; then
       og_gpu_n=1
       while [ "$og_gpu_n" -le "${OG_GPU_SLOTS:-3}" ]; do
-        og_gpu_try "$og_gpu_n" "$1" && return 0
+        if og_gpu_try "$og_gpu_n" "$1"; then
+          rm -f "$og_gpu_root/gpu-wait/$$"
+          return 0
+        fi
         og_gpu_n=$((og_gpu_n + 1))
       done
     elif ! kill -0 "$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null || echo 0)" 2>/dev/null; then
@@ -142,7 +148,16 @@ og_gpu_acquire() {
 }
 
 og_gpu_acquire_all() {
-  mkdir -p "$og_gpu_root" || return 1
+  mkdir -p "$og_gpu_root/gpu-wait" || return 1
+  # Single waiters already queued when we arrive go first (each waits for
+  # a slot only once, so this is bounded); later ones queue behind us.
+  for og_gpu_w in "$og_gpu_root"/gpu-wait/*; do
+    [ -e "$og_gpu_w" ] || continue
+    og_gpu_wpid="${og_gpu_w##*/}"
+    if ! kill -0 "$og_gpu_wpid" 2>/dev/null; then rm -f "$og_gpu_w"; continue; fi
+    while [ -e "$og_gpu_w" ] && kill -0 "$og_gpu_wpid" 2>/dev/null; do sleep 1; done
+    rm -f "$og_gpu_w" 2>/dev/null || true
+  done
   while ! mkdir "$og_gpu_root/gpu-all.lock" 2>/dev/null; do
     og_gpu_pid="$(cut -d' ' -f1 "$og_gpu_root/gpu-all.lock/owner" 2>/dev/null || true)"
     if [ -n "$og_gpu_pid" ] && ! kill -0 "$og_gpu_pid" 2>/dev/null; then rm -rf "$og_gpu_root/gpu-all.lock"; fi
