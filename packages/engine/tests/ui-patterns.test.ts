@@ -595,7 +595,7 @@ function rewards(extra: Partial<Api.RewardChoiceDesc> = {}, after?: () => void) 
     after?.();
   });
   const press = (k: string) => {
-    const e = byPath(engine, `Rew/Options/${k}`) ?? byPath(engine, `Rew/Actions/${k}`)!;
+    const e = byPath(engine, `Rew/Cards/Options/${k}`) ?? byPath(engine, `Rew/Actions/${k}`)!;
     engine.probe.commands(`0:touch_move:${centre(e)};0.05:touch_start;0.1:touch_end`);
     engine.advance(14);
   };
@@ -603,11 +603,28 @@ function rewards(extra: Partial<Api.RewardChoiceDesc> = {}, after?: () => void) 
   return { engine, results, press, picked, options: () => options };
 }
 
+test("rewardChoice: cards that outgrow the room scroll between the header and the actions, which stay in it", () => {
+  // Wrong: the whole choice laid out past the room (a phone's Skip off the screen), or scrolled with the cards so its
+  // actions go out of view under the fade.
+  const options = [...REWARDS, ...REWARDS.map((o) => ({ ...o, key: `${o.key}2` }))].map((o) => ({ ...o, locked: false }));
+  const phone = { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as const;
+  for (const [viewport, h] of [[phone, 691], [{}, 520]] as const) {
+    const e = run(() => og.ui.column("Box", { width: { kind: "grow" }, height: { kind: "fixed", px: h } }, () => og.ui.rewardChoice("Rew", { title: "Room cleared", subtitle: "Choose a blessing", options, rerolls: 2, banishes: 1, skipLabel: "Skip · take 25 gold" })), viewport);
+    e.advance(30);
+    const box = byPath(e, "Box")!;
+    const actions = ["Reroll", "Banish", "Skip"].map((k) => byPath(e, `Rew/Actions/${k}`)!);
+    for (const a of actions) expect(a.y + a.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
+    const cards = byPath(e, "Rew/Cards")!;
+    expect(cards.height).toBeLessThan(h);
+    for (const a of actions) expect(a.y).toBeGreaterThanOrEqual(cards.y + cards.height - 0.5);
+  }
+});
+
 test("rewardChoice: with one pick a press takes the reward at once; a locked one shakes and is refused", () => {
   // Wrong: a locked reward taken, or a single pick waiting for a confirm it never shows.
   // Its place as the pointer finds it (og.ui.bounds: where it was drawn, its transform in), read in the system.
   const xs: number[] = [];
-  const r = rewards({}, () => xs.push(og.ui.bounds("Rew/Options/crown")?.x ?? -1));
+  const r = rewards({}, () => xs.push(og.ui.bounds("Rew/Cards/Options/crown")?.x ?? -1));
   r.engine.advance(90);
   const rest = xs.at(-1)!;
   xs.length = 0;
@@ -618,7 +635,7 @@ test("rewardChoice: with one pick a press takes the reward at once; a locked one
   expect(Math.abs(xs.at(-1)! - rest)).toBeLessThan(0.5);
   expect(r.picked()).toEqual([]);
   expect(r.results.some((x) => x.refused === "crown")).toBe(true);
-  expect(byPath(r.engine, "Rew/Options/crown")!.states).toContain("disabled");
+  expect(byPath(r.engine, "Rew/Cards/Options/crown")!.states).toContain("disabled");
   r.press("vigor");
   expect(r.picked()).toEqual(["vigor"]);
   expect(byPath(r.engine, "Rew/Actions/Confirm") === undefined).toBe(true);
@@ -630,7 +647,7 @@ test("rewardChoice: with two picks presses select, a third press does not overfl
   r.press("vigor");
   r.press("strike");
   expect(r.picked()).toEqual([]);
-  expect(byPath(r.engine, "Rew/Options/vigor")!.states).toContain("checked");
+  expect(byPath(r.engine, "Rew/Cards/Options/vigor")!.states).toContain("checked");
   r.press("crown");
   expect(r.results.at(-1)!.selected).toEqual(["strike", "vigor"]);
   r.press("Confirm");
@@ -641,14 +658,14 @@ test("rewardChoice: Banish arms, every card shows its cross, the next press bani
   // Wrong: an armed press takes the reward, the arming stays after a banish, or Back leaves it armed.
   const r = rewards({ banishes: 2 });
   r.press("Banish");
-  expect(byPath(r.engine, "Rew/Options/strike/Banish")).toBeDefined();
+  expect(byPath(r.engine, "Rew/Cards/Options/strike/Banish")).toBeDefined();
   r.press("strike");
   expect(r.picked()).toEqual([]);
   expect(r.options().map((o) => o.key)).toEqual(["vigor", "crown"]);
-  expect(byPath(r.engine, "Rew/Options/vigor/Banish") === undefined).toBe(true);
+  expect(byPath(r.engine, "Rew/Cards/Options/vigor/Banish") === undefined).toBe(true);
   r.press("Banish");
   key(r.engine, "Escape");
-  expect(byPath(r.engine, "Rew/Options/vigor/Banish") === undefined).toBe(true);
+  expect(byPath(r.engine, "Rew/Cards/Options/vigor/Banish") === undefined).toBe(true);
   r.press("vigor");
   expect(r.picked()).toEqual(["vigor"]);
 });

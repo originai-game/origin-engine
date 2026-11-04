@@ -49,8 +49,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const tick = kit.tick();
   const ts = Math.max(1, frame().theme.textScale ?? 1);
 
-  // In portrait it takes the height it is given, its actions docked at its foot in the thumb's reach.
-  kit.open(id, { direction: "column", width: grow(), height: portrait ? grow() : null, gap: u(20), cross: "center", part: "Reward.frame", partClass: "panel" });
+  // It takes the height it is given: centred in it, or in portrait its actions docked at its foot in the thumb's reach.
+  kit.open(id, { direction: "column", width: grow(), height: grow(), gap: u(20), cross: "center", align: portrait ? "start" : "center", part: "Reward.frame", partClass: "panel" });
   // Armed banishing, a refusal's shake, and the deal (when this set of rewards was first shown).
   const armed = kit.memory("~r.armed", 0) === 1 && (desc.banishes ?? -1) > 0;
   const setKey = keyHash(opts.map((o) => o.key ?? "").join("|"));
@@ -80,8 +80,13 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const cw = portrait ? room : Math.floor(Math.min(desc.cardWidth && desc.cardWidth > 0 ? desc.cardWidth : u(260), (room - gap * Math.max(0, n - 1)) / Math.max(1, n)));
   const compact = portrait || vp.height - vp.safeArea.top - vp.safeArea.bottom < 480;
 
-  // Its top padding keeps a card's corner tag (it stands above the card) and a hover's lift inside any clip around it.
-  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: portrait ? grow() : null, padding: { left: 0, right: 0, top: u(22), bottom: 0 }, part: "Reward.options", partClass: "panel" });
+  // The cards scroll between the header and the actions, as tall as they are until the room runs out (a scroll's least
+  // height is none), so the actions stay in view however many rewards, how large the text or how short the screen: a
+  // whole choice scrolled put them out of view, under its fade.
+  kit.openScroll("Cards", { width: grow(), gap: 0, padding: xy(u(6), 0), fade: 32, fadeInto: "shadow" } as never);
+  // Its top padding keeps a standing card's corner tag (it stands above the card) and a hover's lift inside any clip
+  // around it; a compact row draws its tag inline, so it keeps only the lift (the rest pushed a phone's actions off).
+  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: grow(), padding: { left: 0, right: 0, top: u(compact ? 10 : 22), bottom: 0 }, part: "Reward.options", partClass: "panel" });
   opts.forEach((o, i) => {
     const key = o.key ?? `r${i}`;
     const tier = rarityColor(o.rarity);
@@ -248,6 +253,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   });
   kit.close();
   kit.semantics({ role: picks > 1 ? "group" : "radiogroup", name: desc.title ?? "" });
+  kit.close();
   // A refusal's shake, kept where it is read (memory is keyed under the open element: written inside Options, it was
   // never found and a locked reward did not shake).
   if (out.refused) {

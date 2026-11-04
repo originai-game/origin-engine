@@ -236,7 +236,7 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
 
 /** The reward choice in its states. */
 function rewards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
-  const OPT = "Choice/Options";
+  const OPT = "Options";
   b.cmd("show:rewards");
   b.cmd("pat:reset");
   // The deal: cards flip in one after another (a frame mid-deal, then dealt).

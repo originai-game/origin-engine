@@ -545,9 +545,6 @@ export function cardsScreen(world?: World): void {
   });
 }
 
-/** Whether the reward choice scrolls, for the look it was measured in (rewardsScreen). */
-let rewardsScroll = { look: "", on: false };
-
 /** Whether the card table scrolls its plates, for the look it was measured in (cardsScreen). */
 let tableScroll = { look: "", on: false };
 
@@ -635,19 +632,11 @@ export function rewardsScreen(): void {
   const small = phone();
   const portrait = vp.breakpoint === "phonePortrait";
   // The choice is the screen: its title the display line centred over the cards, what to do as the caption under it,
-  // the actions under the cards (docked at the foot on a phone in portrait). A phone keeps the Gallery's row clear; a
-  // short frame, large text or a style whose body is larger than the default's (pixel's 24) scrolls.
-  const ts = t.textScale ?? 1;
-  // ...and so does any look whose choice, laid unscrolled, ran past the room (measured, and held for that look).
-  const look = `${vp.width}x${vp.height}|${ts}|${t.style}|${t.typeRamp["base"]?.size ?? 0}`;
-  if (rewardsScroll.look !== look) rewardsScroll = { look, on: false };
-  const laid = og.ui.bounds("Rewards/Choice");
-  if (laid && !rewardsScroll.on && laid.y + laid.height > vp.height - sa.bottom - t.space.sm + 0.5) rewardsScroll.on = true;
-  const scrolls = rewardsScroll.on || !portrait || ts >= 1.5 || (t.typeRamp["base"]?.size ?? 16) > 18 * ts;
+  // the actions under the cards (docked at the foot on a phone in portrait). The choice scrolls its own cards when
+  // they run past the room, so the actions stay in view. A phone keeps the Gallery's row clear.
   const top = small ? chromeRoom(t.space.lg).top : t.space.xl;
-  og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: scrolls && !small ? "center" : "start", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), chromeRoom().bottom) } }, () => {
-    const body = (build: () => void): void => (scrolls ? og.ui.scrollArea("Body", { width: grow, height: small ? grow : null, gap: t.space.md, fade: small ? 40 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build) : build());
-    body(() => {
+  og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: small ? "start" : "center", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.max(Math.round(72 * Math.max(1, t.textScale ?? 1)), chromeRoom().bottom) } }, () => {
+    {
     const res = og.ui.rewardChoice("Choice", {
       options: r.offer.map((o) => rewardWords(o)),
       title: L("rewards.title"),
@@ -678,7 +667,7 @@ export function rewardsScreen(): void {
       r.offer = r.offer.filter((o) => o.key !== res.banished);
     }
     if (res.skipped) r.taken = L("rewards.skipped");
-    });
+    }
     if (!small) og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: L("rewards.hint.take") }, { action: "back", hint: L("hint.back") }] });
   });
 }
