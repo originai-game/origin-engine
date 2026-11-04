@@ -564,6 +564,9 @@ pub struct Renderer {
     culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
+    /// Frames TAA has accumulated into its history since it was last
+    /// reset, this one included (0 without TAA): [`Renderer::history`].
+    taa_history_frames: u64,
     /// The frame whose lit image screen-space GI's copy holds
     /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
     gi_history: Option<u64>,

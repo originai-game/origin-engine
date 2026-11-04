@@ -50,6 +50,11 @@ pub trait RenderBackend {
     fn antialias(&self) -> String {
         "off".into()
     }
+    /// The frames drawn so far and the frames TAA's history holds
+    /// (og-render's `Renderer::history`); `None` for a backend without one.
+    fn history(&self) -> Option<(u64, u64)> {
+        None
+    }
     /// What the renderer runs on and resolved its options to (the
     /// capabilities' shadow limits); `None` for a backend without one.
     fn info(&self) -> Option<og_render::RenderInfo> {

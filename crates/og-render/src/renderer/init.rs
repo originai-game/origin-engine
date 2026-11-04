@@ -1074,6 +1074,7 @@ impl Renderer {
             meshlet: None,
             culling_counts: false,
             taa_history: None,
+            taa_history_frames: 0,
             gi_history: None,
             drawn_origin: Vec3::ZERO,
             stylise_chain: None,

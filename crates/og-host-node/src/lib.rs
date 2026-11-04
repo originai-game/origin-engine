@@ -543,6 +543,9 @@ impl RenderBackend for OffscreenBackend {
     fn antialias(&self) -> String {
         og_runtime::antialias_name(self.renderer.info().antialias).into()
     }
+    fn history(&self) -> Option<(u64, u64)> {
+        Some(self.renderer.history())
+    }
     fn info(&self) -> Option<og_render::RenderInfo> {
         Some(self.renderer.info().clone())
     }

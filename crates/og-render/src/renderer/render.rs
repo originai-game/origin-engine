@@ -4412,7 +4412,15 @@ impl Renderer {
             self.queue.present(frame);
         }
         if temporal {
+            // A history reset since the last frame (a cut, a resize, a
+            // look switch) starts the count again.
+            self.taa_history_frames = match self.taa_history {
+                Some(_) => self.taa_history_frames + 1,
+                None => 1,
+            };
             self.taa_history = Some(cam.view_proj);
+        } else {
+            self.taa_history_frames = 0;
         }
         // The main pass copied its lit image for the next frame's GI.
         self.gi_history = gi_copy.then_some(self.frame_index);
