@@ -6,8 +6,9 @@ version 1
 # reached, the rewards, the match's graphs, and Continue, Replay and Play
 # again.
 #
-# The kit's copy (og ui eject): a Kit slot in the top end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page).
+# The kit's copy (og ui eject): a Kit slot in a row of its own above the
+# panel takes the kit's own chrome (the Gallery and the showcase's next
+# page) at the top end, laid in the flow, so the panel starts under it.
 #
 # Viewmodel: won, grade, title (the result's line), stats, level, xp (0 to
 # 1, after), gained, rewards, tab. Events to code: continue, again,
@@ -19,8 +20,7 @@ version 1
 # copy: a texture handle bound through a viewmodel number loses its index,
 # src/showcases.ts); Background takes the match's scene or key art, under
 # a 45 % scrim, so the panel never sits on a flat field. The grade is the
-# dominant element (docs/ui.md §15.5), and the panel starts below the Kit
-# slot's row so the kit's chrome never covers it.
+# dominant element (docs/ui.md §15.5).
 name "results"
 layer menu
 under hide
@@ -52,11 +52,13 @@ fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"sta
 column Results {
   width grow
   height grow
-  padding 32 64 32 32
+  padding 32
+  gap 12
   align center
   cross center
   at phone {
-    padding 12 60 12 12
+    padding 12
+    gap 8
   }
   slot Background {
     width grow
@@ -78,6 +80,10 @@ column Results {
     background "#000000"
     opacity 0.45
   }
+  slot Kit {
+    width grow
+    cross end
+  }
   column Panel {
     width grow 0 960
     height grow 0 900
@@ -94,6 +100,7 @@ column Results {
       width grow
       height grow
       gap 16
+      fade 40
       at phone {
         gap 12
       }
@@ -297,15 +304,6 @@ column Results {
         on click emit continue
         on action confirm emit continue
       }
-    }
-  }
-  slot Kit {
-    position absolute
-    end 16
-    top 16
-    at phone {
-      end 8
-      top 8
     }
   }
 }

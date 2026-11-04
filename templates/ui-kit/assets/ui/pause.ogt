@@ -5,10 +5,12 @@ version 1
 # which pauses while it is up: Resume, Settings, Controls, Save, Load,
 # Quit to the menu and Quit the game, with the run's objective and time.
 #
-# The kit's copy (og ui eject): a Kit slot in the bottom end corner takes
-# the kit's own chrome (the Gallery and the showcase's next page), clear
-# of the HUD's top corners; a 45 % scrim over the game holds the panel
-# off the scene whatever the scene's light.
+# The kit's copy (og ui eject): a Kit slot in a row of its own under the
+# menu takes the kit's own chrome (the Gallery and the showcase's next
+# page) at the bottom end, clear of the HUD's top corners and laid in the
+# flow, so the menu shrinks (and scrolls) to leave it room rather than
+# running under it; a 45 % scrim over the game holds the panel off the
+# scene whatever the scene's light.
 #
 # Viewmodel: objective, played (seconds), canSave. Events to code: resume
 # (also Back), settings, controls, save, load, quitToMenu, quit (code asks
@@ -19,7 +21,7 @@ layer menu
 pause true
 under blur
 back emit resume
-focus "Fit/Panel/Menu/Resume"
+focus "Body/Fit/Panel/Menu/Resume"
 props {
   objective string "The current objective (empty: none)."
   played number "Seconds played this run."
@@ -30,13 +32,11 @@ actions {
   back "Resume"
 }
 fixture default "{\"objective\": \"Reach the lighthouse\", \"played\": 4520, \"canSave\": true}"
-row Pause {
+column Pause {
   width grow
   height grow
   padding 32
-  gap 24
-  align center
-  cross center
+  gap 12
   at phone {
     padding 16
   }
@@ -51,117 +51,119 @@ row Pause {
     background "#000000"
     opacity 0.45
   }
-  # The panel scrolls where it is taller than the screen (a phone at a large text size); otherwise it stands centred.
-  scroll Fit {
+  row Body {
     width grow
     height grow
+    gap 24
     align center
     cross center
-    column Panel {
-      width grow 0 400
-      padding 24
-      gap 16
-      frame panel
-      background token panel
-      at phoneLandscape {
-        width grow 0 640
-        padding 12
-        gap 8
-      }
-      enter slideUp 24 token enter
-      label Title {
-        key "screen.pause.title"
-        text "Paused"
-        step xl2
-        heading true
-      }
-      column Status {
-        width grow
-        gap 4
+    # The panel scrolls where it is taller than the screen (a phone at a large text size); otherwise it stands centred.
+    scroll Fit {
+      width grow
+      height grow
+      align center
+      cross center
+      column Panel {
+        width grow 0 400
+        padding 24
+        gap 16
+        frame panel
+        background token panel
         at phoneLandscape {
-          visible false
+          width grow 0 640
+          padding 12
+          gap 8
         }
-        label Objective {
-          text bind objective
-          color token inkMuted
-          maxLines 2
-          visible bind "objective != \"\""
+        enter slideUp 24 token enter
+        label Title {
+          key "screen.pause.title"
+          text "Paused"
+          step xl2
+          heading true
         }
-        label Played {
-          text "{played, duration}"
-          step caption
-          color token inkMuted
-        }
-      }
-      grid Menu {
-        width grow
-        gap 8
-        columns "1fr"
-        focusGroup wrap
-        at phoneLandscape {
-          columns "1fr" "1fr"
-        }
-        button Resume {
-          key "screen.pause.resume"
-          text "Resume"
-          variant primary
+        column Status {
           width grow
-          on click emit resume
+          gap 4
+          at phoneLandscape {
+            visible false
+          }
+          label Objective {
+            text bind objective
+            color token inkMuted
+            maxLines 2
+            visible bind "objective != \"\""
+          }
+          label Played {
+            text "{played, duration}"
+            step caption
+            color token inkMuted
+          }
         }
-        button Settings {
-          key "screen.pause.settings"
-          text "Settings"
+        grid Menu {
           width grow
-          on click emit settings
-        }
-        button Controls {
-          key "screen.pause.controls"
-          text "Controls"
-          width grow
-          on click emit controls
-        }
-        button Save {
-          key "screen.pause.save"
-          text "Save"
-          width grow
-          disabled bind "!canSave"
-          on click emit save
-        }
-        button Load {
-          key "screen.pause.load"
-          text "Load"
-          width grow
-          on click emit load
-        }
-        button QuitToMenu {
-          key "screen.pause.quitToMenu"
-          text "Quit to menu"
-          variant quiet
-          width grow
-          on click emit quitToMenu
-        }
-        button Quit {
-          key "screen.pause.quit"
-          text "Quit game"
-          variant danger
-          width grow
-          on click emit quit
+          gap 8
+          columns "1fr"
+          focusGroup wrap
+          at phoneLandscape {
+            columns "1fr" "1fr"
+          }
+          button Resume {
+            key "screen.pause.resume"
+            text "Resume"
+            variant primary
+            width grow
+            on click emit resume
+          }
+          button Settings {
+            key "screen.pause.settings"
+            text "Settings"
+            width grow
+            on click emit settings
+          }
+          button Controls {
+            key "screen.pause.controls"
+            text "Controls"
+            width grow
+            on click emit controls
+          }
+          button Save {
+            key "screen.pause.save"
+            text "Save"
+            width grow
+            disabled bind "!canSave"
+            on click emit save
+          }
+          button Load {
+            key "screen.pause.load"
+            text "Load"
+            width grow
+            on click emit load
+          }
+          button QuitToMenu {
+            key "screen.pause.quitToMenu"
+            text "Quit to menu"
+            variant quiet
+            width grow
+            on click emit quitToMenu
+          }
+          button Quit {
+            key "screen.pause.quit"
+            text "Quit game"
+            variant danger
+            width grow
+            on click emit quit
+          }
         }
       }
     }
-  }
-  slot Side {
-    at phone {
-      visible false
+    slot Side {
+      at phone {
+        visible false
+      }
     }
   }
   slot Kit {
-    position absolute
-    end 16
-    bottom 16
-    at phone {
-      end 8
-      bottom 42
-    }
+    width grow
+    cross end
   }
 }
