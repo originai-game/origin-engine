@@ -620,20 +620,69 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         720,
         Vec3::new(-2.0 + 0.8 * 2.0, 1.0, 2.0 - 2.6 * 2.0),
     );
-    // The bright collar's right edge against the dark torso, wholly on
-    // the focused figure. The old 60x60 gradient-energy ROI also included
-    // out-of-focus floor that anisotropic filtering legitimately sharpens.
-    // Metal isolation: main off/on edge widths 1.598/1.585 px, anisotropy
-    // 1.598/1.586 px, despite the ROI energy ratio falling from .706 to .686.
+    // A light-to-dark edge wholly on the focused figure, found in this
+    // frame rather than fixed in pixels (a fixed probe broke when the
+    // figure's mesh was turned to face its bind pose). The figure's own
+    // pixels: it drawn alone over a black and over a white background,
+    // without DOF or bloom, where the two agree (its silhouette's blended
+    // pixels differ and are left out). Of the 6-pixel horizontal runs
+    // within 40 px of its projected centre whose every pixel and both
+    // neighbours lie on it, the one falling most in the sharp frame: an
+    // interior edge, so no defocused background is in the probe (the old
+    // 60x60 gradient-energy ROI included floor that anisotropic filtering
+    // legitimately sharpens; aec2aab37).
+    let alone = |background: Vec3| {
+        let mut s = fx::dof_scene(DofQuality::Low).expect("scene");
+        s.instances.retain(|i| {
+            let t = i.transform.w_axis;
+            (t.x - (-2.0 + 0.8 * 2.0)).abs() < 1e-3 && (t.z - (2.0 - 2.6 * 2.0)).abs() < 1e-3
+        });
+        s.post.depth_of_field = None;
+        s.post.bloom = None;
+        s.environment.background = Background::Color(background);
+        frame(&desc, &s).0
+    };
+    let (on_black, on_white) = (alone(Vec3::ZERO), alone(Vec3::ONE));
+    let on_figure = |x: u32, y: u32| {
+        let (a, b) = (px(&on_black, x, y), px(&on_white, x, y));
+        (0..3).all(|c| a[c].abs_diff(b[c]) <= 2)
+    };
+    // (x, y, step): six pixels from x along step (+1 right, -1 left).
+    let at = |(x, y, step): (u32, u32, i32), i: u32| ((x as i32 + step * i as i32) as u32, y);
+    let mut best: Option<((u32, u32, i32), f32)> = None;
+    for y in focus.1.saturating_sub(40)..focus.1 + 40 {
+        for x in focus.0.saturating_sub(40)..focus.0 + 40 {
+            for step in [1i32, -1] {
+                let run = (x, y, step);
+                let on = (0..6).all(|i| {
+                    let (px_, py) = at(run, i);
+                    on_figure(px_, py) && on_figure(px_ - 1, py) && on_figure(px_ + 1, py)
+                });
+                if !on {
+                    continue;
+                }
+                let (first, last) = (at(run, 0), at(run, 5));
+                let fall = luma(px(&sharp, first.0, first.1)) - luma(px(&sharp, last.0, last.1));
+                if best.is_none_or(|(_, f)| fall > f) {
+                    best = Some((run, fall));
+                }
+            }
+        }
+    }
+    let (run, fall) = best.expect("the focused figure covers its projected centre");
+    println!("focused edge: run {run:?}, fall {fall} in the sharp frame");
     let profile = |img: &RgbaImage| -> [f32; 6] {
-        std::array::from_fn(|i| luma(px(img, focus.0 + 1 + i as u32, focus.1 + 6)))
+        std::array::from_fn(|i| {
+            let (x, y) = at(run, i as u32);
+            luma(px(img, x, y))
+        })
     };
     let reference = profile(&sharp);
     let dark = reference.iter().copied().fold(f32::INFINITY, f32::min);
     let light = reference.iter().copied().fold(f32::NEG_INFINITY, f32::max);
     assert!(
         light - dark > 80.0,
-        "the collar edge must have measurable contrast"
+        "the focused edge must have measurable contrast ({reference:?})"
     );
     // Use the sharp frame's levels for every image: renormalizing a blurred
     // profile would hide contrast loss. Missing crossings mean lost detail.
@@ -650,7 +699,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
             .map_or(f32::INFINITY, |(a, b)| b - a)
     };
     let (w_on, w_off) = (width(&blurred), width(&sharp));
-    println!("focused collar 10–90% edge width: dof {w_on}, off {w_off}");
+    println!("focused edge 10–90% width: dof {w_on}, off {w_off}");
     assert!(w_off > 0.0 && w_off.is_finite());
     let retains_focus = |w: f32| w > 0.0 && w_off / w > 0.7;
     assert!(retains_focus(w_on), "DOF broadened the focused edge");
@@ -665,7 +714,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
         .focus_distance = 3.0;
     let (defocused, _) = frame(&desc, &defocused);
     let w_wrong = width(&defocused);
-    println!("deliberately defocused collar edge width: {w_wrong}");
+    println!("deliberately defocused edge width: {w_wrong}");
     assert!(
         !retains_focus(w_wrong),
         "the focus check accepted a blurred figure"
