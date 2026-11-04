@@ -118,7 +118,7 @@ impl Renderer {
             self.prepare_view_culling(scene, &camera, &mut skinned);
         let (probe_faces, mut probe_skinned) =
             self.prepare_probe_culling(&probe_frame, &active_probes, &camera, &mut skinned);
-        let (mut skinned_visible, skinned_culled) =
+        let (mut skinned_visible, mut skinned_culled) =
             Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         let skinned_data = std::mem::take(&mut skinned.data);
@@ -719,6 +719,14 @@ impl Renderer {
             && scene.previous_transforms.len() == scene.instances.len();
         let blur_motion = motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
+        // The skinned instances (their records in `skinned_data`, before
+        // the CPU lists' copies): GPU culling tests their posed boxes
+        // beside the instances when it runs (cull_gpu.rs `SkinnedCull`).
+        let skinned_n = skinned_batches
+            .iter()
+            .map(|b| b.first + b.count)
+            .max()
+            .unwrap_or(0);
         // The static shadow cache's split (shadow_cache.rs): which batches
         // stood still long enough to stay in the cached shadow layers.
         let shadow_split = {
@@ -793,6 +801,7 @@ impl Renderer {
         // local lights' faces. The buffers must fit them; `encode` sizes
         // them for the frame's actual passes and regrows when that grows.
         let max_passes = 2
+            + view_plans.len()
             + shelter_redraw as usize
             + reflection.is_some() as usize
             + if scene.light.cast_shadows {
@@ -816,15 +825,9 @@ impl Renderer {
                 ));
         // The batches the meshlet path draws in the camera pass (under GPU
         // culling, which it follows; never with stylise's object pass,
-        // which redraws the camera list's instances, nor with motion blur,
-        // which culls on the CPU).
+        // which redraws the camera list's instances).
         let mut meshlet_taken: Vec<u32> = match self.meshlet.as_ref() {
-            Some(m)
-                if self.indirect
-                    && self.desc_culling != Culling::Cpu
-                    && !blur_motion
-                    && !object_space =>
-            {
+            Some(m) if self.indirect && self.desc_culling != Culling::Cpu && !object_space => {
                 batches
                     .iter()
                     .enumerate()
@@ -856,9 +859,8 @@ impl Renderer {
         }
         // Clustered batches draw only under GPU culling: they turn it on
         // under `Culling::Auto` however few the instances.
-        let gpu_cull = (self.gpu_culls(sorted) || !meshlet_taken.is_empty())
-            && !blur_motion
-            && !batches.is_empty()
+        let gpu_cull = (self.gpu_culls(sorted + skinned_n) || !meshlet_taken.is_empty())
+            && (!batches.is_empty() || skinned_n > 0)
             && {
                 let limits = self.device.limits();
                 let gc = self.gpu_cull.get_or_insert_with(|| {
@@ -869,10 +871,19 @@ impl Renderer {
                             .min(limits.max_buffer_size),
                     )
                 });
-                gc.fits(sorted, max_passes)
+                gc.fits(sorted, skinned_n, max_passes)
             };
         if !gpu_cull {
             meshlet_taken.clear();
+        }
+        // Under GPU culling every skinned batch is the camera's list, each
+        // drawing what the camera pass kept (`draw_skinned`'s `cull_pass`); the
+        // instance regions are as long as both kinds together.
+        let skinned_gpu = gpu_cull && skinned_n > 0;
+        let cull_n = sorted + if skinned_gpu { skinned_n } else { 0 };
+        if skinned_gpu {
+            skinned_visible = skinned_batches.iter().map(|b| Batch { ..*b }).collect();
+            skinned_culled = 0;
         }
         let object_motion = previous_valid && (blur_motion || temporal);
         // Foliage's auxiliary record carries current sway as well as history,
@@ -914,20 +925,23 @@ impl Renderer {
                 .collect()
         };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
-        let mut gpu_pass = |kind, frustum: &Frustum, counted: Option<Vec<u32>>| {
-            cull_passes.push(cull_gpu::CullPass {
-                counted,
-                kind,
-                planes: frustum.planes().to_vec(),
-                // Shadow maps take every caster; the camera's passes its
-                // layers (views.rs), as the CPU lists' `include`.
-                layers: match kind {
-                    cull_gpu::PassKind::Shadow => u32::MAX,
-                    _ => scene.camera_layers,
-                },
-            });
-            cull_passes.len() as u32 - 1
-        };
+        // `layers`: the pass's three.js layer mask where it is not its
+        // kind's (a secondary view's own).
+        let mut gpu_pass =
+            |kind, frustum: &Frustum, counted: Option<Vec<u32>>, layers: Option<u32>| {
+                cull_passes.push(cull_gpu::CullPass {
+                    counted,
+                    kind,
+                    planes: frustum.planes().to_vec(),
+                    // Shadow maps take every caster; the camera's passes its
+                    // layers (views.rs), as the CPU lists' `include`.
+                    layers: layers.unwrap_or(match kind {
+                        cull_gpu::PassKind::Shadow => u32::MAX,
+                        _ => scene.camera_layers,
+                    }),
+                });
+                cull_passes.len() as u32 - 1
+            };
         // Lent to every CPU cull of this frame, given back after the last.
         let mut cull_inside = std::mem::take(&mut self.cull_inside);
         cull_inside.whole.clear();
@@ -942,11 +956,11 @@ impl Renderer {
         // The main camera's layers (views.rs).
         let mask = scene.camera_layers;
         let (main_list, mut culled) = if gpu_cull {
-            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None);
+            let g = gpu_pass(cull_gpu::PassKind::Main, &view_frustum, None, None);
             if occlusion {
-                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None);
+                gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum, None, None);
             }
-            let mut list = indirect_list(&batches, sorted, g, |b| {
+            let mut list = indirect_list(&batches, cull_n, g, |b| {
                 !b.transparent && b.layers & mask != 0
             });
             // The meshlet path draws its batches itself; the camera's
@@ -1031,8 +1045,8 @@ impl Renderer {
             let include =
                 |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
             reflection_list.push(if gpu_cull && k == 0 {
-                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None);
-                indirect_list(&batches, sorted, g, include)
+                let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
+                indirect_list(&batches, cull_n, g, include)
             } else {
                 self.cull(
                     &batches,
@@ -1147,9 +1161,9 @@ impl Renderer {
                 .0
             })
             .collect();
-        // Each view's opaque meshes on its layers, culled on the CPU (the
-        // main camera, its shadows and reflection keep GPU culling: under
-        // it these lists append every instance they draw).
+        // Each view's opaque meshes on its layers: under GPU culling a pass
+        // of its own (its planes and layers, as the planar reflection's),
+        // drawn indirect; on the CPU path culled here.
         let mut view_views: Vec<u32> = Vec::new();
         let mut view_lists: Vec<DrawList> = view_plans
             .iter()
@@ -1170,15 +1184,28 @@ impl Renderer {
                     ))
                 };
                 view_views.push(view);
+                let frustum = Frustum::from_view_proj(p.frame.view_proj);
+                let include = |b: &Batch| {
+                    !b.transparent && b.layers & p.layers != 0 && !(view > 0 && in_meshlet(b))
+                };
+                if gpu_cull {
+                    let g = gpu_pass(
+                        cull_gpu::PassKind::Reflection,
+                        &frustum,
+                        None,
+                        Some(p.layers),
+                    );
+                    return indirect_list(&batches, cull_n, g, include);
+                }
                 self.cull(
                     &batches,
                     &spheres,
                     &mut transforms,
                     &mut origins,
                     &mut cull_inside,
-                    &Frustum::from_view_proj(p.frame.view_proj),
-                    !gpu_cull,
-                    |b| !b.transparent && b.layers & p.layers != 0 && !(view > 0 && in_meshlet(b)),
+                    &frustum,
+                    true,
+                    include,
                 )
                 .0
             })
@@ -1329,7 +1356,7 @@ impl Renderer {
         let mut cascade_views: Vec<u32> = Vec::new();
         let mut local_views = [0u32; LOCAL_SHADOW_LAYERS];
         let caster_list = |g: u32, view: u32, keep: &dyn Fn(&Batch) -> bool| {
-            let mut list = indirect_list(&batches, sorted, g, |b| b.cast && keep(b));
+            let mut list = indirect_list(&batches, cull_n, g, |b| b.cast && keep(b));
             if view > 0 {
                 list.ranges
                     .retain(|r| meshlet_casters.binary_search(&r.0).is_err());
@@ -1419,7 +1446,7 @@ impl Renderer {
                     return Default::default();
                 }
                 if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum, counted(plan));
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum, counted(plan), None);
                     let view = if plan.overlay {
                         shadow_view(&mut meshlet_view, &c.frustum)
                     } else {
@@ -1462,7 +1489,7 @@ impl Renderer {
         let mut shelter_view = 0;
         let shelter_list: Option<[DrawList; 2]> = shelter.as_ref().filter(|s| s.3).map(|s| {
             let list = if gpu_cull {
-                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None);
+                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None, None);
                 shelter_view = shadow_view(&mut meshlet_view, &s.1);
                 caster_list(g, shelter_view, &|_| true)
             } else {
@@ -1623,7 +1650,7 @@ impl Renderer {
                 let list = if !plan.draw_static && !plan.overlay {
                     Default::default()
                 } else if gpu_cull {
-                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f, counted(&plan));
+                    let g = gpu_pass(cull_gpu::PassKind::Shadow, f, counted(&plan), None);
                     let view = if plan.overlay {
                         shadow_view(&mut meshlet_view, f)
                     } else {
@@ -1740,6 +1767,11 @@ impl Renderer {
                 &transforms[..sorted as usize],
                 previous_sorted.as_deref(),
                 &batches,
+                skinned_gpu.then_some(&cull_gpu::SkinnedCull {
+                    batches: &skinned_batches,
+                    records: &skinned_data,
+                    boxes: &skinned.boxes,
+                }),
                 &self.cache.meshes,
                 &self.cache.materials,
                 &cull_passes,
@@ -1764,7 +1796,7 @@ impl Renderer {
             for r in probe_lists
                 .iter_mut()
                 .chain(probe_blended.iter_mut())
-                .chain(view_lists.iter_mut())
+                .chain(view_lists.iter_mut().filter(|l| l.indirect.is_none()))
                 .chain(view_blended.iter_mut())
                 .flat_map(|l| &mut l.ranges)
             {
@@ -2845,7 +2877,8 @@ impl Renderer {
             stats.sprite_draws += of.runs.len() as u32;
             stats.missing_glyphs += of.missing_glyphs;
         }
-        for b in &skinned_visible {
+        // Under GPU culling its counts hold the skinned draws too.
+        for b in skinned_visible.iter().filter(|_| !skinned_gpu) {
             stats.triangles += (self.cache.meshes[b.mesh].index_count / 3) as u64 * b.count as u64;
         }
 
@@ -3423,7 +3456,11 @@ impl Renderer {
                             palette_at: u32,
                             pipelines: &[&wgpu::RenderPipeline],
                             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                            probes: Option<probe_select::ProbeGroups>|
+                            probes: Option<probe_select::ProbeGroups>,
+                            // GPU culling's pass whose kept instances
+                            // `list` (every skinned batch) draws; `None`:
+                            // `list`'s own ranges.
+                            cull_pass: Option<u32>|
          -> u32 {
             self.frame_draw_skinned(DrawSkinnedInputs {
                 pass,
@@ -3435,6 +3472,10 @@ impl Renderer {
                 physical_fx,
                 probes,
                 palette_group,
+                indirect: cull_pass
+                    .filter(|_| skinned_gpu)
+                    .zip(culled_gpu)
+                    .map(|(g, gc)| (gc, g)),
             })
         };
         // Glowing sprites into a glow buffer (group 0 set: the camera's).
@@ -3566,14 +3607,20 @@ impl Renderer {
                 let mesh = &self.cache.meshes[batch.mesh];
                 let start = first as u64 * INSTANCE_STRIDE;
                 let range = start..start + count as u64 * INSTANCE_STRIDE;
+                // A view's GPU-culled list: its pass's region and draws.
+                let indirect = list.indirect.zip(culled_gpu);
+                let instances = indirect.map_or(&self.instance_buffer, |(_, gc)| &gc.instances);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
-                pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                pass.set_vertex_buffer(1, instances.slice(range.clone()));
+                pass.set_vertex_buffer(2, instances.slice(range));
                 if let Some(surface) = &mesh.surface {
                     pass.set_vertex_buffer(3, surface.previous.slice(..));
                 }
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..count);
+                match indirect {
+                    Some((g, gc)) => pass.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),
+                    None => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
+                }
                 draws += 1;
             }
             let opaque: Vec<Batch> = skinned
@@ -3585,7 +3632,9 @@ impl Renderer {
                 .iter()
                 .filter_map(|b| self.prepass_pipeline_of(b, true))
                 .collect();
-            draws += draw_skinned(&mut pass, &opaque, false, 1, 3, &pipelines, None, None);
+            draws += draw_skinned(
+                &mut pass, &opaque, false, 1, 3, &pipelines, None, None, None,
+            );
             if let Some(indices) = terrain_indices {
                 draws += terrain::draw_levels(
                     &mut pass,
@@ -3665,7 +3714,9 @@ impl Renderer {
                 if !all_casters {
                     return;
                 }
-                // Skinned casters, unculled.
+                // Skinned casters: those GPU culling's pass for the layer
+                // kept (its counts hold them), unculled on the CPU path.
+                let g = lists[0].indirect.or(lists[1].indirect);
                 let n = draw_skinned(
                     pass,
                     &skinned_batches,
@@ -3675,13 +3726,16 @@ impl Renderer {
                     &shadow_skinned,
                     None,
                     None,
+                    g,
                 );
                 stats.draw_calls += n;
-                stats.shadow_casters += skinned_batches
-                    .iter()
-                    .filter(|b| !b.transparent && b.cast)
-                    .map(|b| b.count)
-                    .sum::<u32>();
+                if !(skinned_gpu && g.is_some()) {
+                    stats.shadow_casters += skinned_batches
+                        .iter()
+                        .filter(|b| !b.transparent && b.cast)
+                        .map(|b| b.count)
+                        .sum::<u32>();
+                }
                 let (n, _) = self.scatter.draw(
                     pass,
                     scatter::ScatterPass::Shadow,

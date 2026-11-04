@@ -3,7 +3,15 @@
 //! run in compute, and every mesh pass submits indexed indirect draws. The
 //! CPU path ([`crate::Renderer::cull`]) stays for small frames
 //! ([`crate::Culling::Auto`]), [`crate::Culling::Cpu`] and for frames this
-//! cannot take (object motion blur, buffers over the device limits).
+//! cannot take (buffers over the device limits).
+//!
+//! The skinned instances and baked crowds are culled beside the instances
+//! ([`SkinnedCull`]): each one's posed world box (its joints' bind boxes
+//! moved by its pose, a crowd's clip's over every frame) stands as an
+//! instance after the sorted ones, tested against every pass's planes and
+//! the camera's pyramid, and its record is compacted into the pass's
+//! region of [`GpuCulling::skinned`] for the skinned draws. Secondary views
+//! are passes of their own (their planes and layers).
 //!
 //! Per frame: the sorted instances are uploaded once (region 0 of
 //! `instances`); stage A tests them against every shadow face, the planar
@@ -52,6 +60,46 @@ const TRANSPARENT: u32 = 1;
 const OCCLUDER: u32 = 2;
 const OCCLUDABLE: u32 = 4;
 const FOLIAGE: u32 = 8;
+/// A skinned batch ([`SkinnedCull`]): its instances are boxes, its records
+/// the skinned instances'.
+const SKINNED: u32 = 16;
+/// Left out of the shadow passes (a skinned batch that casts no shadow).
+const NO_CAST: u32 = 32;
+// cull.wgsl's SKINNED_FLOATS: the floats of a skinned instance's record.
+const _: () = assert!(crate::skin::SKINNED_INSTANCE_STRIDE == 28 * 4);
+
+/// The skinned instances a frame culls beside its instances: each one's
+/// posed world box (`skin::skinned_box`), tested as an instance whose
+/// matrix takes the unit box to it, and its record, which each pass
+/// compacts into its region of [`GpuCulling::skinned`] for the skinned
+/// draws, batch by batch as the instances' (`skin.rs`).
+pub(crate) struct SkinnedCull<'a> {
+    /// The skinned batches, `first` and `count` over `records`.
+    pub batches: &'a [Batch],
+    pub records: &'a [crate::skin::SkinnedInstanceGpu],
+    pub boxes: &'a [(glam::Vec3, glam::Vec3)],
+}
+
+impl SkinnedCull<'_> {
+    /// The instances the batches cover (the records past them are the CPU
+    /// lists' copies).
+    pub fn len(&self) -> u32 {
+        self.batches
+            .iter()
+            .map(|b| b.first + b.count)
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+/// The instance record whose matrix takes the unit box (centre 0, half
+/// extent 1) to the box `lo..hi`: the culling's stand-in for a skinned
+/// instance, so its frustum test is the box's and its occlusion test the
+/// box's screen rectangle.
+fn box_transform(lo: glam::Vec3, hi: glam::Vec3) -> crate::instances::GpuTransform {
+    let (c, e) = ((lo + hi) * 0.5, (hi - lo).max(glam::Vec3::ZERO) * 0.5);
+    crate::instances::gpu_transform(&(Mat4::from_translation(c) * Mat4::from_scale(e)))
+}
 
 /// What a pass draws.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -244,6 +292,14 @@ pub(crate) struct GpuCulling {
     /// light face) on any device.
     passes: wgpu::Buffer,
     pub instances: wgpu::Buffer,
+    /// The skinned instances' records ([`SkinnedCull`]): region 0 the
+    /// frame's, region g + 1 pass g's visible ones, each region as long as
+    /// the skinned instances.
+    pub skinned: wgpu::Buffer,
+    /// The skinned instances this frame culls, and where their boxes start
+    /// among the instances (after the sorted ones).
+    pub skinned_n: u32,
+    pub skinned_base: u32,
     /// What the input region of `instances` holds, written by changes only.
     upload: crate::upload::DirtyUpload,
     /// The previous transforms, laid out as `instances` (region 0 at the
@@ -276,6 +332,8 @@ pub(crate) struct GpuCulling {
     /// This frame's layout: instances, batches, passes.
     pub n: u32,
     pub b: u32,
+    /// The first skinned batch in the batch table (after the instances').
+    skinned_base_batch: u32,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -377,6 +435,7 @@ impl GpuCulling {
                 ),
                 storage(6, false),
                 storage(7, true),
+                storage(8, false),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -487,6 +546,14 @@ impl GpuCulling {
             params,
             passes: buffer(device, "cull passes", 0, Self::storage_usage()),
             instances: buffer(device, "culled instances", 0, Self::instance_usage()),
+            skinned: buffer(
+                device,
+                "culled skinned instances",
+                0,
+                Self::instance_usage(),
+            ),
+            skinned_n: 0,
+            skinned_base: 0,
             upload: Default::default(),
             previous: buffer(
                 device,
@@ -526,6 +593,7 @@ impl GpuCulling {
             max_binding,
             n: 0,
             b: 0,
+            skinned_base_batch: 0,
         }
     }
 
@@ -542,11 +610,27 @@ impl GpuCulling {
             | wgpu::BufferUsages::COPY_DST
     }
 
-    /// Whether `n` instances in `passes` passes (the most the frame can
-    /// have) fit the device's storage binding limit.
-    pub fn fits(&self, n: u32, passes: usize) -> bool {
-        (passes as u64 + 1) * n as u64 * INSTANCE_STRIDE <= self.max_binding
-            && Self::scan_words(n, passes) * 4 <= self.max_binding
+    /// Whether `n` instances and `skinned` skinned ones in `passes` passes
+    /// (the most the frame can have) fit the device's storage binding
+    /// limit.
+    pub fn fits(&self, n: u32, skinned: u32, passes: usize) -> bool {
+        let all = n as u64 + skinned as u64;
+        all <= u32::MAX as u64
+            && (passes as u64 + 1) * all * INSTANCE_STRIDE <= self.max_binding
+            && (passes as u64 + 1) * skinned as u64 * crate::skin::SKINNED_INSTANCE_STRIDE
+                <= self.max_binding
+            && Self::scan_words(all as u32, passes) * 4 <= self.max_binding
+    }
+
+    /// Where pass `g`'s records of the skinned batch starting at `first`
+    /// (over [`SkinnedCull::records`]) begin in [`Self::skinned`].
+    pub fn skinned_region(&self, g: u32, first: u32) -> u32 {
+        (g + 1) * self.skinned_n + first
+    }
+
+    /// The byte offset of pass `g`'s draw of skinned batch `k` in `args`.
+    pub fn skinned_draw_offset(&self, g: u32, k: u32) -> u64 {
+        self.draw_offset(g, self.skinned_base_batch + k)
     }
 
     fn scan_words(n: u32, passes: usize) -> u64 {
@@ -930,6 +1014,7 @@ impl GpuCulling {
         transforms: &[crate::instances::GpuTransform],
         previous: Option<&[crate::instances::GpuTransform]>,
         batches: &[Batch],
+        skinned: Option<&SkinnedCull<'_>>,
         meshes: &[GpuMesh],
         materials: &[GpuMaterial],
         passes: &[CullPass],
@@ -939,18 +1024,52 @@ impl GpuCulling {
         stats_given: GpuCounts,
         copy_counts: bool,
     ) -> (wgpu::CommandBuffer, u32) {
+        // The skinned instances' boxes after the sorted instances, their
+        // batches after the instances' (each `first` moved past them).
+        let base = transforms.len() as u32;
+        let ns = skinned.map_or(0, |s| s.len());
+        let combined: Vec<crate::instances::GpuTransform>;
+        let all_batches: Vec<Batch>;
+        let (transforms, batches) = match skinned.filter(|_| ns > 0) {
+            Some(s) => {
+                combined = transforms
+                    .iter()
+                    .copied()
+                    .chain(
+                        s.boxes[..ns as usize]
+                            .iter()
+                            .map(|&(lo, hi)| box_transform(lo, hi)),
+                    )
+                    .collect();
+                all_batches = batches
+                    .iter()
+                    .map(|x| Batch { ..*x })
+                    .chain(s.batches.iter().map(|x| Batch {
+                        first: x.first + base,
+                        ..*x
+                    }))
+                    .collect();
+                (&combined[..], &all_batches[..])
+            }
+            None => (transforms, batches),
+        };
+        let skinned_from = base as usize;
+        let skinned_batch = |i: usize| ns > 0 && batches[i].first >= base;
         let n = transforms.len() as u32;
         let b = batches.len() as u32;
         let p = passes.len();
         self.n = n;
         self.b = b;
+        self.skinned_n = ns;
+        self.skinned_base = base;
+        self.skinned_base_batch = batches.iter().take_while(|x| x.first < base).count() as u32;
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
         if occlusion {
             self.ensure_pyramid(device, width, height, samples);
             let occluder_kinds: Vec<(Side, bool)> = {
                 let mut s: Vec<(Side, bool)> = batches
                     .iter()
-                    .filter(|x| materials[x.material].occluder)
+                    .filter(|x| x.first < base && materials[x.material].occluder)
                     .map(|x| (x.side, x.compact))
                     .collect();
                 og_core::sort::sort(&mut s);
@@ -975,8 +1094,21 @@ impl GpuCulling {
             self.max_binding,
             Self::instance_usage(),
         );
+        if ns > 0 {
+            Self::grow(
+                device,
+                &mut self.skinned,
+                &mut self.groups,
+                "culled skinned instances",
+                (p as u64 + 1) * ns as u64 * crate::skin::SKINNED_INSTANCE_STRIDE,
+                self.max_binding,
+                Self::instance_usage(),
+            );
+            let records = &skinned.expect("ns > 0").records[..ns as usize];
+            queue.write_buffer(&self.skinned, 0, bytemuck::cast_slice(records));
+        }
         let previous_uploaded = if let Some(prev) = previous {
-            debug_assert_eq!(prev.len(), transforms.len());
+            debug_assert_eq!(prev.len(), base as usize);
             if Self::grow(
                 device,
                 &mut self.previous,
@@ -1068,8 +1200,26 @@ impl GpuCulling {
             );
         let table: Vec<BatchGpu> = batches
             .iter()
-            .map(|x| {
+            .enumerate()
+            .map(|(i, x)| {
                 let m = &materials[x.material];
+                if skinned_batch(i) {
+                    // Boxes: their instances' matrices take the unit box
+                    // to them. Never an occluder (not in its depth), never
+                    // transparent here (the CPU sorts no skinned instance:
+                    // each pass keeps those in view, blended or not).
+                    return BatchGpu {
+                        first: x.first,
+                        count: x.count,
+                        index_count: meshes[x.mesh].index_count,
+                        flags: SKINNED
+                            | (x.shader.is_none() as u32 * OCCLUDABLE)
+                            | (!x.cast as u32 * NO_CAST),
+                        bounds: [0.0, 0.0, 0.0, 3f32.sqrt()],
+                        extent: [1.0; 3],
+                        layers: x.layers,
+                    };
+                }
                 let (c, e) = meshes[x.mesh].bounds.unwrap_or_default();
                 // A compact batch's instance matrices take the unit box to
                 // the world (compact.rs): its bounds are the unit box's.
@@ -1142,7 +1292,12 @@ impl GpuCulling {
                 let params = Params {
                     counts: [n, b, which.len() as u32, p as u32],
                     sizes: [blocks, levels, width, height],
-                    motion: [previous.is_some() as u32, base as u32, 0, 0],
+                    motion: [
+                        previous.is_some() as u32,
+                        base as u32,
+                        skinned_from as u32,
+                        ns,
+                    ],
                     view_proj: view_proj.to_cols_array_2d(),
                 };
                 queue.write_buffer(buffer, 0, bytemuck::bytes_of(&params));
@@ -1187,6 +1342,10 @@ impl GpuCulling {
                         wgpu::BindGroupEntry {
                             binding: 7,
                             resource: self.passes.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 8,
+                            resource: self.skinned.as_entire_binding(),
                         },
                     ],
                 })
@@ -1244,7 +1403,7 @@ impl GpuCulling {
                     pass.set_bind_group(0, &self.view_group, &[]);
                     let mut kind = None;
                     for (i, x) in batches.iter().enumerate() {
-                        if !materials[x.material].occluder {
+                        if skinned_batch(i) || !materials[x.material].occluder {
                             continue;
                         }
                         if kind != Some((x.side, x.compact)) {
@@ -1296,22 +1455,34 @@ impl GpuCulling {
             frame,
             batches: b,
             kinds: passes.iter().map(|x| x.kind).collect(),
-            counted: passes.iter().map(|x| x.counted.clone()).collect(),
+            // A pass that counts some batches counts the skinned ones it
+            // draws too (all of them: they are never in a static cache).
+            counted: passes
+                .iter()
+                .map(|x| {
+                    x.counted.clone().map(|mut c| {
+                        c.extend(self.skinned_base_batch..b);
+                        c
+                    })
+                })
+                .collect(),
             triangles: batches
                 .iter()
                 .map(|x| (meshes[x.mesh].index_count / 3) as u64)
                 .collect(),
-            // The camera pass's opaque instances on its layers.
+            // The camera pass's opaque instances on its layers, and every
+            // skinned one (the CPU path culls them all).
             opaque: batches
                 .iter()
-                .filter(|x| {
-                    !x.transparent
+                .enumerate()
+                .filter(|&(i, x)| {
+                    (!x.transparent || skinned_batch(i))
                         && passes
                             .iter()
                             .find(|p| p.kind == PassKind::Main)
                             .is_some_and(|p| x.layers & p.layers != 0)
                 })
-                .map(|x| x.count)
+                .map(|(_, x)| x.count)
                 .sum(),
         };
         if let Some(r) = self.readbacks.iter_mut().find(|r| {

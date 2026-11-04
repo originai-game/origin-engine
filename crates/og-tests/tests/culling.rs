@@ -8,7 +8,8 @@
 //! no fewer triangles drawn or hidden than the CPU path has in view, the
 //! GPU path on every frame, and on the street,
 //! where the nearest blocks hide most of the city, the occlusion test
-//! hides most of what is in view. The frames and a stats line per scene
+//! hides most of what is in view; behind a wall, the skinned crowd's back
+//! rows are hidden as well. The frames and a stats line per scene
 //! are written under the test's output directory.
 
 use og_render::{Culling, FrameStats, RenderTarget, Renderer, RgbaImage};
@@ -84,6 +85,12 @@ const SCENES: &[(&str, u32)] = &[
     // cascades.
     ("shadows-local-8", 2),
     ("shadows-cascades-4", 2),
+    // Skinned meshes and baked crowds culled by their posed boxes beside
+    // the instances (cull_gpu.rs `SkinnedCull`), the crowd's back rows
+    // behind a wall; and object motion blur, which GPU culling takes too.
+    ("skinning", 2),
+    ("crowd-culling", 3),
+    ("motion-blur", 4),
 ];
 
 #[test]
@@ -166,6 +173,14 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
                 g.in_view_triangles - g.occluded_triangles,
                 g.occluded_triangles,
                 c.in_view_triangles
+            ));
+        }
+        // The crowd's three rows behind the wall (21 cylinders) are hidden
+        // by the occlusion test, as the instances behind an occluder are.
+        if g.gpu_culling && name == "crowd-culling" && g.occluded < 21 {
+            failures.push(format!(
+                "crowd-culling: the wall hides 21 of the crowd, but only {} were occluded",
+                g.occluded
             ));
         }
         if g.gpu_culling && name == "city-street" {

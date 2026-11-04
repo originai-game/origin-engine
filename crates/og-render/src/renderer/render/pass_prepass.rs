@@ -60,6 +60,7 @@ impl Renderer {
                 &[&wgpu::RenderPipeline],
                 Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
                 Option<probe_select::ProbeGroups>,
+                Option<u32>,
             ) -> u32,
             impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
             impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
@@ -186,6 +187,7 @@ impl Renderer {
             prepass_skinned,
             None,
             None,
+            main_list.indirect,
         );
         if let Some(indices) = terrain_indices {
             let prepass = terrain::TerrainPass::Prepass;
@@ -259,8 +261,17 @@ impl Renderer {
                 .iter()
                 .map(|b| object.pipeline(b.side, true))
                 .collect();
-            stats.draw_calls +=
-                draw_skinned(&mut p, skinned_visible, false, 1, 3, &skinned, None, None);
+            stats.draw_calls += draw_skinned(
+                &mut p,
+                skinned_visible,
+                false,
+                1,
+                3,
+                &skinned,
+                None,
+                None,
+                main_list.indirect,
+            );
         }
         if let Some(target) = self.graph.try_view("ao-depth") {
             // The AO's depth: the prepass's, then each water surface's own in front of what it covers.

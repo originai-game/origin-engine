@@ -109,6 +109,7 @@ impl Renderer {
                 &[&wgpu::RenderPipeline],
                 Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
                 Option<probe_select::ProbeGroups>,
+                Option<u32>,
             ) -> u32,
             impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
             impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
@@ -258,6 +259,7 @@ impl Renderer {
                     &skinned,
                     None,
                     None,
+                    None,
                 );
                 if let Some(indices) = terrain_indices {
                     stats.draw_calls += terrain::draw_levels(
@@ -346,6 +348,7 @@ impl Renderer {
                     1,
                     3,
                     &skinned,
+                    None,
                     None,
                     None,
                 );

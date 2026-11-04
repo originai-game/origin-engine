@@ -12,6 +12,11 @@ pub(super) struct DrawSkinnedInputs<'a, 'p> {
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probes: Option<probe_select::ProbeGroups<'a>>,
     pub(super) palette_group: Option<&'a wgpu::BindGroup>,
+    /// GPU culling's pass whose skinned draws these are: `list` is then
+    /// every skinned batch, in order, and each draws the instances the
+    /// pass kept (`cull_gpu::SkinnedCull`). `None`: `list`'s ranges of the
+    /// skinned instance buffer.
+    pub(super) indirect: Option<(&'a cull_gpu::GpuCulling, u32)>,
 }
 
 impl Renderer {
@@ -27,6 +32,7 @@ impl Renderer {
             physical_fx,
             probes,
             palette_group,
+            indirect,
         }: DrawSkinnedInputs<'_, '_>,
     ) -> u32 {
         let Some(palette) = palette_group else {
@@ -40,7 +46,7 @@ impl Renderer {
         // The shadow layouts put the palette at 2: shadows draw an
         // array-map material with its standard group, and only casters.
         let shadow = palette_at == 2;
-        for (batch, pipeline) in list.iter().zip(pipelines) {
+        for (k, (batch, pipeline)) in list.iter().zip(pipelines).enumerate() {
             if batch.transparent != transparent || (shadow && !batch.cast) {
                 continue;
             }
@@ -69,15 +75,23 @@ impl Renderer {
                 .as_ref()
                 .expect("a skinned mesh");
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-            let start = batch.first as u64 * skin::SKINNED_INSTANCE_STRIDE;
+            let (records, first) = match indirect {
+                Some((gc, g)) => (&gc.skinned, gc.skinned_region(g, batch.first)),
+                None => (&self.skinned_buffer, batch.first),
+            };
+            let start = first as u64 * skin::SKINNED_INSTANCE_STRIDE;
             pass.set_vertex_buffer(
                 1,
-                self.skinned_buffer
-                    .slice(start..start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE),
+                records.slice(start..start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE),
             );
             pass.set_vertex_buffer(2, skin.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count);
+            match indirect {
+                Some((gc, g)) => {
+                    pass.draw_indexed_indirect(&gc.args, gc.skinned_draw_offset(g, k as u32))
+                }
+                None => pass.draw_indexed(0..mesh.index_count, 0, 0..batch.count),
+            }
             draws += 1;
         }
         if let Some((fx, _)) = physical_fx

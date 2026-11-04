@@ -68,6 +68,7 @@ impl Renderer {
                 &[&wgpu::RenderPipeline],
                 Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
                 Option<probe_select::ProbeGroups>,
+                Option<u32>,
             ) -> u32,
         >,
     ) {
@@ -143,6 +144,7 @@ impl Renderer {
             lit_skinned_standard,
             None,
             None,
+            list.indirect,
         );
         stats.draw_calls += n;
         stats.reflection_draws += n;

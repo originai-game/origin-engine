@@ -765,7 +765,10 @@ impl Renderer {
         });
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
-        let mut spheres = Vec::with_capacity(order.len());
+        let mut boxes = Vec::with_capacity(order.len());
+        // Each (mesh, baked clip)'s box over every frame, once a frame.
+        let mut clip_boxes: std::collections::HashMap<(usize, u32), Option<(Vec3, Vec3)>> =
+            Default::default();
         let mut previous_slots = Vec::new();
         let mut baked_moved = false;
         let taa = self.info.antialias.temporal() || scene.post.motion_blur.is_some();
@@ -815,21 +818,32 @@ impl Renderer {
                     });
                 }
             }
-            let m = s.transform;
-            let scale = m
-                .x_axis
-                .truncate()
-                .length()
-                .max(m.y_axis.truncate().length())
-                .max(m.z_axis.truncate().length());
-            spheres.push(match self.cache.meshes[mesh].bounds {
-                Some((c, e)) => (
-                    m.transform_point3(c),
-                    e.length() * scale * s.bounds_scale.max(1.0),
-                ),
-                None => (m.w_axis.truncate(), 0.0),
-            });
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
+            let joints = self
+                .cache
+                .joint_boxes
+                .get(mesh)
+                .map_or(&[][..], Vec::as_slice);
+            let clip = s.baked.and_then(|b| {
+                *clip_boxes
+                    .entry((mesh, b.clip))
+                    .or_insert_with(|| skin::clip_box(joints, &scene.baked_clips[b.clip as usize]))
+            });
+            let morphing = targets > 0
+                && s.morph_weights[..targets as usize]
+                    .iter()
+                    .any(|&w| w != 0.0);
+            boxes.push(skin::skinned_box(
+                s,
+                self.cache.meshes[mesh].bounds,
+                joints,
+                match s.baked {
+                    Some(_) => &[],
+                    None => &scene.joint_palettes[s.palette as usize].matrices,
+                },
+                clip,
+                morphing,
+            ));
             if let Some(b) = s.baked {
                 // Bakes stay in their own buffer; only the previous
                 // transform belongs to the frame's dynamic palette.
@@ -948,15 +962,15 @@ impl Renderer {
             batches,
             garments,
             data,
-            spheres,
+            boxes,
             matrices,
             previous_slots,
             baked_moved,
         })
     }
 
-    /// The skinned batches the camera sees: instances whose widened bounds
-    /// touch `frustum`, appended to `frame.data` as new runs.
+    /// The skinned batches the camera sees: instances whose posed box
+    /// touches `frustum`, appended to `frame.data` as new runs.
     /// Only the batches on a layer of `layers` (`views.rs`).
     pub(crate) fn cull_skinned(
         frame: &mut SkinnedFrame,
@@ -968,8 +982,8 @@ impl Renderer {
         for b in frame.batches.iter().filter(|b| b.layers & layers != 0) {
             let first = frame.data.len() as u32;
             for k in b.first as usize..(b.first + b.count) as usize {
-                let (c, r) = frame.spheres[k];
-                if frustum.intersects_sphere(c, r) {
+                let (lo, hi) = frame.boxes[k];
+                if frustum.intersects_box(lo, hi) {
                     let d = frame.data[k];
                     frame.data.push(d);
                 } else {

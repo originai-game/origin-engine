@@ -107,6 +107,7 @@ impl Renderer {
                 &[&wgpu::RenderPipeline],
                 Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
                 Option<probe_select::ProbeGroups>,
+                Option<u32>,
             ) -> u32,
             impl Fn(
                 &mut wgpu::RenderPass,
@@ -197,6 +198,7 @@ impl Renderer {
                 &pipelines,
                 None,
                 None,
+                None,
             );
             if let Some(indices) = terrain_indices {
                 stats.draw_calls += terrain::draw_levels(
@@ -242,6 +244,7 @@ impl Renderer {
                 1,
                 3,
                 &pipelines,
+                None,
                 None,
                 None,
             );

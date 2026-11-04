@@ -28,6 +28,13 @@ const OCCLUDER: u32 = 2u;
 // Draws inside its bounds (no material vertex hook): may be hidden.
 const OCCLUDABLE: u32 = 4u;
 const FOLIAGE: u32 = 8u;
+// A skinned batch (cull_gpu.rs `SkinnedCull`): an instance's matrix takes
+// the unit box to its posed box, and its record is in `skinned`.
+const SKINNED: u32 = 16u;
+// A skinned batch that casts no shadow: left out of the shadow passes.
+const NO_CAST: u32 = 32u;
+// The floats of a skinned instance's record (skin.rs SkinnedInstanceGpu).
+const SKINNED_FLOATS: u32 = 28u;
 
 struct PassGpu {
   planes: array<vec4<f32>, 12>,
@@ -42,7 +49,8 @@ struct Params {
   sizes: vec4<u32>,
   // x: 1 when `previous` holds the sorted instances' previous transforms
   // (TAA's object motion): the camera pass copies them beside its own.
-  // y: this stage's first pass in `passes`.
+  // y: this stage's first pass in `passes`. z: the first skinned box
+  // among the instances (after the sorted ones), w: the skinned instances.
   motion: vec4<u32>,
   view_proj: mat4x4<f32>,
 };
@@ -81,6 +89,9 @@ struct BatchGpu {
 // Every pass of the frame (cull_gpu.rs), the other passes' stage first and
 // the camera's after; the stage's row wid.y is passes[pass_at(wid.y)].
 @group(0) @binding(7) var<storage, read> passes: array<PassGpu>;
+// The skinned instances' records: region 0 the frame's, region g + 1 pass
+// g's visible ones (each region `motion.w` records long).
+@group(0) @binding(8) var<storage, read_write> skinned: array<f32>;
 
 fn pass_at(row: u32) -> u32 { return params.motion.y + row; }
 
@@ -220,11 +231,21 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
     // The CPU path's sphere, widened by its rounding.
     let radius = b.bounds.w * scale * (1.0 + 1e-5);
+    let boxed = (b.flags & SKINNED) != 0u;
     var inside = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
+      && (kind != FRUSTUM_ALL || (b.flags & NO_CAST) == 0u)
       && (b.layers & pass_info.w) != 0u;
     for (var p = 0u; p < pass_info.y && inside; p++) {
       let plane = passes[pass_at(wid.y)].planes[p];
-      inside = dot(plane.xyz, center) + plane.w >= -radius;
+      // A box (a skinned instance's): each plane against its corner
+      // farthest inside it, as the CPU's `Frustum::intersects_box`.
+      var reach = radius;
+      if (boxed) {
+        reach = (abs(dot(plane.xyz, m[0].xyz)) * b.extent.x
+          + abs(dot(plane.xyz, m[1].xyz)) * b.extent.y
+          + abs(dot(plane.xyz, m[2].xyz)) * b.extent.z) * (1.0 + 1e-5);
+      }
+      inside = dot(plane.xyz, center) + plane.w >= -reach;
     }
     if (inside) { atomicAdd(&shared_inside, 1u); }
     let occluder = (b.flags & OCCLUDER) != 0u && scan[k] != 0u;
@@ -333,7 +354,13 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   let b = batches[bi];
   let at = prefix_at(g);
   let start = scan[at + b.first];
-  if (scan[at + k + 1u] != scan[at + k]) {
+  if (scan[at + k + 1u] != scan[at + k] && (b.flags & SKINNED) != 0u) {
+    // A skinned instance: its record into the pass's skinned region.
+    let base = params.motion.z;
+    let from = (k - base) * SKINNED_FLOATS;
+    let to = ((g + 1u) * params.motion.w + b.first - base + scan[at + k] - start) * SKINNED_FLOATS;
+    for (var j = 0u; j < SKINNED_FLOATS; j++) { skinned[to + j] = skinned[from + j]; }
+  } else if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
     if (params.motion.x != 0u && ((b.flags & FOLIAGE) != 0u || passes[pass_at(wid.y)].info.x == MAIN)) {

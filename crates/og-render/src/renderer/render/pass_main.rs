@@ -128,6 +128,7 @@ impl Renderer {
                 &[&wgpu::RenderPipeline],
                 Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
                 Option<probe_select::ProbeGroups>,
+                Option<u32>,
             ) -> u32,
             impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
             impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
@@ -269,6 +270,7 @@ impl Renderer {
             lit_skinned,
             physical_fx,
             probe_binding,
+            main_list.indirect,
         );
         if let Some(indices) = terrain_indices {
             let (n, tris) = terrain::draw_levels(
@@ -374,6 +376,7 @@ impl Renderer {
             lit_skinned,
             physical_fx,
             probe_binding,
+            main_list.indirect,
         );
         // Particles, far systems first.
         if let Some(group) = particle_group {

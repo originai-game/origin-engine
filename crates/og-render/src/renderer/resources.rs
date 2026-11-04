@@ -431,13 +431,15 @@ pub(crate) struct FxGroups {
 }
 
 /// The skinned instances of a frame: batches over `data` (every instance,
-/// for shadows), each entry's widened world bounds, and the joint matrices.
+/// for shadows), each entry's world bounds, and the joint matrices.
 pub(crate) struct SkinnedFrame {
     pub(crate) batches: Vec<Batch>,
     /// Deferred garment index and its first deformation palette slot.
     pub(crate) garments: Vec<(u32, u32)>,
     pub(crate) data: Vec<skin::SkinnedInstanceGpu>,
-    pub(crate) spheres: Vec<(Vec3, f32)>,
+    /// Per entry of `data` its world box (min, max) in its pose
+    /// ([`skin::skinned_box`]), which both culling paths test.
+    pub(crate) boxes: Vec<(Vec3, Vec3)>,
     /// The palette buffer's current section: the joints, then the weight
     /// and deformed vertex slots (`skin.rs`, its layout).
     pub(crate) matrices: Vec<[[f32; 4]; 4]>,

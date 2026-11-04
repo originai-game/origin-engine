@@ -68,6 +68,7 @@ pub const SCENES: &[&str] = &[
     "motion-blur",
     "stylised",
     "skinning",
+    "crowd-culling",
     "atmosphere-fog",
     "atmosphere-dusk",
     "atmosphere-night",
@@ -818,6 +819,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "stylised" => |g, _| {
             g.scene = fx::stylised_scene()?;
+            Ok(())
+        },
+        "crowd-culling" => |g, _| {
+            g.scene = fx::crowd_culling_scene();
+            g.frames = 3;
             Ok(())
         },
         "skinning" => |g, _| {

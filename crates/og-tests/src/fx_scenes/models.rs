@@ -308,6 +308,84 @@ pub fn skinning_scene() -> RenderScene {
     scene
 }
 
+/// Skinned culling (og-render's cull_gpu.rs `SkinnedCull`): a crowd of
+/// 7 × 5 cylinders playing one baked clip at their own frames, its back
+/// three rows behind a grey wall, and in front a posed cylinder whose
+/// palette carries it 12 m from where its bind pose stands (out of view
+/// there): culled by its posed box, it is drawn. In the frame: the wall
+/// across the middle, the two front rows of bending pink cylinders before
+/// it, and the moved cylinder, orange, at the centre in front.
+pub fn crowd_culling_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 40.0);
+    let (mesh, skin) = skinned_cylinder(0.3, 24, 24);
+    let h = scene.add_skinned_mesh(mesh, skin);
+    let pink = scene.add_material(Material {
+        base_color: [0.8, 0.3, 0.5, 1.0],
+        roughness: 0.5,
+        ..Default::default()
+    });
+    let orange = scene.add_material(Material {
+        base_color: [0.95, 0.5, 0.1, 1.0],
+        roughness: 0.5,
+        ..Default::default()
+    });
+    let wall = scene.add_mesh(og_render::shapes::cuboid(Vec3::new(14.0, 4.0, 0.4)));
+    let grey = scene.add_material(Material {
+        base_color: [0.5, 0.5, 0.52, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    scene.add_instance(
+        wall,
+        grey,
+        Mat4::from_translation(Vec3::new(0.0, 2.0, -2.6)),
+    );
+    scene.baked_clips.push(og_render::BakedClip {
+        joints: CYLINDER_BONES as u32,
+        frames: [0.0, 0.3, 0.6]
+            .iter()
+            .flat_map(|&b| bend_palette(b, 0.0).matrices)
+            .collect(),
+    });
+    for z in 0..5 {
+        for x in 0..7 {
+            let k = z * 7 + x;
+            let f = (k as f32 * 0.37) % 2.0;
+            let at =
+                Mat4::from_translation(Vec3::new((x as f32 - 3.0) * 1.4, 0.0, -(z as f32) * 1.6));
+            let mut inst = SkinnedInstance::new(h, pink, at, 0);
+            inst.baked = Some(og_render::BakedPose {
+                clip: 0,
+                frame: f,
+                previous_clip: 0,
+                previous_frame: f,
+                previous_transform: at,
+            });
+            scene.skinned_instances.push(inst);
+        }
+    }
+    scene.joint_palettes.push(JointPalette::from(vec![
+        Mat4::from_translation(Vec3::new(
+            12.0, 0.0, 0.0
+        ));
+        CYLINDER_BONES
+    ]));
+    scene.skinned_instances.push(SkinnedInstance::new(
+        h,
+        orange,
+        Mat4::from_translation(Vec3::new(-12.0, 0.0, 2.2)),
+        0,
+    ));
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.6, 8.0),
+        target: Vec3::new(0.0, 1.0, -2.0),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
 /// Per-instance looks (kestrel-stair #11): three instances of one glTF
 /// model, its materials shared, the middle one flashing white and the right
 /// one tinted amber; in front, two skinned cylinders of one mesh and

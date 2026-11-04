@@ -723,8 +723,8 @@ at its sorted slot: under TAA with object motion GPU culling uploads the
 sorted instances' previous transforms beside the current ones
 (`cull_gpu.rs` `previous`) and its camera pass compacts them with its
 survivors, so the regular prepass, the meshlet path and the visibility
-buffer's setup all give TAA each object's own motion; motion blur culls
-on the CPU, and the path is then off. `debugView lod` tints each cluster by its
+buffer's setup all give TAA and object motion blur each object's own
+motion. `debugView lod` tints each cluster by its
 level. The path takes the camera pass's opaque batches of clustered
 meshes under GPU culling (`Culling.auto` turns GPU culling on when such
 a batch exists); what it cannot take keeps the per-instance path:
@@ -1136,12 +1136,19 @@ Screen sprites, the UI and the post chain are the main frame's. Of the post chai
 a viewport carries exposure and the tone curve (the resolve); an `hdr`
 target carries linear radiance for the frame that shows it to expose.
 The cost is explicit: a view draws everything its mask admits, so its
-`layers` and `every` are the knobs. Views cull on the CPU while the
-main camera, its shadow maps and the planar reflection keep GPU culling
-(`cull_gpu.rs`): under it a view's list appends every instance it draws
-to the instance buffer, since the sorted instances live in the culling's
-buffer, and the GPU passes test each batch's layer mask as the CPU lists
-do.
+`layers` and `every` are the knobs. Under GPU culling (`cull_gpu.rs`)
+each view is a pass of its own beside the main camera's, its shadow maps
+and the planar reflection: its planes and its layer mask, its opaque
+instances drawn indirect from its region as the CPU list would draw
+them. Its transparent instances, sorted on the CPU from its eye, and its
+skinned ones keep their CPU lists, appended to the instance buffers.
+Skinned instances and baked crowds are culled by their posed boxes on
+both paths: the joints' bind-pose boxes moved by the palette (a vertex
+lies in the hull of its joints' moves of it), a crowd's clip's over all
+its frames; under GPU culling the camera's pass, its occlusion test
+included, the planar reflection and every shadow pass take them with the
+instances, and their records are compacted per pass for the skinned
+draws.
 - `every` skips ticks.
 - A mirror reflects the main eye in its plane. It draws through an
   off-axis frustum fitted to the quad's corners (Kooima), with the near

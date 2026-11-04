@@ -115,10 +115,11 @@ pub struct MorphTargets {
 /// A skinned (or morphed) mesh to draw: like [`crate::Instance`], plus the
 /// palette (an index into [`crate::RenderScene::joint_palettes`]) that poses
 /// it and its blendshape weights. Instances sharing a (mesh, material) draw
-/// in one instanced call whatever their palettes. The camera culls each one
-/// with its mesh's bind-pose bounding sphere scaled by `bounds_scale` (an
-/// animated pose can leave the bind pose's bounds); shadow passes draw
-/// every one that casts.
+/// in one instanced call whatever their palettes. Every pass culls each one
+/// by its posed box (`skin::skinned_box`: its joints' bind boxes moved by
+/// its palette, or a baked clip's over all its frames); with blendshape
+/// weights or deformed vertices, by its mesh's bind-pose bounding sphere
+/// scaled by `bounds_scale`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SkinnedInstance {
     pub mesh: MeshHandle,
@@ -127,7 +128,9 @@ pub struct SkinnedInstance {
     pub palette: u32,
     /// Blendshape weights in target order (og-anim's `morph_weights`).
     pub morph_weights: [f32; MAX_MORPH_TARGETS],
-    /// How much larger than the bind pose's bounds the pose may reach.
+    /// How much larger than the bind pose's bounds the pose may reach,
+    /// for an instance culled by its bind pose's sphere (blendshapes set,
+    /// deformed vertices: [`SkinnedInstance`]).
     pub bounds_scale: f32,
     /// Its own hit flash and tint ([`crate::InstanceFx`]).
     pub fx: crate::InstanceFx,
@@ -202,21 +205,93 @@ pub(crate) fn joint_boxes(positions: &[[f32; 3]], skin: &SkinData) -> Vec<JointB
 /// of its joints' boxes moved by `palette` (a missing joint stays put),
 /// through `transform`. `None` without boxes (a morphed mesh with no skin).
 pub(crate) fn posed_centre(boxes: &[JointBox], palette: &[Mat4], transform: &Mat4) -> Option<Vec3> {
+    posed_box(boxes, palette, transform).map(|(lo, hi)| (lo + hi) * 0.5)
+}
+
+/// A skinned instance's posed bounds in the world (min, max): the union
+/// of its joints' boxes moved by `palette` (a missing joint stays put),
+/// through `transform`. Linear blend skinning puts a vertex in the convex
+/// hull of its joints' moves of it, each inside its joint's moved box, so
+/// the union holds every posed vertex. `None` without boxes.
+pub(crate) fn posed_box(
+    boxes: &[JointBox],
+    palette: &[Mat4],
+    transform: &Mat4,
+) -> Option<(Vec3, Vec3)> {
     let (mut lo, mut hi) = (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY));
     for &(j, a, b) in boxes {
-        let m = palette.get(j as usize).copied().unwrap_or(Mat4::IDENTITY);
-        for k in 0..8 {
-            let c = Vec3::new(
-                if k & 1 == 0 { a.x } else { b.x },
-                if k & 2 == 0 { a.y } else { b.y },
-                if k & 4 == 0 { a.z } else { b.z },
-            );
-            let w = transform.transform_point3(m.transform_point3(c));
-            lo = lo.min(w);
-            hi = hi.max(w);
-        }
+        let m = *transform * palette.get(j as usize).copied().unwrap_or(Mat4::IDENTITY);
+        let (l, h) = moved_box(&m, a, b);
+        lo = lo.min(l);
+        hi = hi.max(h);
     }
-    lo.is_finite().then(|| (lo + hi) * 0.5)
+    (lo.is_finite() && hi.is_finite()).then_some((lo, hi))
+}
+
+/// A baked clip's bounds in its mesh's space (min, max): the union of
+/// [`posed_box`] over every frame it holds. A blend between two frames
+/// stays inside it (each blended joint matrix moves a vertex to a convex
+/// combination of the two frames' posed vertices). `None` without boxes.
+pub(crate) fn clip_box(boxes: &[JointBox], clip: &BakedClip) -> Option<(Vec3, Vec3)> {
+    let j = clip.joints as usize;
+    let (mut lo, mut hi) = (Vec3::splat(f32::INFINITY), Vec3::splat(f32::NEG_INFINITY));
+    for k in 0..clip.frame_count() {
+        let (l, h) = posed_box(boxes, &clip.frames[k * j..(k + 1) * j], &Mat4::IDENTITY)?;
+        lo = lo.min(l);
+        hi = hi.max(h);
+    }
+    (lo.is_finite() && hi.is_finite()).then_some((lo, hi))
+}
+
+/// A skinned instance's world box (min, max), which the CPU and GPU
+/// culling test: its pose's ([`posed_box`] through `palette`), or a baked
+/// instance's clip's (`clip`, [`clip_box`]) through its transform. An
+/// instance whose vertices leave its joints' boxes (blendshape weights
+/// set, deformed vertices) or whose mesh has no joint boxes takes its
+/// bind pose's bounding sphere (`bind`: centre, half extent) widened by
+/// [`SkinnedInstance::bounds_scale`]; with no bounds, its origin.
+pub(crate) fn skinned_box(
+    s: &SkinnedInstance,
+    bind: Option<(Vec3, Vec3)>,
+    joints: &[JointBox],
+    palette: &[Mat4],
+    clip: Option<(Vec3, Vec3)>,
+    morphing: bool,
+) -> (Vec3, Vec3) {
+    let posed = match s.baked {
+        Some(_) => clip.map(|(lo, hi)| moved_box(&s.transform, lo, hi)),
+        None if morphing || s.deformed.is_some() => None,
+        None => posed_box(joints, palette, &s.transform),
+    };
+    posed.unwrap_or_else(|| {
+        let m = s.transform;
+        let scale = m
+            .x_axis
+            .truncate()
+            .length()
+            .max(m.y_axis.truncate().length())
+            .max(m.z_axis.truncate().length());
+        let (c, r) = match bind {
+            Some((c, e)) => (
+                m.transform_point3(c),
+                e.length() * scale * s.bounds_scale.max(1.0),
+            ),
+            None => (m.w_axis.truncate(), 0.0),
+        };
+        (c - Vec3::splat(r), c + Vec3::splat(r))
+    })
+}
+
+/// The box (min, max) holding box `a..b` moved by `m` (Arvo's method:
+/// the centre moved, the half extent through the matrix's absolute
+/// values).
+pub(crate) fn moved_box(m: &Mat4, a: Vec3, b: Vec3) -> (Vec3, Vec3) {
+    let c = m.transform_point3((a + b) * 0.5);
+    let e = (b - a) * 0.5;
+    let r = m.x_axis.truncate().abs() * e.x
+        + m.y_axis.truncate().abs() * e.y
+        + m.z_axis.truncate().abs() * e.z;
+    (c - r, c + r)
 }
 
 /// The most slots one frame's palette buffer may hold: joints and
@@ -840,5 +915,119 @@ mod motion_tests {
         let mut slots = vec![j.to_cols_array_2d()];
         slots.extend_from_slice(&w_now);
         assert_eq!(append_previous(&now, &now, &inst, &[], &mut slots), None);
+    }
+}
+
+#[cfg(test)]
+mod bounds_tests {
+    use super::*;
+    use crate::scene::{MaterialHandle, MeshHandle};
+
+    /// A column of vertices from y 0 to 2: the lower ones on joint 0, the
+    /// upper ones on joint 1, the middle ones blended half and half.
+    fn column() -> (Vec<[f32; 3]>, SkinData) {
+        let mut positions = Vec::new();
+        let mut skin = SkinData::default();
+        for i in 0..=20 {
+            let y = i as f32 * 0.1;
+            for x in [-0.2f32, 0.2] {
+                positions.push([x, y, 0.1]);
+                let w = ((y - 0.8) / 0.4).clamp(0.0, 1.0);
+                skin.joints.push([0, 1, 0, 0]);
+                skin.weights.push([1.0 - w, w, 0.0, 0.0]);
+            }
+        }
+        (positions, skin)
+    }
+
+    fn posed(p: [f32; 3], skin: (&[u16; 4], &[f32; 4]), palette: &[Mat4], at: &Mat4) -> Vec3 {
+        let p = Vec3::from(p);
+        let v: Vec3 = (0..4)
+            .map(|k| palette[skin.0[k] as usize].transform_point3(p) * skin.1[k])
+            .sum();
+        at.transform_point3(v)
+    }
+
+    fn inside((lo, hi): (Vec3, Vec3), p: Vec3) -> bool {
+        p.cmpge(lo - 1e-4).all() && p.cmple(hi + 1e-4).all()
+    }
+
+    /// A pose that throws the upper half 6 m sideways and turns it: every
+    /// posed vertex, blended ones included, lies in the instance's box,
+    /// which the bind pose's sphere twice over does not reach (the old
+    /// bounds, which culled such a pose while it was in view).
+    #[test]
+    fn the_posed_box_holds_every_posed_vertex() {
+        let (positions, skin) = column();
+        let boxes = joint_boxes(&positions, &skin);
+        let palette = [
+            Mat4::IDENTITY,
+            Mat4::from_translation(Vec3::new(6.0, 0.5, 0.0)) * Mat4::from_rotation_z(1.2),
+        ];
+        let at = Mat4::from_translation(Vec3::new(1.0, 0.0, -3.0)) * Mat4::from_rotation_y(0.7);
+        let s = SkinnedInstance::new(
+            MeshHandle::from_index(0),
+            MaterialHandle::from_index(0),
+            at,
+            0,
+        );
+        let bind = (Vec3::new(0.0, 1.0, 0.1), Vec3::new(0.2, 1.0, 0.0));
+        let b = skinned_box(&s, Some(bind), &boxes, &palette, None, false);
+        let (c, r) = (at.transform_point3(bind.0), bind.1.length() * 2.0);
+        let mut outside_sphere = 0;
+        for (p, (j, w)) in positions.iter().zip(skin.joints.iter().zip(&skin.weights)) {
+            let v = posed(*p, (j, w), &palette, &at);
+            assert!(inside(b, v), "{v} outside {b:?}");
+            outside_sphere += (v.distance(c) > r) as u32;
+        }
+        assert!(
+            outside_sphere > 10,
+            "{outside_sphere} vertices left the old sphere"
+        );
+        // And it is tight enough to cull: a little over the pose's reach.
+        assert!((b.1 - b.0).max_element() < 9.0, "{b:?}");
+        // Blendshapes move vertices off their joints' boxes: the sphere.
+        let m = skinned_box(&s, Some(bind), &boxes, &palette, None, true);
+        assert!((m.1 - m.0 - Vec3::splat(2.0 * r)).abs().max_element() < 1e-4);
+    }
+
+    /// A baked clip's box holds every frame's pose and the blends between
+    /// them, through the instance's transform.
+    #[test]
+    fn a_clips_box_holds_its_frames_and_their_blends() {
+        let (positions, skin) = column();
+        let boxes = joint_boxes(&positions, &skin);
+        let frames: Vec<Mat4> = [0.0f32, 1.0, -0.8]
+            .iter()
+            .flat_map(|&a| {
+                [
+                    Mat4::IDENTITY,
+                    Mat4::from_translation(Vec3::new(a * 3.0, 1.0, 0.0)) * Mat4::from_rotation_x(a),
+                ]
+            })
+            .collect();
+        let clip = BakedClip { joints: 2, frames };
+        let at = Mat4::from_translation(Vec3::new(-4.0, 0.0, 2.0));
+        let mut s = SkinnedInstance::new(
+            MeshHandle::from_index(0),
+            MaterialHandle::from_index(0),
+            at,
+            0,
+        );
+        s.baked = Some(BakedPose {
+            clip: 0,
+            frame: 0.0,
+            previous_clip: 0,
+            previous_frame: 0.0,
+            previous_transform: at,
+        });
+        let b = skinned_box(&s, None, &boxes, &[], clip_box(&boxes, &clip), false);
+        for f in [0.0, 0.3, 1.0, 1.5, 1.99] {
+            let palette = clip.palette(f);
+            for (p, (j, w)) in positions.iter().zip(skin.joints.iter().zip(&skin.weights)) {
+                let v = posed(*p, (j, w), &palette, &at);
+                assert!(inside(b, v), "frame {f}: {v} outside {b:?}");
+            }
+        }
     }
 }

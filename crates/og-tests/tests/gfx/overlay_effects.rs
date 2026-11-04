@@ -868,6 +868,15 @@ fn skinning_matches_its_reference() {
     assert_eq!((s.skinned_instances, s.joints), (5, 20));
 }
 
+/// `crowd-culling` (reference `crowd-culling.png`): a baked crowd, its back
+/// rows behind a wall, and a cylinder its palette carries 12 m from its bind
+/// pose into the middle of the view, which its posed box keeps drawn.
+#[test]
+fn crowd_culling_matches_its_reference() {
+    let s = check("crowd-culling").stats;
+    assert_eq!(s.skinned_instances, 36);
+}
+
 /// `skeleton-2d` (S9; reference `skeleton-2d.png`): a 2D rig posed by
 /// og-anim on three planks (flat, rising, falling; the third mirrored by
 /// flipX) and drawn as sprite-batch triangles under 2D lighting. The planks
