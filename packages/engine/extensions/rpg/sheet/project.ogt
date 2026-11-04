@@ -1,0 +1,22 @@
+type project
+version 1
+---
+# The RPG kit's review sheet: `og ui sheet rpg` renders each page at
+# desktop and phone, 100 % and 150 % (docs/ui.md §17.3). Every page sets
+# its own style and state.
+name "Rpg kit sheet"
+id "rpg-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "inventory-fantasy" "style:fantasy;page:inventory"
+  screen "inventory-pixel" "style:pixel;page:inventory"
+  screen "quests-fantasy" "style:fantasy;page:quests"
+  screen "dialogue-fantasy" "style:fantasy;page:dialogue"
+  screen "dialogue-cartoon" "style:cartoon;page:dialogue"
+  screen "frames-scifi" "style:scifi;page:frames"
+  screen "frames-fantasy" "style:fantasy;page:frames"
+}

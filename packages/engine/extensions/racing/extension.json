@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "kind": "kit",
+  "name": "racing",
+  "version": "1.0.0",
+  "description": "Race HUDs (speedometer, lap timer, standings, race banner, arcade item slot and drift score) and the garage, built from common components",
+  "skill": "building-racing-ui/SKILL.md",
+  "entry": "index.ts",
+  "types": "types.ts"
+}

@@ -1,0 +1,19 @@
+type project
+version 1
+---
+# The strategy kit's review sheet: `og ui sheet strategy` renders each page at
+# desktop and phone, 100 % and 150 % (docs/ui.md §17.3). Every page sets
+# its own style and state.
+name "Strategy kit sheet"
+id "strategy-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "console-scifi" "style:scifi;page:console"
+  screen "console-fantasy" "style:fantasy;page:console"
+  screen "defence-fantasy" "style:fantasy;page:defence"
+  screen "defence-cartoon" "style:cartoon;page:defence"
+}

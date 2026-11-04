@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names the built-in pixel style so the cook bundles it (@styles/pixel/); the sheet loads it itself.
+name "strategy sheet pixel"
+ui "pixel"

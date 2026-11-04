@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names the built-in fantasy style so the cook bundles it (@styles/fantasy/); the sheet loads it itself.
+name "strategy sheet fantasy"
+ui "fantasy"

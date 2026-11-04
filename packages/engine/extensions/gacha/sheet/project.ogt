@@ -1,0 +1,19 @@
+type project
+version 1
+---
+# The gacha kit's review sheet: `og ui sheet gacha` renders each page at
+# desktop and phone, 100 % and 150 % (docs/ui.md §17.3). Every page sets
+# its own style and state.
+name "Gacha kit sheet"
+id "gacha-sheet"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "banner-cartoon" "style:cartoon;page:banner"
+  screen "banner-fantasy" "style:fantasy;page:banner"
+  screen "banner-scifi" "style:scifi;page:banner"
+  screen "pull-cartoon" "style:cartoon;page:pull"
+}
