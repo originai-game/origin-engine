@@ -55,13 +55,15 @@ impl Hooks for Disk {
     }
 }
 
-/// What each frame drew: the baked clips' (joints, frames) and every
-/// skinned instance's baked pose (clip, frame, previous clip, frame), or
-/// `None` for one posed by a palette.
+/// What each frame drew: the baked clips' (joints, frames), every crowd
+/// member's baked pose (clip, frame, previous clip, frame), the crowds'
+/// parts, and the skinned instances and palettes (none for a crowd).
 #[derive(Default)]
 struct Seen {
     clips: Vec<(u32, usize)>,
     poses: Vec<Option<(u32, f32, u32, f32)>>,
+    crowds: Vec<usize>,
+    skinned: usize,
     palettes: usize,
 }
 
@@ -82,13 +84,16 @@ impl RenderBackend for Recorder {
                 .map(|c| (c.joints, c.frame_count()))
                 .collect(),
             poses: scene
-                .skinned_instances
+                .crowds
                 .iter()
-                .map(|i| {
-                    i.baked
-                        .map(|b| (b.clip, b.frame, b.previous_clip, b.previous_frame))
+                .flat_map(|c| &c.members)
+                .map(|m| {
+                    let b = m.pose;
+                    Some((b.clip, b.frame, b.previous_clip, b.previous_frame))
                 })
                 .collect(),
+            crowds: scene.crowds.iter().map(|c| c.parts.len()).collect(),
+            skinned: scene.skinned_instances.len(),
             palettes: scene.joint_palettes.len(),
         });
         Ok(())
@@ -147,10 +152,15 @@ fn a_crowd_shares_one_baked_clip_at_its_own_frames() {
         joints as usize * frames * 64
     );
     assert!(joints > 0 && frames >= 2);
-    // Every member drawn baked (no og-anim palette), at its own frame.
+    // Every member drawn baked (no og-anim palette), at its own frame, as
+    // one GPU crowd of the walker's skinned parts (og-render's crowd.rs),
+    // not as skinned instances culled on the CPU.
     assert_eq!(last.palettes, 0);
+    assert_eq!(last.skinned, 0);
+    assert_eq!(last.crowds.len(), 1, "{:?}", last.crowds);
+    assert!(last.crowds[0] >= 1);
     let poses: Vec<_> = last.poses.iter().map(|p| p.expect("baked")).collect();
-    assert!(poses.len() >= MEMBERS, "{} instances", poses.len());
+    assert_eq!(poses.len(), MEMBERS, "{} members", poses.len());
     let mut distinct: Vec<u32> = poses.iter().map(|p| p.1.to_bits()).collect();
     distinct.sort();
     distinct.dedup();

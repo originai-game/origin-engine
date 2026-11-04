@@ -1521,17 +1521,49 @@ pub(crate) fn crowd_model(
         previous_frame,
         previous_transform,
     };
+    // Its skinned parts draw as a member of the frame's crowd of the same
+    // parts (og-render's crowd.rs: culled, compacted and drawn on the GPU);
+    // its rigid parts as instances.
+    let skinned: Vec<og_render::CrowdPart> = parts
+        .iter()
+        .filter_map(|&(mesh, material, _)| {
+            let p = mesh.index().wrapping_sub(info.base);
+            meshes
+                .get(p)
+                .copied()
+                .flatten()
+                .map(|m| og_render::CrowdPart {
+                    levels: vec![m],
+                    material,
+                })
+        })
+        .collect();
+    if !skinned.is_empty() {
+        let mut member = og_render::CrowdMember::new(world_matrix, clip, frame);
+        member.pose = pose;
+        member.fx = look.fx;
+        member.receive_shadows = look.receive;
+        let at = scene
+            .crowds
+            .iter()
+            .position(|c| c.cast_shadows == look.cast && c.parts == skinned);
+        let row = match at {
+            Some(i) => &mut scene.crowds[i],
+            None => {
+                scene.crowds.push(og_render::Crowd {
+                    parts: skinned,
+                    cast_shadows: look.cast,
+                    ..Default::default()
+                });
+                scene.crowds.last_mut().expect("just pushed")
+            }
+        };
+        row.members.push(member);
+    }
     for (k, &(mesh, material, local)) in parts.iter().enumerate() {
         let p = mesh.index().wrapping_sub(info.base);
         match meshes.get(p).copied().flatten() {
-            Some(skinned) => {
-                let mut inst = SkinnedInstance::new(skinned, material, world_matrix, 0);
-                inst.fx = look.fx;
-                inst.cast_shadows = look.cast;
-                inst.receive_shadows = look.receive;
-                inst.baked = Some(pose);
-                scene.skinned_instances.push(inst);
-            }
+            Some(_) => {}
             None => {
                 scene.instances.push(og_render::Instance {
                     mesh,
