@@ -529,6 +529,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_ao_blur", AO_FORMAT),
     ("fs_ao_upsample", AO_FORMAT),
     ("fs_contact", CONTACT_FORMAT),
+    ("fs_contact_blur", CONTACT_FORMAT),
     ("fs_outline", HDR_FORMAT),
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),

@@ -2401,7 +2401,7 @@ impl Renderer {
             }
         }
         if contact {
-            passes.push(FramePass::Contact);
+            passes.extend([FramePass::Contact, FramePass::ContactBlur]);
         }
         if particle_frame.any_gpu {
             passes.push(FramePass::Particles);

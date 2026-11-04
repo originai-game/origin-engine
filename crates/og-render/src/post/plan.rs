@@ -22,9 +22,14 @@ pub(crate) enum FramePass {
     /// half resolution and this pass writes the full-resolution `ao`.
     AoUpsample,
     /// Screen-space contact shadows for the shadowed local lights
-    /// (fxpost.wgsl `fs_contact`): writes `ao`, the AO (from `ao.pre`, the
-    /// AO passes' target with it) in r and the lights' masks in gba.
+    /// (fxpost.wgsl `fs_contact`): writes `ao.contact`, the AO (from
+    /// `ao.pre`, the AO passes' target with it) in r and the lights' raw
+    /// masks in gba.
     Contact,
+    /// The contact masks' depth- and normal-aware blur
+    /// (`fs_contact_blur`): `ao.contact` into `ao`, which the lit passes
+    /// read.
+    ContactBlur,
     /// The particle simulation (compute).
     Particles,
     /// The 2D light map.
@@ -172,6 +177,7 @@ impl FramePass {
             FramePass::AoBlur => "ao-blur".into(),
             FramePass::AoUpsample => "ao-upsample".into(),
             FramePass::Contact => "contact".into(),
+            FramePass::ContactBlur => "contact-blur".into(),
             FramePass::Particles => "particles".into(),
             FramePass::Light2d => "lights-2d".into(),
             FramePass::Metaballs => "metaballs".into(),
@@ -505,7 +511,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             .transient(ao_out, desc(w, h, ao_format, 1, attach_bind));
     }
     if contact {
-        g.transient("ao", desc(w, h, CONTACT_FORMAT, 1, attach_bind));
+        g.transient("ao.contact", desc(w, h, CONTACT_FORMAT, 1, attach_bind))
+            .transient("ao", desc(w, h, CONTACT_FORMAT, 1, attach_bind));
     }
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
@@ -706,9 +713,10 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::AoBlur => g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &[ao_out]),
             FramePass::AoUpsample => g.pass(name, &["ao.blur", "lindepth"], &[ao_out]),
             FramePass::Contact if has(FramePass::AoBlur) => {
-                g.pass(name, &["ao.pre", "lindepth", "gbuffer"], &["ao"])
+                g.pass(name, &["ao.pre", "lindepth", "gbuffer"], &["ao.contact"])
             }
-            FramePass::Contact => g.pass(name, &["lindepth", "gbuffer"], &["ao"]),
+            FramePass::Contact => g.pass(name, &["lindepth", "gbuffer"], &["ao.contact"]),
+            FramePass::ContactBlur => g.pass(name, &["ao.contact", "lindepth", "gbuffer"], &["ao"]),
             FramePass::Particles if prepass => {
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
@@ -1128,14 +1136,21 @@ mod tests {
             if ao {
                 passes.extend([FramePass::Ao, FramePass::AoBlur]);
             }
-            passes.extend([FramePass::Contact, FramePass::Main, FramePass::Tonemap]);
+            passes.extend([
+                FramePass::Contact,
+                FramePass::ContactBlur,
+                FramePass::Main,
+                FramePass::Tonemap,
+            ]);
             let plan = build_graph(&passes, &cfg(false, false))
                 .compile()
                 .unwrap_or_else(|e| panic!("ao {ao}: {e}"));
             let at = |p: FramePass| plan.order().iter().position(|&i| passes[i] == p);
-            assert!(at(FramePass::Contact) < at(FramePass::Main));
+            assert!(at(FramePass::Contact) < at(FramePass::ContactBlur));
+            assert!(at(FramePass::ContactBlur) < at(FramePass::Main));
             let format = |name| plan.slot(name).map(|s| plan.physical()[s].format);
             assert_eq!(format("ao"), Some(CONTACT_FORMAT), "ao {ao}");
+            assert_eq!(format("ao.contact"), Some(CONTACT_FORMAT), "ao {ao}");
             // The prepass holds `ao` in the fx group: it may not share a
             // texture with `outline-id` (the same format, unread without
             // an outline pass), which the prepass draws into.

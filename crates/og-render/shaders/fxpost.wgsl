@@ -759,3 +759,35 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
   }
   return vec4<f32>(ao, masks);
 }
+
+// The contact masks (tex_b's gba, `fs_contact`'s jittered march) resolved
+// over 5x5 pixels, each weighed by how near its view depth (4 % of the
+// pixel's) and how alike its normal is to the pixel's (a joint bilateral
+// filter, as the AO's blur, with the normal term of SVGF's): one frame's
+// per-pixel samples become a continuous darkening that stops at depth and
+// crease edges, so it never spills from a caster onto the wall behind it
+// or across a block's corner. The AO in r is already blurred: it passes.
+@fragment
+fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let center = textureLoad(tex_b, px, 0);
+  let d0 = depth_at(px);
+  if (is_sky(d0)) { return center; }
+  let n0 = world_normal(px);
+  let size = vec2<i32>(textureDimensions(tex_b));
+  let scale = max(d0 * 0.04, 1e-3);
+  var sum = vec3<f32>(0.0);
+  var weight = 0.0;
+  for (var y = -2; y <= 2; y++) {
+    for (var x = -2; x <= 2; x++) {
+      let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
+      let d = depth_at(q);
+      if (is_sky(d)) { continue; }
+      let w = exp(-abs(d - d0) / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0);
+      sum += textureLoad(tex_b, q, 0).gba * w;
+      weight += w;
+    }
+  }
+  if (weight < 1e-5) { return center; }
+  return vec4<f32>(center.r, sum / weight);
+}

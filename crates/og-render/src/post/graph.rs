@@ -507,6 +507,7 @@ impl FrameGraph {
                 FramePass::Contact => {
                     pair(&|_| fx_group(black, self.try_view("ao.pre").unwrap_or(&passes.white)))
                 }
+                FramePass::ContactBlur => pair(&|_| fx_group(black, self.view("ao.contact"))),
                 FramePass::Ssr => pair(&|_| fx_group(self.view("hdr"), black)),
                 FramePass::DepthBands => pair(&|_| fx_group(self.view(names.base), black)),
                 FramePass::Outline => {
@@ -572,7 +573,8 @@ impl FrameGraph {
             FramePass::AoBlur => Some((AO_BLUR_GATHER, ao)),
             FramePass::AoUpsample if gi => Some(("fs_gi_upsample", ao)),
             FramePass::AoUpsample => Some(("fs_ao_upsample", ao)),
-            FramePass::Contact => Some(("fs_contact", "ao")),
+            FramePass::Contact => Some(("fs_contact", "ao.contact")),
+            FramePass::ContactBlur => Some(("fs_contact_blur", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),
             FramePass::DofBlur => Some(("fs_dof_blur", "dof.blur")),
@@ -784,6 +786,7 @@ impl FrameGraph {
             | FramePass::AoBlur
             | FramePass::AoUpsample
             | FramePass::Contact
+            | FramePass::ContactBlur
             | FramePass::Outline
             | FramePass::DofCoc
             | FramePass::DofBlur
