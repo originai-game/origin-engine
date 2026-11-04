@@ -149,7 +149,9 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     if (r.changed && r.selected >= 0) out.sort = list[r.selected]?.key ?? "";
   };
   const filters = (): void => {
-    if (portrait) {
+    // A phone, or large text beside the deck: the chips scroll in one row (wrapped, three rows of them took the
+    // collection's room), the search and the sort under them.
+    if (portrait || ts > 1.25) {
       kit.column("Filters", { width: grow(), gap: u(6) }, () => {
         kit.openScroll("Chips", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal" } as never);
         kit.open("Row", { direction: "row", gap: u(10), cross: "center" });
@@ -158,12 +160,17 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
         kinds();
         kit.close();
         kit.close();
-        // Large text stacks the search over the sort: side by side they no longer fit a phone's width.
-        const stack = ts > 1.25;
+        // The sort fits its words; on a phone it goes under the search when they would leave the search less than
+        // half the width (large text, a long sort label), as it was last tick.
+        const sw = kit.memory("~db.sw", 0);
+        const stack = portrait && (ts > 1.25 || sw > W * 0.45);
         kit.open("Find", { direction: stack ? "column" : "row", width: grow(), gap: u(8), cross: stack ? "stretch" : "center" });
         search(grow());
-        sort(stack ? grow() : px(Math.round(u(150) * Math.min(1.3, ts))));
+        sort(stack ? grow() : ({ kind: "fit", min: Math.round(u(portrait ? 150 : 190) * Math.min(1.3, ts)) } as Api.Size));
         kit.close();
+        const sb = kit.bounds(`${kit.lastPath()}/Sort`);
+        if (sb && !stack) kit.remember("~db.sw", Math.round(sb.width));
+        else kit.remember("~db.sw", sw);
       });
     } else {
       kit.row("Filters", { width: grow(), gap: u(14), cross: "center", wrap: true } as never, () => {
@@ -237,6 +244,44 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
     }
   };
 
+  // A scroll column of `n` rows that builds only those the view crosses: fillers keep the scroll range of
+  // the rest, as og.ui.openList does, so a long collection or deck stays inside the element budget. The offset is this
+  // tick's (og.ui.scrollState); a row's height is one measured whole in view last tick, else `guess`. `head` builds
+  // first, `tail` once the last row is built.
+  const windowed = (key: string, sd: Record<string, unknown>, n: number, guess: number, gap: number, idOf: (i: number) => string, row: (i: number) => void, head?: () => void, tail?: () => void): void => {
+    const path = `${kit.openPath()}/${key}`;
+    const sv = kit.scrollState(path);
+    const seen = kit.memory(`~db.h.${key}`, 0);
+    const stride = (seen > 0 ? seen : guess) + gap;
+    const off = sv?.offsetY ?? 0;
+    const view = sv?.viewHeight || frame().viewport.height;
+    // The offset is this tick's, so the rows the view crosses are enough: no spare row past either end.
+    const first = Math.min(n, Math.max(0, Math.floor(off / stride)));
+    const last = Math.min(n, Math.max(first + 1, Math.ceil((off + view) / stride)));
+    const filler = (id: string, h: number): void => {
+      kit.open(id, { height: px(Math.max(0, h)) });
+      kit.close();
+    };
+    kit.openScroll(key, sd as never);
+    head?.();
+    if (first > 0) filler("Lead", first * stride - gap);
+    for (let i = first; i < last; i++) row(i);
+    if (last < n) filler("Rest", (n - last) * stride - gap);
+    else tail?.();
+    kit.close();
+    // A built row's height, read where it stood whole in the view (cut by an edge, its bounds are short).
+    const gb = kit.bounds(path);
+    let h = seen;
+    for (let i = first; i < last && gb; i++) {
+      const b = kit.bounds(`${path}/${idOf(i)}`);
+      if (b && b.y > gb.y + 0.5 && b.y + b.height < gb.y + gb.height - 0.5) {
+        h = Math.round(b.height);
+        break;
+      }
+    }
+    kit.remember(`~db.h.${key}`, h);
+  };
+
   // The collection's grid: whole rows that scroll, and the count of the cards owned.
   const collection = (w: Api.Size): void => {
     kit.column("Collection", { width: w, height: grow(), gap: u(8) }, () => {
@@ -247,12 +292,12 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       const cols = Math.max(2, Math.floor((CW - u(8) + gap) / (want + gap)));
       const cw = Math.floor((CW - u(8) - gap * (cols - 1)) / cols);
       const ch = Math.round(cw * 1.4);
-      kit.openScroll("Grid", { width: grow(), height: grow(), gap, padding: xy(u(4), u(8)), fade: 32, fadeInto: "shadow" } as never);
-      if (shown.length === 0) text("Empty", desc.emptyLabel ?? "No cards match", { step: st(16), color: "inkMuted", width: grow(), align: "center" });
-      for (let r0 = 0; r0 < shown.length; r0 += cols) {
-        kit.row(kit.idi("Line", r0 / cols), { gap }, () => shown.slice(r0, r0 + cols).forEach((c) => tile(c, cw, ch)));
-      }
-      kit.close();
+      const rows = Math.ceil(shown.length / cols);
+      windowed("Grid", { width: grow(), height: grow(), gap, padding: xy(u(4), u(8)), fade: 32, fadeInto: "shadow" }, rows, ch + u(4) + Math.round(u(20) * ts), gap, (r) => kit.idi("Line", r), (r) => {
+        kit.row(kit.idi("Line", r), { gap }, () => shown.slice(r * cols, r * cols + cols).forEach((c) => tile(c, cw, ch)));
+      }, () => {
+        if (shown.length === 0) text("Empty", desc.emptyLabel ?? "No cards match", { step: st(16), color: "inkMuted", width: grow(), align: "center" });
+      });
       kit.semantics({ role: "grid", name: desc.collectionLabel ?? "Cards" });
       const ownedN = cards.filter((c) => (c.owned ?? 0) > 0).length;
       if (!portrait) text("Count", `${ownedN} / ${cards.length} ${desc.collectionLabel ?? "Cards"}`, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
@@ -263,6 +308,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
   const deckRow = (c: Api.CollectionCard): void => {
     const k = c.key ?? "";
     const tier = rarityColor(c.rarity) ?? role("inkMuted");
+    const big = ts > 1.25;
     const h = Math.round(u(phone ? 44 : 40) * Math.min(1.4, ts));
     const rr = Math.max(4, t.small);
     const r = surface(k, {
@@ -272,8 +318,9 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       gap: u(8),
       cross: "center",
       width: grow(),
-      height: px(Math.max(44, h)),
-      padding: xy(u(6), 0),
+      // Large text wraps a long name onto a second line and the row grows (never an ellipsis on a card's name).
+      height: big ? ({ kind: "fit", min: Math.max(44, h) } as Api.Size) : px(Math.max(44, h)),
+      padding: xy(u(6), big ? u(4) : 0),
       radius: rr,
       semantics: { role: "button", name: [c.name ?? k, c.cost != null ? `${c.cost}` : "", `×${c.count ?? 0}`].filter(Boolean).join(", ") },
     }, () => {
@@ -297,7 +344,7 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       text("Value", c.cost != null ? String(c.cost) : "–", { step: stIn(14, Math.round(g * 0.62)), font: "display", nowrap: true });
       kit.close();
       symbol("Tier", "gem", u(12), tier);
-      text("Name", c.name ?? k, { step: st(15), nowrap: true, ellipsis: true, width: grow() });
+      text("Name", c.name ?? k, big ? { step: st(15), maxLines: 2, ellipsis: true, width: grow() } : { step: st(15), nowrap: true, ellipsis: true, width: grow() });
       text("Copies", String(c.count ?? 0), { step: st(15), font: "mono", nowrap: true, color: (c.count ?? 0) >= allowed(c) ? "highlight" : "ink" });
     });
     if (r.clicked) {
@@ -318,10 +365,14 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
       kit.row("Bars", { width: grow(), gap: u(4), cross: "end" }, () => {
         counts.forEach((n, i) => {
           kit.column(kit.idi("Cost", i), { width: grow(), gap: u(2), cross: "center", part: "DeckBuilder.bar", partClass: "badge" }, () => {
-            text("Count", String(n), { step: st(12), font: "mono", nowrap: true, color: n > 0 ? "ink" : "inkFaint" });
-            kit.open("Bar", { width: pct(0.7), height: px(Math.max(2, Math.round((barH * n) / top))) });
-            kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 0, 0] }, fills: [vgrad([[0, token("primary")], [1, token("primary", 0.55)]])], ...(n > 0 ? { effects: [glow(u(4), token("primary", 0.35), 0)] } : {}) });
-            kit.close();
+            // An empty cost shows its label alone (no "0" over a stub): the curve reads by its bars, and the deck stays
+            // inside the element budget.
+            if (n > 0) {
+              text("Count", String(n), { step: st(12), font: "mono", nowrap: true, color: "ink" });
+              kit.open("Bar", { width: pct(0.7), height: px(Math.max(2, Math.round((barH * n) / top))) });
+              kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 0, 0] }, fills: [vgrad([[0, token("primary")], [1, token("primary", 0.55)]])], effects: [glow(u(4), token("primary", 0.35), 0)] });
+              kit.close();
+            }
             text("Label", i === COSTS - 1 ? `${i}+` : String(i), { step: st(12), font: "mono", nowrap: true, color: "inkMuted" });
           });
         });
@@ -399,10 +450,8 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
           kindCounts();
         });
       };
-      kit.openScroll("List", { width: grow(), height: grow(), gap: u(4), padding: xy(0, 0), fade: 24, fadeInto: "shadow" } as never);
-      rows.forEach(deckRow);
-      if (big) stats();
-      kit.close();
+      const rh = Math.max(44, Math.round(u(phone ? 44 : 40) * Math.min(1.4, ts)));
+      windowed("List", { width: grow(), height: grow(), gap: u(4), padding: xy(0, 0), fade: 24, fadeInto: "shadow" }, rows.length, rh, u(4), (i) => rows[i]!.key ?? "", (i) => deckRow(rows[i]!), undefined, big ? stats : undefined);
       kit.semantics({ role: "list", name: desc.deckName || desc.deckLabel || "Deck" });
       if (!big) stats();
       if (btn("Done", desc.doneLabel ?? "Done", { variant: "primary", size: "lg", width: grow(), raised: true }).clicked) {
@@ -415,7 +464,9 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
   // A phone in portrait: the two halves are tabs, the collection and the deck with its count.
   const views = (): void => {
     kit.row("Views", { width: grow(), gap: u(6) }, () => {
-      const tab = (key: string, label: string, on: boolean): void => {
+      const tab = (key: string, label: string, on: boolean, count = ""): void => {
+        // Large text stacks the count under the name at a smaller step: the whole label no longer fits half a phone.
+        const stacked = ts > 1.25 && count !== "";
         const r = surface(key, {
           part: `DeckBuilder.view${flags(on && "selected")}`,
           cls: "chip",
@@ -423,19 +474,23 @@ export function deckBuilder(id: string, desc: Api.DeckBuilderDesc): Api.DeckBuil
           washBy: 0.14,
           width: grow(),
           height: { kind: "fit", min: 44 },
+          direction: stacked ? "column" : "row",
           align: "center",
           cross: "center",
           padding: xy(u(10), u(6)),
-          radius: 999,
-          semantics: { role: "tab", name: label, selected: on },
-        }, () => text("Label", label, { step: st(15), font: "display", nowrap: true, ellipsis: true, color: on ? "ink" : "inkMuted" }));
+          radius: stacked ? Math.max(t.small, u(16)) : 999,
+          semantics: { role: "tab", name: count ? `${label} ${count}` : label, selected: on },
+        }, () => {
+          text("Label", stacked || !count ? label : `${label} ${count}`, { step: st(15), font: "display", nowrap: true, ellipsis: true, color: on ? "ink" : "inkMuted" });
+          if (stacked) text("Count", count, { step: st(12), font: "mono", nowrap: true, color: on ? "ink" : "inkMuted" });
+        });
         if (r.clicked && !on) {
           out.view = key;
           kit.feedback("tab", -1);
         }
       };
       tab("cards", desc.collectionLabel ?? "Cards", !showDeck);
-      tab("deck", `${desc.deckLabel ?? "My deck"} ${inDeck}/${size}`, showDeck);
+      tab("deck", desc.deckLabel ?? "My deck", showDeck, `${inDeck}/${size}`);
     });
     kit.semantics({ role: "tablist", name: desc.title || "Deck builder" });
   };

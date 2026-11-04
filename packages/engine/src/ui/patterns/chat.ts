@@ -225,47 +225,59 @@ export function chat(id: string, desc: Api.ChatDesc): Api.ChatResult {
       });
       kit.semantics({ role: "listbox", name: "Mentions" });
     }
-    // The input: the channel chip in its ink, the field, Send.
-    kit.row("Input", { width: grow(), gap: u(8), cross: "center", part: "Chat.input", partClass: "panel" }, () => {
-      if (target) {
-        const ink = inkOf(target.color);
-        const r = surface("Channel", {
-          part: "Chat.channel",
-          cls: "chip",
-          fill: { ...hexRgb(ink), a: 0.16 },
-          washBy: 0.12,
-          gap: u(6),
-          cross: "center",
-          height: px(Math.max(touch ? 44 : 0, u(36))),
-          // Narrow, the chip gives the field its room: its name is cut short rather than pushing Send out.
-          width: narrow ? ({ kind: "fit", max: Math.round(W * 0.26) } as Api.Size) : null,
-          padding: xy(u(10), 0),
-          radius: 999,
-          disabled: sendable.length < 2,
-          semantics: { role: "button", name: `${desc.channelLabel ?? "Channel"}: ${target.name ?? ""}` },
-        }, () => {
-          text("Text", target.name ?? "", { step: st(13), font: "display", nowrap: true, ellipsis: true, color: hexRgb(ink) });
-        });
-        if (r.clicked && sendable.length > 1) {
-          const i = sendable.findIndex((c) => c.key === target.key);
-          out.sendTo = sendable[(i + 1) % sendable.length]!.key ?? null;
-          kit.feedback("select", -1);
-        }
+    // The input: the channel chip in its ink, the field, Send. Large text on a narrow column stacks the field over the
+    // chip and Send: side by side the field's placeholder alone outgrows the row.
+    const stack = narrow && (frame().theme.textScale ?? 1) > 1.25;
+    const channelChip = (): void => {
+      if (!target) return;
+      const ink = inkOf(target.color);
+      const r = surface("Channel", {
+        part: "Chat.channel",
+        cls: "chip",
+        fill: { ...hexRgb(ink), a: 0.16 },
+        washBy: 0.12,
+        gap: u(6),
+        cross: "center",
+        height: { kind: "fit", min: Math.max(touch ? 44 : 0, u(36)) },
+        // Narrow, the chip gives the field its room: its name is cut short rather than pushing Send out.
+        width: narrow && !stack ? ({ kind: "fit", max: Math.round(W * 0.26) } as Api.Size) : null,
+        padding: xy(u(10), 0),
+        radius: 999,
+        disabled: sendable.length < 2,
+        semantics: { role: "button", name: `${desc.channelLabel ?? "Channel"}: ${target.name ?? ""}` },
+      }, () => {
+        text("Text", target.name ?? "", { step: st(13), font: "display", nowrap: true, ellipsis: true, color: hexRgb(ink) });
+      });
+      if (r.clicked && sendable.length > 1) {
+        const i = sendable.findIndex((c) => c.key === target.key);
+        out.sendTo = sendable[(i + 1) % sendable.length]!.key ?? null;
+        kit.feedback("select", -1);
       }
-      const f = inputField("Field", draft, { placeholder: desc.placeholder ?? "Say something…", maxChars: desc.maxChars ?? 255, clearable: false, width: grow() });
-      if (f.changed && out.draft === null) out.draft = f.value;
-      const words = (f.changed ? f.value : draft).trim();
-      // Narrow for its text (a phone), Send is a round button with its arrow, named Send.
-      const send = narrow
-        ? surface("Send", { part: "Chat.send", cls: "button", fill: !words || !target ? mix(role("primary"), role("panel"), 0.6) : role("primary"), washBy: 0.14, disabled: !words || !target, width: px(Math.max(44, u(40))), height: px(Math.max(44, u(40))), align: "center", cross: "center", radius: 999, semantics: { role: "button", name: desc.sendLabel ?? "Send" } }, () => {
-          symbol("Arrow", "arrowUp", u(18), role("shadow"), { weight: 2.5 });
-        }).clicked
-        : btn("Send", desc.sendLabel ?? "Send", { variant: "primary", disabled: !words || !target, sym: "chat" }).clicked;
-      if ((f.submitted || send) && words && target) {
-        out.send = { channel: target.key ?? "", text: words };
-        kit.feedback("confirm", -1);
-      }
-    });
+    };
+    // Narrow for its text (a phone), Send is a round button with its arrow, named Send.
+    const sendButton = (words: string): boolean => narrow
+      ? surface("Send", { part: "Chat.send", cls: "button", fill: !words || !target ? mix(role("primary"), role("panel"), 0.6) : role("primary"), washBy: 0.14, disabled: !words || !target, width: px(Math.max(44, u(40))), height: px(Math.max(44, u(40))), align: "center", cross: "center", radius: 999, semantics: { role: "button", name: desc.sendLabel ?? "Send" } }, () => {
+        symbol("Arrow", "arrowUp", u(18), role("shadow"), { weight: 2.5 });
+      }).clicked
+      : btn("Send", desc.sendLabel ?? "Send", { variant: "primary", disabled: !words || !target, sym: "chat" }).clicked;
+    kit.open("Input", { direction: stack ? "column" : "row", width: grow(), gap: u(8), cross: stack ? "stretch" : "center", part: "Chat.input", partClass: "panel" });
+    if (!stack) channelChip();
+    const f = inputField("Field", draft, { placeholder: desc.placeholder ?? "Say something…", maxChars: desc.maxChars ?? 255, clearable: false, width: grow() });
+    if (f.changed && out.draft === null) out.draft = f.value;
+    const words = (f.changed ? f.value : draft).trim();
+    let send = false;
+    if (stack) {
+      kit.row("Bar", { width: grow(), gap: u(8), cross: "center" }, () => {
+        channelChip();
+        kit.spacer("Gap", grow());
+        send = sendButton(words);
+      });
+    } else send = sendButton(words);
+    kit.close();
+    if ((f.submitted || send) && words && target) {
+      out.send = { channel: target.key ?? "", text: words };
+      kit.feedback("confirm", -1);
+    }
     if (hud && kit.back()) out.closed = true;
   }
   kit.close();
