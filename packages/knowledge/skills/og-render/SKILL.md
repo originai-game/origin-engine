@@ -324,7 +324,9 @@ render sprite 12
   in place of `PostEffects.aoResolution`), `ssrStepScale` and
   `volumetricStepScale` (multiples of the SSR steps and the volumetric
   fog's slices), `msaaSamples` (4, or 1 for FXAA where the
-  antialiasing multisamples). `og.render.applyQuality(world, preset)`
+  antialiasing multisamples), `upscaler` (under TAA, `taau` or `fsr3`:
+  AMD FSR 3.1, sharper and steadier in motion for more GPU time).
+  `og.render.applyQuality(world, preset)`
   writes a preset's row of them and records it in
   `RenderSettings.quality` (`none` before any):
 
@@ -337,6 +339,7 @@ render sprite 12
   | aoResolution | half | postEffects | full |
   | ssrStepScale, volumetricStepScale | 0.5 | 1 | 2 |
   | msaaSamples | 1 | 4 | 4 |
+  | upscaler | taau | taau | fsr3 |
 
   Medium is the defaults, the frame drawn before any preset. The renderer
   reads the fields and nothing else, so `og run --commands

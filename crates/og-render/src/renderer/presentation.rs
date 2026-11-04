@@ -291,7 +291,8 @@ impl Renderer {
                 .chain(self.persistent.smaa_history.iter())
                 .flatten()
                 .map(view_bytes)
-                .sum::<u64>();
+                .sum::<u64>()
+            + self.post.fsr.bytes();
         let shadows = texture_bytes(&self.cascade_map.texture)
             + texture_bytes(&self.local_map.texture)
             + view_bytes(&self.cascade_map.depth)

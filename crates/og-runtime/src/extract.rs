@@ -497,6 +497,18 @@ pub(crate) fn ao_resolution_setting(r: Option<og_render::AoResolution>) -> &'sta
     }]
 }
 
+/// The IDL `Upscaler`'s variants, in order: RenderSettings.upscaler and
+/// RenderCapabilities.upscalers.
+pub(crate) const UPSCALERS: &[&str] = &["taau", "fsr3"];
+
+/// RenderSettings.upscaler's variant for a quality's upscaler.
+pub(crate) fn upscaler_setting(u: og_render::Upscaler) -> &'static str {
+    UPSCALERS[match u {
+        og_render::Upscaler::Taau => 0,
+        og_render::Upscaler::Fsr3 => 1,
+    }]
+}
+
 /// The value of a resource the world holds, decoded with its layout (kept
 /// while its bytes are unchanged: [`Layout::decode_kept`]).
 pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<std::sync::Arc<Value>> {

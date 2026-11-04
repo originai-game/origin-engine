@@ -190,7 +190,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// f632ac0f4ad4b88f after T5 made og.Terrain lazy (gone from a world without terrain),
 /// 4bfa6723af539cfe after area 7's Stylise and MaterialStyle fields, and
 /// f54eca0ab51dea44 after area 4 made og.TerrainScatter and og.Wind lazy, and
-/// eb172ffc6fb342e9 after UI state version 16 (the touch control holding a finger).
+/// eb172ffc6fb342e9 after UI state version 16 (the touch control holding a finger),
+/// and 7c83db2cf9f27934 after RenderSettings.upscaler (FSR 3.1).
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -203,5 +204,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "eb172ffc6fb342e9");
+    assert_eq!(hash(engine), "7c83db2cf9f27934");
 }

@@ -4336,6 +4336,8 @@
         "Antialias",
         "PointShadows",
         "TaaHistory",
+        "Upscaler",
+        "Upscaler",
         "DebugView",
         "Transparency",
         "RenderOptions",
@@ -4847,7 +4849,7 @@
         },
         {
           "name": "applyQuality",
-          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 16 |\n| shadowCascades | 2 | 3 | 4 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| aoResolution | half | postEffects | full |\n| ssrStepScale | 0.5 | 1 | 2 |\n| volumetricStepScale | 0.5 | 1 | 2 |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.",
+          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 16 |\n| shadowCascades | 2 | 3 | 4 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| aoResolution | half | postEffects | full |\n| ssrStepScale | 0.5 | 1 | 2 |\n| volumetricStepScale | 0.5 | 1 | 2 |\n| msaaSamples | 1 | 4 | 4 |\n| upscaler | taau | taau | fsr3 |\nMedium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.",
           "params": [
             {
               "name": "world",
@@ -25187,6 +25189,20 @@
         "catmullRom": "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
       }
     },
+    "Upscaler": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly.",
+      "type": "string",
+      "enum": [
+        "taau",
+        "fsr3"
+      ],
+      "x-og-variants": {
+        "taau": "The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen. The cheapest; softer on thin geometry and ghosts a little more on disocclusion.",
+        "fsr3": "AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, locks that keep thin geometry and edges through motion, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength). Transparent surfaces (the order-independent transparency's coverage) feed its reactive mask, so particles and glass do not smear. More GPU time than taau (docs/upscalers.md has the measurements)."
+      }
+    },
     "DebugView": {
       "x-og-kind": "enum",
       "x-og-module": "render",
@@ -26356,7 +26372,7 @@
       "x-og-variants": {
         "medium": "The full frame: every quality field at its default.",
         "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.",
-        "high": "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
+        "high": "The full frame refined, at the GPU time of the effects the scene draws: FSR 3.1 as the temporal upscaler (sharper and steadier in motion than TAAU, 1.4 ms to 3.2 ms more at 1080p on an M4 Pro), the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
       }
     },
     "AoResolutionSetting": {
@@ -26396,7 +26412,7 @@
     "RenderSettings": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.",
+      "description": "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.",
       "type": "object",
       "properties": {
         "environmentIntensity": {
@@ -26511,7 +26527,7 @@
         },
         "quality": {
           "$ref": "#/$defs/QualityPreset",
-          "description": "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.",
+          "description": "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.",
           "default": "none"
         },
         "rectShadows": {
@@ -26591,6 +26607,11 @@
           "default": 4,
           "minimum": 1,
           "maximum": 4
+        },
+        "upscaler": {
+          "$ref": "#/$defs/Upscaler",
+          "description": "Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame.",
+          "default": "taau"
         },
         "interpolate": {
           "type": "boolean",
@@ -30084,6 +30105,13 @@
           "maximum": 4294967295,
           "description": "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
         },
+        "upscalers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one."
+        },
         "transparency": {
           "$ref": "#/$defs/Transparency",
           "description": "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
@@ -30121,6 +30149,7 @@
         "gpuTimestamps",
         "spriteAnisotropy",
         "planarReflections",
+        "upscalers",
         "transparency",
         "exrDecode",
         "world3d"

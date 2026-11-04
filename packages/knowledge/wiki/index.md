@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2267 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2269 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -2331,6 +2331,8 @@ Field units the docs and Tune use.
 | [`UiTransform`](ui.md#type-UiTransform) | desc struct | ui | — |
 | [`UiVariant`](ui.md#type-UiVariant) | struct | ui | — |
 | [`UnitClass`](ui.md#type-UnitClass) | enum | ui | — |
+| [`Upscaler`](render.md#type-Upscaler) | enum | render | — |
+| [`Upscaler()`](render.md#column-Upscaler) | column kind | render | — |
 | [`ValueFormat`](ui.md#type-ValueFormat) | desc struct | ui | — |
 | [`ValueSliderDesc`](ui.md#type-ValueSliderDesc) | desc struct | ui | — |
 | [`ValueSliderResult`](ui.md#type-ValueSliderResult) | struct | ui | — |

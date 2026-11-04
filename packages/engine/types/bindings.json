@@ -99,6 +99,12 @@
       "value": "Material"
     },
     {
+      "name": "Upscaler",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "Upscaler"
+    },
+    {
       "name": "ToneMapping",
       "array": "Uint32Array",
       "stride": 1,
@@ -8892,6 +8898,11 @@
           "name": "msaaSamples",
           "column": "u32",
           "default": 4
+        },
+        {
+          "name": "upscaler",
+          "column": "Upscaler",
+          "default": "taau"
         },
         {
           "name": "interpolate",

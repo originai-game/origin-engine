@@ -137,6 +137,8 @@ export interface ColumnKinds {
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
   Material: { readonly array: Uint32Array; readonly stride: 2; readonly value: Material };
+  /** An Upscaler field: the variant's index. */
+  Upscaler: { readonly array: Uint32Array; readonly stride: 1; readonly value: Upscaler };
   /** A ToneMapping field: the variant's index. */
   ToneMapping: { readonly array: Uint32Array; readonly stride: 1; readonly value: ToneMapping };
   /** An AoResolutionSetting field: the variant's index. */
@@ -5687,6 +5689,22 @@ export type PointShadows = "auto" | "cube" | "paraboloid";
 export type TaaHistory = "bilinear" | "catmullRom";
 
 /**
+ * The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly.
+ * - `"taau"`: The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen. The cheapest; softer on thin geometry and ghosts a little more on disocclusion.
+ * - `"fsr3"`: AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, locks that keep thin geometry and edges through motion, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength). Transparent surfaces (the order-independent transparency's coverage) feed its reactive mask, so particles and glass do not smear. More GPU time than taau (docs/upscalers.md has the measurements).
+ */
+export type Upscaler = "taau" | "fsr3";
+
+/**
+ * An Upscaler field: the variant's index.
+ *
+ * A `Upscaler` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Upscaler(value?: Upscaler, options?: FieldOptions): FieldSpec<"Upscaler">;
+
+/**
  * What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame; the lit image's views (cascades, ao, albedo, iblDiffuse, iblSpecular, direct, aoDepth, aoRaw) draw in place of the lit image instead, for looking at one term of the lighting. Streams add views as they add what to show.
  * - `"none"`: Only og.debug's draws.
  * - `"physics"`: The colliders' shapes, joints and contacts as the last physics step left them.
@@ -6648,7 +6666,7 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
  * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page (og.ui.settingsTree) offers the three.
  * - `"medium"`: The full frame: every quality field at its default.
  * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.
- * - `"high"`: The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps.
+ * - `"high"`: The full frame refined, at the GPU time of the effects the scene draws: FSR 3.1 as the temporal upscaler (sharper and steadier in motion than TAAU, 1.4 ms to 3.2 ms more at 1080p on an M4 Pro), the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps.
  */
 export type GraphicsQuality = "medium" | "low" | "high";
 
@@ -6688,7 +6706,7 @@ export type QualityPreset = "none" | "low" | "medium" | "high";
 export declare function QualityPreset(value?: QualityPreset, options?: FieldOptions): FieldSpec<"QualityPreset">;
 
 /**
- * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+ * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
  *
  * The `RenderSettings` resource (token `og.RenderSettings`).
  */
@@ -6801,7 +6819,7 @@ export interface RenderSettings {
    */
   bakedLighting: boolean;
   /**
-   * The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.
+   * The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set.
    */
   quality: QualityPreset;
   /**
@@ -6880,6 +6898,10 @@ export interface RenderSettings {
    * @range 1..4
    */
   msaaSamples: number;
+  /**
+   * Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame.
+   */
+  upscaler: Upscaler;
   /**
    * Draw what moves between the last two ticks. A display frame that falls between ticks (a 60 Hz tick on a 120 or 144 Hz screen) draws every entity's world transform and og.Camera's position and rotation blended from the tick before the last to the last, by the time past the last tick over the tick's length (positions and scales lerped, rotations slerped), so camera pans, cars and bullets glide instead of judder; skinned models blend their joints too (each joint's translation and scale lerped, rotation slerped, blendshape weights lerped; root motion and every pose the simulation reads stay at the tick), UI anchored to an entity (og.ui.openWorldAnchor) stays on its drawn place, and object motion blur moves from the frame drawn before, never across a snap or a camera cut. Immediate-mode draws (og.render.sprite, og.render.text, og.debug.line and og.debug.text, placed by a system on its tick) and shader time stay at the tick. The frame then shows the world up to one tick late. A frame on a tick boundary (a host that steps whole ticks: og run without --realtime, og render, og test) draws the last tick exactly, as do the probe's screenshots and captures, so reference frames are the ticks'. Presentation only: the simulation, world_hash, snapshots, replays, lockstep, the probe and dump_* read the ticks, never the blend. og.Interpolation opts an entity out; og.render.snap, the probe's teleport and snapDistance keep a teleport from gliding.
    *
@@ -9922,6 +9944,10 @@ export interface RenderCapabilities {
    * How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead.
    */
   readonly planarReflections: number;
+  /**
+   * The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one.
+   */
+  readonly upscalers: readonly string[];
   /**
    * What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer.
    */
@@ -48512,9 +48538,9 @@ export declare namespace og {
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
   const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
   /**
-   * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
+   * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    */
@@ -48766,6 +48792,7 @@ export declare namespace og {
      * | ssrStepScale | 0.5 | 1 | 2 |
      * | volumetricStepScale | 0.5 | 1 | 2 |
      * | msaaSamples | 1 | 4 | 4 |
+     * | upscaler | taau | taau | fsr3 |
      * Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.
      *
      * @param world The world whose RenderSettings change.

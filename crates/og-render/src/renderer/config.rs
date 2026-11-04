@@ -167,6 +167,29 @@ impl Antialias {
     }
 }
 
+/// The temporal resolve under [`Antialias::Taa`] ([`crate::RenderQuality::upscaler`]):
+/// how the jittered frame, drawn at the render scale or at the output's
+/// size, becomes the output. Both read the same jitter, depth, motion
+/// vectors and OIT revealage, and write the same history, so switching
+/// between them costs one frame of history and nothing else. A frame
+/// supersampled (render scale above 1) resolves with TAAU whatever this
+/// says. Ordered by cost, the cheaper first ([`crate::RenderQuality::capped`]
+/// takes the lesser).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Upscaler {
+    /// The engine's TAA and TAAU (taa.wgsl): one fullscreen pass, a 3x3
+    /// YCoCg clamp, a jitter-weighted sample per output pixel.
+    #[default]
+    Taau,
+    /// AMD FidelityFX Super Resolution 3.1's upscaler (post/fsr.rs, MIT):
+    /// eight compute passes; Lanczos reconstruction, depth-based
+    /// disocclusion, thin-feature locks, shading-change and luma-instability
+    /// detection and the OIT revealage as its reactive mask; RCAS for
+    /// [`RenderDesc::taa_sharpen`]. Core WebGPU only (no fp16, no subgroups),
+    /// so every host runs the same shaders.
+    Fsr3,
+}
+
 /// How TAA reads its history ([`RenderDesc::taa_history`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TaaHistory {

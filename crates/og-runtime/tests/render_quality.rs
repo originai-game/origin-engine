@@ -124,6 +124,7 @@ fn observe(engine: u32, seen: &Cell<Option<RenderQuality>>) -> (Value, RenderQua
         "ssrStepScale",
         "volumetricStepScale",
         "msaaSamples",
+        "upscaler",
     ];
     let fields = Value::Object(
         pick.iter()
@@ -153,6 +154,10 @@ fn as_fields(quality: &str, q: RenderQuality) -> Value {
         "ssrStepScale": q.ssr_step_scale,
         "volumetricStepScale": q.volumetric_step_scale,
         "msaaSamples": q.msaa_samples,
+        "upscaler": match q.upscaler {
+            og_render::Upscaler::Taau => "taau",
+            og_render::Upscaler::Fsr3 => "fsr3",
+        },
     })
 }
 
@@ -179,21 +184,21 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
             json!({ "quality": "low", "rectShadows": false, "shadowedLights": 2, "shadowCascades": 2, "shadowMapScale": 0.5,
                 "volumetricFog": false, "softParticles": false, "screenSpaceReflections": false,
                 "ambientOcclusion": false, "aoResolution": "half", "ssrStepScale": 0.5,
-                "volumetricStepScale": 0.5, "msaaSamples": 1 }),
+                "volumetricStepScale": 0.5, "msaaSamples": 1, "upscaler": "taau" }),
         ),
         (
             "high",
             json!({ "quality": "high", "rectShadows": true, "shadowedLights": 16, "shadowCascades": 4, "shadowMapScale": 2.0,
                 "volumetricFog": true, "softParticles": true, "screenSpaceReflections": true,
                 "ambientOcclusion": true, "aoResolution": "full", "ssrStepScale": 2.0,
-                "volumetricStepScale": 2.0, "msaaSamples": 4 }),
+                "volumetricStepScale": 2.0, "msaaSamples": 4, "upscaler": "fsr3" }),
         ),
         (
             "medium",
             json!({ "quality": "medium", "rectShadows": true, "shadowedLights": 8, "shadowCascades": 3, "shadowMapScale": 1.0,
                 "volumetricFog": true, "softParticles": true, "screenSpaceReflections": true,
                 "ambientOcclusion": true, "aoResolution": "postEffects", "ssrStepScale": 1.0,
-                "volumetricStepScale": 1.0, "msaaSamples": 4 }),
+                "volumetricStepScale": 1.0, "msaaSamples": 4, "upscaler": "taau" }),
         ),
     ];
     for (preset, row) in table {
@@ -316,6 +321,41 @@ fn the_capabilities_say_what_msaa_the_device_gives() {
             "the row's value, capped by the device"
         );
     }
+}
+
+/// RenderSettings.upscaler reaches the renderer's quality (FSR 3.1 in
+/// TAA's place), and RenderCapabilities.upscalers names both on a device
+/// and none without one. Before FSR there was no such field: every frame
+/// was resolved by TAAU.
+#[test]
+fn the_upscaler_setting_reaches_the_renderer() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let caps = |engine| answer(og_render_capabilities(engine));
+    assert_eq!(caps(engine)["upscalers"], json!([]), "no renderer");
+    set_render_backend(engine, Some(Box::new(Device { msaa: 1 }))).unwrap();
+    assert_eq!(caps(engine)["upscalers"], json!(["taau", "fsr3"]));
+
+    let seen = Rc::new(Cell::new(None));
+    set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
+    let (fields, q) = observe(engine, &seen);
+    assert_eq!(
+        (fields["upscaler"].clone(), q.upscaler),
+        (json!("taau"), og_render::Upscaler::Taau)
+    );
+    let a = answer(og_engine_write_resource(
+        engine,
+        "og.RenderSettings".into(),
+        json!({ "upscaler": "fsr3" }).to_string(),
+    ));
+    assert_eq!(a["ok"], json!(true), "{a}");
+    let (fields, q) = observe(engine, &seen);
+    assert_eq!(fields["upscaler"], json!("fsr3"));
+    assert_eq!(q.upscaler, og_render::Upscaler::Fsr3);
 }
 
 /// A renderer that keeps whether the last frame it was handed drew

@@ -6,6 +6,7 @@
 //! pass draw into, as render graph targets.
 
 mod flare;
+pub(crate) mod fsr;
 mod graph;
 mod passes;
 mod plan;
@@ -446,6 +447,9 @@ pub(crate) struct PostPasses {
     fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>>,
     /// The lens flare's passes (`flare.rs`).
     pub flare: FlarePasses,
+    /// FSR 3.1's upscaler (`fsr.rs`): the `taa` pass's resolve when the
+    /// frame's quality asks for it.
+    pub fsr: fsr::FsrPasses,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.

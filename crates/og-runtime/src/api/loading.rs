@@ -122,6 +122,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         "ssrStepScale": q.ssr_step_scale,
         "volumetricStepScale": q.volumetric_step_scale,
         "msaaSamples": q.msaa_samples,
+        "upscaler": crate::extract::upscaler_setting(q.upscaler),
     });
     result_void(engine(world).and_then(|eng| {
         super::engine::write_resource_value(eng.id, "og.RenderSettings", &fields)?;

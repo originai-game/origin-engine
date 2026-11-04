@@ -60,6 +60,19 @@ module render {
     variant catmullRom "A Catmull-Rom filter over 4x4 texels (9 taps): the history stays sharp under camera motion."
   }
 
+  enum Upscaler {
+    doc "The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly."
+    variant taau "The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen. The cheapest; softer on thin geometry and ghosts a little more on disocclusion."
+    variant fsr3 "AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, locks that keep thin geometry and edges through motion, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength). Transparent surfaces (the order-independent transparency's coverage) feed its reactive mask, so particles and glass do not smear. More GPU time than taau (docs/upscalers.md has the measurements)."
+  }
+
+  column Upscaler {
+    doc "An Upscaler field: the variant's index."
+    array Uint32Array
+    stride 1
+    value Upscaler
+  }
+
   enum DebugView {
     doc "What the debug overlay shows besides og.debug's draws (og.debug.setView, RenderOptions.debugView, `debug:<view>`), drawn over the finished frame; the lit image's views (cascades, ao, albedo, iblDiffuse, iblSpecular, direct, aoDepth, aoRaw) draw in place of the lit image instead, for looking at one term of the lighting. Streams add views as they add what to show."
     variant none "Only og.debug's draws."
@@ -517,7 +530,7 @@ module render {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page (og.ui.settingsTree) offers the three."
     variant medium "The full frame: every quality field at its default."
     variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps."
-    variant high "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
+    variant high "The full frame refined, at the GPU time of the effects the scene draws: FSR 3.1 as the temporal upscaler (sharper and steadier in motion than TAAU, 1.4 ms to 3.2 ms more at 1080p on an M4 Pro), the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
   }
 
   enum AoResolutionSetting {
@@ -550,7 +563,7 @@ module render {
   }
 
   resource RenderSettings {
-    doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
+    doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
     field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
       default 0.55
       min 0
@@ -615,7 +628,7 @@ module render {
     field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone." {
       default true
     }
-    field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to msaaSamples), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
+    field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
     field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame." {
       default true
     }
@@ -662,6 +675,7 @@ module render {
       min 1
       max 4
     }
+    field upscaler Upscaler "Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame."
     field interpolate bool "Draw what moves between the last two ticks. A display frame that falls between ticks (a 60 Hz tick on a 120 or 144 Hz screen) draws every entity's world transform and og.Camera's position and rotation blended from the tick before the last to the last, by the time past the last tick over the tick's length (positions and scales lerped, rotations slerped), so camera pans, cars and bullets glide instead of judder; skinned models blend their joints too (each joint's translation and scale lerped, rotation slerped, blendshape weights lerped; root motion and every pose the simulation reads stay at the tick), UI anchored to an entity (og.ui.openWorldAnchor) stays on its drawn place, and object motion blur moves from the frame drawn before, never across a snap or a camera cut. Immediate-mode draws (og.render.sprite, og.render.text, og.debug.line and og.debug.text, placed by a system on its tick) and shader time stay at the tick. The frame then shows the world up to one tick late. A frame on a tick boundary (a host that steps whole ticks: og run without --realtime, og render, og test) draws the last tick exactly, as do the probe's screenshots and captures, so reference frames are the ticks'. Presentation only: the simulation, world_hash, snapshots, replays, lockstep, the probe and dump_* read the ticks, never the blend. og.Interpolation opts an entity out; og.render.snap, the probe's teleport and snapDistance keep a teleport from gliding." {
       default true
     }
@@ -2470,6 +2484,7 @@ module render {
     field gpuTimestamps bool "Whether the device times each render pass on the GPU (timestamp queries: Vulkan, Metal and D3D12 adapters that have them, WebGPU with `timestamp-query`; never in a publish build, which leaves the queries out): ProbeTimings.gpuPasses and the trace's gpu thread are filled only where it is true."
     field spriteAnisotropy u32 "The anisotropic filtering of sprites and og.ui's images (text is not filtered anisotropically: its distance field would lose its edge): 16 where the device filters anisotropically (WebGPU, Vulkan, Metal, DX12), 1 where it has none and on a software rasterizer (the vulkan-cpu tier: lavapipe's anisotropic filter softens even an image drawn 1:1), 0 without a renderer. Above 1, an image squeezed along one axis keeps the other axis's detail: a style's nine-slice middle squeezed into a short button keeps its outline as crisp as the corners. At 1 the squeezed piece reads a smaller mip level and blurs; og.ui bounds a middle's squeeze at twice its art, so the outline there is one mip level softer than the corners."
     field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
+    field upscalers List.String "The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one."
     field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
     field exrDecode bool "Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer."
     field world3d bool "Whether the renderer draws the 3D world subsystems: terrain, planar water (og.Water), the 3D fluids, scattered copies and volumetric fog. False in the 2D profile's publish and lanes modules, which leave them out (a scene's are not drawn, og.terrain's calls and a SHAPE_HEIGHTFIELD collider answer a refusal naming this field, and `og build --publish` refuses a 2D project whose scenes hold og.Terrain, og.TerrainScatter, og.Water, og.WaterSurface or og.Fluid3D, by scene file and line); true in the 3D modules, the dev module and the native host."
@@ -2594,6 +2609,7 @@ module render {
     doc "| ssrStepScale | 0.5 | 1 | 2 |"
     doc "| volumetricStepScale | 0.5 | 1 | 2 |"
     doc "| msaaSamples | 1 | 4 | 4 |"
+    doc "| upscaler | taau | taau | fsr3 |"
     doc "Medium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value."
     param world World "The world whose RenderSettings change."
     param preset GraphicsQuality "The preset."

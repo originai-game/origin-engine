@@ -700,7 +700,13 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     ] {
         if has(pass) {
             let (tw, th) = if pass.after_taa() { (pw, ph) } else { (w, h) };
-            g.transient(name, desc(tw, th, HDR_FORMAT, 1, attach_bind));
+            // FSR 3.1's RCAS writes the sharpening's target from compute.
+            let usage = if pass == FramePass::TaaSharpen {
+                attach_bind | wgpu::TextureUsages::STORAGE_BINDING
+            } else {
+                attach_bind
+            };
+            g.transient(name, desc(tw, th, HDR_FORMAT, 1, usage));
         }
     }
     if has(FramePass::DofCoc) {

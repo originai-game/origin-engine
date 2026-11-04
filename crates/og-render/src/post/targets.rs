@@ -62,7 +62,8 @@ impl Persistent {
                     width,
                     height,
                     HDR_FORMAT,
-                    attach_bind,
+                    // FSR 3.1 writes it from compute (fsr.rs).
+                    attach_bind | wgpu::TextureUsages::STORAGE_BINDING,
                 )
                 .create_view(&Default::default())
             })
@@ -120,7 +121,8 @@ impl Persistent {
                     width,
                     height,
                     HDR_FORMAT,
-                    attach_bind,
+                    // FSR 3.1 writes it from compute (fsr.rs).
+                    attach_bind | wgpu::TextureUsages::STORAGE_BINDING,
                 )
                 .create_view(&Default::default())
             })

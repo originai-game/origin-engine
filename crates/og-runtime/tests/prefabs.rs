@@ -283,7 +283,7 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// then area 7's Stylise and MaterialStyle fields from 0ac8584de3c39543 to
 /// b06093a615447620, then area 4's lazy og.TerrainScatter and og.Wind to
 /// f21f6a4b0639cc74, then UI state version 16, the touch control holding a finger).
-const BY_HAND_HASH: &str = "e5723031391590b1";
+const BY_HAND_HASH: &str = "4479609532682b52";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

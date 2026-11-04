@@ -209,7 +209,7 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// og.Wind lazy, and after UI state version 16 (the touch control holding
 /// a finger); R10 leaves it
 /// unmoved on either side).
-const PINNED_HASH: &str = "b06efedc18e37fd9";
+const PINNED_HASH: &str = "7cd8b93df1721180";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

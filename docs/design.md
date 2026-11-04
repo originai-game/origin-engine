@@ -615,12 +615,21 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   a scene pixel covers (up to 32), TAA writes an output-sized history
   from the sample nearest each output pixel, weighted by its distance,
   and every pass after it runs at the output's size; a change of scale
-  below 1 keeps the history (dynamic resolution without a reset).
+  below 1 keeps the history (dynamic resolution without a reset). The
+  resolve is a quality field (`RenderSettings.upscaler`): TAAU, or AMD
+  FidelityFX Super Resolution 3.1's upscaler ported to WGSL in fp32
+  without subgroups (MIT, `third_party/fidelityfx/`), which takes the
+  `taa` pass's place with its eight compute passes (depth-reconstructed
+  disocclusion, thin-feature locks, luma instability, Lanczos
+  accumulation, the OIT coverage as its reactive mask) and its RCAS in
+  `taa-sharpen`'s; its state is sized to the output, so it keeps its
+  history across scale changes too. `docs/upscalers.md` compares the two
+  and gives the presets' choice.
 - What a frame may cost is data the renderer reads every frame:
   RenderSettings' quality fields (rect-light shadows, the number of
   shadowed lights, the shadow maps' scale, volumetric fog, soft particles,
   SSR, AO and its resolution, the SSR and volumetric fog step scales,
-  MSAA samples), og-render's `RenderQuality`. A graphics preset
+  MSAA samples, the upscaler), og-render's `RenderQuality`. A graphics preset
   (`GraphicsQuality`: low, medium, high) is a row of them that
   `og.render.applyQuality` writes and `RenderSettings.quality` records;
   no preset state lies behind the fields, so the probe reads what is

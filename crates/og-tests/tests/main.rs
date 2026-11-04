@@ -12,6 +12,7 @@ mod effects;
 mod exposure;
 mod fluids3d;
 mod fork_fields;
+mod fsr;
 mod geometry;
 mod gfx;
 mod graph;

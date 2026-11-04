@@ -98,6 +98,42 @@ impl FrameGraph {
         (read, self.view(CUSTOM_POST_NAMES[i as usize]))
     }
 
+    /// What FSR 3.1 reads and writes in the `taa` pass's place (fsr.rs):
+    /// the lit image TAA would read, the depth, the prepass's gbuffer and
+    /// view depth, the OIT revealage (white without OIT), the history slot
+    /// TAA would write and the one it would read, and the sharpening's
+    /// target.
+    #[allow(clippy::type_complexity)]
+    pub fn fsr_views<'a>(
+        &'a self,
+        no_reactive: &'a wgpu::TextureView,
+        persistent: &'a Persistent,
+        slot: usize,
+    ) -> Option<(
+        &'a wgpu::TextureView,
+        &'a wgpu::TextureView,
+        Option<(&'a wgpu::TextureView, &'a wgpu::TextureView)>,
+        &'a wgpu::TextureView,
+        &'a wgpu::TextureView,
+        &'a wgpu::TextureView,
+        Option<&'a wgpu::TextureView>,
+    )> {
+        let history = persistent.history.as_ref()?;
+        if !self.passes.contains(&FramePass::Taa) {
+            return None;
+        }
+        let prepass = self.try_view("gbuffer").zip(self.try_view("lindepth"));
+        Some((
+            self.view(lit_names(&self.passes).main),
+            self.view("depth"),
+            prepass,
+            self.try_view("oit.reveal").unwrap_or(no_reactive),
+            &history[slot],
+            &history[1 - slot],
+            self.try_view("hdr.sharp"),
+        ))
+    }
+
     /// The view of `name` when the current graph has it.
     pub fn try_view(&self, name: &str) -> Option<&wgpu::TextureView> {
         self.views.get(name)
@@ -708,6 +744,8 @@ impl FrameGraph {
             return 1;
         }
         match pass {
+            FramePass::Taa if passes.fsr.active() => passes.fsr.encode(encoder),
+            FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),
             FramePass::Taa => {
                 if let (Some(pipeline), Some(history), Some(groups)) =
                     (&passes.taa, &persistent.history, &b.taa)

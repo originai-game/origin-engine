@@ -193,6 +193,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             ssr_step_scale: f(s, "ssrStepScale", full.ssr_step_scale),
             volumetric_step_scale: f(s, "volumetricStepScale", full.volumetric_step_scale),
             msaa_samples: f(s, "msaaSamples", full.msaa_samples as f32).max(1.0) as u32,
+            upscaler: [og_render::Upscaler::Taau, og_render::Upscaler::Fsr3]
+                [crate::fx::variant(&s["upscaler"], super::UPSCALERS).min(1)],
         };
     } else {
         scene.camera.exposure = og_render::Exposure::linear(exposure);

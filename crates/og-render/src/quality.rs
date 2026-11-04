@@ -83,6 +83,10 @@ pub struct RenderQuality {
     /// (TAA, FXAA, none, or FXAA for want of a multisampled HDR format)
     /// it is 1, and one sample is drawn whatever this says.
     pub msaa_samples: u32,
+    /// The temporal resolve under TAA ([`crate::Upscaler`]): the engine's
+    /// TAAU (the default, medium and low) or FSR 3.1 (high), sharper and
+    /// steadier in motion at more GPU time (docs/upscalers.md).
+    pub upscaler: crate::Upscaler,
 }
 
 impl Default for RenderQuality {
@@ -101,6 +105,7 @@ impl Default for RenderQuality {
             ssr_step_scale: 1.0,
             volumetric_step_scale: 1.0,
             msaa_samples: crate::MSAA_SAMPLES,
+            upscaler: crate::Upscaler::Taau,
         }
     }
 }
@@ -119,7 +124,7 @@ pub enum QualityPreset {
     Medium,
     /// The full frame refined: four cascades, every shadowed light the
     /// renderer allows ([`MAX_SHADOWED_LIGHTS`]), the shadow maps at twice
-    /// their side,
+    /// their side, FSR 3.1 for the temporal resolve,
     /// ambient occlusion at full resolution whatever the scene asks,
     /// twice the screen-space reflection steps and twice the volumetric
     /// fog's slices.
@@ -144,6 +149,7 @@ impl RenderQuality {
                 ssr_step_scale: 0.5,
                 volumetric_step_scale: 0.5,
                 msaa_samples: 1,
+                upscaler: crate::Upscaler::Taau,
             },
             QualityPreset::Medium => RenderQuality::default(),
             QualityPreset::High => RenderQuality {
@@ -153,6 +159,7 @@ impl RenderQuality {
                 ao_resolution: Some(AoResolution::Full),
                 ssr_step_scale: 2.0,
                 volumetric_step_scale: 2.0,
+                upscaler: crate::Upscaler::Fsr3,
                 ..RenderQuality::default()
             },
         }
@@ -187,6 +194,7 @@ impl RenderQuality {
             ssr_step_scale: self.ssr_step_scale.min(row.ssr_step_scale),
             volumetric_step_scale: self.volumetric_step_scale.min(row.volumetric_step_scale),
             msaa_samples: self.msaa_samples.min(row.msaa_samples),
+            upscaler: self.upscaler.min(row.upscaler),
         }
     }
 
@@ -273,6 +281,16 @@ mod tests {
             ..RenderQuality::default()
         };
         assert_eq!(full.capped(QualityPreset::Medium).ao_resolution, None);
+        // FSR is high's and costlier than TAAU: a medium cap draws TAAU.
+        assert_eq!(high.upscaler, crate::Upscaler::Fsr3);
+        assert_eq!(
+            high.capped(QualityPreset::High).upscaler,
+            crate::Upscaler::Fsr3
+        );
+        assert_eq!(
+            high.capped(QualityPreset::Medium).upscaler,
+            crate::Upscaler::Taau
+        );
     }
 
     /// High refines every scale (within the passes' bounds) and asks

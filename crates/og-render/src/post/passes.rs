@@ -438,6 +438,7 @@ impl PostPasses {
             fx_after_buffer: uniform("fx post after taa", std::mem::size_of::<FxPostUniform>()),
             fx,
             flare: FlarePasses::new(device),
+            fsr: fsr::FsrPasses::new(device),
             source_layout,
             post_layout,
             taa_layout,
