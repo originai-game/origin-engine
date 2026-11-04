@@ -283,6 +283,20 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
     let again = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     assert_eq!(again.scatter_built, 0, "a second frame builds nothing");
     assert_eq!(again.scatter_copies, first.scatter_copies);
+    let next = r.read_offscreen().expect("capture");
+    let coverage = |image: &RgbaImage| {
+        image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[0] > 150 && p[1] < 60)
+            .collect::<Vec<_>>()
+    };
+    assert!(
+        coverage(&img) != coverage(&next),
+        "a frozen tick must still change the fade's pixel coverage each render frame"
+    );
     // Where each copy is: 3.6 pixels a metre (720 px over 200 m).
     let px_of = |p: Vec3| (640.0 + p.x * 720.0 / 200.0, 360.0 + p.z * 720.0 / 200.0);
     let red_at = |x: f32, y: f32| {

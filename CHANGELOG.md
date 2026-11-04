@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: insert ranges.** `world.insert` now refuses values outside
+  reflected min/max on both hosts, before mutation or deferred insertion.
+  Fix out-of-range component initializers; ordinary field writes are unchanged.
+- **Temporal scatter fades.** Mesh and impostor fades share a render-frame
+  noise offset across lit, depth and shadow passes, allowing TAA to resolve
+  the dither without advancing simulation.
 - **Debug shading coverage.** Terrain and grass now expose albedo and
   separated lighting terms. Unsupported 3D shading diagnostics draw a
   magenta/black checker instead of beauty shading or an unrelated term.

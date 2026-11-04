@@ -186,7 +186,7 @@ fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, f
 // whose noise is at least `lo` and below `hi`, so a copy crossing to its
 // impostor keeps the pixels its mesh drops (scatter_near) and no others.
 fn imp_dropped(pixel: vec2<f32>, lo: f32, hi: f32) -> bool {
-  let n = fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
+  let n = scatter_noise(pixel);
   return n < lo || n >= hi;
 }
 

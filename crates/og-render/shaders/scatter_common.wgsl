@@ -5,7 +5,7 @@
 
 struct ScatterUniform {
   camera: vec4<f32>,          // xyz: the camera, w: the distance copies reach (m)
-  fade: vec4<f32>,            // x: where the fade starts (m)
+  fade: vec4<f32>,            // x: where the fade starts (m), y: this render frame's noise offset
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: the wind's horizontal direction (x, z), z: the mean lean (0: still), w: the gust
@@ -49,11 +49,14 @@ fn scatter_near(at: vec3<f32>) -> f32 {
   return 1.0 - smoothstep(0.9 * far, far, length(at.xz - scatter.camera.xz));
 }
 
-// Whether a pixel of a copy faded to `fade` is dropped: an interleaved
-// gradient noise threshold per pixel, so the copy thins out evenly.
+// Temporal interleaved gradient noise, shared by mesh and impostor passes.
+fn scatter_noise(pixel: vec2<f32>) -> f32 {
+  let at = pixel + vec2<f32>(scatter.fade.y);
+  return fract(52.9829189 * fract(dot(at, vec2<f32>(0.06711056, 0.00583715))));
+}
+
 fn scatter_dropped(pixel: vec2<f32>, fade: f32) -> bool {
-  let n = fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-  return n >= fade;
+  return scatter_noise(pixel) >= fade;
 }
 
 // A clip position outside the view: the copy's triangles are culled.

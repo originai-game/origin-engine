@@ -2239,7 +2239,7 @@
             },
             {
               "name": "insert",
-              "doc": "Add a component to an entity, or overwrite it when present. A structural change.",
+              "doc": "Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value.",
               "generics": [
                 {
                   "name": "C",
@@ -2267,7 +2267,7 @@
                 }
               ],
               "returns": "Result<Void>",
-              "returnsDoc": "Refused for a dead entity or an unregistered component.",
+              "returnsDoc": "Refused for a dead entity, an unregistered component or a field outside its reflected range.",
               "publish": true
             },
             {
@@ -20796,7 +20796,7 @@
     "FieldOptions": {
       "x-og-kind": "desc",
       "x-og-module": "reflect",
-      "description": "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: game code's writes (world.set, a resource field, a column) are stored as given, and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named.",
+      "description": "Metadata of one field. Ranges and units are what Tune and the probe's bounds show. Nothing clamps writes: world.insert and writes from outside the game (the probe's `set`, `patch` and sweeps, Tune, a look's fields at cook) are refused outside min..max with the range named. Game code's other writes (world.set, a resource field, a column) are stored as given.",
       "type": "object",
       "properties": {
         "min": {

@@ -1098,6 +1098,7 @@ impl ScatterRenderer {
         camera: Vec3,
         view_proj: Mat4,
         prev_view_proj: Mat4,
+        frame_index: u64,
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
@@ -1106,6 +1107,9 @@ impl ScatterRenderer {
         use wgpu::util::DeviceExt;
         self.frame += 1;
         self.built = 0;
+        // Jimenez's temporal IGN scroll; wrap to keep pixel arithmetic precise.
+        // https://blog.demofox.org/2022/01/01/interleaved-gradient-noise-a-different-kind-of-low-discrepancy-sequence/
+        let noise_offset = (frame_index % 64) as f32 * 5.588238;
         let mut batches = Vec::new();
         let wind = scene.wind.filter(|w| w.strength > 0.0);
         let phase = wind.map(|w| wind_phases(&w, scene.tick, scene.tick_rate));
@@ -1130,7 +1134,7 @@ impl ScatterRenderer {
         // decides), never faded or swayed.
         let base = ScatterGpu {
             camera: camera.extend(f32::MAX).to_array(),
-            fade: [f32::MAX, 0.0, 0.0, 0.0],
+            fade: [f32::MAX, noise_offset, 0.0, 0.0],
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
@@ -1368,7 +1372,7 @@ impl ScatterRenderer {
             let now = phase.unwrap_or_default();
             let mut gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
-                fade: [s.fade_from(), 0.0, 0.0, 0.0],
+                fade: [s.fade_from(), noise_offset, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,

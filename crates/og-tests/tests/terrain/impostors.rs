@@ -128,3 +128,33 @@ fn far_copies_draw_as_the_impostor() {
     let e = rmse(&cards, &meshes);
     assert!(e < 0.05, "cards vs meshes: rmse {e}");
 }
+
+#[test]
+fn impostor_fade_coverage_changes_without_advancing_the_tick() {
+    let mut scene = is::impostor_scatter_scene(1.0);
+    scene.scatters[0].scatter.distance = 40.0;
+    scene.scatters[0].scatter.fade = 0.5;
+    scene.light.cast_shadows = false;
+    scene.debug = og_render::DebugView::Albedo;
+    scene.post = Default::default();
+    scene.post.tonemap = Tonemap::None;
+    scene.camera.exposure = Exposure::linear(1.0);
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    r.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let first = r.read_offscreen().unwrap();
+    r.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let second = r.read_offscreen().unwrap();
+    let coverage = |image: &RgbaImage| {
+        image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| ball_pixel([p[0] as f32, p[1] as f32, p[2] as f32]))
+            .collect::<Vec<_>>()
+    };
+    assert!(
+        coverage(&first) != coverage(&second),
+        "impostor fade pixels must change between render frames at one tick"
+    );
+}

@@ -548,6 +548,44 @@ impl Layout {
         Ok(out)
     }
 
+    /// Check insert values against reflection, without clamping any lane.
+    pub fn check_ranges(&self, value: &Value) -> Result<(), String> {
+        fn check(f: &FieldLayout, v: &Value) -> Result<(), String> {
+            match v {
+                Value::Number(n) => {
+                    let n = n.as_f64().expect("JSON number");
+                    if let Some(min) = f.min.filter(|min| n < *min) {
+                        return Err(format!("{n} is below the minimum {min}"));
+                    }
+                    if let Some(max) = f.max.filter(|max| n > *max) {
+                        return Err(format!("{n} is above the maximum {max}"));
+                    }
+                }
+                Value::Array(values) => {
+                    for v in values {
+                        check(f, v)?;
+                    }
+                }
+                Value::Object(values) => {
+                    for v in values.values() {
+                        check(f, v)?;
+                    }
+                }
+                _ => {}
+            }
+            Ok(())
+        }
+        for f in self
+            .fields
+            .iter()
+            .filter(|f| f.min.is_some() || f.max.is_some())
+        {
+            check(f, value.get(&f.name).unwrap_or(&f.default))
+                .map_err(|e| format!("'{}.{}': {e}", self.schema, f.name))?;
+        }
+        Ok(())
+    }
+
     /// The value of packed bytes as JSON.
     pub fn decode(&self, bytes: &[u8]) -> Value {
         let mut map = Map::new();
