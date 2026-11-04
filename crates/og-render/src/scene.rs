@@ -44,6 +44,10 @@ pub struct RenderScene {
     mesh_clusters: Vec<Option<std::sync::Arc<crate::meshlet::MeshClusters>>>,
     /// Per mesh: its foliage deformation ([`RenderScene::set_mesh_foliage`]).
     mesh_foliage: Vec<Option<std::sync::Arc<crate::meshlet::MeshFoliage>>>,
+    /// Coarse simulation surfaces; never clustered, skinned or compact.
+    pub(crate) mesh_surfaces: Vec<Option<crate::SimulationSurface>>,
+    /// Draw segments per coarse cloth/soft-body edge; zero selects two, 1–8.
+    pub cloth_subdivisions: u32,
     textures: Vec<TextureSource>,
     /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
     texture_revisions: Vec<u64>,

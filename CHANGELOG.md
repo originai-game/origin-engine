@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Cloth and soft-body draw surfaces.** Compute builds area-weighted normals
+  and a Phong-tessellated surface, with previous fine positions for TAA and
+  motion blur. `DisplaySettings.clothSubdivisions` selects 1–8 segments per
+  coarse edge (0 selects two). CPU solvers, point queries, volume and centre
+  are unchanged; devices without compute or vertex storage keep the coarse
+  mesh and CPU normals. Simulated surfaces use regular draws, not meshlets.
 - **Garment bind-space constraints.** `og.Garment` measures its rest lengths
   and pin band after the skeleton's rest-pose skin transform, rather than
   from the raw mesh. Nonidentity bind palettes no longer stretch the cloth

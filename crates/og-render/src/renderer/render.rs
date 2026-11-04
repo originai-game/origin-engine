@@ -719,7 +719,8 @@ impl Renderer {
                     first: b.first,
                     count: b.count,
                     cast: b.cast,
-                    always_dynamic: shadow_cache::deforms(b.foliage, swaying, b.shader.is_some()),
+                    always_dynamic: b.simulated
+                        || shadow_cache::deforms(b.foliage, swaying, b.shader.is_some()),
                 })
                 .collect();
             self.shadow_cache.split(
@@ -3247,6 +3248,13 @@ impl Renderer {
                 }),
             gpu_set,
         );
+        if let Some(pipelines) = &self.surfaces {
+            for mesh in &self.cache.meshes {
+                if let Some(surface) = &mesh.surface {
+                    pipelines.encode(&mut encoder, surface, &mesh.vertices, scene.camera_cut);
+                }
+            }
+        }
         // The grass's blades, generated before every pass that draws them.
         self.grass
             .encode(&mut encoder, &grass_frame, &terrain_draws);
@@ -3475,6 +3483,9 @@ impl Renderer {
                 pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.slice(range.clone()));
                 pass.set_vertex_buffer(2, self.instance_buffer.slice(range));
+                if let Some(surface) = &mesh.surface {
+                    pass.set_vertex_buffer(3, surface.previous.slice(..));
+                }
                 pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..count);
                 draws += 1;

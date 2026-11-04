@@ -239,7 +239,12 @@ impl Renderer {
             let compact = scene.mesh_encodings()[index] == VertexEncoding::Compact
                 && source.is_none()
                 && morph.is_none();
-            let mut gpu = self.upload_mesh(mesh, compact);
+            let mut gpu = match scene.mesh_surfaces[index] {
+                Some(kind) => {
+                    self.upload_surface(mesh, kind, surface::subdivisions(scene.cloth_subdivisions))
+                }
+                None => self.upload_mesh(mesh, compact),
+            };
             gpu.revision = scene.mesh_revisions()[index];
             self.cache.meshes.push(gpu);
             let mut range = (0u32, 0u32);

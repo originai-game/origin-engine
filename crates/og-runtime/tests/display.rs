@@ -41,6 +41,7 @@ struct Seen {
     scales: Vec<f32>,
     quality: Option<RenderQuality>,
     projection: Option<og_render::Projection>,
+    cloth_subdivisions: u32,
 }
 
 /// A renderer that records the render scales it was set and the quality
@@ -61,6 +62,7 @@ impl RenderBackend for Recorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.seen.borrow_mut().quality = Some(scene.quality);
         self.seen.borrow_mut().projection = Some(scene.camera.projection);
+        self.seen.borrow_mut().cloth_subdivisions = scene.cloth_subdivisions;
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
@@ -138,6 +140,7 @@ fn a_presenting_host_draws_at_the_render_scale_and_a_native_run_at_one() {
     );
     let a = frames(web, 3);
     assert_eq!(seen.borrow().scales.last(), Some(&0.7));
+    assert_eq!(seen.borrow().cloth_subdivisions, 2);
     // A desktop (no coarse pointer) runs at the display's rate.
     assert_eq!(a["maxFps"], json!(0));
     let info = answer(og_render_display(web));
@@ -160,14 +163,19 @@ fn a_presenting_host_draws_at_the_render_scale_and_a_native_run_at_one() {
 
     // A native run never has its scale set, whatever the settings.
     let (native, seen) = engine(false);
-    set(native, json!({ "renderScale": 0.5, "autoQuality": false }));
+    set(
+        native,
+        json!({ "renderScale": 0.5, "autoQuality": false, "clothSubdivisions": 99 }),
+    );
     frames(native, 3);
+    assert_eq!(seen.borrow().cloth_subdivisions, 8);
     assert!(
         seen.borrow().scales.is_empty(),
         "{:?}",
         seen.borrow().scales
     );
     let info = answer(og_render_display(native));
+    assert_eq!(info["settings"]["clothSubdivisions"], json!(8));
     assert_eq!(
         (info["presenting"].clone(), info["renderScale"].clone()),
         (json!(false), json!(1.0))
@@ -182,7 +190,7 @@ fn display_settings_never_reach_the_world() {
     let (b, _) = engine(true);
     for i in 0..6 {
         let cap = ["display", "fps30"][i % 2];
-        let s = json!({ "renderScale": 0.5 + 0.25 * i as f32, "batterySaver": i % 2 == 0, "frameCap": cap });
+        let s = json!({ "renderScale": 0.5 + 0.25 * i as f32, "batterySaver": i % 2 == 0, "frameCap": cap, "clothSubdivisions": i + 1 });
         og_render_set_display(b, Some(s.to_string()));
         frames(a, 2);
         frames(b, 2);
@@ -213,7 +221,10 @@ fn preset_steps_cap_the_quality_drawn_not_the_settings() {
     og_runtime::og_render_apply_quality(e, "high".into());
     og_render_set_display(
         e,
-        Some(json!({ "autoPresetSteps": 2, "autoMinScale": 0.5 }).to_string()),
+        Some(
+            json!({ "autoPresetSteps": 2, "autoMinScale": 0.5, "clothSubdivisions": 7 })
+                .to_string(),
+        ),
     );
     og_runtime::set_display_interval(e, 1000.0 / 60.0);
     // Frames far over the budget (100 ms intervals, little CPU work,
@@ -225,6 +236,8 @@ fn preset_steps_cap_the_quality_drawn_not_the_settings() {
     let info = answer(og_render_display(e));
     assert_eq!(info["presetSteps"], json!(2), "{info}");
     assert_eq!(info["renderScale"], json!(0.5));
+    assert_eq!(info["settings"]["clothSubdivisions"], json!(7));
+    assert_eq!(seen.borrow().cloth_subdivisions, 1);
     assert_eq!(
         seen.borrow().quality,
         Some(RenderQuality::preset(QualityPreset::Low))

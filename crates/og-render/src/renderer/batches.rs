@@ -45,6 +45,7 @@ impl Renderer {
                     compact: r.dequant.is_some(),
                     array: r.array,
                     foliage: scene.mesh_foliage_all()[r.mesh].is_some(),
+                    simulated: scene.mesh_surfaces[r.mesh].is_some(),
                     cast: r.cast,
                     layers: r.layers,
                     probe: r.probe,
@@ -391,6 +392,12 @@ impl Renderer {
         b: &Batch,
         skinned: bool,
     ) -> Option<&wgpu::RenderPipeline> {
+        if !skinned && b.simulated && self.cache.meshes[b.mesh].surface.is_some() {
+            return self
+                .cache
+                .surface_prepass_pipelines
+                .get(&(b.shader, b.side, b.array));
+        }
         if let Some(sh) = b.shader {
             return self
                 .cache
@@ -418,6 +425,28 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
+            let key = (b.shader, b.side, b.array);
+            if prepass
+                && !is_skinned
+                && !b.transparent
+                && self.cache.meshes[b.mesh].surface.is_some()
+                && !self.cache.surface_prepass_pipelines.contains_key(&key)
+            {
+                let (layouts, module) = if b.array {
+                    let a = self.array_maps.as_ref().expect("array material");
+                    ((&a.layouts.0, &a.layouts.1), &a.module)
+                } else {
+                    (
+                        (&self.pbr_layout, &self.pbr_skinned_layout),
+                        b.shader
+                            .map_or::<&wgpu::ShaderModule, _>(&self.pbr_shader, |sh| {
+                                &self.cache.shaders[sh]
+                            }),
+                    )
+                };
+                let p = surface_prepass_pipeline(&self.device, layouts, module, b.side, b.array);
+                self.cache.surface_prepass_pipelines.insert(key, p);
+            }
             if b.array {
                 // The array-map variant: the standard builders over its
                 // module and layouts (`material::ArrayMaps`).
@@ -755,7 +784,8 @@ impl Renderer {
                         && b.layers == layers
                         && b.probe == probe =>
                 {
-                    b.count += 1
+                    b.count += 1;
+                    b.simulated |= s.deformed.is_some();
                 }
                 _ => {
                     let m = &self.cache.materials[material];
@@ -777,6 +807,7 @@ impl Renderer {
                         compact: false,
                         array: m.array.is_some(),
                         foliage: false,
+                        simulated: s.deformed.is_some(),
                         cast,
                         layers,
                         probe,

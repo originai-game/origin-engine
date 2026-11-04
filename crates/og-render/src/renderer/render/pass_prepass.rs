@@ -133,20 +133,13 @@ impl Renderer {
                 batch.derivatives,
                 batch.compact,
                 batch.array,
+                self.cache.meshes[batch.mesh].surface.is_some(),
             );
             if current != Some(key) {
-                p.set_pipeline(match batch.shader {
-                    Some(sh) => &self.cache.hook_prepass_pipelines[&(sh, batch.side, false)],
-                    None if batch.lean => {
-                        &self.lean_prepass_pipelines
-                            [&(batch.side, batch.derivatives, batch.compact)]
-                    }
-                    None if batch.array => {
-                        &self.array_maps.as_ref().expect("an array batch").prepass
-                            [&(batch.side, false)]
-                    }
-                    None => &self.prepass_pipelines[&(batch.side, false)],
-                });
+                p.set_pipeline(
+                    self.prepass_pipeline_of(batch, false)
+                        .expect("prepared prepass"),
+                );
                 current = Some(key);
             }
             let m = &self.cache.materials[batch.material];
@@ -157,6 +150,9 @@ impl Renderer {
             p.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
             p.set_vertex_buffer(1, instances.slice(start..end));
             p.set_vertex_buffer(2, prev.slice(start..end));
+            if let Some(surface) = &mesh.surface {
+                p.set_vertex_buffer(3, surface.previous.slice(..));
+            }
             p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             match (main_list.indirect, culled_gpu) {
                 (Some(g), Some(gc)) => p.draw_indexed_indirect(&gc.args, gc.draw_offset(g, b)),

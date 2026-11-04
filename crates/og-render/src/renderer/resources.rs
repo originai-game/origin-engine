@@ -171,6 +171,7 @@ pub(crate) struct GpuMesh {
     /// Local-space bounds as (center, half extent).
     pub(crate) bounds: Option<(Vec3, Vec3)>,
     pub(crate) foliage: Option<FoliageMesh>,
+    pub(crate) surface: Option<crate::surface::SurfaceMesh>,
 }
 
 /// Attachment bounds cached by the scene's immutable foliage allocation.
@@ -285,6 +286,8 @@ pub(crate) struct SceneCache {
     /// Their shadow and prepass pipelines by (shader, side, skinned).
     pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
     pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), wgpu::RenderPipeline>,
+    pub(crate) surface_prepass_pipelines:
+        HashMap<(Option<usize>, Side, bool), wgpu::RenderPipeline>,
     /// The physical lit shader with a material shader, made when a physical
     /// material first uses it, and its pipelines by (shader, key).
     pub(crate) physical_shaders: HashMap<usize, wgpu::ShaderModule>,
@@ -405,6 +408,8 @@ pub(crate) struct Batch {
     /// Carries cooked foliage attachments; its auxiliary instance stream
     /// supplies sway even when motion effects are disabled.
     pub(crate) foliage: bool,
+    /// A draw-only simulation surface: never a cached static shadow caster.
+    pub(crate) simulated: bool,
     /// Drawn into the shadow maps ([`Instance::cast_shadows`],
     /// [`SkinnedInstance::cast_shadows`]).
     pub(crate) cast: bool,

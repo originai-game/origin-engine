@@ -337,6 +337,12 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn) -> PrepassOut {
   return prepass_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), instance_matrix(prev.p0, prev.p1, prev.p2, prev.p3), v);
 }
 
+// Only simulated surfaces use this layout: never foliage or meshlets.
+@vertex
+fn vs_prepass_surface(v: VertexIn, i: InstanceIn, prev: PrevIn, @location(9) before: vec3<f32>) -> PrepassOut {
+  return prepass_vertex_from(instance_matrix(i.m0,i.m1,i.m2,i.m3), instance_matrix(prev.p0,prev.p1,prev.p2,prev.p3), v, before);
+}
+
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette);

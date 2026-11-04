@@ -565,6 +565,40 @@ fn a_replaced_mesh_draws_its_new_shape() {
         !s.set_mesh(skinned, quad(0.0, 1.0)),
         "skinned meshes are refused"
     );
+    // Draw refinement changes the GPU geometry, never the submitted solve.
+    // TAA exercises the surface-only prepass and its previous-position stream.
+    let mut desc = scenes::base_desc();
+    desc.antialias = og_render::Antialias::Taa;
+    let mut r = Renderer::new_blocking(&desc).expect("surface renderer");
+    for (level, x, triangles) in [(0, -2.0, 8), (3, 2.0, 18), (1, -2.0, 2)] {
+        let coarse = quad(x, 1.0);
+        s.cloth_subdivisions = level;
+        assert!(s.set_simulation_surface(
+            mesh,
+            coarse.clone(),
+            og_render::SimulationSurface::SoftBody
+        ));
+        let stats = r
+            .render(&s, &RenderTarget::Offscreen)
+            .expect("surface render");
+        assert_eq!(stats.triangles, triangles);
+        assert_eq!(s.mesh(mesh), Some(&coarse));
+        let image = r.read_offscreen().expect("surface capture");
+        assert!(lit(&image, if x < 0.0 { 420 } else { 860 }));
+        // Hold the subdivision level while moving the coarse solve, so the
+        // second frame updates existing buffers rather than recreating them.
+        assert!(s.set_simulation_surface(
+            mesh,
+            quad(-x, 1.0),
+            og_render::SimulationSurface::SoftBody
+        ));
+        let stats = r
+            .render(&s, &RenderTarget::Offscreen)
+            .expect("surface moved");
+        assert_eq!(stats.triangles, triangles);
+        let image = r.read_offscreen().expect("moved surface capture");
+        assert!(lit(&image, if x < 0.0 { 860 } else { 420 }));
+    }
 }
 
 /// R4's physical sky over the colonnade: each frame matches its

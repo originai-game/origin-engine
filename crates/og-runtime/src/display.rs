@@ -53,6 +53,7 @@ pub(crate) struct Settings {
     pub frame_cap: usize,
     pub battery_saver: bool,
     pub render_scale: f32,
+    pub cloth_subdivisions: u32,
     pub auto_quality: bool,
     pub auto_min_scale: f32,
     pub auto_preset_steps: u8,
@@ -72,6 +73,7 @@ impl Default for Settings {
             frame_cap: 0,
             battery_saver: false,
             render_scale: 1.0,
+            cloth_subdivisions: 0,
             auto_quality: true,
             auto_min_scale: og_render::MIN_RENDER_SCALE,
             auto_preset_steps: 1,
@@ -148,6 +150,9 @@ impl Settings {
             fullscreen: flag("fullscreen", base.fullscreen),
             battery_saver: flag("batterySaver", base.battery_saver),
             render_scale: scale(&d["renderScale"], base.render_scale),
+            cloth_subdivisions: d["clothSubdivisions"]
+                .as_f64()
+                .map_or(base.cloth_subdivisions, |x| x.clamp(0.0, 8.0) as u32),
             auto_quality: flag("autoQuality", base.auto_quality),
             auto_min_scale: scale(&d["autoMinScale"], base.auto_min_scale),
             auto_preset_steps: d["autoPresetSteps"]
@@ -161,6 +166,7 @@ impl Settings {
             "frameCap": FRAME_CAPS[self.frame_cap],
             "batterySaver": self.battery_saver,
             "renderScale": self.render_scale,
+            "clothSubdivisions": self.cloth_subdivisions,
             "autoQuality": self.auto_quality,
             "autoMinScale": self.auto_min_scale,
             "autoPresetSteps": self.auto_preset_steps,
@@ -271,6 +277,8 @@ fn phone(rs: &RenderState) -> bool {
 /// settings' scale without it). Elsewhere nothing: scale 1, the game's
 /// quality.
 pub(crate) fn before_render(rs: &mut RenderState) {
+    let level = rs.display.settings.cloth_subdivisions;
+    rs.scene.cloth_subdivisions = if level == 0 { 2 } else { level };
     // The player's preset replaces the game's quality fields on every host,
     // as RenderSettings' own do; automatic quality's steps cap it below.
     if let Some(q) = rs.display.settings.quality {
@@ -298,6 +306,10 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     d.scale = scale;
     d.step = step;
     if step > 0 {
+        rs.scene.cloth_subdivisions =
+            rs.scene
+                .cloth_subdivisions
+                .min(if step >= 2 { 1 } else { 2 });
         let preset = if step >= 2 {
             QualityPreset::Low
         } else {

@@ -578,6 +578,9 @@ impl Renderer {
             mapped_at_creation: false,
         });
         let aurora_map = aurora::AuroraMap::placeholder(&device, &queue);
+        let surfaces =
+            ribbons_gpu::GpuTrails::supported(adapter.get_downlevel_capabilities().flags)
+                .then(|| surface::SurfacePipelines::new(&device));
         let water = water::WaterRenderer::new(
             &device,
             &frame_layout,
@@ -1001,6 +1004,7 @@ impl Renderer {
             lights_2d,
             trails: ribbons::Trails::default(),
             gpu_trails,
+            surfaces,
             prev_view_proj: None,
             previous_time: None,
             previous_wind: None,

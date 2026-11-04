@@ -80,6 +80,52 @@ impl Renderer {
             bounds,
             revision: 0,
             foliage: None,
+            surface: None,
+        }
+    }
+
+    pub(crate) fn upload_surface(
+        &self,
+        mesh: &MeshData,
+        kind: SimulationSurface,
+        level: u32,
+    ) -> GpuMesh {
+        let count = mesh.indices.len() as u64 * u64::from(level * level);
+        let bytes = count * std::mem::size_of::<Vertex>() as u64;
+        let Some(pipelines) = self
+            .surfaces
+            .as_ref()
+            .filter(|_| bytes > 0 && bytes <= self.device.limits().max_storage_buffer_binding_size)
+        else {
+            return self.upload_mesh(&surface::fallback(mesh, kind), false);
+        };
+        let vertices = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("simulation surface vertices"),
+            size: bytes,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let indices: Vec<u32> = (0..count as u32).collect();
+        let indices = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("simulation surface indices"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        let surface = pipelines.mesh(&self.device, mesh, &vertices, level);
+        GpuMesh {
+            vertices,
+            indices,
+            index_count: count as u32,
+            full: true,
+            compact: None,
+            bounds: surface::bounds(mesh),
+            revision: 0,
+            foliage: None,
+            surface: Some(surface),
         }
     }
 
@@ -145,10 +191,32 @@ impl Renderer {
             let Some(gpu) = self.cache.meshes.get(i) else {
                 break;
             };
+            let source = &scene.meshes()[i];
+            if let Some(kind) = scene.mesh_surfaces[i] {
+                let level = surface::subdivisions(scene.cloth_subdivisions);
+                if let Some(surface) = gpu.surface.as_ref().filter(|s| s.matches(source, level)) {
+                    if gpu.revision != revision {
+                        surface.update(&self.queue, source);
+                    }
+                    let gpu = &mut self.cache.meshes[i];
+                    gpu.bounds = surface::bounds(source);
+                    gpu.revision = revision;
+                } else {
+                    let mut fresh = self.upload_surface(source, kind, level);
+                    fresh.revision = revision;
+                    self.cache.meshes[i] = fresh;
+                }
+                continue;
+            }
+            if gpu.surface.is_some() {
+                let mut fresh = self.upload_mesh(source, false);
+                fresh.revision = revision;
+                self.cache.meshes[i] = fresh;
+                continue;
+            }
             if gpu.revision == revision {
                 continue;
             }
-            let source = &scene.meshes()[i];
             if let Some(k) = &scene.skins()[i] {
                 let positions: Vec<[f32; 3]> = source.vertices.iter().map(|v| v.position).collect();
                 self.cache.joint_boxes[i] = skin::joint_boxes(&positions, k);

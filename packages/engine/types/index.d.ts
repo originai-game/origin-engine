@@ -9817,6 +9817,13 @@ export interface DisplaySettings {
    */
   readonly autoMinScale?: number;
   /**
+   * Draw segments per coarse Cloth or SoftBody edge on devices with compute and vertex storage. 0 selects two; 1–8 select that many, producing the square of that many triangles per solve triangle with crack-free Phong tessellation. Applied on every host, outside world state: CPU points, volume, centre, snapshots and hashes are unchanged. Automatic quality caps it at two at its medium step and one at its low step. Devices without those capabilities keep the coarse mesh with CPU normals. Changing the effective level resets surface motion history.
+   *
+   * @default 0
+   * @range 0..8
+   */
+  readonly clothSubdivisions?: number;
+  /**
    * Graphics preset steps automatic quality may take below the game's own RenderSettings once the scale is at autoMinScale: 1 caps every quality field at the medium row, 2 at the low row (the rows of og.render.applyQuality); 0 never touches RenderSettings' quality. RenderSettings keeps its values: the cap is applied when the frame is drawn.
    *
    * @default 1

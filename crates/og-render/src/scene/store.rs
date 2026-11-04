@@ -26,6 +26,8 @@ impl RenderScene {
             mesh_encodings: Vec::new(),
             mesh_clusters: Vec::new(),
             mesh_foliage: Vec::new(),
+            mesh_surfaces: Vec::new(),
+            cloth_subdivisions: 0,
             textures: Vec::new(),
             texture_revisions: Vec::new(),
             materials: Vec::new(),
@@ -872,6 +874,7 @@ impl RenderScene {
             self.mesh_encodings[i] = VertexEncoding::Full;
             self.mesh_clusters[i] = None;
             self.mesh_foliage[i] = None;
+            self.mesh_surfaces[i] = None;
         } else {
             self.meshes.push(mesh);
             self.skins.push(None);
@@ -880,6 +883,7 @@ impl RenderScene {
             self.mesh_encodings.push(VertexEncoding::Full);
             self.mesh_clusters.push(None);
             self.mesh_foliage.push(None);
+            self.mesh_surfaces.push(None);
         }
         MeshHandle::from_parts(i, generation)
     }
@@ -901,6 +905,7 @@ impl RenderScene {
         self.mesh_revisions[i] += 1;
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
+        self.mesh_surfaces[i] = None;
         self.mesh_slots.remove(i, reuse);
         true
     }
@@ -926,6 +931,43 @@ impl RenderScene {
         // Its clusters described the old indices, its foliage the old vertices.
         self.mesh_clusters[i] = None;
         self.mesh_foliage[i] = None;
+        self.mesh_surfaces[i] = None;
+        true
+    }
+
+    /// Replaces a simulation's coarse draw mesh. The renderer computes its
+    /// normals and finer surface without changing this geometry or the solve.
+    /// Unsupported devices draw these coarse vertices with CPU normals.
+    pub fn set_simulation_surface(
+        &mut self,
+        handle: MeshHandle,
+        mesh: MeshData,
+        kind: crate::SimulationSurface,
+    ) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation())
+            || self.mesh_clusters[i].is_some()
+            || self.mesh_foliage[i].is_some()
+            || !mesh.indices.len().is_multiple_of(3)
+            || mesh
+                .indices
+                .iter()
+                .any(|&i| i as usize >= mesh.vertices.len())
+        {
+            return false;
+        }
+        if let crate::SimulationSurface::Cloth { columns, rows } = kind
+            && (columns < 2
+                || rows < 2
+                || u64::from(columns) * u64::from(rows) != mesh.vertices.len() as u64)
+        {
+            return false;
+        }
+        if !self.set_mesh(handle, mesh) {
+            return false;
+        }
+        self.mesh_encodings[handle.index()] = VertexEncoding::Full;
+        self.mesh_surfaces[handle.index()] = Some(kind);
         true
     }
 
@@ -948,6 +990,7 @@ impl RenderScene {
         if !self.mesh_slots.live(i, handle.generation())
             || self.skins[i].is_some()
             || self.morphs[i].is_some()
+            || self.mesh_surfaces[i].is_some()
         {
             return false;
         }
@@ -986,6 +1029,7 @@ impl RenderScene {
         if !self.mesh_slots.live(i, handle.generation())
             || self.skins[i].is_some()
             || self.morphs[i].is_some()
+            || self.mesh_surfaces[i].is_some()
         {
             return false;
         }
@@ -1045,7 +1089,7 @@ impl RenderScene {
     /// next frame when this changes it. False for a bad handle.
     pub fn set_vertex_encoding(&mut self, handle: MeshHandle, encoding: VertexEncoding) -> bool {
         let i = handle.index();
-        if !self.mesh_slots.live(i, handle.generation()) {
+        if !self.mesh_slots.live(i, handle.generation()) || self.mesh_surfaces[i].is_some() {
             return false;
         }
         if self.mesh_encodings[i] != encoding {

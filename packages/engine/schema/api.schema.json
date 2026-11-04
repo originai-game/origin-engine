@@ -30801,6 +30801,15 @@
           "minimum": 0.5,
           "maximum": 2
         },
+        "clothSubdivisions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Draw segments per coarse Cloth or SoftBody edge on devices with compute and vertex storage. 0 selects two; 1–8 select that many, producing the square of that many triangles per solve triangle with crack-free Phong tessellation. Applied on every host, outside world state: CPU points, volume, centre, snapshots and hashes are unchanged. Automatic quality caps it at two at its medium step and one at its low step. Devices without those capabilities keep the coarse mesh with CPU normals. Changing the effective level resets surface motion history.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 8
+        },
         "autoPresetSteps": {
           "type": "integer",
           "minimum": 0,

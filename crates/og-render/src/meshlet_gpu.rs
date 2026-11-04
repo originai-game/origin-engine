@@ -1614,6 +1614,7 @@ mod tests {
             compact: false,
             array: false,
             foliage: false,
+            simulated: false,
             cast: true,
             layers: 1,
             probe: 0,

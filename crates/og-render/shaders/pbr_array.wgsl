@@ -50,6 +50,13 @@ fn vs_prepass(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn) -> Prep
   return o;
 }
 
+@vertex
+fn vs_prepass_surface_array(v: VertexIn, i: InstanceIn, prev: PrevIn, a: InstanceFxIn, @location(9) before: vec3<f32>) -> PrepassOut {
+  var o = prepass_vertex_from(instance_matrix(i.m0,i.m1,i.m2,i.m3), instance_matrix(prev.p0,prev.p1,prev.p2,prev.p3), v, before);
+  o.layer = array_instance_layer(a);
+  return o;
+}
+
 @fragment
 fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> PrepassTargets {
   hook_front = select(-1.0, 1.0, front_facing);

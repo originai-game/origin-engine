@@ -426,6 +426,43 @@ pub(crate) fn prepass_pipeline(
     // resolve).
     meshlet: Option<(&str, &str, bool)>,
 ) -> wgpu::RenderPipeline {
+    prepass_variant(device, layouts, module, side, skinned, lean, meshlet, None)
+}
+
+pub(crate) fn surface_prepass_pipeline(
+    device: &wgpu::Device,
+    layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
+    module: &wgpu::ShaderModule,
+    side: Side,
+    array: bool,
+) -> wgpu::RenderPipeline {
+    prepass_variant(
+        device,
+        layouts,
+        module,
+        side,
+        false,
+        None,
+        None,
+        Some(if array {
+            "vs_prepass_surface_array"
+        } else {
+            "vs_prepass_surface"
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepass_variant(
+    device: &wgpu::Device,
+    layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
+    module: &wgpu::ShaderModule,
+    side: Side,
+    skinned: bool,
+    lean: Option<(bool, bool)>,
+    meshlet: Option<(&str, &str, bool)>,
+    surface: Option<&str>,
+) -> wgpu::RenderPipeline {
     let (derivatives, compact) = lean.unwrap_or_default();
     let lean = lean.is_some();
     let plain = [
@@ -436,6 +473,16 @@ pub(crate) fn prepass_pipeline(
         }),
         Some(INSTANCE_LAYOUT),
         Some(PREV_INSTANCE_LAYOUT),
+    ];
+    let surface_vertices = [
+        Some(VERTEX_LAYOUT),
+        Some(INSTANCE_LAYOUT),
+        Some(PREV_INSTANCE_LAYOUT),
+        Some(wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &wgpu::vertex_attr_array![9 => Float32x3],
+        }),
     ];
     let constants = [("DISCARD", 0.0)];
     let analytic = [("ANALYTIC", 1.0)];
@@ -467,6 +514,7 @@ pub(crate) fn prepass_pipeline(
         vertex: wgpu::VertexState {
             module,
             entry_point: Some(match (skinned, lean) {
+                _ if let Some(vs) = surface => vs,
                 _ if let Some((vs, _, _)) = meshlet => vs,
                 (true, _) => "vs_prepass_skinned",
                 (false, true) if compact => "vs_prepass_lean_compact",
@@ -476,6 +524,7 @@ pub(crate) fn prepass_pipeline(
             compilation_options: options.clone(),
             // The meshlet entry pulls its vertices (meshlet.wgsl).
             buffers: match (meshlet.is_some(), skinned) {
+                _ if surface.is_some() => &surface_vertices,
                 (true, _) => &[],
                 (false, true) => &skin,
                 (false, false) => &plain,

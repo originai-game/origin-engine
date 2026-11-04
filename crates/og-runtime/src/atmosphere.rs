@@ -805,16 +805,21 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         let mesh = cloth_mesh(c.columns, c.rows, &c.points);
         let handle = match atmo.cloths.get(&e) {
-            Some(&handle) => {
-                scene.set_mesh(handle, mesh);
-                handle
-            }
+            Some(&handle) => handle,
             None => {
-                let handle = scene.add_mesh(mesh);
+                let handle = scene.add_mesh(MeshData::default());
                 atmo.cloths.insert(e, handle);
                 handle
             }
         };
+        scene.set_simulation_surface(
+            handle,
+            mesh,
+            og_render::SimulationSurface::Cloth {
+                columns: c.columns,
+                rows: c.rows,
+            },
+        );
         let material = super::fx::handle_index(&v["material"])
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
@@ -840,16 +845,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         let mesh = soft_mesh(&s.points, &s.indices);
         let handle = match atmo.softs.get(&e) {
-            Some(&handle) => {
-                scene.set_mesh(handle, mesh);
-                handle
-            }
+            Some(&handle) => handle,
             None => {
-                let handle = scene.add_mesh(mesh);
+                let handle = scene.add_mesh(MeshData::default());
                 atmo.softs.insert(e, handle);
                 handle
             }
         };
+        scene.set_simulation_surface(handle, mesh, og_render::SimulationSurface::SoftBody);
         let material = super::fx::handle_index(&v["material"])
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
@@ -919,30 +922,14 @@ fn lightning_and_surfaces(
     og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);
 }
 
-/// The mesh of a soft volume's surface: its world points with normals
-/// averaged from the triangles around each (area-weighted).
+/// The solve's coarse draw mesh; the renderer owns normals and refinement.
 fn soft_mesh(points: &[Vec3], indices: &[u32]) -> MeshData {
-    let mut normals = vec![Vec3::ZERO; points.len()];
-    for t in indices.as_chunks::<3>().0 {
-        let [a, b, c] = t.map(|i| i as usize);
-        if a.max(b).max(c) >= points.len() {
-            return MeshData {
-                vertices: Vec::new(),
-                indices: Vec::new(),
-            };
-        }
-        let n = (points[b] - points[a]).cross(points[c] - points[a]);
-        for i in [a, b, c] {
-            normals[i] += n;
-        }
-    }
     let vertices = points
         .iter()
-        .zip(&normals)
-        .map(|(p, n)| Vertex {
+        .map(|p| Vertex {
             tangent: [0.0; 4],
             position: p.to_array(),
-            normal: n.normalize_or(Vec3::Z).to_array(),
+            normal: [0.0; 3],
             ..Default::default()
         })
         .collect();
@@ -952,8 +939,7 @@ fn soft_mesh(points: &[Vec3], indices: &[u32]) -> MeshData {
     }
 }
 
-/// The mesh of a `columns` x `rows` grid of world points: smooth normals
-/// from the neighbouring points, uv over the grid.
+/// A coarse `columns` x `rows` grid of world points and UVs.
 fn cloth_mesh(columns: u32, rows: u32, points: &[Vec3]) -> MeshData {
     let (w, ht) = (columns.max(2) as usize, rows.max(2) as usize);
     if points.len() < w * ht {
@@ -966,13 +952,10 @@ fn cloth_mesh(columns: u32, rows: u32, points: &[Vec3]) -> MeshData {
     let mut vertices = Vec::with_capacity(w * ht);
     for y in 0..ht {
         for x in 0..w {
-            let dx = at((x + 1).min(w - 1), y) - at(x.saturating_sub(1), y);
-            let dy = at(x, (y + 1).min(ht - 1)) - at(x, y.saturating_sub(1));
-            let n = dy.cross(dx).normalize_or(Vec3::Z);
             vertices.push(Vertex {
                 tangent: [0.0; 4],
                 position: at(x, y).to_array(),
-                normal: n.to_array(),
+                normal: [0.0; 3],
                 uv: [x as f32 / (w - 1) as f32, y as f32 / (ht - 1) as f32],
                 ..Default::default()
             });
