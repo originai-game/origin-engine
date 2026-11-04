@@ -227,6 +227,10 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // compressed luminance. Raw HDR weights erase bright subpixel coverage
   // against dark history; compression bounds that bias to 2:1. Blend the
   // original HDR colours below, not compressed or display-mapped colours.
+  // The moving-sun regression's max/min energy falls from 1.665 to 1.226
+  // (TAA), 1.898 to 1.249 (TAAU); T2x stays 1.138. This trades strong
+  // firefly suppression for stable HDR energy: keep specular/taa-sharp
+  // coverage when changing it, rather than restoring raw-luma weights.
   // See Tardif, Temporal Antialiasing Starter Pack, Resolve:
   // https://alextardif.com/TAA.html. Formula here compresses luma directly.
   let lc = max(dot(cur, LUMA), 0.0);
