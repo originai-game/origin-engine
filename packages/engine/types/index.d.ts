@@ -9953,6 +9953,10 @@ export interface RenderCapabilities {
    */
   readonly transparency: Transparency;
   /**
+   * Whether og.CrowdAnimation crowds are culled (frustum and occlusion), given their level of detail and drawn on the GPU, tens of thousands at a time: where the device draws indirect with a first instance (WebGPU's `indirect-first-instance`, Vulkan, Metal, D3D12). Where it is false, and without a renderer, they draw through the CPU's culling instead: the same members at the same levels and the same frame, at a higher CPU cost per member.
+   */
+  readonly gpuCrowds: boolean;
+  /**
    * Whether og.load.environmentData reads OpenEXR (.exr): true on the native host, false on the web, whose module carries no EXR decoder (a Radiance .hdr loads on every host, and a cooked environment's .exr is converted by the cook, so a shipped game never needs this). Known without a renderer.
    */
   readonly exrDecode: boolean;

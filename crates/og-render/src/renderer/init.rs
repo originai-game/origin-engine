@@ -156,6 +156,8 @@ impl Renderer {
         desc: &RenderDesc,
     ) -> Result<Renderer, RenderError> {
         let adapter_info = adapter.get_info();
+        // What the adapter has, less what the caller treats as absent.
+        let adapter_features = adapter.features() - desc.without_features;
         let indirect = adapter
             .get_downlevel_capabilities()
             .flags
@@ -192,26 +194,24 @@ impl Renderer {
             .clamp(64, limits.max_texture_dimension_2d.max(64));
         let cascades = desc.shadow_cascades.clamp(1, MAX_CASCADES);
         let (mut features, texture_formats) =
-            TextureFormats::choose(adapter.features(), desc.texture_compression);
+            TextureFormats::choose(adapter_features, desc.texture_compression);
         let cache_dir = pipeline_cache::dir();
-        if cache_dir.is_some() && adapter.features().contains(wgpu::Features::PIPELINE_CACHE) {
+        if cache_dir.is_some() && adapter_features.contains(wgpu::Features::PIPELINE_CACHE) {
             features |= wgpu::Features::PIPELINE_CACHE;
         }
         // GPU pass timing (`timing.rs`) where the adapter has timestamps
         // (a publish build has none), and og.motion's slice timing when
         // asked (`RenderDesc::timestamps`), publish too.
         if (cfg!(not(feature = "publish")) || desc.timestamps)
-            && adapter.features().contains(wgpu::Features::TIMESTAMP_QUERY)
+            && adapter_features.contains(wgpu::Features::TIMESTAMP_QUERY)
         {
             features |= wgpu::Features::TIMESTAMP_QUERY;
         }
         // Crowds on the GPU-driven path (crowd_gpu.rs) start each level's
         // indirect draw at the first instance the cull found; without the
         // feature they are drawn through the CPU's skinned lists.
-        let crowd_indirect = indirect
-            && adapter
-                .features()
-                .contains(wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        let crowd_indirect =
+            indirect && adapter_features.contains(wgpu::Features::INDIRECT_FIRST_INSTANCE);
         if crowd_indirect {
             features |= wgpu::Features::INDIRECT_FIRST_INSTANCE;
         }
@@ -252,6 +252,7 @@ impl Renderer {
                 0
             },
             transparency: Transparency::Weighted,
+            gpu_crowds: crowd_indirect,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(

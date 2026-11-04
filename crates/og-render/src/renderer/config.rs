@@ -238,6 +238,11 @@ pub struct RenderDesc {
     /// Where instances are culled: in compute with indirect draws for large
     /// scenes (frustum and occlusion), or on the CPU ([`Culling`]).
     pub culling: Culling,
+    /// Adapter features the renderer treats as absent, so a device that
+    /// lacks them is reproducible on one that has them (the fallbacks'
+    /// tests: `INDIRECT_FIRST_INSTANCE` takes crowds off the GPU-driven
+    /// path, [`RenderInfo::gpu_crowds`]). Empty by default.
+    pub without_features: wgpu::Features,
     /// How point lights' shadows are stored: cube faces, or dual-paraboloid
     /// hemispheres (two passes instead of six; [`PointShadows`]). `Auto`:
     /// cube.
@@ -338,6 +343,7 @@ impl Default for RenderDesc {
             texture_compression: TextureCompression::Auto,
             particles: ParticleSimulation::Auto,
             culling: Culling::Auto,
+            without_features: wgpu::Features::empty(),
             point_shadows: PointShadows::Auto,
             taa_history: TaaHistory::Bilinear,
             taa_sharpen: 0.0,
@@ -427,6 +433,12 @@ pub struct RenderInfo {
     /// where the device writes storage from fragment shaders and has room
     /// for the arena's binding beside the lit pipelines' own.
     pub transparency: Transparency,
+    /// Whether crowds ([`crate::Crowd`]) are culled, levelled and drawn on
+    /// the GPU (`crowd_gpu.rs`): where the device executes indirect draws
+    /// with a first instance (`INDIRECT_FIRST_INSTANCE`). Without it they
+    /// draw through the CPU's skinned lists, the same members at the same
+    /// levels.
+    pub gpu_crowds: bool,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters

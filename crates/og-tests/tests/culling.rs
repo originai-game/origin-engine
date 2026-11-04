@@ -222,3 +222,66 @@ fn auto_culls_only_large_scenes_on_the_gpu() {
         );
     }
 }
+
+/// A device without `INDIRECT_FIRST_INSTANCE` (some WebGPU adapters)
+/// draws crowds through the CPU's skinned lists while the rest of the
+/// scene stays GPU-culled, says so through `RenderInfo::gpu_crowds`
+/// (og.render.capabilities' `gpuCrowds`), and draws the GPU-driven path's
+/// frame: crowd-lods with the feature treated as absent against itself
+/// with it, and against the avenue without its crowd (the fallback draws
+/// the walkers rather than nothing).
+#[test]
+fn crowds_without_indirect_first_instance_fall_back_to_the_cpu_lists() {
+    let run = |without: og_render::wgpu::Features, crowd: bool| {
+        let mut built = scenes::build("crowd-lods").expect("scene");
+        built.desc.culling = Culling::Gpu;
+        built.desc.without_features = without;
+        if !crowd {
+            built.scene.crowds.clear();
+        }
+        let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
+        let mut stats = FrameStats::default();
+        for _ in 0..built.frames.max(1) {
+            stats = renderer
+                .render(&built.scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        let image = renderer.read_offscreen().expect("capture");
+        (renderer.info().gpu_crowds, stats.gpu_culling, image)
+    };
+    let none = og_render::wgpu::Features::empty();
+    let (gpu_crowds, _, gpu) = run(none, true);
+    // Every adapter the gate runs on has the feature.
+    assert!(gpu_crowds, "this adapter draws crowds on the GPU");
+    let (fallback_crowds, gpu_culled, fallback) =
+        run(og_render::wgpu::Features::INDIRECT_FIRST_INSTANCE, true);
+    assert!(!fallback_crowds, "without the feature, gpu_crowds is false");
+    assert!(gpu_culled, "the rest of the scene stays on the GPU path");
+    let (_, _, empty) = run(none, false);
+    let dir = out_dir();
+    std::fs::create_dir_all(&dir).expect("output directory");
+    gfx::save_png(&dir.join("crowd-lods.fallback.png"), &fallback).expect("save");
+    let tight = Tolerance {
+        channel: 2,
+        max_outlier_fraction: 0.0001,
+        rmse: 0.002,
+    };
+    let same =
+        compare(&fallback.pixels, &gpu.pixels, gpu.width, gpu.height, &tight).expect("same size");
+    same.check(&tight)
+        .unwrap_or_else(|e| panic!("the fallback draws the GPU path's frame: {e}"));
+    let crowd = compare(
+        &fallback.pixels,
+        &empty.pixels,
+        gpu.width,
+        gpu.height,
+        &tight,
+    )
+    .expect("same size");
+    assert!(
+        crowd.rmse > 0.05,
+        "the fallback draws the crowd (RMSE {} from the avenue without it)",
+        crowd.rmse
+    );
+}
+

@@ -281,6 +281,7 @@ impl RenderBackend for Device {
             sprite_anisotropy: 1,
             planar_reflections: 1,
             transparency: og_render::Transparency::Weighted,
+            gpu_crowds: false,
         })
     }
     fn render(&mut self, _: &RenderScene) -> Result<(), String> {
