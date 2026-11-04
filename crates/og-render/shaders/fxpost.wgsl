@@ -720,6 +720,7 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
     var occluded = 0.0;
     var prev = start;
     var prev_px = vec2<f32>(px) + 0.5;
+    var prev_surface = d0;
     var inside = false;
     for (var k = 0; k < steps; k++) {
       let f = (f32(k) + jitter) / f32(steps);
@@ -747,7 +748,16 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
       let thickness = params.z * qd + 2.0 * abs(q.z - prev.z) + slope * span + pixel;
       prev = q;
       prev_px = qpx;
-      inside = behind > 0.0 && (inside || behind < thickness);
+      // The receiver's own surface is never its occluder: at a grazing
+      // view its depth changes by more than the thickness per pixel, and
+      // the ray's first samples land behind it.
+      let own = abs(dot(view_pos(quv, surface) - p, n)) < 2.0 * pixel;
+      // Inside an occluder only while the depth buffer stays on one
+      // surface: a ray that entered must not carry over a silhouette onto
+      // whatever lies in front of it (the wall's ray under the box).
+      let same = abs(surface - prev_surface) < thickness;
+      prev_surface = surface;
+      inside = !own && behind > 0.0 && ((inside && same) || behind < thickness);
       if (inside) {
         let ramp = smoothstep(0.0, 1.0 / pixels_per_unit(qd), behind);
         // Fades out over the ray's last part, so its reach has no edge.
@@ -761,9 +771,11 @@ fn fs_contact(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 // The contact masks (tex_b's gba, `fs_contact`'s jittered march) resolved
-// over 5x5 pixels, each weighed by how near its view depth (4 % of the
-// pixel's) and how alike its normal is to the pixel's (a joint bilateral
-// filter, as the AO's blur, with the normal term of SVGF's): one frame's
+// over 5x5 pixels, each weighed by how far its view-space point lies off
+// the pixel's plane (1 % of the view depth and a pixel: a grazing wall's
+// neighbours lie on it whatever their depth slope, a box a few decimetres
+// in front does not) and how alike its normal is to the pixel's (a joint
+// bilateral filter with SVGF's plane and normal terms): one frame's
 // per-pixel samples become a continuous darkening that stops at depth and
 // crease edges, so it never spills from a caster onto the wall behind it
 // or across a block's corner. A hidden tap weighs CONTACT_HIT_WEIGHT times
@@ -780,8 +792,10 @@ fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
   let d0 = depth_at(px);
   if (is_sky(d0)) { return center; }
   let n0 = world_normal(px);
+  let nv = normalize((fxp.view * vec4<f32>(n0, 0.0)).xyz);
+  let p0 = view_pos((vec2<f32>(px) + 0.5) * fxp.screen.zw, d0);
   let size = vec2<i32>(textureDimensions(tex_b));
-  let scale = max(d0 * 0.04, 1e-3);
+  let scale = max(d0 * 0.01 + 1.0 / pixels_per_unit(d0), 1e-3);
   var sum = vec3<f32>(0.0);
   var weight = vec3<f32>(0.0);
   for (var y = -2; y <= 2; y++) {
@@ -790,7 +804,8 @@ fn fs_contact_blur(in: VsOut) -> @location(0) vec4<f32> {
       let d = depth_at(q);
       if (is_sky(d)) { continue; }
       let m = textureLoad(tex_b, q, 0).gba;
-      let w = exp(-abs(d - d0) / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0)
+      let off = abs(dot(view_pos((vec2<f32>(q) + 0.5) * fxp.screen.zw, d) - p0, nv));
+      let w = exp(-off / scale) * pow(max(dot(world_normal(q), n0), 0.0), 16.0)
         * (1.0 + (CONTACT_HIT_WEIGHT - 1.0) * (1.0 - m));
       sum += m * w;
       weight += w;
