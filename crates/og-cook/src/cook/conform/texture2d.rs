@@ -24,10 +24,10 @@
 
 mod art_layout;
 mod cleanedge;
-mod colour;
+pub(in crate::cook) mod colour;
 mod outline;
 pub(in crate::cook) mod paint;
-mod palette;
+pub(in crate::cook) mod palette;
 mod resample;
 
 mod process;

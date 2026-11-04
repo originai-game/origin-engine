@@ -246,7 +246,7 @@ fn without_a_look_or_with_zero_art_blocks_the_cook_is_byte_identical() {
         ]
     };
     let frame_only = "Stylise {\n  posterize 4\n}\n";
-    let zero = "ArtShape {\n  propFaces 0\n  characterFaces 0\n  voxel 0\n  bevel 0\n  normals any\n}\nArtTexels {\n  density 0\n  maxSize 0\n}\nArtMotion {\n  stepFps 0\n  maxFrames 0\n}\nArtLine {\n  width 0\n}\nArtPalette {\n  maxColors 16\n}\n";
+    let zero = "ArtShape {\n  propFaces 0\n  characterFaces 0\n  voxel 0\n  bevel 0\n  normals any\n}\nArtTexels {\n  density 0\n  maxSize 0\n}\nArtMotion {\n  stepFps 0\n  maxFrames 0\n}\nArtLine {\n  width 0\n}\nArtPalette {\n  maxColors 0\n  rampSteps 0\n}\n";
     for (name, text) in [("frame-only", frame_only), ("zero", zero)] {
         // Before: no project.ogt; after: project.ogt names the look.
         let before = project(&format!("same-before-{name}"), &assets(text));
