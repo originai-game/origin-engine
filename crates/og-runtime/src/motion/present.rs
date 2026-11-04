@@ -162,12 +162,14 @@ struct Startup {
     compile_ms: Option<f64>,
     upload_submit_ms: Option<f64>,
     first_dispatch_delay_ms: Option<f64>,
+    first_poll_delay_ms: Option<f64>,
     first_inference_wall_ms: Option<f64>,
     first_inference_poll_ms: f64,
     first_inference_slices: u32,
     first_inference_timed_slices: u32,
     first_inference_gpu_ms: Option<f64>,
     first_inference_slice_yield_ms: Option<f64>,
+    first_inference_readback_ms: Vec<[f64; 2]>,
     first_palette_delay_ms: Option<f64>,
     before_palette_readbacks: u32,
     before_palette_decode_calls: u32,
@@ -621,6 +623,9 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     // blocking (native) runs every slice left and waits for the GPU.
     let (gpu, result) = loop {
         let start = now_ms();
+        r.startup
+            .first_poll_delay_ms
+            .get_or_insert(start - flight.started);
         let polled = flight.future.as_mut().poll(&mut cx);
         if r.startup.first_inference_wall_ms.is_none() {
             r.startup.first_inference_poll_ms += now_ms() - start;
@@ -645,6 +650,7 @@ fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
         r.startup.first_inference_slices = slices;
         r.startup.first_inference_timed_slices = timed;
         r.startup.first_inference_gpu_ms = (timed > 0).then_some(ms);
+        r.startup.first_inference_readback_ms = gpu.readback_timing.clone();
         #[cfg(not(target_arch = "wasm32"))]
         {
             r.startup.first_inference_slice_yield_ms = Some(gpu.slice_yield_ms);

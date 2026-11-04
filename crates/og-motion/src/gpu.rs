@@ -399,6 +399,8 @@ impl Future for Yield {
 struct MapState {
     result: Option<Result<(), wgpu::BufferAsyncError>>,
     waker: Option<Waker>,
+    #[cfg(not(target_arch = "wasm32"))]
+    callback_at: Option<std::time::Instant>,
 }
 
 /// Resolves when `map_async`'s callback has run. With a device, each poll
@@ -452,6 +454,9 @@ pub struct Gpu {
     /// can overlap this interval; it is not an independent compute timer.
     #[cfg(not(target_arch = "wasm32"))]
     pub slice_yield_ms: f64,
+    /// First two native readbacks (map submission to callback, callback
+    /// to consumption), ms: the first student's and decoder's outputs.
+    pub readback_timing: Vec<[f64; 2]>,
     /// Native wall time in pipeline creation and weight/mask buffer creation.
     /// Buffer creation is CPU upload submission, not a GPU completion fence.
     #[cfg(not(target_arch = "wasm32"))]
@@ -652,6 +657,7 @@ impl Gpu {
             slice_timing: (0, 0, 0.0),
             #[cfg(not(target_arch = "wasm32"))]
             slice_yield_ms: 0.0,
+            readback_timing: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             startup_ms: (compile_ms, upload_ms),
         })
@@ -732,7 +738,12 @@ impl Gpu {
             }
             sources.push(&t.resolve);
         }
-        let mut out = self.read(encoder, &sources, &plan.staging).await?;
+        let (mut out, readback) = self.read(encoder, &sources, &plan.staging).await?;
+        if let Some(readback) = readback
+            && self.readback_timing.len() < 2
+        {
+            self.readback_timing.push(readback);
+        }
         if let Some(t) = &self.timer {
             let ticks = out.pop().expect("the timer's buffer was read");
             let (mut ms, mut work) = (0.0, 0.0);
@@ -770,13 +781,15 @@ impl Gpu {
         mut encoder: wgpu::CommandEncoder,
         sources: &[&wgpu::Buffer],
         staging: &wgpu::Buffer,
-    ) -> Result<Vec<Vec<u32>>, GpuError> {
+    ) -> Result<(Vec<Vec<u32>>, Option<[f64; 2]>), GpuError> {
         let sizes: Vec<u64> = sources.iter().map(|b| b.size()).collect();
         let mut offset = 0;
         for (b, size) in sources.iter().zip(&sizes) {
             encoder.copy_buffer_to_buffer(b, 0, staging, offset, *size);
             offset += size;
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        let submitted = std::time::Instant::now();
         self.queue.submit(Some(encoder.finish()));
         let state = Arc::new(Mutex::new(MapState::default()));
         let callback = state.clone();
@@ -784,6 +797,10 @@ impl Gpu {
             .slice(..)
             .map_async(wgpu::MapMode::Read, move |result| {
                 let mut s = callback.lock().unwrap_or_else(|e| e.into_inner());
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    s.callback_at = Some(std::time::Instant::now());
+                }
                 s.result = Some(result);
                 if let Some(waker) = s.waker.take() {
                     waker.wake();
@@ -797,9 +814,24 @@ impl Gpu {
         }
         let poll =
             (!self.blocking && cfg!(not(target_arch = "wasm32"))).then(|| self.device.clone());
-        Mapped(state, poll)
+        Mapped(state.clone(), poll)
             .await
             .map_err(|e| GpuError::Readback(e.to_string()))?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let timing = {
+            let consumed = std::time::Instant::now();
+            let callback = state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .callback_at
+                .expect("mapping completed through its callback");
+            Some([
+                (callback - submitted).as_secs_f64() * 1000.0,
+                (consumed - callback).as_secs_f64() * 1000.0,
+            ])
+        };
+        #[cfg(target_arch = "wasm32")]
+        let timing = None;
         let words: Vec<u32> = {
             let view = staging
                 .slice(..)
@@ -815,7 +847,7 @@ impl Gpu {
             out.push(words[at..at + len].to_vec());
             at += len;
         }
-        Ok(out)
+        Ok((out, timing))
     }
 
     fn encoder(&self) -> wgpu::CommandEncoder {
