@@ -374,10 +374,11 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// dome and blend fields (R2's environment maps), and (-> 990dc6751ebad9f6)
 /// T5's lazy og.Terrain, gone from a world without terrain, and
 /// (-> d8bfce6a5e01a25b) area 7's Stylise and MaterialStyle fields (paint
-/// detail, toon ambient, outline place, wireframe).
+/// detail, toon ambient, outline place, wireframe), and (-> 843074a55148e6fb)
+/// area 4's lazy og.TerrainScatter and og.Wind on top of area 7.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "d8bfce6a5e01a25b";
+const END_HASH: &str = "843074a55148e6fb";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

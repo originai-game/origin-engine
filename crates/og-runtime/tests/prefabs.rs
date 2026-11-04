@@ -280,8 +280,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// sea's fields leave this hash alone, then og.Environment's blurriness,
 /// grounded dome and blend fields from f075e6bd81233636, then T5's lazy
 /// og.Terrain from 6d8422aaf5e31ccc, gone from a world without terrain,
-/// then area 7's Stylise and MaterialStyle fields from 0ac8584de3c39543).
-const BY_HAND_HASH: &str = "b06093a615447620";
+/// then area 7's Stylise and MaterialStyle fields from 0ac8584de3c39543 to
+/// b06093a615447620, then area 4's lazy og.TerrainScatter and og.Wind).
+const BY_HAND_HASH: &str = "f21f6a4b0639cc74";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {
