@@ -608,6 +608,7 @@ fn cornell_box(
         range: 5.0,
         cast_shadows: true,
     };
+    // Centre and radius: resting on the floor.
     let ball = (p(-0.55, 0.22, 0.55), 0.22);
 
     scene.lights.push(spot);
@@ -615,7 +616,8 @@ fn cornell_box(
         scene,
         shapes::sphere(32, 16),
         matte(Vec3::splat(0.85), 0.7),
-        Mat4::from_scale_rotation_translation(Vec3::splat(ball.1), Quat::IDENTITY, ball.0),
+        // shapes::sphere has radius 0.5: scaled by the diameter.
+        Mat4::from_scale_rotation_translation(Vec3::splat(2.0 * ball.1), Quat::IDENTITY, ball.0),
     );
     let place = |scene: &mut RenderScene, i: usize, mesh: og_render::MeshHandle, color: Vec3| {
         if batches && i == 2 {
