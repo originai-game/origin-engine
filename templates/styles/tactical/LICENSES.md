@@ -10,7 +10,7 @@ keep their licences (each pack's `LICENSES.md` and `OFL.txt`):
 
 - `@styles/cjk/NotoSansSC-Bold.ttf`
 - `@styles/cjk/NotoSansSC-Regular.ttf`
-- `@styles/scifi/JetBrainsMono-Regular.ttf`
-- `@styles/scifi/icons.png`
-- `@styles/shared/ChakraPetch-SemiBold.ttf`
-- `@styles/shared/Rajdhani-Bold.ttf`
+- `@styles/shared/SairaSemiCondensed-Medium.ttf`
+- `@styles/shared/SairaSemiCondensed-SemiBold.ttf`
+- `@styles/shared/ShareTechMono-Regular.ttf`
+- `@styles/shared/hairline-icons.png`

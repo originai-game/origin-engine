@@ -1,0 +1,62 @@
+{
+  "broadcast/button": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button of the broadcast UI style for an arcade football game framed like a live TV broadcast: its border and face, its centre plain so a label reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button: a flat slab of navy (#22306a) with a 1 px blue-grey edge (#3f5294), its top-right and bottom-left corners cut on a 45 degree diagonal, 8 px; the label area plain so white italic text reads on it. Hovered: one step lighter. As the inactive tabs of the concept's settings. No glow. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "094a65d40f4f6821",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+    ],
+    "generation": 1793800527,
+    "date": "2026-11-04"
+  },
+  "broadcast/button-primary": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI button of the button primary of the broadcast UI style for an arcade football game framed like a live TV broadcast: its border and face, its centre plain so a label reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button: a flat slab of bright coral (#f28884) filling the whole piece, its face an even light coral with the faintest top-to-bottom gradient, so dark navy text reads on it; its top-right and bottom-left corners cut on a 45 degree diagonal, 8 px; a thin white diagonal slash inset at its left end. Hovered: a little lighter. As the selected AUDIO tab and MUSIC row of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "e637aec52b6d49e2",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+    ],
+    "generation": 1793800527,
+    "date": "2026-11-04"
+  },
+  "broadcast/card": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the card of the broadcast UI style for an arcade football game framed like a live TV broadcast: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A stat card repeated side by side: a flat slab of deep navy (#1a2a63) with a 1 px lighter navy edge (#33478c), its top-right corner cut on a diagonal, and a thin 3 px coral (#f28884) stripe down its left edge. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "88dd75ec085d2dc0",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+    ],
+    "generation": 1793800544,
+    "date": "2026-11-04"
+  },
+  "broadcast/field": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the field of the broadcast UI style for an arcade football game framed like a live TV broadcast: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (13% left, 30% top, 13% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A plain dropdown box: a recessed flat rectangle of dark navy (#0d1842) with a 1 px blue-grey edge (#3a4c86), square corners. Nothing else. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f3d9a67cbfa95c31",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+    ],
+    "generation": 1793800533,
+    "date": "2026-11-04"
+  },
+  "broadcast/slot": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI frame of the slot of the broadcast UI style for an arcade football game framed like a live TV broadcast: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: A player slot repeated in a grid: a flat square of dark navy (#132257) with a 1 px lighter navy edge (#33478c) and its bottom-right corner cut on a diagonal; its centre plain for a picture. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f47e9fc3433ef2fc",
+    "references": [
+      "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+      "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+    ],
+    "generation": 1793800544,
+    "date": "2026-11-04"
+  }
+}

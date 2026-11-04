@@ -370,6 +370,19 @@ def icon_sheet(style):
             ys = np.mgrid[0:cell, 0:cell][0]
             face = b * (0.62 + 0.2 * ys / cell)
             m = Image.fromarray(np.clip(np.clip(a - b, 0, 255) + face, 0, 255).astype(np.uint8), "L")
+        elif style == "hairline":
+            # A field-manual line icon: the glyph's outline alone, 2 px,
+            # its inside a faint wash (the tactical seed's).
+            inner = m.filter(ImageFilter.MinFilter(5))
+            a = np.asarray(m, dtype=np.float64)
+            b = np.asarray(inner, dtype=np.float64)
+            m = Image.fromarray(np.clip(np.clip(a - b, 0, 255) + b * 0.16, 0, 255).astype(np.uint8), "L")
+        elif style == "slant":
+            # A broadcast graphic's glyph: solid, a little bolder, leaning
+            # 12 degrees as its italic captions do (the broadcast seed's).
+            m = m.filter(ImageFilter.MaxFilter(3))
+            lean = math.tan(math.radians(12))
+            m = m.transform((cell, cell), Image.AFFINE, (1, lean, -lean * cell / 2, 0, 1, 0), resample=Image.BICUBIC)
         glyph = Image.merge("LA", (Image.new("L", (cell, cell), 255), m))
         sheet.paste(glyph, ((k % cols) * cell, (k // cols) * cell))
     return sheet.convert("RGBA")
@@ -1246,7 +1259,9 @@ def main():
     shared = os.path.join(STYLES, "shared")
     # stencil and plate: the wasteland and foundry seeds' own (2026-11-04).
     for variant, name in (("paper", "ink-icons.png"), ("neon", "glow-icons.png"),
-                          ("stencil", "stencil-icons.png"), ("plate", "plate-icons.png")):
+                          ("stencil", "stencil-icons.png"), ("plate", "plate-icons.png"),
+                          # hairline and slant: the tactical and broadcast seeds' (2026-11-04).
+                          ("hairline", "hairline-icons.png"), ("slant", "slant-icons.png")):
         icon_sheet(variant).save(os.path.join(shared, name), optimize=True)
         print("wrote", os.path.join(shared, name))
 

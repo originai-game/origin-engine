@@ -2,109 +2,411 @@
   "choices": {
     "finish": "gradient",
     "motion": "snappy",
-    "ornament": "none",
+    "ornament": "light",
     "scheme": "dark",
     "seed": "#e8322b",
-    "shape": "sharp"
+    "shape": "cut"
   },
+  "concepts": [
+    "tests/evidence/ui-art/concepts/v2/broadcast-settings.jpg",
+    "tests/evidence/ui-art/concepts/v2/broadcast-menu.jpg",
+    "tests/evidence/ui-art/concepts/v2/broadcast-hud.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
   "look": "sports broadcast",
+  "lookPreset": "cinematic-realism",
   "palette": {
-    "backdrop": "#0a1431",
-    "highlight": "#ffde52",
+    "backdrop": "#0b1c4f",
+    "highlight": "#ffe36c",
     "ink": "#fef3f2",
-    "line": "#49495e",
-    "panel": "#21243e",
-    "primary": "#f28c88"
+    "line": "#4a5075",
+    "panel": "#222c5a",
+    "primary": "#f28884"
   },
   "premise": "an arcade football game framed like a live TV broadcast",
+  "resample": "smooth",
   "slots": [
     {
       "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "20282d739b7466ce",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "broadcast/panel",
-      "safe": null
+      "note": "A large sports broadcast graphics panel: one rectangle of deep broadcast navy (#16255c), completely opaque and solid everywhere including its centre, its face a very subtle vertical gradient (a touch lighter at the top, #1c2d6a, to #142152 at the bottom) with faint fine diagonal sheen lines: no inner rectangle, no vignette. A crisp 1 px lighter navy edge (#33478c). Its top-right and bottom-left corners cut on a 45 degree diagonal, 10 px; no other ornament, no text, no logo. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#16255c",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "88dd75ec085d2dc0",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
       ],
       "kind": "styleFrame",
       "name": "broadcast/card",
-      "safe": null
+      "note": "A stat card repeated side by side: a flat slab of deep navy (#1a2a63) with a 1 px lighter navy edge (#33478c), its top-right corner cut on a diagonal, and a thin 3 px coral (#f28884) stripe down its left edge. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1a2a63",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "f3d9a67cbfa95c31",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "broadcast/field",
-      "safe": null
+      "note": "A plain dropdown box: a recessed flat rectangle of dark navy (#0d1842) with a 1 px blue-grey edge (#3a4c86), square corners. Nothing else. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0d1842",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "f47e9fc3433ef2fc",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "broadcast/slot",
-      "safe": null
+      "note": "A player slot repeated in a grid: a flat square of dark navy (#132257) with a 1 px lighter navy edge (#33478c) and its bottom-right corner cut on a diagonal; its centre plain for a picture. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#132257",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "adcb5ffe0edc051b",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "broadcast/tooltip",
-      "safe": null
+      "note": "A small caption tag: a flat opaque slab of deep navy (#16255c), a 1 px lighter navy edge, and a short coral (#f28884) diagonal slash at its left end. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#16255c",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "c2e36545cc27ed87",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "broadcast/hud",
-      "safe": null
+      "note": "A broadcast scorebug plate: a flat opaque slab of deep navy (#16255c), a 1 px lighter navy edge (#33478c), a short signal-red (#e8322b) and white diagonal double slash at its left end, its top-right corner cut on a diagonal. Its centre plain. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#16255c",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "094a65d40f4f6821",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
       ],
       "kind": "styleButton",
       "name": "broadcast/button",
-      "safe": null
+      "note": "A secondary button: a flat slab of navy (#22306a) with a 1 px blue-grey edge (#3f5294), its top-right and bottom-left corners cut on a 45 degree diagonal, 8 px; the label area plain so white italic text reads on it. Hovered: one step lighter. As the inactive tabs of the concept's settings. No glow. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "e637aec52b6d49e2",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
       "kind": "styleButton",
       "name": "broadcast/button-primary",
-      "safe": null
+      "note": "The primary button: a flat slab of bright coral (#f28884) filling the whole piece, its face an even light coral with the faintest top-to-bottom gradient, so dark navy text reads on it; its top-right and bottom-left corners cut on a 45 degree diagonal, 8 px; a thin white diagonal slash inset at its left end. Hovered: a little lighter. As the selected AUDIO tab and MUSIC row of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "98ad07f42693c364",
+      "kind": "ornament",
+      "name": "broadcast/corner",
+      "note": "A broadcast graphics accent: two short parallel diagonal slashes, one signal red (#e8322b) and one white, each 4 px wide and 18 px long at 60 degrees, in the top-left of the image, on a clear background. Nothing else.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "6984fbf4295b4929",
+      "kind": "ornament",
+      "name": "broadcast/divider",
+      "note": "A horizontal divider: one 2 px coral (#f28884) line, even weight from end to end; on a clear background. Nothing else.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "aspect": "free",
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
+      "fit": "contain",
+      "focal": [
+        0.5,
+        0.5
+      ],
+      "hash": "4373d38d55a9d75a",
+      "kind": "ornament",
+      "name": "broadcast/flourish",
+      "note": "A heading accent: one short slanted bar in coral (#f28884), a parallelogram 10 px wide and 22 px tall leaning right, as the slash before the concept's SETTINGS title; on a clear background. Nothing else.",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": [
@@ -119,6 +421,69 @@
       "kind": "iconSet",
       "name": "broadcast/icons",
       "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "7a575917ef50fd93",
+      "kind": "ornament",
+      "name": "broadcast/thumb",
+      "note": "A slider's thumb: one round white (#ffffff) puck with a soft 1 px grey edge and the faintest shadow under it, centred, about 16 of 24 px across. Fully transparent around it. As the white handles on the concept's sliders. Nothing else.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "6729355dfa31c4a7",
+      "kind": "ornament",
+      "name": "broadcast/knob",
+      "note": "Only the sliding knob of a toggle switch: one round white puck, as the knob of the concept's ON toggle. Fully transparent around it.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "f887495547dad237",
+      "kind": "ornament",
+      "name": "broadcast/knob-off",
+      "note": "Only the sliding knob of a toggle switch: one round light grey (#c9ccd8) puck. Fully transparent around it.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     }
   ],
   "style": "broadcast"

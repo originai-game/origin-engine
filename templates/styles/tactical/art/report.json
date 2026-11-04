@@ -1,0 +1,396 @@
+{
+  "atlas": [
+    256,
+    347
+  ],
+  "base": [
+    0,
+    0
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "pending": [
+    "tactical/field",
+    "tactical/tooltip",
+    "tactical/button"
+  ],
+  "resample": "smooth",
+  "slots": [
+    {
+      "derived": [],
+      "from": "art/panel.png",
+      "insets": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800546,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the panel of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A large military interface panel: one rectangular sheet of matte dark olive-black composite (#1e211c), completely opaque and solid everywhere including its centre. Its whole face one even tone from edge to centre with a very faint fine grain: no inner rectangle, no vignette. A crisp 1 px olive-grey hairline (#4f5a3c) runs all round, and at each corner a short L-shaped bracket tick in pale olive (#aabb76), 12 px along each side, 2 px thick, sitting just on the hairline. Square corners, no bevel, no rivets, no text. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "0e07cb8f8f58e4fe"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "tactical/panel",
+      "source": [
+        384,
+        384
+      ],
+      "to": [
+        "Panel.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/card.png",
+      "insets": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800551,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the card of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A loadout card repeated side by side: a flat sheet of dark olive-black composite (#22251f), a 1 px olive-grey hairline (#4f5a3c) all round, square corners, and a small 8 px pale olive (#aabb76) bracket tick in its top-left corner only. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "711c6c467c4f77f5"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "tactical/card",
+      "source": [
+        384,
+        384
+      ],
+      "to": [
+        "Card.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/slot.png",
+      "insets": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800529,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the slot of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An equipment slot in a grid: a flat square of dark olive-black (#1a1c17) with a 1 px olive-grey hairline (#4f5a3c) and a short 2 px pale olive (#aabb76) bracket tick in each corner, square corners, its centre plain for an item picture. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "b7fc9890b3f5d1db"
+      },
+      "size": [
+        64,
+        64
+      ],
+      "slot": "tactical/slot",
+      "source": [
+        258,
+        256
+      ],
+      "to": [
+        "Slot.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/hud.png",
+      "insets": [
+        14,
+        12,
+        14,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800537,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the hud of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a panel's border and ground, its centre plain so text reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD readout plate: a flat opaque rectangle of dark olive-black (#1e211c) with a 1 px olive-grey hairline (#4f5a3c) and short pale olive (#aabb76) bracket ticks at its four corners, square corners, its centre plain. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "bcaa7143daf09bb4"
+      },
+      "size": [
+        83,
+        40
+      ],
+      "slot": "tactical/hud",
+      "source": [
+        330,
+        160
+      ],
+      "to": [
+        "Hud.frame"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button-primary.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800526,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI button of the button primary of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: its border and face, its centre plain so a label reads on it.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button: a flat rectangle of field olive (#aabb76) filling the whole piece, an even light olive face so near-black text reads on it, a 1 px darker olive edge (#7d8a4e), square corners, a short near-black bracket tick inside its top-left and bottom-right corners. Hovered: a little lighter. As the selected LOADOUT 1 tab and the selected settings row of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "3439b2dba23f23c5"
+      },
+      "size": [
+        177,
+        44
+      ],
+      "slot": "tactical/button-primary",
+      "source": [
+        709,
+        176
+      ],
+      "to": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/corner.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800528,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the corner of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single corner only, centred, filling the image across its width, 1.00 times as wide as it is tall (32 x 32 proportions); nothing else in the image.\nArt direction: A corner bracket: one L-shaped tick in pale field olive (#aabb76), each arm 22 px long and 2 px thick, meeting square at the top-left of the image, on a clear background, like the brackets on a targeting reticle. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "63891002250a294a"
+      },
+      "size": [
+        32,
+        32
+      ],
+      "slot": "tactical/corner",
+      "source": [
+        129,
+        128
+      ],
+      "to": [
+        "corner"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/divider.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800523,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the divider of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: one 1 px olive-grey hairline (#4f5a3c), even weight from end to end, with a 2 px pale olive (#aabb76) segment 16 px long at its left end; on a clear background. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "ff43b8d93144b27e"
+      },
+      "size": [
+        192,
+        1
+      ],
+      "slot": "tactical/divider",
+      "source": [
+        1485,
+        9
+      ],
+      "to": [
+        "divider"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/flourish.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800525,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the flourish of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single flourish only, centred, filling the image across its width, 2.67 times as wide as it is tall (64 x 24 proportions); nothing else in the image.\nArt direction: A heading accent: two short forward slashes '//' in pale field olive (#aabb76), 2 px strokes, about 16 px wide in a 64 px image, as the '// PRIMARY' marks of the concept; on a clear background. Nothing else.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "251fe3a13a5f0fe6"
+      },
+      "size": [
+        27,
+        24
+      ],
+      "slot": "tactical/flourish",
+      "source": [
+        109,
+        96
+      ],
+      "to": [
+        "flourish"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/thumb.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800534,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the thumb of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "c8f133c3ec496dfa"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "tactical/thumb",
+      "source": [
+        99,
+        96
+      ],
+      "to": [
+        "Slider.knob"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800537,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "b3e521c20e95b956"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "tactical/knob",
+      "source": [
+        96,
+        98
+      ],
+      "to": [
+        "Toggle.knob[on]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob-off.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-04",
+        "generation": 1793800533,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob off of the tactical UI style for a squad tactics game of briefings, loadouts and grid maps: a corner, flourish or divider, on a clear background.\nStyle: Cinematic realism. Believable materials, human proportions and natural light, organised by cinematic framing, depth and colour control. Physically based materials, natural light, film-like grading and lenses, composition from cinema.\nPalette: free, graded; one grade per area; avoid oversaturation; skin tones protected.\nBackground: fully transparent, nothing outside the subject.\nLine: none, no outline.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: flat ambient light; saturated game-y colours; stylised outlines; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+          "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+        ],
+        "request": "7541db7bde023cec"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "tactical/knob-off",
+      "source": [
+        96,
+        97
+      ],
+      "to": [
+        "Toggle.knob[off]"
+      ]
+    }
+  ],
+  "stale": [],
+  "style": "tactical"
+}

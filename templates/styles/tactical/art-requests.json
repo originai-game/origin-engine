@@ -7,7 +7,17 @@
     "seed": "#9aae5c",
     "shape": "cut"
   },
+  "concepts": [
+    "tests/evidence/ui-art/concepts/v2/tactical-menu.jpg",
+    "tests/evidence/ui-art/concepts/v2/tactical-settings.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
   "look": "tactical military",
+  "lookPreset": "cinematic-realism",
   "palette": {
     "backdrop": "#101210",
     "highlight": "#f5e7bf",
@@ -17,127 +27,385 @@
     "primary": "#aabb76"
   },
   "premise": "a squad tactics game of briefings, loadouts and grid maps",
+  "resample": "smooth",
   "slots": [
     {
       "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "0e07cb8f8f58e4fe",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "tactical/panel",
-      "safe": null
+      "note": "A large military interface panel: one rectangular sheet of matte dark olive-black composite (#1e211c), completely opaque and solid everywhere including its centre. Its whole face one even tone from edge to centre with a very faint fine grain: no inner rectangle, no vignette. A crisp 1 px olive-grey hairline (#4f5a3c) runs all round, and at each corner a short L-shaped bracket tick in pale olive (#aabb76), 12 px along each side, 2 px thick, sitting just on the hairline. Square corners, no bevel, no rivets, no text. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1e211c",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "711c6c467c4f77f5",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
       ],
       "kind": "styleFrame",
       "name": "tactical/card",
-      "safe": null
+      "note": "A loadout card repeated side by side: a flat sheet of dark olive-black composite (#22251f), a 1 px olive-grey hairline (#4f5a3c) all round, square corners, and a small 8 px pale olive (#aabb76) bracket tick in its top-left corner only. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#22251f",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "ea3da2c83f3f2a64",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "tactical/field",
-      "safe": null
+      "note": "A plain input or dropdown box: a recessed flat rectangle of near-black olive (#151713) with a 1 px olive-grey hairline (#4f5a3c), square corners. Nothing else. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#151713",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "b7fc9890b3f5d1db",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "tactical/slot",
-      "safe": null
+      "note": "An equipment slot in a grid: a flat square of dark olive-black (#1a1c17) with a 1 px olive-grey hairline (#4f5a3c) and a short 2 px pale olive (#aabb76) bracket tick in each corner, square corners, its centre plain for an item picture. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1a1c17",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "5e07c4b68fab8976",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "tactical/tooltip",
-      "safe": null
+      "note": "A small tooltip: an opaque flat near-black olive tag (#1b1d18) with a 1 px pale olive hairline (#7d8a5a), square corners, one tiny 6 px bracket tick at its top-left corner. Plain inside. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1b1d18",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "bcaa7143daf09bb4",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "tactical/hud",
-      "safe": null
+      "note": "A HUD readout plate: a flat opaque rectangle of dark olive-black (#1e211c) with a 1 px olive-grey hairline (#4f5a3c) and short pale olive (#aabb76) bracket ticks at its four corners, square corners, its centre plain. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#1e211c",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "6850797ad1273f02",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
       ],
       "kind": "styleButton",
       "name": "tactical/button",
-      "safe": null
+      "note": "A secondary button: a flat rectangle of dark olive-black (#262922) with a 1 px olive-grey hairline (#5a6446), square corners, a short pale olive bracket tick at its top-left and bottom-right corners; the label area plain so light text reads on it. Hovered: one step lighter. As the inactive loadout tabs of the concept. No bevel, no gradient. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "3439b2dba23f23c5",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
       "kind": "styleButton",
       "name": "tactical/button-primary",
-      "safe": null
+      "note": "The primary button: a flat rectangle of field olive (#aabb76) filling the whole piece, an even light olive face so near-black text reads on it, a 1 px darker olive edge (#7d8a4e), square corners, a short near-black bracket tick inside its top-left and bottom-right corners. Hovered: a little lighter. As the selected LOADOUT 1 tab and the selected settings row of the concept. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "63891002250a294a",
       "kind": "ornament",
       "name": "tactical/corner",
-      "safe": null
+      "note": "A corner bracket: one L-shaped tick in pale field olive (#aabb76), each arm 22 px long and 2 px thick, meeting square at the top-left of the image, on a clear background, like the brackets on a targeting reticle. Nothing else.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "ff43b8d93144b27e",
       "kind": "ornament",
       "name": "tactical/divider",
-      "safe": null
+      "note": "A horizontal divider: one 1 px olive-grey hairline (#4f5a3c), even weight from end to end, with a 2 px pale olive (#aabb76) segment 16 px long at its left end; on a clear background. Nothing else.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "251fe3a13a5f0fe6",
       "kind": "ornament",
       "name": "tactical/flourish",
-      "safe": null
+      "note": "A heading accent: two short forward slashes '//' in pale field olive (#aabb76), 2 px strokes, about 16 px wide in a 64 px image, as the '// PRIMARY' marks of the concept; on a clear background. Nothing else.",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": [
@@ -152,6 +420,66 @@
       "kind": "iconSet",
       "name": "tactical/icons",
       "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "c8f133c3ec496dfa",
+      "kind": "ornament",
+      "name": "tactical/thumb",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "b3e521c20e95b956",
+      "kind": "ornament",
+      "name": "tactical/knob",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "7541db7bde023cec",
+      "kind": "ornament",
+      "name": "tactical/knob-off",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     }
   ],
   "style": "tactical"
