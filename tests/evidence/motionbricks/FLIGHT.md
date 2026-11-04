@@ -187,9 +187,9 @@ clip) are after the solve.
 | standing/train | SOMA | 25.105 | 19.285 pass | 24.853 pass | LeftHandMiddleEnd s23 | 0.0000 | 4.902 | 20.72 / 1.53 |
 | standing/train | traveller | 19.747 | 15.584 pass | 19.550 pass | LeftHand s23 | 0.0000 | 4.900 | 20.25 / 1.16 |
 
-Continuity: 0 of 20 fail (10 before). Contacts: 18 cases below 0.0001 cm
-(hopping/old traveller 0.0024 cm is the solver's tolerance, not a reach
-deficit); hopping/train 3.403/3.961 cm, see below. Lean ≤ 4.950° in every
+Continuity: 0 of 20 fail (10 before). Contacts: 17 cases below 0.0001 cm,
+one hopping/old traveller case at 0.002359 cm (solver residual, not a reach
+deficit); hopping/train 3.403/3.961 cm, see below. Lean ≤ 4.9502° in every
 case, within the 5° bound. Reverse seek and stride-7 sampling are bitwise
 equal to forward evaluation in all 20. Raw-root `base` measurements and the
 bounds are unchanged from the archived results.
@@ -253,12 +253,50 @@ this is a CPU experiment and its acceptance is numeric.
 ### Limitations
 
 The solve holds every sample of the clip: a production streaming boundary
-must hold the clip's samples (or a window with its adjacent samples), and
-restarting the solve per model batch is not the contract. Gesture and gaze
+must hold all of the clip's samples; a finite-window replacement has not
+been shown equivalent. Restarting the solve per model batch is not the
+contract. Gesture and gaze
 priorities and leg joint limits are still not integrated (the leg reach is
 the two-bone triangle, with no knee hyperextension check beyond the
 straight-leg bound). The deviation from the generated pose is reported, not
 bounded.
+
+### Art handoff on motion-takeover
+
+The integrator independently reran all 20 cases: zero landing failures,
+bitwise reverse/stride-7 replay, maximum lean 4.950173°, contacts as above.
+`MARGIN = 0.01` and `CONE_DEGREES = 4.9` are unchanged. Art must judge the
+near-bound recovery speed and the cone-resting torso before either is tuned
+or motion.jump is unblocked. Hopping/train's four sample/rig reach deficits
+remain plan/model work, not an operator waiver. Integrated palette world-hash
+replay, authored gesture/gaze constraints and leg limits remain separate open
+items; numeric continuity is not a claim that those paths are implemented.
+
+The optional fifth argument `--review` exports raw, root-aligned and corrected
+FK positions without changing the solve or nominal measurements. The generator
+below turns that export into a disposable diagnostic skeleton viewer with a
+metre grid, contact anchors and phase/sample-labelled captures. It draws actual
+exported positions, not a second implementation of the solve. It is not a
+skinned-character or runtime-integration acceptance test. Only macrunner draws
+it; the author checks data, types and CPU logic, not pixels.
+
+```sh
+target/debug/examples/flight_plan \
+  "$HANDOFF/recordings-v2.json" "$HANDOFF/model.safetensors" \
+  "$HANDOFF/traveller.glb" "$HANDOFF/meshy.ogt" --review > flight-review.json
+python3 tests/evidence/motionbricks/flight-review.py flight-review.json /tmp/flight-review
+# On macrunner, with its built og:
+og run /tmp/flight-review --commands "$(cat /tmp/flight-review/case-08.commands)"
+```
+
+`index.json` maps all 20 case indices. Prioritize cases 00/01
+(hopping/adaptation), 08/09 (running/adaptation), 12/13 (running/train), and
+18/19 (standing/train), both rigs: takeoff/apex for CONE_DEGREES, landing−2
+through landing+5 and recovery for MARGIN. Cases 04/05 expose the unwaived
+hopping/train anchor conflicts. Each script shows raw/aligned/corrected side
+by side, then the corrected apex in detail. `view:corrected;play` supports
+interactive 30 Hz review. Source-ground-projected root provenance and zero
+original-library training jump windows remain unchanged.
 
 ## motion.jump: vertical ownership must be settled before IDL
 

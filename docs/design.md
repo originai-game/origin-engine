@@ -1539,6 +1539,14 @@ later.
   `tests/evidence/motionbricks/FLIGHT.md`. The controller must own ballistic
   elevation; generated pelvis Y cannot silently add a second jump arc.
   Resolve that presentation-height contract before adding the jump IDL.
+  The experimental flight solve operates on the whole clip: a streaming
+  boundary must buffer all of its samples before solving, then read the
+  solved samples by absolute age. Solving model batches independently is
+  not equivalent and does not inherit its continuity guarantee. Contacts
+  infeasible under the hard root remain explicit plan/model conflicts;
+  neither pelvis orientation nor reach/slack may be relaxed to conceal them.
+  `motion.jump` remains gated on art approval of flight recovery and the
+  upright cone, besides its unresolved vertical-ownership contract.
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its

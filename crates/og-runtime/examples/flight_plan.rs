@@ -1187,6 +1187,7 @@ fn evaluate(
     base: &[Vec<Trs>],
     plan: &Plan,
     rig: &str,
+    review: bool,
 ) -> serde_json::Value {
     // Keep the original raw-root baseline and its continuity bound. Neither
     // re-rooting nor the solve may relax that recorded acceptance bound.
@@ -1240,7 +1241,7 @@ fn evaluate(
     let farthest = (0..deviation.len())
         .max_by(|&a, &b| deviation[a].total_cmp(&deviation[b]))
         .unwrap();
-    json!({"group": plan.group, "clip": plan.clip, "rig": rig,
+    let mut result = json!({"group": plan.group, "clip": plan.clip, "rig": rig,
         "frames": base.len(), "conflicts": conflicts.len(), "conflict_report": conflicts,
         "base": before, "aligned_base": aligned_base, "corrected": after, "pelvis_max_offset_m": pelvis_offset,
         "generated_deviation_max_m": deviation[farthest],
@@ -1249,7 +1250,28 @@ fn evaluate(
         "generated_deviation_mean_m": deviation.iter().sum::<f32>() / deviation.len() as f32,
         "landing_step_bound_m": before["landing_max_step_m"],
         "landing_step_pass": after["landing_max_step_m"].as_f64().unwrap() <= before["landing_max_step_m"].as_f64().unwrap()+0.00001,
-        "seek_replay_sparse_equal": true})
+        "seek_replay_sparse_equal": true});
+    if review {
+        let positions = |poses: &[Vec<Trs>]| -> Vec<Vec<[f32; 3]>> {
+            poses
+                .iter()
+                .map(|p| {
+                    skeleton
+                        .model_space(p)
+                        .iter()
+                        .map(|t| t.translation.to_array())
+                        .collect()
+                })
+                .collect()
+        };
+        result["review"] = json!({
+            "nodes": skeleton.nodes.iter().map(|n| json!({"name": n.name, "parent": n.parent})).collect::<Vec<_>>(),
+            "raw": positions(base), "aligned": positions(&placed), "corrected": positions(&corrected),
+            "takeoff": plan.takeoff, "apex": plan.apex, "landing": plan.landing, "recovery": plan.recovery,
+            "contacts": plan.contacts.iter().map(|c| json!({"begin": c.begin, "end": c.end, "anchor": c.anchor})).collect::<Vec<_>>()
+        });
+    }
+    result
 }
 
 fn hash_replay() -> serde_json::Value {
@@ -1385,6 +1407,7 @@ fn hash_replay() -> serde_json::Value {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+    let review = args.get(5).is_some_and(|arg| arg == "--review");
     let input: Input = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
     let bundle = og_motion::Bundle::from_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
     let soma = og_motion::soma::Skeleton::from_bundle(&bundle).unwrap();
@@ -1433,7 +1456,7 @@ fn main() {
                 })
             })
             .collect();
-        let mut result = evaluate(&skeleton, &map, &base, &recording.plan, "soma");
+        let mut result = evaluate(&skeleton, &map, &base, &recording.plan, "soma", review);
         result["model_root_drift_soma"] = model_drift.clone();
         results.push(result);
         let clip = og_motion::soma::clip("recorded", &skeleton, &base);
@@ -1484,7 +1507,14 @@ fn main() {
             anchor.y += to - from * output.scale;
             contact.anchor = anchor.to_array();
         }
-        let mut result = evaluate(&target, &target_map, &retargeted, &plan, "meshy-traveller");
+        let mut result = evaluate(
+            &target,
+            &target_map,
+            &retargeted,
+            &plan,
+            "meshy-traveller",
+            review,
+        );
         result["model_root_drift_soma"] = model_drift;
         results.push(result);
     }
@@ -1707,7 +1737,14 @@ mod tests {
             end: 20,
             anchor: anchor.to_array(),
         });
-        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic");
+        let mut result = evaluate(&skeleton, &map, &base, &plan, "synthetic", true);
+        let review = result.as_object_mut().unwrap().remove("review").unwrap();
+        assert_eq!(review["corrected"].as_array().unwrap().len(), base.len());
+        assert_eq!(review["raw"][14][8], json!(anchor.to_array()));
+        assert_eq!(
+            result,
+            evaluate(&skeleton, &map, &base, &plan, "synthetic", false)
+        );
         let bound = result["landing_step_bound_m"].as_f64().unwrap();
         assert!((bound - 0.0288).abs() < 0.0005, "{bound}");
         let step = result["corrected"]["landing_max_step_m"].as_f64().unwrap();
@@ -1743,7 +1780,7 @@ mod tests {
             end: 15,
             anchor: anchor.to_array(),
         });
-        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic");
+        let result = evaluate(&skeleton, &map, &base, &plan, "synthetic", false);
         let expected = (1.0_f64 + 0.63 * 0.63).sqrt() - 0.84;
         let report = result["conflict_report"].as_array().unwrap();
         let reach: Vec<_> = report
