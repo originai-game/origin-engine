@@ -187,8 +187,8 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
   kit.openScroll("Info", { width: grow(), height: short || large ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
   {
     if (portrait && big) tabsBlock();
-    if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", maxLines: 2, width: grow() });
-    text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
+    if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(13), color: "highlight", font: "display", maxLines: 2, width: grow(), uppercase: true, onScene: true });
+    text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true, onScene: true });
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
       timerChip("Timer", desc.endsIn, "", timeWords(desc));
     }
@@ -234,15 +234,15 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
             over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
             kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(14), bottom: u(5) } }, () => {
               kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.4, token("shadow", 0.42)], [1, token("shadow", 0.7)]])] });
-              text("Name", f.name ?? "", { step: st(14), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "center" });
+              text("Name", f.name ?? "", { step: st(14), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "center", onScene: true });
               stars("Stars", f.stars ?? 0, u(11), mix(ink, hex("#ffffff"), 0.25));
             });
             over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
           });
           if (!portrait) {
             kit.column("Text", { width: grow(), gap: u(2), cross: "start" }, () => {
-              text("Name", f.name ?? "", { step: st(17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "start" });
-              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
+              text("Name", f.name ?? "", { step: st(17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "start", onScene: true });
+              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow(), onScene: true });
               stars("Stars", f.stars ?? 0, u(13), ink);
             });
           }
@@ -257,7 +257,7 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
     if (desc.rateText && !(portrait && big)) {
       kit.open("Rate", { width: grow(), direction: "column", padding: xy(u(10), u(6)), part: "Gacha.rate", partClass: "panel" });
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("shadow", 0.55) }] });
-      kit.richText("Body", desc.rateText, { step: st(13), color: token("inkMuted"), width: grow() });
+      kit.richText("Body", desc.rateText, { step: st(13), color: token("sceneInk", 0.82), width: grow() });
       kit.close();
     }
   }
@@ -272,7 +272,7 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
         // The purse as the shop shows it: the currency's art and the numeral, no box round them (the scrim under the
         // column keeps them readable).
         kit.row("Purse", { gap: u(6), cross: "center", part: "Gacha.purse", partClass: "badge" }, () => {
-          priceTag("Balance", { amount: balance, currency, size: "md", image: desc.currencyIcon ?? null });
+          priceTag("Balance", { amount: balance, currency, size: "md", image: desc.currencyIcon ?? null, ink: role("sceneInk") });
         });
       });
       kit.open("Buttons", { direction: big ? "column" : "row", gap: u(10), cross: "stretch", width: grow() });
@@ -321,8 +321,8 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
       kit.close();
     });
     kit.row("Bar", { gap: u(8), cross: "center", wrap: true }, () => {
-      if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details" }).clicked) out.details = true;
-      if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history" }).clicked) out.history = true;
+      if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details", onScene: true }).clicked) out.details = true;
+      if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history", onScene: true }).clicked) out.history = true;
     });
   }
   kit.close();
@@ -334,8 +334,8 @@ export function gachaBanner(id: string, desc: GachaBannerDesc, art: () => void):
   if (lead && !portrait) {
     const ink = tierInk(lead);
     kit.column("Spotlight", { gap: u(6), cross: "end", width: px(Math.round(vp.width * 0.36)), part: `Gacha.spotlight${flags(`rarity=${lead.rarity ?? "none"}`)}`, partClass: "badge" }, () => {
-      text("Name", lead.name ?? "", { step: st(short ? 36 : 64), heading: true, font: "display", align: "end", width: grow(), maxLines: 2 });
-      if (lead.title) text("Title", lead.title, { step: st(short ? 14 : 18), color: mix(ink, role("ink"), 0.55), font: "display", align: "end", width: grow(), maxLines: 2 });
+      text("Name", lead.name ?? "", { step: st(short ? 36 : 64), heading: true, font: "display", align: "end", width: grow(), maxLines: 2, onScene: true });
+      if (lead.title) text("Title", lead.title, { step: st(short ? 14 : 18), color: mix(ink, role("ink"), 0.55), font: "display", align: "end", width: grow(), maxLines: 2, onScene: true });
       stars("Stars", lead.stars ?? 0, u(short ? 18 : 24), ink);
     });
     over({ insets: { end: u(phone ? 16 : 48), bottom: u(phone ? 14 : 40) }, inert: true });
@@ -365,8 +365,8 @@ function pityMeter(id: string, pity: number, max: number, label: string): void {
   kit.column(id, { gap: u(5), cross: "stretch", width: grow(), part: "Gacha.pity", partClass: "badge" }, () => {
     kit.row("Words", { gap: u(8), cross: "center", width: grow(), align: "spaceBetween" }, () => {
       // Wrapped beside its count rather than cut (a pixel face, large text).
-      text("Label", words, { step: st(13), maxLines: 2, width: grow(), color: f > 0.8 ? "highlight" : "ink" });
-      text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted" });
+      text("Label", words, { step: st(13), maxLines: 2, width: grow(), color: f > 0.8 ? "highlight" : "ink", onScene: true });
+      text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted", onScene: true });
     });
     kit.open("Track", { width: grow(), height: px(u(6)), radius: 999 });
     kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(hex("#ffffff"), 0.12) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
@@ -596,7 +596,7 @@ function reveal(it: PullItem, idx: number, n: number, dt: number, W: number, H: 
       kit.row("Kind", { gap: u(8), cross: "center" }, () => {
         if (tierWord) kit.richText("Tier", `[b]${tierWord.toLocaleUpperCase().replace(/\[/g, "[[")}[/b]`, { step: st(15), color: paint(mix(ink, hex("#ffffff"), 0.15)), font: "display", nowrap: true } as Api.RichTextDesc);
         if (tierWord && it.kind) text("Dot", "·", { step: st(15), color: "inkMuted", nowrap: true });
-        if (it.kind) text("Text", it.kind.toLocaleUpperCase(), { step: st(14), color: "inkMuted", font: "display", nowrap: true });
+        if (it.kind) text("Text", it.kind, { uppercase: true, step: st(14), color: "inkMuted", font: "display", nowrap: true });
       });
     }
     // The name leads: larger than the stars under it.

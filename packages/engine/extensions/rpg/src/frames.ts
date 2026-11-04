@@ -233,11 +233,11 @@ export function unitFrame(id: string, desc: UnitFrameDesc = {}): Api.Response {
           const tw = Math.max(0, room / fit.k);
           const tl = stepSize(nStep).line;
           box("NameFit", { height: px(Math.ceil(tl * fit.k)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
-            text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: px(tw), name: true },
+            text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: px(tw), name: true, onScene: true },
               absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
           });
         } else {
-          text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: { kind: "grow" }, name: true });
+          text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: { kind: "grow" }, name: true, onScene: true });
         }
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
