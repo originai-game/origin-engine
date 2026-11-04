@@ -36,6 +36,7 @@ mod motion_performance;
 mod nav_profiles;
 mod no_renderer;
 mod prefabs;
+mod preview_overlay;
 mod profile2d;
 mod publish;
 mod raycast_record_cost;

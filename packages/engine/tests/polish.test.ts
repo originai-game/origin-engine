@@ -10,6 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { decodePng } from "../src/node/png.ts";
 
 declare const Bun: {
   spawnSync(
@@ -319,14 +320,23 @@ test("og ui check draws a phone cell at 2 device pixels per CSS pixel and a desk
   writeFileSync(join(p, "project.ogt"), 'type project\nversion 1\n---\nname "Dpr"\nid "dpr"\nengine "0.7.7"\nentry "src/main.ts"\n');
   writeFileSync(
     join(p, "src", "main.ts"),
+    // A screen text beside the UI, as a HUD page's scene is a screen sprite: drawn first, it made the screen overlay
+    // at the target's size and the UI was drawn at 1 into it.
     `import { og, defineSystem } from "@origingame/engine";
-const Draw = defineSystem("Draw", {}, () => og.ui.anchor("Title", { anchor: "center" }, () => og.ui.label("Name", "Key F", { step: "body" })));
+let face: unknown = null;
+const Draw = defineSystem("Draw", {}, (_q, _t, world) => {
+  if (face) og.render.text(world, { font: face, text: "x", screen: true, position: { x: 4, y: 4, z: 0 }, size: 8 } as never);
+  og.ui.anchor("Title", { anchor: "center" }, () => og.ui.label("Name", "Key F", { step: "body" }));
+});
 export default og.game({
   tick: 60,
   systems: [Draw],
   start: (world) => {
     const font = og.load.font(world, "fonts/NotoSansSC-Regular-subset.ttf");
-    if (font.ok) og.ui.configure(world, { font: font.value });
+    if (font.ok) {
+      face = font.value;
+      og.ui.configure(world, { font: font.value });
+    }
   },
 });
 `,
@@ -338,11 +348,26 @@ export default og.game({
   expect(check.cellList.map((c) => [c.cell.split(" ")[1], c.dpr])).toEqual([["desktop", 1], ["phonePortrait", 2]]);
   for (const c of check.cellList) {
     // The UI laid out at that ratio (its CSS size unchanged), and the frame, where a renderer drew one, at it.
-    const f = JSON.parse(readFileSync(join(out, c.uiFrame), "utf8")) as { viewport: { width: number; dpr: number } };
+    const f = JSON.parse(readFileSync(join(out, c.uiFrame), "utf8")) as { viewport: { width: number; dpr: number }; elements: Array<{ id: string; x: number; y: number; width: number; height: number }> };
     expect(f.viewport.dpr).toBe(c.dpr);
     if (c.frame) {
-      const png = readFileSync(join(out, c.frame));
-      expect(new DataView(png.buffer, png.byteOffset).getUint32(16)).toBe(f.viewport.width * c.dpr);
+      // Drawn at the ratio: the frame is that many pixels wide, and the label's ink lies in its CSS box times it (a UI
+      // drawn at 1 in the frame's top left quarter puts the centred label's ink a quarter of the way in, not there).
+      const img = decodePng(new Uint8Array(readFileSync(join(out, c.frame))));
+      expect(img.width).toBe(f.viewport.width * c.dpr);
+      const e = f.elements.find((x) => x.id === "Name")!;
+      const lum = (x: number, y: number) => img.rgba[(y * img.width + x) * 4]! + img.rgba[(y * img.width + x) * 4 + 1]! + img.rgba[(y * img.width + x) * 4 + 2]!;
+      const spread = (x0: number, y0: number, w: number, h: number) => {
+        let lo = Infinity, hi = -Infinity;
+        for (let y = Math.max(0, Math.floor(y0)); y < Math.min(img.height, y0 + h); y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(img.width, x0 + w); x++) {
+          lo = Math.min(lo, lum(x, y));
+          hi = Math.max(hi, lum(x, y));
+        }
+        return hi - lo;
+      };
+      const k = c.dpr;
+      expect(spread(e.x * k, e.y * k, e.width * k, e.height * k)).toBeGreaterThan(120);
+      if (k > 1) expect(spread(e.x, e.y, e.width, e.height)).toBeLessThan(30);
     }
   }
 });

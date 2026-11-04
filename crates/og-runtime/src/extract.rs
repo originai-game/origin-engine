@@ -335,6 +335,11 @@ pub(crate) struct RenderState {
     /// The play surface the host reported (`set_viewport`); `None` uses the
     /// render target at one CSS pixel per device pixel.
     pub viewport: Option<og_ui::Viewport>,
+    /// The viewport og.ui.previewViewport set (a preview, `og ui check`'s
+    /// phone at 2 device pixels per CSS pixel): over the host's, the CSS
+    /// surface the screen overlay is laid on ([`super::fx::viewport`]), as
+    /// the UI lays out on it.
+    pub preview: Option<og_ui::Viewport>,
     /// The command channel's `cover`: where a host's control would cover
     /// the surface (`Viewport.covered`), over whatever the host reports,
     /// so a native run lays out as the published page with its Back does.
@@ -420,6 +425,7 @@ impl RenderState {
             draw: DrawLayouts::default(),
             options,
             viewport: None,
+            preview: None,
             cover: None,
             ui: None,
             ui_pages: BTreeMap::new(),

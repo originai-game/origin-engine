@@ -1684,7 +1684,7 @@ fn joints(
 
 /// The overlay's size in CSS pixels: the host's viewport, else the target.
 pub(crate) fn viewport(rs: &RenderState) -> (f32, f32) {
-    if let Some(v) = rs.viewport {
+    if let Some(v) = rs.preview.or(rs.viewport) {
         return (v.width.max(1.0), v.height.max(1.0));
     }
     match rs.backend.as_ref().map(|b| b.size()) {

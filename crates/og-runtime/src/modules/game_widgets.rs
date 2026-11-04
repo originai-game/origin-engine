@@ -701,7 +701,7 @@ pub fn og_ui_tick() -> u32 {
 
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     let v = parse(Some(&viewport)).unwrap_or(Value::Null);
-    PREVIEW.with(|p| {
+    let set = PREVIEW.with(|p| {
         let mut p = p.borrow_mut();
         if v.is_object() {
             let num = |k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
@@ -723,5 +723,15 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
         } else {
             p.remove(&world);
         }
+        p.get(&world).copied()
     });
+    // The screen overlay (screen sprites and texts, the UI) is laid on the
+    // previewed CSS surface too: a capture at 2 device pixels per CSS pixel
+    // drew the UI at 1 in the corner of its frame when a screen sprite (a
+    // HUD page's scene) had made the overlay first, at the target's size.
+    if let Ok(eng) = engine(world)
+        && let Ok(mut rs) = eng.render.try_borrow_mut()
+    {
+        rs.preview = set;
+    }
 }
