@@ -36,6 +36,10 @@ const FINE: i64 = 60;
 const COARSE: i64 = 8;
 /// A jump forward of more steps than this restarts the history.
 pub const GAP: i64 = FINE;
+/// A step back of up to this many steps (a frame between ticks after one
+/// at the tick, under a tick of a 4 Hz game) keeps the history; further
+/// back (a restore) restarts it.
+pub const HOLD: i64 = 8;
 
 /// The steps of a warm-up ending at step `now`: each the index of the
 /// [`STEP`] it arrives at and the steps it spans since the one before.
@@ -53,6 +57,20 @@ pub fn warm_steps(now: i64) -> Vec<(i64, i64)> {
         out.push((k, span));
     }
     out
+}
+
+/// The steps that bring a history last stepped at `last` to step `now`,
+/// and whether the history restarts first: each step since `last` when
+/// `now` is at most [`GAP`] ahead, none when it is at most [`HOLD`]
+/// behind (it holds), otherwise the warm-up of a restart.
+pub fn schedule(last: Option<i64>, now: i64) -> (Vec<(i64, i64)>, bool) {
+    match last {
+        Some(last) if now >= last && now - last <= GAP => {
+            (((last + 1)..=now).map(|k| (k, 1)).collect(), false)
+        }
+        Some(last) if now < last && last - now <= HOLD => (Vec::new(), false),
+        _ => (warm_steps(now), true),
+    }
 }
 
 /// What a step reads of the sea besides its waves (`FoamParams` in
@@ -183,6 +201,28 @@ mod tests {
         let s0 = warm_steps(0);
         assert_eq!(*s0.last().unwrap(), (0, 1));
         assert!(s0[0].0 < -600);
+    }
+
+    /// Frames between ticks (the sea's clock at the display's rate) step
+    /// the history on; a capture at the tick between two of them steps it
+    /// back under a tick, which holds it (the code before restarted the
+    /// warm-up, some 140 submits, on any step back); a restore further
+    /// back restarts it.
+    #[test]
+    fn a_step_back_under_a_tick_holds_the_history() {
+        assert_eq!(schedule(Some(100), 102), (vec![(101, 1), (102, 1)], false));
+        assert_eq!(schedule(Some(100), 100), (vec![], false));
+        assert_eq!(schedule(Some(100), 99), (vec![], false));
+        assert_eq!(schedule(Some(100), 100 - HOLD), (vec![], false));
+        assert_eq!(
+            schedule(Some(100), 99 - HOLD),
+            (warm_steps(99 - HOLD), true)
+        );
+        assert_eq!(
+            schedule(Some(100), 101 + GAP),
+            (warm_steps(101 + GAP), true)
+        );
+        assert_eq!(schedule(None, 7), (warm_steps(7), true));
     }
 
     /// The water pass's uv of a world point on a level is the update's

@@ -133,6 +133,12 @@ pub struct RenderScene {
     /// never feeds the tick: a streamed terrain tile's fade-in. Default
     /// one sixtieth.
     pub frame_seconds: f32,
+    /// A display frame drawn between the last two ticks (render
+    /// interpolation): its alpha, 0 at the tick before `tick` and 1 at
+    /// `tick`, as the blended transforms are drawn; `None` draws `tick`.
+    /// The sea's clock runs at it, so waves move at the display's rate and
+    /// stay in step with the floaters drawn on them.
+    pub interpolation: Option<f32>,
     /// Running particle systems (state is kept by their id).
     pub particles: Vec<ParticleSystem>,
     /// What CPU-simulated particles with collision bounce off (the CPU

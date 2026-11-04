@@ -617,3 +617,66 @@ fn shallow_floaters_sit_in_the_drawn_shoaled_sea() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// W8: the sea runs at the display's rate. Two frames of one tick drawn at
+/// different interpolation alphas draw different seas (the code before drew
+/// both at the tick, identically), and at either alpha the tick's waves are
+/// drawn where og.physics.waterHeight puts them at that alpha's time, to
+/// 2 cm, so floaters blended between ticks stay on them.
+#[test]
+fn the_sea_moves_between_ticks_in_step_with_the_tick() {
+    let water = og_render::Water {
+        size: Vec2::splat(6000.0),
+        segments: 256,
+        wind: Vec2::new(7.0, -18.7),
+        choppiness: 1.0,
+        foam_width: 0.0,
+        depth_fade: 30.0,
+        wave_strength: 0.0,
+        ..Default::default()
+    };
+    let sea = og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+    let extent = water.size.max_element();
+    let even = extent / og_core::ocean::grid_segments(water.segments, extent) as f32;
+    let points: Vec<Vec2> = [(0.0, -20.0), (6.0, -35.0), (-9.0, -50.0), (3.0, -80.0)]
+        .iter()
+        .map(|&(x, z)| Vec2::new(x, z))
+        .collect();
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut frames = Vec::new();
+    for alpha in [0.1f32, 0.6] {
+        let mut scene = RenderScene::new();
+        scene.tick = 300;
+        scene.tick_rate = 60.0;
+        scene.interpolation = Some(alpha);
+        scene.water.push(water.clone());
+        scene.camera = og_render::Camera {
+            position: Vec3::new(0.0, 10.0, 0.0),
+            target: Vec3::new(-4.0, 0.0, -60.0),
+            far: 3000.0,
+            ..Default::default()
+        };
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        frames.push(renderer.read_offscreen().expect("capture"));
+        let seconds = (299.0 + f64::from(alpha)) / 60.0;
+        let drawn = renderer.sea_heights(&points).expect("the sea's heights");
+        assert_eq!(drawn.len(), points.len(), "a sea was drawn");
+        for (p, [_, swell, _]) in points.iter().zip(&drawn) {
+            let cell = og_core::ocean::grid_cell(*p, water.size * 0.5, even);
+            let tick_height = sea.height_on_grid(
+                glam::DVec2::new(f64::from(p.x), f64::from(p.y)),
+                seconds,
+                cell,
+            );
+            assert!(
+                (swell - tick_height).abs() < 0.02,
+                "alpha {alpha} at {p}: the tick's waves drawn at {swell} m, waterHeight {tick_height} m"
+            );
+        }
+    }
+    let d = difference(&frames[0], &frames[1]);
+    println!("one tick at alphas 0.1 and 0.6: mean difference {d}");
+    assert!(d > 0.5, "the sea did not move between ticks ({d})");
+}

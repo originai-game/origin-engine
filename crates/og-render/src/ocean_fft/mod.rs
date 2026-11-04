@@ -413,15 +413,11 @@ impl FftOcean {
     ) {
         let group = self.foam.group(device, shore.0);
         let now = (seconds / foam::STEP).floor() as i64;
-        let steps = match self.foam.last {
-            Some((last, _)) if now >= last && now - last <= foam::GAP => {
-                ((last + 1)..=now).map(|k| (k, 1)).collect()
-            }
-            _ => {
-                self.foam.last = None;
-                foam::warm_steps(now)
-            }
-        };
+        let last = self.foam.last.map(|(k, _)| k);
+        let (steps, restart) = foam::schedule(last, now);
+        if restart {
+            self.foam.last = None;
+        }
         let snaps = foam::snaps(eye);
         for (k, span) in steps {
             let at = k as f64 * foam::STEP;

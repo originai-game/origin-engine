@@ -35,6 +35,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // A display frame between ticks: every world matrix and the camera
     // from here on are blended with the tick before (`super::interpolate`).
     super::interpolate::begin(world, rs, settings.as_deref(), &mut h);
+    let blended = rs.interp.drawn;
     let layouts = &rs.draw;
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
@@ -77,6 +78,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let time = world.time();
     scene.tick = time.tick;
     scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    // The sea's clock between ticks (og_render's `RenderScene::interpolation`).
+    scene.interpolation = blended;
     // og.render.sprite and og.render.text are immediate mode: what the last
     // tick submitted (or a command since it) is drawn, and a tick that
     // submitted nothing draws nothing. The queues are cleared lazily by the

@@ -104,6 +104,10 @@ struct Seen {
     camera_cut: bool,
     camera: Vec3,
     captured: Vec<Mat4>,
+    /// The drawn scene's alpha (the sea's clock between ticks), and the
+    /// captured one's.
+    interpolation: Option<f32>,
+    captured_interpolation: Option<f32>,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -121,10 +125,12 @@ impl RenderBackend for Recorder {
         s.previous = scene.previous_transforms.clone();
         s.camera_cut = scene.camera_cut;
         s.camera = scene.camera.position;
+        s.interpolation = scene.interpolation;
         Ok(())
     }
     fn capture(&mut self, scene: &RenderScene, w: u32, h: u32) -> Option<og_render::RgbaImage> {
         self.0.borrow_mut().captured = scene.instances.iter().map(|i| i.transform).collect();
+        self.0.borrow_mut().captured_interpolation = scene.interpolation;
         Some(og_render::RgbaImage {
             width: w.max(1),
             height: h.max(1),
@@ -226,6 +232,11 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
             "A's turn about y",
         );
         close(s.camera.x, between, "the camera's x");
+        // The sea's clock runs between the same two ticks.
+        let sea = s
+            .interpolation
+            .expect("a frame between ticks carries its alpha");
+        close(sea, alpha, "the sea's alpha");
         if alpha > 0.05 && alpha < 0.95 {
             blended += 1;
         }
@@ -267,6 +278,11 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
         last,
         "A in a capture",
     );
+    assert_eq!(
+        seen.borrow().captured_interpolation,
+        None,
+        "a capture draws the sea at the tick"
+    );
 
     // Frames on tick boundaries draw the tick, and the world those blended
     // frames drew is the world whole-tick frames drew.
@@ -279,6 +295,7 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
         if t >= 1 {
             let x = at(&seen2.borrow().drawn, 0.0).w_axis.x;
             assert_eq!(x, (t - 1) as f32, "a whole-tick frame draws the tick");
+            assert_eq!(seen2.borrow().interpolation, None, "and its sea");
         }
     }
     assert_eq!(w2, w);

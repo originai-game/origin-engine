@@ -451,14 +451,21 @@ fn shore_texture(
 }
 
 /// The scene's clock for the sea, in f64 seconds: its tick over its rate,
-/// as the simulation's `og.physics.waterHeight` reads it.
+/// as the simulation's `og.physics.waterHeight` reads it, and on a display
+/// frame between ticks ([`crate::RenderScene::interpolation`]) the time
+/// between the last two ticks the blended transforms are drawn at, so the
+/// sea moves at the display's rate under floaters drawn in step with it.
 pub(crate) fn seconds(scene: &crate::RenderScene) -> f64 {
     let rate = if scene.tick_rate > 0.0 {
         scene.tick_rate
     } else {
         60.0
     };
-    scene.tick as f64 / f64::from(rate)
+    let ticks = match scene.interpolation {
+        Some(a) if scene.tick > 0 => scene.tick as f64 - 1.0 + f64::from(a.clamp(0.0, 1.0)),
+        _ => scene.tick as f64,
+    };
+    ticks / f64::from(rate)
 }
 
 /// The surface's sea, if any (a grid with a wind: [`Water::wind`]).
@@ -2151,6 +2158,42 @@ mod tests {
             d += Vec3::new(b[0] * th.cos(), a[2] * th.sin(), b[1] * th.cos());
         }
         d
+    }
+
+    /// A display frame between ticks draws the sea at the time its blended
+    /// transforms are drawn at, between the last two ticks (the code before
+    /// drew every such frame at the last tick: the sea stepped at the
+    /// tick's rate on a faster display); a frame at the tick draws the tick.
+    #[test]
+    fn the_sea_runs_at_the_display_rate_between_ticks() {
+        let mut scene = crate::RenderScene::new();
+        scene.tick = 600;
+        scene.tick_rate = 60.0;
+        assert_eq!(seconds(&scene), 10.0);
+        scene.interpolation = Some(0.25);
+        assert!((seconds(&scene) - 599.25 / 60.0).abs() < 1e-12);
+        scene.interpolation = Some(1.0);
+        assert_eq!(seconds(&scene), 10.0);
+        // Two frames of one tick at different alphas draw different seas.
+        let water = Water {
+            size: Vec2::splat(2000.0),
+            wind: Vec2::new(9.0, 3.0),
+            ..Default::default()
+        };
+        let sea = ocean(&water).expect("a sea");
+        let at = glam::DVec2::new(13.0, -7.0);
+        let mut height = |a: f32| {
+            scene.interpolation = Some(a);
+            sea.height_on_grid(at, seconds(&scene), 0.0)
+        };
+        assert!((height(0.2) - height(0.7)).abs() > 1e-3);
+        // Monotonic across a tick: the frame after the tick's last blends on.
+        let late = 599.95 / 60.0;
+        let mut next = crate::RenderScene::new();
+        next.tick = 601;
+        next.tick_rate = 60.0;
+        next.interpolation = Some(0.05);
+        assert!(seconds(&next) > late);
     }
 
     /// The boats sample's floaters (tests/evidence/r5-water/boats) ride the

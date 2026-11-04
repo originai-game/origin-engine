@@ -90,6 +90,7 @@ impl RenderScene {
             tick: 0,
             tick_rate: 60.0,
             frame_seconds: 1.0 / 60.0,
+            interpolation: None,
             particles: Vec::new(),
             particle_colliders: Vec::new(),
             hosted_particles: Vec::new(),

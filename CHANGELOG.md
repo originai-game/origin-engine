@@ -311,6 +311,11 @@ is one line here, written at the merge that changes
   into surf, and the sand the surf runs up is wet. `og.physics.waterHeight`
   and og.Buoyancy ride the same shoaled sea, deterministically; the
   renderer draws it from the same field. Off by default (seabed 0).
+- **Render-rate sea (W8).** A display frame between ticks draws the sea
+  at the time its blended transforms are drawn at (render interpolation's
+  alpha), so waves move at the display's rate in step with floaters; a
+  frame at the tick, a capture and `og test` draw the tick as before. The
+  foam history holds through a step back of under a tick.
 - **Scatter model space.** `load.GltfInfo.parts` exposes each primitive's
   geometry, material and primitive-to-model matrix; `geometries` remains
   mesh-local. TerrainScatter applies the named impostor model's placements
