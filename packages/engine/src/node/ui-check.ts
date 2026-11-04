@@ -712,18 +712,27 @@ export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnaps
   const scaled = { ...scaledFrame, texts: drawnTexts(scaledFrame) };
   const k = cell.scale / 100;
   const out: UiFinding[] = [];
+  // Each line by the element that draws it and its words: paired by words alone in draw order, a "2" on a card's badge
+  // was measured against a "2" in a list row once the larger text showed fewer cards. An element the scaled frame no
+  // longer shows (scrolled or windowed out) has nothing to compare.
+  const basePaths = elementPaths(base), scaledPaths = elementPaths(scaled);
+  const keyOf = (f: typeof base, paths: string[], t: (typeof base.texts)[number]) => {
+    const i = owner(f, t);
+    return { key: `${i >= 0 ? paths[i]! : ""}\u0000${t.text}`, path: i >= 0 ? paths[i]! : "" };
+  };
   const left = new Map<string, number[]>();
-  for (const t of scaled.texts) left.set(t.text, [...(left.get(t.text) ?? []), t.size]);
-  const paths = scaled.elements.map((e) => e.id);
+  for (const t of scaled.texts) {
+    const { key } = keyOf(scaled, scaledPaths, t);
+    left.set(key, [...(left.get(key) ?? []), t.size]);
+  }
   const seen = new Set<string>();
   for (const t of base.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
-    const sizes = left.get(t.text);
-    const size = sizes?.shift();
-    if (size === undefined || size + 0.05 >= t.size * k * 0.95 || seen.has(t.text)) continue;
-    seen.add(t.text);
-    const i = owner(scaled, scaled.texts.find((u) => u.text === t.text && u.size === size)!);
-    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    const { key, path: owned } = keyOf(base, basePaths, t);
+    const size = left.get(key)?.shift();
+    if (size === undefined || size + 0.05 >= t.size * k * 0.95 || seen.has(key)) continue;
+    seen.add(key);
+    const path = owned || `text "${t.text.slice(0, 24)}"`;
     out.push({
       rule: "text-scale",
       severity: "error",

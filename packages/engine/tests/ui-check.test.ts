@@ -243,6 +243,14 @@ test("at 200 % text, a cut is the text-scale rule's and a text that did not grow
   expect(got[0]!.measured).toContain('"120" 14 CSS px at 200 %');
   expect(checkScale(at100, at200, cell)).toEqual([]);
   expect(checkScale(at100, frame({ elements: els, texts: [line("Strength", 28, 110, 120), line("120", 28, 140, 48)] }), big)).toEqual([]);
+  // The same words on two elements are two texts: a badge's "2" the larger text scrolled out of view is not measured
+  // against a row's "2" that doubled. (Paired by words alone in draw order, the row's 30 met the badge's 16.)
+  const twos = [el("Badge", "", "label", "text", [10, 110, 20, 30], { text: "2" }), el("Copies", "", "label", "text", [10, 200, 40, 50], { text: "2" })];
+  const both = frame({ elements: twos, texts: [line("2", 16, 110, 9), line("2", 15, 200, 9)] });
+  const rowOnly = frame({ elements: twos.slice(1), texts: [line("2", 30, 200, 17)] });
+  expect(checkScale(both, rowOnly, big)).toEqual([]);
+  // A "2" that did not grow is still found, by its own element.
+  expect(checkScale(both, frame({ elements: twos.slice(1), texts: [line("2", 15, 200, 9)] }), big).map((f) => f.paths)).toEqual([["Copies"]]);
 });
 
 test("two primary buttons in one layer are a finding; a primary and a translucent secondary are not", () => {
