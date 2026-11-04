@@ -874,6 +874,11 @@ pub struct ScrollDesc {
     pub axes: ScrollAxes,
     /// Draws no scrollbars.
     pub hide_bars: bool,
+    /// How far (CSS px) the content fades into `fade_into` at an edge
+    /// where more of it lies beyond; 0 draws no fade.
+    pub fade: f32,
+    /// The surface the content fades into; `None`: `panel`.
+    pub fade_into: Option<Srgba>,
 }
 
 /// Which ways a scroll container scrolls.

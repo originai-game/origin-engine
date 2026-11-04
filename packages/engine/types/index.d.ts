@@ -23128,6 +23128,20 @@ export interface ScrollDesc {
    * @default false
    */
   readonly hideBars?: boolean;
+  /**
+   * How far the content fades into `fadeInto` over an edge where more of it lies beyond, as strong as the content past that edge reaches this length (a log's top row cut mid-glyph reads as "there is more"); 0 draws no fade.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly fade?: number;
+  /**
+   * The surface the content fades into; null is panel.
+   *
+   * @default null
+   */
+  readonly fadeInto?: ThemeColor | null;
 }
 
 /**

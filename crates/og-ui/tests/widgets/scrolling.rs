@@ -801,3 +801,93 @@ fn a_scroller_that_hides_its_bars_draws_no_thumb() {
     build(&mut ui, true);
     assert_eq!(thumbs(&ui), 0, "none with hide_bars");
 }
+
+/// A scroll container with a fade draws it over each edge where more of its
+/// content lies beyond, as strong as the content past it reaches the fade's
+/// length: at the top of a list only the foot fades, in its middle both
+/// ends, and a scroller without a fade draws none. Ways it could fail: a
+/// fade at an end the content does not pass (the first row dimmed for
+/// nothing), or `fade` dropped on the way (the patterns passed it for
+/// months and nothing drew).
+#[test]
+fn a_scroller_fades_the_edges_more_content_lies_past() {
+    let mut ui = Ui::new(UiDesc::default());
+    let build = |ui: &mut Ui, input: InputFrame, fade: f32| {
+        ui.begin(input, Viewport::new(800.0, 600.0));
+        ui.scroll(
+            "Log",
+            ScrollDesc {
+                width: Size::Fixed(200.0),
+                height: Size::Fixed(200.0),
+                fade,
+                ..ScrollDesc::default()
+            },
+            |ui| {
+                ui.container(
+                    "Rows",
+                    Element {
+                        width: Size::Fixed(200.0),
+                        height: Size::Fixed(1000.0),
+                        ..Element::default()
+                    },
+                    |_| {},
+                );
+            },
+        );
+        ui.end();
+    };
+    // The fades' strips as (top, bottom, opacity): the scene has no other shape.
+    let fades = |ui: &Ui| -> Vec<(f32, f32, f32)> {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Shape { shape, .. } => Some((
+                    shape.center.y - shape.half.y,
+                    shape.center.y + shape.half.y,
+                    shape.opacity,
+                )),
+                _ => None,
+            })
+            .collect()
+    };
+    let rest = InputFrame::default;
+    build(&mut ui, rest(), 24.0);
+    build(&mut ui, rest(), 24.0);
+    let view = ui.frame().element("Log").expect("the log").clone();
+    let at_top = fades(&ui);
+    assert_eq!(
+        at_top.len(),
+        1,
+        "at the top only the foot fades: {at_top:?}"
+    );
+    assert!(
+        (at_top[0].1 - (view.y + view.height)).abs() < 0.5,
+        "{at_top:?} at the foot of {view:?}"
+    );
+    assert!(
+        at_top[0].0 > view.y + view.height - 25.0,
+        "24 px tall: {at_top:?}"
+    );
+    // Half the fade's length into the content: the top fades half as strong.
+    let centre = Vec2::new(view.x + 100.0, view.y + 100.0);
+    build(&mut ui, wheel(centre, Vec2::new(0.0, 12.0)), 24.0);
+    build(&mut ui, rest(), 24.0);
+    let mut middle = fades(&ui);
+    middle.sort_by(|a, b| a.0.total_cmp(&b.0));
+    assert_eq!(middle.len(), 2, "both ends in the middle: {middle:?}");
+    assert!(
+        (middle[0].0 - view.y).abs() < 0.5,
+        "the top strip at the view's top: {middle:?}"
+    );
+    assert!(
+        (middle[0].2 - 0.5).abs() < 0.01,
+        "12 px in, the top fades half: {middle:?}"
+    );
+    assert!(
+        (middle[1].2 - 1.0).abs() < 0.01,
+        "the foot full: {middle:?}"
+    );
+    build(&mut ui, rest(), 0.0);
+    assert!(fades(&ui).is_empty(), "no fade asked, none drawn");
+}

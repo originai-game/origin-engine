@@ -47040,6 +47040,25 @@
           "type": "boolean",
           "description": "Draws no scrollbars: a row of chips or tabs that shows its overflow by its cut edge (a resting thumb under it reads as a selection underline). It still scrolls by the wheel, a drag and focus.",
           "default": false
+        },
+        "fade": {
+          "type": "number",
+          "description": "How far the content fades into `fadeInto` over an edge where more of it lies beyond, as strong as the content past that edge reaches this length (a log's top row cut mid-glyph reads as \"there is more\"); 0 draws no fade.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "fadeInto": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThemeColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The surface the content fades into; null is panel.",
+          "default": null
         }
       },
       "additionalProperties": false

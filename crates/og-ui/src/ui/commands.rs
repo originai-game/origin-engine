@@ -276,6 +276,12 @@ impl Ui {
                         self.ghost_commands(ghost, &mut cmds);
                     }
                 }
+                if self.nodes[j].scrolls() && self.nodes[j].el.fade > 0.0 {
+                    let mut fades = Vec::new();
+                    self.scroll_fade_commands(j, &mut fades);
+                    let w = self.nodes[j].world;
+                    cmds.extend(fades.into_iter().map(|c| (c, w)));
+                }
                 if self.nodes[j].scrolls() && !self.nodes[j].el.hide_bars {
                     let mut bars = Vec::new();
                     self.scroll_bar_commands(j, &mut bars);
@@ -407,19 +413,122 @@ impl Ui {
     }
 
     /// A scroll container's bars, over its content.
-    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
-        let t = &self.theme;
-        let p = &t.palette;
-        let dpr = self.viewport.dpr();
+    /// A scroll container's clip in its own space.
+    fn scroll_clip(&self, s: usize) -> Rect {
         let sn = &self.nodes[s];
-        let clip = if sn.world.is_identity() {
+        if sn.world.is_identity() {
             sn.clip.intersect(&sn.rect)
         } else {
             sn.world
                 .invert()
                 .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
                 .intersect(&sn.rect)
-        };
+        }
+    }
+
+    /// The fade over each edge of a scroll container where more of its
+    /// content lies beyond, as strong as the content past that edge is
+    /// over the fade's reach: none at the top of a list, full a fade's
+    /// length into it, so a cut row reads as "there is more".
+    fn scroll_fade_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+        use crate::paint::{ColorRef, ElementDraw, Gradient, Paint, Placed, Stop};
+        let sn = &self.nodes[s];
+        let reach = sn.el.fade;
+        let into = sn.el.fade_into.unwrap_or(self.theme.palette.panel);
+        let clip = self.scroll_clip(s);
+        let r = sn.rect;
+        let max_y = sn.max_scroll();
+        let off_y = self
+            .state
+            .scroll
+            .get(&sn.key)
+            .copied()
+            .unwrap_or(0.0)
+            .clamp(0.0, max_y);
+        let max_x = sn.max_scroll_x();
+        let off_x = self
+            .state
+            .scroll_x
+            .get(&sn.key)
+            .copied()
+            .unwrap_or(0.0)
+            .clamp(0.0, max_x);
+        // (strength, the strip, the gradient's from and to: opaque at the outer edge.)
+        let edges = [
+            (
+                off_y,
+                Rect::new(r.x, r.y, r.width, reach.min(r.height / 2.0)),
+                [0.5, 0.0],
+                [0.5, 1.0],
+            ),
+            (
+                max_y - off_y,
+                Rect::new(
+                    r.x,
+                    r.bottom() - reach.min(r.height / 2.0),
+                    r.width,
+                    reach.min(r.height / 2.0),
+                ),
+                [0.5, 1.0],
+                [0.5, 0.0],
+            ),
+            (
+                off_x,
+                Rect::new(r.x, r.y, reach.min(r.width / 2.0), r.height),
+                [0.0, 0.5],
+                [1.0, 0.5],
+            ),
+            (
+                max_x - off_x,
+                Rect::new(
+                    r.right() - reach.min(r.width / 2.0),
+                    r.y,
+                    reach.min(r.width / 2.0),
+                    r.height,
+                ),
+                [1.0, 0.5],
+                [0.0, 0.5],
+            ),
+        ];
+        for (beyond, rect, from, to) in edges {
+            let k = (beyond / reach).min(1.0);
+            if k < 0.01 {
+                continue;
+            }
+            let draw = ElementDraw {
+                fills: vec![Paint::Gradient(Gradient {
+                    from,
+                    to,
+                    stops: vec![
+                        Stop {
+                            offset: 0.0,
+                            color: ColorRef::Literal(into),
+                        },
+                        Stop {
+                            offset: 1.0,
+                            color: ColorRef::Literal(into.fade(0.0)),
+                        },
+                    ],
+                    ..Gradient::default()
+                })],
+                ..ElementDraw::default()
+            };
+            let at = Placed {
+                rect,
+                radius: 0.0,
+                clip,
+                alpha: sn.alpha * k,
+            };
+            cmds.extend(draw.enter(&self.theme, &at));
+        }
+    }
+
+    fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
+        let t = &self.theme;
+        let p = &t.palette;
+        let dpr = self.viewport.dpr();
+        let sn = &self.nodes[s];
+        let clip = self.scroll_clip(s);
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
             let inner_w = sn.w - sn.el.padding.horizontal();

@@ -295,6 +295,10 @@ pub struct Element {
     /// that shows its overflow by its cut edge, where a resting thumb read
     /// as a selection underline).
     pub hide_bars: bool,
+    /// A scroll container's edge fade (CSS px, 0: none) where more content
+    /// lies beyond, into `fade_into` (`None`: `panel`).
+    pub fade: f32,
+    pub fade_into: Option<Srgba>,
     /// Reports hover, press and click through `Ui::close`.
     pub interactive: bool,
     /// An interactive container keys and pads reach (a card, a menu item,

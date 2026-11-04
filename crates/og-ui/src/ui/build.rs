@@ -350,6 +350,8 @@ impl Ui {
                 scroll: desc.axes != ScrollAxes::Horizontal,
                 scroll_x: desc.axes != ScrollAxes::Vertical,
                 hide_bars: desc.hide_bars,
+                fade: desc.fade.max(0.0),
+                fade_into: desc.fade_into,
                 ..Element::default()
             },
         );

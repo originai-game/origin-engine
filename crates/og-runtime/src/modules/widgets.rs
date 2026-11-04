@@ -44,6 +44,8 @@ pub fn og_ui_open_scroll(id: String, desc: Option<String>) {
                 _ => og_ui::ScrollAxes::Vertical,
             },
             hide_bars: d["hideBars"].as_bool().unwrap_or(false),
+            fade: f(&d, "fade", 0.0),
+            fade_into: d["fadeInto"].as_str().and_then(|n| ui.theme().color(n)),
         };
         ui.open_scroll(id.as_str(), s)
     });
