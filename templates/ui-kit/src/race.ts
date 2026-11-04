@@ -351,13 +351,13 @@ export function raceClassification(): void {
         if (narrow) {
           og.ui.column("Driver", { width: { kind: "grow" }, gap: 0 }, () => {
             name_();
-            og.ui.row("Times", { gap: t.space.sm, cross: "center" }, times);
+            og.ui.row("Times", { width: { kind: "grow" }, gap: t.space.sm, cross: "center", wrap: true }, times);
           });
         } else {
           name_();
           times();
         }
-        og.ui.label("Gap", i === 0 ? "" : `+${((total - leader) / 1000).toFixed(3)}`, { step: "sm", font: "mono", color: muted, nowrap: true, width: w(64), align: "end" });
+        og.ui.label("Gap", i === 0 ? "" : `+${((total - leader) / 1000).toFixed(3)}`, { step: "sm", font: "mono", color: muted, nowrap: true, width: { kind: "fit", min: w(64).px }, align: "end" } as never);
       });
     });
   });
