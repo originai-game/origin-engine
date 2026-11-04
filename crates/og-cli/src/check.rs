@@ -121,6 +121,40 @@ pub fn tsgo_install() -> Option<PathBuf> {
         .filter(|t| t.is_dir())
 }
 
+/// The tsgo install's fault once no other `og` is installing it: `bun x`
+/// writes the tree file by file, so an `og check` beside another one's
+/// first run (the tests, an agent checking while it builds, on a cold
+/// cache) saw a half-written tree and called it broken (studio-win,
+/// 2026-11-05: 5 og-cli tests at once). A tree that is missing or looks
+/// broken is looked at again under a lock in the temporary directory, the
+/// install made there by whichever `og` holds it first (`bun x … --version`,
+/// its output dropped, when `install`; `og doctor` only waits); a tree
+/// still broken after that is broken.
+pub(crate) fn settled_tsgo_fault(install: bool) -> Option<(PathBuf, String)> {
+    let fault = || tsgo_install().and_then(|t| tsgo_install_fault(&t).map(|f| (t, f)));
+    if tsgo_install().is_some() && fault().is_none() {
+        return None;
+    }
+    let lock =
+        std::fs::File::create(std::env::temp_dir().join(format!("og-tsgo-{TSGO_VERSION}.lock")));
+    let _held = lock.as_ref().ok().filter(|f| f.lock().is_ok());
+    if install && tsgo_install().is_none() {
+        let _ = Command::new("bun")
+            .args([
+                "x",
+                "--package",
+                &format!("typescript@{TSGO_VERSION}"),
+                "tsc",
+                "--version",
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    fault()
+}
+
 /// What is wrong with the tsgo install in `tree`: the files it needs that
 /// are missing or empty, `None` when there are none.
 pub fn tsgo_install_fault(tree: &Path) -> Option<String> {
@@ -447,9 +481,7 @@ impl Checker {
     ) -> Result<(Checker, Option<String>), String> {
         // tsgo, unless the install bun x would run it from is broken.
         let tsgo = |note: Option<String>| {
-            if let Some(tree) = tsgo_install()
-                && let Some(fault) = tsgo_install_fault(&tree)
-            {
+            if let Some((tree, fault)) = settled_tsgo_fault(true) {
                 return Err(broken_tsgo(&tree, &fault));
             }
             let checker = Checker {

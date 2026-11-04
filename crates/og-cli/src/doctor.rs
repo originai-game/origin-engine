@@ -386,8 +386,7 @@ fn tsrs_check(out: &mut Out, tool: &Tool, pin: Option<&str>, cwd: &Path) {
         },
         Ok(None) if crate::check::platform().is_none() => {
             // og check takes tsgo here: the install bun x runs it from.
-            let broken = crate::check::tsgo_install()
-                .and_then(|tree| Some((crate::check::tsgo_install_fault(&tree)?, tree)));
+            let broken = crate::check::settled_tsgo_fault(false).map(|(tree, fault)| (fault, tree));
             match broken {
                 Some((fault, tree)) => out.check(
                     "broken",
