@@ -185,8 +185,8 @@ pub fn limit(pal: &Palette, used: &[u64], ramp: u32, max: u32) -> Vec<usize> {
 }
 
 /// An asset's own palette, from its opaque texels: its distinct colours
-/// when there are at most `max` of them (none changes), else a median cut
-/// in Oklab to `max`; then each hue family merged to `ramp` shades by
+/// when there are at most `max` of them (none changes), else a variance
+/// cut in Oklab to `max` ([`median_cut`]); then each hue family merged to `ramp` shades by
 /// joining the two nearest in lightness (weighted by their texels). Sorted
 /// dark to light.
 pub fn adaptive(px: &[[u8; 4]], max: u32, ramp: u32) -> Palette {
@@ -235,40 +235,107 @@ fn mean(group: &[([u8; 3], Lab, u64)]) -> ([u8; 3], Lab, u64) {
     (rgb, colour::lab(rgb), n)
 }
 
+/// How much the cut weighs Oklab's a and b against its lightness: hues
+/// apart count double, so a few colours keep a scene's hues (a sky, the
+/// roofs, the grass) instead of spending them on steps of lightness.
+const CHROMA: [i128; 3] = [1, 2, 2];
+
+/// The cut to `k` colours (Wu's variance-minimising quantiser, 1991, on
+/// Oklab with a and b weighted by [`CHROMA`]): the box whose colours lie farthest from their mean (the largest
+/// squared error, weighted by texels) splits next, along the channel where
+/// they spread most, at the point that leaves the two halves the least
+/// error. A large field of one colour (a sky, a lawn) thus keeps a colour
+/// of its own, where the widest range split at the median of the texels cut
+/// mostly by lightness and averaged a blue sky into grey. Integer sums
+/// (i128), so the cut is the same on every machine.
 fn median_cut(entries: Vec<([u8; 3], Lab, u64)>, k: usize) -> Vec<([u8; 3], Lab, u64)> {
-    let mut boxes = vec![entries];
-    while boxes.len() < k {
-        // The box with the widest channel (and more than one colour).
-        let mut pick: Option<(usize, usize, i32)> = None;
-        for (bi, b) in boxes.iter().enumerate() {
-            if b.len() < 2 {
-                continue;
-            }
+    // A box's squared error: Σ n·|c|² − |Σ n·c|² / Σ n.
+    let error = |b: &[([u8; 3], Lab, u64)]| -> i128 {
+        let (mut n, mut s, mut s2) = (0i128, [0i128; 3], 0i128);
+        for e in b {
+            let w = i128::from(e.2);
+            n += w;
             for ch in 0..3 {
-                let lo = b.iter().map(|e| e.1[ch]).min().unwrap_or(0);
-                let hi = b.iter().map(|e| e.1[ch]).max().unwrap_or(0);
-                if pick.is_none_or(|p| hi - lo > p.2) {
-                    pick = Some((bi, ch, hi - lo));
+                let v = i128::from(e.1[ch]) * CHROMA[ch];
+                s[ch] += w * v;
+                s2 += w * v * v;
+            }
+        }
+        if n == 0 {
+            return 0;
+        }
+        s2 - (s[0] * s[0] + s[1] * s[1] + s[2] * s[2]) / n
+    };
+    type Boxed = (Vec<([u8; 3], Lab, u64)>, i128);
+    let mut boxes: Vec<Boxed> = {
+        let e = error(&entries);
+        vec![(entries, e)]
+    };
+    while boxes.len() < k {
+        let Some(bi) = (0..boxes.len())
+            .filter(|&i| boxes[i].0.len() > 1 && boxes[i].1 > 0)
+            .max_by_key(|&i| (boxes[i].1, usize::MAX - i))
+        else {
+            break;
+        };
+        let (mut b, _) = boxes.remove(bi);
+        // The channel of the largest weighted variance.
+        let n: i128 = b.iter().map(|e| i128::from(e.2)).sum();
+        let ch = (0..3)
+            .max_by_key(|&ch| {
+                let (mut s, mut s2) = (0i128, 0i128);
+                for e in &b {
+                    let (w, v) = (i128::from(e.2), i128::from(e.1[ch]) * CHROMA[ch]);
+                    s += w * v;
+                    s2 += w * v * v;
+                }
+                (s2 - s * s / n, 2 - ch)
+            })
+            .unwrap_or(0);
+        b.sort_by_key(|e| (e.1[ch], e.0));
+        // The split of least error: prefix sums over the sorted colours.
+        let total = {
+            let (mut n, mut s, mut s2) = (0i128, [0i128; 3], 0i128);
+            for e in &b {
+                let w = i128::from(e.2);
+                n += w;
+                for c in 0..3 {
+                    let v = i128::from(e.1[c]) * CHROMA[c];
+                    s[c] += w * v;
+                    s2 += w * v * v;
                 }
             }
-        }
-        let Some((bi, ch, _)) = pick else { break };
-        let mut b = boxes.remove(bi);
-        b.sort_by_key(|e| (e.1[ch], e.0));
-        let total: u64 = b.iter().map(|e| e.2).sum();
-        let (mut acc, mut cut) = (0u64, 1);
-        for (i, e) in b.iter().enumerate() {
-            acc += e.2;
-            if acc * 2 >= total {
-                cut = (i + 1).clamp(1, b.len() - 1);
-                break;
+            (n, s, s2)
+        };
+        let sse = |n: i128, s: [i128; 3], s2: i128| {
+            if n == 0 {
+                0
+            } else {
+                s2 - (s[0] * s[0] + s[1] * s[1] + s[2] * s[2]) / n
+            }
+        };
+        let (mut ln, mut ls, mut ls2) = (0i128, [0i128; 3], 0i128);
+        let mut best = (i128::MAX, 1usize);
+        for (i, e) in b.iter().enumerate().take(b.len() - 1) {
+            let w = i128::from(e.2);
+            ln += w;
+            for c in 0..3 {
+                let v = i128::from(e.1[c]) * CHROMA[c];
+                ls[c] += w * v;
+                ls2 += w * v * v;
+            }
+            let rs = [total.1[0] - ls[0], total.1[1] - ls[1], total.1[2] - ls[2]];
+            let err = sse(ln, ls, ls2) + sse(total.0 - ln, rs, total.2 - ls2);
+            if err < best.0 {
+                best = (err, i + 1);
             }
         }
-        let hi = b.split_off(cut);
-        boxes.insert(bi, hi);
-        boxes.insert(bi, b);
+        let hi = b.split_off(best.1);
+        let (eh, el) = (error(&hi), error(&b));
+        boxes.insert(bi, (hi, eh));
+        boxes.insert(bi, (b, el));
     }
-    boxes.iter().map(|b| mean(b)).collect()
+    boxes.iter().map(|b| mean(&b.0)).collect()
 }
 
 fn ramps(colours: Vec<([u8; 3], Lab, u64)>, ramp: usize) -> Vec<([u8; 3], Lab, u64)> {
@@ -409,5 +476,41 @@ mod tests {
         assert_eq!(p.rgb.len(), 2);
         assert!(p.rgb[0][0] > 0 && p.rgb[0][0] < 20, "{:?}", p.rgb);
         assert!(p.rgb[1][0] > 200 && p.rgb[1][0] < 255, "{:?}", p.rgb);
+    }
+
+    /// A landscape cut to four colours keeps its sky's colour: a quarter of
+    /// the texels a sky of near shades of one blue, the rest greens and
+    /// browns from dark to light. The widest-range cut at the median split
+    /// the land by lightness and averaged the sky into a box beside it.
+    #[test]
+    fn a_cut_keeps_a_large_field_its_own_colour() {
+        let mut px = Vec::new();
+        for i in 0..500u32 {
+            let d = (i % 17) as u8;
+            px.push([112 + d, 162 + d, 222 + d / 2, 255]);
+        }
+        for i in 0..1500u32 {
+            let t = (i % 100) as f64 / 99.0;
+            let c = if i % 5 < 3 {
+                [20.0 + 130.0 * t, 60.0 + 150.0 * t, 20.0 + 100.0 * t]
+            } else {
+                [40.0 + 150.0 * t, 25.0 + 110.0 * t, 10.0 + 70.0 * t]
+            };
+            px.push([c[0] as u8, c[1] as u8, c[2] as u8, 255]);
+        }
+        let p = adaptive(&px, 4, 0);
+        // The sky's own mean, within Oklab 0.03 (a shade no one would call
+        // another colour) of one of the four.
+        let sky = mean(
+            &px[..500]
+                .iter()
+                .map(|q| ([q[0], q[1], q[2]], colour::lab([q[0], q[1], q[2]]), 1))
+                .collect::<Vec<_>>(),
+        );
+        let near = p
+            .lab
+            .iter()
+            .any(|l| colour::dist2(*l, sky.1) < (0.03 * colour::ONE).powi(2) as i64);
+        assert!(near, "the sky {:?} among {:?}", sky.0, p.rgb);
     }
 }

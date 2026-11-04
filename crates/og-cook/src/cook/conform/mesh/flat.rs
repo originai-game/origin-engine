@@ -9,7 +9,7 @@
 //! 1. two passes of the Kuwahara filter (four square sectors, the one of
 //!    least variance), wrapping as the texture tiles, which keeps edges and
 //!    flattens what lies between them;
-//! 2. the asset's own palette (the 2D conform's Oklab median cut and ramp
+//! 2. the asset's own palette (the 2D conform's Oklab variance cut and ramp
 //!    merge, `texture2d::palette::adaptive`), every opaque texel on its
 //!    nearest colour;
 //! 3. colours nearer than [`MERGE`] in Oklab merged into one, weighted by
