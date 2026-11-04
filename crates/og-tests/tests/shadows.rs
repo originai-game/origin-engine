@@ -756,8 +756,14 @@ fn blocked(a: glam::Vec3, b: glam::Vec3, casters: &[Caster]) -> bool {
 /// one of `behind` as the camera sees it within 48 pixels (inside a
 /// screen-space trace's reach) without touching anything. A trace that
 /// takes a silhouette in front of a far surface for an occluder darkens
-/// them.
-fn behind_silhouettes(img: &RgbaImage, casters: &[Caster], behind: &[Caster]) -> Vec<(u32, u32)> {
+/// them. With no `behind`, every such point clear of the casters by 30 cm,
+/// passing behind nothing: open lit floor and wall, which shadow acne
+/// (a map comparing a lit surface against itself) darkens.
+fn behind_silhouettes(
+    img: &RgbaImage,
+    casters: &[Caster],
+    behind: Option<&[Caster]>,
+) -> Vec<(u32, u32)> {
     use glam::Vec3;
     let light = shadow_scenes::CONTACT_LIGHT;
     let eye = shadow_scenes::local_contact_camera().position;
@@ -820,6 +826,12 @@ fn behind_silhouettes(img: &RgbaImage, casters: &[Caster], behind: &[Caster]) ->
                 .iter()
                 .all(|&oy| seen(x + ox, y + oy) == receiver)
         });
+        let Some(behind) = behind else {
+            if clean && clearance(p) >= 0.3 {
+                out.push((x as u32, y as u32));
+            }
+            continue;
+        };
         if !clean || clearance(p) < 0.08 {
             continue;
         }
@@ -839,29 +851,59 @@ fn behind_silhouettes(img: &RgbaImage, casters: &[Caster], behind: &[Caster]) ->
 }
 
 /// The share of their direct light that `points` keep in `shadowed`
-/// (`lit`: the light unshadowed, `dark`: off): the least and the mean.
+/// (`lit`: the light unshadowed, `dark`: off): the least and the mean, and
+/// how many points the light reaches by 16 levels.
 fn kept_light(
     points: &[(u32, u32)],
     shadowed: &RgbaImage,
     lit: &RgbaImage,
     dark: &RgbaImage,
-) -> (f32, f32) {
+) -> (f32, f32, usize) {
     let at = |img: &RgbaImage, (x, y): (u32, u32)| {
         let i = ((y * img.width + x) * 4) as usize;
         luma(&img.pixels[i..i + 3])
     };
+    // Only where the light gives 16 levels or more (inside a spot's cone).
     let ratios: Vec<f32> = points
         .iter()
-        .map(|&q| (at(shadowed, q) - at(dark, q)) / (at(lit, q) - at(dark, q)).max(1.0))
+        .filter(|&&q| at(lit, q) - at(dark, q) >= 16.0)
+        .map(|&q| (at(shadowed, q) - at(dark, q)) / (at(lit, q) - at(dark, q)))
         .collect();
     let least = ratios.iter().copied().fold(f32::MAX, f32::min);
     (
         least,
         ratios.iter().sum::<f32>() / ratios.len().max(1) as f32,
+        ratios.len(),
     )
 }
 
-/// Contact shadows never darken what lies behind a silhouette: the lit
+/// The standard deviation of the share of their direct light that the
+/// lit `points` keep (as `kept_light`), and their count.
+fn kept_spread(
+    points: &[(u32, u32)],
+    shadowed: &RgbaImage,
+    lit: &RgbaImage,
+    dark: &RgbaImage,
+) -> (usize, f32) {
+    let at = |img: &RgbaImage, (x, y): (u32, u32)| {
+        let i = ((y * img.width + x) * 4) as usize;
+        luma(&img.pixels[i..i + 3])
+    };
+    let r: Vec<f32> = points
+        .iter()
+        .filter(|&&q| at(lit, q) - at(dark, q) >= 16.0)
+        .map(|&q| (at(shadowed, q) - at(dark, q)) / (at(lit, q) - at(dark, q)))
+        .collect();
+    let n = r.len().max(1) as f32;
+    let mean = r.iter().sum::<f32>() / n;
+    (
+        r.len(),
+        (r.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / n).sqrt(),
+    )
+}
+
+/// Contact shadows never darken what lies behind a silhouette, and the
+/// local maps never darken open lit surfaces (acne): the lit
 /// floor and wall just past the contact scene's box, and past a large
 /// ball and a thin pole, at a depth gap behind them, where a screen-space
 /// trace towards the light passes behind them (the false contact the art
@@ -909,16 +951,38 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
             ("ball", &silhouettes, vec![ball, pole], vec![ball], 25),
             ("thin pole", &silhouettes, vec![ball, pole], vec![pole], 60),
         ] {
-            let points = behind_silhouettes(shadowed, &casters, &behind);
-            let (min, mean) = kept_light(&points, shadowed, lit, dark);
+            let points = behind_silhouettes(shadowed, &casters, Some(&behind));
+            let (min, mean, n) = kept_light(&points, shadowed, lit, dark);
             println!(
-                "point {point} {storage:?}: {} lit points behind the {name}'s silhouette keep {min:.3} to {mean:.3} (mean) of their direct light",
-                points.len()
+                "point {point} {storage:?}: {n} lit points behind the {name}'s silhouette keep {min:.3} to {mean:.3} (mean) of their direct light"
             );
-            assert!(points.len() >= least, "{name}: {} points", points.len());
+            assert!(n >= least, "{name}: {n} lit points of {}", points.len());
             assert!(
                 min > 0.85 && mean > 0.95,
                 "{name}: the floor and wall behind its silhouette darkened (least {min:.3}, mean {mean:.3})"
+            );
+        }
+        // Open lit floor and wall, far from every caster: no acne.
+        for (name, (shadowed, lit, dark), casters) in [
+            ("contact", &contact, vec![boxed, small_ball]),
+            ("silhouettes", &silhouettes, vec![ball, pole]),
+        ] {
+            let points = behind_silhouettes(shadowed, &casters, None);
+            let (min, mean, n) = kept_light(&points, shadowed, lit, dark);
+            println!(
+                "point {point} {storage:?}: {n} open lit points of the {name} scene keep {min:.3} to {mean:.3} (mean) of their direct light"
+            );
+            assert!(n >= 1_000, "{name}: {n} lit points of {}", points.len());
+            // Stripes or banding: the share kept varies from point to point.
+            let (_, spread) = kept_spread(&points, shadowed, lit, dark);
+            println!("  spread of the share kept: {spread:.4}");
+            assert!(
+                spread < 0.02,
+                "{name}: open lit floor and wall vary by {spread:.4} (stripes or banding)"
+            );
+            assert!(
+                min > 0.9 && mean > 0.98,
+                "{name}: open lit floor and wall darkened, shadow acne (least {min:.3}, mean {mean:.3})"
             );
         }
     }
