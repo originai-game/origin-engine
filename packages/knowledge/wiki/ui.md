@@ -128,11 +128,11 @@ module ui {
 | [`MinimapDesc`](#type-MinimapDesc) | desc struct | A mini-map frame. |
 | [`DialogueDesc`](#type-DialogueDesc) | desc struct | A dialogue box: a portrait slot, the speaker and the line typed out by the tick. |
 | [`DialogueResult`](#type-DialogueResult) | struct | A dialogue box's answer this tick. |
-| [`JoystickDesc`](#type-JoystickDesc) | desc struct | A virtual joystick. |
+| [`JoystickDesc`](#type-JoystickDesc) | desc struct | A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held. |
 | [`JoystickResult`](#type-JoystickResult) | struct | A joystick's vector this tick. |
-| [`DpadDesc`](#type-DpadDesc) | desc struct | A d-pad. |
+| [`DpadDesc`](#type-DpadDesc) | desc struct | A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron. |
 | [`DpadResult`](#type-DpadResult) | struct | Which arms of a d-pad are held this tick. |
-| [`ActionButtonDesc`](#type-ActionButtonDesc) | desc struct | A square touch action button (jump, fire), cornered by the style's control radius. |
+| [`ActionButtonDesc`](#type-ActionButtonDesc) | desc struct | A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead. |
 | [`SkeletonDesc`](#type-SkeletonDesc) | desc struct | A skeleton: the neutral fill standing in for content that is loading. |
 | [`UiItemBuild`](#type-UiItemBuild) | callback | Builds one row or cell of a virtualised list or grid: ui calls made inside nest under it. |
 | [`og.ui.breakpoint`](#fn-breakpoint) | function | The size class of the play surface of the frame being built (desktop outside a frame). |
@@ -13476,7 +13476,7 @@ struct DialogueResult {
 
 ### `JoystickDesc` (desc struct)
 
-A virtual joystick.
+A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -13488,7 +13488,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct JoystickDesc {
-  doc "A virtual joystick."
+  doc "A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held."
   desc true
   field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
     unit cssPx
@@ -13532,7 +13532,7 @@ struct JoystickResult {
 
 ### `DpadDesc` (desc struct)
 
-A d-pad.
+A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -13543,7 +13543,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct DpadDesc {
-  doc "A d-pad."
+  doc "A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron."
   desc true
   field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
     unit cssPx
@@ -13584,7 +13584,7 @@ struct DpadResult {
 
 ### `ActionButtonDesc` (desc struct)
 
-A square touch action button (jump, fire), cornered by the style's control radius.
+A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -13594,13 +13594,13 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `primary` | `boolean` | `false` | — | — | — | The primary button (one per screen). |
 | `icon` | `string` | `""` | — | — | — | An icon of the atlas by name, instead of the label; empty is the label. |
 | `customize` | `Customize \| null` | `null` | — | — | — | The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit). |
-| `round` | `boolean` | `false` | — | — | — | A disc instead of the control's rounded square (a pedal). |
+| `round` | `boolean` | `false` | — | — | — | Kept a disc even when its label is wider (it grows as a disc); a button with an icon or a charge is a disc anyway. |
 | `charge` | `number \| null` | `null` | — | — | — | A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring. |
 | `chargeTone` | `Tone` | `"neutral"` | — | — | — | The lit ring's tone; neutral is the primary's. |
 
 ```ogt
 struct ActionButtonDesc {
-  doc "A square touch action button (jump, fire), cornered by the style's control radius."
+  doc "A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead."
   desc true
   field size f32 "Its side; 0 is 64 (never under 44)." {
     unit cssPx
@@ -13609,7 +13609,7 @@ struct ActionButtonDesc {
   field primary bool "The primary button (one per screen)."
   field icon String "An icon of the atlas by name, instead of the label; empty is the label."
   field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
-  field round bool "A disc instead of the control's rounded square (a pedal)."
+  field round bool "Kept a disc even when its label is wider (it grows as a disc); a button with an icon or a charge is a disc anyway."
   field charge Option.f32 "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring."
   field chargeTone Tone "The lit ring's tone; neutral is the primary's."
 }

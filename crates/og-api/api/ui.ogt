@@ -1176,7 +1176,7 @@ module ui {
   }
 
   struct JoystickDesc {
-    doc "A virtual joystick."
+    doc "A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held."
     desc true
     field size f32 "The base's diameter; 0 is 128 (never under three touch targets)." {
       unit cssPx
@@ -1198,7 +1198,7 @@ module ui {
   }
 
   struct DpadDesc {
-    doc "A d-pad."
+    doc "A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron."
     desc true
     field size f32 "The pad's size; 0 is 132 (each arm at least 44)." {
       unit cssPx
@@ -1216,7 +1216,7 @@ module ui {
   }
 
   struct ActionButtonDesc {
-    doc "A square touch action button (jump, fire), cornered by the style's control radius."
+    doc "A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead."
     desc true
     field size f32 "Its side; 0 is 64 (never under 44)." {
       unit cssPx
@@ -1225,7 +1225,7 @@ module ui {
     field primary bool "The primary button (one per screen)."
     field icon String "An icon of the atlas by name, instead of the label; empty is the label."
     field customize Option.Customize "The player can move, scale and fade it in the HUD edit mode (og.ui.setHudEdit)."
-    field round bool "A disc instead of the control's rounded square (a pedal)."
+    field round bool "Kept a disc even when its label is wider (it grows as a disc); a button with an icon or a charge is a disc anyway."
     field charge Option.f32 "A ring inside its edge, lit clockwise from the top to this (0 to 1: a boost's charge, a brake's pressure), with a faint track for the rest. It follows the pad's outline, so a pad with a charge is drawn round. null draws no ring."
     field chargeTone Tone "The lit ring's tone; neutral is the primary's."
   }

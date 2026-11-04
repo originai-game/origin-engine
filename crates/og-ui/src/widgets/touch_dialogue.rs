@@ -1,5 +1,58 @@
 use super::*;
 
+/// A touch control's disc (a stick's base, a d-pad's plate, a skill
+/// button's face), as the shipped mobile games draw them (Genshin Impact,
+/// Diablo Immortal): one circle of the HUD ground, `fill` opaque so the
+/// scene shows through, a rim of the strong line inside its edge and a dark
+/// hairline outside it, a soft drop under it. A component's dressable draw:
+/// a style dresses its part (`Joystick.base`, `Dpad.base`, `ActionButton.face`).
+fn touch_disc(
+    fill: crate::paint::ColorRef,
+    rim: crate::paint::ColorRef,
+    rim_width: f32,
+) -> crate::paint::ElementDraw {
+    use crate::paint::{Cap, ColorRef, Effect, ElementDraw, Paint, ShapeKind, Stroke, StrokeAlign};
+    let line = |width: f32, align: StrokeAlign, color: ColorRef| Stroke {
+        width,
+        align,
+        dash: [0.0; 2],
+        dash_offset: 0.0,
+        dash_cap: Cap::Butt,
+        paint: Paint::Solid(color),
+    };
+    ElementDraw {
+        shape: ShapeKind::Ellipse,
+        fills: vec![Paint::Solid(fill)],
+        strokes: vec![
+            line(rim_width, StrokeAlign::Inside, rim),
+            line(1.0, StrokeAlign::Outside, tok("shadow", 0.5)),
+        ],
+        effects: vec![Effect::DropShadow {
+            offset: [0.0, 2.0],
+            blur: 8.0,
+            spread: 0.0,
+            color: tok("shadow", 0.35),
+        }],
+        ..ElementDraw::default()
+    }
+}
+
+fn tok(name: &str, alpha: f32) -> crate::paint::ColorRef {
+    crate::paint::ColorRef::Token {
+        name: name.to_string(),
+        alpha,
+    }
+}
+
+/// A disc of `d` across centred `(x, y)` from the element's centre.
+fn disc(x: f32, y: f32, d: f32, color: Srgba) -> Shape {
+    Shape::Rect {
+        frame: Frame::centered(x, y, d, d),
+        radius: d,
+        color,
+    }
+}
+
 impl Ui {
     /// A dialogue box: a portrait slot, the speaker in primary ink, and the
     /// line typed out by the tick at `chars_per_second`. A press (or
@@ -201,10 +254,16 @@ impl Ui {
                 height: Size::Fixed(size),
                 interactive: true,
                 radius: size / 2.0,
-                background: Some(p.hud),
+                part: Some(crate::dress::PartRef::new(
+                    "Joystick",
+                    "base",
+                    crate::tokens::ElementClass::Hud,
+                )),
                 ..Element::default()
             },
         );
+        // One translucent ring the thumb rests in, not a plate.
+        self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
         self.nodes[i].props.customize = desc.customize;
         let key = self.nodes[i].key;
         let r = self.respond(key);
@@ -240,23 +299,40 @@ impl Ui {
             }
             out.active = true;
         }
-        let knob = size * 0.42;
-        let travel = radius - knob / 2.0;
+        let knob = size * 0.4;
+        let travel = radius - knob / 2.0 - 2.0;
+        let held = out.active || r.pressed;
         let n = &mut self.nodes[i];
-        n.shapes.push(Shape::Rect {
-            frame: Frame::centered(0.0, 0.0, size - 2.0 * t.space.lg, size - 2.0 * t.space.lg),
-            radius: size,
-            color: p.control,
-        });
-        n.shapes.push(Shape::Rect {
-            frame: Frame::centered(kx * travel, ky * travel, knob, knob),
-            radius: knob,
-            color: if r.pressed {
-                p.ink
+        // Held, a lit arc of the rim toward the push: the accent along the
+        // edge the thumb leans to (a disc of it under the knob's path).
+        let (kx, ky) = (kx * travel, ky * travel);
+        if held && (kx != 0.0 || ky != 0.0) {
+            let len = (kx * kx + ky * ky).sqrt().max(1e-3);
+            let (ux, uy) = (kx / len, ky / len);
+            n.shapes.push(disc(
+                ux * (radius - knob * 0.35),
+                uy * (radius - knob * 0.35),
+                knob * 0.7,
+                p.primary.fade(0.35),
+            ));
+        }
+        // The knob: a rim, its face in the knob's colour, a top highlight.
+        n.shapes
+            .push(disc(kx, ky + 2.0, knob + 2.0, p.shadow.fade(0.45)));
+        n.shapes
+            .push(disc(kx, ky, knob + 2.0, p.line_strong.fade(0.8)));
+        n.shapes.push(disc(
+            kx,
+            ky,
+            knob - 2.0,
+            if held {
+                p.knob
             } else {
-                p.knob.mix(p.ink, 0.35)
+                p.knob.mix(p.hud, 0.25).fade(0.92)
             },
-        });
+        ));
+        n.shapes
+            .push(disc(kx, ky - knob * 0.16, knob * 0.5, p.sheen.fade(0.35)));
         out
     }
 
@@ -276,9 +352,18 @@ impl Ui {
                 wrap: true,
                 width: Size::Fixed(arm * 3.0),
                 height: Size::Fixed(arm * 3.0),
+                radius: arm * 1.5,
+                part: Some(crate::dress::PartRef::new(
+                    "Dpad",
+                    "base",
+                    crate::tokens::ElementClass::Hud,
+                )),
                 ..Element::default()
             },
         );
+        // One round pad with four directions on it (a controller's cross
+        // under the thumb), not four keys.
+        self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
         self.nodes[pad].props.customize = desc.customize;
         self.stack.push(pad);
         let mut out = DpadResponse::default();
@@ -293,17 +378,15 @@ impl Ui {
             Some(("Down", FRAC_PI_2)),
             None,
         ];
-        for (k, cell) in cells.iter().enumerate() {
+        for cell in cells.iter() {
             match cell {
                 None => {
-                    let centre = k == 4;
                     let i = self.leaf(
                         "spacer",
                         Id::default(),
                         Element {
                             width: Size::Fixed(arm),
                             height: Size::Fixed(arm),
-                            background: centre.then_some(p.hud),
                             ..Element::default()
                         },
                     );
@@ -317,8 +400,7 @@ impl Ui {
                             width: Size::Fixed(arm),
                             height: Size::Fixed(arm),
                             interactive: true,
-                            radius: t.radius.small,
-                            background: Some(p.hud),
+                            radius: arm / 2.0,
                             ..Element::default()
                         },
                     );
@@ -331,10 +413,12 @@ impl Ui {
                         "Left" => out.left = held,
                         _ => out.right = held,
                     }
-                    let ink = if held { p.primary } else { p.ink };
+                    let ink = if held { p.on_primary } else { p.ink.fade(0.85) };
                     let n = &mut self.nodes[i];
                     if held {
-                        n.el.background = Some(p.control_strong.over(p.hud.over(p.backdrop)));
+                        // The held direction lights under its chevron.
+                        n.shapes
+                            .push(disc(0.0, 0.0, arm * 0.78, p.primary.fade(0.85)));
                     }
                     n.probe_text = (*name).to_owned();
                     // A chevron pointing `angle`: two strokes meeting at its tip.
@@ -387,7 +471,6 @@ impl Ui {
                 0.0
             }
         });
-        let round = desc.round || charge.is_some();
         // The ring's band inside the edge, and the face inside it.
         let band = if charge.is_some() {
             t.space.xs.max(size / 16.0).round()
@@ -402,7 +485,11 @@ impl Ui {
         } else {
             0.0
         };
-        // A round pad whose label is wider grows as a disc; a square one
+        // An action button with an icon is a disc with a rim (a skill button
+        // of the shipped mobile games), whatever `round` says; a label wider
+        // than the button (no icon, a longer locale) makes it a capsule.
+        let round = desc.round || charge.is_some() || has_icon || text_w <= size;
+        // A round pad whose label is wider grows as a disc; a capsule
         // widens and stays its size tall.
         let size = if round { size.max(text_w) } else { size };
         let width = size.max(text_w);
@@ -413,7 +500,7 @@ impl Ui {
                 width: Size::Fixed(width),
                 height: Size::Fixed(size),
                 interactive: true,
-                radius: if round { size / 2.0 } else { t.radius.control },
+                radius: size / 2.0,
                 ..Element::default()
             },
         );
@@ -502,9 +589,49 @@ impl Ui {
             });
             shapes
         });
+        // The face: a disc in the button's ground with a rim (a bright one on
+        // the primary), a dressable part; with a charge ring the ring and the
+        // face over it are its shapes, and the draw keeps only the rim's
+        // shadow and drop.
+        let face = if desc.primary {
+            touch_disc(
+                crate::paint::ColorRef::Literal(bg),
+                tok("onPrimary", 0.35),
+                2.0,
+            )
+        } else {
+            touch_disc(
+                crate::paint::ColorRef::Literal(if r.pressed { bg } else { p.hud.fade(0.62) }),
+                tok("lineStrong", 0.6),
+                2.0,
+            )
+        };
+        let face = if round {
+            face
+        } else {
+            crate::paint::ElementDraw {
+                shape: crate::paint::ShapeKind::default(),
+                ..face
+            }
+        };
+        let face = if ring.is_some() {
+            crate::paint::ElementDraw {
+                fills: Vec::new(),
+                strokes: face.strokes.into_iter().skip(1).collect(),
+                ..face
+            }
+        } else {
+            face
+        };
+        self.nodes[i].el.part = Some(
+            crate::dress::PartRef::new("ActionButton", "face", crate::tokens::ElementClass::Hud)
+                .flag_if(desc.primary, "primary")
+                .flag_if(r.pressed, "pressed"),
+        );
+        self.draws.insert(i, face);
+        self.dressable.insert(i);
         let n = &mut self.nodes[i];
-        // With a ring the face is drawn over it: the element itself is the ring.
-        n.el.background = if ring.is_some() { None } else { Some(bg) };
+        n.el.background = None;
         n.widget = Widget::Button {
             pressed: r.pressed,
             press: if r.pressed { 1.0 } else { 0.0 },

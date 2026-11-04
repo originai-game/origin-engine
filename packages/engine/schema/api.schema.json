@@ -49773,7 +49773,7 @@
     "JoystickDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A virtual joystick.",
+      "description": "A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held.",
       "type": "object",
       "properties": {
         "size": {
@@ -49835,7 +49835,7 @@
     "DpadDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A d-pad.",
+      "description": "A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron.",
       "type": "object",
       "properties": {
         "size": {
@@ -49894,7 +49894,7 @@
     "ActionButtonDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A square touch action button (jump, fire), cornered by the style's control radius.",
+      "description": "A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead.",
       "type": "object",
       "properties": {
         "size": {
@@ -49928,7 +49928,7 @@
         },
         "round": {
           "type": "boolean",
-          "description": "A disc instead of the control's rounded square (a pedal).",
+          "description": "Kept a disc even when its label is wider (it grows as a disc); a button with an icon or a charge is a disc anyway.",
           "default": false
         },
         "charge": {

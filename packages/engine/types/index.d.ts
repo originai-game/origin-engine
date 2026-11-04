@@ -25019,7 +25019,7 @@ export interface DialogueResult {
 }
 
 /**
- * A virtual joystick.
+ * A virtual joystick: one translucent ring of the HUD ground with a rim (part Joystick.base, which a style dresses), and a knob that follows the thumb, the rim lit toward the push while held.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25059,7 +25059,7 @@ export interface JoystickResult {
 }
 
 /**
- * A d-pad.
+ * A d-pad: one round pad (part Dpad.base, which a style dresses) with four chevrons on it, the held direction lit under its chevron.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25093,7 +25093,7 @@ export interface DpadResult {
 }
 
 /**
- * A square touch action button (jump, fire), cornered by the style's control radius.
+ * A touch action button (jump, fire, a skill): a disc with a rim (part ActionButton.face[primary][pressed], which a style dresses), its icon on it; a label wider than it with no icon makes it a capsule instead.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25125,7 +25125,7 @@ export interface ActionButtonDesc {
    */
   readonly customize?: Customize | null;
   /**
-   * A disc instead of the control's rounded square (a pedal).
+   * Kept a disc even when its label is wider (it grows as a disc); a button with an icon or a charge is a disc anyway.
    *
    * @default false
    */
