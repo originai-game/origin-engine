@@ -804,7 +804,9 @@ fn pads_beyond_the_first_move_their_own_focus_and_press() {
             .frame()
             .items
             .iter()
-            .any(|i| matches!(&i.cmd, DrawCmd::Quad { color, .. } if *color == info)),
+            .any(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. }
+                if matches!(shape.mode, og_render::UiMode::Stroke(_))
+                    && shape.paint == og_render::UiPaint::Solid(info))),
         "pad 1's ring is drawn in its player colour"
     );
     // A restore before the presses replays them identically.
@@ -1153,7 +1155,11 @@ fn a_container_that_owns_its_ring_takes_the_focus_without_one() {
             .frame()
             .items
             .iter()
-            .filter(|i| matches!(&i.cmd, DrawCmd::Quad { color, .. } if *color == focus))
+            .filter(|i| {
+                matches!(&i.cmd, DrawCmd::Shape { shape, .. }
+                if matches!(shape.mode, og_render::UiMode::Stroke(_))
+                    && shape.paint == og_render::UiPaint::Solid(focus))
+            })
             .count()
     };
     rig.idle(2, b);

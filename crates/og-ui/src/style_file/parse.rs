@@ -41,7 +41,7 @@ fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
 ///   team1 "#3d7eff"                          # team1 … team8, then physical fire ice lightning poison holy shadow arcane: a colour [and a cue]
 ///   series1 "#4e79a7"                        # series1 … series8
 /// }
-/// roles { corruption "#9b5cff" }             # optional: the style's own colour roles (lowerCamelCase, up to 16), read by name like a palette role, 3:1 on panelRaised
+/// roles { corruption "#9b5cff" }             # optional: the style's own colour roles (lowerCamelCase, up to 16), read by name like a palette role
 /// typography {                               # display title heading body label caption numeric (all required)
 ///   display 42 48 0.02 700 display {         # size, line height, tracking em, weight, font role (body, display, numeric, rounded)
 ///     phonePortrait 34 40                    # per breakpoint: size, line height
@@ -270,10 +270,24 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     *palette_color(&mut theme.palette, &c.key)
                         .ok_or_else(|| q.err("is not a ThemeColor name"))? = color;
                 }
+                let added = [
+                    ("selection", "controlStrong"),
+                    ("onSelection", "ink"),
+                    ("accent", "highlight"),
+                    ("sceneInk", "ink"),
+                    ("scenePlate", "hud"),
+                    ("sceneShadow", "shadow"),
+                ];
+                for (name, fallback) in added {
+                    if block.get(name).is_none() {
+                        let color = theme.palette.get(fallback).expect("palette fallback");
+                        *theme.palette.get_mut(name).expect("palette role") = color;
+                    }
+                }
                 let missing: Vec<&str> = Palette::NAMES
                     .iter()
                     .copied()
-                    .filter(|n| block.get(n).is_none())
+                    .filter(|n| block.get(n).is_none() && !added.iter().any(|(name, _)| n == name))
                     .collect();
                 if !missing.is_empty() {
                     return Err(p.err(&format!(
@@ -859,22 +873,12 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         }
         file.dressings = v1_dressings(&theme.art);
     }
-    // A style's own roles carry meaning as the named ones do, so they meet
-    // the same non-text floor: 3:1 on the raised panel over the backdrop
-    // (WCAG 1.4.11), translucent ones as they composite there.
-    if let Some(e) = body.get("roles") {
-        let ground = theme.palette.panel_raised.over(theme.palette.backdrop);
-        for (name, c) in theme.roles.iter() {
-            let r = c.over_linear(ground).contrast(ground);
-            if r < 3.0 {
-                return Err(P { e }.err(&format!(
-                    "{name} reads {r:.2}:1 on the style's raised panel: a colour role needs 3:1 there (WCAG 1.4.11), so make it lighter or darker"
-                )));
-            }
-        }
-    }
     // The motion code reads the style's motion tokens (docs/ui.md §7.7).
     theme.motion = crate::motion::MotionTokens::from_style(&theme.tokens);
+    theme.type_ramp = theme
+        .tokens
+        .typography
+        .ramp(crate::Breakpoint::Desktop, 1.0);
     file.theme = theme;
     Ok(file)
 }

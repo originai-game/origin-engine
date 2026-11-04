@@ -251,7 +251,7 @@ pub fn palette_color<'a>(p: &'a mut Palette, name: &str) -> Option<&'a mut Srgba
 
 /// A type step by its TypeStepName (`body`, `xl2`, `displayLg`).
 /// Every TypeStepName, smallest steps first in the ramp's own order.
-pub const STEP_NAMES: [&str; 21] = [
+pub const STEP_NAMES: [&str; 22] = [
     "body",
     "xs",
     "meta",
@@ -273,6 +273,7 @@ pub const STEP_NAMES: [&str; 21] = [
     "displayLg",
     "displayXl",
     "displayXl2",
+    "hero",
 ];
 
 /// The steps an auto-fit text at `from` takes down to `min`: `from`, then
@@ -319,7 +320,7 @@ pub fn ramp_step<'a>(r: &'a mut TypeRamp, name: &str) -> Option<&'a mut TypeStep
         "displayMd" => &mut r.display_md,
         "displayLg" => &mut r.display_lg,
         "displayXl" => &mut r.display_xl,
-        "displayXl2" => &mut r.display_xl2,
+        "displayXl2" | "hero" => &mut r.display_xl2,
         _ => return None,
     })
 }

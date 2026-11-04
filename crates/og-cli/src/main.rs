@@ -161,6 +161,9 @@ commands:
                       the flags) and measure their colours, palette and edges; --critic prints only
                       the catalogue's three checks and the frames, for a blind critic; exit 0 within
                       the contract or no look, 3 off it
+  ui sheet <pack|kit> [project] [--out DIR] [--json]
+                      render fixed baseline pages on the pack's own ground at desktop and phone,
+                      100% and 150%; frames, UI dumps and sheets for review, never a gate step
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]

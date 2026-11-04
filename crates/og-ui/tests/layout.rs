@@ -340,3 +340,55 @@ fn a_wrapping_row_keeps_children_on_one_line_that_fit_within_rounding() {
     let (a, b) = tops(251.0);
     assert!(b > a, "2 px over wraps");
 }
+
+#[test]
+fn a_baseline_row_stays_put_from_frame_to_frame() {
+    let step = |line_height| TypeStep {
+        size: 14.0,
+        line_height,
+        tracking_em: 0.0,
+        cjk_line_height: line_height,
+        cjk_tracking_em: 0.0,
+        features: og_ui::shape::Features::default(),
+        weight: 0,
+        uppercase: false,
+    };
+    let frame = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.row(
+            "Head",
+            Element {
+                width: Size::grow(),
+                gap: 8.0,
+                cross: Cross::Baseline,
+                ..Element::default()
+            },
+            |ui| {
+                ui.label(
+                    "Label",
+                    "Field of view",
+                    LabelDesc {
+                        step: Some(step(19.0)),
+                        ..LabelDesc::default()
+                    },
+                );
+                ui.label(
+                    "Value",
+                    "60",
+                    LabelDesc {
+                        step: Some(step(19.75)),
+                        ..LabelDesc::default()
+                    },
+                );
+            },
+        );
+        ui.end();
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    frame(&mut ui);
+    let first = (rect(&ui, "Head/Label"), rect(&ui, "Head/Value"));
+    for _ in 0..120 {
+        frame(&mut ui);
+    }
+    assert_eq!((rect(&ui, "Head/Label"), rect(&ui, "Head/Value")), first);
+}

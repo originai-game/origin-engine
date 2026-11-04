@@ -109,6 +109,18 @@ palette! {
     primary_soft "primarySoft",
     /// Emphasised ink: a speaker's name, a price, a link, the player's dot.
     highlight "highlight",
+    /// Selected rows, tabs and cards; independent of a primary action.
+    selection "selection",
+    /// Ink on the selection ground.
+    on_selection "onSelection",
+    /// Decorative emphasis, independent of selection and primary actions.
+    accent "accent",
+    /// HUD text drawn directly over the scene.
+    scene_ink "sceneInk",
+    /// The scheme's plate behind HUD content.
+    scene_plate "scenePlate",
+    /// The scheme's separation shadow under scene text.
+    scene_shadow "sceneShadow",
     /// The focus ring of keyboard and gamepad navigation.
     focus "focus",
     /// Slider and switch knobs.
@@ -160,6 +172,12 @@ pub const LIGHT: Palette = Palette {
     on_primary: c(0xfa, 0xfa, 0xfa),
     primary_soft: ca(0x00, 0x00, 0x00, 0.131),
     highlight: c(0x18, 0x18, 0x1a),
+    selection: c(0xc4, 0xc4, 0xc9),
+    on_selection: c(0x18, 0x18, 0x1a),
+    accent: c(0x18, 0x18, 0x1a),
+    scene_ink: c(0x18, 0x18, 0x1a),
+    scene_plate: c(0xff, 0xff, 0xff),
+    scene_shadow: c(0x00, 0x00, 0x00),
     focus: c(0x3a, 0x3a, 0x3c),
     knob: c(0xff, 0xff, 0xff),
     hud: ca(0xfa, 0xfa, 0xfc, 0.86),
@@ -198,6 +216,12 @@ pub const DARK: Palette = Palette {
     on_primary: c(0x11, 0x11, 0x13),
     primary_soft: ca(0xff, 0xff, 0xff, 0.028),
     highlight: c(0xf5, 0xf5, 0xf7),
+    selection: c(0x54, 0x54, 0x58),
+    on_selection: c(0xf5, 0xf5, 0xf7),
+    accent: c(0xf5, 0xf5, 0xf7),
+    scene_ink: c(0xf5, 0xf5, 0xf7),
+    scene_plate: c(0x2c, 0x2c, 0x2e),
+    scene_shadow: c(0x00, 0x00, 0x00),
     focus: c(0xf5, 0xf5, 0xf7),
     knob: c(0xf5, 0xf5, 0xf7),
     hud: ca(0x16, 0x16, 0x18, 0.8),
@@ -277,6 +301,8 @@ pub struct TypeStep {
     /// The weight (100 to 900) the step's text takes the nearest real face
     /// of (a style's `fonts { body 600 "…" }`); 0: the role's own face.
     pub weight: u16,
+    /// Locale-sensitive uppercase before measurement; source text is retained.
+    pub uppercase: bool,
 }
 
 /// The type ramp.
@@ -348,6 +374,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl3: TypeStep {
         size: 26.0,
@@ -357,6 +384,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl4: TypeStep {
         size: 30.0,
@@ -366,6 +394,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl5: TypeStep {
         size: 36.0,
@@ -375,6 +404,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl6: TypeStep {
         size: 44.0,
@@ -384,6 +414,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl7: TypeStep {
         size: 52.0,
@@ -393,6 +424,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl8: TypeStep {
         size: 64.0,
@@ -402,6 +434,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     base: TypeStep {
         size: 16.0,
@@ -411,6 +444,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     body: TypeStep {
         size: 14.0,
@@ -420,6 +454,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     caption: TypeStep {
         size: 13.0,
@@ -429,6 +464,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     display_xl2: TypeStep {
         size: 56.0,
@@ -438,6 +474,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     display_lg: TypeStep {
         size: 40.0,
@@ -447,6 +484,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     display_md: TypeStep {
         size: 34.0,
@@ -456,6 +494,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     display_sm: TypeStep {
         size: 28.0,
@@ -465,6 +504,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     display_xl: TypeStep {
         size: 48.0,
@@ -474,6 +514,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     lg: TypeStep {
         size: 18.0,
@@ -483,6 +524,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     meta: TypeStep {
         size: 13.0,
@@ -492,6 +534,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     reading: TypeStep {
         size: 15.0,
@@ -501,6 +544,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     sm: TypeStep {
         size: 14.0,
@@ -510,6 +554,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xl: TypeStep {
         size: 20.0,
@@ -519,6 +564,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
     xs: TypeStep {
         size: 12.0,
@@ -528,6 +574,7 @@ pub const TYPE_RAMP: TypeRamp = TypeRamp {
         cjk_tracking_em: 0.0,
         features: crate::shape::Features::NONE,
         weight: 0,
+        uppercase: false,
     },
 };
 
@@ -758,13 +805,13 @@ dress "Radio.card" {
   stroke none
 }
 dress "Radio.card[selected]" {
-  fill lineStrong
+  fill selection
 }
 dress "Radio.chosen" {
   stroke none
 }
 dress "Tabs.tab[selected]" {
-  fill lineStrong
+  fill selection
   effect dropShadow 0 2 4 0 "#00000073"
   effect innerShadow 0 1 0 0 "#ffffff26"
 }

@@ -15,6 +15,18 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **UI phase 0 grammar, typography and sheets (breaking; next minor).**
+  `typography` drives every legacy ramp alias, including weight and tracking;
+  `hero` adds the top step and `case upper` uses locale-aware Unicode casing.
+  `og upgrade` converts v1 styles and archives redundant v2 ramps for review.
+  Parent rims now draw below selection, hollow focus and raised child badges.
+  New `LabelDesc.onScene`, `IconDesc.secondary` and `IconDesc.secondaryTint`
+  support scheme-aware scene text and two-tone icons. Document `tabs`,
+  arbitrary painted selectors, ornament tint, token alpha and independent
+  selection/accent/scene roles complete the dressing grammar. MSDF overlap
+  queries handle negative bearings; sign correction precedes error correction.
+  `og ui sheet <pack|kit>` is an on-demand baseline tool, never a gate step.
+
 - **UI extensions and authored data packs (phase 0).** `og ui add/list/eject`
   and `og style add` discover directory extensions with `extension.json`.
   Installed documents cook as ordinary assets on both hosts; kits export

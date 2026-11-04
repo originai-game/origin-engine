@@ -39,6 +39,7 @@ use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus};
 
 pub mod extensions;
+mod sheet;
 
 const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
@@ -57,6 +58,9 @@ const VALUED: [&str; 10] = [
 ];
 
 pub fn run(args: &[&str]) -> ExitCode {
+    if let ["sheet", rest @ ..] = args {
+        return sheet::run(rest);
+    }
     if let ["add", rest @ ..] = args {
         return extensions::add(rest, "kit");
     }
@@ -169,7 +173,7 @@ pub fn spawn(
     out: &Path,
     forward: &[&str],
 ) -> Result<ExitStatus, String> {
-    let given = forward.contains(&"--screen");
+    let given = forward.contains(&"--screen") || forward.contains(&"--baseline");
     let declared = if given {
         Vec::new()
     } else {

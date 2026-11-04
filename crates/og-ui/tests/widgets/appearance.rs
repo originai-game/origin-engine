@@ -433,6 +433,8 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
             IconDesc {
                 size: 32.0,
                 tint: Some(Srgba::rgb(255, 0, 0)),
+                secondary: Some("heart".into()),
+                secondary_tint: Some(Srgba::rgb(0, 255, 0)),
                 ..IconDesc::default()
             },
         );
@@ -459,7 +461,11 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
             _ => None,
         })
         .collect();
-    assert_eq!(glyphs.len(), 2, "two icon glyphs drawn: {glyphs:?}");
+    assert_eq!(
+        glyphs.len(),
+        3,
+        "two icon layers and one inline glyph: {glyphs:?}"
+    );
     let (text, size, bounds, color) = &glyphs[0];
     assert_eq!(text, "\u{E001}", "star is icon 1");
     assert_eq!(*size, 32.0);
@@ -469,8 +475,11 @@ fn an_icon_set_draws_its_glyphs_in_their_squares() {
         "fitted to the icon's square"
     );
     assert_eq!(color[0], 1.0, "in its ink");
+    assert_eq!(glyphs[1].0, "\u{E000}");
+    assert_eq!(glyphs[1].2, *bounds, "the second layer shares the square");
+    assert_eq!(glyphs[1].3, Srgba::rgb(0, 255, 0).linear());
     assert_eq!(
-        glyphs[1].0, "\u{E000}",
+        glyphs[2].0, "\u{E000}",
         "rich text's [icon=heart] is icon 0"
     );
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

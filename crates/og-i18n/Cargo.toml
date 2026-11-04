@@ -12,3 +12,7 @@ og-core = { path = "../og-core" }
 # UAX #29: word boundaries (word moves, double-click selection) and grapheme
 # clusters (a base and its marks drawn by one font).
 unicode-segmentation = "1.13.3"
+# Unicode full case mappings, including locale-sensitive Greek, Turkic
+# and Lithuanian context rules; the same compiled data on both hosts.
+icu_casemap = "2.3"
+icu_locale_core = "2.3"

@@ -517,7 +517,7 @@ impl Theme {
             roles: Roles::NONE,
             space: tokens::SPACE,
             radius: tokens::RADIUS,
-            type_ramp: tokens::TYPE_RAMP,
+            type_ramp: derived.typography.ramp(Breakpoint::Desktop, 1.0),
             density: DensityMode::Auto,
             durations_ms: tokens::DURATIONS_MS,
             press_scale: tokens::PRESS_SCALE,
@@ -581,6 +581,8 @@ impl Theme {
             &mut p.control_strong,
             &mut p.primary_soft,
             &mut p.hud,
+            &mut p.selection,
+            &mut p.scene_plate,
         ] {
             if c.alpha < 1.0 {
                 *c = c.over(ground);

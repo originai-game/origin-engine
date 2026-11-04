@@ -192,9 +192,11 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
         size: 0.0,
         line_height: 0.0,
         tracking_em: 0.0,
+        cjk_tracking_em: 0.0,
         weight: 400,
         font: FontRole::Body,
         features: crate::shape::Features::NONE,
+        uppercase: false,
     };
     let mut scale = TypeScale {
         steps: [[zero; 4]; TypeRole::COUNT],
@@ -226,17 +228,36 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
                 )));
             }
         };
-        let tags = (5..e.values.len())
-            .map(|i| q.word(i))
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut tags = Vec::new();
+        let mut cjk_tracking_em = 0.0;
+        let mut uppercase = false;
+        let mut i = 5;
+        while i < e.values.len() {
+            match q.word(i)? {
+                "case" if q.word(i + 1).is_ok_and(|v| matches!(v, "upper" | "none")) => {
+                    uppercase = q.word(i + 1)? == "upper";
+                    i += 2;
+                }
+                "cjkTracking" => {
+                    cjk_tracking_em = q.num(i + 1)?;
+                    i += 2;
+                }
+                tag => {
+                    tags.push(tag);
+                    i += 1;
+                }
+            }
+        }
         let features = crate::shape::Features::parse(tags).map_err(|m| q.err(&m))?;
         let base = TypeToken {
             size,
             line_height,
             tracking_em,
+            cjk_tracking_em,
             weight: weight as u16,
             font,
             features,
+            uppercase,
         };
         check_type(&q, &base)?;
         let mut at = [base; 4];
@@ -260,9 +281,19 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
     if !seen.contains(&TypeRole::Button) {
         scale.steps[TypeRole::Button.index()] = scale.steps[TypeRole::Label.index()];
     }
+    if !seen.contains(&TypeRole::Hero) {
+        scale.steps[TypeRole::Hero.index()] = scale.steps[TypeRole::Display.index()].map(|t| {
+            let k = 1.5_f32.min(400.0 / t.size.max(1.0));
+            TypeToken {
+                size: t.size * k,
+                line_height: t.line_height * k,
+                ..t
+            }
+        });
+    }
     let missing: Vec<String> = TypeRole::ALL
         .iter()
-        .filter(|r| **r != TypeRole::Button && !seen.contains(r))
+        .filter(|r| !matches!(r, TypeRole::Button | TypeRole::Hero) && !seen.contains(r))
         .map(|r| r.name().to_string())
         .collect();
     missing_err(p, &missing, "a style sets every type step")?;
@@ -276,7 +307,7 @@ fn check_type(q: &P, t: &TypeToken) -> Result<(), String> {
     if t.line_height < t.size * 0.8 {
         return Err(q.err("has a line height under 0.8 of its size: lines would overlap"));
     }
-    if !(-0.2..=0.5).contains(&t.tracking_em) {
+    if !(-0.2..=0.5).contains(&t.tracking_em) || !(-0.2..=0.5).contains(&t.cjk_tracking_em) {
         return Err(q.err("takes a tracking of -0.2 to 0.5 em"));
     }
     Ok(())

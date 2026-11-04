@@ -47,8 +47,17 @@ use og_core::ogt::Entry;
 use std::fmt;
 
 /// The dressing keys of the UI pass's types ([`DressDraw`]).
-pub const DRAW_KEYS: [&str; 9] = [
-    "fill", "stroke", "effect", "material", "ornament", "blend", "mask", "sound", "segments",
+pub const DRAW_KEYS: [&str; 10] = [
+    "fill",
+    "stroke",
+    "effect",
+    "material",
+    "ornament",
+    "ornamentTint",
+    "blend",
+    "mask",
+    "sound",
+    "segments",
 ];
 
 /// `Component.part[flag][key=value]…`.
@@ -260,6 +269,8 @@ pub struct DressDraw {
     pub effects: Vec<Effect>,
     pub material: Option<DressMaterial>,
     pub ornaments: Vec<OrnamentKind>,
+    /// Overrides this part's ornament ink without changing the shared atlas.
+    pub ornament_tint: Option<crate::paint::ColorRef>,
     pub blend: Option<Blend>,
     pub mask: Option<Mask>,
     /// Per UI event, an audio asset; a later line for one event wins.
@@ -406,6 +417,9 @@ impl DressDraw {
             }
             "material" => self.material = Some(DressMaterial::from_entry(e, atlas)?),
             "ornament" => self.ornaments = crate::paint_entry::ornaments_from_entry(e)?,
+            "ornamentTint" => {
+                self.ornament_tint = Some(crate::paint_entry::color_from_entry(e, atlas)?)
+            }
             "blend" => self.blend = Some(crate::paint_entry::blend_from_entry(e)?),
             "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),
             "segments" => self.segments = Some(crate::paint_entry::segments_from_entry(e, atlas)?),
@@ -695,6 +709,9 @@ impl DressSet {
             }
             if !a.ornaments.is_empty() {
                 b.ornaments = a.ornaments.clone();
+            }
+            if a.ornament_tint.is_some() {
+                b.ornament_tint = a.ornament_tint.clone();
             }
             b.blend = a.blend.or(b.blend);
             if a.mask.is_some() {

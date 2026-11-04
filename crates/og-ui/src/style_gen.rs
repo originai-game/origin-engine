@@ -451,6 +451,12 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
         on_primary: label,
         primary_soft: soft,
         highlight,
+        selection: control_strong,
+        on_selection: ink,
+        accent: highlight,
+        scene_ink: ink,
+        scene_plate: panel.fade(0.94),
+        scene_shadow: shadow,
         focus,
         knob,
         hud: panel.fade(0.94),
@@ -1486,9 +1492,13 @@ fn dressings(c: &StyleChoices, p: &crate::theme::Palette) -> String {
             ];
             ornaments(&mut panel);
             dress("Panel.frame", panel);
+            // A bevelled button is a solid slab, its quiet and ghost
+            // variants too: unfilled, they showed the art behind them
+            // (midcore's leaderboard tabs read 2.1:1 over a sunset sky).
             dress(
                 "Button.base",
                 vec![
+                    "fill linear 180 controlStrong control".into(),
                     "stroke 2 lineStrong inside".into(),
                     format!("effect innerShadow 2 2 0 0 {}", alpha(w, 0.3)),
                     format!("effect innerShadow -2 -2 0 0 {}", alpha(k, 0.3)),

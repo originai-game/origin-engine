@@ -16,6 +16,7 @@
 use fdsm::bezier::scanline::FillRule;
 use fdsm::bezier::{Order, Point, Segment, Vect};
 use fdsm::shape::{Contour, Shape};
+use fdsm::transform::Transform;
 
 /// Flatness, in font units, under which a piece of curve is its chord when
 /// intersecting.
@@ -275,12 +276,20 @@ fn resolve(shape: &Shape<Contour>) -> Option<Shape<Contour>> {
 
     // Keep the pieces with fill on one side only, filled side on the right
     // (TrueType's direction).
-    let prepared = shape.prepare();
+    // fdsm 0.8 sorts scanline x by f64 bits, which only orders nonnegative
+    // coordinates correctly. Test fill in positive coordinates, retaining
+    // the original Béziers and their bearings in the returned outline.
+    let shift = 1.0 - segs.iter().map(|s| s.bbox().0.x).fold(0.0_f64, f64::min);
+    let mut scan_shape = shape.clone();
+    scan_shape.transform(&nalgebra::convert::<_, nalgebra::Affine2<f64>>(
+        nalgebra::Translation2::new(shift, 0.0),
+    ));
+    let prepared = scan_shape.prepare();
     let filled = |p: Point| {
         prepared
             .scanline(p.y)
             .cursor()
-            .filled(p.x, FillRule::Nonzero)
+            .filled(p.x + shift, FillRule::Nonzero)
     };
     let mut dropped = false;
     let mut kept: Vec<Bez> = Vec::new();

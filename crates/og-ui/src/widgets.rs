@@ -284,6 +284,10 @@ pub struct IconDesc {
     pub size: f32,
     /// `None`: `ink`.
     pub tint: Option<Srgba>,
+    /// An optional second atlas icon, overlaid in the same em square.
+    pub secondary: Option<String>,
+    /// Ink for the second layer; `None`: `accent`.
+    pub secondary_tint: Option<Srgba>,
     /// What a screen reader calls it (and the probe's text): `None` is the
     /// icon's name; empty is decoration, named by nothing, so a card it
     /// sits on is named by its other text alone.

@@ -46490,6 +46490,12 @@
         "onPrimary",
         "primarySoft",
         "highlight",
+        "selection",
+        "onSelection",
+        "accent",
+        "sceneInk",
+        "scenePlate",
+        "sceneShadow",
         "focus",
         "knob",
         "hud",
@@ -46525,6 +46531,12 @@
         "onPrimary": "Ink on primary.",
         "primarySoft": "A translucent wash of primary.",
         "highlight": "Emphasised ink: a speaker's name, a price, a link, the player's map dot.",
+        "selection": "The selected row, tab or card, independent of primary actions.",
+        "onSelection": "Ink on the selection ground.",
+        "accent": "Decorative emphasis, independent of primary and selection.",
+        "sceneInk": "Scheme-aware text drawn over the scene.",
+        "scenePlate": "Scheme-aware plate behind HUD content.",
+        "sceneShadow": "Separation shadow under text over the scene.",
         "focus": "The focus ring of key and pad navigation.",
         "knob": "Slider and switch knobs.",
         "hud": "HUD capsules over the game (scores, timers, toasts).",
@@ -46567,7 +46579,8 @@
         "displayMd",
         "displayLg",
         "displayXl",
-        "displayXl2"
+        "displayXl2",
+        "hero"
       ],
       "x-og-variants": {
         "body": "The default step.",
@@ -46590,7 +46603,8 @@
         "displayMd": "A step of the ramp.",
         "displayLg": "A step of the ramp.",
         "displayXl": "A step of the ramp.",
-        "displayXl2": "A step of the ramp."
+        "displayXl2": "A step of the ramp.",
+        "hero": "The largest typography role, above display; displayXl2 is its legacy alias."
       }
     },
     "SizeRange": {
@@ -47051,6 +47065,11 @@
           ],
           "description": "The ink; null is ink.",
           "default": null
+        },
+        "onScene": {
+          "type": "boolean",
+          "description": "Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container.",
+          "default": false
         },
         "align": {
           "$ref": "#/$defs/TextAlign",
@@ -48248,6 +48267,20 @@
           "description": "The leading text with Chinese, Japanese or Korean characters takes.",
           "x-og-unit": "cssPx"
         },
+        "cjkTrackingEm": {
+          "type": "number",
+          "description": "Tracking of text containing CJK characters, in em."
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The face weight (100 to 900); zero takes the font role's own face."
+        },
+        "uppercase": {
+          "type": "boolean",
+          "description": "Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values."
+        },
         "features": {
           "type": "array",
           "items": {
@@ -48261,6 +48294,9 @@
         "lineHeight",
         "trackingEm",
         "cjkLineHeight",
+        "cjkTrackingEm",
+        "weight",
+        "uppercase",
         "features"
       ],
       "additionalProperties": false
@@ -49705,6 +49741,30 @@
             }
           ],
           "description": "Its ink; null is ink.",
+          "default": null
+        },
+        "secondary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer.",
+          "default": null
+        },
+        "secondaryTint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The second layer's ink; null is accent.",
           "default": null
         },
         "label": {

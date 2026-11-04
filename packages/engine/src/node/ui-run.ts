@@ -32,6 +32,7 @@ import { boundHost, createEngine, type Engine, type GameToken } from "../runtime
 import { og } from "../index.ts";
 import { cellName, checkFrame, checkLocales, checkScale, formatText, mergeFindings, pseudo, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
+import { BASELINE } from "./ui-baseline.ts";
 
 /**
  * The surfaces of the matrix: CSS size, device pixels per CSS pixel, safe area, pointer. Phone and tablet as the
@@ -93,7 +94,7 @@ function pseudoAbi(on: boolean): () => void {
 }
 
 async function main(): Promise<void> {
-  if (mode !== "check" && mode !== "preview") fail("usage: bun src/node/ui-run.ts check|preview --entry <bundle> --root <project> --out <dir> [...]");
+  if (mode !== "check" && mode !== "preview" && mode !== "sheet") fail("usage: bun src/node/ui-run.ts check|preview|sheet --entry <bundle> --root <project> --out <dir> [...]");
   const entry = opt("--entry"), root = opt("--root"), out = opt("--out");
   if (!entry || !root || !out) fail("--entry, --root and --out are required");
   const outDir = resolve(out!);
@@ -107,6 +108,7 @@ async function main(): Promise<void> {
     const eq = s.indexOf("=");
     return eq < 0 ? { name: s, commands: show.replaceAll("{screen}", s) } : { name: s.slice(0, eq), commands: s.slice(eq + 1) };
   });
+  if (mode === "sheet" && argv.includes("--baseline")) screens.push(...BASELINE);
   const styles = list("--styles", "");
   const styleCmd = opt("--style-cmd") ?? "style:{style}";
   const bps = list("--breakpoints", mode === "check" ? "desktop,phonePortrait,phoneLandscape,tablet" : "desktop,phonePortrait,phoneLandscape,tablet");
@@ -263,6 +265,13 @@ async function main(): Promise<void> {
         const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
         const r = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
         const img = r.images.get("cell") ?? null;
+        if (mode === "sheet") {
+          if (!img || !r.frame?.elements.length) fail(`${cellName(cell)}: missing capture or empty page`);
+          const expected = argv.includes("--baseline") ? BASELINE.find((p) => p.name === screen.name)?.root : undefined;
+          if (expected && !r.frame!.elements.some((e) => e.id === expected || e.id.startsWith(`${expected}/`) || e.id.endsWith(`/${expected}`))) {
+            fail(`${cellName(cell)}: baseline root '${expected}' was not built`);
+          }
+        }
         let frame: string | null = null;
         if (img) {
           frame = join("cells", `${index}.png`);
@@ -271,12 +280,12 @@ async function main(): Promise<void> {
         let found: UiFinding[] = [];
         if (r.frame) {
           writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-          found = checkFrame(r.frame, cell, { image: img });
-          if (scale === 100) {
+          if (mode !== "sheet") found = checkFrame(r.frame, cell, { image: img });
+          if (mode !== "sheet" && scale === 100) {
             unscaled = r.frame;
             if (locale === "") base = r.frame;
             else if (base) found.push(...checkLocales(base, r.frame, cell));
-          } else if (unscaled) found.push(...checkScale(unscaled, r.frame, cell));
+          } else if (mode !== "sheet" && unscaled) found.push(...checkScale(unscaled, r.frame, cell));
         }
         // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
         const size = BREAKPOINTS[bp]!;
@@ -287,6 +296,19 @@ async function main(): Promise<void> {
         images.push(img as Image);
       }
     }
+  }
+  if (mode === "sheet") {
+    const sheets: string[] = [];
+    for (const bp of bps) for (const scale of scales) for (const style of styles.length ? styles : [""]) {
+      const mine = cells.filter((c) => c.breakpoint === bp && c.scale === scale && c.style === style);
+      const page = sheet(mine.map((c) => ({ image: images[c.index] ?? null, flagged: false, lines: [c.screen, `${bp} ${scale}%`] })), 4, 360, `${style || basename(root!)} ${bp} ${scale}%`);
+      const file = `sheet-${style || "kit"}-${bp}-${scale}.png`;
+      writeFileSync(join(outDir, file), encodePng(page));
+      sheets.push(file);
+    }
+    writeFileSync(join(outDir, "index.json"), JSON.stringify({ sheets, cells, pages: screens, breakpoints: bps, scales }, null, 2) + "\n");
+    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json") }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
+    return;
   }
   const findings = mergeFindings(all);
   const errors = findings.filter((f) => f.severity === "error").length;

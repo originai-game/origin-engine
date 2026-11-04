@@ -62,6 +62,7 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
         let l = LabelDesc {
             step: d["step"].as_str().and_then(|s| step(&t, s)),
             color: paint(&t, &d["color"]),
+            on_scene: d["onScene"].as_bool().unwrap_or(false),
             align: match d["align"].as_str() {
                 Some("center") => TextAlign::Center,
                 Some("end") => TextAlign::End,

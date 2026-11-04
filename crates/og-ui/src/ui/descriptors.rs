@@ -828,6 +828,8 @@ pub struct LabelDesc {
     pub step: Option<TypeStep>,
     /// `None`: `ink`.
     pub color: Option<Srgba>,
+    /// Scene text: `sceneInk` with the scheme's `sceneShadow` separation.
+    pub on_scene: bool,
     pub align: TextAlign,
     /// Keep on one line (break only at `\n`).
     pub nowrap: bool,

@@ -78,7 +78,7 @@ pub(crate) fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
         "displayMd" => r.display_md,
         "displayLg" => r.display_lg,
         "displayXl" => r.display_xl,
-        "displayXl2" => r.display_xl2,
+        "displayXl2" | "hero" => r.display_xl2,
         _ => return None,
     })
 }
@@ -106,6 +106,7 @@ pub const TYPE_STEPS: &[&str] = &[
     "displayLg",
     "displayXl",
     "displayXl2",
+    "hero",
 ];
 
 /// A Paint: a token, else an sRGB colour as authored (0–1), else white.
@@ -382,7 +383,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         if let Some(s) = step(&theme, name) {
             ramp.insert(
                 name.to_string(),
-                json!({ "size": s.size, "lineHeight": s.line_height, "trackingEm": s.tracking_em, "cjkLineHeight": s.cjk_line_height, "features": s.features.tags().collect::<Vec<_>>() }),
+                json!({ "size": s.size, "lineHeight": s.line_height, "trackingEm": s.tracking_em, "cjkLineHeight": s.cjk_line_height, "cjkTrackingEm": s.cjk_tracking_em, "weight": s.weight, "uppercase": s.uppercase, "features": s.features.tags().collect::<Vec<_>>() }),
             );
         }
     }
@@ -429,7 +430,7 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
             let k = t.typography.get(role, bp);
             by.insert(
                 bp.name().to_string(),
-                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "weight": k.weight, "font": font(k.font), "features": k.features.tags().collect::<Vec<_>>() }),
+                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "cjkTrackingEm": k.cjk_tracking_em, "weight": k.weight, "font": font(k.font), "uppercase": k.uppercase, "features": k.features.tags().collect::<Vec<_>>() }),
             );
         }
         typography.insert(role.name().to_string(), Value::Object(by));

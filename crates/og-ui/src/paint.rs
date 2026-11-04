@@ -561,13 +561,6 @@ pub(crate) struct Placed {
 }
 
 impl ElementDraw {
-    /// Whether its strokes may be drawn before the end of its subtree:
-    /// it neither clips to its shape nor draws offscreen (where its
-    /// strokes are part of what is composited).
-    pub(crate) fn strokes_movable(&self) -> bool {
-        self.clip == Clip::None && !self.layered()
-    }
-
     /// Whether its subtree draws offscreen.
     fn layered(&self) -> bool {
         self.layer.is_some()

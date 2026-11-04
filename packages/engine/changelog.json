@@ -5,6 +5,19 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "UI typography and TypeStepName aliases",
+        "change": "The typography hierarchy now drives legacy ramp names, including weights, tracking and breakpoint sizes. Several legacy sizes alias one semantic role; hero adds the largest step. Version 1 styles derive that hierarchy from their ramp. UI frames and wrapping can change.",
+        "fix": "og upgrade converts v1 styles to v2 and archives a v2 style's superseded ramp as comments. Edit typography, not ramp. Review heading/title/display/hero and phone/150% sheets; conflicting old aliases cannot all keep their different sizes.",
+        "find": ["typography"],
+        "codemod": { "kind": "ui-typography" }
+      },
+      {
+        "member": "UI rim, selection, focus and badge stacking",
+        "change": "Game draws and style dressings share the order ground, rim, content/selection, hollow focus, children/raised badges. A game stroke no longer covers its children and focus no longer paints an opaque background cut over art.",
+        "fix": "Review custom UI strokes and badges in baseline sheets. A foreground decoration belongs in a child, not a parent rim. No mechanical rewrite can infer intended artwork.",
+        "find": ["setDraw", "stroke "]
+      },
+      {
         "member": "og style new --seeds",
         "change": "Built-in style packs are authored directory extensions. The regenerate-all --seeds command is removed; new style extension names use lowercase letters, digits and hyphens. Existing game styles continue to load unchanged.",
         "fix": "Edit each pack's style.ogt and choices.json directly. Remove regeneration commands from authoring scripts. Use og style new only to bootstrap a new pack. There is no equivalent mechanical rewrite for regenerating authored data.",
@@ -97,6 +110,10 @@
       }
     ],
     "added": [
+      {
+        "member": "UI phase 0 grammar and review",
+        "summary": "Selector-addressed painted parts, per-dressing ornamentTint, paint token alpha and gradients, selection/onSelection/accent/sceneInk/scenePlate/sceneShadow roles, per-role tracking/cjkTracking and locale-aware case upper, hero typography, document tabs, IconDesc.secondary/secondaryTint and LabelDesc.onScene. og ui sheet renders pack or kit baseline pages on demand at desktop and phone, 100% and 150%, outside the gate. MSDF overlap resolution handles negative bearings before sign/error correction."
+      },
       {
         "member": "UI directory extensions",
         "summary": "Format-1 extension.json, og ui add/list/eject and og style add install editable kits and data packs. Typed kit namespaces use @origingame/engine/ui-extensions on both hosts without changing frozen og.ui. Pack-owned choices, skills and nested assets ship beside style.ogt; the UI kit scans its look documents at build time. Style check also finds GameDesc.look without starting a world. Paint-style retries rate_limited 429 responses with bounded backoff. Pack acceptance no longer measures contrast or compares authored data to generator output."

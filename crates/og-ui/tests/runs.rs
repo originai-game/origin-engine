@@ -622,6 +622,57 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
         ..Fonts::default()
     };
     fonts.link();
+    // Legacy labels read the semantic body role, not the default ramp:
+    // the real bold face, tracked glyphs, breakpoint size and text scale
+    // must all reach the draw commands, without scaling twice next frame.
+    let mut theme = Theme::dark();
+    theme.unit_pin = 1.0;
+    theme.text_scale = 1.5;
+    for bp in Breakpoint::ALL {
+        let token = &mut theme.tokens.typography.steps[tokens::TypeRole::Body.index()][bp as usize];
+        token.size = if bp == Breakpoint::PhonePortrait {
+            20.0
+        } else {
+            26.0
+        };
+        token.line_height = token.size + 8.0;
+        token.weight = 700;
+        token.tracking_em = 0.1;
+    }
+    let mut ui = Ui::new(UiDesc {
+        theme,
+        fonts: fonts.clone(),
+        ..UiDesc::default()
+    });
+    for (vp, expected) in [
+        (Viewport::new(1280.0, 720.0), 39.0),
+        (Viewport::new(390.0, 844.0), 30.0),
+    ] {
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), vp);
+            ui.label("Tracked", "Hi", LabelDesc::default());
+            ui.end();
+            let text = ui
+                .frame()
+                .items
+                .iter()
+                .find_map(|item| match &item.cmd {
+                    DrawCmd::Text {
+                        font,
+                        size,
+                        tracking,
+                        ..
+                    } => Some((*font, *size, *tracking)),
+                    _ => None,
+                })
+                .expect("the label draws");
+            assert_eq!(Some(text.0), bold.handle);
+            assert_eq!(text.1, expected);
+            assert_eq!(text.2, 0.1);
+            let width = bold.metrics.measure("Hi", expected) + 0.2 * expected;
+            assert!((ui.frame().element("Tracked").unwrap().width - width).abs() < 0.6);
+        }
+    }
     let styled = |fonts: &Fonts, weight, italic, text| {
         let (font, synth) = fonts.for_styled(FontRole::Body, weight, italic, text);
         (font.handle_of(0), synth)

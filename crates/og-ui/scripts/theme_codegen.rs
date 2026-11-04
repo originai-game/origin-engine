@@ -31,6 +31,12 @@ const ROLES: &[(&str, &str, &str)] = &[
     ("on_primary", "color", "accent-fg"),
     ("primary_soft", "linear", "accent-soft"),
     ("highlight", "color", "accent-ink"),
+    ("selection", "color", "border-strong"),
+    ("on_selection", "color", "fg"),
+    ("accent", "color", "accent-ink"),
+    ("scene_ink", "color", "fg"),
+    ("scene_plate", "color", "surface-raised"),
+    ("scene_shadow", "color", "shadow"),
     ("focus", "color", "focus"),
     ("knob", "color", "knob"),
     ("hud", "color", "hud"),
@@ -290,7 +296,7 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         };
         writeln!(
             o,
-            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n        features: {features},\n        weight: 0,\n    }},",
+            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n        features: {features},\n        weight: 0,\n        uppercase: false,\n    }},",
             num(size),
             num(lh),
             num(track),
@@ -494,6 +500,18 @@ palette! {
     primary_soft "primarySoft",
     /// Emphasised ink: a speaker's name, a price, a link, the player's dot.
     highlight "highlight",
+    /// Selected rows, tabs and cards; independent of a primary action.
+    selection "selection",
+    /// Ink on the selection ground.
+    on_selection "onSelection",
+    /// Decorative emphasis, independent of selection and primary actions.
+    accent "accent",
+    /// HUD text drawn directly over the scene.
+    scene_ink "sceneInk",
+    /// The scheme's plate behind HUD content.
+    scene_plate "scenePlate",
+    /// The scheme's separation shadow under scene text.
+    scene_shadow "sceneShadow",
     /// The focus ring of keyboard and gamepad navigation.
     focus "focus",
     /// Slider and switch knobs.
@@ -577,6 +595,8 @@ pub struct TypeStep {
     /// The weight (100 to 900) the step's text takes the nearest real face
     /// of (a style's `fonts { body 600 "…" }`); 0: the role's own face.
     pub weight: u16,
+    /// Locale-sensitive uppercase before measurement; source text is retained.
+    pub uppercase: bool,
 }
 
 /// The type ramp.
@@ -810,13 +830,13 @@ dress "Radio.card" {
   stroke none
 }
 dress "Radio.card[selected]" {
-  fill lineStrong
+  fill selection
 }
 dress "Radio.chosen" {
   stroke none
 }
 dress "Tabs.tab[selected]" {
-  fill lineStrong
+  fill selection
   effect dropShadow 0 2 4 0 "#00000073"
   effect innerShadow 0 1 0 0 "#ffffff26"
 }

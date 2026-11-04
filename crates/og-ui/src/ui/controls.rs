@@ -32,7 +32,11 @@ impl Ui {
         n.content = Content::Text(TextContent {
             text: text.to_owned(),
             step,
-            color: desc.color.unwrap_or(t.palette.ink),
+            color: desc.color.unwrap_or(if desc.on_scene {
+                t.palette.scene_ink
+            } else {
+                t.palette.ink
+            }),
             align: desc.align,
             wrap: !desc.nowrap,
             font: desc.font,
@@ -44,6 +48,23 @@ impl Ui {
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();
         n.heading = desc.heading;
+        if desc.on_scene {
+            use crate::paint::{ColorRef, ElementDraw, TextEffects, TextShadow};
+            self.draws.insert(
+                i,
+                ElementDraw {
+                    text: Some(TextEffects {
+                        shadows: vec![TextShadow {
+                            offset: [0.0, (step.size * 0.04).max(1.0)],
+                            blur: (step.size * 0.08).max(1.0),
+                            color: ColorRef::token("sceneShadow"),
+                        }],
+                        ..TextEffects::default()
+                    }),
+                    ..ElementDraw::default()
+                },
+            );
+        }
         // Room across for the style's drop inside a scroll view, whose edge
         // clips it (pixel's results figures lost their last font pixel of
         // drop to the view's edge); elsewhere a drop draws past its box, and

@@ -121,6 +121,7 @@ fn apply(eng: &Engine) -> Result<(), String> {
         };
         ui.set_fonts(fonts);
         ui.set_direction(direction);
+        ui.set_locale(&tag(eng.id));
     }
     with(eng.id, |s| s.fonts = paths);
     Ok(())

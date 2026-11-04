@@ -393,7 +393,7 @@ component reads: the top layer's `actions` with their hints and glyphs.
 Every kind takes the box and element-model props (`on` all); the rest are
 the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 `list`, `cells`, `slot` (containers), `label`, `button`, `image`, `art`,
-`icon`, `progress`, `slider`, `toggle`, `field`, `badge`, `spacer`,
+`icon`, `progress`, `slider`, `toggle`, `tabs`, `field`, `badge`, `spacer`,
 `divider`.
 
 | prop | value | on | what it does |
@@ -469,14 +469,17 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `customize` | bool | all | The player can move, scale and fade it in the HUD edit mode. |
 | `customizeKey` | name | all | With customize: its name in the saved HUD layout (default: its path). |
 | `reduced` | fade \| none \| keep | all | Its reduced-motion fallback. |
-| `text` | text | label, button, badge, toggle | What it says. |
-| `key` | name | label, button, badge, toggle | A string table key (og.i18n) its text comes from; `text` is the fallback. |
-| `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 | label | The type step. |
+| `text` | text | label, button, badge, toggle, tabs | What it says. |
+| `key` | name | label, button, badge, toggle, tabs | A string table key (og.i18n) its text comes from; `text` is the fallback. |
+| `step` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | The type step. |
 | `color` | paint | label, icon | Its ink. |
+| `onScene` | bool | label | Scene ink and separation shadow. |
+| `secondary` | name | icon | The second icon layer, in the same atlas. |
+| `secondaryTint` | paint | icon | The second layer's ink; accent by default. |
 | `textAlign` | start \| center \| end | label | How its lines align. |
 | `nowrap` | bool | label | One line. |
 | `maxLines` | number | label | The most lines it shows. |
-| `fitMin` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 | label | Shrinks by type steps to fit its width, down to this step. |
+| `fitMin` | body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| displaySm \| displayMd \| displayLg \| displayXl \| displayXl2 \| hero | label | Shrinks by type steps to fit its width, down to this step. |
 | `ellipsis` | bool | label | Cut with … where it does not fit. |
 | `font` | body \| display \| mono \| rounded | label | The font role. |
 | `heading` | bool | label | A heading (a style's flourish frames it). |
@@ -490,6 +493,9 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `max` | number | slider | The range's high end. |
 | `stepBy` | number | slider | Snap to multiples of this (0: continuous). |
 | `checked` | bool | toggle | Whether it is on (written back). Two-way. |
+| `items` | names | tabs | The tab labels, literal names or a bound list of strings. |
+| `selected` | number | tabs | The selected tab's zero-based index. Two-way. |
+| `fill` | bool | tabs | Equal tabs filling the available width. |
 | `input` | text | field | The field's text (written back). Two-way. |
 | `placeholder` | text | field | Shown while it is empty. |
 | `maxChars` | number | field | The most characters it takes. |

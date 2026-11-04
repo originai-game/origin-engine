@@ -55,6 +55,7 @@ impl Ui {
     pub(crate) fn dress(
         &self,
         frame: &crate::dress::DressFrame,
+        ornament_tint: Option<[f32; 4]>,
         slice: Slice,
         rect: Rect,
         radius: f32,
@@ -162,7 +163,16 @@ impl Ui {
                 (l, b, false, true),
                 (r, b, true, true),
             ] {
-                self.ornament(o, Rect::new(x, y, w, h), fx, fy, alpha, clip, cmds);
+                self.ornament(
+                    o,
+                    Rect::new(x, y, w, h),
+                    fx,
+                    fy,
+                    ornament_tint,
+                    alpha,
+                    clip,
+                    cmds,
+                );
             }
         }
         // A crest and the edge ornaments scale with their part: never past
@@ -172,14 +182,23 @@ impl Ui {
             let k = (rect.width / (3.0 * o.w)).min(1.0);
             let (w, h, d) = (o.w * k, o.h * k, o.offset * k);
             let at = Rect::new(rect.x + (rect.width - w) / 2.0, rect.y - d, w, h);
-            self.ornament(o, at, false, false, alpha, clip, cmds);
+            self.ornament(o, at, false, false, ornament_tint, alpha, clip, cmds);
         }
         if let Some(o) = art.edge.filter(|_| frame.edges) {
             let k = (rect.height / (3.0 * o.h)).min(1.0);
             let (w, h, d) = (o.w * k, o.h * k, o.offset * k);
             let y = rect.y + (rect.height - h) / 2.0;
             for (x, fx) in [(rect.x - d, false), (rect.right() + d - w, true)] {
-                self.ornament(o, Rect::new(x, y, w, h), fx, false, alpha, clip, cmds);
+                self.ornament(
+                    o,
+                    Rect::new(x, y, w, h),
+                    fx,
+                    false,
+                    ornament_tint,
+                    alpha,
+                    clip,
+                    cmds,
+                );
             }
         }
     }
@@ -192,6 +211,7 @@ impl Ui {
         rect: Rect,
         flip_x: bool,
         flip_y: bool,
+        tint: Option<[f32; 4]>,
         alpha: f32,
         clip: Rect,
         cmds: &mut Vec<DrawCmd>,
@@ -202,15 +222,16 @@ impl Ui {
         let [u0, v0, u1, v1] = o.uv;
         let (u0, u1) = if flip_x { (u1, u0) } else { (u0, u1) };
         let (v0, v1) = if flip_y { (v1, v0) } else { (v0, v1) };
-        let color = match o.ink {
-            Ink::Authored => Srgba::WHITE,
-            ink => ink.color(&self.theme.palette),
-        };
+        let mut color = tint.unwrap_or_else(|| match o.ink {
+            Ink::Authored => Srgba::WHITE.linear(),
+            ink => ink.color(&self.theme.palette).linear(),
+        });
+        color[3] *= alpha;
         cmds.push(DrawCmd::Image {
             rect,
             texture: Some(atlas),
             uv: [u0, v0, u1, v1],
-            color: color.fade(alpha).linear(),
+            color,
             clip,
         });
     }
@@ -334,7 +355,8 @@ impl Ui {
         let radius = crate::dress::corner_of(r.shape(part, t)).1;
         if let (Some(slice), Some(_)) = (r.frame.slice, t.art.atlas) {
             if let Some(bg) = fill {
-                self.dress(&r.frame, slice, rect, radius, bg, alpha, clip, cmds);
+                let tint = r.draw.ornament_tint.as_ref().map(|c| c.resolve(t));
+                self.dress(&r.frame, tint, slice, rect, radius, bg, alpha, clip, cmds);
             }
             return;
         }
@@ -490,9 +512,12 @@ impl Ui {
                     cap: crate::paint::Cap::Square,
                     join: crate::paint::Join::Miter(4.0),
                 },
-                fills: vec![crate::paint::Paint::Solid(crate::paint::ColorRef::token(
-                    ink,
-                ))],
+                fills: vec![crate::paint::Paint::Solid(
+                    r.draw
+                        .ornament_tint
+                        .clone()
+                        .unwrap_or_else(|| crate::paint::ColorRef::token(ink)),
+                )],
                 ..Default::default()
             };
             let at = crate::paint::Placed {

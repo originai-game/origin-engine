@@ -350,6 +350,8 @@ pub fn og_ui_icon(id: String, name: String, desc: Option<String>) {
             IconDesc {
                 size: f(&d, "size", 0.0),
                 tint: paint(&t, &d["tint"]),
+                secondary: d["secondary"].as_str().map(str::to_owned),
+                secondary_tint: paint(&t, &d["secondaryTint"]),
                 label: d["label"].as_str().map(str::to_owned),
             },
         )

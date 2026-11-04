@@ -79,9 +79,11 @@ enum Target {
     /// switch's knob): painted on a clear ground like an ornament, packed
     /// as its dressing's slice with one-px corners, so it scales as one.
     Piece(&'static str),
+    /// A greyscale nine-slice tinted by its widget, requested explicitly.
+    Tinted(&'static str),
 }
 
-const DEFAULTS: [Default; 16] = [
+const DEFAULTS: [Default; 17] = [
     Default {
         part: "panel",
         target: Target::Frame("Panel.frame"),
@@ -183,6 +185,12 @@ const DEFAULTS: [Default; 16] = [
         size: [24, 24],
         insets: [1, 1, 1, 1],
     },
+    Default {
+        part: "bar",
+        target: Target::Tinted("Meter.fill"),
+        size: [64, 16],
+        insets: [12, 4, 12, 4],
+    },
 ];
 
 /// One slot of the requests, completed.
@@ -272,7 +280,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
         Ok(t) => serde_json::from_str(&t).map_err(|e| format!("{}: {e}", req_path.display()))?,
         Err(_) => json!({}),
     };
-    let (requests, slots) = complete_requests(&old, &name, &doc);
+    let (requests, slots) = complete_requests(&old, &name, &doc)?;
     let text = serde_json::to_string_pretty(&requests).expect("json") + "\n";
     if !check && std::fs::read_to_string(&req_path).ok().as_deref() != Some(text.as_str()) {
         std::fs::write(&req_path, &text).map_err(|e| format!("{}: {e}", req_path.display()))?;
@@ -532,7 +540,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
 }
 
 /// The requests with every slot completed, and the slots this command packs.
-fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>) {
+fn complete_requests(old: &Json, name: &str, doc: &Document) -> Result<(Json, Vec<Slot>), String> {
     let mut out = old.as_object().cloned().unwrap_or_default();
     out.entry("style").or_insert_with(|| json!(name));
     let shape = old["choices"]["shape"].as_str().unwrap_or("");
@@ -562,11 +570,12 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
             Target::Ornament(key) => {
                 doc.body.get(key).is_some() || list.iter().any(|s| s["name"] == named.as_str())
             }
+            Target::Tinted(_) => list.iter().any(|s| s["name"] == named.as_str()),
             _ => true,
         };
         if wanted && !list.iter().any(|s| s["name"] == named.as_str()) {
             let kind = match d.target {
-                Target::Frame(_) => "styleFrame",
+                Target::Frame(_) | Target::Tinted(_) => "styleFrame",
                 Target::Button(_) => "styleButton",
                 Target::Ornament(_) | Target::Piece(_) => "ornament",
             };
@@ -584,10 +593,44 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
             .next()
             .unwrap_or(&slot_name)
             .to_string();
-        let Some(d) = DEFAULTS.iter().find(|d| d.part == part) else {
-            // An icon set and a game's own slots are not atlas art.
-            continue;
+        // A pack can paint any selector; the historical slot names are
+        // only defaults. Non-UI asset requests have no `dress` mapping.
+        let custom = Default {
+            part: "",
+            target: match s["kind"].as_str() {
+                Some("styleButton") => Target::Button(""),
+                Some("ornament") => Target::Piece(""),
+                _ if s["tint"] == true => Target::Tinted(""),
+                _ => Target::Frame(""),
+            },
+            size: [64, 64],
+            insets: [1; 4],
         };
+        let known = DEFAULTS.iter().find(|d| d.part == part);
+        if known.is_none() && s.get("dress").is_none() {
+            continue;
+        }
+        let d = known.unwrap_or(&custom);
+        if part.is_empty()
+            || !part
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            return Err(format!(
+                "{slot_name}: an art part name uses letters, digits, '-' and '_'"
+            ));
+        }
+        if known.is_none()
+            && !s["size"].as_array().is_some_and(|a| {
+                a.len() == 2
+                    && a.iter()
+                        .all(|v| v.as_u64().is_some_and(|n| (1..=4096).contains(&n)))
+            })
+        {
+            return Err(format!(
+                "{slot_name}: a custom painted part declares size [width, height], each 1 to 4096"
+            ));
+        }
         let o = s.as_object_mut().expect("a slot is an object");
         // An ornament the style already cuts keeps its region's size, so the
         // size its line draws at keeps its proportions.
@@ -634,7 +677,9 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
                 .filter(|(_, v)| !v.is_empty())
                 .collect(),
             None => match d.target {
-                Target::Frame(sel) | Target::Piece(sel) => vec![(0, sel.to_string())],
+                Target::Frame(sel) | Target::Piece(sel) | Target::Tinted(sel) => {
+                    vec![(0, sel.to_string())]
+                }
                 Target::Button(sel) => BUTTON_STATES
                     .iter()
                     .enumerate()
@@ -647,11 +692,29 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
             Target::Button(_) => BUTTON_STATES.iter().map(|(s, _)| *s).collect(),
             _ => vec!["normal"],
         };
+        if !matches!(d.target, Target::Ornament(_)) {
+            if dress.is_empty() {
+                return Err(format!(
+                    "{slot_name}: a painted part needs at least one dress selector"
+                ));
+            }
+            for (cell, selector) in &dress {
+                og_ui::Selector::parse(selector).map_err(|e| format!("{slot_name}: {e}"))?;
+                if *cell >= states.len() {
+                    return Err(format!(
+                        "{slot_name}: dress has more cells than its kind supplies"
+                    ));
+                }
+            }
+        }
         let file = format!("art/{part}.png");
         o.insert("file".into(), json!(file));
         o.insert("size".into(), json!(size));
         // A piece is painted whole: its brief carries no nine-slice.
-        if matches!(d.target, Target::Frame(_) | Target::Button(_)) {
+        if matches!(
+            d.target,
+            Target::Frame(_) | Target::Button(_) | Target::Tinted(_)
+        ) {
             o.insert("insets".into(), json!(insets));
         }
         o.insert("states".into(), json!(states));
@@ -686,7 +749,7 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
         });
     }
     out.insert("slots".into(), Json::Array(list));
-    (Json::Object(out), slots)
+    Ok((Json::Object(out), slots))
 }
 
 fn load(path: &Path) -> Result<RgbaImage, String> {
@@ -1056,7 +1119,7 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                     }
                 }
             }
-            Target::Frame(_) | Target::Button(_) | Target::Piece(_) => {
+            Target::Frame(_) | Target::Button(_) | Target::Piece(_) | Target::Tinted(_) => {
                 let i = match body.entries.iter().position(|e| {
                     e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(&p.to)
                 }) {
@@ -1074,7 +1137,10 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                 let mut slice = Entry::new("slice");
                 slice.values = region(p).to_vec();
                 slice.values.extend(p.insets.map(|v| num(f64::from(v))));
-                slice.values.push(Value::Word("authored".into()));
+                let tint = matches!(slots[p.slot].target, Target::Tinted(_));
+                slice
+                    .values
+                    .push(Value::Word(if tint { "tint" } else { "authored" }.into()));
                 // Its fill words (stretch, repeat, round) stay; painted art is authored.
                 if let Some(old) = block.entries.iter().find(|e| e.key == "slice") {
                     slice.values.extend(

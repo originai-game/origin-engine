@@ -449,6 +449,8 @@ pub struct Ui {
     /// The writing direction: right to left mirrors the layout and turns
     /// text alignment round (og.i18n's locale, or og.ui.configure).
     pub(crate) direction: og_i18n::Direction,
+    /// Active BCP-47 locale, for display text casing.
+    pub(crate) locale: String,
     /// Text measurements kept from the frames before (layout's).
     pub(crate) texts: crate::layout::TextCache,
     /// Timelines by name hash (`define_timeline`): configuration, like the theme.
@@ -521,6 +523,8 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
     if t.reduced_transparency || viewport.reduced_transparency {
         t = t.to_reduced_transparency();
     }
+    t.type_ramp = t.tokens.typography.ramp(viewport.breakpoint(), 1.0);
+    t.ramp_scale = 1.0;
     t.to_text_scale()
 }
 

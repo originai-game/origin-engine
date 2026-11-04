@@ -32,7 +32,7 @@ fn relative(path: &str) -> bool {
             .all(|c| matches!(c, Component::Normal(_)))
 }
 
-fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
+pub(super) fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
         for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
             let entry = entry.map_err(|e| e.to_string())?;
@@ -177,7 +177,7 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     Ok(extensions.into_values().collect())
 }
 
-fn install(extension: &Extension, project: &Path) -> Result<PathBuf, String> {
+pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, String> {
     if !project.join("project.ogt").is_file() {
         return Err(format!("{}: no project.ogt", project.display()));
     }

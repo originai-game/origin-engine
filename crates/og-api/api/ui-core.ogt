@@ -93,6 +93,12 @@ module ui {
     variant onPrimary "Ink on primary."
     variant primarySoft "A translucent wash of primary."
     variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
+    variant selection "The selected row, tab or card, independent of primary actions."
+    variant onSelection "Ink on the selection ground."
+    variant accent "Decorative emphasis, independent of primary and selection."
+    variant sceneInk "Scheme-aware text drawn over the scene."
+    variant scenePlate "Scheme-aware plate behind HUD content."
+    variant sceneShadow "Separation shadow under text over the scene."
     variant focus "The focus ring of key and pad navigation."
     variant knob "Slider and switch knobs."
     variant hud "HUD capsules over the game (scores, timers, toasts)."
@@ -132,6 +138,7 @@ module ui {
     variant displayLg "A step of the ramp."
     variant displayXl "A step of the ramp."
     variant displayXl2 "A step of the ramp."
+    variant hero "The largest typography role, above display; displayXl2 is its legacy alias."
   }
 
   struct SizeRange {
@@ -244,6 +251,7 @@ module ui {
     desc true
     field step Option.TypeStepName "The type step; null is body."
     field color Option.Paint "The ink; null is ink."
+    field onScene bool "Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container."
     field align TextAlign "How the lines align."
     field nowrap bool "Keep to one line (breaking only at `\\n`)."
     field width Option.Size "Its width; null fits the text."
@@ -527,6 +535,9 @@ module ui {
     field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
       unit cssPx
     }
+    field cjkTrackingEm f32 "Tracking of text containing CJK characters, in em."
+    field weight u32 "The face weight (100 to 900); zero takes the font role's own face."
+    field uppercase bool "Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values."
     field features List.String "The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults."
   }
 
@@ -1125,6 +1136,8 @@ module ui {
       min 0
     }
     field tint Option.Paint "Its ink; null is ink."
+    field secondary Option.String "A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer."
+    field secondaryTint Option.Paint "The second layer's ink; null is accent."
     field label Option.String "What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table."
   }
 
@@ -2022,4 +2035,3 @@ module ui {
     param viewport Option.Viewport "The surface to lay out for; null returns to the host's."
     returns Void
   }
-

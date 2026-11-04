@@ -1356,7 +1356,8 @@ fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() 
             1,
         )
         // Every part that takes the corners (the panel's frame among them).
-        .replace("  corners\n", "  corners\n  crest\n  edges\n");
+        .replace("  corners\n", "  corners\n  crest\n  edges\n")
+        + "\ndress \"Card.frame\" {\n  ornamentTint danger alpha 0.4\n}\n";
     let file = parse_style(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert!(
         file.dressings
@@ -1387,6 +1388,26 @@ fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() 
         })
         .collect();
     let near = |a: f32, b: f32| (a - b).abs() < 0.01;
+    let expected = file.theme.palette.danger.fade(0.4).linear();
+    let crest_color = ui
+        .frame()
+        .items
+        .iter()
+        .find_map(|item| match &item.cmd {
+            DrawCmd::Image { rect, color, .. }
+                if near(rect.width, 24.0) && near(rect.height, 12.0) =>
+            {
+                Some(*color)
+            }
+            _ => None,
+        })
+        .expect("the tinted crest");
+    for (got, want) in crest_color.into_iter().zip(expected) {
+        assert!(
+            near(got, want),
+            "ornament tint resolves through the palette, including alpha"
+        );
+    }
     // The crest: 24 × 12 (the panel is wider than three of it), centred,
     // 4 px above the panel's top.
     assert!(menu.width > 3.0 * 24.0, "the panel is {menu:?}");
@@ -1451,6 +1472,57 @@ fn v2_with(from: &str, to: &str) -> Result<StyleFile, String> {
         .find(|l| l.trim_start().starts_with(from))
         .unwrap_or_else(|| panic!("no line starting {from}"));
     parse_style(&text.replacen(line, to, 1))
+}
+
+#[test]
+fn typography_casing_and_cjk_tracking_survive_style_serialization() {
+    let file = v2_with(
+        "label ",
+        "  label 17 23 0.08 600 body case upper cjkTracking 0.04 tnum",
+    )
+    .expect("case upper is separate from OpenType features");
+    let token = file
+        .theme
+        .tokens
+        .typography
+        .get(tokens::TypeRole::Label, Breakpoint::Desktop);
+    assert!(token.uppercase);
+    assert_eq!(token.cjk_tracking_em, 0.04);
+    assert_eq!(token.features.tags().collect::<Vec<_>>(), ["tnum"]);
+    let (entries, _, _) = file.theme.tokens.entries(&[], &Default::default());
+    let label = entries
+        .iter()
+        .find(|e| e.key == "typography")
+        .unwrap()
+        .block
+        .as_ref()
+        .unwrap()
+        .get("label")
+        .unwrap();
+    let mut doc = og_core::ogt::Document::new("style", 2);
+    doc.body.push(label.clone());
+    let text = doc.to_text().unwrap();
+    let label = text
+        .lines()
+        .find(|line| line.starts_with("label "))
+        .unwrap();
+    let reread = v2_with("label ", label).unwrap();
+    assert_eq!(
+        reread
+            .theme
+            .tokens
+            .typography
+            .get(tokens::TypeRole::Label, Breakpoint::Desktop),
+        token
+    );
+    let unchanged = v2_with("label ", "  label 17 23 0.08 600 body case").unwrap();
+    let token = unchanged
+        .theme
+        .tokens
+        .typography
+        .get(tokens::TypeRole::Label, Breakpoint::Desktop);
+    assert!(!token.uppercase);
+    assert_eq!(token.features.tags().collect::<Vec<_>>(), ["case"]);
 }
 
 #[test]
@@ -1690,7 +1762,7 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     // Unset offsets between set ones: 0, 0.2, then 0.6 and 1 evenly.
     let only_conic = concat!(
         "dress \"Meter.fill[rarity=epic]\" {\n",
-        "  fill conic 90 primary \"#ff000080\" 0.2 danger lineStrong reflect\n",
+        "  fill conic 90 primary alpha 0.25 \"#ff000080\" alpha 0.5 0.2 danger lineStrong reflect\n",
         "}\n",
     );
     let file = parse_style(&(base.clone() + only_conic)).unwrap();
@@ -1710,6 +1782,17 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     // CSS 90° (right) is the paint's angle 0 from +x.
     assert!(g.to[0].abs() < 1e-6, "{:?}", g.to);
     assert_eq!((g.kind, g.spread), (GradientKind::Conic, Spread::Reflect));
+    assert_eq!(
+        g.stops[0].color,
+        ColorRef::Token {
+            name: "primary".into(),
+            alpha: 0.25
+        }
+    );
+    let ColorRef::Literal(red) = g.stops[1].color else {
+        panic!("literal stop")
+    };
+    assert!((red.alpha - 128.0 / 255.0 * 0.5).abs() < 1e-6);
 
     // Refused lines report themselves.
     let lines = base.lines().count();
@@ -1721,6 +1804,7 @@ fn a_dressing_draws_with_the_ui_pass_types() {
         ("effect sparkle 2", "not an effect"),
         ("blend lighten", "not a blend mode"),
         ("fill linear 90 primary 0.8 danger 0.2", "out of order"),
+        ("fill primary alpha 1.1", "alpha from 0 to 1"),
     ] {
         let text = format!("{base}dress \"Meter.fill\" {{\n  {bad}\n}}\n");
         let err = parse_style(&text).unwrap_err();
@@ -1800,11 +1884,10 @@ fn a_version_1_styles_button_and_tab_labels_keep_its_body_size() {
 }
 
 /// A style declares colour roles of its own (docs/ui.md §12.2): read by
-/// name like a palette role (a paint's token, a dressing's fill), held to
-/// the non-text floor on its raised panel, and refused when they clash
+/// name like a palette role (a paint's token, a dressing's fill), refused when they clash
 /// with a named role or a dressing names one the style lacks.
 #[test]
-fn a_style_declares_its_own_colour_roles_read_by_name_and_held_to_3_to_1() {
+fn a_style_declares_its_own_colour_roles_without_a_contrast_gate() {
     let base = v2_with("scheme ", "scheme dark").expect("the test style parses");
     let ground = base
         .theme
@@ -1867,11 +1950,7 @@ fn a_style_declares_its_own_colour_roles_read_by_name_and_held_to_3_to_1() {
         "primary",
         "lowerCamelCase",
     );
-    refused(
-        &format!("  corruption \"{flat}\"\n"),
-        "primary",
-        "needs 3:1",
-    );
+    assert!(with_roles(&format!("  corruption \"{flat}\"\n"), "corruption").is_ok());
     refused(
         &format!("  corruption \"{bright}\"\n"),
         "sanity",
@@ -2098,7 +2177,10 @@ fn a_version_1_style_keeps_its_switches_titles_and_selection_through_an_upgrade(
     }
     let d = draw(&today);
     assert!(!d.theme.art.legacy);
-    assert!(!d.title_is_xl, "today's dialog title is the heading role");
+    assert!(
+        d.title_is_xl,
+        "xl now aliases the heading role, including tracking and weight"
+    );
     assert!(!d.underline, "today's selection is a lit tile");
     assert!(
         d.switch_radius > d.theme.radius.control,

@@ -1,6 +1,97 @@
 use super::*;
 
 #[test]
+fn upgrade_migrates_style_typography_without_discarding_legacy_values() {
+    let dir = scratch_root();
+    let assets = dir.join("assets");
+    let package = dir.join("engine");
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::create_dir_all(&package).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
+    let manifest = "type project\nversion 1\n---\nname \"migration\"\nengine \"0.7.7\"\nentry \"src/main.ts\"\n";
+    std::fs::write(dir.join("project.ogt"), manifest).unwrap();
+    let log: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(repo().join("packages/engine/changelog.json")).unwrap(),
+    )
+    .unwrap();
+    let migration = log["unreleased"]["breaking"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(
+            log["versions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|v| v["breaking"].as_array().into_iter().flatten()),
+        )
+        .find(|b| b["codemod"]["kind"] == "ui-typography")
+        .unwrap();
+    std::fs::write(package.join("package.json"), r#"{"version":"0.8.0"}"#).unwrap();
+    std::fs::write(
+        package.join("changelog.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "versions": [{"version":"0.8.0", "simulation":"unchanged", "breaking":[migration]}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let old =
+        std::fs::read_to_string(repo().join("crates/og-cli/tests/fixtures/style-pack/style.ogt"))
+            .unwrap()
+            + "\nramp {\n  body 19 27 31 0.07 0.02\n}\n";
+    let v2 = og_ui::upgrade_style(&old).unwrap();
+    std::fs::write(assets.join("legacy.ogt"), &old).unwrap();
+    std::fs::write(assets.join("modern.ogt"), &v2).unwrap();
+    let scene = "type scene\nversion 1\n---\nramp { body 23 31 }\n";
+    std::fs::write(assets.join("scene.ogt"), scene).unwrap();
+    let run = |dry: bool| {
+        let mut cmd = og();
+        cmd.arg("upgrade")
+            .arg(&dir)
+            .arg("--json")
+            .env("OG_ENGINE_PACKAGE", &package);
+        if dry {
+            cmd.arg("--dry-run");
+        }
+        let out = cmd.output().unwrap();
+        assert_eq!(out.status.code(), Some(3), "{}", text(&out));
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()
+    };
+    assert_eq!(run(true)["codemods"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        std::fs::read_to_string(assets.join("legacy.ogt")).unwrap(),
+        old
+    );
+    assert_eq!(
+        std::fs::read_to_string(assets.join("modern.ogt")).unwrap(),
+        v2
+    );
+    assert_eq!(run(false)["codemods"].as_array().unwrap().len(), 2);
+    for name in ["legacy", "modern"] {
+        let migrated = std::fs::read_to_string(assets.join(format!("{name}.ogt"))).unwrap();
+        assert!(migrated.contains("# ramp {"));
+        assert!(migrated.contains("#   body 19 27 31 0.07 0.02"));
+        let file = og_ui::parse_style(&migrated).unwrap();
+        assert_eq!(file.version, 2);
+        assert_eq!(file.theme.type_ramp.body.size, 19.0);
+        assert_eq!(file.theme.type_ramp.body.tracking_em, 0.07);
+        assert_eq!(file.theme.type_ramp.body.cjk_tracking_em, 0.02);
+    }
+    assert_eq!(
+        std::fs::read_to_string(assets.join("scene.ogt")).unwrap(),
+        scene
+    );
+    std::fs::write(dir.join("project.ogt"), manifest).unwrap();
+    assert!(
+        run(false)["codemods"].as_array().unwrap().is_empty(),
+        "idempotent"
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn version_names_og_and_the_engine() {
     let out = og().arg("--version").output().unwrap();
     assert!(out.status.success());

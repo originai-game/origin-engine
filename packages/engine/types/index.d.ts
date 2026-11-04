@@ -22775,6 +22775,12 @@ export type DensityMode = "auto" | "mouse" | "pad" | "touch";
  * - `"onPrimary"`: Ink on primary.
  * - `"primarySoft"`: A translucent wash of primary.
  * - `"highlight"`: Emphasised ink: a speaker's name, a price, a link, the player's map dot.
+ * - `"selection"`: The selected row, tab or card, independent of primary actions.
+ * - `"onSelection"`: Ink on the selection ground.
+ * - `"accent"`: Decorative emphasis, independent of primary and selection.
+ * - `"sceneInk"`: Scheme-aware text drawn over the scene.
+ * - `"scenePlate"`: Scheme-aware plate behind HUD content.
+ * - `"sceneShadow"`: Separation shadow under text over the scene.
  * - `"focus"`: The focus ring of key and pad navigation.
  * - `"knob"`: Slider and switch knobs.
  * - `"hud"`: HUD capsules over the game (scores, timers, toasts).
@@ -22790,7 +22796,7 @@ export type DensityMode = "auto" | "mouse" | "pad" | "touch";
  * - `"xp"`: An experience meter.
  * - `"gold"`: Currency: coins, gold, prices that can be paid.
  */
-export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRaised" | "line" | "lineStrong" | "ink" | "inkMuted" | "inkFaint" | "inkInverse" | "control" | "controlStrong" | "primary" | "primaryHover" | "primaryActive" | "onPrimary" | "primarySoft" | "highlight" | "focus" | "knob" | "hud" | "scrim" | "shadow" | "sheen" | "success" | "warn" | "danger" | "info" | "health" | "mana" | "xp" | "gold";
+export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRaised" | "line" | "lineStrong" | "ink" | "inkMuted" | "inkFaint" | "inkInverse" | "control" | "controlStrong" | "primary" | "primaryHover" | "primaryActive" | "onPrimary" | "primarySoft" | "highlight" | "selection" | "onSelection" | "accent" | "sceneInk" | "scenePlate" | "sceneShadow" | "focus" | "knob" | "hud" | "scrim" | "shadow" | "sheen" | "success" | "warn" | "danger" | "info" | "health" | "mana" | "xp" | "gold";
 
 /**
  * A step of the style's type ramp.
@@ -22815,8 +22821,9 @@ export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRa
  * - `"displayLg"`: A step of the ramp.
  * - `"displayXl"`: A step of the ramp.
  * - `"displayXl2"`: A step of the ramp.
+ * - `"hero"`: The largest typography role, above display; displayXl2 is its legacy alias.
  */
-export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2";
+export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2" | "hero";
 
 /** The bounds of a fit or grow size. */
 export interface SizeRange {
@@ -23113,6 +23120,12 @@ export interface LabelDesc {
    * @default null
    */
   readonly color?: Paint | null;
+  /**
+   * Text over the scene: uses sceneInk when color is null and draws the scheme's sceneShadow separation. A HUD plate uses background: { token: 'scenePlate' } on its container.
+   *
+   * @default false
+   */
+  readonly onScene?: boolean;
   /**
    * How the lines align.
    *
@@ -23923,6 +23936,14 @@ export interface TypeStep {
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly cjkLineHeight: number;
+  /** Tracking of text containing CJK characters, in em. */
+  readonly cjkTrackingEm: number;
+  /** The face weight (100 to 900); zero takes the font role's own face. */
+  readonly weight: number;
+  /**
+   * Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values.
+   */
+  readonly uppercase: boolean;
   /**
    * The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults.
    */
@@ -24942,6 +24963,18 @@ export interface IconDesc {
    * @default null
    */
   readonly tint?: Paint | null;
+  /**
+   * A second atlas icon, overlaid in the same em square: author the two silhouettes as separate named layers. Null draws one layer.
+   *
+   * @default null
+   */
+  readonly secondary?: string | null;
+  /**
+   * The second layer's ink; null is accent.
+   *
+   * @default null
+   */
+  readonly secondaryTint?: Paint | null;
   /**
    * What a screen reader calls it (and the probe's text): null is the icon's name in the atlas (an English word: `star`); empty is decoration, named by nothing, so a card or button it sits on is named by its other text. A localised game names a meaningful icon from its string table.
    *

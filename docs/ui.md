@@ -1264,6 +1264,118 @@ built-in collection. Adding a pack or kit requires no shared name list.
 The on-demand `og ui sheet <pack|kit>` renders baseline pages on the pack's
 own ground at desktop, phone and 150% text. It is not a gate step.
 
+`og ui sheet <pack|kit> [project] [--out DIR]` discovers extensions in the
+project (default `.`), including installed edits. Packs use the engine's
+shipped baseline project and its fixed component/pattern/HUD pages. A kit
+supplies `sheet/project.ogt` inside its own directory: its `ui { screen
+"name" "commands" }` entries are its fixed review pages. Those commands
+must establish each page independently, on the kit's style ground rather
+than a game scene. No kit name or page list is registered in the core.
+The tool copies its inputs to disposable working files, cooks and bundles
+them, and renders four cells per page: desktop and phone at 100% and 150%.
+It writes full-resolution frames, UI dumps, contact sheets and `index.json`.
+Missing captures or missing baseline page roots fail the command; visual
+judgment belongs to the reviewer, with no contrast score or reference gate.
+
+### Documents and arbitrary widgets
+
+`tabs` is a document control with `items`, two-way `selected`, and a
+`changed` event. For any other `og.ui` widget or an extension component,
+documents declare a `slot` and game code fills it after mounting:
+
+```ts
+og.ui.screen("garage", vm);
+if (og.ui.openSlot("garage/Speed")) {
+  racing.speedometer("Speedometer", vm.speed);
+  og.ui.close();
+}
+```
+
+This is the general document-to-widget bridge on both hosts. The slot
+owns placement; the typed call owns widget arguments and interactions.
+It avoids a second, untyped widget dispatch API or executable strings in
+documents. The same bridge accepts a common component such as
+`og.ui.slider`, without registering a new document element kind.
+
+### 17.4 Phase 0 dressing and typography contracts
+
+Painted art is addressed by **selector**, not by an engine slot enum.
+An `art-requests.json` slot with a new name supplies `size`, `insets` and
+`dress: ["Tabs.tab[selected]"]`; `kind: "styleFrame"` packs a nine-slice,
+`"ornament"` a whole piece, and `"styleButton"` a five-cell state sheet.
+`tint: true` on a frame keeps the widget's colour instead of baking it
+into the art. The historical slot names remain defaults; `bar` is an
+opt-in tinted `Meter.fill`, never an extra request imposed on every pack.
+Tabs, selected rows, ribbons and banners need no new core registration.
+
+A paint colour can carry `alpha <0..1>`, including a palette or custom
+role: `fill linear 90 primary alpha 0.25 0 accent alpha 0.8 1`.
+The alpha belongs to the preceding colour; the next number is still the
+gradient stop position. Literal alpha multiplies the literal's own alpha.
+Tokens remain symbolic until drawing, so scheme changes and state
+transitions keep their meaning.
+
+`ornamentTint <colour>` on a dressing overrides its corners, crest,
+edges, divider and heading flourishes, including procedural corners.
+It does not recolour the atlas or other components using the same art.
+
+The palette separates `selection`/`onSelection` (selected rows and tabs),
+`primary`/`onPrimary` (the main action), and `accent` (small emphasis).
+Old files derive selection from controlStrong, onSelection from ink and
+accent from highlight. `sceneInk`, `scenePlate` and `sceneShadow` are
+scheme-aware HUD roles (legacy fallback: ink, hud and shadow).
+`og.ui.label(..., { onScene: true })` uses sceneInk and sceneShadow;
+a HUD container with `background: { token: "scenePlate" }` is the plate
+treatment. Games tune these three roles in their style, not per widget.
+
+`og.ui.icon(id, "base", { secondary: "detail", secondaryTint: { token:
+"accent" } })` overlays two named icons with independent inks. The
+secondary tint defaults to accent; both layers share the icon's bounds.
+Document icons accept the same properties.
+
+The stacking order is fixed for authored draws and style dressings:
+ground/fills → rim → content/selection → hollow focus → children/raised
+badges. Focus never covers art with a background-coloured cut. Put a
+decoration that must cover children in a child of its own, not a rim.
+
+`typography` is the drawing hierarchy, including weight, tracking and
+breakpoint sizes. The legacy ramp names are aliases, not a second set
+of authored numbers:
+
+| Typography role | Legacy ramp names |
+| --- | --- |
+| caption | xs, caption |
+| label | sm, meta |
+| body | base, body, reading |
+| numeric | lg |
+| heading | xl, xl2 |
+| title | xl3, xl4, displaySm, displayMd |
+| display | xl5, xl6, displayLg |
+| hero | xl7, xl8, displayXl, displayXl2 |
+
+`hero` is optional for existing packs; without it, it is 1.5 times
+`display` at each breakpoint, up to the format's 400 px limit. The
+player's text scale multiplies after selecting the breakpoint, once.
+Buttons continue to use `button` (falling back to `label`).
+
+Type roles accept `cjkTracking <em>` and `case upper` after the font and
+OpenType tags, for example `label 16 22 0.06 600 body case upper`.
+`case none` leaves the source unchanged; a bare `case` remains the
+OpenType case-sensitive-forms tag. Uppercase uses ICU's full Unicode
+mapping in the active `og.i18n` locale before measuring and wrapping.
+It affects displayed labels and rich text, not probe/accessibility source
+strings, editable values, cursor offsets or inline icons and key caps.
+Greek accents, Turkic dotted I and Lithuanian combining dots therefore
+follow their language, on both hosts.
+
+On the next minor upgrade, `og upgrade`'s `ui-typography` codemod converts
+v1 styles with the existing style upgrader. For v2 it comments out a
+superseded `ramp`, keeping its old numbers for review and preserving other
+source bytes. It lists `typography` for manual visual review: two old
+aliases with different sizes cannot both keep those sizes when they name
+one role. No version bump occurs in a feature stream; the integrating
+release head moves these unreleased breaking entries once for the wave.
+
 ## 17a. The existing coverage kit
 
 `templates/ui-kit` is rebuilt as the coverage proof:

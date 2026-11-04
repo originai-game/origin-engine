@@ -161,26 +161,9 @@ impl Ui {
             clip: n.clip,
             alpha: n.alpha,
         };
-        // Game draws whose strokes were drawn before their subtree ended.
-        let mut stroked = vec![false; self.nodes.len()];
         for (k, &i) in order.iter().enumerate() {
             let n = &self.nodes[i];
             let world = n.world;
-            // A child raised above its siblings (z > 0: a badge, a corner
-            // tag, a cost gem standing over the frame's edge) draws over its
-            // parent's border: a game's draw strokes before such children,
-            // after the rest of its subtree (they sort last).
-            let p = n.parent;
-            if p != NONE
-                && n.props.z > 0
-                && !stroked[p]
-                && let Some(d) = self.draws.get(&p).filter(|d| d.strokes_movable())
-            {
-                stroked[p] = true;
-                let np = &self.nodes[p];
-                let at = placed(np);
-                cmds.extend(d.strokes(&theme, &at).into_iter().map(|c| (c, np.world)));
-            }
             let start = cmds.len();
             let game_draw = self.draws.contains_key(&i);
             let draw = self
@@ -188,38 +171,19 @@ impl Ui {
                 .get(&i)
                 .or_else(|| self.part_draws.get(&i))
                 .cloned();
-            // A focus ring is cut from the control by what is behind it:
-            // under a draw's fills, or the cut covers them (a focused
-            // dressed button drawn in its panel's colour).
-            if draw.is_some() {
-                let mut ring = Vec::new();
-                if world.is_identity() {
-                    self.focus_ring_commands(i, &mut ring);
-                } else if let Some(inv) = world.invert() {
-                    let screen_clip = self.nodes[i].clip;
-                    self.nodes[i].clip = inv.map_rect(&screen_clip);
-                    self.drawing = world;
-                    self.focus_ring_commands(i, &mut ring);
-                    self.drawing = Affine::IDENTITY;
-                    self.nodes[i].clip = screen_clip;
-                }
-                cmds.extend(ring.into_iter().map(|c| (c, world)));
-            }
             let n = &self.nodes[i];
             if let Some(m) = self.world_marks(n.key) {
                 cmds.extend(m.enter.iter().map(|c| (c.clone(), Affine::IDENTITY)));
             }
             if let Some(d) = &draw {
                 cmds.extend(d.enter(&theme, &placed(n)).into_iter().map(|c| (c, world)));
-                // A style part's border draws with its fills, under its
-                // label; a game's draw strokes over its subtree.
-                if !game_draw {
-                    cmds.extend(
-                        d.strokes(&theme, &placed(n))
-                            .into_iter()
-                            .map(|c| (c, world)),
-                    );
-                }
+                // One order for game and style draws: ground, rim,
+                // content/selection, focus, then children and raised badges.
+                cmds.extend(
+                    d.strokes(&theme, &placed(n))
+                        .into_iter()
+                        .map(|c| (c, world)),
+                );
             }
             let twin = self.kept.twin.get(i).copied().unwrap_or(NONE);
             // Rich text draws from the tick (its moving spans), focus and
@@ -239,13 +203,13 @@ impl Ui {
                     local = c.clone();
                     self.stats.kept_commands += 1;
                 } else if world.is_identity() {
-                    self.node_commands(i, &mut local, &snap, draw.is_none());
+                    self.node_commands(i, &mut local, &snap);
                 } else if let Some(inv) = world.invert() {
                     // Drawn in its layout box: its screen clip taken there.
                     let screen_clip = n.clip;
                     self.nodes[i].clip = inv.map_rect(&screen_clip);
                     self.drawing = world;
-                    self.node_commands(i, &mut local, &snap, draw.is_none());
+                    self.node_commands(i, &mut local, &snap);
                     self.drawing = Affine::IDENTITY;
                     self.nodes[i].clip = screen_clip;
                 }
@@ -259,6 +223,18 @@ impl Ui {
                 next.insert(self.nodes[i].key, local.clone());
                 cmds.extend(local.into_iter().map(|c| (c, world)));
             }
+            let mut ring = Vec::new();
+            if world.is_identity() {
+                self.focus_ring_commands(i, &mut ring);
+            } else if let Some(inv) = world.invert() {
+                let screen_clip = self.nodes[i].clip;
+                self.nodes[i].clip = inv.map_rect(&screen_clip);
+                self.drawing = world;
+                self.focus_ring_commands(i, &mut ring);
+                self.drawing = Affine::IDENTITY;
+                self.nodes[i].clip = screen_clip;
+            }
+            cmds.extend(ring.into_iter().map(|c| (c, world)));
             if let Some(d) = &draw {
                 let at = placed(&self.nodes[i]);
                 cmds.extend(d.children(&at).into_iter().map(|c| (c, world)));
@@ -291,12 +267,7 @@ impl Ui {
                 let w = self.nodes[j].world;
                 if let Some(d) = self.draws.get(&j) {
                     let at = placed(&self.nodes[j]);
-                    let leave = if stroked[j] {
-                        d.leave_stroked(&at)
-                    } else {
-                        d.leave(&theme, &at)
-                    };
-                    cmds.extend(leave.into_iter().map(|c| (c, w)));
+                    cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));
                 } else if let Some(d) = self.part_draws.get(&j) {
                     let at = placed(&self.nodes[j]);
                     cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));

@@ -9,6 +9,7 @@
 import { og } from "@origingame/engine";
 import type { AbilitySlotDesc, Anchor, KillfeedEntry, Paint, MapMarkerItem, Size, StandingsEntry, Vector3, World } from "@origingame/engine";
 import { chromeRoom, L } from "./patterns.ts";
+import { packGround } from "./ground.ts";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: Math.max(0, Math.round(n)) });
@@ -89,7 +90,7 @@ export function gameScene(world: World, name: HudArt, focal = { x: 0.5, y: 0.5 }
   // (nameplates, prompts, the low-health vignette) and the kit's chrome, built before the page, draw over it. A HUD
   // anchor here drew over everything built before it. Cover-fit about the focal point (the art is 16:9).
   const vp = og.ui.frameViewport();
-  const tex = hudArt(name);
+  const tex = packGround() ? null : hudArt(name);
   const art = 16 / 9;
   const view = vp.width / vp.height;
   const cw = view < art ? view / art : 1;

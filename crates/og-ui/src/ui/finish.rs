@@ -63,6 +63,24 @@ impl Ui {
                 }
             }
         }
+        for node in &mut self.nodes {
+            if matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
+                continue;
+            }
+            match &mut node.content {
+                Content::Text(text) if text.step.uppercase => {
+                    text.text = og_i18n::text::uppercase(&text.text, &self.locale);
+                }
+                Content::Rich(rich) => {
+                    for span in &mut rich.spans {
+                        if span.step.uppercase && span.atom.is_none() {
+                            span.text = og_i18n::text::uppercase(&span.text, &self.locale);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
         crate::layout::snap_pixel_text(&mut self.nodes, &self.fonts);
         self.reuse_check();
         let mut floating: Vec<usize> = self

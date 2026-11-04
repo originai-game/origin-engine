@@ -225,6 +225,7 @@ impl Ui {
                         crate::style_file::ramp_step(&mut t.type_ramp.clone(), s).copied()
                     }),
                     color: r.color("color"),
+                    on_scene: r.flag("onScene"),
                     align: match r.str("textAlign") {
                         Some("center") => TextAlign::Center,
                         Some("end") => TextAlign::End,
@@ -320,6 +321,8 @@ impl Ui {
                     crate::widgets::IconDesc {
                         size: r.num("iconSize").unwrap_or(0.0),
                         tint: r.color("color"),
+                        secondary: r.str("secondary").map(str::to_string),
+                        secondary_tint: r.color("secondaryTint"),
                         label: r.str("name").map(str::to_string),
                     },
                 );
@@ -356,6 +359,26 @@ impl Ui {
                 resp = self.toggle(id.as_str(), &mut on, &text);
                 if resp.changed {
                     self.write_back(b, n, "checked", json!(on));
+                }
+            }
+            "tabs" => {
+                let items: Vec<&str> = match r.get("items") {
+                    Some(V::Strs(items)) => items.iter().map(String::as_str).collect(),
+                    _ => Vec::new(),
+                };
+                let mut selected = r.num("selected").unwrap_or(0.0) as usize;
+                resp = self.tabs(
+                    id.as_str(),
+                    &items,
+                    &mut selected,
+                    crate::widgets::TabsDesc {
+                        fill: r.flag("fill"),
+                        width: r.size("width"),
+                        label: text_of(&r, b),
+                    },
+                );
+                if resp.changed {
+                    self.write_back(b, n, "selected", json!(selected));
                 }
             }
             "field" => {

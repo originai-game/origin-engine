@@ -55,6 +55,7 @@ impl Ui {
             style_name: String::new(),
             gesture: false,
             direction: og_i18n::Direction::Ltr,
+            locale: String::new(),
             texts: Default::default(),
             timelines: Default::default(),
             pending_plays: Vec::new(),
@@ -428,6 +429,12 @@ impl Ui {
         self.direction = direction;
     }
 
+    /// The active BCP-47 locale for style-driven display casing. It never
+    /// rewrites source strings, input fields or their selections.
+    pub fn set_locale(&mut self, locale: &str) {
+        self.locale = locale.into();
+    }
+
     /// The control sizes in effect for the current viewport.
     pub fn sizes(&self) -> Density {
         self.theme.sizes(&self.viewport)
@@ -755,17 +762,7 @@ impl Ui {
         let tok = self.theme.tokens.typography.get(role, self.breakpoint());
         // The tokens are the style's as authored; the player's text scale
         // grows them here (the ramp carries it already).
-        let k = self.theme.ramp_scale;
-        let (size, line_height) = (tok.size * k, tok.line_height * k);
-        TypeStep {
-            size,
-            line_height,
-            tracking_em: tok.tracking_em,
-            cjk_line_height: line_height.max((size * 1.45).round()),
-            cjk_tracking_em: 0.0,
-            features: tok.features,
-            weight: tok.weight,
-        }
+        tok.step(self.theme.ramp_scale)
     }
 
     /// The font role the style sets `role` in.

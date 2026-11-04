@@ -171,6 +171,19 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         let version = e["version"].as_str().unwrap_or("");
         for b in e["breaking"].as_array().into_iter().flatten() {
             let member = b["member"].as_str().unwrap_or("");
+            if b["codemod"]["kind"] == "ui-typography" {
+                for (file, text, touched) in &mut texts {
+                    if file.extension().is_some_and(|e| e == "ogt")
+                        && let Some(migrated) = archive_legacy_ramp(text)
+                    {
+                        *text = migrated;
+                        *touched = true;
+                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "ramp", "to": "typography (legacy values archived as comments)", "count": 1 }));
+                    }
+                }
+                // Still report the typography block for visual review: alias
+                // merging cannot preserve two conflicting sets of sizes.
+            }
             if let (Some(from_s), Some(to_s)) =
                 (b["codemod"]["from"].as_str(), b["codemod"]["to"].as_str())
             {
@@ -258,6 +271,43 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         "manual": manual,
         "review": review,
     })
+}
+
+/// Upgrade v1 styles to semantic roles, then archive the superseded ramp.
+/// In v2 keep all other source bytes and the legacy numbers as comments.
+fn archive_legacy_ramp(text: &str) -> Option<String> {
+    let doc = og_core::ogt::parse(text).ok()?;
+    if doc.ty != "style" {
+        return None;
+    }
+    if doc.version == 1 {
+        return og_ui::upgrade_style(text)
+            .ok()
+            .and_then(|s| archive_legacy_ramp(&s).or(Some(s)));
+    }
+    if doc.version != 2 || doc.body.get("typography").is_none() {
+        return None;
+    }
+    let index = doc.body.entries.iter().position(|e| e.key == "ramp")?;
+    let first = doc.body.entries[index].line;
+    let end = doc
+        .body
+        .entries
+        .get(index + 1)
+        .map_or(usize::MAX, |e| e.line);
+    let mut out = String::new();
+    for (i, line) in text.split_inclusive('\n').enumerate() {
+        if i + 1 == first {
+            out.push_str(
+                "# Legacy ramp archived by og upgrade; edit typography (docs/ui.md §17.4).\n",
+            );
+        }
+        if i + 1 >= first && i + 1 < end {
+            out.push_str("# ");
+        }
+        out.push_str(line);
+    }
+    Some(out)
 }
 
 /// The game's own text: `src/` and `assets/` (TypeScript, JavaScript and

@@ -101,7 +101,7 @@ impl Ui {
             let ink = if on {
                 let ground = if resolved.draw.fills.is_empty() {
                     if grammar {
-                        p.control_strong.over_linear(track)
+                        p.selection.over_linear(track)
                     } else {
                         p.knob.fade(1.0)
                     }
@@ -110,7 +110,7 @@ impl Ui {
                     crate::dress::ground_of(&d, &t, track)
                 };
                 if grammar {
-                    crate::dress::accent_ink(&t, ground)
+                    p.on_selection
                 } else {
                     [p.ink, p.ink_inverse, p.on_primary]
                         .into_iter()
@@ -135,7 +135,7 @@ impl Ui {
             );
             let clear = p.control.fade(0.0);
             // One selection grammar: the thumb is a step up from the track.
-            let thumb = if grammar { p.control_strong } else { p.knob };
+            let thumb = if grammar { p.selection } else { p.knob };
             let bg = mix_srgba(
                 Ui::state_color(clear, p.control, p.control, amounts),
                 thumb,
@@ -156,7 +156,7 @@ impl Ui {
                         ..Frame::default()
                     },
                     part: crate::dress::PartRef::of("Tabs", "indicator", None).flag("underline"),
-                    fill: Some(p.primary),
+                    fill: Some(p.accent),
                 }
             });
             let n = &mut self.nodes[i];

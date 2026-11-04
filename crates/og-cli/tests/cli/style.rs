@@ -612,6 +612,28 @@ fn style_art_packs_painted_slots_at_three_densities() {
     let panel = slot("arena/panel");
     assert_eq!(panel["size"], serde_json::json!([96, 96]));
     assert_eq!(panel["pixels"], serde_json::json!([288, 288]));
+    assert!(
+        !requests()["slots"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["name"] == "arena/bar")
+    );
+    let mut custom = requests();
+    custom["slots"].as_array_mut().unwrap().extend([
+        serde_json::json!({"name": "arena/bar"}),
+        serde_json::json!({
+            "name": "arena/selected-tab", "kind": "styleFrame", "size": [80, 32],
+            "insets": [0.1, 0.25, 0.1, 0.25], "dress": ["Tabs.tab[selected]"]
+        }),
+    ]);
+    std::fs::write(pack.join("art-requests.json"), custom.to_string()).unwrap();
+    let out = art(&[]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let bar = slot("arena/bar");
+    let tab = slot("arena/selected-tab");
+    assert_eq!(bar["dress"], serde_json::json!(["Meter.fill"]));
+    assert_eq!(tab["pixels"], serde_json::json!([240, 96]));
 
     // The panel: a red 18-px border round a blue middle, in a transparent
     // 20-px margin; the primary button one plain cell.
@@ -633,6 +655,12 @@ fn style_art_packs_painted_slots_at_three_densities() {
     image::RgbaImage::from_pixel(288, 132, image::Rgba([200, 160, 40, 255]))
         .save(art_dir.join("button-primary.png"))
         .unwrap();
+    image::RgbaImage::from_pixel(192, 48, image::Rgba([220, 220, 220, 255]))
+        .save(art_dir.join("bar.png"))
+        .unwrap();
+    image::RgbaImage::from_pixel(240, 96, image::Rgba([40, 120, 200, 255]))
+        .save(art_dir.join("selected-tab.png"))
+        .unwrap();
     let out = art(&[]);
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
     assert!(
@@ -643,6 +671,8 @@ fn style_art_packs_painted_slots_at_three_densities() {
     let provenance = serde_json::json!({
         "arena/panel": { "model": "hand", "prompt": "a test panel", "request": panel["hash"] },
         "arena/button-primary": { "model": "hand", "prompt": "a test button", "request": primary["hash"] },
+        "arena/bar": { "model": "hand", "prompt": "a tinted bar", "request": bar["hash"] },
+        "arena/selected-tab": { "model": "hand", "prompt": "a selected tab", "request": tab["hash"] },
     });
     std::fs::write(art_dir.join("provenance.json"), provenance.to_string()).unwrap();
     let out = art(&[]);
@@ -673,6 +703,14 @@ fn style_art_packs_painted_slots_at_three_densities() {
             .unwrap();
         slice.split_whitespace().map(String::from).collect()
     };
+    assert_eq!(
+        &dress("Meter.fill")[3..],
+        &["64", "16", "12", "4", "12", "4", "tint"]
+    );
+    assert_eq!(
+        &dress("Tabs.tab[selected]")[3..],
+        &["80", "32", "8", "8", "8", "8", "authored"]
+    );
     let s = dress("Panel.frame");
     let n = |i: usize| -> u32 { s[i].parse().unwrap() };
     assert_eq!(

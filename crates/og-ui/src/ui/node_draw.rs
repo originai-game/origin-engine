@@ -24,10 +24,8 @@ impl Ui {
         Some((sh.dx * k, sh.dy * k, sh.blur * k, sh.color))
     }
 
-    /// An element's focus rings (pads 1 to 3, the focus ring or the
-    /// style's outline), each cut from the control by what is behind it.
-    /// Drawn under the element's fills: before a draw's (a game's or a
-    /// dressed part's), which the cut would otherwise cover.
+    /// Hollow focus strokes, after the rim and selection, before children
+    /// (including raised badges). No background-coloured cut can cover art.
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = &self.theme;
         let p = &t.palette;
@@ -46,24 +44,36 @@ impl Ui {
             }
             _ => n.clip,
         };
-        let alpha = n.alpha;
-        let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
-            rect,
-            radius,
-            color: color.fade(alpha).linear(),
-            clip,
+        let ring = |gap: f32, width: f32, color: Srgba| {
+            use crate::paint::{Cap, ElementDraw, Paint, Placed, Stroke, StrokeAlign};
+            ElementDraw {
+                strokes: vec![Stroke {
+                    width,
+                    align: StrokeAlign::Outside,
+                    dash: [0.0; 2],
+                    dash_offset: 0.0,
+                    dash_cap: Cap::Butt,
+                    paint: Paint::Solid(color.into()),
+                }],
+                ..ElementDraw::default()
+            }
+            .strokes(
+                t,
+                &Placed {
+                    rect: rect.outset(gap),
+                    radius: n.el.radius + gap,
+                    clip,
+                    alpha: n.alpha,
+                },
+            )
         };
         if n.pad_rings != 0 {
-            // Pads 1 to 3: a ring each in the player's colour, outside where
-            // pad 0's ring goes, outermost first (each cut from the next by
-            // what is behind).
-            let behind = self.behind(i);
+            // Pads 1 to 3 outside pad 0's ring, outermost first.
             let w = t.space.xxs;
             for k in (0..3).rev().filter(|k| n.pad_rings & (1 << k) != 0) {
                 let at = w * (2.0 * k as f32 + 3.0);
                 let color = [p.info, p.success, p.warn][k];
-                cmds.push(quad(rect.outset(at + w), n.el.radius + at + w, color));
-                cmds.push(quad(rect.outset(at), n.el.radius + at, behind));
+                cmds.extend(ring(at, w, color));
             }
         }
         // A bare field (no frame of its own) leaves the ring to its frame.
@@ -75,8 +85,6 @@ impl Ui {
         };
         let outline = t.outline && (n.nav || n.focusable) && n.el.background.is_some();
         if field_ring || n.ring || outline {
-            // A ring, a gap of what is behind, then the control.
-            let behind = self.behind(i);
             // The style's focus stroke (`stroke { focus … }`): cartoon's
             // 3 px ring stands clear of its 2 px outlines.
             let w = if field_ring || n.ring {
@@ -94,22 +102,16 @@ impl Ui {
             } else {
                 t.space.xxs
             };
-            cmds.push(quad(rect.outset(w + gap), n.el.radius + w + gap, color));
-            // Cut always: a field's styled frame is not wholly opaque, and
-            // the ring under it tinted its text's ground (the scifi pack's
-            // focused placeholder read 3.5:1 on primary-tinted navy).
-            cmds.push(quad(rect.outset(gap), n.el.radius + gap, behind));
+            cmds.extend(ring(gap, w, color));
         }
     }
 
-    /// An element's commands; its focus rings too with `ring` (an element
-    /// with a draw has them drawn before its fills, [`Self::focus_ring_commands`]).
+    /// The element's content and selection markers, without focus rings.
     pub(super) fn node_commands(
         &self,
         i: usize,
         cmds: &mut Vec<DrawCmd>,
         snap: &dyn Fn(f32) -> f32,
-        ring: bool,
     ) {
         let t = &self.theme;
         let p = &t.palette;
@@ -124,11 +126,16 @@ impl Ui {
             color: color.fade(alpha).linear(),
             clip,
         };
-        if ring {
-            self.focus_ring_commands(i, cmds);
-        }
         // A part the UI pass draws (`part_draws`) has its background there.
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
+        let ornament_tint = part.and_then(|p| {
+            self.dress
+                .resolve(&p)
+                .draw
+                .ornament_tint
+                .as_ref()
+                .map(|c| c.resolve(t))
+        });
         let atlas_dressed = part.and_then(|p| {
             t.art.atlas?;
             let r = self.dress.resolve(&p);
@@ -155,7 +162,17 @@ impl Ui {
                         (None, true) => rect.scaled(t.press_scale),
                         _ => rect,
                     };
-                    self.dress(&frame, slice, r, n.el.radius, bg, alpha, clip, cmds);
+                    self.dress(
+                        &frame,
+                        ornament_tint,
+                        slice,
+                        r,
+                        n.el.radius,
+                        bg,
+                        alpha,
+                        clip,
+                        cmds,
+                    );
                 }
                 None => {
                     let r = if pressed {
@@ -176,6 +193,7 @@ impl Ui {
                 Rect::new(cx - o.w / 2.0, cy - o.h / 2.0, o.w, o.h),
                 false,
                 false,
+                ornament_tint,
                 alpha,
                 clip,
                 cmds,
@@ -432,10 +450,28 @@ impl Ui {
                             let right = Rect::new(x + line.width * sk + gap, cy - h / 2.0, w, h);
                             // Both sides of a centred heading; the side away from the edge otherwise.
                             if tc.align != TextAlign::Start {
-                                self.ornament(o, left, false, false, alpha, clip, cmds);
+                                self.ornament(
+                                    o,
+                                    left,
+                                    false,
+                                    false,
+                                    ornament_tint,
+                                    alpha,
+                                    clip,
+                                    cmds,
+                                );
                             }
                             if tc.align != TextAlign::End {
-                                self.ornament(o, right, true, false, alpha, clip, cmds);
+                                self.ornament(
+                                    o,
+                                    right,
+                                    true,
+                                    false,
+                                    ornament_tint,
+                                    alpha,
+                                    clip,
+                                    cmds,
+                                );
                             }
                         }
                     }

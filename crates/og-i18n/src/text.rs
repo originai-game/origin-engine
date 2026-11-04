@@ -6,6 +6,18 @@
 use crate::locale::Direction;
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Full Unicode uppercase for display text in a BCP-47 locale. Contextual
+/// mappings (including Greek accents and Lithuanian dots) come from ICU;
+/// an absent or invalid locale uses the Unicode default mapping.
+pub fn uppercase(text: &str, locale: &str) -> String {
+    let locale = locale
+        .parse::<icu_locale_core::Locale>()
+        .unwrap_or(icu_locale_core::Locale::UNKNOWN);
+    icu_casemap::CaseMapper::new()
+        .uppercase_to_string(text, &locale.id)
+        .into_owned()
+}
+
 /// Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan, Mandaic, Arabic
 /// supplements and presentation forms: strong right-to-left.
 pub fn is_rtl_char(c: char) -> bool {

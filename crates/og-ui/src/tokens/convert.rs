@@ -109,9 +109,11 @@ impl StyleTokens {
                 size: s.size,
                 line_height: s.line_height,
                 tracking_em: s.tracking_em,
+                cjk_tracking_em: s.cjk_tracking_em,
                 weight,
                 font,
                 features: s.features,
+                uppercase: s.uppercase,
             };
             let small = |k: f32| TypeToken {
                 size: (s.size * k).round().max(12.0),
@@ -132,6 +134,7 @@ impl StyleTokens {
                 step(r.caption, 400, FontRole::Body, 1.0),
                 step(r.lg, 600, FontRole::Mono, 1.0),
                 step(r.body, 600, FontRole::Body, 1.0),
+                step(r.display_xl2, 700, FontRole::Display, 0.75),
             ],
         };
         let s = t.space;
@@ -435,6 +438,12 @@ impl StyleTokens {
                 word(font),
             ];
             values.extend(base.features.tags().map(word));
+            if base.cjk_tracking_em != 0.0 {
+                values.extend([word("cjkTracking"), num(base.cjk_tracking_em)]);
+            }
+            if base.uppercase {
+                values.extend([word("case"), word("upper")]);
+            }
             typo.push(if overrides.is_empty() {
                 line(r.name(), values)
             } else {

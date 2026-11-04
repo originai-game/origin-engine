@@ -28,7 +28,8 @@ import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundations
 import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shipStatusScreen, starshipCommand, turnOrderScreen } from "./starship.ts";
 import { buildRaceScene, RaceView } from "./raceScene.ts";
 import { chromeAnchor, chromeInDocument, chromeSlide, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
-import { defineHudActions } from "./huds.ts";
+import { defineHudActions, gameScene } from "./huds.ts";
+import { packGround } from "./ground.ts";
 import { styleNames, stylePaths } from "../tools/style-names.js" with { type: "macro" };
 
 export const SCREENS = [
@@ -944,10 +945,11 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   }
   // The game behind every screen but the gallery and the widget sheet: the style's backdrop (STYLE_BACKDROPS), else a dusk landscape.
   // The genre patterns' screens paint their own scene (patterns.ts): a backdrop would clash with their art.
-  if (PATTERN_SCREENS.has(screen)) patternScene(screen);
+  if (packGround()) gameScene(world, "scenes/title");
+  else if (PATTERN_SCREENS.has(screen)) patternScene(screen);
   const backdrop = kitArt(STYLE_BACKDROPS[STYLES[d.style] ?? "default"] ?? "neutral") ?? kitArt("neutral");
   // The racing HUD draws over its own engine-rendered circuit (src/raceScene.ts).
-  if (screen !== "gallery" && screen !== "widgets" && screen !== "raceHud" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
+  if (!packGround() && screen !== "gallery" && screen !== "widgets" && screen !== "raceHud" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
   // So does a conversation's: its caption shade and its press layer span the screen, and the button stands over them.

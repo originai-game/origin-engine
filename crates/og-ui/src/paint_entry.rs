@@ -17,6 +17,7 @@
 //! blend normal|multiply|screen|add|overlay|softLight|colorDodge
 //! mask <gradient> | mask image <x> <y> <w> <h>
 //! ornament corner|divider|flourish…
+//! ornamentTint <colour>
 //! sound <event> "<asset>"                               (an event of docs/ui.md §7.8: press, confirm, toggleOn…)
 //! ```
 //!
@@ -170,7 +171,7 @@ impl<'a> Cursor<'a> {
 
     /// A colour: a quoted literal or a palette token.
     fn color(&mut self) -> Result<ColorRef, String> {
-        let c = match self.peek() {
+        let mut c = match self.peek() {
             Some(Value::String(s)) => ColorRef::Literal(parse_color(s).ok_or_else(|| {
                 self.err(&format!("takes \"#rrggbb\" or \"#rrggbbaa\", not \"{s}\""))
             })?),
@@ -188,6 +189,16 @@ impl<'a> Cursor<'a> {
             }
         };
         self.at += 1;
+        if self.eat("alpha") {
+            let opacity = self.num()?;
+            if !(0.0..=1.0).contains(&opacity) {
+                return Err(self.err("takes alpha from 0 to 1"));
+            }
+            match &mut c {
+                ColorRef::Token { alpha, .. } => *alpha *= opacity,
+                ColorRef::Literal(color) => *color = color.fade(opacity),
+            }
+        }
         Ok(c)
     }
 
@@ -442,6 +453,14 @@ pub fn vector_fill_from_entry(
     };
     c.end()?;
     Ok(Some((path, tint)))
+}
+
+/// A symbolic colour used by a dressing outside a paint.
+pub fn color_from_entry(e: &Entry, atlas: &AtlasContext) -> Result<ColorRef, String> {
+    let mut c = Cursor::of(e, atlas);
+    let color = c.color()?;
+    c.end()?;
+    Ok(color)
 }
 
 impl Paint {

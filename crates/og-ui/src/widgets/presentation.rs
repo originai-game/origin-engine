@@ -327,12 +327,6 @@ impl Ui {
     /// empty slot and warns.
     pub fn icon(&mut self, id: impl Into<Id>, name: &str, desc: IconDesc) {
         let size = if desc.size > 0.0 { desc.size } else { 24.0 };
-        let index = self.icons.index_of(name);
-        if index.is_none() {
-            self.warnings.push(format!(
-                "icon '{name}' is not in the icon atlas; pass its name in the atlas's names"
-            ));
-        }
         let i = self.leaf(
             "icon",
             id.into(),
@@ -342,22 +336,35 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let tint = desc.tint.unwrap_or(self.theme.palette.ink);
-        match index.map(|k| (k, self.icons.glyph(k))) {
-            Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
-                frame: Frame::FULL,
-                font,
-                ch,
-                color: tint,
-            }),
-            Some((k, None)) if self.icons.texture.is_some() => {
-                self.nodes[i].content = Content::Image {
-                    texture: self.icons.texture,
-                    uv: self.icons.uv(k),
-                    tint,
-                };
+        for (name, tint) in std::iter::once((name, desc.tint.unwrap_or(self.theme.palette.ink)))
+            .chain(desc.secondary.as_deref().map(|name| {
+                (
+                    name,
+                    desc.secondary_tint.unwrap_or(self.theme.palette.accent),
+                )
+            }))
+        {
+            match self.icons.index_of(name).map(|k| (k, self.icons.glyph(k))) {
+                Some((_, Some((font, ch)))) => self.nodes[i].shapes.push(Shape::Glyph {
+                    frame: Frame::FULL,
+                    font,
+                    ch,
+                    color: tint,
+                }),
+                Some((k, None)) => {
+                    if let Some(texture) = self.icons.texture {
+                        self.nodes[i].shapes.push(Shape::Image {
+                            frame: Frame::FULL,
+                            texture,
+                            uv: self.icons.uv(k),
+                            color: tint,
+                        });
+                    }
+                }
+                None => self.warnings.push(format!(
+                    "icon '{name}' is not in the icon atlas; pass its name in the atlas's names"
+                )),
             }
-            _ => {}
         }
         self.nodes[i].probe_text = desc.label.unwrap_or_else(|| name.to_owned());
     }

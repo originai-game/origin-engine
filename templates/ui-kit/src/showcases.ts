@@ -15,6 +15,7 @@
 import { og } from "@origingame/engine";
 import type { Anchor, Size, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
+import { packGround } from "./ground.ts";
 import { fightHud, horrorHud, mmoHud, mobaHud, openHud, rhythmHud, rogueHud, rpgHud, survivalHud, tdHud } from "./huds2.ts";
 import { raceClassification, raceCommand, raceHud, raceResultsViewmodel, resetRace } from "./race.ts";
 import { actionHud, hudArt, loadHudArt, manageHud, resetHuds, shooterHud, sportsHud, matchFacts, hudCommand } from "./huds.ts";
@@ -168,6 +169,7 @@ function doc(name: Doc, vm: Record<string, unknown>, on: (event: string) => void
  * the first texture loaded, so a bound handle draws the wrong image.
  */
 function artIn(slot: string, texture: unknown, kind: string, focal = { x: 0.5, y: 0.5 }): void {
+  if (packGround() && kind === "keyArt") return;
   if (!texture || !og.ui.openSlot(slot)) return;
   og.ui.artSlot("Art", { texture: texture as never, kind, fit: "cover", focal, width: grow, height: grow, label: "" });
   og.ui.close();
@@ -234,7 +236,7 @@ export function showcaseScreen(world: World, screen: string, go: (screen: string
       return true;
     case "actionPause":
       // Over the HUD it pauses: the HUD is built under it, still, without its controls.
-      actionHud(world, true);
+      if (!packGround()) actionHud(world, true);
       doc("pause", { objective: L("sc.action.objective"), played: sc.played, canSave: true }, (e) => {
         if (e === "resume") go("actionHud");
         if (e === "settings" || e === "controls") go("settingsTree");

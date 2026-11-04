@@ -113,6 +113,12 @@ for pack in "$here"/../../templates/styles/*/; do
     (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
+# The on-demand sheet project is data, not a gate or a hard-coded runtime template.
+rm -rf "$here/ui-sheet"
+mkdir -p "$here/ui-sheet"
+for part in assets src tools project.ogt; do
+  cp -R "$here/../../templates/ui-kit/$part" "$here/ui-sheet/$part"
+done
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
 # cook (og-cook's motion.rs). Use the same pin check as development builds.
 bun "$here/scripts/motion-model.ts" ensure

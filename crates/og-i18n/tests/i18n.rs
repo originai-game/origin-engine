@@ -313,3 +313,17 @@ fn words_and_graphemes_follow_uax_29() {
     // A conjunct (consonant, virama, consonant) and its sign: one cluster (GB9c).
     assert_eq!(graphemes("नमस्ते"), [(0, 1), (1, 2), (2, 6)]);
 }
+
+#[test]
+fn display_uppercase_uses_locale_and_context() {
+    use og_i18n::text::uppercase;
+    assert_eq!(uppercase("straße ﬃ", "de-DE"), "STRASSE FFI");
+    assert_eq!(uppercase("izmir ı", "tr-TR"), "İZMİR I");
+    assert_eq!(uppercase("izmir ı", "en"), "IZMIR I");
+    assert_eq!(uppercase("άδικος", "el-GR"), "ΑΔΙΚΟΣ");
+    assert_eq!(uppercase("άδικος", "en"), "ΆΔΙΚΟΣ");
+    assert_eq!(uppercase("i\u{307}\u{301}", "lt"), "I\u{301}");
+    assert_eq!(uppercase("i\u{307}\u{301}", "en"), "I\u{307}\u{301}");
+    assert_eq!(uppercase("中文 42", "zh-Hant"), "中文 42");
+    assert_eq!(uppercase("abc", "not_a_locale"), "ABC");
+}

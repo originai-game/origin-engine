@@ -185,6 +185,11 @@ pub const KINDS: &[KindSpec] = &[
         doc: "A switch with a label (two-way `checked`).",
     },
     KindSpec {
+        name: "tabs",
+        container: false,
+        doc: "A tab list (two-way `selected`), using the core tabs widget.",
+    },
+    KindSpec {
         name: "field",
         container: false,
         doc: "A one-line text field (two-way `input`).",
@@ -462,17 +467,35 @@ pub const PROPS: &[PropSpec] = &[
     p!(
         "text",
         Ty::Text,
-        ["label", "button", "badge", "toggle"],
+        ["label", "button", "badge", "toggle", "tabs"],
         "What it says."
     ),
     p!(
         "key",
         Ty::Name,
-        ["label", "button", "badge", "toggle"],
+        ["label", "button", "badge", "toggle", "tabs"],
         "A string table key (og.i18n) its text comes from; `text` is the fallback."
     ),
     p!("step", Ty::Word(STEPS), ["label"], "The type step."),
     p!("color", Ty::Paint, ["label", "icon"], "Its ink."),
+    p!(
+        "onScene",
+        Ty::Bool,
+        ["label"],
+        "Scene ink and separation shadow."
+    ),
+    p!(
+        "secondary",
+        Ty::Name,
+        ["icon"],
+        "The second icon layer, in the same atlas."
+    ),
+    p!(
+        "secondaryTint",
+        Ty::Paint,
+        ["icon"],
+        "The second layer's ink; accent by default."
+    ),
     p!(
         "textAlign",
         Ty::Word(&["start", "center", "end"]),
@@ -557,6 +580,25 @@ pub const PROPS: &[PropSpec] = &[
         ["toggle"],
         two_way,
         "Whether it is on (written back)."
+    ),
+    p!(
+        "items",
+        Ty::Names,
+        ["tabs"],
+        "The tab labels, literal names or a bound list of strings."
+    ),
+    p!(
+        "selected",
+        Ty::Num,
+        ["tabs"],
+        two_way,
+        "The selected tab's zero-based index."
+    ),
+    p!(
+        "fill",
+        Ty::Bool,
+        ["tabs"],
+        "Equal tabs filling the available width."
     ),
     p!(
         "input",

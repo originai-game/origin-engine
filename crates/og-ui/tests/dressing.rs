@@ -224,10 +224,9 @@ fn an_undressed_surface_part_with_no_fill_draws_no_outline() {
 }
 
 #[test]
-fn a_raised_child_draws_over_its_parents_border_and_the_rest_under_it() {
-    // A game's draw strokes over its subtree (art does not cover the
-    // frame), but a child raised above its siblings (a corner tag, a cost
-    // gem over the frame's edge) stands over that border.
+fn a_rim_draws_before_content_and_raised_badges() {
+    // The same ordering applies to game and style draws: the rim precedes
+    // content, and a raised corner badge is above both.
     let mut ui = ui_with_font(test_font_metrics());
     let (blue, gold) = (Srgba::rgb(0, 0, 255), Srgba::rgb(255, 200, 0));
     ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
@@ -280,8 +279,8 @@ fn a_raised_child_draws_over_its_parents_border_and_the_rest_under_it() {
         .iter()
         .position(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_))))
         .expect("the border");
-    assert!(at(blue) < stroke, "a child in the flow is under the border");
-    assert!(stroke < at(gold), "a raised child is over it");
+    assert!(stroke < at(blue), "the rim precedes content");
+    assert!(at(blue) < at(gold), "a raised badge is above both");
 }
 
 #[test]
@@ -563,11 +562,10 @@ fn an_anchor_without_a_background_draws_no_frame() {
     }
 }
 
-/// A focus ring is cut from its control by what is behind it; drawn after
-/// a draw's fills (a game's `set_draw`, a dressed part's), that cut covered
-/// them, and a focused control showed its panel's colour under its label.
+/// A focus ring is a hollow stroke after the fill, not a pair of opaque
+/// quads whose cut would cover a translucent or painted control.
 #[test]
-fn a_focus_ring_is_cut_under_a_drawn_fill_never_over_it() {
+fn a_focus_ring_is_hollow_and_drawn_after_the_fill() {
     let mut ui = ui_with_font(test_font_metrics());
     let red = Srgba::rgb(230, 26, 26);
     let build = |ui: &mut Ui, input: InputFrame| {
@@ -611,10 +609,21 @@ fn a_focus_ring_is_cut_under_a_drawn_fill_never_over_it() {
         .filter(|(r, _)| r.contains(cx, cy) && r.width < 200.0)
         .map(|(_, c)| c)
         .collect();
-    assert!(over.len() >= 2, "the ring and its cut are drawn: {over:?}");
+    assert_eq!(over.len(), 1, "only the control fills its middle: {over:?}");
     assert!(
         near(*over.last().unwrap(), red),
-        "the card's own fill is drawn last: {over:?}"
+        "the card's own fill remains visible: {over:?}"
+    );
+    let items = &ui.frame().items;
+    let fill = items
+        .iter()
+        .position(|i| i.cmd.filled().is_some_and(|(_, c)| near(c, red)))
+        .unwrap();
+    let ring = items.iter().position(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. }
+        if matches!(shape.mode, og_render::UiMode::Stroke(s) if s.align == og_render::UiAlign::Outside))).unwrap();
+    assert!(
+        fill < ring,
+        "focus is above the control's fill and selection"
     );
 }
 
@@ -1244,7 +1253,8 @@ fn a_focus_ring_in_a_scroll_keeps_its_sides() {
         .items
         .iter()
         .filter_map(|it| match &it.cmd {
-            DrawCmd::Quad { rect, clip, .. } if rect.width > rw + 0.5 => Some((*rect, *clip)),
+            DrawCmd::Shape { shape, clip } if matches!(shape.mode, og_render::UiMode::Stroke(s) if s.align == og_render::UiAlign::Outside)
+                => Some((Rect::new(shape.center.x - shape.half.x, shape.center.y - shape.half.y, shape.half.x * 2.0, shape.half.y * 2.0), *clip)),
             _ => None,
         })
         .collect();

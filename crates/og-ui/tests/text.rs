@@ -30,6 +30,47 @@ use og_core::glam::Vec2;
 use og_ui::*;
 use support::*;
 
+#[test]
+fn scene_text_uses_its_scheme_roles_without_recolouring_normal_labels() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    for scheme in [Scheme::Dark, Scheme::Light] {
+        let mut theme = Theme::new(scheme);
+        theme.palette.scene_ink = Srgba::rgb(17, 190, 127);
+        theme.palette.scene_shadow = Srgba::rgb(90, 12, 60);
+        ui.set_theme(theme);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "Hud",
+            "Speed",
+            LabelDesc {
+                on_scene: true,
+                ..LabelDesc::default()
+            },
+        );
+        ui.label("Plain", "Menu", LabelDesc::default());
+        ui.end();
+        let effects: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::StyledText { text, effects } => Some((text, effects)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(effects.len(), 1);
+        assert!(
+            matches!(&**effects[0].0, DrawCmd::Text { color, .. } if *color == theme.palette.scene_ink.linear())
+        );
+        assert_eq!(
+            effects[0].1.shadows[0].color,
+            theme.palette.scene_shadow.linear()
+        );
+        assert!(ui.frame().items.iter().any(|i| matches!(&i.cmd, DrawCmd::Text { color, .. } if *color == theme.palette.ink.linear())));
+    }
+}
+
 struct Rig {
     ui: Ui,
     value: String,
@@ -367,7 +408,7 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
     let (xl, meta) = (ramp.xl, ramp.meta);
     let texts = [
         "Gold",
-        "Hidden treasures here",
+        "Hidden treasures!",
         "The hidden treasures of the drowned bell tower",
     ];
     let draw = |ui: &mut Ui| {
@@ -540,6 +581,65 @@ fn the_edit_state_is_saved_and_restored() {
     let after = rig.target();
     assert_eq!(after.selection, before.selection);
     assert!(after.composing);
+}
+
+#[test]
+fn uppercase_is_measured_but_source_and_editable_values_are_preserved() {
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut theme = *ui.theme();
+    for steps in &mut theme.tokens.typography.steps {
+        for token in steps {
+            token.uppercase = true;
+        }
+    }
+    ui.set_theme(theme);
+    let mut value = "mixed".to_string();
+    for locale in ["en", "tr", "en"] {
+        ui.set_locale(locale);
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label("Source", "straße", LabelDesc::default());
+        ui.label("Locale", "izmir", LabelDesc::default());
+        ui.rich_text("Rich", "a[b]bc[/b]", RichTextDesc::default());
+        ui.text_field("Edit", &mut value, &FieldDesc::default());
+        ui.end();
+        let drawn: Vec<String> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| {
+                let cmd = match &item.cmd {
+                    DrawCmd::StyledText { text, .. } => &**text,
+                    cmd => cmd,
+                };
+                match cmd {
+                    DrawCmd::Text { text, .. } => Some(text.clone()),
+                    _ => None,
+                }
+            })
+            .collect();
+        for expected in [
+            "STRASSE",
+            if locale == "tr" { "İZMİR" } else { "IZMIR" },
+            "A",
+            "BC",
+            "mixed",
+        ] {
+            assert!(
+                drawn.iter().any(|text| text == expected),
+                "{expected}: {drawn:?}"
+            );
+        }
+        assert_eq!(ui.frame().element("Source").unwrap().text, "straße");
+        assert_eq!(ui.frame().element("Rich").unwrap().text, "abc");
+        assert_eq!(value, "mixed");
+        let expected =
+            ui.fonts()
+                .body
+                .metrics
+                .measure_tracked("STRASSE", ui.theme().type_ramp.body.size, 0.0);
+        assert!((ui.frame().element("Source").unwrap().width - expected).abs() < 1.0);
+    }
 }
 
 /// A label mirrored by its transform (scaleX −1: a right arrow drawn as a

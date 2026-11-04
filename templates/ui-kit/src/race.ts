@@ -15,7 +15,8 @@
 import { og } from "@origingame/engine";
 import type { LapTimerDesc, MapMarkerItem, Paint, RaceEvent, SectorState, StandingsEntry, Vector2, World } from "@origingame/engine";
 import { L } from "./patterns.ts";
-import { frame, hudArt, type HudArt } from "./huds.ts";
+import { frame, gameScene, hudArt, type HudArt } from "./huds.ts";
+import { packGround } from "./ground.ts";
 import { pose, raceScene, rivalDistance, RIVALS, type RaceLight } from "./raceScene.ts";
 import { mapPoint, SAMPLES } from "./raceTrack.ts";
 
@@ -138,7 +139,6 @@ interface Lap {
  * tower and the map under it, the tach centred over the thumbs' pads.
  */
 export function raceHud(world: World): void {
-  void world;
   const { small, portrait, touch, k, m } = frame();
   og.ui.setNavigation(false);
   const style = og.ui.frameTheme().style;
@@ -163,7 +163,8 @@ export function raceHud(world: World): void {
   // Metres driven since the HUD showed, from a place before the banked sweeper (the speed's integral); on the grid at the start.
   const run = tick - shownAt;
   const distance = starting ? -10 : 100 + ((222 * run) / 60 - 46 * (156 / 60) * (Math.cos(tick / 156) - Math.cos(shownAt / 156))) / 3.6;
-  raceScene({ light: lightOf(style), distance, kmh: car.speed, portrait });
+  if (packGround()) gameScene(world, "scenes/genre-racing");
+  else raceScene({ light: lightOf(style), distance, kmh: car.speed, portrait });
   const pos = markers(distance);
 
   if (look === "arcade") arcade(small, portrait, touch, k, m, lap, car.speed);

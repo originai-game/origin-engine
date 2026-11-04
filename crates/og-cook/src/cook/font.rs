@@ -315,22 +315,23 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     shape.transform(&transform);
     let colored = Shape::edge_coloring_simple(shape, 0.03, 0x6f67_636f_6f6b);
     let prepared = colored.clone().prepare();
-    // In f32, so msdfgen's error correction can run before the sign
-    // correction (as msdfgen orders them), then quantised to bytes.
+    // Keep f32 through both corrections before quantising to bytes.
     let mut field: image::ImageBuffer<image::Rgba<f32>, Vec<f32>> =
         image::ImageBuffer::new(width, height);
     fdsm::generate::generate_mtsdf(&prepared, s.px_range as f64, &mut field);
-    // msdfgen's error correction (edge priority, distance checks at edges):
-    // texels whose channels would interpolate into a false edge, the
-    // artefacts at sharp corners and close contours, become single-channel.
+    // Match msdf-atlas-gen's scanline pipeline: sign first, then error
+    // correction without distance checks against the uncorrected shape.
+    // Correcting signs afterwards can reintroduce false interpolated edges.
+    fdsm::render::correct_sign_mtsdf(&mut field, &prepared, FillRule::Nonzero);
+    let mut correction = fdsm::correct_error::ErrorCorrectionConfig::default();
+    correction.distance_check = fdsm::correct_error::DistanceCheckMode::Never;
     fdsm::correct_error::correct_error_mtsdf(
         &mut field,
         &colored,
         &prepared,
         s.px_range as f64,
-        &fdsm::correct_error::ErrorCorrectionConfig::default(),
+        &correction,
     );
-    fdsm::render::correct_sign_mtsdf(&mut field, &prepared, FillRule::Nonzero);
     let mut img = image::RgbaImage::new(width, height);
     for (o, i) in img.pixels_mut().zip(field.pixels()) {
         *o = image::Rgba(i.0.map(|v| (f64::from(v.clamp(0.0, 1.0)) * 255.0) as u8));
@@ -884,17 +885,24 @@ mod tests {
         assert!(!ships && without.iter().all(|&c| c < GLYPH_PUA));
     }
 
-    /// The texels of `c`'s field at `em_px` whose centre lies in the
+    /// Subtexel samples of `c`'s field at `em_px` whose position lies in the
     /// outline's fill (nonzero winding) a pixel or more from its boundary
     /// (the centre and a ring of radius 1 px all filled, so an edge of one
     /// contour inside another's fill is no boundary) and whose
     /// median(r, g, b) is not above 0.55.
     fn seam_texels(face: &ttf_parser::Face, c: char, em_px: f32) -> usize {
+        use fdsm::transform::Transform;
         let gid = face.glyph_index(c).expect("in the font");
-        let outline = fdsm_ttf_parser::load_shape_from_face(face, gid)
-            .expect("an outline")
-            .prepare();
-        let filled = |x: f64, y: f64| outline.scanline(y).cursor().sum_intersections(x) != 0;
+        let mut outline = fdsm_ttf_parser::load_shape_from_face(face, gid).expect("an outline");
+        // fdsm sorts scanline x by bits, so negative bearings must be
+        // shifted for the independent fill oracle too.
+        let shift = f64::from(face.units_per_em()) * 4.0;
+        outline.transform(&nalgebra::convert::<_, nalgebra::Affine2<f64>>(
+            nalgebra::Translation2::new(shift, 0.0),
+        ));
+        let outline = outline.prepare();
+        let filled =
+            |x: f64, y: f64| outline.scanline(y).cursor().sum_intersections(x + shift) != 0;
         let s = FontSettings {
             em_px,
             ..FontSettings::default()
@@ -904,20 +912,33 @@ mod tests {
         let em = f64::from(em_px);
         let px = f64::from(face.units_per_em()) / em;
         let mut seam = 0;
-        for row in 0..g.height {
+        for row in 0..(g.height - 1) * 4 {
             // Rows run top to bottom; font units are y-up.
-            let y = (f64::from(bottom) * em + f64::from(g.height - row) - 0.5) * px;
-            for col in 0..g.width {
-                let x = (f64::from(left) * em + f64::from(col) + 0.5) * px;
+            let sy = f64::from(row) / 4.0;
+            let y = (f64::from(bottom) * em + f64::from(g.height) - sy - 0.5) * px;
+            for col in 0..(g.width - 1) * 4 {
+                let sx = f64::from(col) / 4.0;
+                let x = (f64::from(left) * em + sx + 0.5) * px;
                 let deep = filled(x, y)
                     && (0..16).all(|k| {
                         let a = f64::from(k) * std::f64::consts::TAU / 16.0;
                         filled(x + a.cos() * px, y + a.sin() * px)
                     });
-                let i = ((row * g.width + col) * 4) as usize;
-                let mut m = [g.pixels[i], g.pixels[i + 1], g.pixels[i + 2]];
-                m.sort_unstable();
-                if deep && f32::from(m[1]) / 255.0 <= 0.55 {
+                let sample = |dx, dy, c| {
+                    f64::from(
+                        g.pixels[(((row / 4 + dy) * g.width + col / 4 + dx) * 4 + c) as usize],
+                    ) / 255.0
+                };
+                let mut m = [0, 1, 2].map(|c| {
+                    let mix = |a, b, t| a * (1.0 - t) + b * t;
+                    mix(
+                        mix(sample(0, 0, c), sample(1, 0, c), sx.fract()),
+                        mix(sample(0, 1, c), sample(1, 1, c), sx.fract()),
+                        sy.fract(),
+                    )
+                });
+                m.sort_by(f64::total_cmp);
+                if deep && m[1] <= 0.55 {
                     seam += 1;
                 }
             }
@@ -937,13 +958,18 @@ mod tests {
             ("ui-kit/assets/fonts/Inter-Display.ttf", 'e'),
             ("ui-kit/assets/fonts/Inter-Display.ttf", 't'),
             ("styles/cjk/NotoSansSC-Regular.ttf", '商'),
+            ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", 'Y'),
+            ("styles/cjk/ZCOOLKuaiLe-Regular.ttf", '?'),
+            ("styles/shared/ChakraPetch-BoldItalic.ttf", 'A'),
+            ("styles/fantasy/Cinzel-Bold.ttf", 'A'),
+            ("styles/fantasy/Newsreader-Medium.ttf", 'V'),
         ] {
             let bytes = std::fs::read(format!("{fonts}/{file}")).expect("the font");
             let face = ttf_parser::Face::parse(&bytes, 0).expect("parses");
             for em_px in [32.0, 64.0] {
                 let n = seam_texels(&face, c, em_px);
                 if n > 0 {
-                    bad.push(format!("{c} at {em_px} px/em: {n} texel(s)"));
+                    bad.push(format!("{file}: {c} at {em_px} px/em: {n} sample(s)"));
                 }
             }
         }

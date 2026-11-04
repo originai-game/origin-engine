@@ -155,7 +155,7 @@ fn the_default_dressings_put_glass_on_floating_chrome_only() {
 /// The og-ui unit (docs/ui.md §15.2) zooms the whole UI: a 1080p window
 /// lays out on 1280×720 units and draws them at 1.5 CSS px, so a fixed
 /// 300 px box a game writes is 450 CSS px wide, body text draws at 21 px
-/// and the smallest step at 18, a pointer at the CSS point lands on the
+/// and the caption step at 19.5, a pointer at the CSS point lands on the
 /// box and the probe reports CSS px. 720p and touch keep CSS px, a pin
 /// wins, and the text scale multiplies over the unit.
 #[test]
@@ -216,8 +216,8 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
     assert_eq!(size, body * 1.5, "drawn at 1.5 CSS px a unit");
     assert_eq!(
         t.type_ramp.xs.size * 1.5,
-        18.0,
-        "the smallest step meets 18 px at 1080p"
+        19.5,
+        "xs aliases the 13 px caption, scaled to 1080p"
     );
     let css = ui.probe_elements();
     let go = css

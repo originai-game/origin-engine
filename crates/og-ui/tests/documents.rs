@@ -296,6 +296,56 @@ fn a_list_items_control_writes_into_its_list_entry() {
 }
 
 #[test]
+fn document_tabs_bind_their_labels_and_write_selection() {
+    let mut ui = ui();
+    let doc = UiDocument::parse(
+        "ui/tabs.ogt",
+        r#"type screen
+version 1
+---
+name "tabs"
+layer menu
+props {
+  labels list "Tab labels."
+  current number "Selected index."
+}
+tabs Categories {
+  text "Categories"
+  items bind labels
+  selected bind current
+  width 400
+  fill true
+  on changed emit category
+}
+"#,
+    )
+    .unwrap();
+    ui.define_document(doc);
+    ui.push_screen(
+        "tabs",
+        json!({"labels": ["Gear", "Skills", "Quests"], "current": 0}),
+    )
+    .unwrap();
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(el(&ui, "tabs/Categories/Tab#2").text, "Quests");
+    click(&mut ui, "tabs/Categories/Tab#2");
+    assert_eq!(ui.screen_vm("tabs").unwrap()["current"], 2);
+    assert!(ui.take_doc_events().iter().any(|e| e.name == "category"));
+    ui.set_screen_vm(
+        "tabs",
+        json!({"labels": ["Inventory", "Journal"], "current": 1}),
+    );
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(el(&ui, "tabs/Categories/Tab#1").text, "Journal");
+    assert!(
+        !ui.frame()
+            .elements
+            .iter()
+            .any(|e| e.path == "tabs/Categories/Tab#2")
+    );
+}
+
+#[test]
 fn a_menu_over_the_hud_takes_input_back_and_focus() {
     let mut ui = ui();
     ui.push_screen("hud", json!({ "gold": 1500 })).unwrap();

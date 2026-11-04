@@ -134,12 +134,12 @@ impl Ui {
         // grey), `control` under hover and focus, `controlStrong` selected and
         // pressed, a step past it pressed while selected.
         let clear = p.control.fade(0.0);
-        let strong = crate::ui::mix_srgba(p.control_strong, p.ink, 0.12);
+        let strong = crate::ui::mix_srgba(p.selection, p.ink, 0.12);
         self.option_states(
             i,
             selected,
-            [clear, p.control_strong],
-            [p.control, p.control_strong],
+            [clear, p.selection],
+            [p.control, p.selection],
             [p.control_strong, strong],
         );
         r
@@ -395,7 +395,7 @@ impl Ui {
         // by tone and lift, not only by its rim (docs/ui.md §15.5); a
         // pack's is one step up, on `controlStrong`, with the accent
         // hairline (dress::pack_grammar, the grammar of chips and tabs).
-        let lifted = |k: f32| crate::ui::mix_srgba(p.control_strong, p.ink, k);
+        let lifted = |k: f32| crate::ui::mix_srgba(p.selection, p.ink, k);
         if t.art.legacy {
             // A version 1 style's grammar, as its game shipped: the selected
             // cell on `controlStrong` with a `primary` underline.
@@ -433,7 +433,7 @@ impl Ui {
                 selected,
                 [p.control, lifted(step)],
                 [hover, lifted(step + 0.06)],
-                [p.control_strong, p.control_strong],
+                [p.control_strong, p.selection],
             );
         }
         if let Some(part) = self.nodes[i].el.part.as_mut() {

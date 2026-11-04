@@ -5,8 +5,8 @@
 //!   types and eight chart series; each status (the palette's `success`,
 //!   `warn`, `danger`, `info`) and rarity colour paired with a [`Cue`], an
 //!   icon or a pattern, so no meaning is carried by colour alone (XAG 103).
-//! - **Type**: seven steps (display, title, heading, body, label, caption,
-//!   numeric) per [`Breakpoint`], each with size, line height, tracking,
+//! - **Type**: semantic roles (hero, display, title, heading, body, label,
+//!   caption, numeric, button) per [`Breakpoint`], with size, line height, tracking,
 //!   weight and the font role it takes.
 //! - **Space, size and radius** scales, **stroke** widths, **elevation**
 //!   (a shadow set per level) and the **shape language** (a corner shape
@@ -16,11 +16,9 @@
 //! - **Feedback**: per UI event of §7.8, a sound or a set chosen without
 //!   repeats, volume and pitch ranges and a haptic pattern.
 //!
-//! All of it is `Copy` plain data the [`crate::Theme`] carries. Version 2
-//! tokens are carried, not yet consumed: the widgets still read the v1
-//! values (`palette`, `radius`, `type_ramp`, `durations_ms`, `art`), which a
-//! version 2 file sets from the same text (its shape classes give the
-//! radii, its motion durations the durations).
+//! All of it is `Copy` plain data the [`crate::Theme`] carries. The legacy
+//! type ramp aliases this hierarchy at the frame's breakpoint; shape
+//! classes give the radii and motion tokens the durations.
 //!
 //! The grammar is [`crate::style_file::parse_style`]'s; [`StyleTokens::derive`]
 //! makes a complete set from a palette and scheme (the default style's,
@@ -146,6 +144,8 @@ names! {
         /// A button's words; the `label` step when a style leaves it out
         /// (a pixel face sets it at body, where `label` is a HUD's 12).
         Button "button",
+        /// The largest title or result, above display.
+        Hero "hero",
     }
 }
 
@@ -376,11 +376,33 @@ pub struct TypeToken {
     pub line_height: f32,
     /// Latin tracking, em.
     pub tracking_em: f32,
+    /// Tracking for text containing CJK characters, em.
+    pub cjk_tracking_em: f32,
     /// 100 to 900, as CSS.
     pub weight: u16,
     pub font: FontRole,
     /// OpenType features of the role (`… display smcp tnum`).
     pub features: crate::shape::Features,
+    /// `case upper`: uppercase in the active locale before measurement.
+    pub uppercase: bool,
+}
+
+impl TypeToken {
+    /// The renderer's step, scaled once by the player's text preference.
+    pub fn step(self, scale: f32) -> TypeStep {
+        let size = self.size * scale;
+        let line_height = self.line_height * scale;
+        TypeStep {
+            size,
+            line_height,
+            tracking_em: self.tracking_em,
+            cjk_line_height: line_height.max((size * 1.45).round()),
+            cjk_tracking_em: self.cjk_tracking_em,
+            features: self.features,
+            weight: self.weight,
+            uppercase: self.uppercase,
+        }
+    }
 }
 
 /// The type scale: every [`TypeRole`] at every [`Breakpoint`].
@@ -392,6 +414,35 @@ pub struct TypeScale {
 impl TypeScale {
     pub fn get(&self, role: TypeRole, at: Breakpoint) -> TypeToken {
         self.steps[role.index()][at as usize]
+    }
+
+    /// Compatibility names of the single semantic hierarchy (§17.4).
+    pub fn ramp(&self, at: Breakpoint, scale: f32) -> crate::TypeRamp {
+        use TypeRole::*;
+        let step = |role| self.get(role, at).step(scale);
+        crate::TypeRamp {
+            xs: step(Caption),
+            sm: step(Label),
+            base: step(Body),
+            body: step(Body),
+            caption: step(Caption),
+            meta: step(Label),
+            reading: step(Body),
+            lg: step(Numeric),
+            xl: step(Heading),
+            xl2: step(Heading),
+            xl3: step(Title),
+            xl4: step(Title),
+            xl5: step(Display),
+            xl6: step(Display),
+            xl7: step(Hero),
+            xl8: step(Hero),
+            display_sm: step(Title),
+            display_md: step(Title),
+            display_lg: step(Display),
+            display_xl: step(Hero),
+            display_xl2: step(Hero),
+        }
     }
 }
 

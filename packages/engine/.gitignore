@@ -5,5 +5,7 @@ node_modules/
 knowledge/
 # Copied from templates/styles at pack (scripts/pack.sh).
 styles/
+# Copied from templates/ui-kit for on-demand review sheets.
+ui-sheet/
 # og.motion's weights (motion.json pins them), copied in at pack (scripts/pack.sh).
 motion/
