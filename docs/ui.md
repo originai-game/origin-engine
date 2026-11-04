@@ -1444,6 +1444,30 @@ its label names it, and its rank orders the summary and, from 5, shines
 and bursts as legendary does. Scoreboards take any number of teams, a
 resource bar any resources, and a standings tower any field.
 
+### 17.6 Phase 1 common-component additions
+
+- **Locale-aware uppercase.** `LabelDesc.uppercase` (the document label's
+  `uppercase` prop) cases a label with the same ICU casing as a type
+  role's `case upper`, before it is measured, so Turkish and Greek case
+  right; the probe keeps the source text. Components and kits ask for it
+  instead of `String.toUpperCase`.
+- **Fallback icons.** `UiDesc.fallbackIcons` names an icon set that draws
+  what the atlas (the game's icons, else the style's) lacks. A pack keeps
+  the icons it paints; `og.ui.icon`, rich text, action glyphs and art
+  placeholders read the same chain.
+- **Scroll fades in documents.** The `scroll` kind takes `fade` and
+  `fadeInto`, as `og.ui.scrollArea` does, so a cut row reads as more.
+- **Touch controls.** `joystick`, `dpad` and `actionButton` take
+  `disabled` and dress as discs. Each keeps the finger that went down on
+  it, saved in the UI state (version 16, upgraded from 15 on load); the
+  stick rises from 0 past its dead zone and the d-pad reads eight ways.
+- **Scene text.** Text drawn straight over the scene passes `onScene`
+  (`LabelDesc.onScene`, the ui-parts `text()` and `btn()`): ink roles
+  become `sceneInk` at the same emphasis, with `sceneShadow` separation,
+  so a light style's dark ink stays readable over a dark scene.
+- **Reward choice.** Its cards scroll between the header and the actions,
+  at `<id>/Cards/Options/<key>` (was `<id>/Options/<key>`).
+
 ## 17a. The existing coverage kit
 
 `templates/ui-kit` is rebuilt as the coverage proof:

@@ -5,6 +5,12 @@
     "simulation": "changed",
     "breaking": [
       {
+        "member": "og.ui.rewardChoice element paths",
+        "change": "The cards scroll between the header and the actions, so their elements moved from <id>/Options/<key> to <id>/Cards/Options/<key>.",
+        "fix": "Update probe paths, playtests and og.ui.bounds or openSlot lookups that name <id>/Options/ to <id>/Cards/Options/.",
+        "find": ["/Options/"]
+      },
+      {
         "member": "UI typography and TypeStepName aliases",
         "change": "The typography hierarchy now drives legacy ramp names, including weights, tracking and breakpoint sizes. Several legacy sizes alias one semantic role; hero adds the largest step. Version 1 styles derive that hierarchy from their ramp. UI frames and wrapping can change.",
         "fix": "og upgrade converts v1 styles to v2 and archives a v2 style's superseded ramp as comments. Edit typography, not ramp. Review heading/title/display/hero and phone/150% sheets; conflicting old aliases cannot all keep their different sizes.",
@@ -124,6 +130,22 @@
       }
     ],
     "added": [
+      {
+        "member": "LabelDesc.uppercase, document label uppercase",
+        "summary": "A label asks for uppercase in the UI's locale: the same ICU casing a type role with case upper uses (Turkish i, Greek final sigma), applied before measuring; the probe keeps the source text. Components ask for it instead of String.toUpperCase; the bundled kits do."
+      },
+      {
+        "member": "UiDesc.fallbackIcons",
+        "summary": "An icon set that draws the names the atlas (the game's icons, else the style's) lacks, for og.ui.icon, rich text, action glyphs and art placeholders; a pack keeps the icons it paints."
+      },
+      {
+        "member": "Document scroll fade and fadeInto",
+        "summary": "The scroll kind in .ogt documents takes fade and fadeInto, as og.ui.scrollArea does, so a cut row reads as more content, not a clip."
+      },
+      {
+        "member": "og.ui.joystick, dpad, actionButton",
+        "summary": "Each takes disabled and dresses as a disc. Each keeps the finger that went down on it; the joystick's vector rises from 0 past its dead zone; the d-pad reads eight ways by angle."
+      },
       {
         "member": "UI kits: documents and open tiers",
         "summary": "The racing kit ships race-results.ogt, a type screen document (place, best lap and points, the classification as a for block, rewards, a Podium slot; emits continue, restart and replay) that a game edits as text. Gacha featured units and pull items take a tier { label, rank, color } over Rarity for a game's own tiers. og ui sheet installs a kit into its sheet's working copy, so pages load the kit's documents as a game does."
@@ -502,6 +524,10 @@
       }
     ],
     "fixed": [
+      {
+        "member": "UI state version 16",
+        "summary": "The UI state saves which finger holds each touch control (version 16); a save at version 15 upgrades on load."
+      },
       {
         "member": "og ui eject <kit>/<document>",
         "summary": "Ejecting a kit document copied the whole kit beside it (its TypeScript, manifest, skill and review sheet); it now copies the document with its companion documents and assets only."
