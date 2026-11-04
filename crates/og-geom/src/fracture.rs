@@ -30,13 +30,13 @@ pub const BOUNDS: u32 = u32::MAX;
 /// One chunk: a closed mesh in the input's space.
 #[derive(Clone, Debug, Default)]
 pub struct Piece {
-    /// The seed whose cell it lies in.
+    /// The cell it lies in.
     pub cell: u32,
     pub mesh: Mesh,
     /// Per triangle: the input material it came from, or `None` for a cut
     /// (interior) face.
     pub material: Vec<Option<u32>>,
-    /// Per triangle: the neighbouring seed a cut face faces ([`BOUNDS`] for
+    /// Per triangle: the neighbouring cell a cut face faces ([`BOUNDS`] for
     /// none), or `None` for an outer face.
     pub faces: Vec<Option<u32>>,
     pub volume: f64,
@@ -290,20 +290,79 @@ pub fn bounds(m: &Mesh) -> (DVec3, DVec3) {
         })
 }
 
+/// A half-space a cell keeps, `normal · x <= d`: the face it makes is
+/// tagged `tag`, the cell on its other side ([`BOUNDS`] for none).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Plane {
+    pub normal: DVec3,
+    pub d: f64,
+    pub tag: u32,
+}
+
+impl Plane {
+    /// The half-space through `point` facing `normal` (made unit).
+    pub fn through(point: DVec3, normal: DVec3, tag: u32) -> Plane {
+        let normal = normal.normalize();
+        Plane {
+            normal,
+            d: normal.dot(point),
+            tag,
+        }
+    }
+}
+
+/// The Voronoi cells of `seeds` under the distance `|metric * (x - s)|`
+/// (`DVec3::ONE`: the usual one; a smaller component stretches the cells
+/// along that axis, as wood splits along its grain): cell i is the
+/// half-spaces `|M(x - s_i)|² <= |M(x - s_j)|²`, each a plane, since
+/// `2 x · M²(s_j - s_i) <= (s_j - s_i) · M²(s_j + s_i)`.
+pub fn voronoi_cells(seeds: &[DVec3], metric: DVec3) -> Vec<Vec<Plane>> {
+    let m2 = metric * metric;
+    seeds
+        .iter()
+        .enumerate()
+        .map(|(i, &s)| {
+            seeds
+                .iter()
+                .enumerate()
+                .filter(|&(j, &o)| j != i && o != s)
+                .map(|(j, &o)| Plane::through((o + s) * 0.5, m2 * (o - s), j as u32))
+                .collect()
+        })
+        .collect()
+}
+
 /// Cuts closed `mesh` (`material` per triangle) into the Voronoi cells of
-/// `seeds`. `uv_scale` maps the cut faces' box projection to uvs (1: a
-/// texture repeat a metre). Pieces come in seed order, a cell's separate
-/// parts in order of their first triangle; pieces smaller than a
-/// millionth of the mesh's volume are dropped. Refused for an open mesh
-/// (no volume) or no seeds.
+/// `seeds` (see [`voronoi_cells`] for `metric`, and [`cut`]).
 pub fn voronoi(
     mesh: &Mesh,
     material: &[u32],
     seeds: &[DVec3],
+    metric: DVec3,
     uv_scale: f64,
 ) -> Result<Fracture, String> {
     if seeds.is_empty() {
         return Err("a fracture needs at least one seed".into());
+    }
+    cut(mesh, material, &voronoi_cells(seeds, metric), uv_scale)
+}
+
+/// Cuts closed `mesh` (`material` per triangle) into convex `cells`, each
+/// the half-spaces it keeps: the cells are expected to tile space, a
+/// cell's face tagged with the cell across it, so neighbours bond.
+/// `uv_scale` maps the cut faces' box projection to uvs (1: a texture
+/// repeat a metre). Pieces come in cell order ([`Piece::cell`]), a cell's
+/// separate parts in order of their first triangle; pieces smaller than a
+/// millionth of the mesh's volume are dropped. Refused for an open mesh
+/// (no volume) or no cells.
+pub fn cut(
+    mesh: &Mesh,
+    material: &[u32],
+    cells: &[Vec<Plane>],
+    uv_scale: f64,
+) -> Result<Fracture, String> {
+    if cells.is_empty() {
+        return Err("a fracture needs at least one cell".into());
     }
     if material.len() != mesh.triangle_count() {
         return Err("one material a triangle".into());
@@ -320,15 +379,10 @@ pub fn voronoi(
     // The cells' box: past the mesh, so no cell face lies on its surface.
     let (blo, bhi) = (lo - size * 0.125, hi + size * 0.125);
     let mut pieces: Vec<Piece> = Vec::new();
-    for (i, &s) in seeds.iter().enumerate() {
+    for (i, planes) in cells.iter().enumerate() {
         let mut cell = Cell::boxed(blo, bhi);
-        for (j, &o) in seeds.iter().enumerate() {
-            if j == i || o == s {
-                continue;
-            }
-            let n = (o - s).normalize();
-            let d = n.dot((o + s) * 0.5);
-            cell.clip(n, d, j as u32, eps);
+        for p in planes {
+            cell.clip(p.normal, p.d, p.tag, eps);
             if cell.is_empty() {
                 break;
             }
@@ -491,6 +545,92 @@ fn bonds(pieces: &[Piece]) -> Vec<Bond> {
     out
 }
 
+/// The pieces of `f` joined into `groups` (each a list of piece indices;
+/// together a partition of the pieces): a group's piece is its members'
+/// triangles less the cut faces between them (a face towards a cell in
+/// the same group), its volume and centroid theirs; the bonds between
+/// groups sum the bonds of their members. A group's [`Piece::cell`] is
+/// its first member's. Join whole cells: the faces between the separate
+/// parts of one cell are not told apart.
+pub fn merge(f: &Fracture, groups: &[Vec<u32>]) -> Fracture {
+    let mut group_of = vec![u32::MAX; f.pieces.len()];
+    for (g, members) in groups.iter().enumerate() {
+        for &m in members {
+            group_of[m as usize] = g as u32;
+        }
+    }
+    let mut pieces = Vec::with_capacity(groups.len());
+    for members in groups {
+        let cells: std::collections::BTreeSet<u32> =
+            members.iter().map(|&m| f.pieces[m as usize].cell).collect();
+        let mut out = Piece {
+            cell: members.first().map_or(0, |&m| f.pieces[m as usize].cell),
+            ..Piece::default()
+        };
+        let mut sum = DVec3::ZERO;
+        for &m in members {
+            let p = &f.pieces[m as usize];
+            out.volume += p.volume;
+            sum += p.centroid * p.volume;
+            let mut remap: BTreeMap<u32, u32> = BTreeMap::new();
+            for (t, tri) in p.mesh.indices.as_chunks::<3>().0.iter().enumerate() {
+                if let Some(Some(j)) = p.faces.get(t)
+                    && cells.contains(j)
+                {
+                    continue;
+                }
+                for &v in tri {
+                    let n = *remap.entry(v).or_insert_with(|| {
+                        let k = v as usize;
+                        out.mesh.positions.push(p.mesh.positions[k]);
+                        out.mesh.normals.push(p.mesh.normals[k]);
+                        out.mesh.uvs.push(p.mesh.uvs[k]);
+                        (out.mesh.positions.len() - 1) as u32
+                    });
+                    out.mesh.indices.push(n);
+                }
+                out.material.push(p.material[t]);
+                out.faces.push(p.faces[t]);
+            }
+        }
+        out.centroid = if out.volume > 0.0 {
+            sum / out.volume
+        } else {
+            DVec3::ZERO
+        };
+        pieces.push(out);
+    }
+    // Bonds between groups: (area, centroid sum, normal sum) per pair.
+    let mut by: BTreeMap<(u32, u32), (f64, DVec3, DVec3)> = BTreeMap::new();
+    for b in &f.bonds {
+        let (ga, gb) = (group_of[b.a as usize], group_of[b.b as usize]);
+        if ga == gb || ga == u32::MAX || gb == u32::MAX {
+            continue;
+        }
+        let (key, n) = if ga < gb {
+            ((ga, gb), b.normal)
+        } else {
+            ((gb, ga), -b.normal)
+        };
+        let e = by.entry(key).or_default();
+        e.0 += b.area;
+        e.1 += b.centroid * b.area;
+        e.2 += n * b.area;
+    }
+    let bonds = by
+        .into_iter()
+        .filter(|(_, (area, _, _))| *area > 0.0)
+        .map(|((a, b), (area, c, n))| Bond {
+            a,
+            b,
+            centroid: c / area,
+            normal: n.normalize_or_zero(),
+            area,
+        })
+        .collect();
+    Fracture { pieces, bonds }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -528,7 +668,7 @@ mod tests {
             DVec3::new(0.1, 0.3, 0.2),
             DVec3::new(-0.2, 0.25, -0.3),
         ];
-        let f = voronoi(&m, &[0; 12], &seeds, 1.0).unwrap();
+        let f = voronoi(&m, &[0; 12], &seeds, DVec3::ONE, 1.0).unwrap();
         assert_eq!(f.pieces.len(), 4);
         let total: f64 = f.pieces.iter().map(|p| p.volume).sum();
         assert!(
@@ -557,7 +697,7 @@ mod tests {
             DVec3::new(0.2, 0.0, 0.0),
             DVec3::new(5.0, 0.0, 0.0),
         ];
-        let f = voronoi(&m, &[0; 12], &seeds, 1.0).unwrap();
+        let f = voronoi(&m, &[0; 12], &seeds, DVec3::ONE, 1.0).unwrap();
         assert_eq!(f.pieces.len(), 2);
         assert_eq!(f.bonds.len(), 1);
         let b = f.bonds[0];
@@ -567,5 +707,75 @@ mod tests {
             b.area
         );
         assert!((b.normal - DVec3::X).length() < 1e-9);
+    }
+
+    #[test]
+    fn a_stretched_metric_cuts_along_its_long_axis() {
+        // Two seeds apart along x and z; with x stretched (metric 0.25 on
+        // x), the cut between them lies across z, not across x.
+        let m = cube(0.5);
+        let seeds = [DVec3::new(-0.2, 0.0, -0.1), DVec3::new(0.2, 0.0, 0.1)];
+        let plain = voronoi(&m, &[0; 12], &seeds, DVec3::ONE, 1.0).unwrap();
+        let grain = voronoi(&m, &[0; 12], &seeds, DVec3::new(0.25, 1.0, 1.0), 1.0).unwrap();
+        assert!(plain.bonds[0].normal.x > plain.bonds[0].normal.z);
+        assert!(
+            grain.bonds[0].normal.z > 0.9,
+            "the cut faces z: {:?}",
+            grain.bonds[0].normal
+        );
+    }
+
+    #[test]
+    fn merged_groups_drop_their_inner_faces_and_sum_their_bonds() {
+        // Four slabs along x, joined in pairs: two pieces, one bond of the
+        // full x = 0 face, no cut face left between members.
+        let m = cube(0.5);
+        let cells: Vec<Vec<Plane>> = (0..4)
+            .map(|i| {
+                let x0 = -0.5 + 0.25 * i as f64;
+                let mut c = Vec::new();
+                if i > 0 {
+                    c.push(Plane::through(
+                        DVec3::new(x0, 0.0, 0.0),
+                        DVec3::NEG_X,
+                        i - 1,
+                    ));
+                }
+                if i < 3 {
+                    c.push(Plane::through(
+                        DVec3::new(x0 + 0.25, 0.0, 0.0),
+                        DVec3::X,
+                        i + 1,
+                    ));
+                }
+                c
+            })
+            .collect();
+        let f = cut(&m, &[0; 12], &cells, 1.0).unwrap();
+        assert_eq!((f.pieces.len(), f.bonds.len()), (4, 3));
+        let g = merge(&f, &[vec![0, 1], vec![2, 3]]);
+        assert_eq!(g.pieces.len(), 2);
+        assert_eq!(g.bonds.len(), 1);
+        assert!((g.bonds[0].area - 1.0).abs() < 1e-9);
+        assert!((g.bonds[0].normal - DVec3::X).length() < 1e-9);
+        for p in &g.pieces {
+            assert!((p.volume - 0.5).abs() < 1e-9);
+            let cut_area: f64 = p
+                .mesh
+                .indices
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .enumerate()
+                .filter(|(t, _)| p.material[*t].is_none())
+                .map(|(_, tri)| tri_area(&p.mesh, tri).0)
+                .sum();
+            assert!(
+                (cut_area - 1.0).abs() < 1e-9,
+                "only the x = 0 face: {cut_area}"
+            );
+            let (v, _) = volume_centroid(&p.mesh);
+            assert!((v - 0.5).abs() < 1e-6, "still closed: {v}");
+        }
     }
 }

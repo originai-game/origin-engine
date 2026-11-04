@@ -11,21 +11,41 @@
 //!
 //! ```text
 //! fracture {
-//!   chunks 24            # support chunks (Voronoi cells), 2 to 256
+//!   style voronoi        # how it breaks (below)
+//!   chunks 24            # support chunks, 2 to 256
 //!   seed 1               # which pattern (the same seed, the same chunks)
 //!   children 6           # each chunk's pieces when it shatters loose (0: none, up to 32)
 //!   pattern volume       # volume (cells in 3D), slab (shards through the thinnest
 //!                        # axis: a pane, a plank, a wall) or auto (slab when thin)
-//!   impact 0 1 0.1 0.4   # gather half the seeds within 0.4 m of a point (model space)
-//!   anchor bottom        # what holds it up: bottom (the faces on its lowest
-//!                        # plane rest on the world), none
+//!   impact 0 1 0.1 0.4   # gather the pattern within 0.4 m of a point (model space)
+//!   anchor bottom ends   # what holds it up: bottom (the faces on its lowest
+//!                        # plane rest on the world), ends (the faces at both ends
+//!                        # of its longest level axis are tied in), or none
 //!   interiorScale 2      # the cut faces' uvs: repeats a metre
-//!   interior {           # the cut faces' material (`type model`'s material lines);
-//!     color 0.5 0.45 0.4 #   default: the main material, darker and rough
-//!     roughness 0.95
+//!   interior {           # the cut faces' material (`type model`'s material lines,
+//!     color 0.5 0.45 0.4 #   maps included); default: the main material, darker
+//!     roughness 0.95     #   and rough
 //!   }
 //! }
 //! ```
+//!
+//! The styles, one fracture profile a material:
+//!
+//! - `voronoi`: Voronoi cells of evenly spread seeds (Mitchell's best
+//!   candidate), the general case.
+//! - `concrete`: the same cells relaxed twice towards their centroids
+//!   (Lloyd), so chunks come chunky and rounded rather than as slivers, at
+//!   both levels.
+//! - `brick`: a running bond of bricks `brick w h` (metres; along the
+//!   longest level axis, up), laid through the thickness: the support
+//!   chunks are blocks of the mortar grid in random sizes (a course's
+//!   bricks cut where a block ends, as masonry breaks), their children the
+//!   bricks within, so rubble is bricks and clusters of them.
+//! - `wood`: cells stretched along `grain x|y|z` (default the longest axis)
+//!   by six: long splinters along the grain.
+//! - `glass`: radial cracks from `impact` (default the centre) crossed by
+//!   `rings` concentric ones (1 to 8, default 2), a slab across the thinnest
+//!   axis: the shards of a struck pane.
 
 use super::model;
 use super::vox::Bin;
@@ -55,9 +75,19 @@ enum Pattern {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Anchor {
-    Bottom,
-    None,
+enum Style {
+    Voronoi,
+    Concrete,
+    Brick,
+    Wood,
+    Glass,
+}
+
+/// What holds a fractured model up.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Anchor {
+    bottom: bool,
+    ends: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -66,6 +96,10 @@ pub(super) struct Settings {
     seed: u32,
     children: u32,
     pattern: Pattern,
+    style: Style,
+    brick: (f64, f64),
+    grain: Option<usize>,
+    rings: u32,
     impact: Option<(DVec3, f64)>,
     anchor: Anchor,
     interior_scale: f64,
@@ -97,11 +131,15 @@ fn count(b: &Block, k: &str, default: u32, min: u32, max: u32) -> Result<u32, St
 
 impl Settings {
     pub(super) fn parse(b: &Block) -> Result<Settings, String> {
-        const KEYS: [&str; 8] = [
+        const KEYS: [&str; 12] = [
+            "style",
             "chunks",
             "seed",
             "children",
             "pattern",
+            "brick",
+            "grain",
+            "rings",
             "impact",
             "anchor",
             "interiorScale",
@@ -136,11 +174,63 @@ impl Settings {
                 ));
             }
         };
-        let anchor = match word("anchor", "bottom")?.as_str() {
-            "bottom" => Anchor::Bottom,
-            "none" => Anchor::None,
-            o => return Err(format!("fracture.anchor is bottom or none, not '{o}'")),
+        let style = match word("style", "voronoi")?.as_str() {
+            "voronoi" => Style::Voronoi,
+            "concrete" => Style::Concrete,
+            "brick" => Style::Brick,
+            "wood" => Style::Wood,
+            "glass" => Style::Glass,
+            o => {
+                return Err(format!(
+                    "fracture.style is voronoi, concrete, brick, wood or glass, not '{o}'"
+                ));
+            }
         };
+        let grain = match b.get("grain") {
+            None => None,
+            Some(_) => Some(match word("grain", "x")?.as_str() {
+                "x" => 0,
+                "y" => 1,
+                "z" => 2,
+                o => return Err(format!("fracture.grain is x, y or z, not '{o}'")),
+            }),
+        };
+        let brick = match b.get("brick") {
+            None => (0.25, 0.1),
+            Some(e) => {
+                let v: Vec<f64> = e
+                    .values
+                    .iter()
+                    .filter_map(|v| v.as_number().map(|n| n.as_f64()))
+                    .collect();
+                if v.len() != 2 || v.iter().any(|x| !x.is_finite() || *x < 0.01) {
+                    return Err(format!(
+                        "line {}: fracture.brick takes a brick's length and height, each at least 0.01 m: `brick 0.25 0.1`",
+                        e.line
+                    ));
+                }
+                (v[0], v[1])
+            }
+        };
+        let mut anchor = Anchor::default();
+        match b.get("anchor") {
+            None => anchor.bottom = true,
+            Some(e) => {
+                for v in &e.values {
+                    match v.as_word() {
+                        Some("bottom") => anchor.bottom = true,
+                        Some("ends") => anchor.ends = true,
+                        Some("none") if e.values.len() == 1 => {}
+                        _ => {
+                            return Err(format!(
+                                "line {}: fracture.anchor is bottom, ends, both, or none",
+                                e.line
+                            ));
+                        }
+                    }
+                }
+            }
+        }
         let impact = match b.get("impact") {
             None => None,
             Some(e) => {
@@ -175,6 +265,10 @@ impl Settings {
             seed: count(b, "seed", 1, 0, u32::MAX)?,
             children: count(b, "children", 0, 0, 32)?,
             pattern,
+            style,
+            brick,
+            grain,
+            rings: count(b, "rings", 2, 1, 8)?,
             impact,
             anchor,
             interior_scale,
@@ -342,21 +436,362 @@ fn seeds(
     out
 }
 
-/// The anchor faces of a piece: its outer faces facing down on the
-/// model's lowest plane (area and centroid).
-fn anchor_of(p: &Piece, floor: f64, tol: f64) -> (f64, DVec3) {
+/// Voronoi cells of `seeds` under `metric`, the seeds moved to their
+/// cells' centroids `relax` times first (Lloyd's relaxation: rounder,
+/// more even cells).
+fn relaxed(
+    mesh: &Mesh,
+    material: &[u32],
+    mut seeds: Vec<DVec3>,
+    metric: DVec3,
+    relax: u32,
+    uv_scale: f64,
+) -> Result<fracture::Fracture, String> {
+    let mut f = fracture::voronoi(mesh, material, &seeds, metric, uv_scale)
+        .map_err(|e| format!("fracture: {e}"))?;
+    for _ in 0..relax {
+        let mut acc = vec![(0.0, DVec3::ZERO); seeds.len()];
+        for p in &f.pieces {
+            let a = &mut acc[p.cell as usize];
+            a.0 += p.volume;
+            a.1 += p.centroid * p.volume;
+        }
+        for (i, (v, c)) in acc.into_iter().enumerate() {
+            if v > 0.0 {
+                seeds[i] = c / v;
+            }
+        }
+        f = fracture::voronoi(mesh, material, &seeds, metric, uv_scale)
+            .map_err(|e| format!("fracture: {e}"))?;
+    }
+    Ok(f)
+}
+
+/// Each support chunk's children, cut from it as it stands by `children`
+/// Voronoi cells under `metric` (its cut faces stay interior).
+fn cells_children(
+    level1: &fracture::Fracture,
+    s: &Settings,
+    rng: &mut Rng,
+    metric: DVec3,
+    relax: u32,
+) -> Result<Vec<Vec<Piece>>, String> {
+    let mut out = Vec::new();
+    for p in &level1.pieces {
+        if s.children < 2 {
+            out.push(Vec::new());
+            continue;
+        }
+        let mats: Vec<u32> = p.material.iter().map(|m| m.unwrap_or(INTERIOR)).collect();
+        let cs = seeds(&p.mesh, s.children, rng, None, None);
+        if cs.len() < 2 {
+            out.push(Vec::new());
+            continue;
+        }
+        let f = relaxed(&p.mesh, &mats, cs, metric, relax, s.interior_scale)
+            .map_err(|e| format!("a chunk's children: {e}"))?;
+        out.push(
+            f.pieces
+                .into_iter()
+                .map(|mut c| {
+                    for m in &mut c.material {
+                        if *m == Some(INTERIOR) {
+                            *m = None;
+                        }
+                    }
+                    c
+                })
+                .collect(),
+        );
+    }
+    Ok(out)
+}
+
+/// Glass: `rings` concentric cracks (polygons through the radial cracks'
+/// points at each ring's radius) crossed by radial ones from the impact
+/// point, in the plane across axis `thin`. Cell 0 is the centre; cell
+/// `1 + s * rings + k` lies in sector s, ring k (outwards).
+fn radial(mesh: &Mesh, s: &Settings, thin: usize) -> Vec<Vec<fracture::Plane>> {
+    use fracture::Plane;
+    let (lo, hi) = fracture::bounds(mesh);
+    let mut rng = Rng::new(s.seed ^ 0x9e37_79b9);
+    let mut f = || rng.next_f64();
+    let (u_axis, v_axis) = match thin {
+        0 => (2, 1),
+        1 => (0, 2),
+        _ => (0, 1),
+    };
+    let (mut u, mut v) = (DVec3::ZERO, DVec3::ZERO);
+    u[u_axis] = 1.0;
+    v[v_axis] = 1.0;
+    let mut c = s.impact.map_or((lo + hi) * 0.5, |(p, _)| p);
+    c[thin] = (lo[thin] + hi[thin]) * 0.5;
+    // The far corner's distance in the plane.
+    let reach = [lo, hi]
+        .iter()
+        .flat_map(|a| [lo, hi].map(|b| (a[u_axis], b[v_axis])))
+        .map(|(x, y)| ((x - c[u_axis]).powi(2) + (y - c[v_axis]).powi(2)).sqrt())
+        .fold(0.0, f64::max)
+        .max(1e-3);
+    let rings = s.rings as usize;
+    let sectors = ((s.chunks as usize).saturating_sub(1) / rings).max(3);
+    // Sector edges: even, jittered by up to a third of a sector.
+    let step = std::f64::consts::TAU / sectors as f64;
+    let start = f() * step;
+    let angles: Vec<f64> = (0..sectors)
+        .map(|k| start + step * (k as f64 + (f() - 0.5) * 0.66))
+        .collect();
+    // Ring radii: from a twelfth of the reach to half of it, spaced
+    // geometrically (cracks crowd the impact), each jittered.
+    let inner = s
+        .impact
+        .map_or(reach / 12.0, |(_, r)| (r * 0.35).min(reach / 4.0));
+    let radii: Vec<f64> = (0..rings)
+        .map(|k| {
+            let t = if rings == 1 {
+                0.0
+            } else {
+                k as f64 / (rings - 1) as f64
+            };
+            inner * (reach * 0.55 / inner).powf(t) * (0.9 + 0.2 * f())
+        })
+        .collect();
+    let dir = |a: f64| u * a.cos() + v * a.sin();
+    let perp = |a: f64| u * -a.sin() + v * a.cos();
+    let idx = |sec: usize, k: usize| (1 + sec * rings + k) as u32;
+    let mut cells = Vec::with_capacity(1 + sectors * rings);
+    // The centre: inside every sector's first chord.
+    let chord = |sec: usize, r: f64| {
+        let (a0, a1) = (
+            angles[sec],
+            angles[(sec + 1) % sectors]
+                + if sec + 1 == sectors {
+                    std::f64::consts::TAU
+                } else {
+                    0.0
+                },
+        );
+        let p0 = c + dir(a0) * r;
+        let p1 = c + dir(a1) * r;
+        let edge = p1 - p0;
+        // Outward: across the edge, away from the centre.
+        let mut n = edge.cross(u.cross(v)).normalize();
+        if n.dot(p0 - c) < 0.0 {
+            n = -n;
+        }
+        (p0, n)
+    };
+    cells.push(
+        (0..sectors)
+            .map(|sec| {
+                let (p0, n) = chord(sec, radii[0]);
+                Plane::through(p0, n, idx(sec, 0))
+            })
+            .collect(),
+    );
+    for sec in 0..sectors {
+        let next = (sec + 1) % sectors;
+        let prev = (sec + sectors - 1) % sectors;
+        let a1 = angles[next];
+        for k in 0..rings {
+            let mut planes = vec![
+                Plane::through(c, perp(a1), idx(next, k)),
+                Plane::through(c, -perp(angles[sec]), idx(prev, k)),
+            ];
+            let (p0, n) = chord(sec, radii[k]);
+            planes.push(Plane::through(
+                p0,
+                -n,
+                if k == 0 { 0 } else { idx(sec, k - 1) },
+            ));
+            if k + 1 < rings {
+                let (p0, n) = chord(sec, radii[k + 1]);
+                planes.push(Plane::through(p0, n, idx(sec, k + 1)));
+            }
+            cells.push(planes);
+        }
+    }
+    cells
+}
+
+/// Brick: a running bond of `s.brick` bricks along the longest level axis,
+/// through the thickness. The model is cut into half-brick cells (one
+/// neighbour across every face, so their bonds are exact), which are
+/// joined into rectangular blocks of the grid (support chunks: convex, so
+/// their hulls are their shapes) and, within each block, into its bricks
+/// (the children; a brick a block's edge crosses is cut there).
+fn brick(
+    mesh: &Mesh,
+    material: &[u32],
+    s: &Settings,
+    rng: &mut Rng,
+) -> Result<(fracture::Fracture, Vec<Vec<Piece>>), String> {
+    use fracture::Plane;
+    let (lo, hi) = fracture::bounds(mesh);
+    let ext = hi - lo;
+    let along = if ext.x >= ext.z { 0 } else { 2 };
+    let (bw, bh) = s.brick;
+    let half = bw * 0.5;
+    let cols = ((ext[along] / half).ceil() as usize).max(1);
+    let rows = ((ext.y / bh).ceil() as usize).max(1);
+    if cols * rows > 4096 {
+        return Err(format!(
+            "fracture.brick {bw} {bh}: {} half-bricks, past the 4096 a model cuts; use larger bricks",
+            cols * rows
+        ));
+    }
+    let id = |r: usize, c: usize| (r * cols + c) as u32;
+    let mut axis = DVec3::ZERO;
+    axis[along] = 1.0;
+    let mut cells = Vec::with_capacity(rows * cols);
+    for r in 0..rows {
+        for c in 0..cols {
+            let x0 = lo[along] + half * c as f64;
+            let y0 = lo.y + bh * r as f64;
+            let at = |x: f64, y: f64| {
+                let mut p = DVec3::ZERO;
+                p[along] = x;
+                p.y = y;
+                p
+            };
+            let mut planes = Vec::new();
+            if c > 0 {
+                planes.push(Plane::through(at(x0, y0), -axis, id(r, c - 1)));
+            }
+            if c + 1 < cols {
+                planes.push(Plane::through(at(x0 + half, y0), axis, id(r, c + 1)));
+            }
+            if r > 0 {
+                planes.push(Plane::through(at(x0, y0), DVec3::NEG_Y, id(r - 1, c)));
+            }
+            if r + 1 < rows {
+                planes.push(Plane::through(at(x0, y0 + bh), DVec3::Y, id(r + 1, c)));
+            }
+            cells.push(planes);
+        }
+    }
+    let f = fracture::cut(mesh, material, &cells, s.interior_scale)
+        .map_err(|e| format!("fracture: {e}"))?;
+    let mut pieces_of: Vec<Vec<u32>> = vec![Vec::new(); rows * cols];
+    for (k, p) in f.pieces.iter().enumerate() {
+        pieces_of[p.cell as usize].push(k as u32);
+    }
+    // The brick a half-cell belongs to: courses alternate by half a brick.
+    let brick_of = |r: usize, c: usize| {
+        (
+            r,
+            if r.is_multiple_of(2) {
+                c / 2
+            } else {
+                c.div_ceil(2)
+            },
+        )
+    };
+    // Blocks: from the lowest free cell, a rectangle of random size (about
+    // the area a chunk takes, smaller near the impact), as far as it is free.
+    let total = (rows * cols) as f64;
+    let target = (total / f64::from(s.chunks)).max(1.0);
+    let mut block = vec![usize::MAX; rows * cols];
+    let mut blocks: Vec<(usize, usize, usize, usize)> = Vec::new();
+    for r in 0..rows {
+        for c in 0..cols {
+            if block[r * cols + c] != usize::MAX {
+                continue;
+            }
+            let mut area = target * (0.55 + 0.9 * rng.next_f64());
+            if let Some((p, rad)) = s.impact {
+                let mut q = DVec3::ZERO;
+                q[along] = lo[along] + half * (c as f64 + 0.5);
+                q.y = lo.y + bh * (r as f64 + 0.5);
+                let d = ((q[along] - p[along]).powi(2) + (q.y - p.y).powi(2)).sqrt();
+                area *= (0.3 + 0.7 * (d / (rad * 2.5)).min(1.0)).max(0.3);
+            }
+            // Wider than tall in metres, as masonry cracks step along courses.
+            let aspect = 1.4 + rng.next_f64() * 1.2;
+            let w_m = (area * half * bh * aspect).sqrt();
+            // At most four bricks long and six courses high: a block that
+            // reaches across a blow is shattered by it with everything it
+            // held, so no block spans much of the wall.
+            let h = ((w_m / aspect / bh).round() as usize).clamp(1, (rows - r).min(6));
+            let w = ((area / h as f64).round() as usize)
+                .clamp(1, 8)
+                .min(cols - c);
+            // As far as the row is free.
+            let mut fw = 0;
+            while fw < w && block[r * cols + c + fw] == usize::MAX {
+                fw += 1;
+            }
+            let w = fw.max(1);
+            let mut fh = 1;
+            while fh < h && (c..c + w).all(|cc| block[(r + fh) * cols + cc] == usize::MAX) {
+                fh += 1;
+            }
+            let k = blocks.len();
+            for rr in r..r + fh {
+                for cc in c..c + w {
+                    block[rr * cols + cc] = k;
+                }
+            }
+            blocks.push((r, c, fh, w));
+        }
+    }
+    let mut support_groups: Vec<Vec<u32>> = Vec::new();
+    let mut child_groups: Vec<Vec<Vec<u32>>> = Vec::new();
+    for &(r0, c0, h, w) in &blocks {
+        let mut members = Vec::new();
+        let mut bricks: BTreeMap<(usize, usize), Vec<u32>> = BTreeMap::new();
+        for r in r0..r0 + h {
+            for c in c0..c0 + w {
+                let ps = &pieces_of[r * cols + c];
+                members.extend(ps);
+                bricks.entry(brick_of(r, c)).or_default().extend(ps);
+            }
+        }
+        if members.is_empty() {
+            continue;
+        }
+        let mut kids: Vec<Vec<u32>> = bricks.into_values().filter(|b| !b.is_empty()).collect();
+        // A block of one brick has no children; past 32 bricks, pairs.
+        while kids.len() > 32 {
+            kids = kids.chunks(2).map(|p| p.concat()).collect();
+        }
+        if kids.len() < 2 || s.children == 0 {
+            kids.clear();
+        }
+        support_groups.push(members);
+        child_groups.push(kids);
+    }
+    let level1 = fracture::merge(&f, &support_groups);
+    let children = child_groups
+        .iter()
+        .map(|g| fracture::merge(&f, g).pieces)
+        .collect();
+    Ok((level1, children))
+}
+
+/// The anchor faces of a piece: its outer faces on the planes `anchor`
+/// names (facing down on the model's lowest, facing out at either end of
+/// its longest level axis), their area and centroid.
+fn anchor_of(p: &Piece, lo: DVec3, hi: DVec3, anchor: Anchor, tol: f64) -> (f64, DVec3) {
+    let along = if hi.x - lo.x >= hi.z - lo.z { 0 } else { 2 };
     let (mut area, mut sum) = (0.0, DVec3::ZERO);
     for (t, tri) in p.mesh.indices.as_chunks::<3>().0.iter().enumerate() {
         if p.material[t].is_none() {
             continue;
         }
         let q = tri.map(|i| DVec3::from(p.mesh.positions[i as usize].map(f64::from)));
-        if q.iter().any(|v| v.y > floor + tol) {
-            continue;
-        }
         let n = (q[1] - q[0]).cross(q[2] - q[0]);
         let a = n.length() * 0.5;
-        if a <= 0.0 || n.y / (2.0 * a) > -0.9 {
+        if a <= 0.0 {
+            continue;
+        }
+        let n = n / (2.0 * a);
+        let on = |axis: usize, at: f64| q.iter().all(|v| (v[axis] - at).abs() <= tol);
+        let bottom = anchor.bottom && n.y < -0.9 && on(1, lo.y);
+        let ends = anchor.ends
+            && ((n[along] < -0.9 && on(along, lo[along]))
+                || (n[along] > 0.9 && on(along, hi[along])));
+        if !(bottom || ends) {
             continue;
         }
         area += a;
@@ -372,9 +807,11 @@ fn interior_material(
     s: &Settings,
     json: &serde_json::Value,
     main: Option<u32>,
+    images: &mut Vec<String>,
 ) -> Result<serde_json::Value, String> {
     if let Some(b) = &s.interior {
-        return super::model_text::material("interior", b);
+        let first = json["textures"].as_array().map_or(0, Vec::len);
+        return super::model_text::material("interior", b, images, first);
     }
     let base = main
         .and_then(|i| json["materials"].get(i as usize))
@@ -494,13 +931,18 @@ fn mime(bytes: &[u8]) -> &'static str {
     }
 }
 
-/// Fractures glTF binary `glb` (read beside `dir`) by `s`: the chunked
-/// model as a glTF binary, and its fracture asset.
-pub(super) fn fracture_glb(
-    glb: &[u8],
-    dir: &Path,
-    s: &Settings,
-) -> Result<(Vec<u8>, FractureAsset), String> {
+/// What [`fracture_glb`] makes.
+pub(super) struct Fractured {
+    /// The chunked model as a glTF binary, its images inside.
+    pub glb: Vec<u8>,
+    pub asset: FractureAsset,
+    /// The files beside the model it read (the source's images and the
+    /// interior's maps), by their path relative to the model.
+    pub read: Vec<(String, Vec<u8>)>,
+}
+
+/// Fractures glTF binary `glb` (read beside `dir`) by `s`.
+pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fractured, String> {
     let g = model::load(glb, dir)?;
     let (mesh, material) = flatten(&g)?;
     let (lo, hi) = fracture::bounds(&mesh);
@@ -513,51 +955,55 @@ pub(super) fn fracture_glb(
         .filter(|&a| a != thin)
         .map(|a| ext[a])
         .fold(f64::INFINITY, f64::min);
-    let slab = match s.pattern {
-        Pattern::Slab => Some(thin),
-        Pattern::Volume => None,
-        Pattern::Auto => (ext[thin] * 4.0 <= others).then_some(thin),
+    let slab = match (s.style, s.pattern) {
+        (Style::Glass, _) | (_, Pattern::Slab) => Some(thin),
+        (_, Pattern::Volume) => None,
+        (_, Pattern::Auto) => (ext[thin] * 4.0 <= others).then_some(thin),
     };
     let mut rng = Rng::new(s.seed);
-    let seeds_1 = seeds(&mesh, s.chunks, &mut rng, slab, s.impact);
-    if seeds_1.len() < 2 {
+    let (level1, children) = match s.style {
+        Style::Brick => brick(&mesh, &material, s, &mut rng)?,
+        Style::Glass => {
+            let cells = radial(&mesh, s, thin);
+            let f = fracture::cut(&mesh, &material, &cells, s.interior_scale)
+                .map_err(|e| format!("fracture: {e}"))?;
+            let ch = cells_children(&f, s, &mut rng, DVec3::ONE, 0)?;
+            (f, ch)
+        }
+        style => {
+            let (metric, relax) = match style {
+                Style::Concrete => (DVec3::ONE, 2),
+                Style::Wood => {
+                    // Long cells along the grain: distance across it counts
+                    // six times as much.
+                    let along = s.grain.unwrap_or_else(|| {
+                        (0..3)
+                            .max_by(|&a, &b| ext[a].total_cmp(&ext[b]))
+                            .expect("three axes")
+                    });
+                    let mut m = DVec3::ONE;
+                    m[along] = 1.0 / 6.0;
+                    (m, 0)
+                }
+                _ => (DVec3::ONE, 0),
+            };
+            let seeds_1 = seeds(&mesh, s.chunks, &mut rng, slab, s.impact);
+            if seeds_1.len() < 2 {
+                return Err(
+                    "fewer than 2 seeds fell inside the model: is it closed and facing out?".into(),
+                );
+            }
+            let f = relaxed(&mesh, &material, seeds_1, metric, relax, s.interior_scale)?;
+            let ch = cells_children(&f, s, &mut rng, metric, relax)?;
+            (f, ch)
+        }
+    };
+    if level1.pieces.len() < 2 {
         return Err(
-            "fewer than 2 seeds fell inside the model: is it closed and facing out?".into(),
+            "the fracture left fewer than 2 chunks: is the model closed and facing out?".into(),
         );
     }
-    let level1 = fracture::voronoi(&mesh, &material, &seeds_1, s.interior_scale)
-        .map_err(|e| format!("fracture: {e}"))?;
     let support = level1.pieces.len();
-    // The children of each support chunk, cut from it as it stands (its
-    // cut faces stay interior).
-    let mut children: Vec<Vec<Piece>> = Vec::new();
-    for p in &level1.pieces {
-        if s.children < 2 {
-            children.push(Vec::new());
-            continue;
-        }
-        let mats: Vec<u32> = p.material.iter().map(|m| m.unwrap_or(INTERIOR)).collect();
-        let cs = seeds(&p.mesh, s.children, &mut rng, None, None);
-        if cs.len() < 2 {
-            children.push(Vec::new());
-            continue;
-        }
-        let f = fracture::voronoi(&p.mesh, &mats, &cs, s.interior_scale)
-            .map_err(|e| format!("fracture: a chunk's children: {e}"))?;
-        children.push(
-            f.pieces
-                .into_iter()
-                .map(|mut c| {
-                    for m in &mut c.material {
-                        if *m == Some(INTERIOR) {
-                            *m = None;
-                        }
-                    }
-                    c
-                })
-                .collect(),
-        );
-    }
     // Materials: the model's own, glTF's default when a primitive names
     // none, then the interior.
     let mut json = g.json.clone();
@@ -579,7 +1025,8 @@ pub(super) fn fracture_glb(
         materials_json.push(serde_json::json!({ "name": "default" }));
         index.insert(DEFAULT_MATERIAL, materials_json.len() - 1);
     }
-    let interior = interior_material(s, &json, main)?;
+    let mut maps = Vec::new();
+    let interior = interior_material(s, &json, main, &mut maps)?;
     materials_json.push(interior);
     index.insert(INTERIOR, materials_json.len() - 1);
     let mut bin = Bin::default();
@@ -591,10 +1038,31 @@ pub(super) fn fracture_glb(
             *img = serde_json::json!({ "bufferView": view, "mimeType": mime(bytes) });
         }
     }
+    // The interior's own maps, read beside the model, each a repeating
+    // texture after the model's.
+    let mut read = g.external.clone();
+    if !maps.is_empty() {
+        let sampler = json["samplers"].as_array().map_or(0, Vec::len);
+        let mut samplers = json["samplers"].as_array().cloned().unwrap_or_default();
+        samplers.push(serde_json::json!({ "wrapS": 10497, "wrapT": 10497 }));
+        let mut images = json["images"].as_array().cloned().unwrap_or_default();
+        let mut textures = json["textures"].as_array().cloned().unwrap_or_default();
+        for file in &maps {
+            let full = dir.join(file);
+            let bytes = std::fs::read(&full)
+                .map_err(|e| format!("fracture.interior: {}: {e}", full.display()))?;
+            let view = bin.view(&bytes);
+            images.push(serde_json::json!({ "bufferView": view, "mimeType": mime(&bytes) }));
+            textures.push(serde_json::json!({ "source": images.len() - 1, "sampler": sampler }));
+            read.push((file.clone(), bytes));
+        }
+        json["images"] = images.into();
+        json["textures"] = textures.into();
+        json["samplers"] = samplers.into();
+    }
     let mut nodes = Vec::new();
     let mut meshes = Vec::new();
     let mut chunks: Vec<Chunk> = Vec::new();
-    let floor = lo.y;
     let tol = size * 1e-3;
     let place = |p: &Piece,
                  name: String,
@@ -623,10 +1091,7 @@ pub(super) fn fracture_glb(
             &mut meshes,
             &mut bin,
         );
-        let (anchor_area, anchor_centroid) = match s.anchor {
-            Anchor::Bottom => anchor_of(p, floor, tol),
-            Anchor::None => (0.0, DVec3::ZERO),
-        };
+        let (anchor_area, anchor_centroid) = anchor_of(p, lo, hi, s.anchor, tol);
         chunks.push(Chunk {
             centroid: p.centroid.as_vec3(),
             volume: p.volume as f32,
@@ -708,17 +1173,28 @@ pub(super) fn fracture_glb(
             out[k] = v.clone();
         }
     }
-    if !used.is_empty() {
-        out["extensionsUsed"] = used.into();
-    }
     if let Some(r) = json
         .get("extensionsRequired")
         .filter(|v| v.as_array().is_some_and(|a| !a.is_empty()))
     {
         out["extensionsRequired"] = r.clone();
     }
+    for m in out["materials"].as_array().into_iter().flatten() {
+        for k in m["extensions"]
+            .as_object()
+            .into_iter()
+            .flat_map(|o| o.keys())
+        {
+            if !used.iter().any(|e| e == k) {
+                used.push(k.clone().into());
+            }
+        }
+    }
+    if !used.is_empty() {
+        out["extensionsUsed"] = used.into();
+    }
     let glb = bin.finish(out)?;
-    Ok((glb, asset))
+    Ok(Fractured { glb, asset, read })
 }
 
 /// The `#fracture` blob of a fractured model.

@@ -141,3 +141,274 @@ fn the_same_seed_cooks_the_same_chunks_on_any_thread_count() {
     ));
     assert_ne!(a.chunks[0].centroid, c.chunks[0].centroid);
 }
+
+/// The extent of a chunk's hull along each axis.
+fn extent(c: &og_destruct::Chunk) -> glam::Vec3 {
+    let (lo, hi) = c.hull.iter().fold(
+        (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN)),
+        |(lo, hi), p| (lo.min(*p), hi.max(*p)),
+    );
+    hi - lo
+}
+
+const BRICK: &str = r#"type model
+version 1
+---
+part "wall" {
+  position 0 0.5 0
+  boxGeometry {
+    width 2
+    height 1
+    depth 0.2
+  }
+}
+fracture {
+  style brick
+  brick 0.25 0.1
+  chunks 8
+  seed 3
+  children 32
+  anchor bottom ends
+}
+"#;
+
+#[test]
+fn brick_breaks_along_its_mortar_into_blocks_of_whole_courses_and_their_bricks() {
+    let a = asset(&cook("og-cook-fracture-brick", BRICK, 0));
+    let support = &a.chunks[..a.support as usize];
+    let volume: f32 = support.iter().map(|c| c.volume).sum();
+    assert!((volume - 0.4).abs() < 1e-4, "{volume}");
+    // A block is a box of the half-brick grid: its cracks run in the
+    // mortar, whole courses high (its volume its bounds').
+    let on = |x: f32, step: f32| ((x / step).round() * step - x).abs() < 1e-4;
+    for c in support {
+        let (lo, hi) = c.hull.iter().fold(
+            (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN)),
+            |(lo, hi), p| (lo.min(*p + c.centroid), hi.max(*p + c.centroid)),
+        );
+        for q in [lo, hi] {
+            assert!(on(q.x + 1.0, 0.125) && on(q.y, 0.1), "{q} off the grid");
+        }
+        let e = hi - lo;
+        assert!(
+            (e.x * e.y * e.z - c.volume).abs() < 1e-5,
+            "a box: {e} {}",
+            c.volume
+        );
+    }
+    // Its children are its bricks: a course high and at most a brick long,
+    // laid in a running bond (a brick's ends on the half grid, offset a half
+    // brick between courses), tiling it.
+    let mut bricks = 0;
+    for c in support.iter().filter(|c| c.children.1 > 0) {
+        let (first, n) = c.children;
+        let kids = &a.chunks[first as usize..(first + n) as usize];
+        let sum: f32 = kids.iter().map(|k| k.volume).sum();
+        assert!((sum - c.volume).abs() < 1e-5);
+        for k in kids {
+            let e = extent(k);
+            assert!((e.y - 0.1).abs() < 1e-4 && e.x <= 0.25 + 1e-4, "{e}");
+            let left = k.centroid.x - e.x * 0.5 + 1.0;
+            let course = (k.centroid.y / 0.1).floor() as i32;
+            // A whole brick starts on a joint of its course.
+            if (e.x - 0.25).abs() < 1e-4 {
+                let joint = left - if course % 2 == 1 { 0.125 } else { 0.0 };
+                assert!(on(joint, 0.25), "course {course}: a brick from {left}");
+            }
+            bricks += 1;
+        }
+    }
+    assert!(bricks > 40, "{bricks}");
+    // Anchored on its foot and at both ends: 2 × 0.2 + 2 × 1 × 0.2.
+    let anchor: f32 = support.iter().map(|c| c.anchor_area).sum();
+    assert!((anchor - 0.8).abs() < 1e-4, "{anchor}");
+}
+
+const PANE: &str = r#"type model
+version 1
+---
+part "pane" {
+  position 0 0.6 0
+  boxGeometry {
+    width 1.6
+    height 1.2
+    depth 0.01
+  }
+}
+fracture {
+  style glass
+  chunks 25
+  rings 2
+  seed 4
+  impact 0.3 0.7 0 0.2
+}
+"#;
+
+#[test]
+fn glass_cracks_radially_and_in_rings_round_its_impact() {
+    let a = asset(&cook("og-cook-fracture-glass", PANE, 0));
+    let support = &a.chunks[..a.support as usize];
+    assert!(
+        support.len() >= 18 && support.len() <= 25,
+        "{}",
+        support.len()
+    );
+    let hit = glam::Vec3::new(0.3, 0.7, 0.0);
+    let near: Vec<f32> = support
+        .iter()
+        .filter(|c| (c.centroid - hit).length() < 0.15)
+        .map(|c| c.volume)
+        .collect();
+    let far: Vec<f32> = support
+        .iter()
+        .filter(|c| (c.centroid - hit).length() > 0.5)
+        .map(|c| c.volume)
+        .collect();
+    let mean = |v: &[f32]| v.iter().sum::<f32>() / v.len() as f32;
+    assert!(!near.is_empty() && !far.is_empty());
+    assert!(
+        mean(&near) * 3.0 < mean(&far),
+        "small shards at the blow, large ones away: {} {}",
+        mean(&near),
+        mean(&far)
+    );
+    // The shards outside the centre are wedges pointing at the impact: each
+    // longer along the ray from it than across.
+    let mut radial = 0;
+    let mut outer = 0;
+    for c in support.iter().filter(|c| (c.centroid - hit).length() > 0.4) {
+        let ray = (c.centroid - hit).normalize();
+        let across = glam::Vec3::new(-ray.y, ray.x, 0.0);
+        let span = |d: glam::Vec3| {
+            let (lo, hi) = c.hull.iter().fold((f32::MAX, f32::MIN), |(lo, hi), p| {
+                (lo.min(p.dot(d)), hi.max(p.dot(d)))
+            });
+            hi - lo
+        };
+        outer += 1;
+        if span(ray) > span(across) {
+            radial += 1;
+        }
+    }
+    assert!(outer > 4 && radial * 3 >= outer * 2, "{radial} of {outer}");
+}
+
+#[test]
+fn wood_splinters_along_its_grain() {
+    let text = r#"type model
+version 1
+---
+part "box" {
+  boxGeometry {
+    width 0.8
+    height 0.8
+    depth 0.8
+  }
+}
+fracture {
+  style wood
+  grain x
+  chunks 12
+  seed 2
+  anchor none
+}
+"#;
+    let a = asset(&cook("og-cook-fracture-wood", text, 0));
+    let support = &a.chunks[..a.support as usize];
+    let (mut along, mut across) = (0.0, 0.0);
+    for c in support {
+        let e = extent(c);
+        along += e.x;
+        across += (e.y + e.z) * 0.5;
+    }
+    assert!(
+        along > across * 2.0,
+        "splinters run along x: {along} against {across}"
+    );
+}
+
+#[test]
+fn material_maps_and_the_interior_s_cook_into_the_model_and_are_part_of_it() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-fracture-maps");
+    let _ = std::fs::remove_dir_all(&root);
+    let png = |name: &str, rgb: [u8; 3]| {
+        let mut pixels = Vec::new();
+        for _ in 0..16 * 16 {
+            pixels.extend([rgb[0], rgb[1], rgb[2], 255]);
+        }
+        let img = og_render::RgbaImage {
+            width: 16,
+            height: 16,
+            pixels,
+        };
+        og_tests::gfx::save_png(&root.join("assets/textures").join(name), &img).unwrap();
+    };
+    png("brick.png", [160, 60, 40]);
+    png("brick_n.png", [128, 128, 255]);
+    png("cut.png", [150, 120, 100]);
+    std::fs::create_dir_all(root.join("assets/props")).unwrap();
+    std::fs::write(
+        root.join("assets/props/wall.ogt"),
+        r#"type model
+version 1
+---
+material "brick" {
+  map "../textures/brick.png"
+  normalMap "../textures/brick_n.png"
+  normalScale 0.5
+}
+material "glass" {
+  transmission 1
+  ior 1.5
+  roughness 0
+}
+part "wall" {
+  material "brick"
+  position 0 0.5 0
+  boxGeometry {
+    width 1
+    height 1
+    depth 0.2
+  }
+}
+part "pane" {
+  material "glass"
+  position 0 1.5 0
+  boxGeometry {
+    width 1
+    height 1
+    depth 0.01
+  }
+}
+fracture {
+  chunks 4
+  interior {
+    map "../textures/cut.png"
+  }
+}
+"#,
+    )
+    .unwrap();
+    let cook = || {
+        let r = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(r.ok(), "{:?}", r.errors());
+        std::fs::read(root.join("cooked/props/wall.ogt.ogb")).unwrap()
+    };
+    let first = cook();
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("props/wall.ogt").unwrap();
+    let by = |n: &str| model.materials.iter().find(|m| m.name == n).unwrap();
+    let (brick, glass, cut) = (by("brick"), by("glass"), by("interior"));
+    assert!(brick.base_color_texture.is_some() && brick.normal_texture.is_some());
+    assert_eq!(brick.normal_scale, 0.5);
+    assert_eq!(glass.physical.transmission, 1.0);
+    assert_eq!(glass.physical.ior, 1.5);
+    assert!(cut.base_color_texture.is_some());
+    assert_ne!(cut.base_color_texture, brick.base_color_texture);
+    assert_eq!(model.textures.len(), 3);
+    // The images are the model's: no texture asset of their own, and an
+    // edit to one cooks the model again.
+    assert!(bundle.output("textures/cut.png").is_err());
+    png("cut.png", [90, 90, 90]);
+    assert_ne!(cook(), first, "the interior's map is part of the model");
+}

@@ -915,8 +915,15 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
 
 // ── the model ───────────────────────────────────────────────────────────────
 
-/// A material as glTF writes it.
-pub(super) fn material(name: &str, b: &Block) -> Result<serde_json::Value, String> {
+/// A material as glTF writes it. Its maps (`map`, `normalMap`) name image
+/// files beside the model; each new one joins `images`, its glTF texture
+/// index `first_texture` plus its place there.
+pub(super) fn material(
+    name: &str,
+    b: &Block,
+    images: &mut Vec<String>,
+    first_texture: usize,
+) -> Result<serde_json::Value, String> {
     let f = Fields::new(
         b,
         "material",
@@ -929,6 +936,14 @@ pub(super) fn material(name: &str, b: &Block) -> Result<serde_json::Value, Strin
             "emissiveIntensity",
             "doubleSided",
             "alphaTest",
+            "map",
+            "normalMap",
+            "normalScale",
+            "transmission",
+            "ior",
+            "thickness",
+            "clearcoat",
+            "clearcoatRoughness",
         ],
     )?;
     let c = f.vec3("color", DVec3::ONE)?;
@@ -967,7 +982,97 @@ pub(super) fn material(name: &str, b: &Block) -> Result<serde_json::Value, Strin
     } else if opacity < 1.0 {
         m["alphaMode"] = "BLEND".into();
     }
+    let mut texture = |k: &str| -> Result<Option<usize>, String> {
+        let Some(e) = f.get(k) else { return Ok(None) };
+        let file = e.string(0).map_err(|x| at(e, x))?.to_string();
+        if file.is_empty() || file.starts_with('/') || file.contains('\\') {
+            return Err(at(e, "names an image file beside the model, in quotes"));
+        }
+        let i = match images.iter().position(|u| *u == file) {
+            Some(i) => i,
+            None => {
+                images.push(file);
+                images.len() - 1
+            }
+        };
+        Ok(Some(first_texture + i))
+    };
+    if let Some(t) = texture("map")? {
+        m["pbrMetallicRoughness"]["baseColorTexture"] = serde_json::json!({ "index": t });
+    }
+    if let Some(t) = texture("normalMap")? {
+        m["normalTexture"] = serde_json::json!({ "index": t, "scale": f.num("normalScale", 1.0)? });
+    }
+    let mut ext = serde_json::Map::new();
+    let transmission = unit("transmission", f.num("transmission", 0.0)?)?;
+    if transmission > 0.0 {
+        ext.insert(
+            "KHR_materials_transmission".into(),
+            serde_json::json!({ "transmissionFactor": transmission }),
+        );
+        let thickness = f.size("thickness", 0.0)?;
+        if thickness > 0.0 {
+            ext.insert(
+                "KHR_materials_volume".into(),
+                serde_json::json!({ "thicknessFactor": thickness }),
+            );
+        }
+    }
+    if let Some(e) = f.get("ior") {
+        let ior = exactly(e, 1)?[0];
+        if !(1.0..=3.0).contains(&ior) {
+            return Err(format!("material '{name}': ior is 1 to 3, got {ior}"));
+        }
+        ext.insert(
+            "KHR_materials_ior".into(),
+            serde_json::json!({ "ior": ior }),
+        );
+    }
+    let coat = unit("clearcoat", f.num("clearcoat", 0.0)?)?;
+    if coat > 0.0 {
+        ext.insert(
+            "KHR_materials_clearcoat".into(),
+            serde_json::json!({
+                "clearcoatFactor": coat,
+                "clearcoatRoughnessFactor": unit("clearcoatRoughness", f.num("clearcoatRoughness", 0.0)?)?,
+            }),
+        );
+    }
+    if !ext.is_empty() {
+        let all = m["extensions"].as_object_mut().map(std::mem::take);
+        let mut all = all.unwrap_or_default();
+        all.extend(ext);
+        m["extensions"] = all.into();
+    }
     Ok(m)
+}
+
+/// The glTF `images`, `textures` and `samplers` of a model's material maps
+/// (`material`'s `images`), each a repeating texture of its image.
+pub(super) fn textures(images: &[String]) -> (serde_json::Value, serde_json::Value) {
+    let imgs: Vec<serde_json::Value> = images
+        .iter()
+        .map(|u| serde_json::json!({ "uri": u }))
+        .collect();
+    let texs: Vec<serde_json::Value> = (0..images.len())
+        .map(|i| serde_json::json!({ "source": i, "sampler": 0 }))
+        .collect();
+    (imgs.into(), texs.into())
+}
+
+/// The extensions a model's JSON uses, by name, sorted.
+pub(super) fn extensions_used(json: &serde_json::Value) -> Vec<String> {
+    let mut out = std::collections::BTreeSet::new();
+    for m in json["materials"].as_array().into_iter().flatten() {
+        for k in m["extensions"]
+            .as_object()
+            .into_iter()
+            .flat_map(|o| o.keys())
+        {
+            out.insert(k.clone());
+        }
+    }
+    out.into_iter().collect()
 }
 
 fn name_of(e: &Entry, what: &str) -> Result<String, String> {
@@ -1056,6 +1161,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
         return Err(format!("expected `type model`, not `type {}`", doc.ty));
     }
     let mut materials: Vec<serde_json::Value> = Vec::new();
+    let mut images: Vec<String> = Vec::new();
     let mut material_index: BTreeMap<String, usize> = BTreeMap::new();
     let mut nodes: Vec<serde_json::Value> = Vec::new();
     let mut children: Vec<Vec<usize>> = Vec::new();
@@ -1090,7 +1196,10 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                 if material_index.contains_key(&name) {
                     return Err(at(e, format!("'{name}' is defined twice")));
                 }
-                materials.push(material(&name, b).map_err(|x| format!("line {}: {x}", e.line))?);
+                materials.push(
+                    material(&name, b, &mut images, 0)
+                        .map_err(|x| format!("line {}: {x}", e.line))?,
+                );
                 material_index.insert(name, materials.len() - 1);
             }
             "pivot" => {
@@ -1266,8 +1375,15 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
     if !materials.is_empty() {
         json["materials"] = materials.into();
     }
-    if json.to_string().contains("KHR_materials_emissive_strength") {
-        json["extensionsUsed"] = serde_json::json!(["KHR_materials_emissive_strength"]);
+    if !images.is_empty() {
+        let (imgs, texs) = textures(&images);
+        json["images"] = imgs;
+        json["textures"] = texs;
+        json["samplers"] = serde_json::json!([{ "wrapS": 10497, "wrapT": 10497 }]);
+    }
+    let used = extensions_used(&json);
+    if !used.is_empty() {
+        json["extensionsUsed"] = used.into();
     }
     Ok(Built { json, bin, drawn })
 }

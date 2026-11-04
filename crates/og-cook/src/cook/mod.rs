@@ -511,9 +511,15 @@ pub fn cook_project_with_texture_cache(
                 f.map(|f| fracture::fracture_glb(&s.bytes, dir, &f))
                     .transpose()
             }) {
-                Ok(Some((glb, asset))) => {
-                    s.bytes = glb;
-                    s.fracture = Some(asset);
+                Ok(Some(f)) => {
+                    s.bytes = f.glb;
+                    s.fracture = Some(f.asset);
+                    // Its images now live in the binary; the files stay
+                    // part of the source (its hash, what it consumed).
+                    let (read, notes) = imported.take().unwrap_or_default();
+                    let mut all = read;
+                    all.extend(f.read);
+                    imported = Some((all, notes));
                 }
                 Ok(None) => {}
                 Err(e) => {
