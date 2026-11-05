@@ -9991,6 +9991,15 @@
           }
         },
         {
+          "name": "hatchingPaper",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        {
           "name": "hatchingSpace",
           "column": "StyliseSpace",
           "default": "screen"

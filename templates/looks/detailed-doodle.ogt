@@ -4,7 +4,8 @@ version 1
 # Thin ink on every edge over a light colour wash, hatched only in the
 # shadows, the strokes fading in from clean paper. No posterise: its steps
 # turned the wash of a plain floor into flat blocks of colour with halos,
-# where a doodle carries its shade in strokes.
+# where a doodle carries its shade in strokes. Its paper is a warm
+# sketchbook white: on white a grey floor's cool tint read as lavender-grey.
 name "Fine-line doodle worlds"
 ui "storybook"
 Stylise {
@@ -15,6 +16,7 @@ Stylise {
   hatchingLevels 1
   hatchingScale 5
   hatchingKeepColor true
+  hatchingPaper "#f8f2e4"
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 4 to 8 light colours (or one ink); the preset's 1 px ink line.

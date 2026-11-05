@@ -752,6 +752,7 @@ fn stylise(
                 levels: u(&s, "hatchingLevels", 4),
                 angle_degrees: f(&s, "hatchingAngle", 45.0),
                 color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
+                paper: rgb(&s["hatchingPaper"], Vec3::ONE),
                 space: space(&s["hatchingSpace"]),
                 depth: f(&s, "hatchingDepth", 0.0),
                 keep_color: on(&s, "hatchingKeepColor", false),

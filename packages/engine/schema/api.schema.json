@@ -28171,6 +28171,15 @@
             "b": 0.03
           }
         },
+        "hatchingPaper": {
+          "$ref": "#/$defs/Color",
+          "description": "The paper the strokes lie on (linear): one-ink hatching lifts the ground's light tones towards it, and under hatchingKeepColor the wash lies on the paper's colour at the wash's own lightness (a cream sketchbook, a grey card, a blue print); white keeps the frame's own.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
         "hatchingSpace": {
           "$ref": "#/$defs/StyliseSpace",
           "description": "Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes laid on the surfaces that follow the tone and the form, wrapping round curved objects and staying on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same strokes in each instance's own space, so a moving or turning object carries its strokes.",

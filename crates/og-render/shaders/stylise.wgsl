@@ -52,6 +52,7 @@ struct Stylise {
   paint2: vec4<f32>,          // x: paintDetail (how far detail keeps its shape), y: paintCharacterDetail, z: 1 with the prepass bound (object ids, detail), w: 0
   dither_space: vec4<f32>,    // x: where the dither's cells lie (0 screen, 1 world, 2 object space, StyliseSpace::code)
   print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
+  hatching_paper: vec4<f32>,  // rgb: the paper the hatching lies on (linear; white without hatching)
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -815,7 +816,7 @@ fn lines(in: VsOut) -> vec3<f32> {
   }
   if (st.hatching.x > 0.0) {
     // Darker tones add stroke sets, each turned a little further, over a
-    // paper-light ground; with hatchingDepth silhouettes and creases
+    // ground lifted towards the paper (hatchingPaper); with hatchingDepth silhouettes and creases
     // darken the tone the strokes follow.
     var th = t;
     if (st.ink_depth.w > 0.0) {
@@ -835,7 +836,8 @@ fn lines(in: VsOut) -> vec3<f32> {
       // lifts it, keeping its hue and, as pigment on paper does, more of a
       // strong colour's chroma than a weak tint's (in Oklab; one-ink's mix
       // towards white takes all of it): a saturated prop keeps its colour
-      // while a weakly tinted lit floor or wall goes to paper; conformed
+      // while a weakly tinted lit floor or wall goes to paper, and the whole
+      // wash lies on the paper's own colour (hatchingPaper); conformed
       // art keeps its authored colour, as the quantize pass keeps it. Each
       // stroke is the colour darkened towards the hatching colour, so the
       // hue stays under the strokes instead of turning grey.
@@ -849,17 +851,26 @@ fn lines(in: VsOut) -> vec3<f32> {
       } else {
         // A tint already near the paper's lightness (a pale sky) is the
         // paper's own tint and keeps it.
-        let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz)), lift * (1.0 - smoothstep(0.8, 0.92, lab.x)));
+        // A weak tint thins out at twice the lift, so a lit floor's faint
+        // cast from the sky (lavender-grey on a cool day) goes to the paper
+        // while a saturated prop keeps all of its colour.
+        let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz)), min(lift * 2.0, 1.0) * (1.0 - smoothstep(0.8, 0.92, lab.x)));
         // The lightness of one-ink's ground (its mix towards white in
         // linear light), so the wash is as light as that paper.
         let paper = oklab(mix(c, vec3<f32>(1.0), lift)).x;
         wash = vec3<f32>(paper, lab.yz * (1.0 - lift * 0.5) * pigment);
       }
-      let ground = clamp(oklab_to_linear(wash), vec3<f32>(0.0), vec3<f32>(1.0));
+      // Laid on the paper: what the wash lets through, the paper reflects
+      // (a watercolour's pigment filters the sheet under it), so a cream
+      // sketchbook warms every wash and a weak tint reads as the page. The
+      // paper's colour at the page's own lightness (over its luminance): a
+      // cream sheet warms the wash without greying it.
+      let sheet = st.hatching_paper.rgb / max(dot(st.hatching_paper.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-3);
+      let ground = clamp(clamp(oklab_to_linear(wash), vec3<f32>(0.0), vec3<f32>(1.0)) * sheet, vec3<f32>(0.0), vec3<f32>(1.0));
       let stroke = c * 0.3 + st.hatching_color.rgb * 0.5;
       c = mix(ground, stroke, ink * st.hatching.x);
     } else {
-      let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.85);
+      let ground = mix(c, st.hatching_paper.rgb, st.hatching.x * 0.85);
       c = mix(ground, st.hatching_color.rgb, ink * st.hatching.x);
     }
   }

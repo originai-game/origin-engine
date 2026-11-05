@@ -15,6 +15,16 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Stylise.hatchingPaper.** The paper hatching lies on: one-ink hatching
+  lifts its ground towards it, and under `hatchingKeepColor` the wash lies
+  on the paper's colour at its own lightness. Under `hatchingKeepColor` a
+  weak tint now thins at twice the lift, so a lit floor's faint cast from
+  the sky goes to the paper (detailed-doodle and inked-comic-3d). White,
+  the default paper, changes nothing else; detailed-doodle draws on a warm
+  sketchbook white (`#f8f2e4`), where a cool grey floor read as
+  lavender-grey. Moves every raw world hash (the Stylise record gains a
+  field).
+
 - **A lake's sun glitter is the sea's.** The lake's power-220 Blinn-Phong
   highlight (some 5° wide, twenty suns) lit whole ripple faces and clipped
   them into flat white fields near the sun's mirror angle; it is now

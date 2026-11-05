@@ -236,6 +236,9 @@ pub(crate) struct StyliseUniform {
     /// every tone, 1 shade, 2 highlight), w: 1 when hatching keeps the
     /// colour under its strokes.
     pub print: [f32; 4],
+    /// rgb: the paper the hatching lies on (`Hatching::paper`; white
+    /// without hatching).
+    pub hatching_paper: [f32; 4],
 }
 
 /// The grid the surface patterns are measured from (metres): a whole

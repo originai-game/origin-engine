@@ -194,7 +194,8 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// 7c83db2cf9f27934 after RenderSettings.upscaler (FSR 3.1), and
 /// 40b04e3283676297 after PostEffects' ssrMaxRoughness and ssrResolution, and
 /// 00718003c074788c after PostEffects.ssrMaxDistance's default of 100, and
-/// 02c64d91f9cfc3a3 after PostEffects.ssrSteps' default of 64.
+/// 02c64d91f9cfc3a3 after PostEffects.ssrSteps' default of 64, and
+/// b7cbee657edc5408 after Stylise.hatchingPaper.
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -207,5 +208,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "02c64d91f9cfc3a3");
+    assert_eq!(hash(engine), "b7cbee657edc5408");
 }

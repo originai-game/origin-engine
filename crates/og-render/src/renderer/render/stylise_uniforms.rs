@@ -112,6 +112,7 @@ impl Renderer {
                     ]
                 }),
                 hatching_color: hc.map_or([0.0; 4], |h| [h.color[0], h.color[1], h.color[2], 1.0]),
+                hatching_paper: hc.map_or([1.0; 4], |h| [h.paper[0], h.paper[1], h.paper[2], 1.0]),
                 paint: pt.map_or([0.0; 4], |p| {
                     [
                         p.radius.clamp(0.0, 8.0),

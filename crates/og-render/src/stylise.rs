@@ -19,7 +19,8 @@
 /// (laid in each instance's own space, [`StyliseSpace::Object`]),
 /// `ditherSpace` (the dither's cells on the surfaces, [`Quantize::space`]),
 /// `halftoneCmyk` ([`HalftoneMode::Cmyk`], misregistration and
-/// [`HalftoneRegion`]) and `hatchingColor` ([`Hatching::keep_color`])
+/// [`HalftoneRegion`]), `hatchingColor` ([`Hatching::keep_color`]) and
+/// `hatchingPaper` ([`Hatching::paper`])
 /// ([`Stylise`]);
 /// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance`,
 /// `flatShading`, `surface`, `toonAmbient` (with the anti-aliased bands and
@@ -43,6 +44,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "ditherSpace",
     "halftoneCmyk",
     "hatchingColor",
+    "hatchingPaper",
     "toon",
     "shadowTint",
     "shadowDarkness",
@@ -294,6 +296,10 @@ pub struct Hatching {
     pub levels: u32,
     pub angle_degrees: f32,
     pub color: [f32; 3],
+    /// The paper the strokes lie on (linear): the ground lifts towards it,
+    /// and under [`Hatching::keep_color`] a weak tint takes its tint.
+    /// White keeps the frame's own.
+    pub paper: [f32; 3],
     pub space: StyliseSpace,
     /// How strongly the depth-normal prepass's silhouettes and creases
     /// darken the tone the strokes follow, 0 to 1, as [`Ink::depth`] inks
@@ -875,6 +881,7 @@ mod tests {
             levels: 4,
             angle_degrees: 45.0,
             color: [0.0; 3],
+            paper: [1.0; 3],
             space: StyliseSpace::Screen,
             depth: 0.0,
             keep_color: false,

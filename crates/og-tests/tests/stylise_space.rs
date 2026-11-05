@@ -81,6 +81,7 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
         levels: 4,
         angle_degrees: 30.0,
         color: [0.05, 0.045, 0.04],
+        paper: [1.0; 3],
         space,
         depth: 0.0,
         keep_color: false,
