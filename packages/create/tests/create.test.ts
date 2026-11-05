@@ -5,12 +5,12 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput, resolveCreationChoices, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
 
-declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
+declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const template = join(pkg, "..", "..", "templates", "game");
@@ -22,6 +22,74 @@ function cli(...args: string[]) {
   const r = Bun.spawnSync(["bun", join(pkg, "bin", "create.ts"), ...args], { cwd: scratch });
   return { code: r.exitCode, out: new TextDecoder().decode(r.stdout), err: new TextDecoder().decode(r.stderr) };
 }
+
+test("creation choices infer a premise, preserve overrides, and serialize every choice", () => {
+  const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { mood: "cold", music: "folk", look: "16bit-pixel" });
+  expect(c).toEqual({ genre: "action-platformer", view: "side-2d", look: "16bit-pixel", mood: "cold", ui: "pixel", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
+  expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
+  expect(resolveCreationChoices("", { look: "16bit-pixel", ui: "dread" }).ui).toBe("dread");
+  expect(resolveCreationChoices("", { players: "online-lockstep" })).toMatchObject({ view: "top-down-2d", look: "16bit-pixel", ui: "pixel" });
+  expect(creationBlock(c)).toContain('lang "zh"');
+  expect(creationSchema(readCatalogue().map(s => s.slug)).properties.look.enum).toHaveLength(37);
+  expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
+  expect(() => parseCreationInput({ lang: [] })).toThrow("lang");
+  expect(() => parseCreationInput({ lang: ["en", "en"] })).toThrow("lang");
+  expect(() => resolveCreationChoices("", { look: "missing" })).toThrow("no look preset");
+});
+
+test("choice flags write a canonical create block and reject bad choices before creating", () => {
+  const r = cli("choices", "--no-prompt", "--genre", "puzzle-match", "--view", "top-down-2d", "--mood", "soft", "--ui", "pixel", "--platform", "phone-portrait", "--input", "touch", "--players", "single", "--lang", "ja,en", "--music", "chiptune");
+  expect(r.code).toBe(0);
+  const manifest = readFileSync(join(scratch, "choices/project.ogt"), "utf8");
+  expect(manifest).toContain('create {\n');
+  expect(manifest).toContain('  genre "puzzle-match"');
+  expect(manifest).toContain('  lang "ja" "en"');
+  expect(manifest).toContain('  music "chiptune"');
+  expect(manifest).toContain('orientation portrait');
+  expect(readFileSync(join(scratch, "choices/assets/looks/choices.ogt"), "utf8")).toContain('ui "styles/pixel/style.ogt"');
+  expect(existsSync(join(scratch, "choices/assets/styles/pixel/atlas.png"))).toBeTrue();
+  expect(cli("bad-choice", "--mood", "invalid").code).toBe(1);
+  expect(existsSync(join(scratch, "bad-choice"))).toBeFalse();
+  expect(cli("bad-players", "--players", "online-lockstep", "--archetype", "runner").err).toContain("arena");
+  const styles = join(pkg, "../../templates/styles");
+  expect([...CREATION_CHOICES.ui].sort()).toEqual(readdirSync(styles).filter(s => existsSync(join(styles, s, "style.ogt"))).sort());
+});
+
+const engine = join(pkg, "../engine");
+const og = join(engine, "native", `og.${process.platform}-${process.arch}${process.platform === "win32" ? ".exe" : ""}`);
+test.skipIf(!existsSync(og))("local creation routes asymmetric input to independent players on the native host", () => {
+  for (const [input, commands] of [
+    ["keyboard-mouse", "0.1:key_down:KeyD;0.1:key_down:ArrowUp;0.5:key_up:KeyD;0.5:key_up:ArrowUp"],
+    ["gamepad", "0.1:gamepad:-@0:1,0;0.1:gamepad:-@1:0,-1;0.5:gamepad:-@0:0,0;0.5:gamepad:-@1:0,0"],
+  ] as const) {
+    expect(cli(`local-${input}`, "--players", "local-multiplayer", "--view", "top-down-2d", "--look", "16bit-pixel", "--input", input).code).toBe(0);
+    const dir = join(scratch, `local-${input}`);
+    const out = join(dir, "og-out");
+    const r = Bun.spawnSync([og, "run", dir, "--commands", `${commands};0.6:dump_entity:fighter-0:red.json;0.6:dump_entity:fighter-1:blue.json;0.7:quit`, "--out", out, "--json"], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
+    expect(new TextDecoder().decode(r.stderr)).not.toContain("error");
+    expect(r.exitCode).toBe(0);
+    const position = (file: string): number[] => JSON.parse(readFileSync(join(out, file), "utf8")).components["og.Transform"].position;
+    const red = position("red.json"), blue = position("blue.json");
+    expect(red[0]).toBeCloseTo(5.4, 3);
+    expect(red[1]).toBeCloseTo(4.5, 3);
+    expect(blue[0]).toBeCloseTo(13, 3);
+    expect(blue[1]).toBeCloseTo(6.9, 3);
+  }
+}, 30000);
+
+test.skipIf(!existsSync(og))("phone touch controls move and jump together on the native host", () => {
+  expect(cli("touch-input", "--view", "side-2d", "--platform", "phone-portrait", "--look", "16bit-pixel").code).toBe(0);
+  const dir = join(scratch, "touch-input"), out = join(dir, "og-out");
+  const commands = "0.2:touch:1:down:CreationTouch0/Move/Right;0.2:touch:2:down:CreationTouch0/Action;0.6:get:Game:game.json;0.6:get:og.RenderSettings:quality.json;0.7:quit";
+  const r = Bun.spawnSync([og, "run", dir, "--commands", commands, "--size", "390x844", "--out", out], { env: { ...process.env, OG_ENGINE_PACKAGE: engine, OG_RENDERER: "none" } });
+  expect(r.exitCode).toBe(0);
+  const state = JSON.parse(readFileSync(join(out, "game.json"), "utf8")).value;
+  expect(state.touchX).toBe(1);
+  expect(state.touchJump).toBeTrue();
+  expect(state.heroX).toBeGreaterThan(4);
+  expect(state.heroY).toBeGreaterThan(4);
+  expect(JSON.parse(readFileSync(join(out, "quality.json"), "utf8")).value.quality).toBe("low");
+}, 30000);
 
 function walk(root: string, at = root): string[] {
   return readdirSync(at).flatMap((e) => {
@@ -391,7 +459,7 @@ test("the published package briefs from its own presets, catalogue and previews"
   const r = Bun.spawnSync(["bun", join(pkg, "scripts", "pack-template.ts")]);
   expect(r.exitCode).toBe(0);
   const installed = join(scratch, "node_modules", "@origingame", "create-game");
-  for (const part of ["bin", "looks", "previews", "presets", "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
+  for (const part of ["bin", "looks", "previews", "presets", "styles", "template", "template-2d", "archetypes", "package.json"]) cpSync(join(pkg, part), join(installed, part), { recursive: true });
   const r2 = Bun.spawnSync(["bun", join(installed, "bin", "brief.ts"), "sprite", "a bat", "--look", "monochrome-pixel", "--json"], { cwd: scratch });
   expect(new TextDecoder().decode(r2.stderr)).toBe("");
   const brief = JSON.parse(new TextDecoder().decode(r2.stdout)) as { palette: { hex: string }[]; references: { path: string }[] };
@@ -405,4 +473,9 @@ test("the published package briefs from its own presets, catalogue and previews"
   expect(brief.references[0]!.path).toBe(join(installed, "previews", "monochrome-pixel.webp"));
   // The repository's own copy reads the same preset from templates/looks.
   expect(presetLook("monochrome-pixel").palette?.colours.map((c) => c.hex)).toEqual(brief.palette.map((c) => c.hex));
+  const created = Bun.spawnSync(["bun", join(installed, "bin/create.ts"), join(scratch, "packed-choices"), "--players", "online-lockstep", "--ui", "dread", "--no-prompt"]);
+  expect(new TextDecoder().decode(created.stderr)).toBe("");
+  expect(created.exitCode).toBe(0);
+  expect(existsSync(join(scratch, "packed-choices/assets/styles/dread/style.ogt"))).toBeTrue();
+  expect(readFileSync(join(scratch, "packed-choices/tests/duel.og.ts"), "utf8")).toContain("netHash");
 });

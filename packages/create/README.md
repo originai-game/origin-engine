@@ -54,6 +54,53 @@ is, what it extends and how to change it. For an archetype, a preset moves
 the frames its `references/` hold; create says so and how to record them
 again.
 
+## Creation choices
+
+`og new game --choices --premise "a warm phone platformer"` resolves a
+complete selection and writes `project.ogt`'s `create` block. Any new
+choice flag also enables this path. On a terminal, missing fields are
+confirmed with their inferred defaults. `--no-prompt` accepts those defaults.
+Legacy noninteractive invocations and `create()` without `choices` retain
+their previous behavior.
+
+The flags are `--genre`, `--view`, `--look`, `--mood`, `--ui`, `--platform`,
+`--input`, `--players`, `--lang en,zh`, and `--music`. Their values live in
+`bin/choices.ts`, except look slugs, which retain the existing catalogue.
+There are currently 14 installable UI packs; `cjk` and `shared` are asset
+directories, not UI styles. `ui` defaults to the selected look's UI pack.
+
+The additive exports are `CREATION_CHOICES`, `CreationChoices`,
+`CreationInput`, `creationSchema(lookSlugs)`, `parseCreationInput(value)`,
+`inferCreationChoices(premise, input?, defaults?)`,
+`resolveCreationChoices(premise, input?, profile?, catalogue?)`, and
+`creationBlock(choices)`. `creationSchema` returns JSON Schema 2020-12.
+`inferCreationChoices` applies deterministic English/Chinese keyword rules;
+`resolveCreationChoices` also matches and validates the catalogue look.
+Explicit fields win. Languages default to Japanese for kana, Chinese for
+Han text, or English otherwise. Music defaults to `ambient`.
+
+`create({ dir, premise, choices: {...} })` returns the resolved selection
+as `Created.choices`. It installs the chosen UI pack, writes orientation
+and DPR limits under `publish`, and generates `src/creation.ts` with
+quality and controls. Phone quality starts at `low`, other targets at
+`medium`. Touch controls sit inside the host's live safe area. The 2D
+starter uses a d-pad and action button; other views use a joystick and
+action button. Keyboard actions can be rebound through `og.input`.
+
+Local and online multiplayer use arena, with two seats. Local keyboard
+seats use WASD/Space and arrows/Enter; gamepad seats use indices 0 and 1.
+Online input goes through `og.net.submit`, and `og.Lockstep` enables
+`og check`'s lint. Its room playtest compares both peers' shared hashes.
+Other archetypes currently support choice-driven keyboard input only;
+touch/gamepad requests are refused rather than silently ignored. Custom
+template directories retain the legacy `create()` path.
+
+Genre mappings, camera presets, mood rendering, localized assets, and
+music generation are deferred. The fields record intent, not completed
+assets. Changing `create` later does not rewrite source automatically:
+update the corresponding generated source, look or publish settings.
+Do not use `--force` to update an authored game; it overwrites template files.
+
 ## The art brief
 
 The package also exports the art brief (`import { artBrief, readLook,

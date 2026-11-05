@@ -25,6 +25,12 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
+import type { CreationChoices, CreationInput } from "./choices.ts";
+import { applyCreation } from "./apply-choices.ts";
+
+export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
+export type { CreationChoices, CreationInput } from "./choices.ts";
 
 // The art brief (docs/art.md §2.2): a game's look compiled into the request
 // for one asset. bin/brief.ts is a copy of the knowledge package's
@@ -60,6 +66,8 @@ export interface CreateOptions {
   readonly name?: string;
   readonly id?: string;
   readonly force?: boolean;
+  /** Opt into choice-driven scaffolding. Omitted keeps the legacy template contract. */
+  readonly choices?: CreationInput;
   /** Start from an archetype (`runner`, `match3`, `topdown`, `tower-defense`, `roguelike`, `idle`, `rhythm`, `third-person`, `arena`: templates/archetypes/README.md) instead of the project template. */
   readonly archetype?: string;
   /** The template's profile: `2d` writes the 2D starter (templates/game-2d), `3d` the 3D template (templates/game). Unset, a premise that says 2D picks `2d`; else `3d`. Not for an archetype, which has its own. */
@@ -100,6 +108,7 @@ export interface Created {
   readonly dir: string;
   readonly name: string;
   readonly id: string;
+  readonly choices?: CreationChoices;
   readonly files: readonly string[];
   readonly profile: CreatedProfile;
   readonly look: CreatedLook;
@@ -397,6 +406,19 @@ function lookReadme(look: CreatedLook, style: Style | undefined, entry: string, 
 
 /** Scaffold the template into `options.dir`. Throws with the fix on refusal. */
 export function create(options: CreateOptions): Created {
+  const selection = options.choices === undefined ? undefined : resolveCreationChoices(options.premise ?? "", {
+    ...options.choices,
+    ...(options.look === undefined ? {} : { look: options.look }),
+  }, options.profile, options.catalogue);
+  if (selection) {
+    if (options.template !== undefined) throw new Error("choice-driven creation requires a shipped starter, not --template");
+    if (selection.players !== "single") {
+      if ((options.archetype !== undefined && options.archetype !== "arena") || options.profile !== undefined) throw new Error("multiplayer requires the arena starter: omit --archetype/--profile or use --archetype arena");
+      options = { ...options, archetype: "arena" };
+    }
+    if (options.archetype && options.archetype !== "arena" && selection.input !== "keyboard-mouse") throw new Error(`the ${options.archetype} starter has no creation input adapter yet: omit --archetype, use arena, or choose keyboard-mouse`);
+    options = { ...options, look: selection.look };
+  }
   const dir = resolve(options.dir);
   const id = options.id ?? slug(options.name ?? basename(dir));
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
@@ -412,7 +434,7 @@ export function create(options: CreateOptions): Created {
   if (options.profile !== undefined && options.archetype !== undefined) {
     throw new Error(`--profile and --archetype together: an archetype has its own profile (${options.archetype}); drop one`);
   }
-  const asked = options.profile ?? (options.premise !== undefined ? premiseProfile(options.premise) : null);
+  const asked = options.profile ?? (selection ? (selection.view.endsWith("2d") ? "2d" : "3d") : options.premise !== undefined ? premiseProfile(options.premise) : null);
   const template = options.template ?? templateDir(options.archetype, asked ?? "3d");
   const profile: CreatedProfile = {
     value: profileOf(template),
@@ -437,7 +459,23 @@ export function create(options: CreateOptions): Created {
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
   const { look, notes } = writeLook(dir, name, id, choice, written);
-  return { dir, name, id, files: written, profile, look, notes };
+  if (selection) {
+    writeFileSync(manifest, `${readFileSync(manifest, "utf8")}\n${creationBlock(selection)}`);
+    written.push(...applyCreation(dir, selection, look.file, entryOf(dir)!, options.archetype, profile.value));
+    notes.push("genre/view camera presets, mood rendering, language assets and music generation are subsequent steps; the create block records their requested values");
+  }
+  return { dir, name, id, files: written, profile, look, notes, ...(selection ? { choices: selection } : {}) };
+}
+
+/** Resolve the premise against the same look catalogue as artBrief, with explicit choices winning. */
+export function resolveCreationChoices(premise: string, input: CreationInput = {}, profile?: Profile, catalogue?: string): CreationChoices {
+  const asked = inferCreationChoices(premise, input);
+  const styles = readCatalogue(catalogue);
+  const effectiveProfile = profile ?? (asked.view.endsWith("2d") ? "2d" : "3d");
+  const slug = input.look ?? pickStyle(premise, styles, effectiveProfile)?.style.slug ?? (effectiveProfile === "2d" ? "16bit-pixel" : "faceted-low-poly");
+  const style = styles.find(s => s.slug === slug && s.look.presetReady);
+  if (!style) throw new Error(`no look preset '${slug}'`);
+  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! });
 }
 
 /**
@@ -533,6 +571,9 @@ Scaffolds an Origin Engine game into dir (default: ./origin-game).
   --archetype  start from a complete archetype game (runner, match3, topdown, tower-defense, roguelike, idle, rhythm, third-person, arena) instead of the template; it has its own profile
   --premise    the game in one line (genre, mood, setting, audience): its look extends the style catalogue's best match among the styles drawn for the game's profile (asked for on a terminal when neither this nor --look is given)
   --look   the style catalogue slug the look extends (og-taste §12), such as anime-cel-3d or 16bit-pixel; it wins over the premise and the profile
+  --genre --view --mood --ui --platform --input --players --lang --music
+           creation choices (values listed in the prompts); --lang en,zh; any choice flag opts into the create block
+  --choices  use inferred creation choices even without a choice flag
   --no-prompt  never ask for the premise
   --force  write into a directory that is not empty`;
 
@@ -546,6 +587,7 @@ function main(argv: string[]): number {
   let premise: string | undefined;
   let look: string | undefined;
   let ask = true;
+  let choices: Record<string, unknown> | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     const value = () => {
@@ -563,6 +605,11 @@ function main(argv: string[]): number {
       profile = v;
     } else if (a === "--premise") premise = value();
     else if (a === "--look") look = value();
+    else if (a === "--choices") choices ??= {};
+    else if (a === "--lang" || Object.keys(CREATION_CHOICES).some(key => a === `--${key}`)) {
+      choices ??= {};
+      choices[a.slice(2)] = a === "--lang" ? value().split(",") : value();
+    }
     else if (a === "--no-prompt") ask = false;
     else if (a === "-h" || a === "--help") {
       console.log(USAGE);
@@ -574,6 +621,25 @@ function main(argv: string[]): number {
   if (ask && premise === undefined && look === undefined && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
     premise = globalThis.prompt("What is the game, in one line (genre, mood, setting)? It picks the look; Enter keeps the template's:") ?? undefined;
   }
+  if (ask && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
+    choices ??= {};
+    if (look !== undefined) choices.look = look;
+    for (const key of ["genre", "view", "look", "mood", "ui", "platform", "input", "players", "lang", "music"] as const) {
+      if (choices[key] !== undefined) continue;
+      const suggested = resolveCreationChoices(premise ?? "", parseCreationInput(choices), profile)[key];
+      const values = key === "look" ? readCatalogue().map(s => s.slug).join(", ") : key === "lang" ? "comma-separated language tags" : CREATION_CHOICES[key].join(", ");
+      for (;;) {
+        const answer = globalThis.prompt(`${key}: ${values}`, Array.isArray(suggested) ? suggested.join(",") : String(suggested));
+        if (answer === null) throw new Error("creation cancelled");
+        try {
+          const next = { ...choices, ...parseCreationInput({ [key]: key === "lang" ? answer.split(",") : answer }) };
+          resolveCreationChoices(premise ?? "", parseCreationInput(next), profile);
+          choices = next;
+          break;
+        } catch (error) { console.error(error instanceof Error ? error.message : String(error)); }
+      }
+    }
+  }
   const made = create({
     dir: dir ?? (id ?? (name ? slug(name) : "origin-game")),
     ...(name ? { name } : {}),
@@ -582,11 +648,12 @@ function main(argv: string[]): number {
     ...(profile ? { profile } : {}),
     ...(premise ? { premise } : {}),
     ...(look ? { look } : {}),
+    ...(choices ? { choices: parseCreationInput(choices) } : {}),
     force,
   });
   const shown = relative(process.cwd(), made.dir) || ".";
   const style = made.look.extends ? `extends ${made.look.extends}${made.look.chosen === "premise" ? " (from the premise)" : made.look.chosen === "flag" ? " (--look)" : ""}` : "extends no preset";
-  const how = { flag: " (--profile)", premise: " (from the premise)", archetype: ` (the ${archetype} archetype's)`, template: "" }[made.profile.chosen];
+  const how = { flag: " (--profile)", premise: made.choices ? " (from the choices)" : " (from the premise)", archetype: ` (the ${archetype ?? "arena"} archetype's)`, template: "" }[made.profile.chosen];
   console.log(`Created ${made.name} (${made.id}) in ${shown}: ${made.files.length} files.
 Profile: ${made.profile.value}${how}.
 Look: ${made.look.file}, ${style}; README.md says how to change it.${made.notes.map((n) => `\nNote: ${n}`).join("")}
