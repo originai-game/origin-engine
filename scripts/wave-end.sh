@@ -9,8 +9,11 @@
 #   scripts/wave-end.sh [--dry-run] [--stages LIST] [--templates LIST] [--record NAMES]
 #
 # Stages, in order (--stages takes a comma list of them; default
-# gate,web,art,conformance,release):
+# gate,perf,web,art,conformance,release):
 #   gate       scripts/check.sh --all
+#   perf       scripts/perf.sh: og-tests' frame times and og-runtime's costs
+#              against this machine's baselines, one test at a time under
+#              every GPU slot (check.sh --all runs no perf test)
 #   web        scripts/check.sh web-reference
 #   art        every look's frame redrawn: tools/art-samples/capture.ts for
 #              each examples/art-<family> into target/evidence/wave-end/art/,
@@ -66,17 +69,17 @@ cd "$OG_ROOT" || exit 1
 
 IMAGE="${OG_LAVAPIPE_IMAGE:-og-lavapipe-bun:local}"
 TRIPLE=x86_64-unknown-linux-gnu
-ALL_STAGES="gate web art conformance release cross prepare gfx ui playtests table"
+ALL_STAGES="gate perf web art conformance release cross prepare gfx ui playtests table"
 # og-ui's GPU test modules, all in its one test binary (tests/main.rs).
 UI_TESTS="gfx kit_gfx materials_gfx text_gfx"
-stages="gate web art conformance release"
+stages="gate perf web art conformance release"
 templates="ui-kit"
 for d in templates/*/references/metal templates/archetypes/*/references/metal examples/*/references/metal; do
   [ -d "$d" ] && templates="$templates $(basename "$(dirname "$(dirname "$d")")")"
 done
 record=""
 dry=0
-usage() { sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,55p' "$0" | sed 's/^# \{0,1\}//'; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1 ;;
@@ -140,6 +143,8 @@ recorded() {
 }
 
 stage_gate() { run scripts/check.sh --all; }
+
+stage_perf() { run scripts/perf.sh; }
 
 stage_web() { run scripts/check.sh web-reference; }
 
