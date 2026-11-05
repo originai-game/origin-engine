@@ -1143,6 +1143,21 @@ game runs, and saving writes the value back into the `.ogt` that declared
 it (as `save_scene` does for scenes). `og dev` applies an edited document
 or style in place, keeping the UI state and the world.
 
+Loaded `type ui-material` assets also refresh in place. Editing their
+`source` WGSL or `param` defaults keeps the material handle and replaces
+the cooked shader and defaults after the manifest refresh. The renderer
+invalidates its pipeline when the shader or parameter declaration changes.
+A failed cook leaves the previous material running.
+
+On macrunner's Metal host, a one-material `og dev` smoke test on 2026-11-05
+reported 131.0 ms for an external WGSL edit and 148.1 ms for a parameter
+default edit (one sample each, dev profile). Both included a rendered frame
+and met the 300 ms reload budget. The captured swatch changed from red to
+green without restarting the game. These are the dev command's
+rebuild-plus-swap timings, not a throughput benchmark or a bound for large
+projects. Direct material-parameter editing in Tune remains separate from
+this file-reload path.
+
 ### 16.4 Preview
 
 `og ui preview <screen|component>` renders a contact sheet: styles ×

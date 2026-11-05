@@ -122,7 +122,7 @@ pub(crate) struct UiRenderer {
     mass_table: Option<(wgpu::Texture, wgpu::TextureView, u32)>,
     mass_instances: wgpu::Buffer,
     targets: Vec<LayerTarget>,
-    custom: HashMap<(u64, usize), (String, Compiled)>,
+    custom: HashMap<(u64, usize), (UiMaterialShader, Compiled)>,
     vectors: HashMap<(u64, usize), VectorMesh>,
     pub frame: UiFrameGroups,
 }
@@ -582,10 +582,10 @@ impl UiRenderer {
             if self
                 .custom
                 .get(&key)
-                .is_none_or(|(code, _)| *code != material.code)
+                .is_none_or(|(previous, _)| previous != material)
             {
                 let compiled = self.compile(device, material);
-                self.custom.insert(key, (material.code.clone(), compiled));
+                self.custom.insert(key, (material.clone(), compiled));
             }
             let entry = &mut self.custom.get_mut(&key).expect("made above").1;
             if let Compiled::Ready { pending, .. } = entry

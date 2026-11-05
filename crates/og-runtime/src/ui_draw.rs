@@ -21,7 +21,7 @@ pub(crate) struct UiDrawState {
     /// UI materials by UiMaterial handle index, their parameters' defaults,
     /// and the asset each came from.
     materials: Vec<(UiMaterialHandle, [[f32; 4]; og_render::UI_MATERIAL_PARAMS])>,
-    material_paths: BTreeMap<String, usize>,
+    material_paths: BTreeMap<String, (usize, u64)>,
 }
 
 /// `og.load.vector`: a cooked vector, added to the scene once per path.
@@ -67,7 +67,7 @@ pub fn og_load_ui_material(world: u32, path: String) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        if let Some(&i) = eng.render.borrow().ui_draw.material_paths.get(&id) {
+        if let Some(&(i, _)) = eng.render.borrow().ui_draw.material_paths.get(&id) {
             return Ok(json!(handle(i)));
         }
         let material = {
@@ -77,19 +77,60 @@ pub fn og_load_ui_material(world: u32, path: String) -> String {
                 .ui_material(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
+        let hash = material_hash(&eng, &id);
         let defaults = material.defaults();
         let mut rs = eng.render.borrow_mut();
         let h = rs.scene.add_ui_material(material);
         let st = &mut rs.ui_draw;
         st.materials.push((h, defaults));
         let i = st.materials.len() - 1;
-        st.material_paths.insert(id, i);
+        st.material_paths.insert(id, (i, hash));
         Ok(json!(handle(i)))
     })();
     match r {
         Ok(v) => ok(v),
         Err(e) => refuse(e),
     }
+}
+
+fn material_hash(eng: &super::engine::Engine, id: &str) -> u64 {
+    eng.assets
+        .borrow()
+        .bundle_for(id)
+        .ok()
+        .and_then(|(b, _)| b.manifest().outputs().find(|o| o.id == id).map(|o| o.hash))
+        .unwrap_or(0)
+}
+
+/// Refresh after the bundles' manifests, keeping handles used by live layers.
+pub(crate) fn refresh(eng: &super::engine::Engine) -> Vec<String> {
+    let paths = eng.render.borrow().ui_draw.material_paths.clone();
+    let mut failed = Vec::new();
+    for (id, (i, before)) in paths {
+        let hash = material_hash(eng, &id);
+        if hash == before {
+            continue;
+        }
+        let material = {
+            let assets = eng.assets.borrow();
+            assets.blob(&id).and_then(|(bytes, bundle)| {
+                bundle
+                    .ui_material(&id, bytes.bytes())
+                    .map_err(|e| e.to_string())
+            })
+        };
+        match material {
+            Ok(material) => {
+                let mut rs = eng.render.borrow_mut();
+                let h = rs.ui_draw.materials[i].0;
+                rs.ui_draw.materials[i].1 = material.defaults();
+                rs.scene.ui_materials[h.index()] = material;
+                rs.ui_draw.material_paths.insert(id, (i, hash));
+            }
+            Err(e) => failed.push(format!("og dev: {id}: {e} (the old UI material stays)")),
+        }
+    }
+    failed
 }
 
 /// `og.ui.setDraw`: what the element added last draws with.
