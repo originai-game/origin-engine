@@ -122,7 +122,10 @@ pub fn render_glyph_on(
     grid: u32,
 ) -> Option<GlyphImage> {
     let face = ttf_parser::Face::parse(ttf, 0).ok()?;
-    let gid = face.glyph_index(c)?;
+    let gid = match (c as u32).checked_sub(crate::shape::GLYPH_PUA) {
+        Some(id) if id < u32::from(face.number_of_glyphs()) => ttf_parser::GlyphId(id as u16),
+        _ => face.glyph_index(c)?,
+    };
     let upem = f32::from(face.units_per_em());
     let mut advance = f32::from(face.glyph_hor_advance(gid).unwrap_or(0)) / upem;
     let pixels = (grid > 0).then(|| pixel_cells(&face, gid, grid));

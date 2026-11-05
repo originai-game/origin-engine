@@ -679,8 +679,11 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   centres and traced into square contours before the field, its advances
   and kerning in whole cells, and og-ui sets it at whole multiples of the
   grid only, so each font pixel is whole CSS pixels on the snapped pen
-  (run-time glyphs take the same cells). Bidi (UAX #9) and shaping (Arabic, Indic) through
-  rustybuzz, behind og-ui's `shaping` feature. World text faces the camera
+  (run-time glyphs take the same cells). UI paragraph layout uses Parley
+  with HarfRust and Skrifa behind og-ui's `shaping` feature: UAX #9 bidi,
+  UAX #14 line breaks and dictionary breaks for complex scripts. Its font
+  collection contains cooked faces only; system font discovery is off.
+  The atlas and renderer retain their MSDF text effects. World text faces the camera
   as a billboard does when asked (`TextDesc.facing`), turned as one panel
   about its aligned point and sorted among the transparent meshes.
 - Capture: a readback path from the render graph, used by the probe's

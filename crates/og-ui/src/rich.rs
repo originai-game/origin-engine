@@ -85,6 +85,7 @@ pub(crate) struct RichLine {
     pub height: f32,
     /// From the line's top to the shared baseline.
     pub baseline: f32,
+    pub shaped: Option<Vec<Segment>>,
 }
 
 /// How rich text looks by default (`RichTextDesc` in the IDL).
@@ -142,7 +143,7 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
 /// its added stem: its letters stay apart without reading letter-spaced. A
 /// shaped run takes none (its joins would break). Either keeps
 /// [`bold_overhang`] after it.
-fn span_tracking(s: &RichSpan, text: &str) -> f32 {
+pub(crate) fn span_tracking(s: &RichSpan, text: &str) -> f32 {
     let step = crate::layout::step_tracking(&s.step, text);
     if s.synth.bold && !text.chars().any(og_i18n::needs_shaping) {
         step + bold_weight(s.step.size) / s.step.size
@@ -168,7 +169,7 @@ fn bold_weight(size: f32) -> f32 {
     (size * 0.045).max(0.4)
 }
 
-fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
+pub(crate) fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     // (line height, ascent, descent) in CSS px.
     if s.atom.is_some() {
         return (s.step.line_height, s.step.size * 0.85, -s.step.size * 0.25);
@@ -225,6 +226,10 @@ fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
 
 /// The widest paragraph unbroken, and the widest unbreakable group.
 pub(crate) fn rich_widths(rc: &RichContent, fonts: &dyn Metrics) -> (f32, f32) {
+    #[cfg(feature = "shaping")]
+    if let Some((_, widths)) = crate::text::paragraph::rich(rc, fonts, None) {
+        return (widths.0, if rc.wrap { widths.1 } else { widths.0 });
+    }
     let mut pref = 0.0f32;
     let mut min = 0.0f32;
     for para in paragraphs(rc, fonts) {
@@ -244,6 +249,10 @@ pub(crate) fn rich_widths(rc: &RichContent, fonts: &dyn Metrics) -> (f32, f32) {
 
 /// Greedy lines at `max` (`None`: only at `\n`).
 pub(crate) fn rich_lines(rc: &RichContent, fonts: &dyn Metrics, max: Option<f32>) -> Vec<RichLine> {
+    #[cfg(feature = "shaping")]
+    if let Some((lines, _)) = crate::text::paragraph::rich(rc, fonts, max) {
+        return lines;
+    }
     let mut lines = Vec::new();
     for para in paragraphs(rc, fonts) {
         // Groups: glued units together, breakable between.
@@ -328,6 +337,7 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
         height: h,
         baseline,
         pieces,
+        shaped: None,
     }
 }
 
@@ -344,11 +354,12 @@ pub(crate) struct DrawnPiece {
 
 /// One segment of a line in visual order: a piece, or the part of one in a
 /// single bidi run; its width in CSS px at scale 1.
-struct Segment {
-    span: usize,
-    text: String,
-    glyphs: Option<Vec<crate::text::VisualGlyph>>,
-    width: f32,
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Segment {
+    pub span: usize,
+    pub text: String,
+    pub glyphs: Option<Vec<crate::text::VisualGlyph>>,
+    pub width: f32,
 }
 
 /// A rich line's segments in visual order. A line of left-to-right text in
@@ -361,6 +372,9 @@ fn visual_segments(
     line: &RichLine,
     direction: og_i18n::Direction,
 ) -> Vec<Segment> {
+    if let Some(shaped) = &line.shaped {
+        return shaped.clone();
+    }
     let mixed = |p: &Piece| {
         let s = &rc.spans[p.span];
         s.atom.is_none()

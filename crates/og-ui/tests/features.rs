@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 /// A kit font as the cook makes it with `features`: its printable ASCII by
 /// code point and every glyph by id (U+F0000 + id), advances from `hmtx`.
-fn font(file: &str) -> UiFont {
+pub(crate) fn font(file: &str) -> UiFont {
     let path = format!(
         "{}/../../templates/ui-kit/assets/fonts/{file}",
         env!("CARGO_MANIFEST_DIR")

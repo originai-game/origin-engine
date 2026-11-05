@@ -112,17 +112,13 @@ inherits = "wasm"
 codegen-units = 16
 [profile.wasm.package.naga-types]
 opt-level = "z"
-[profile.wasm.package.rustybuzz]
+[profile.wasm.package.harfrust]
 opt-level = "z"
 [profile.wasm.package.ttf-parser]
 opt-level = "z"
-[profile.wasm.package.unicode-bidi-mirroring]
+[profile.wasm.package.skrifa]
 opt-level = "z"
-[profile.wasm.package.unicode-ccc]
-opt-level = "z"
-[profile.wasm.package.unicode-properties]
-opt-level = "z"
-[profile.wasm.package.unicode-script]
+[profile.wasm.package.read-fonts]
 opt-level = "z"
 [profile.wasm.package.unicode-width]
 opt-level = "z"

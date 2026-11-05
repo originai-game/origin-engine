@@ -80,6 +80,30 @@ fn text_without_a_rule_breaks_as_before() {
     assert_eq!(lines("한국어 설정", 3.0), ["한국어", "설정"]);
 }
 
+#[test]
+fn unicode_line_breaks_keep_nbsp_and_allow_tabs_hyphens_slashes_and_zwsp() {
+    assert_eq!(lines("ab\tcd", 3.0), ["ab", "cd"]);
+    assert_eq!(lines("ab\u{200b}cd", 3.0), ["ab", "cd"]);
+    assert_eq!(lines("a-bcd", 4.0), ["a-", "bcd"]);
+    assert_eq!(lines("a/bcd", 4.0), ["a/", "bcd"]);
+    assert_eq!(lines("x a\u{a0}b", 4.0), ["x", "a\u{a0}b"]);
+}
+
+#[test]
+fn overflow_never_tears_an_extended_grapheme() {
+    assert_eq!(lines("ae\u{301}b", 1.0), ["a", "e\u{301}", "b"]);
+    assert_eq!(lines("a👩‍👩‍👧‍👦b", 1.0), ["a", "👩‍👩‍👧‍👦", "b"]);
+}
+
+#[test]
+fn thai_breaks_at_dictionary_words_before_the_line_overflows() {
+    // ภาษา (language), ไทย (Thai): the old char overflow cut ภาษาไ / ทย.
+    assert_eq!(lines("ภาษาไทย", 5.0), ["ภาษา", "ไทย"]);
+    assert_eq!(lines("ພາສາລາວ", 5.0), ["ພາສາ", "ລາວ"]);
+    assert_eq!(lines("မြန်မာစာ", 7.0), ["မြန်မာ", "စာ"]);
+    assert_eq!(lines("ភាសាខ្មែរភាសាខ្មែរ", 10.0), ["ភាសាខ្មែរ", "ភាសាខ្មែរ"]);
+}
+
 /// A wrapping label's lines in a column fitted between 0 and `max`
 /// character widths.
 fn lines_in_fit(text: &str, max: f32) -> Vec<String> {
@@ -132,4 +156,48 @@ fn a_fit_box_never_splits_a_word() {
         ["Moonblade", "of dusk"]
     );
     assert_eq!(lines_in_fit("one two three", 8.0), ["one two", "three"]);
+}
+
+#[test]
+fn cooked_soft_hyphens_draw_only_at_a_taken_break() {
+    let mut scene = og_render::RenderScene::new();
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = add_test_font(&mut scene).handle;
+    let m = font.metrics.clone();
+    let mut ui = ui_with_font(font);
+    let mut step = ui.theme().type_ramp.body;
+    step.tracking_em = 0.0;
+    let narrow = m.measure("ab-", step.size) + 0.01;
+    let wide = m.measure("abcd", step.size) + 1.0;
+    let no_hyphen = m.measure("ab", step.size).max(m.measure("cd", step.size)) + 0.01;
+    assert!(no_hyphen < narrow);
+    for (width, count) in [(narrow, 2), (wide, 1), (no_hyphen, 2)] {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "Text",
+            "ab\u{ad}cd",
+            LabelDesc {
+                step: Some(step),
+                width: Size::Fixed(width),
+                ..Default::default()
+            },
+        );
+        ui.end();
+        let drawn: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Text { text, bounds, .. } => Some((text, bounds.width)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(drawn.len(), count, "{drawn:?}");
+        assert!(drawn.iter().all(|(_, w)| *w <= width + 0.01), "{drawn:?}");
+        if width == narrow {
+            assert_eq!(drawn[0].0, "ab-");
+        } else {
+            assert!(!drawn[0].0.contains('-'));
+        }
+    }
 }

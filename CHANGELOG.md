@@ -15,6 +15,14 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **UI text uses cooked-font paragraph layout.** Parley, HarfRust and
+  Skrifa replace rustybuzz and the space-only breaker. Unicode break
+  opportunities, dictionary breaks and grapheme-safe overflow replace
+  the handwritten rules; plain labels draw soft hyphens only at taken
+  breaks. Rich-text atoms participate as inline boxes. Fonts recook to
+  retain their OpenType data; atlas-only legacy fonts keep table metrics.
+  The MSDF renderer and text effects remain unchanged. No IDL change.
+
 - **Native accessibility has a shared-frame transport.** An opt-in,
   versioned socket extension carries incremental AccessKit trees with
   stable ids and frame-pixel bounds. Returned actions reach controls on

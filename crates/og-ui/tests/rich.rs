@@ -611,3 +611,57 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         "{w:?}"
     );
 }
+
+#[test]
+fn cooked_font_spans_and_inline_boxes_share_the_shaped_line() {
+    let mut scene = RenderScene::new();
+    let handle = add_test_font(&mut scene).handle;
+    let mut font = crate::features::font("Inter-Display.ttf");
+    font.handle = handle;
+    let metrics = font.metrics.clone();
+    let mut ui = ui_with_font(font);
+    ui.define_action(ActionDesc {
+        name: "jump".into(),
+        keys: vec!["KeyE".into()],
+        ..Default::default()
+    });
+    step(
+        &mut ui,
+        InputFrame::default(),
+        "office [color=#ff0000]affine[/color] [action=jump] done",
+        Size::Fixed(400.0),
+    );
+    let commands: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Text {
+                x,
+                size,
+                placements,
+                bounds,
+                ..
+            } => Some((*x, *size, placements, *bounds)),
+            _ => None,
+        })
+        .collect();
+    assert!(commands.len() >= 4, "text spans and key cap must all draw");
+    let (_, size, glyphs, bounds) = &commands[0];
+    assert!(
+        !glyphs.is_empty(),
+        "the cooked Latin face takes Parley glyph placement"
+    );
+    let expected = metrics.measure_tracked("office ", *size, ui.theme().type_ramp.body.tracking_em);
+    assert!(
+        (bounds.width - expected).abs() < 0.1,
+        "{} vs {expected}",
+        bounds.width
+    );
+    assert!(
+        commands
+            .windows(2)
+            .all(|p| p[1].0 >= p[0].0 + p[0].3.width - 1.0),
+        "inline pieces must not overlap: {commands:?}"
+    );
+}

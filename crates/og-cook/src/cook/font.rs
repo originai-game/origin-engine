@@ -574,11 +574,6 @@ pub fn cook(
         })
         .filter(|k| k.adjust != 0.0)
         .collect();
-    // The font file ships with the atlas for run-time shaping and for
-    // characters outside the charset (`runtime true`: og-ui renders them
-    // from these outlines when a text needs them).
-    let ship_ttf = shaping || s.runtime || !s.features.is_empty();
-
     // Render in parallel; results land by index, so the order is fixed.
     let slots: Vec<std::sync::Mutex<Option<Glyph>>> =
         wanted.iter().map(|_| std::sync::Mutex::new(None)).collect();
@@ -733,9 +728,9 @@ pub fn cook(
         let ktx = ktx2::write_rgba8_zlib(width, h, px, false, false, format::COOKER_VERSION);
         w.raw(&format!("atlas.{i}"), ktx, 16);
     }
-    if ship_ttf {
-        w.raw("ttf", bytes.to_vec(), 16);
-    }
+    // Paragraph shaping needs OpenType data for Latin too (ligatures,
+    // marks and kerning). The atlas and its glyph keys stay unchanged.
+    w.raw("ttf", bytes.to_vec(), 16);
     if s.pixel > 0 {
         // The grid, as text: og-ui snaps the font's sizes to its multiples.
         w.raw("pixel", s.pixel.to_string().into_bytes(), 1);
@@ -841,7 +836,7 @@ mod tests {
 
     /// A font imported with `features smcp` carries the small-cap glyph of
     /// each lower-case letter by id (what og-ui draws a featured run with)
-    /// and its file for shaping; without the line it carries neither.
+    /// and its file for shaping; without the line only the file ships.
     #[test]
     fn features_put_their_glyphs_in_the_atlas() {
         let path = concat!(
@@ -882,7 +877,7 @@ mod tests {
         );
         assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
         let (without, ships) = cooked(&[]);
-        assert!(!ships && without.iter().all(|&c| c < GLYPH_PUA));
+        assert!(ships && without.iter().all(|&c| c < GLYPH_PUA));
     }
 
     /// Subtexel samples of `c`'s field at `em_px` whose position lies in the

@@ -1,12 +1,12 @@
-//! A cooked font's file at run time: shaping (rustybuzz, the `shaping`
+//! A cooked font's file at run time: shaping (HarfRust, the `shaping`
 //! feature) and the metrics of characters outside its atlas.
 //!
 //! A font cooked with a shaped script (Arabic, Devanagari and og-i18n's
 //! other `needs_shaping` scripts) carries its font file and every glyph its
 //! substitutions reach from the charset (contextual forms, ligatures,
 //! conjuncts) under U+F0000 + glyph id. A run of such a script is shaped
-//! with rustybuzz in its direction and drawn as those private-use
-//! characters, placed where rustybuzz puts them (marks over their bases,
+//! with HarfRust in its direction and drawn as those private-use
+//! characters, placed where HarfRust puts them (marks over their bases,
 //! a right-to-left run already in visual order).
 //!
 //! A font cooked with `runtime true` carries its file too: a character
@@ -14,6 +14,10 @@
 //! and the host renders it into a page of its own (`crate::glyphs`) before
 //! the frame is drawn.
 
+use skrifa::{
+    MetadataProvider,
+    instance::{LocationRef, Size},
+};
 #[cfg(feature = "shaping")]
 use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
@@ -115,6 +119,8 @@ pub struct FontFile {
     ttf: Arc<Vec<u8>>,
     units_per_em: f32,
     #[cfg(feature = "shaping")]
+    shaper: harfrust::ShaperData,
+    #[cfg(feature = "shaping")]
     shaped: Mutex<HashMap<(String, bool, u8), ShapedRun>>,
     /// Characters outside the atlas: their advance in em (`None`: not in the font).
     extra: Mutex<BTreeMap<char, Option<f32>>>,
@@ -139,13 +145,20 @@ impl PartialEq for FontFile {
 const CACHE_RUNS: usize = 4096;
 
 impl FontFile {
-    /// The file of a cooked font (`None`: not a font ttf-parser reads).
+    /// The file of a cooked font (`None`: not a font Skrifa reads).
     pub fn new(ttf: Arc<Vec<u8>>) -> Option<Arc<FontFile>> {
-        let face = ttf_parser::Face::parse(&ttf, 0).ok()?;
-        let units_per_em = f32::from(face.units_per_em());
+        let face = skrifa::FontRef::new(&ttf).ok()?;
+        let units_per_em = f32::from(
+            face.metrics(Size::unscaled(), LocationRef::default())
+                .units_per_em,
+        );
+        #[cfg(feature = "shaping")]
+        let shaper = harfrust::ShaperData::new(&face);
         Some(Arc::new(FontFile {
             ttf,
             units_per_em,
+            #[cfg(feature = "shaping")]
+            shaper,
             #[cfg(feature = "shaping")]
             shaped: Mutex::new(HashMap::new()),
             extra: Mutex::new(BTreeMap::new()),
@@ -212,24 +225,25 @@ impl FontFile {
         features: Features,
         has: &dyn Fn(char) -> bool,
     ) -> Option<Vec<Shaped>> {
-        let face = rustybuzz::Face::from_slice(&self.ttf, 0)?;
-        let mut buf = rustybuzz::UnicodeBuffer::new();
+        let face = skrifa::FontRef::new(&self.ttf).ok()?;
+        let mut buf = harfrust::UnicodeBuffer::new();
         buf.push_str(run);
         buf.guess_segment_properties();
         buf.set_direction(if rtl {
-            rustybuzz::Direction::RightToLeft
+            harfrust::Direction::RightToLeft
         } else {
-            rustybuzz::Direction::LeftToRight
+            harfrust::Direction::LeftToRight
         });
-        let on: Vec<rustybuzz::Feature> = features
+        let on: Vec<harfrust::Feature> = features
             .tags()
             .map(|t| {
                 let b = t.as_bytes();
-                let tag = rustybuzz::ttf_parser::Tag::from_bytes(&[b[0], b[1], b[2], b[3]]);
-                rustybuzz::Feature::new(tag, 1, ..)
+                let tag = harfrust::Tag::new(&[b[0], b[1], b[2], b[3]]);
+                harfrust::Feature::new(tag, 1, ..)
             })
             .collect();
-        let out = rustybuzz::shape(&face, &on, buf);
+        let shaper = self.shaper.shaper(&face).build();
+        let out = shaper.shape(buf, harfrust::ShapeOptions::new().features(&on));
         let em = self.units_per_em;
         let mut glyphs = Vec::with_capacity(out.len());
         for (g, p) in out.glyph_infos().iter().zip(out.glyph_positions()) {
@@ -238,7 +252,7 @@ impl FontFile {
                 // The character's own glyph, kept under its code point.
                 let c = run.get(g.cluster as usize..)?.chars().next()?;
                 ch = [c, crate::text::mirror(c)].into_iter().find(|&c| {
-                    face.glyph_index(c).map(|i| u32::from(i.0)) == Some(g.glyph_id) && has(c)
+                    face.charmap().map(c).map(|i| i.to_u32()) == Some(g.glyph_id) && has(c)
                 })?;
             }
             glyphs.push(Shaped {
@@ -271,12 +285,43 @@ impl FontFile {
         self.lookup(c).is_some()
     }
 
+    /// Keep an atlas character when it names this glyph; otherwise request
+    /// the glyph by the cook's private-use id, including new ligatures.
+    #[cfg(feature = "shaping")]
+    pub(crate) fn character_for_glyph(
+        &self,
+        id: u32,
+        source: char,
+        has: &dyn Fn(char) -> bool,
+    ) -> char {
+        let face = skrifa::FontRef::new(&self.ttf).expect("validated font");
+        if let Some(c) = [source, crate::text::mirror(source)]
+            .into_iter()
+            .find(|&c| face.charmap().map(c).is_some_and(|g| g.to_u32() == id) && has(c))
+        {
+            return c;
+        }
+        let c = char::from_u32(GLYPH_PUA + id).expect("OpenType glyph id");
+        if !has(c) {
+            self.advance(c);
+        }
+        c
+    }
+
     fn lookup(&self, c: char) -> Option<f32> {
         let mut extra = self.extra.lock().ok()?;
         *extra.entry(c).or_insert_with(|| {
-            let face = ttf_parser::Face::parse(&self.ttf, 0).ok()?;
-            let g = face.glyph_index(c)?;
-            Some(f32::from(face.glyph_hor_advance(g).unwrap_or(0)) / self.units_per_em)
+            let face = skrifa::FontRef::new(&self.ttf).ok()?;
+            let g = match (c as u32).checked_sub(GLYPH_PUA) {
+                Some(id) if id <= u16::MAX as u32 => skrifa::GlyphId::new(id),
+                _ => face.charmap().map(c)?,
+            };
+            Some(
+                face.glyph_metrics(Size::unscaled(), LocationRef::default())
+                    .advance_width(g)
+                    .unwrap_or(0.0)
+                    / self.units_per_em,
+            )
         })
     }
 

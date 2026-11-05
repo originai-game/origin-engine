@@ -1550,8 +1550,9 @@ pub fn cook_project_with_texture_cache(
                     // "font 2": the Unicode spaces a font lacks are cooked as empty
                     // glyphs; "font 3": the field is of each glyph's outline
                     // union; "font 4": negative-bearing fill and post-sign error
-                    // correction. A font cooked before re-cooks.
-                    let st = stamp(&[b"font 4", f.describe().as_bytes(), &hash]);
+                    // correction; "font 5": every face carries OpenType data
+                    // for paragraph layout. A font cooked before re-cooks.
+                    let st = stamp(&[b"font 5", f.describe().as_bytes(), &hash]);
                     outs.push((s.rel.clone(), format::Font::NAME, st, Work::Font(s, f)));
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),

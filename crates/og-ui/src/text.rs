@@ -19,6 +19,9 @@ use og_render::{FontHandle, GlyphPlacement, MsdfFont};
 use std::ops::Range;
 use std::sync::Arc;
 
+#[cfg(feature = "shaping")]
+pub(crate) mod paragraph;
+
 /// Advances, kerning and vertical extents of a font, in em.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontMetrics {
@@ -426,6 +429,12 @@ impl FontMetrics {
     /// advances and the kerning between neighbours, as og-render draws it;
     /// a line with right-to-left or shaped characters as laid out visually.
     pub fn measure(&self, text: &str, size: f32) -> f32 {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) =
+            paragraph::layout(self, text, 1.0, 0.0, Features::NONE, Direction::Ltr, None)
+        {
+            return layout.full_width() * size;
+        }
         if needs_visual(text) || self.is_mixed() {
             return self
                 .visual(text, Direction::Ltr, 0.0)
@@ -463,6 +472,12 @@ impl FontMetrics {
     /// `features`: a text they shape is measured as it is drawn, glyph by
     /// shaped glyph.
     pub fn measure_with(&self, text: &str, size: f32, tracking: f32, features: Features) -> f32 {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) =
+            paragraph::layout(self, text, 1.0, tracking, features, Direction::Ltr, None)
+        {
+            return layout.full_width() * size;
+        }
         if (!features.is_empty() && self.shapes_features()) || tabulates(text, features) {
             return self
                 .visual_with(text, Direction::Ltr, tracking, features)
@@ -730,6 +745,10 @@ impl FontMetrics {
         tracking: f32,
         features: Features,
     ) -> Vec<VisualGlyph> {
+        #[cfg(feature = "shaping")]
+        if let Some(layout) = paragraph::layout(self, line, 1.0, tracking, features, base, None) {
+            return paragraph::visual(self, line, &layout);
+        }
         if !needs_visual(line) && base == Direction::Ltr {
             return self.run_with(line, false, tracking, 0, features);
         }
@@ -781,6 +800,18 @@ pub(crate) fn drawn_line(
     tracking: f32,
     features: Features,
 ) -> (String, Vec<GlyphPlacement>) {
+    #[cfg(feature = "shaping")]
+    if let Some(layout) = paragraph::layout(
+        m,
+        line,
+        1.0,
+        tracking,
+        features,
+        og_i18n::paragraph_direction(line, default),
+        None,
+    ) {
+        return FontMetrics::drawn(&paragraph::visual(m, line, &layout));
+    }
     if needs_visual(line)
         || (!features.is_empty() && m.shapes_features())
         || tabulates(line, features)
@@ -971,184 +1002,46 @@ pub(crate) fn is_cjk(c: char) -> bool {
         | 0xf900..=0xfaff | 0xff00..=0xffef | 0x20000..=0x2fa1f)
 }
 
-/// Characters a line may not start with (行頭禁則, JIS X 4051 and the
-/// Chinese equivalent): closing brackets and quotes, punctuation, the
-/// iteration marks, the prolonged sound mark and small kana.
-fn no_start(c: char) -> bool {
-    matches!(
-        c,
-        '、' | '。'
-            | '，'
-            | '．'
-            | '・'
-            | '：'
-            | '；'
-            | '？'
-            | '！'
-            | '‼'
-            | '⁇'
-            | '⁈'
-            | '⁉'
-            | 'ー'
-            | '‐'
-            | '゠'
-            | '–'
-            | '〜'
-            | '～'
-            | '…'
-            | '‥'
-            | '%'
-            | '％'
-            | '‰'
-            | '）'
-            | '」'
-            | '』'
-            | '】'
-            | '〕'
-            | '〉'
-            | '》'
-            | '］'
-            | '｝'
-            | '〙'
-            | '〗'
-            | '｠'
-            | '»'
-            | '”'
-            | '’'
-            | '〟'
-            | ')'
-            | ']'
-            | '}'
-            | ','
-            | '.'
-            | ':'
-            | ';'
-            | '?'
-            | '!'
-            | 'ぁ'
-            | 'ぃ'
-            | 'ぅ'
-            | 'ぇ'
-            | 'ぉ'
-            | 'っ'
-            | 'ゃ'
-            | 'ゅ'
-            | 'ょ'
-            | 'ゎ'
-            | 'ゕ'
-            | 'ゖ'
-            | 'ァ'
-            | 'ィ'
-            | 'ゥ'
-            | 'ェ'
-            | 'ォ'
-            | 'ッ'
-            | 'ャ'
-            | 'ュ'
-            | 'ョ'
-            | 'ヮ'
-            | 'ヵ'
-            | 'ヶ'
-            | 'ㇰ'..='ㇿ' | '々' | '〻' | 'ゝ' | 'ゞ' | 'ヽ' | 'ヾ'
-    )
-}
-
-/// Characters a line may not end with (行末禁則): opening brackets and quotes.
-fn no_end(c: char) -> bool {
-    matches!(
-        c,
-        '（' | '「'
-            | '『'
-            | '【'
-            | '〔'
-            | '〈'
-            | '《'
-            | '［'
-            | '｛'
-            | '〘'
-            | '〖'
-            | '｟'
-            | '«'
-            | '“'
-            | '‘'
-            | '〝'
-            | '('
-            | '['
-            | '{'
-    )
-}
-
-/// Katakana and the prolonged sound mark: a loanword's letters, kept on one
-/// line as a word is (the middle dot `・` between words breaks after it).
-fn katakana(c: char) -> bool {
-    matches!(c, 'ァ'..='ヺ' | 'ー' | 'ヽ' | 'ヾ' | 'ㇰ'..='ㇿ' | 'ｦ'..='ﾟ')
-}
-
-/// Words, spaces and the CJK units: the units lines break between. A CJK
-/// character is its own unit (a line may break before or after it), a run
-/// of katakana is one, and kinsoku glues a character that may not start a
-/// line to the unit before it and one that may not end a line to the unit
-/// after it.
+/// UAX #14 opportunities, including dictionary segmentation of complex
+/// scripts. Breakable trailing whitespace is separate so it can hang at
+/// the end of a line; NBSP remains part of its unbreakable unit.
 pub(crate) fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
-    let mut raw: Vec<(usize, usize, bool)> = Vec::new();
+    let mut analysis = parley_engine::Analysis::new();
+    parley_engine::Analyzer::new().analyze(
+        paragraph,
+        &parley_engine::AnalysisOptions {
+            line_break_override: Some(&keep_katakana),
+            ..Default::default()
+        },
+        &mut analysis,
+    );
+    let breaks = paragraph
+        .char_indices()
+        .zip(analysis.char_info())
+        .filter_map(|((byte, _), info)| {
+            (byte > 0 && info.is_soft_wrap_opportunity()).then_some(byte)
+        })
+        .chain([paragraph.len()]);
     let mut start = 0;
-    let mut kind: Option<u8> = None; // 0 word, 1 space, 2 katakana
-    let push = |raw: &mut Vec<(usize, usize, bool)>, a: usize, b: usize, k: u8| {
-        if a < b {
-            raw.push((a, b, k == 1));
+    let mut out = Vec::new();
+    for end in breaks {
+        let unit = &paragraph[start..end];
+        let word = unit.trim_end_matches([' ', '\t', '\u{200b}']);
+        if !word.is_empty() {
+            out.push((word, false));
         }
-    };
-    for (i, c) in paragraph.char_indices() {
-        let k = if katakana(c) {
-            2
-        } else if is_cjk(c) {
-            3
-        } else {
-            u8::from(c == ' ')
-        };
-        match kind {
-            Some(prev) if prev == k && k != 3 => {}
-            Some(prev) => {
-                push(&mut raw, start, i, prev);
-                start = i;
-                kind = Some(k);
-            }
-            None => {
-                start = i;
-                kind = Some(k);
-            }
+        if word.len() < unit.len() {
+            out.push((&unit[word.len()..], true));
         }
-        if k == 3 {
-            // Each other CJK character is a unit of its own.
-            push(&mut raw, start, i + c.len_utf8(), 3);
-            start = i + c.len_utf8();
-            kind = None;
-        }
+        start = end;
     }
-    if let Some(k) = kind {
-        push(&mut raw, start, paragraph.len(), k);
-    }
-    // Kinsoku: glue across a boundary with no space where the next unit
-    // starts with a no-start character or this one ends with a no-end one.
-    let mut out: Vec<(usize, usize, bool)> = Vec::with_capacity(raw.len());
-    for (a, b, space) in raw {
-        if let Some(last) = out.last_mut()
-            && !space
-            && !last.2
-            && last.1 == a
-        {
-            let first = paragraph[a..b].chars().next().is_some_and(no_start);
-            let open = paragraph[last.0..last.1].chars().last().is_some_and(no_end);
-            if first || open {
-                last.1 = b;
-                continue;
-            }
-        }
-        out.push((a, b, space));
-    }
-    out.into_iter()
-        .map(|(a, b, space)| (&paragraph[a..b], space))
-        .collect()
+    out
+}
+
+/// Keep the engine's loanword policy while ICU owns all kinsoku rules.
+fn keep_katakana(pair: parley_engine::break_overrides::LineBreakContext) -> Option<bool> {
+    let kana = |c| matches!(c, 'ァ'..='ヺ' | 'ー' | 'ヽ' | 'ヾ' | 'ㇰ'..='ㇿ' | 'ｦ'..='ﾟ');
+    (kana(pair.before) && kana(pair.after)).then_some(false)
 }
 
 /// The widest unbreakable unit: a wrapping text's minimum width.
@@ -1189,6 +1082,34 @@ pub(crate) fn break_lines(
     features: Features,
     max_width: Option<f32>,
 ) -> Vec<Line> {
+    #[cfg(feature = "shaping")]
+    if let Some(lines) = paragraph::discretionary(m, text, size, tracking, features, max_width) {
+        return lines;
+    }
+    #[cfg(feature = "shaping")]
+    if let Some(layout) = paragraph::layout(
+        m,
+        text,
+        1.0,
+        tracking,
+        features,
+        og_i18n::paragraph_direction(text, Direction::Ltr),
+        max_width.map(|w| w / size),
+    ) {
+        return layout
+            .lines()
+            .map(|line| {
+                let range = line.text_range();
+                let text = text[range]
+                    .trim_end_matches([' ', '\t', '\r', '\n'])
+                    .to_owned();
+                Line {
+                    text,
+                    width: (line.metrics().advance - line.metrics().hanging_advance) * size,
+                }
+            })
+            .collect();
+    }
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
         let Some(max) = max_width else {
@@ -1210,15 +1131,17 @@ pub(crate) fn break_lines(
                 continue;
             }
             let w = m.measure_with(unit, size, tracking, features);
-            // Kerned or shaped text measures differently whole than unit by
-            // unit (pairs across the units, a run shaped together): a line
-            // that fits whole stays whole.
-            let fits_whole = |line: &str| {
-                (m.kerns() || m.is_mixed() || needs_visual(line))
-                    && m.measure_with(&format!("{line}{spaces}{unit}"), size, tracking, features)
-                        <= max
+            // Atlas-only metrics kern at the seam, never reshape the growing
+            // prefix for each unit. Cooked-file paragraphs take Parley above.
+            let seam = if spaces.is_empty() {
+                line.chars()
+                    .next_back()
+                    .zip(unit.chars().next())
+                    .map_or(0.0, |(a, b)| m.kern(a, b) * size)
+            } else {
+                0.0
             };
-            if !line.is_empty() && width + spaces_w + w > max && !fits_whole(&line) {
+            if !line.is_empty() && width + spaces_w + w + seam > max {
                 lines.push(Line {
                     text: std::mem::take(&mut line),
                     width,
@@ -1227,14 +1150,19 @@ pub(crate) fn break_lines(
                 width = 0.0;
             } else if !line.is_empty() {
                 line.push_str(&spaces);
-                width += spaces_w;
+                width += spaces_w + seam;
             }
             spaces.clear();
             spaces_w = 0.0;
             if line.is_empty() && w > max {
-                // Break the unit between characters.
-                for c in unit.chars() {
-                    let cw = m.measure_with(c.encode_utf8(&mut [0; 4]), size, tracking, features);
+                let bytes: Vec<_> = unit
+                    .char_indices()
+                    .map(|(b, _)| b)
+                    .chain([unit.len()])
+                    .collect();
+                for (a, b) in og_i18n::graphemes(unit) {
+                    let cluster = &unit[bytes[a]..bytes[b]];
+                    let cw = m.measure_with(cluster, size, tracking, features);
                     if !line.is_empty() && width + cw > max {
                         lines.push(Line {
                             text: std::mem::take(&mut line),
@@ -1243,7 +1171,7 @@ pub(crate) fn break_lines(
                         pushed_any = true;
                         width = 0.0;
                     }
-                    line.push(c);
+                    line.push_str(cluster);
                     width += cw;
                 }
                 continue;
