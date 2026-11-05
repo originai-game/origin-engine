@@ -1,6 +1,6 @@
 // How finely the GPU blends a bilinear sample, outside the engine.
 //
-//   bun tests/evidence/compat/android/filter-precision/probe.ts [--android [serial]]
+//   bun tests/evidence/compat/android/filter-precision/probe.ts [--android [serial] | --swiftshader]
 //
 // A 2x1 texture, texel 0 black and texel 1 white, sampled with a linear
 // filter at u = (0.5 + f) / 2 for f from 0 to 1: the exact answer is f. A
@@ -15,7 +15,9 @@ import { Browser, chromePath } from "../../../../../packages/engine/tests/web/cd
 const args = process.argv.slice(2);
 const android = args.includes("--android");
 const server = Bun.serve({ port: 0, fetch: () => new Response("<!doctype html><title>filter</title>", { headers: { "content-type": "text/html" } }) });
-const browser = await Browser.from(args, { chrome: android ? "" : chromePath(args), reverse: [server.port] });
+// --swiftshader: desktop Chrome on SwiftShader, its CPU WebGPU adapter.
+const flags = args.includes("--swiftshader") ? ["--use-webgpu-adapter=swiftshader", "--enable-unsafe-swiftshader"] : [];
+const browser = await Browser.from(args, { chrome: android ? "" : chromePath(args), flags, reverse: [server.port] });
 try {
   const page = await browser.open(`http://127.0.0.1:${server.port}/`, []);
   await page.until("document.readyState === 'complete'", 15000);
