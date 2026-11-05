@@ -127,6 +127,13 @@ The gate was measured at seven minutes warm with four agents compiling the
 same crates into private target directories (143 GB of `target/`), so these
 rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 
+- **UI polish uses the prebuilt engine.** Polish changes TypeScript, `.ogt`
+  styles and documents, ui-material WGSL and assets only. Iterate with
+  `og dev` and Tune, without compiling Rust. Record missing engine
+  capabilities in one list for an engine thread to implement in a batch.
+  Data/TS-only UI landings use `scripts/check.sh ui` (quick plus the
+  path-aware style and kit playtests), then art review. Engine changes
+  still follow the existing functional and wave-end gates.
 - **One target directory per checkout.** Everyone, agents included, builds
   into the checkout's `target/` and lets cargo's lock serialise; nobody sets
   `CARGO_TARGET_DIR=target/agent-*` or copies the tree to build "in

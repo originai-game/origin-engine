@@ -3,6 +3,7 @@
 #
 #   scripts/check.sh            the path-aware full lane: during a round, after a change
 #   scripts/check.sh quick      the quick lane: fmt clippy test-quick drift bun-quick
+#   scripts/check.sh ui         quick plus path-aware UI style and kit playtests
 #   scripts/check.sh windows    the Windows lane: what studio-win adds to the Mac's
 #                               functional lane at the same commit (wasm-import
 #                               test-windows web-reference; OG_WASM_FROM names the
@@ -58,6 +59,7 @@ cd "$OG_ROOT" || exit 1
 
 STEPS_FULL="fmt clippy wasm-build test wasm-opt size-gate drift bun-test determinism"
 STEPS_QUICK="fmt clippy test-quick drift bun-quick"
+STEPS_UI="$STEPS_QUICK ui-styles ui-kit"
 # The functional lane: what a merge must not break (every test, the GPU
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
@@ -1088,11 +1090,12 @@ if [ "$FORCE_ALL" = 1 ]; then WASM_PROFILE_DEFAULT=wasm; else WASM_PROFILE_DEFAU
 
 if [ "$ONLY" = 1 ]; then
   [ "$#" -gt 0 ] || { og_err "--only needs at least one step (scripts/check.sh --list)"; exit 2; }
-  case "$1" in quick|functional|windows) og_err "--only takes steps, not a lane"; exit 2 ;; esac
+  case "$1" in quick|ui|functional|windows) og_err "--only takes steps, not a lane"; exit 2 ;; esac
 fi
 case "${1:-}" in
   "") selected="$STEPS_FULL" ;;
   quick) shift; selected="$STEPS_QUICK${*:+ $*}" ;;
+  ui) shift; selected="$STEPS_UI${*:+ $*}" ;;
   functional) shift; FUNCTIONAL=1; selected="$STEPS_FUNCTIONAL${*:+ $*}" ;;
   windows) shift; WINDOWS=1; selected="$STEPS_WINDOWS${*:+ $*}" ;;
   *) selected="$*" ;;

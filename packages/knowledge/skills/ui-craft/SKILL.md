@@ -11,6 +11,14 @@ should look (the style, colour, type). Every rule below that can be
 measured is one of `og ui check`'s, so a design is proven, not judged by
 eye (§7).
 
+## Polish on the prebuilt engine
+
+Change TypeScript, `.ogt` styles and documents, ui-material WGSL and assets
+only. Iterate with `og dev` and Tune; UI polish never compiles Rust.
+Keep missing engine capabilities in one list with the desired appearance
+and a reproducing screen. Hand that list to an engine thread for a batch
+implementation, then continue polish on its prebuilt engine.
+
 ## 1. Hierarchy: what the eye reads first
 
 - **One primary action per layer.** A screen (or a dialog over it) has one

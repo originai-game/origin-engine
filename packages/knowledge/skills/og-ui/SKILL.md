@@ -9,6 +9,14 @@ tick, the engine lays it out, draws it in the game's UI style (a look's
 prototypes only) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `og api show ui`; this skill is how to use it well.
 
+## Polish on the prebuilt engine
+
+Change TypeScript, `.ogt` styles and documents, ui-material WGSL and assets
+only. Iterate with `og dev` and Tune; do not compile Rust to polish UI.
+If a look needs an engine capability, record the missing control and a
+reproducing screen in one list for an engine thread to implement in a
+batch. Resume with its prebuilt engine rather than adding a game workaround.
+
 ## What works
 
 Games written from this package alone (`examples/lantern-vale`,
