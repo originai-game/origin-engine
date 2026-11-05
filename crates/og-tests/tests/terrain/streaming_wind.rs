@@ -1123,3 +1123,86 @@ fn gpu_placement_draws_the_cpu_placement() {
         "{apart} pixels differ from the CPU placement's ({copies} of copies)"
     );
 }
+
+/// A sparse scatter of huge chunks (100 m cells, 3.2 km chunks) over a
+/// 6 km terrain, placed on the GPU: the level-0 tiles far out in its
+/// chunks are never requested (the terrain wants them only out to the
+/// scatter's 500 m), yet every chunk in range draws, placed on the CPU
+/// where the GPU lacks its tiles: the frame matches the CPU path's.
+/// Before, such a chunk was skipped until tiles that never came.
+#[test]
+fn a_huge_span_gpu_scatter_draws_every_chunk_in_range() {
+    let scene = |gpu: bool| {
+        let mut scene = RenderScene::new();
+        let h = scene.add_terrain(TerrainData::flat(Vec2::splat(6144.0), 1537, 1537));
+        scene.terrains.push(Terrain {
+            layers: vec![TerrainLayer {
+                color: Vec3::splat(0.05),
+                ..Default::default()
+            }],
+            cast_shadows: false,
+            ..Terrain::new(h)
+        });
+        let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+        let red = scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: [8.0, 0.0, 0.0],
+            ..Default::default()
+        });
+        scene.scatters.push(og_render::ScatterDraw {
+            terrain: 0,
+            mesh: cube,
+            material: red,
+            scatter: TerrainScatter {
+                density: 1e-4,
+                distance: 500.0,
+                fade: 0.0,
+                scale: [24.0, 24.0],
+                seed: 17,
+                gpu,
+                ..TerrainScatter::default()
+            },
+            cast_shadows: false,
+            impostor: None,
+            impostor_distance: 0.0,
+        });
+        scene.wind = None;
+        scene.fog = None;
+        scene.post.tonemap = Tonemap::None;
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.light.cast_shadows = false;
+        let at = Vec3::new(700.0, 0.0, -300.0);
+        scene.camera = Camera {
+            position: at + Vec3::new(0.0, 600.0, 0.001),
+            target: at,
+            near: 1.0,
+            far: 2000.0,
+            projection: Projection::Orthographic { height: 1100.0 },
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+        scene
+    };
+    let frames = |scene: &RenderScene| {
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        for _ in 0..3 {
+            r.render(scene, &RenderTarget::Offscreen).expect("render");
+        }
+        r.read_offscreen().expect("capture")
+    };
+    let (cpu, gpu) = (frames(&scene(false)), frames(&scene(true)));
+    keep("scatter-huge-span-gpu", &gpu);
+    let red = |img: &RgbaImage| {
+        img.pixels
+            .chunks(4)
+            .filter(|p| p[0] > 150 && p[1] < 60)
+            .count()
+    };
+    let (want, got) = (red(&cpu), red(&gpu));
+    println!("red pixels: CPU {want}, GPU {got}");
+    assert!(want > 2000, "the CPU path draws the copies: {want}");
+    assert!(
+        got.abs_diff(want) * 200 < want,
+        "the GPU path draws {got} red pixels, the CPU path {want}"
+    );
+}

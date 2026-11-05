@@ -1930,24 +1930,22 @@ impl ScatterRenderer {
                         index_count,
                     })
                 });
-                let under: Vec<usize> = match (&plan, tiles) {
-                    (Some(p), _) => {
-                        let tiles = level0_under(&layout, p.reads.0, p.reads.1);
-                        match terrain.level0_slots(di, &tiles) {
-                            Some(slots) => slots,
-                            None => continue,
-                        }
-                    }
-                    (None, None) => Vec::new(),
-                    (None, Some(tiles)) => level0_under(&layout, a, b)
+                // The GPU places it once it holds the level-0 tiles under
+                // the job's reach; until then (a sparse scatter's huge
+                // chunk reaching past the tiles the terrain wants) the CPU
+                // does, so no chunk in range is missing.
+                let gpu_under = plan.as_ref().and_then(|p| {
+                    terrain.level0_slots(di, &level0_under(&layout, p.reads.0, p.reads.1))
+                });
+                let plan = plan.filter(|_| gpu_under.is_some());
+                let cpu_under: Option<Vec<usize>> = match tiles {
+                    None => Some(Vec::new()),
+                    Some(tiles) => level0_under(&layout, a, b)
                         .into_iter()
-                        .map(|i| tiles.get(&i).map_or(0, |t| Arc::as_ptr(t) as usize))
+                        .map(|i| tiles.get(&i).map(|t| Arc::as_ptr(t) as usize))
                         .collect(),
                 };
-                if under.contains(&0) {
-                    continue;
-                }
-                let key = ChunkKey {
+                let key_of = |under: Vec<usize>, gpu: bool| ChunkKey {
                     data: di,
                     source: (revisions[di], under),
                     params: params.clone(),
@@ -1956,7 +1954,19 @@ impl ScatterRenderer {
                     layers: layers.clone(),
                     mesh: d.mesh.index(),
                     chunk: (cx, cz),
-                    gpu: plan.is_some(),
+                    gpu,
+                };
+                let gpu_key = gpu_under.map(|u| key_of(u, true));
+                let cpu_key = cpu_under.map(|u| key_of(u, false));
+                // A chunk already placed either way is kept: the CPU's and
+                // the GPU's copies are the same.
+                let cached = [&gpu_key, &cpu_key]
+                    .into_iter()
+                    .flatten()
+                    .find(|k| self.chunks.contains_key(*k))
+                    .cloned();
+                let Some(key) = cached.or(gpu_key).or(cpu_key) else {
+                    continue;
                 };
                 if let Some(c) = self.chunks.get_mut(&key) {
                     c.used = self.frame;
@@ -1978,7 +1988,7 @@ impl ScatterRenderer {
                     if streamed && !settle && gpu_budget == 0 {
                         continue;
                     }
-                    gpu_budget -= 1;
+                    gpu_budget = gpu_budget.saturating_sub(1);
                     self.built += 1;
                     let place = self.place.as_mut().expect("planned with it");
                     let buffer = crate::scatter_place::ScatterPlace::chunk_buffer(device);
