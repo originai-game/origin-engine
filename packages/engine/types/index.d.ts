@@ -8166,7 +8166,7 @@ export interface Stylise {
    */
   halftoneSpace: StyliseSpace;
   /**
-   * Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only.
+   * Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground, each set thinning and fading in from clean paper at its tone; 0 is off, 1 strokes only.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)
@@ -8418,7 +8418,7 @@ export interface Stylise {
    */
   halftoneRegion: HalftoneRegion;
   /**
-   * Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground.
+   * Colour hatching: the ground is a light wash of its colour (as light as one-ink hatching's paper, keeping its hue, and more of a strong colour's chroma than a weak tint's, so props keep their colour while a greyish floor goes to paper; conformed art keeps its authored colour, with half the chroma the lift would take) and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground.
    */
   hatchingKeepColor: boolean;
 }

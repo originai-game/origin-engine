@@ -64,7 +64,7 @@ struct Stylise {
 @group(0) @binding(8) var pre_normal: texture_2d<f32>;  // the prepass's oct-encoded world normal (xy)
 @group(0) @binding(9) var pre_object: texture_2d<u32>;  // the object pass (stylise_object.wgsl): position bits, packed normal; 0 without
 @group(0) @binding(10) var pre_outline: texture_2d<f32>;  // the prepass's outline target (Rgba8Unorm): a the object id; 0 without
-@group(0) @binding(12) var scene_colour: texture_2d<f32>;  // the scene before the stylise passes (the quantize pass's conformed test; the source in the others)
+@group(0) @binding(12) var scene_colour: texture_2d<f32>;  // the lit scene before exposure and the tone curve (the quantize and lines passes' conformed test; the source in the others)
 @group(0) @binding(11) var conformed_colors: texture_2d<u32>;  // the conformed colours' hash table (stylise.rs conformed_table); 1 x 1 without
 
 fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
@@ -620,6 +620,14 @@ fn depth_edge_at(px: vec2<i32>, r: f32) -> f32 {
 
 // The hatching's ink at tone `t` over the frame: darker tones add stroke
 // sets, each turned a little further.
+// How far a stroke set has come in at tone `t` below its `threshold`: 0
+// at the threshold, so the lightest strokes thin and fade in from clean
+// paper instead of starting at a third of their ink, to 1 half a level
+// darker.
+fn fade_in(threshold: f32, t: f32, levels: f32) -> f32 {
+  return smoothstep(0.0, 1.0, (threshold - t) * (levels + 1.0) * 2.0);
+}
+
 fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
   let levels = max(st.hatching.z, 1.0);
   var ink = 0.0;
@@ -627,7 +635,8 @@ fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
     if (t < threshold) {
       let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
-      ink = max(ink, stroke(p, turn, st.hatching.y, 1.0) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
+      let f = fade_in(threshold, t, levels);
+      ink = max(ink, stroke(p, turn, st.hatching.y, f) * f);
     }
   }
   return ink;
@@ -653,7 +662,8 @@ fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
     if (t < threshold) {
       let turn = st.hatching.w + k * (1.5707963 / max(levels - 1.0, 1.0)) + select(0.0, 1.5707963, (i32(k) & 1) == 1);
       let width = screen_width(vec2<f32>(cos(turn), sin(turn)), j);
-      ink = max(ink, stroke_on(q, turn, spacing, width, 0.75 * width) * clamp((threshold - t) * levels * 2.0, 0.3, 1.0));
+      let f = fade_in(threshold, t, levels);
+      ink = max(ink, stroke_on(q, turn, spacing, width * f, 0.75 * width) * f);
     }
   }
   return ink;
@@ -820,11 +830,32 @@ fn lines(in: VsOut) -> vec3<f32> {
       ink = hatch_screen(p, th);
     }
     if (st.print.w > 0.5) {
-      // Colour hatching (Stylise.hatchingKeepColor): the ground keeps its
-      // colour, lightened a little towards the paper, and each stroke is
-      // the same colour darkened towards the hatching colour, so the hue
-      // and chroma stay under the strokes instead of turning grey.
-      let ground = mix(c, vec3<f32>(1.0), st.hatching.x * 0.15);
+      // Colour hatching (Stylise.hatchingKeepColor): the ground is a wash,
+      // lifted towards the paper's lightness as far as one-ink hatching
+      // lifts it, keeping its hue and, as pigment on paper does, more of a
+      // strong colour's chroma than a weak tint's (in Oklab; one-ink's mix
+      // towards white takes all of it): a saturated prop keeps its colour
+      // while a weakly tinted lit floor or wall goes to paper; conformed
+      // art keeps its authored colour, as the quantize pass keeps it. Each
+      // stroke is the colour darkened towards the hatching colour, so the
+      // hue stays under the strokes instead of turning grey.
+      let lab = oklab(c);
+      let lift = st.hatching.x * 0.85;
+      var wash: vec3<f32>;
+      if (is_conformed(drawn_at(p))) {
+        // Conformed art keeps the colour it was authored in: lifted in
+        // Oklab lightness, with half the chroma that lift would take.
+        wash = vec3<f32>(mix(lab.x, 1.0, lift), lab.yz * (1.0 - lift * 0.5));
+      } else {
+        // A tint already near the paper's lightness (a pale sky) is the
+        // paper's own tint and keeps it.
+        let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz)), lift * (1.0 - smoothstep(0.8, 0.92, lab.x)));
+        // The lightness of one-ink's ground (its mix towards white in
+        // linear light), so the wash is as light as that paper.
+        let paper = oklab(mix(c, vec3<f32>(1.0), lift)).x;
+        wash = vec3<f32>(paper, lab.yz * (1.0 - lift * 0.5) * pigment);
+      }
+      let ground = clamp(oklab_to_linear(wash), vec3<f32>(0.0), vec3<f32>(1.0));
       let stroke = c * 0.3 + st.hatching_color.rgb * 0.5;
       c = mix(ground, stroke, ink * st.hatching.x);
     } else {
@@ -1052,6 +1083,19 @@ fn oklab(c: vec3<f32>) -> vec3<f32> {
     0.0259040371 * l3 + 0.7827717662 * m3 - 0.8086757660 * s3);
 }
 
+fn oklab_to_linear(c: vec3<f32>) -> vec3<f32> {
+  let l3 = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+  let m3 = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+  let s3 = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+  let l = l3 * l3 * l3;
+  let m = m3 * m3 * m3;
+  let s = s3 * s3 * s3;
+  return vec3<f32>(
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+}
+
 // How near (Oklab distance) a pixel must lie to a palette colour to be
 // that colour as it is: about one just-noticeable difference, wider than
 // the 8-bit rounding of a conformed texel through the frame's targets.
@@ -1074,19 +1118,39 @@ fn nearest_palette(c: vec3<f32>, count: i32) -> vec4<f32> {
   return vec4<f32>(best, best_d);
 }
 
+// The pixel's colour in the lit scene before exposure and the tone curve
+// (scene_colour). That image is at the render's size (smaller under TAAU)
+// and the pass at its target's: the pixel's centre in its texels.
+fn drawn_at(p: vec2<f32>) -> vec3<f32> {
+  let ssize = vec2<i32>(textureDimensions(scene_colour));
+  let at = vec2<i32>((p * vec2<f32>(ssize)) / vec2<f32>(textureDimensions(source)));
+  return textureLoad(scene_colour, clamp(at, vec2<i32>(0), ssize - 1), 0).rgb;
+}
+
+// Whether a pixel drawn as `drawn` (drawn_at) is conformed art as the
+// cook made it: lit past white is light on the art, not the art.
+fn is_conformed(drawn: vec3<f32>) -> bool {
+  return all(drawn <= vec3<f32>(1.001)) && conformed(max(drawn, vec3<f32>(0.0)));
+}
+
 fn quantize(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   var c = load(px);
   let count = i32(st.offset.w);
   // Conformed art as the cook made it (unlit, its own palette's colour,
-  // told by the scene's colour before ink, hatching or paint changed it):
+  // told by the scene's linear colour before exposure, the tone curve,
+  // ink, hatching or paint changed it, so a tone-mapped look keeps it too):
   // never posterised or dithered, only moved onto the frame's palette
   // when the look has one. Everything else (lit tones, plain or
   // unconformed materials) takes the look's posterise and dither below,
   // the fallback that makes a look look like itself on any material.
-  let ssize = vec2<i32>(textureDimensions(scene_colour));
-  let drawn = textureLoad(scene_colour, clamp(px, vec2<i32>(0), ssize - 1), 0).rgb;
-  if (conformed(clamp(drawn, vec3<f32>(0.0), vec3<f32>(1.0)))) {
+  let drawn = drawn_at(in.pos.xy);
+  // Lit past white is quantised (is_conformed). Two tones
+  // per channel (a 1-bit look) are the dither's to shade with, so its
+  // conformed art dithers too: a lit white wall kept white read as a hole
+  // punched through the dither, with no form.
+  let one_bit = st.quantize.x > 1.5 && st.quantize.x < 2.5;
+  if (!one_bit && is_conformed(drawn)) {
     if (count > 0) { return nearest_palette(c, count).rgb; }
     return c;
   }

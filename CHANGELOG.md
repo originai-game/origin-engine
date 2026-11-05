@@ -15,6 +15,22 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Stylise: conformed art under a tone curve, washes and fading strokes.**
+  The quantise tells conformed art by the lit colour before exposure and
+  the tone curve, so a tone-mapped look keeps it unstepped too.
+  `hatchingKeepColor` lays a light wash (as light as one-ink hatching's
+  paper, keeping the hue and more of a strong colour's chroma than a weak
+  tint's; conformed art keeps its authored colour, lifted as one-ink
+  paper is) under its strokes, a 1-bit quantise dithers conformed art too
+  (its dither is its only shading), and every
+  hatching stroke set thins and fades in from clean paper at its tone
+  instead of starting at a third of its ink. The cook's own-palette cut
+  weighs each texel by how smooth its neighbourhood is, so a busy
+  backdrop's sky and its clouds keep two colours. Doc changes only on
+  `Stylise.hatching` and `hatchingKeepColor`. Behaviour change: frames
+  with hatching, colour hatching, tone-mapped conformed art or a
+  conformed busy texture move; detailed-doodle hatches a colour wash.
+
 - **GPU-driven crowds.** og.CrowdAnimation members draw as og-render
   crowds: culled (frustum, two-phase Hi-Z), given their level and drawn
   indirect on the GPU, shadows included, with animated impostor cards as a

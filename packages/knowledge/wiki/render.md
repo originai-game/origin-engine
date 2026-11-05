@@ -2952,7 +2952,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `halftoneAngle` | `number` | `45` | — | `deg` | — | The dot grid's angle. |
 | `halftoneColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The ink of the dots (linear). |
 | `halftoneSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots. |
-| `hatching` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only. |
+| `hatching` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground, each set thinning and fading in from clean paper at its tone; 0 is off, 1 strokes only. |
 | `hatchingScale` | `number` | `6` | 2 … 64 | — | — | The spacing of hatch lines in logical pixels. |
 | `hatchingLevels` | `number` | `4` | 1 … 6 | — | — | How many tones the hatching distinguishes, each adding one stroke direction or density (1 to 6). |
 | `hatchingAngle` | `number` | `45` | — | `deg` | — | The direction of the first stroke set. |
@@ -2990,7 +2990,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `halftoneMode` | `HalftoneMode` | `"ink"` | — | — | — | How the halftone inks: one ink (halftoneColor) or four-colour process print (cmyk). |
 | `halftoneMisregistration` | `number` | `0` | 0 … 8 | — | tunable | With halftoneMode cmyk: how far the cyan, magenta and yellow plates sit off the black one, in logical pixels, as a cheap print's colour slips past its line art; 0 is in register. |
 | `halftoneRegion` | `HalftoneRegion` | `"all"` | — | — | — | Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it. They fade to flat ink on surfaces turned away from the camera (a floor seen from a game camera's height), where dots squeezed into a few rows read as a checker. |
-| `hatchingKeepColor` | `boolean` | `false` | — | — | — | Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. |
+| `hatchingKeepColor` | `boolean` | `false` | — | — | — | Colour hatching: the ground is a light wash of its colour (as light as one-ink hatching's paper, keeping its hue, and more of a strong colour's chroma than a weak tint's, so props keep their colour while a greyish floor goes to paper; conformed art keeps its authored colour, with half the chroma the lift would take) and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground. |
 
 ```ogt
 resource Stylise {
@@ -3043,7 +3043,7 @@ resource Stylise {
     default 0.02 0.02 0.03
   }
   field halftoneSpace StyliseSpace "Where the dots lie: screen, a grid over the frame; surface, grids on the surfaces that stay on them as the camera moves and wrap round forms (halftoneSize is then about the pitch in pixels where they lie); object, the same grids in each instance's own space, so a moving object carries its dots."
-  field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground; 0 is off, 1 strokes only." {
+  field hatching f32 "Pencil or ink cross-hatching from a tonal art map: darker tones add strokes in more directions over a paper-light ground, each set thinning and fading in from clean paper at its tone; 0 is off, 1 strokes only." {
     min 0
     max 1
     unit ratio
@@ -3206,7 +3206,7 @@ resource Stylise {
     tunable true
   }
   field halftoneRegion HalftoneRegion "Which tones the halftone prints on: all (the dots reproduce the tone on white paper, merging in the darks as print does), the shade only or the highlights only (the darkest or lightest third of the tones). Under a region the dots are Ben-Day dots: a tint printed over the region's own colour, at most 0.4 of their cell wide so they never touch, and a flat shade stays one colour with separate dots on it. They fade to flat ink on surfaces turned away from the camera (a floor seen from a game camera's height), where dots squeezed into a few rows read as a checker."
-  field hatchingKeepColor bool "Colour hatching: the ground keeps its colour and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
+  field hatchingKeepColor bool "Colour hatching: the ground is a light wash of its colour (as light as one-ink hatching's paper, keeping its hue, and more of a strong colour's chroma than a weak tint's, so props keep their colour while a greyish floor goes to paper; conformed art keeps its authored colour, with half the chroma the lift would take) and each stroke is that colour darkened towards hatchingColor, so hue and chroma stay under the strokes; false lays strokes of hatchingColor over a paper-light ground."
 }
 ```
 

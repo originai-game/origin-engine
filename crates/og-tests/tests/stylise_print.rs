@@ -9,8 +9,10 @@
 //!   stays its colour under the look's posterize and dither with no frame
 //!   palette, also a few levels off as compression leaves it, while every
 //!   other tone (an unconformed material, light)
-//!   still steps and dithers: the frame quantise stays the fallback.
-//!   Old code posterised the art into a checker.
+//!   still steps and dithers: the frame quantise stays the fallback. The
+//!   art is told by its colour before the tone curve, so a tone-mapped
+//!   look keeps it too, except in a 1-bit look, whose dither is its only
+//!   shading. Old code posterised the art into a checker.
 //! - Shade-only halftone prints Ben-Day dots that never touch: the ground
 //!   between them is one connected field. Old code reproduced the
 //!   shade's full tone, so its dots merged into ink round a grid of
@@ -25,6 +27,9 @@
 //! - Colour hatching keeps the colour under its strokes: the darkest
 //!   pixels of a hatched red field stay red (Oklab chroma above 0.05),
 //!   where one-ink strokes are grey.
+//! - Hatching fades in from clean paper: a field just under a stroke set's
+//!   threshold carries next to no ink, one well under it is hatched; old
+//!   code began every stroke at 0.3 of its ink.
 
 use glam::Vec3;
 use og_render::{
@@ -195,6 +200,34 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
         close.len(),
         1,
         "a compressed texel of the art is kept: {close:?}"
+    );
+    // Under a tone curve the art is told by its colour before the curve:
+    // kept as the curve draws it, one colour. Old code compared the
+    // tone-mapped colour, off the art's by more than the reach, and
+    // stepped the art into a dither.
+    let mut toned = posterized(ART);
+    toned.post.tonemap = Tonemap::Aces;
+    toned.add_conformed_colors(&[ART]);
+    let curved = colours(&frame(&mut renderer, &toned));
+    println!("tone-mapped: {curved:?}");
+    assert_eq!(
+        curved.len(),
+        1,
+        "the art under ACES keeps one colour: {curved:?}"
+    );
+    // A 1-bit look (two tones per channel) shades with its dither alone:
+    // its conformed art dithers too. Old code kept it one flat colour, a
+    // hole through the dither.
+    let mut one_bit = posterized(ART);
+    if let Some(q) = &mut one_bit.stylise.quantize {
+        q.posterize = 2;
+    }
+    one_bit.add_conformed_colors(&[ART]);
+    let dithered = colours(&frame(&mut renderer, &one_bit));
+    println!("1-bit: {dithered:?}");
+    assert!(
+        dithered.len() >= 2,
+        "conformed art dithers in a 1-bit look: {dithered:?}"
     );
     // A lit tone farther off is not conformed: stepped and dithered.
     let mut lit = posterized([128, 160, 110]);
@@ -449,6 +482,45 @@ fn colour_hatching_keeps_the_hue_under_its_strokes() {
     assert!(grey < 0.03, "one-ink strokes are grey ({grey})");
 }
 
+#[test]
+fn colour_hatching_keeps_conformed_art_in_its_authored_colour() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    // A muted earth tone, weak enough that the lit-surface wash takes most
+    // of its tint towards paper.
+    const SOIL: [u8; 3] = [170, 140, 110];
+    let mut ground_chroma = |conformed| {
+        let mut scene = field(SOIL);
+        scene.stylise.hatching = Some(Hatching {
+            strength: 0.5,
+            scale: 5.0,
+            levels: 1,
+            angle_degrees: 45.0,
+            color: [0.04, 0.035, 0.03],
+            space: StyliseSpace::Screen,
+            depth: 0.0,
+            keep_color: true,
+        });
+        if conformed {
+            scene.add_conformed_colors(&[SOIL]);
+        }
+        let px = frame(&mut renderer, &scene);
+        // The lightest half of the pixels: the wash between the strokes.
+        let mut by_light: Vec<&[u8]> = px.chunks(4).collect();
+        by_light.sort_by_key(|p| p[0] as u32 + p[1] as u32 + p[2] as u32);
+        let light = &by_light[by_light.len() / 2..];
+        light.iter().map(|p| chroma(p)).sum::<f32>() / light.len() as f32
+    };
+    let art = ground_chroma(true);
+    let lit = ground_chroma(false);
+    println!("wash chroma: conformed {art:.4}, lit surface {lit:.4}");
+    // Old code washed conformed art as a lit surface, taking the
+    // authored colour towards paper with it.
+    assert!(
+        art > lit * 1.3,
+        "conformed art keeps its colour under the wash ({art} against {lit})"
+    );
+}
+
 /// A dark wall facing the camera, turned `tilt` degrees about x away from
 /// it, under shade-only Ben-Day dots.
 fn turned_wall(tilt: f32) -> RenderScene {
@@ -516,4 +588,36 @@ fn shade_dots_print_flat_on_a_surface_seen_edge_on() {
         edge_on < 60,
         "a wall seen edge-on keeps flat ink ({edge_on})"
     );
+}
+
+#[test]
+fn hatching_fades_in_from_clean_paper_at_its_threshold() {
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    // The spread of the red channel over a grey field `g` under one stroke
+    // set (its threshold at tone 0.5).
+    let mut spread = |g: u8| {
+        let mut scene = field([g, g, g]);
+        scene.stylise.hatching = Some(Hatching {
+            strength: 1.0,
+            scale: 5.0,
+            levels: 1,
+            angle_degrees: 45.0,
+            color: [0.0; 3],
+            space: StyliseSpace::Screen,
+            depth: 0.0,
+            keep_color: false,
+        });
+        let px = frame(&mut renderer, &scene);
+        let r = px.chunks(4).map(|p| p[0]);
+        r.clone().max().unwrap() - r.min().unwrap()
+    };
+    // Tone 0.48, just under the threshold, and 0.24, well under it.
+    let (light, dark) = (spread(122), spread(61));
+    println!("stroke spread: near the threshold {light}, in the shade {dark}");
+    // Old code started every stroke at 0.3 of its ink: 70 levels at once.
+    assert!(
+        light <= 8,
+        "strokes at their threshold all but vanish ({light})"
+    );
+    assert!(dark >= 40, "the shade is hatched ({dark})");
 }

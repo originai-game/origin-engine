@@ -341,14 +341,16 @@ impl FrameGraph {
                     .unwrap_or(&passes.black),
             )
         };
-        let head = super::plan::stylise_head(&chain_passes(frame)).map(ldr_name);
+        let untoned = self.view(super::plan::untoned(frame));
         for (i, p) in chain_passes(frame).into_iter().enumerate() {
             let source = self.view(&ldr_name(i));
-            // The scene before the stylise passes, which the quantize pass
-            // tests for conformed colours (the others bind their source).
-            let scene = match (&head, p) {
-                (Some(h), FramePass::Quantize) => self.view(h),
-                _ => source,
+            // The scene before exposure and the tone curve, which the
+            // quantize and lines passes test for conformed colours (the
+            // others bind their source).
+            let scene = if matches!(p, FramePass::Quantize | FramePass::Lines) {
+                untoned
+            } else {
+                source
             };
             let (depth, normals, object, ids) = prepass_of(p);
             let g = if p == FramePass::Fxaa {
