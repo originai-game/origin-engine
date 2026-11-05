@@ -12,6 +12,21 @@ skill is how to give a game a look of its own and keep it consistent. The
 mechanics are og-ui's (styles, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
 
+## Start from the choices
+
+Read the `create` block in `project.ogt` first. Its `look` is the chosen
+catalogue slug; `mood` is the requested tone, and `ui` is an independent
+style choice. An explicit UI choice wins over the look preset's `ui`
+line. Creation installs that pack under `assets/styles/<ui>/` and points
+the game's look at it. Customize the installed style for this game.
+
+Keep `view`, `platform` and `input` in the art brief: a phone portrait HUD
+and a desktop first-person HUD need different compositions. Inspect both
+the controls and the safe area in a captured frame. The mood is recorded
+now; it does not yet modify the palette, lighting or `artBrief` output.
+Do not report that a mood has been applied until the game's look actually
+implements it. Music and language choices likewise need their own assets.
+
 ## What works
 
 Both games written from this package alone reached `og polish`'s taste 99

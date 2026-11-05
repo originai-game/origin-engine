@@ -8,6 +8,31 @@ in `assets/`, text scenes, and a manifest. `og new <dir>` produces it; everythin
 skill is where to start: what a game is made of, and which skill to read
 next for each part.
 
+## Start from the choices
+
+Read `project.ogt`'s `create` block before choosing a mechanic, camera,
+look, UI, controls or player model. It records `genre`, `view`, `look`,
+`mood`, `ui`, `platform`, `input`, `players`, `lang` and `music`. Treat
+these as the maker's decisions, not suggestions to replace during a build.
+
+For a new project, use `og new <dir> --choices --premise "..."` or pass
+the choice flags directly. The terminal confirms missing choices;
+`--no-prompt` accepts inference and defaults. The old noninteractive
+flags still produce the legacy starter when no choice flag is present.
+
+The generated `src/creation.ts` applies quality and binding presets.
+Touch controls use safe-area anchors. Local multiplayer has one
+`og.PlayerInput` per seat; online lockstep submits local controls through
+`og.net.submit`. Both currently start from arena. Read og-net before
+changing its input/simulation boundary, then run its two-peer playtest.
+Do not enable lockstep on a game whose simulation still reads raw input.
+
+Genre mappings, camera presets, mood rendering, locale assets and music
+generation are separate work. A recorded choice is not proof those assets
+or systems exist. After changing a choice in an existing game's manifest,
+update its generated controls, publish settings or look as appropriate;
+`og new --force` replaces source files and is not an update command.
+
 
 ## What works
 

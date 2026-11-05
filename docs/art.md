@@ -100,6 +100,18 @@ code runs, so `project.ogt` gains `look "looks/<id>.ogt"` (the same id
 `GameDesc.look` takes; `GameDesc.look` unset falls back to it). `create`
 writes both. A project without the line conforms nothing.
 
+**Creation choices precede the art contract.** `og new --choices` records
+`genre`, `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`,
+`lang` and `music` in a `create` block in `project.ogt`.
+`packages/create/bin/choices.ts` owns the vocabulary and exports its JSON
+schema and premise inference through `@origingame/create-game`.
+`resolveCreationChoices` adds catalogue matching. These exports are
+additive public contracts beside the art brief; existing signatures stay
+unchanged. The UI choice defaults to the look's `ui` line but can override
+it. Mood and music currently record intent only; this step does not change
+`artBrief`, the catalogue or look rendering. See create's README for the
+function signatures and `docs/platform-asks.md` for the creation UI ask.
+
 ### 2.2 Produce: every request carries the contract
 
 `@origingame/create-game` and the knowledge package export a **spec

@@ -170,3 +170,48 @@ it hands back (a player, a friend, a purchase, an invite) is opaque, at most
 | # | Ask | Why | Until then |
 |---|---|---|---|
 | 23 | Beside #22's `scene_saved`, the Stage serves the page one call and takes one more pushed text. The call: `{ og: "probe", v: 1, kind: "call", method: "read_source", params: { source } }`, answered `{ kind: "result", result: { source, text } }` (or `{ kind: "error", code: "refused" }`) with the whole current text of a project file, refusing a `source` outside `assets/` or not ending in `.ogt` and answering at most 1 MiB. The pushed text: a prefab's Apply writes the prefab's file and the instance's scene, so the page sends both in one `scene_saved` (each `{ source, text }`, the prefab's `assets/prefabs/….ogt` among them), and the Stage writes every one as #22 says, all or none. Advertise the call as `capabilities: ["scene_saved", "read_source"]` in the Stage's `hello`. | The inspector's Apply (write an instance's override into its prefab, so every instance takes it) and Revert (back to the prefab's value) are `apply_prefab` and `revert_prefab`, which read the prefab's and the scene's source text and rewrite it (`docs/design.md` §3.6). Natively the engine reads the project's files; a web page has only the cooked bundle, so on the Stage Apply and Revert refuse with the file they could not read, and a creator who tunes a prefab instance on the web cannot make it the prefab's. | On a web page Apply and Revert say why they cannot run (the source is not readable here) and change nothing; Save still saves the instance's override into its scene (#22, or a download). Once the Stage reads sources, the page fetches the prefab's and the scene's texts before the edit and the result goes out as #22's `scene_saved`, or, to a Stage without `read_source`, as a download of each changed file, as #22's fallback. |
+
+## Creation choices in origin-agent (A10, 2026-11-05)
+
+**Ask 24, open.** The creation UI in `originai-game/origin-agent` collects
+genre, view, look, mood, UI style, platform, input and players before the
+first build. Languages and music have defaults. Use the released engine's
+create package, not a separate platform vocabulary:
+
+- `CREATION_CHOICES` owns the enums. `creationSchema(readCatalogue().map(s => s.slug))`
+  returns the form's JSON Schema 2020-12. The look catalogue still owns its
+  37 slugs. There are 14 installable UI packs in this revision, not 16;
+  `cjk` and `shared` contain support assets, not styles.
+- `resolveCreationChoices(premise, partialChoices)` returns suggestions
+  with explicit choices preserved. Display and confirm the required
+  choices. The language heuristic recognizes kana and Han text, otherwise
+  defaults to English; the platform can supply a more accurate locale.
+- Send the confirmed object as `create({ dir, premise, choices })` or the
+  corresponding `og new` flags with `--no-prompt`. A `choices: {}` request
+  opts into this path; old API callers retain their existing behavior.
+- Keep the resulting `project.ogt` `create` block as the decisions the
+  build agent reads. Do not store an independent editable copy of those
+  values that can diverge from the project.
+
+The complete shape is:
+
+```ts
+{
+  genre: "action-platformer", view: "side-2d", look: "16bit-pixel",
+  mood: "warm", ui: "pixel", platform: "phone-landscape", input: "touch",
+  players: "single", lang: ["zh", "en"], music: "chiptune"
+}
+```
+
+The engine installs the UI style, sets publish orientation and DPR,
+applies a quality preset, and wires controls in its supported starters.
+Multiplayer currently selects arena. Local play assigns two input seats;
+online play uses `og-net` and includes a two-peer hash test. Incompatible
+explicit archetypes are refused before creating files.
+
+Do not promise genre-specific archetypes, view cameras, mood-adjusted
+looks, translated assets or generated music from this revision. Their
+fields record the choices for A2/A3, A4 and A8/A9. Changes after creation
+need the corresponding authored source/settings update; `--force` is not
+an update API. All exports above are additions. `artBrief`, `readLook`,
+`presetLook` and the knowledge mounting contracts keep their signatures.
