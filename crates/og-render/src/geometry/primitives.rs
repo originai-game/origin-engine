@@ -62,6 +62,13 @@ pub fn cylinder(c: &Cylinder) -> MeshData {
     let rs = c.radial_segments.max(3);
     let hs = c.height_segments.max(1);
     let half = c.height / 2.0;
+    // A whole turn ends on the angle it started at, bit for bit (sin 2π is
+    // not 0 in f32), so the seam welds and the mesh is closed.
+    let whole = c.theta_length >= TAU;
+    let angle = |x: u32| {
+        let k = if whole && x == rs { 0 } else { x };
+        (k as f32 / rs as f32 * c.theta_length + c.theta_start).sin_cos()
+    };
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     // The side: (hs + 1) rows of (rs + 1) vertices, top row first.
@@ -71,8 +78,7 @@ pub fn cylinder(c: &Cylinder) -> MeshData {
         let radius = v * (c.radius_bottom - c.radius_top) + c.radius_top;
         for x in 0..=rs {
             let u = x as f32 / rs as f32;
-            let theta = u * c.theta_length + c.theta_start;
-            let (s, co) = theta.sin_cos();
+            let (s, co) = angle(x);
             let p = Vec3::new(radius * s, -v * c.height + half, radius * co);
             let n = Vec3::new(s, slope, co);
             vertices.push(vertex(p, n, uv(u, 1.0 - v)));
@@ -108,9 +114,7 @@ pub fn cylinder(c: &Cylinder) -> MeshData {
             }
             let ring = vertices.len() as u32;
             for x in 0..=rs {
-                let u = x as f32 / rs as f32;
-                let theta = u * c.theta_length + c.theta_start;
-                let (s, co) = theta.sin_cos();
+                let (s, co) = angle(x);
                 vertices.push(vertex(
                     Vec3::new(radius * s, half * sign, radius * co),
                     n,
@@ -156,9 +160,17 @@ pub fn capsule(radius: f32, height: f32, cap: u32, radial: u32, rows: u32) -> Me
     let half = height / 2.0;
     // The profile from the bottom pole up: (x, y, normal angle from -Y).
     let mut profile: Vec<(Vec2, Vec2)> = Vec::new();
+    // The poles exactly on the axis (cos π/2 is not 0 in f32), so they weld.
+    let arc = |a: f32| {
+        if a.abs() == PI / 2.0 {
+            Vec2::new(0.0, a.signum())
+        } else {
+            Vec2::new(a.cos(), a.sin())
+        }
+    };
     for i in 0..=cap {
         let a = -PI / 2.0 + (i as f32 / cap as f32) * (PI / 2.0);
-        let n = Vec2::new(a.cos(), a.sin());
+        let n = arc(a);
         profile.push((Vec2::new(n.x * radius, n.y * radius - half), n));
     }
     for i in 1..=rows {
@@ -167,7 +179,7 @@ pub fn capsule(radius: f32, height: f32, cap: u32, radial: u32, rows: u32) -> Me
     }
     for i in 1..=cap {
         let a = (i as f32 / cap as f32) * (PI / 2.0);
-        let n = Vec2::new(a.cos(), a.sin());
+        let n = arc(a);
         profile.push((Vec2::new(n.x * radius, n.y * radius + half), n));
     }
     // v by arc length along the profile.
@@ -183,7 +195,7 @@ pub fn capsule(radius: f32, height: f32, cap: u32, radial: u32, rows: u32) -> Me
         let v = lengths[k] / total;
         for x in 0..=radial {
             let u = x as f32 / radial as f32;
-            let theta = u * TAU;
+            let theta = (x % radial) as f32 / radial as f32 * TAU;
             let (s, c) = theta.sin_cos();
             vertices.push(vertex(
                 Vec3::new(p.x * s, p.y, p.x * c),
@@ -214,8 +226,10 @@ pub fn torus(radius: f32, tube: f32, radial: u32, tubular: u32, arc: f32) -> Mes
     let mut indices = Vec::new();
     for j in 0..=radial {
         for i in 0..=tubular {
-            let u = i as f32 / tubular as f32 * arc;
-            let v = j as f32 / radial as f32 * TAU;
+            // Whole turns end on their first angle, so the seams weld.
+            let iu = if arc >= TAU && i == tubular { 0 } else { i };
+            let u = iu as f32 / tubular as f32 * arc;
+            let v = (j % radial) as f32 / radial as f32 * TAU;
             let p = Vec3::new(
                 (radius + tube * v.cos()) * u.cos(),
                 (radius + tube * v.cos()) * u.sin(),
@@ -261,7 +275,8 @@ pub fn ring(
     for j in 0..=ps {
         let r = inner + step * j as f32;
         for i in 0..=ts {
-            let a = start + i as f32 / ts as f32 * length;
+            let k = if length >= TAU && i == ts { 0 } else { i };
+            let a = start + k as f32 / ts as f32 * length;
             let (s, c) = a.sin_cos();
             let p = Vec3::new(r * c, r * s, 0.0);
             let o = outer.max(1e-12);
@@ -290,7 +305,8 @@ pub fn circle(radius: f32, segments: u32, start: f32, length: f32) -> MeshData {
     let mut vertices = vec![vertex(Vec3::ZERO, Vec3::Z, uv(0.5, 0.5))];
     let mut indices = Vec::new();
     for i in 0..=seg {
-        let a = start + i as f32 / seg as f32 * length;
+        let k = if length >= TAU && i == seg { 0 } else { i };
+        let a = start + k as f32 / seg as f32 * length;
         let (s, c) = a.sin_cos();
         vertices.push(vertex(
             Vec3::new(radius * c, radius * s, 0.0),
@@ -514,7 +530,7 @@ pub fn tube_along(
             (n, tangents[k].cross(n).normalize_or(Vec3::X))
         };
         for j in 0..=radial {
-            let v = j as f32 / radial as f32 * TAU;
+            let v = (j % radial) as f32 / radial as f32 * TAU;
             let (s, c) = v.sin_cos();
             let dir = (n * -c + b * s).normalize_or(Vec3::Y);
             vertices.push(vertex(
@@ -572,6 +588,56 @@ mod tests {
         assert!((hi.y - 0.5).abs() < 1e-6 && (lo.y + 0.5).abs() < 1e-6);
         assert!((hi.x - 1.0).abs() < 1e-3 && (hi.z - 1.0).abs() < 1e-6);
         faces_out(&m);
+    }
+
+    /// Welded by exact position, every edge is used once each way: a solid
+    /// a boolean (a fracture's cut) can trust. A seam computed at 2π, or a
+    /// pole at sin π, leaves a slit 1e-8 wide that lets a cut leak.
+    fn closed(name: &str, m: &MeshData) {
+        let mut at = std::collections::HashMap::new();
+        let ids: Vec<u32> = m
+            .vertices
+            .iter()
+            .map(|v| {
+                let key = v.position.map(|x| (x + 0.0).to_bits());
+                let n = at.len() as u32;
+                *at.entry(key).or_insert(n)
+            })
+            .collect();
+        let mut edges = std::collections::HashMap::new();
+        for t in m.indices.chunks(3) {
+            let t = [t[0], t[1], t[2]].map(|i| ids[i as usize]);
+            if t[0] == t[1] || t[1] == t[2] || t[0] == t[2] {
+                continue;
+            }
+            for k in 0..3 {
+                *edges.entry((t[k], t[(k + 1) % 3])).or_insert(0i32) += 1;
+            }
+        }
+        let open = edges
+            .iter()
+            .filter(|&(&(a, b), &n)| edges.get(&(b, a)).copied().unwrap_or(0) != n)
+            .count();
+        assert_eq!(open, 0, "{name}: {open} open edges");
+    }
+
+    #[test]
+    fn whole_turns_weld_into_closed_solids() {
+        for rs in [3, 7, 12, 32] {
+            let c = Cylinder {
+                radius_top: 0.25,
+                radius_bottom: 0.25,
+                height: 3.0,
+                radial_segments: rs,
+                height_segments: 3,
+                ..Cylinder::default()
+            };
+            closed(&format!("cylinder {rs}"), &cylinder(&c));
+            closed(&format!("cone {rs}"), &cone(0.4, 1.2, rs, 2, false));
+            closed(&format!("capsule {rs}"), &capsule(0.3, 1.1, 5, rs, 2));
+            closed(&format!("torus {rs}"), &torus(1.0, 0.3, rs, 2 * rs, TAU));
+            closed(&format!("sphere {rs}"), &crate::shapes::sphere(rs, rs));
+        }
     }
 
     #[test]

@@ -12,14 +12,18 @@ pub fn sphere(segments: u32, rings: u32) -> MeshData {
     for r in 0..=rings {
         let v = r as f32 / rings as f32;
         let theta = v * std::f32::consts::PI;
+        // The poles on the axis and the seam on its first angle, bit for bit
+        // (sin π and sin 2π are not 0 in f32), so the sphere is closed.
+        let (st, ct) = match r {
+            0 => (0.0, 1.0),
+            r if r == rings => (0.0, -1.0),
+            _ => theta.sin_cos(),
+        };
         for s in 0..=segments {
             let u = s as f32 / segments as f32;
-            let phi = u * std::f32::consts::TAU;
-            let n = Vec3::new(
-                theta.sin() * phi.cos(),
-                theta.cos(),
-                theta.sin() * phi.sin(),
-            );
+            let phi =
+                if s == segments { 0 } else { s } as f32 / segments as f32 * std::f32::consts::TAU;
+            let n = Vec3::new(st * phi.cos(), ct, st * phi.sin());
             vertices.push(Vertex {
                 tangent: [0.0; 4],
                 position: (n * 0.5).to_array(),

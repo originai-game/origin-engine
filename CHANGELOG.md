@@ -15,6 +15,20 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Whole-turn primitives are closed solids; fractured cylinders break
+  into lumps.** `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`,
+  `torusGeometry`, `ringGeometry`, `circleGeometry`, `tubeGeometry` and
+  the built-in sphere computed the last column of a whole turn at 2π,
+  where f32 sine is not 0, and the sphere's and capsule's poles missed
+  the axis by sin π, so the seam never welded. A fracture cut through
+  that slit leaked: a third of a cylinder's cells came out as open
+  skins with no cut faces and no bonds (the thin shells and flat cards
+  a concrete pillar broke into). The seam now reuses the first column's
+  angle and the poles sit on the axis; the pillar's pieces are all
+  closed lumps (least to greatest width at least 0.47, where 13 of 44
+  were under 0.35). Vertex positions move by under 1e-7; a cooked
+  fracture of a cylinder changes and is recooked.
+
 - **Global illumination: screen rays across the screen, `both` counted
   once, cheaper probe sampling.** `og.GlobalIllumination.maxDistance`
   defaults to 16 m (it was 4): a screen ray stops where it leaves the
